@@ -9,13 +9,14 @@ async function openHome(page: Page) {
   await expect(home(page)).toBeVisible();
   await expect(page.locator('.environment-badge')).toHaveText('模拟工作空间');
 }
-async function openSavedPlan(page: Page, name = '每日长草计划', group: 'daily' | 'specialized' = 'daily') {
+async function openTaskTables(page: Page, group: 'daily' | 'specialized' = 'daily') {
   const menu = page.getByRole('button', { name: '打开导航', exact: true });
   if (await menu.isVisible()) await menu.click();
-  if (group === 'specialized') {
-    await navigate(page, '专项任务');
-    if (await menu.isVisible()) await menu.click();
-  }
+  await navigate(page, group === 'specialized' ? '专项任务' : '任务表');
+  if (await menu.isVisible()) await menu.click();
+}
+async function openSavedPlan(page: Page, name = '每日长草计划', group: 'daily' | 'specialized' = 'daily') {
+  await openTaskTables(page, group);
   await page.locator('.sidebar').getByRole('button', { name: `配置任务表${name}`, exact: true }).click();
   await expect(wb(page).getByRole('heading', { name, exact: true })).toBeVisible();
 }
@@ -32,6 +33,7 @@ async function navigate(page: Page, name: string) {
   await page.locator('.sidebar').getByRole('button', { name, exact: name !== 'Agent 助手' }).click();
 }
 async function createPlan(page: Page, name: string) {
+  await openTaskTables(page);
   await page.getByRole('button', { name: '添加任务表', exact: true }).click();
   await wb(page).getByLabel('任务表名称', { exact: true }).fill(name);
 }
@@ -46,7 +48,7 @@ async function settingsCategory(page: Page, name: string) {
 }
 function channel(page: Page, name: string) { return page.locator('.update-channel').filter({ has: page.getByRole('heading', { name, exact: true }) }); }
 
-test('home shows runtime information while task tables stay in the sidebar', async ({ page }) => {
+test('home shows runtime information and task tables have their own navigation entry', async ({ page }) => {
   await openHome(page);
   await expect(home(page).getByRole('heading', { name: '主页', exact: true })).toBeVisible();
   await expect(wb(page)).toHaveCount(0);
@@ -59,17 +61,20 @@ test('home shows runtime information while task tables stay in the sidebar', asy
   await expect(home(page).getByRole('region', { name: '我的任务表', exact: true })).toHaveCount(0);
   await expect(home(page).getByRole('article', { name: /^任务表/ })).toHaveCount(0);
   await expect(home(page).getByRole('button', { name: /新建任务表|新增日常任务表|运行已保存任务表|编辑任务表|开始/ })).toHaveCount(0);
-  await expect(page.locator('.sidebar').getByRole('button', { name: '配置任务表每日长草计划', exact: true })).toBeVisible();
+  await expect(page.locator('.sidebar').getByRole('button', { name: /^配置任务表/ })).toHaveCount(0);
+  await expect(page.locator('.sidebar').getByRole('button', { name: '添加任务表', exact: true })).toHaveCount(0);
   await openSavedPlan(page, '固源岩补给');
+  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('任务表');
+  await expect(page.locator('.sidebar').getByRole('button', { name: '配置任务表每日长草计划', exact: true })).toBeVisible();
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
   await navigate(page, '主页');
   await expect(home(page)).toBeVisible();
-  await expect(page.locator('.sidebar-plan.selected')).toHaveCount(0);
+  await expect(page.locator('.sidebar').getByRole('button', { name: /^配置任务表/ })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('maaverge:ui:selected-plan'))).toBe('farm-1-7');
   await page.reload();
   await expect(home(page)).toBeVisible();
   await expect(wb(page)).toHaveCount(0);
-  await expect(page.locator('.sidebar-plan.selected')).toHaveCount(0);
+  await expect(page.locator('.sidebar').getByRole('button', { name: /^配置任务表/ })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('maaverge:ui:selected-plan'))).toBe('farm-1-7');
 });
 
@@ -109,7 +114,7 @@ test('home reports an editor-started run without changing its unsaved draft', as
   await expect(home(page)).toContainText('模拟执行已停止');
 });
 
-test('home remains useful without task tables and new tables can be added through the sidebar', async ({ page }) => {
+test('home remains useful without task tables and new tables can be added through their own page', async ({ page }) => {
   await openHome(page);
   for (const name of ['每日长草计划', '固源岩补给']) {
     await openSavedPlan(page, name);
@@ -128,13 +133,14 @@ test('home remains useful without task tables and new tables can be added throug
   await expect(home(page).getByRole('button', { name: /新建任务表|新增日常任务表|开始/ })).toHaveCount(0);
   await expect(page.locator('.sidebar').getByRole('button', { name: /^配置任务表/ })).toHaveCount(0);
   await expect(home(page).getByRole('heading', { name: '还没有执行记录', exact: true })).toBeVisible();
+  await openTaskTables(page);
   await page.locator('.sidebar').getByRole('button', { name: '添加任务表', exact: true }).click();
   await expect(wb(page).getByRole('heading', { name: '新建任务表', exact: true })).toBeVisible();
   await wb(page).getByLabel('任务表名称', { exact: true }).fill('第一张任务表');
   await savePlan(page);
   await navigate(page, '主页');
   await expect(home(page).getByLabel('任务表统计', { exact: true })).toHaveCount(0);
-  await expect(page.locator('.sidebar').getByRole('button', { name: '配置任务表第一张任务表', exact: true })).toBeVisible();
+  await expect(page.locator('.sidebar').getByRole('button', { name: /^配置任务表/ })).toHaveCount(0);
   await openSavedPlan(page, '第一张任务表');
 });
 
@@ -239,13 +245,13 @@ test('the runtime rejects deleting an executing task table and displays the erro
 test('mobile navigation and all primary pages fit the viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openWorkspace(page);
-  for (const name of ['专项任务', '作业中心', '工具箱', 'Agent 助手', '执行记录', '设备', '设置', '主页']) {
+  for (const name of ['任务表', '专项任务', '作业中心', '工具箱', 'Agent 助手', '执行记录', '设备', '设置', '主页']) {
     await page.getByRole('button', { name: '打开导航', exact: true }).click();
     await navigate(page, name);
     await expect(page.getByRole('navigation', { name: '主导航' })).not.toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
   }
-  await page.getByRole('button', { name: '打开导航', exact: true }).click();
+  await openTaskTables(page);
   await page.getByRole('button', { name: '添加任务表', exact: true }).click();
   await expect(wb(page).getByRole('heading', { name: '新建任务表', exact: true })).toBeVisible();
   await expect(wb(page).getByRole('tab', { name: '任务表设置', exact: true })).toBeVisible();
