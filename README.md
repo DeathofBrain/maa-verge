@@ -4,6 +4,8 @@
 
 这是开发中的工程，请以 [开发状态](docs/STATUS.md) 判断当前实际能力；[完整计划](PLAN.md) 描述后续交付。默认开发和 CI 使用 mock，不连接真实游戏、不调用付费模型。
 
+默认进入主页仪表盘，汇总今日执行、运行进度、最近记录、设备和组件版本；任务表从侧栏进入完整编排工作台。仓库：[DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。
+
 ![Maa Verge 的 Mock 开发界面](docs/images/mock-workspace.png)
 
 ## 开始开发
