@@ -45,7 +45,7 @@ def validate(core: Path, resource: Path, expected: str) -> dict:
     if not (resource / "resource" / "version.json").is_file():
         raise ValueError("资源快照缺少 resource/version.json")
     handle = None
-    if os.name == "nt":
+    if sys.platform == "win32":
         handle = os.add_dll_directory(str(core.resolve()))
     try:
         library = ctypes.CDLL(str(core_library(core).resolve()))

@@ -22,7 +22,10 @@ class NativeCore:
         self.pending: set[int] = set()
         self.stop_event = threading.Event()
         core, resource = fs_path(Path(config["core"])), fs_path(Path(config["resource"]))
-        self.dll_directory = os.add_dll_directory(str(core)) if os.name == "nt" else None
+        if sys.platform == "win32":
+            self.dll_directory = os.add_dll_directory(str(core))
+        else:
+            self.dll_directory = None
         self.library = ctypes.CDLL(str(core_library(core)))
         self.callback_type = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
         # Strong reference must live until AsstDestroy returns.

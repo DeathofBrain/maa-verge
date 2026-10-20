@@ -27,7 +27,7 @@
 宿主：Windows x64；Node 24.22.0、pnpm 10.20.0、Python 3.12.15、Rust 1.90.0。工具与虚拟环境保留在本机忽略目录，不提交至 Git。
 
 - TypeScript 契约同步、前端类型检查与生产构建已通过。
-- Python ruff、mypy 与 73 项测试已通过。覆盖预算、请求去重、重启恢复、设备互斥、独立资源更新、任务边界切换、异步重连失败与超时恢复、归档别名、Windows 长路径和工作进程监督。
+- Python ruff、针对 linux/darwin/win32 的 mypy 检查与 73 项测试已通过。覆盖预算、请求去重、重启恢复、设备互斥、独立资源更新、任务边界切换、异步重连失败与超时恢复、归档别名、Windows 长路径和工作进程监督。
 - Rust fmt/clippy/test 编译检查已通过；目前没有单独的 Rust 单元测试，不将编译检查计作业务测试。
 - `pnpm check` 已完整通过：契约、前端类型、Python lint/类型/73 项测试及 Rust 检查。
 - PyInstaller 打包服务的 stdio 快照、正常 EOF 退出及 frozen 辅助进程调用官方 Updater 的本地合成 ZIP 验证已通过。

@@ -29,7 +29,11 @@ jobs:
       - run: pnpm contracts:check
       - run: pnpm -r check
       - run: uv run --frozen ruff check services/runtime
-      - run: uv run --frozen mypy
+      - name: Type check runtime for supported platforms
+        run: |
+          uv run --frozen mypy --platform linux
+          uv run --frozen mypy --platform darwin
+          uv run --frozen mypy --platform win32
       - run: uv run --frozen pytest
       - run: pnpm -r build
       - run: pnpm exec playwright install --with-deps chromium
