@@ -133,16 +133,41 @@ export function SettingsPage({ snapshot, busy, onAction, searchQuery }: SupportP
   </div>;
 }
 
+// Only unsaved form drafts live in the session; saved settings remain runtime-owned.
+function useSettingsDraft<T extends object>(key: string, saved: T) {
+  const fingerprint = JSON.stringify(saved);
+  const [state, setState] = useState<{ base: string; value: T }>(() => {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(`maaverge:settings-draft:${key}`) || 'null');
+      const valid = cached && typeof cached.base === 'string' && cached.value && Object.entries(saved).every(([field, value]) => typeof cached.value[field] === typeof value && (typeof value !== 'number' || Number.isFinite(cached.value[field])));
+      if (valid && JSON.stringify(cached.value) !== cached.base) return cached;
+    } catch { /* A damaged cache should not block application settings. */ }
+    return { base: fingerprint, value: saved };
+  });
+  useEffect(() => {
+    setState((current) => JSON.stringify(current.value) === current.base || JSON.stringify(current.value) === fingerprint ? { base: fingerprint, value: saved } : current);
+  }, [fingerprint]);
+  useEffect(() => {
+    try {
+      const cacheKey = `maaverge:settings-draft:${key}`;
+      if (JSON.stringify(state.value) === state.base) sessionStorage.removeItem(cacheKey);
+      else sessionStorage.setItem(cacheKey, JSON.stringify(state));
+    } catch { /* Session caching is optional. */ }
+  }, [key, state]);
+  const setDraft = (update: T | ((value: T) => T)) => setState((current) => ({ ...current, value: typeof update === 'function' ? update(current.value) : update }));
+  return [state.value, setDraft, () => setState({ base: fingerprint, value: saved })] as const;
+}
+
 function BudgetForm({ settings, busy, onSave }: { settings: Settings; busy: boolean; onSave: (budgets: Settings['budgets']) => Promise<boolean> }) {
-  const [draft, setDraft] = useState(settings.budgets);
+  const [draft, setDraft, resetDraft] = useSettingsDraft('budgets', settings.budgets);
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.budgets);
-  return <Section title="执行与消耗" description="应用授权上限；每张任务表可在此范围内进一步限制。"><Notice icon={<ShieldCheck size={17} />}>默认不使用理智药、源石与加急许可。任务参数中的累计消耗会在保存和执行时检查。</Notice><form onSubmit={(event) => { event.preventDefault(); void onSave(draft); }}><div className="sp-budget-fields">{([['medicine', '理智药'], ['originium', '源石'], ['expedited', '加急许可']] as const).map(([key, label]) => <label key={key} className="sp-field">{label}<input className="text-input" type="number" aria-label={`${label}预算`} min={0} max={100} step={1} required value={draft[key]} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, [key]: Number(event.target.value) }))} /></label>)}</div><div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button primary" type="submit" disabled={busy}>保存预算</button></div></form><p className="sp-help">公招加急、临期药和无上限用药等受限选项，仍需运行时具备可靠的消耗控制后才能启用。</p></Section>;
+  return <Section title="执行与消耗" description="应用授权上限；每张任务表可在此范围内进一步限制。"><Notice icon={<ShieldCheck size={17} />}>默认不使用理智药、源石与加急许可。任务参数中的累计消耗会在保存和执行时检查。</Notice><form onSubmit={(event) => { event.preventDefault(); void onSave(draft); }}><div className="sp-budget-fields">{([['medicine', '理智药'], ['originium', '源石'], ['expedited', '加急许可']] as const).map(([key, label]) => <label key={key} className="sp-field">{label}<input className="text-input" type="number" aria-label={`${label}预算`} min={0} max={100} step={1} required value={draft[key]} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, [key]: Number(event.target.value) }))} /></label>)}</div><div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button secondary" type="button" disabled={busy || !dirty} onClick={resetDraft}>放弃修改</button><button className="button primary" type="submit" disabled={busy}>保存预算</button></div></form><p className="sp-help">公招加急、临期药和无上限用药等受限选项，仍需运行时具备可靠的消耗控制后才能启用。</p></Section>;
 }
 
 function ModelForm({ settings, busy, onSave }: { settings: Settings; busy: boolean; onSave: (model: Settings['model']) => Promise<boolean> }) {
-  const [draft, setDraft] = useState(settings.model);
+  const [draft, setDraft, resetDraft] = useSettingsDraft('model', settings.model);
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.model);
-  return <Section title="模型与 Agent" description="保存模型提供商信息；不会在保存时发起模型请求。"><Notice>当前 Agent 提供可审阅的规则提案，真实云模型与自主托管尚未接入。</Notice><form className="sp-model-form" onSubmit={(event) => { event.preventDefault(); void onSave(draft); }}><label className="sp-field">模型提供商<input className="text-input" aria-label="模型提供商" placeholder="例如：openai-compatible" value={draft.provider} onChange={(event) => setDraft((previous) => ({ ...previous, provider: event.target.value }))} /></label><label className="sp-field">API 地址<input className="text-input" type="url" aria-label="模型 API 地址" placeholder="https://example.com/v1" value={draft.baseUrl} onChange={(event) => setDraft((previous) => ({ ...previous, baseUrl: event.target.value }))} /></label><label className="sp-field">模型名称<input className="text-input" aria-label="模型名称" value={draft.model} placeholder="填写提供商支持的模型名称" onChange={(event) => setDraft((previous) => ({ ...previous, model: event.target.value }))} /></label><p className="sp-help">密钥管理将在系统钥匙串接入后提供，此处不存放 API 密钥。</p><div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button primary" type="submit" disabled={busy}>保存模型配置</button></div></form></Section>;
+  return <Section title="模型与 Agent" description="保存模型提供商信息；不会在保存时发起模型请求。"><Notice>当前 Agent 提供可审阅的规则提案，真实云模型与自主托管尚未接入。</Notice><form className="sp-model-form" onSubmit={(event) => { event.preventDefault(); void onSave(draft); }}><label className="sp-field">模型提供商<input className="text-input" aria-label="模型提供商" placeholder="例如：openai-compatible" value={draft.provider} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, provider: event.target.value }))} /></label><label className="sp-field">API 地址<input className="text-input" type="url" aria-label="模型 API 地址" placeholder="https://example.com/v1" value={draft.baseUrl} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, baseUrl: event.target.value }))} /></label><label className="sp-field">模型名称<input className="text-input" aria-label="模型名称" value={draft.model} placeholder="填写提供商支持的模型名称" onChange={(event) => setDraft((previous) => ({ ...previous, model: event.target.value }))} /></label><p className="sp-help">密钥管理将在系统钥匙串接入后提供，此处不存放 API 密钥。</p><div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button secondary" type="button" disabled={busy || !dirty} onClick={resetDraft}>放弃修改</button><button className="button primary" type="submit" disabled={busy}>保存模型配置</button></div></form></Section>;
 }
 
 function UpdateSection({ channel, settings, busy, hasActiveRun, onAction, onSave }: { channel: UpdateChannel; settings: Settings; busy: boolean; hasActiveRun: boolean; onAction: SupportPageProps['onAction']; onSave: (patch: Partial<Settings>) => Promise<boolean> }) {
