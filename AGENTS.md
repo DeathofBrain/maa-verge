@@ -24,7 +24,7 @@ Read PLAN.md and docs/STATUS.md before changes. MAAVerge is an AGPL-3.0-only, lo
 
 ## Commands
 
-The root package.json is the command source of truth: pnpm dev:mock, pnpm dev, pnpm doctor, pnpm check, pnpm test:e2e:mock, pnpm build.
+The root package.json is the command source of truth: pnpm dev:mock, pnpm dev, pnpm run doctor, pnpm check, pnpm test:e2e:mock, pnpm build.
 Python: uv sync --frozen; uv run pytest. Rust: cargo fmt --check and cargo clippy --locked when the native toolchain is available.
 Use targeted checks while developing, then the relevant project checks. Do not modify formatting or dependencies unrelated to the task.
 

@@ -23,7 +23,7 @@ bash tools/bootstrap.sh
 ```bash
 pnpm install --frozen-lockfile
 uv sync --frozen
-pnpm doctor
+pnpm run doctor
 pnpm dev:mock
 ```
 
@@ -79,7 +79,13 @@ MAAVERGE_MODE=native bash tools/pnpm.sh dev
 
 `MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各自的 worktree。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
 
-`pnpm doctor` 只检查环境，不连接设备、不发模型请求、不输出密钥。`--native` 将原生依赖设为必需。可选 ADB 的缺失不阻断 mock 开发。真实设备测试由用户明确选择，且必须记录核心、资源、平台及设备标识的脱敏值。
+`pnpm run doctor` 只检查环境，不连接设备、不发模型请求、不输出密钥；显式写 `run` 可避免调用 pnpm 自带的同名命令。`pnpm run doctor --native` 将原生依赖设为必需。可选 ADB 的缺失不阻断 mock 开发。真实设备测试由用户明确选择，且必须记录核心、资源、平台及设备标识的脱敏值。
+
+## 模拟器连接与任务覆盖
+
+原生模式默认自动发现并连接已启动的本机模拟器，设置中可以关闭或手动触发。SDK/模拟器内置 ADB、默认多开端口和非标准路径配置见 [emulator-connection.md](emulator-connection.md)。此流程不会自动运行任务。
+
+侧边栏的「日常」与「专项任务」管理任务表，页内通过「任务编排」「任务表设置」「定时计划」组织配置。各步骤可以重复添加、排序、复制、启停并单独配置；常用字段之外的参数可通过高级 JSON 保留和编辑。上游任务边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
 
 ## 构建与持续集成
 
