@@ -43,22 +43,38 @@ export function devEnvironment() {
   };
 }
 
-// Run package-manager .cmd shims via their JavaScript entry where possible.
-// Windows shell invocation is restricted to fixed program/argument arrays controlled by tools.
+// Call the JavaScript entry directly so Windows .cmd quoting cannot change argv.
 function command(name, args) {
   if (name === 'pnpm') {
-    const bootstrap = path.join(root, '.tools', 'pnpm', 'node_modules', 'pnpm', 'bin', 'pnpm.cjs');
-    if (existsSync(bootstrap)) return [executable('node'), [bootstrap, ...args]];
-    const local = path.join(root, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs');
-    if (existsSync(local)) return [executable('node'), [local, ...args]];
-    if (windows) return ['cmd.exe', ['/d', '/s', '/c', `pnpm ${args.map(quoteWindows).join(' ')}`]];
+    const lifecycle = process.env.npm_execpath;
+    const candidates = [
+      ...(lifecycle && /^pnpm\.(?:cjs|mjs|js)$/iu.test(path.basename(lifecycle)) ? [lifecycle] : []),
+      path.join(root, '.tools', 'pnpm', 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
+      path.join(root, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
+    ];
+    const entry = candidates.find((candidate) => existsSync(candidate));
+    if (entry) return [executable('node'), [entry, ...args]];
+    if (windows) {
+      const discovered = spawnSync('where.exe', ['pnpm'], {
+        env: devEnvironment(), encoding: 'utf8', windowsHide: true, timeout: 15000,
+      });
+      for (const shim of (discovered.stdout || '').trim().split(/\r?\n/u).filter(Boolean)) {
+        if (path.extname(shim).toLowerCase() === '.exe' && existsSync(shim)) return [shim, args];
+        const directory = path.dirname(shim);
+        // npm globals and pnpm/action-setup use different shim directories.
+        const adjacent = [
+          path.join(directory, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
+          path.join(directory, '..', 'pnpm', 'bin', 'pnpm.cjs'),
+          path.join(directory, 'pnpm.cjs'),
+          path.join(directory, 'node_modules', 'corepack', 'dist', 'pnpm.js'),
+          path.join(directory, '..', 'corepack', 'dist', 'pnpm.js'),
+        ].find((candidate) => existsSync(candidate));
+        if (adjacent) return [executable('node'), [adjacent, ...args]];
+      }
+      throw new Error('Cannot locate a pnpm JavaScript entry or executable. Run tools/bootstrap.ps1.');
+    }
   }
   return [executable(name), args];
-}
-
-function quoteWindows(value) {
-  if (/[\r\n%&|<>^]/u.test(value)) throw new Error('Unsafe argument in package-manager command');
-  return `"${value.replaceAll('"', '\\"')}"`;
 }
 
 export function run(name, args = [], options = {}) {
@@ -76,7 +92,9 @@ export function start(name, args = [], options = {}) {
 }
 
 export function probe(name, args = ['--version']) {
-  const [program, arguments_] = command(name, args);
+  let program, arguments_;
+  try { [program, arguments_] = command(name, args); }
+  catch (error) { return { ok: false, output: error.message }; }
   const result = spawnSync(program, arguments_, { cwd: root, env: devEnvironment(), encoding: 'utf8', windowsHide: true, timeout: 15000 });
   return { ok: result.status === 0, output: (result.stdout || result.stderr || result.error?.message || '').trim() };
 }
