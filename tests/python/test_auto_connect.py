@@ -184,6 +184,57 @@ def test_auto_connect_reuses_connected_alias_and_retries_failed_idle_worker(
     assert not auto_runtime.store.all("run")
 
 
+def test_auto_connect_reuses_saved_device_identity_after_alias_changes(auto_runtime, monkeypatch):
+    device = auto_runtime.handle("device.connect", {"address": "127.0.0.1:5555"})
+    auto_runtime.tick(force=True)
+    plan = auto_runtime.handle(
+        "plan.save",
+        {
+            "plan": {
+                "name": "保持设备绑定",
+                "deviceId": device["id"],
+                "tasks": [{"type": "Award", "params": {}}],
+            }
+        },
+    )
+    auto_runtime.handle("device.disconnect", {"id": device["id"]})
+    monkeypatch.setattr("maaverge_runtime.runtime.auto_discover", fixture_discovery)
+    result = auto_runtime.handle("device.auto_connect", {})
+    assert result["devices"][0]["id"] == device["id"]
+    assert len(auto_runtime.devices()) == 1
+    auto_runtime.tick(force=True)
+    run = auto_runtime.handle(
+        "run.start",
+        {"planId": plan["id"], "deviceId": device["id"], "requestId": "reconnected-binding"},
+    )
+    assert run["status"] == "running"
+
+
+def test_manual_alias_connection_reuses_existing_device_controller(auto_runtime):
+    device = auto_runtime.handle("device.connect", {"address": "127.0.0.1:5555"})
+    auto_runtime.tick(force=True)
+    worker = auto_runtime.workers[device["id"]]
+    same = auto_runtime.handle("device.connect", {"address": "emulator-5554"})
+    assert same["id"] == device["id"]
+    assert auto_runtime.workers[device["id"]] is worker
+    assert len(auto_runtime.devices()) == 1
+
+
+def test_alias_reconnect_preserves_legacy_saved_device_id(auto_runtime):
+    legacy = {
+        "id": "device-legacy-raw-address-hash",
+        "name": "旧版模拟器",
+        "address": "emulator-5554",
+        "state": "offline",
+        "coreVersion": None,
+        "resourceVersion": None,
+    }
+    auto_runtime.store.put("device", legacy["id"], legacy)
+    connected = auto_runtime.handle("device.connect", {"address": "localhost:5555"})
+    assert connected["id"] == legacy["id"]
+    assert len(auto_runtime.devices()) == 1
+
+
 @pytest.mark.parametrize(
     "socket", [None, "tcp:localhost:5037", "tcp:127.0.0.1:5037", "tcp:[::1]:5037", "tcp:5037"]
 )

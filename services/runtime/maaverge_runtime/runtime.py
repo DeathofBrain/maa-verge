@@ -361,7 +361,24 @@ class Runtime:
                 combo = self.store.get("active", "combo", {})
                 if not combo.get("core"):
                     raise ValueError("请先在更新中心安装并启用核心")
-                ident = "device-" + hashlib.sha256(address.encode()).hexdigest()[:12]
+                # Discovery may return emulator-N instead of a saved loopback
+                # endpoint. Preserve the saved ID so task-table bindings remain
+                # valid after reconnect/restart, and reuse a live controller.
+                canonical_address = device_lock_address(address)
+                aliases = [
+                    device
+                    for device in self.store.all("device")
+                    if device_lock_address(device["address"]) == canonical_address
+                ]
+                existing = next(
+                    (device for device in aliases if device["id"] in self.workers),
+                    aliases[0] if aliases else None,
+                )
+                ident = (
+                    existing["id"]
+                    if existing
+                    else "device-" + hashlib.sha256(canonical_address.encode()).hexdigest()[:12]
+                )
                 if ident in self.connecting:
                     raise RpcError(-32011, "该设备正在建立连接")
                 if ident in self.workers:
