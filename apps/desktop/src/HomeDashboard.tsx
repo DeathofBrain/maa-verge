@@ -53,16 +53,16 @@ export default function HomeDashboard({ snapshot, selectedDevice, stopping, onSt
               <div className="run-progress" role="progressbar" aria-label="当前执行进度" aria-valuenow={currentRun.progress} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${currentRun.progress}%` }} /></div>
               <div className="home-current-actions"><button className="text-button" onClick={() => onShowRun(currentRun)}>查看运行详情<ArrowRight size={13} /></button><button className="button danger" disabled={stopping} onClick={() => onStopRun(currentRun)}><Square size={12} />停止执行</button></div>
               {activeRuns.length > 1 && <button className="text-button" onClick={() => onNavigate('history')}>另有 {activeRuns.length - 1} 项执行，查看全部</button>}
-            </div> : <div className="home-idle"><span className="home-idle-symbol"><Check size={24} /></span><h3>当前没有运行中的任务</h3><p>从左侧任务表开始执行，进度将在这里同步。</p></div>}
+            </div> : <div className="home-idle"><span className="home-idle-symbol"><Check size={24} /></span><h3>当前没有运行中的任务</h3></div>}
           </section>
 
           <section className="home-panel home-recent" aria-label="最近执行">
-            <div className="home-panel-heading"><div><h2>最近执行</h2><p>{snapshot.mode === 'mock' ? '模拟工作空间的运行记录' : '每次执行都有迹可循'}</p></div><button className="text-button" onClick={() => onNavigate('history')}>全部记录<ArrowRight size={13} /></button></div>
+            <div className="home-panel-heading"><h2>最近执行</h2><button className="text-button" onClick={() => onNavigate('history')}>全部记录<ArrowRight size={13} /></button></div>
             {recentRuns.length ? <div className="home-recent-list">{recentRuns.map((run) => <button className="home-recent-row" key={run.id} aria-label={`查看执行${run.id}`} onClick={() => onShowRun(run)}>
               <span className={`home-run-icon ${run.status}`}>{run.status === 'completed' ? <Check size={16} /> : run.status === 'running' ? <LoaderCircle size={16} className="spin" /> : <History size={16} />}</span>
               <span className="home-recent-info"><strong>{snapshot.plans.find((plan) => plan.id === run.planId)?.name || '已删除的任务表'}</strong><small>{run.message}</small></span>
               <span className="home-recent-status"><span className={`pill ${run.status}`}>{runLabels[run.status]}</span><time>{dateTime(run.startedAt)}</time></span><ArrowRight size={14} />
-            </button>)}</div> : <div className="home-empty home-empty-history"><span className="home-empty-history-icon"><History size={23} /></span><div><h3>还没有执行记录</h3><p>完成一次执行后，在这里回顾运行结果。</p></div></div>}
+            </button>)}</div> : <div className="home-empty home-empty-history"><span className="home-empty-history-icon"><History size={23} /></span><h3>还没有执行记录</h3></div>}
           </section>
         </div>
 

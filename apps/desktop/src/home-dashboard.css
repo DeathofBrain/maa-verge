@@ -52,8 +52,7 @@
 .home-current .home-panel-heading { border-bottom: 1px solid var(--line); padding-block: 17px; }
 .home-idle { text-align: center; padding: 31px 20px; background: linear-gradient(160deg,var(--surface),var(--surface-subtle)); border-radius: 0 0 10px 10px; }
 .home-idle-symbol { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: color-mix(in srgb,var(--success) 8%,var(--surface)); color: var(--success); }
-.home-idle h3 { font-size: 13px; font-weight: 550; margin: 14px 0 8px; }
-.home-idle p { font-size: 11px; color: var(--muted); line-height: 1.9; margin: 0; }
+.home-idle h3 { font-size: 13px; font-weight: 550; margin: 14px 0 0; }
 .home-current-body { padding: 18px 20px; }
 .home-current-body h3 { font-size: 14px; margin: 0; font-weight: 550; }
 .home-current-body p { font-size: 11px; color: var(--muted); line-height: 1.8; margin: 8px 0 21px; }
