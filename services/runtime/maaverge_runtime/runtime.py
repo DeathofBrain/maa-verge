@@ -467,6 +467,8 @@ class Runtime:
                 seen.add(key)
                 try:
                     with self.lock:
+                        if self.switching_components or not self.running:
+                            raise RpcError(-32011, "正在退出或切换核心，请稍后重试")
                         existing = next(
                             (
                                 self.store.get("device", ident)
