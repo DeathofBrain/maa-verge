@@ -193,7 +193,7 @@ export default function App() {
     {toast && <div role={toast.error ? 'alert' : 'status'} className={`toast ${toast.error ? 'error' : ''}`}>{toast.error ? <AlertCircle size={17} /> : <Check size={17} />}<span>{toast.text}</span><button className="icon-button" aria-label="关闭提示" onClick={() => setToast(null)}><X size={15} /></button></div>}
   </div>;
 }
-function Brand() { return <div className="brand" data-tauri-drag-region="deep"><span className="brand-mark" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 32 32" fill="none"><path d="M3 27V9l7-5 7 13 9-9 3 2v17h-7V19l-7 7-6-11v12H3Z" fill="currentColor" /></svg></span><span>Maa Verge</span></div>; }
+function Brand() { return <div className="brand" data-tauri-drag-region="deep"><span className="brand-mark" aria-hidden="true"><img src="/logo.png" width="32" height="32" alt="" draggable={false} /></span><span>Maa Verge</span></div>; }
 function PageHeading({ title, text, action }: { title: string; text: string; action?: ReactNode }) { return <div className="page-heading"><div><h1>{title}</h1><p>{text}</p></div>{action && <div className="heading-actions">{action}</div>}</div>; }
 function Empty({ icon, title, text, action }: { icon: ReactNode; title: string; text: string; action?: ReactNode }) { return <div className="empty-state"><span className="empty-icon">{icon}</span><h2>{title}</h2><p>{text}</p>{action}</div>; }
 function ConfirmDialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {

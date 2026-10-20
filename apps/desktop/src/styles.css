@@ -380,8 +380,13 @@ textarea.text-input {
 }
 
 .brand-mark {
-  color: var(--accent);
   display: flex;
+  flex: none;
+}
+
+.brand-mark img {
+  display: block;
+  pointer-events: none;
 }
 
 .primary-nav {

@@ -68,15 +68,12 @@ pub fn run() {
             let show = MenuItem::with_id(app, "show", "显示 Maa Verge", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
-            let mut pixels = vec![0_u8; 32 * 32 * 4];
-            for y in 4..28 {
-                for x in 4..28 {
-                    let offset = (y * 32 + x) * 4;
-                    pixels[offset..offset + 4].copy_from_slice(&[176, 235, 105, 255]);
-                }
-            }
+            let icon = app
+                .default_window_icon()
+                .cloned()
+                .ok_or_else(|| std::io::Error::other("Application icon is missing"))?;
             TrayIconBuilder::with_id("main")
-                .icon(tauri::image::Image::new_owned(pixels, 32, 32))
+                .icon(icon)
                 .tooltip("Maa Verge · 明日方舟助手")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
