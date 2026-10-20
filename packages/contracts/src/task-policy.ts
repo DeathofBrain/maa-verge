@@ -24,6 +24,17 @@ function jsonTree(value: unknown, depth = 0) {
 export function validatePlan(plan: Plan, settings: Settings) {
   if (!plan || !plan.name?.trim() || plan.name.length > 80 || !Array.isArray(plan.tasks) || !plan.tasks.length || plan.tasks.length > 30) reject('任务表需要名称和 1–30 个任务');
   if (plan.schedule) reject('定时调度尚未实现，请使用手动执行');
+  if (plan.description !== undefined && (typeof plan.description !== 'string' || plan.description.length > 500)) reject('任务表说明不得超过 500 个字符');
+  if (plan.deviceId != null && (typeof plan.deviceId !== 'string' || !plan.deviceId.length || plan.deviceId.length > 200)) reject('绑定设备标识无效');
+  if (!['daily', 'specialized'].includes(plan.group === undefined ? 'daily' : plan.group)) reject('任务表分组无效');
+  const effectiveBudgets = plan.budgets ?? settings.budgets;
+  if (plan.budgets != null) {
+    if (!object(plan.budgets) || Object.keys(plan.budgets).some((key) => !['originium', 'medicine', 'expedited'].includes(key))) reject('任务表预算格式无效');
+    for (const key of ['originium', 'medicine', 'expedited'] as const) {
+      const limit = integer(plan.budgets[key], '任务表消耗上限', 0, 100);
+      if (limit > settings.budgets[key]) reject('任务表消耗上限超出应用已授权额度');
+    }
+  }
   const totals = { originium: 0, medicine: 0, expedited: 0 };
   for (const task of plan.tasks) {
     if (!(task.type in taskLabels)) reject('包含不支持的任务类型');
@@ -105,5 +116,5 @@ export function validatePlan(plan: Plan, settings: Settings) {
     }
     if (task.type === 'OperProgress' && !Array.isArray(p.plans)) reject('干员养成需要 plans 数组');
   }
-  if (Object.entries(totals).some(([key, value]) => value > settings.budgets[key as keyof typeof totals])) reject('计划消耗超出已授权额度');
+  if (Object.entries(totals).some(([key, value]) => value > effectiveBudgets[key as keyof typeof totals])) reject('计划消耗超出已授权额度');
 }

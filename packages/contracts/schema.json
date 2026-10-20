@@ -169,6 +169,46 @@
           "title": "Name",
           "type": "string"
         },
+        "description": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Description",
+          "type": "string"
+        },
+        "deviceId": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deviceid"
+        },
+        "group": {
+          "default": "daily",
+          "enum": [
+            "daily",
+            "specialized"
+          ],
+          "title": "Group",
+          "type": "string"
+        },
+        "budgets": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Budgets"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "tasks": {
           "items": {
             "$ref": "#/$defs/Task"
@@ -199,6 +239,10 @@
       "required": [
         "id",
         "name",
+        "description",
+        "deviceId",
+        "group",
+        "budgets",
         "tasks",
         "schedule",
         "enabled"
@@ -295,7 +339,7 @@
           "type": "boolean"
         },
         "theme": {
-          "default": "dark",
+          "default": "system",
           "enum": [
             "dark",
             "light",

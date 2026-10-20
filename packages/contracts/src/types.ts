@@ -10,6 +10,12 @@ export type Resourceversion = string | null;
 export type Devices = Device[];
 export type Id1 = string;
 export type Name1 = string;
+export type Description = string;
+export type Deviceid = string | null;
+export type Group = 'daily' | 'specialized';
+export type Originium = number;
+export type Medicine = number;
+export type Expedited = number;
 /**
  * @minItems 1
  * @maxItems 30
@@ -41,7 +47,7 @@ export type Enabled1 = boolean;
 export type Plans = Plan[];
 export type Id2 = string;
 export type Planid = string;
-export type Deviceid = string;
+export type Deviceid1 = string;
 export type Status = 'running' | 'completed' | 'failed' | 'stopped';
 export type Progress = number;
 export type Message = string;
@@ -61,9 +67,6 @@ export type Autoupdatecore = boolean;
 export type Autoupdateresource = boolean;
 export type Minimizetotray = boolean;
 export type Theme = 'dark' | 'light' | 'system';
-export type Originium = number;
-export type Medicine = number;
-export type Expedited = number;
 export type Provider = string;
 export type Baseurl = string;
 export type Model = string;
@@ -93,9 +96,18 @@ export interface Device {
 export interface Plan {
   id: Id1;
   name: Name1;
+  description: Description;
+  deviceId: Deviceid;
+  group: Group;
+  budgets: Budgets | null;
   tasks: Tasks;
   schedule: Schedule;
   enabled: Enabled1;
+}
+export interface Budgets {
+  originium: Originium;
+  medicine: Medicine;
+  expedited: Expedited;
 }
 export interface Task {
   type: Type;
@@ -108,7 +120,7 @@ export interface Params {
 export interface Run {
   id: Id2;
   planId: Planid;
-  deviceId: Deviceid;
+  deviceId: Deviceid1;
   status: Status;
   progress: Progress;
   message: Message;
@@ -131,11 +143,6 @@ export interface Settings {
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;
-}
-export interface Budgets {
-  originium: Originium;
-  medicine: Medicine;
-  expedited: Expedited;
 }
 export interface ModelSettings {
   provider: Provider;

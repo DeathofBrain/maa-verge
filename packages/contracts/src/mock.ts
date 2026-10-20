@@ -1,4 +1,4 @@
-import type { Event, Plan, Run, Settings, Snapshot, UpdateChannel } from './types';
+import type { Device, Event, Plan, Run, Settings, Snapshot, UpdateChannel } from './types';
 import { taskEnabled, validatePlan } from './task-policy';
 
 const workspace = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID || 'browser';
@@ -12,12 +12,12 @@ const defaults = (): Snapshot => ({
   mode: 'mock',
   devices: [{ id: 'mock-device-1', name: '本地模拟设备', address: '127.0.0.1:5555', state: 'idle', coreVersion: 'v6.19.0', resourceVersion: '2026-10-18' }],
   plans: [
-    { id: 'daily', name: '每日长草计划', enabled: true, schedule: null, tasks: [
+    { id: 'daily', name: '每日长草计划', description: '', deviceId: null, group: 'daily', budgets: null, enabled: true, schedule: null, tasks: [
       { enabled: true, type: 'StartUp', params: { client_type: 'Official' } },
       { enabled: true, type: 'Recruit', params: {} }, { enabled: true, type: 'Infrast', params: {} },
       { enabled: true, type: 'Mall', params: {} }, { enabled: true, type: 'Award', params: {} },
     ] },
-    { id: 'farm-1-7', name: '固源岩补给', enabled: true, schedule: null, tasks: [{ enabled: true, type: 'Fight', params: { stage: '1-7', times: 6, medicine: 0, stone: 0 } }] },
+    { id: 'farm-1-7', name: '固源岩补给', description: '', deviceId: null, group: 'daily', budgets: null, enabled: true, schedule: null, tasks: [{ enabled: true, type: 'Fight', params: { stage: '1-7', times: 6, medicine: 0, stone: 0 } }] },
   ],
   runs: [],
   updates: [
@@ -25,9 +25,26 @@ const defaults = (): Snapshot => ({
     { id: 'core', currentVersion: 'v6.19.0', latestVersion: null, status: 'idle', progress: 0, message: '演示核心版本，未加载原生库' },
     { id: 'resource', currentVersion: '2026-10-18', latestVersion: null, status: 'idle', progress: 0, message: '演示资源快照，不访问网络' },
   ],
-  settings: { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'dark', budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' } },
+  settings: { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' } },
   events: [],
 });
+
+function normalizePlan(plan: Plan): Plan {
+  if (plan.description === undefined) plan.description = '';
+  plan.deviceId ??= null;
+  if (plan.group === undefined) plan.group = 'daily';
+  plan.budgets ??= null;
+  if (plan.enabled === undefined) plan.enabled = true;
+  if (plan.schedule === undefined) plan.schedule = null;
+  if (plan.budgets && typeof plan.budgets === 'object' && !Array.isArray(plan.budgets)) {
+    plan.budgets = Object.assign({ originium: 0, medicine: 0, expedited: 0 }, plan.budgets);
+  }
+  plan.tasks.forEach((task) => {
+    if (task.enabled === undefined) task.enabled = true;
+    if (task.params === undefined) task.params = {};
+  });
+  return plan;
+}
 
 function restore(): Snapshot {
   try {
@@ -36,11 +53,11 @@ function restore(): Snapshot {
     const state = JSON.parse(raw) as Snapshot;
     if (state.mode !== 'mock' || !state.settings?.budgets || !Array.isArray(state.updates)) return defaults();
     state.settings = { ...defaults().settings, ...state.settings };
-    state.plans.forEach((plan) => plan.tasks.forEach((task) => { task.enabled ??= true; }));
+    state.plans.forEach(normalizePlan);
     for (const run of state.runs) {
       if (run.status === 'running') { run.status = 'failed'; run.message = '页面重启，模拟执行已中断，未自动重放'; run.finishedAt = now(); }
     }
-    state.devices.forEach((device) => { device.state = 'idle'; });
+    state.devices.forEach((device) => { if (device.state === 'running') device.state = 'idle'; });
     return state;
   } catch { return defaults(); }
 }
@@ -108,17 +125,53 @@ export function onMockEvent(callback: (event: Event) => void): () => void {
 }
 
 const delay = (ms: number) => new Promise((resolve) => globalThis.setTimeout(resolve, ms));
+
+function mockAddress(value: unknown): string {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_.:\[\]-]{1,128}$/.test(value)) throw new Error('ADB 设备地址无效');
+  if (value.startsWith('-')) throw new Error('ADB 设备地址不得以选项开头');
+  const emulator = value.match(/^emulator-(\d{1,5})$/);
+  if (emulator) return '127.0.0.1:' + (Number(emulator[1]) + 1);
+  const local = value.match(/^(?:127\.0\.0\.1|localhost|\[::1\]):(\d{1,5})$/);
+  if (local && Number(local[1]) > 0 && Number(local[1]) <= 65535) return '127.0.0.1:' + Number(local[1]);
+  return value;
+}
+
 export async function mockRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
     case 'app.snapshot': return clone(state);
     case 'device.discover': return state.devices.map((device) => ({ address: device.address, name: device.name, adbState: 'device' }));
+    case 'device.connect': {
+      const address = mockAddress(params.address);
+      let device = state.devices.find((item) => mockAddress(item.address) === address);
+      if (!device) {
+        device = {
+          id: 'mock-device-' + encodeURIComponent(address),
+          name: typeof params.name === 'string' && params.name.trim() ? params.name.slice(0, 80) : '模拟设备 · ' + address,
+          address, state: 'idle',
+          coreVersion: channelFor('core').currentVersion,
+          resourceVersion: channelFor('resource').currentVersion,
+        } satisfies Device;
+        state.devices.push(device);
+      } else if (device.state === 'offline') device.state = 'idle';
+      emit('device.connected', '模拟设备已连接，未访问真实 ADB', { deviceId: device.id });
+      return clone(device);
+    }
+    case 'device.disconnect': {
+      const device = state.devices.find((item) => item.id === params.id);
+      if (!device) throw new Error('设备不存在');
+      if (device.state === 'running' || state.runs.some((run) => run.deviceId === device.id && run.status === 'running')) throw new Error('请先停止该设备的执行');
+      device.state = 'offline';
+      emit('device.disconnected', '模拟设备控制权已释放', { deviceId: device.id });
+      return { disconnected: true };
+    }
     case 'device.auto_connect': {
       const discovered = state.devices.map((device) => ({ address: device.address, name: device.name, adbState: 'device' }));
+      state.devices.forEach((device) => { if (device.state === 'offline') device.state = 'idle'; });
       emit('device.discovery', '模拟：已发现本地演示设备，未访问真实 ADB');
       return clone({ devices: state.devices, discovered, diagnostics: ['模拟模式：已连接演示设备；未访问真实模拟器，也未启动游戏任务。'] });
     }
     case 'plan.save': {
-      const plan = clone(params.plan) as Plan;
+      const plan = normalizePlan(clone(params.plan) as Plan);
       validatePlan(plan, state.settings);
       plan.id ||= crypto.randomUUID();
       const index = state.plans.findIndex((item) => item.id === plan.id);
@@ -144,6 +197,7 @@ export async function mockRpc(method: string, params: Record<string, unknown>): 
       const device = state.devices.find((item) => item.id === params.deviceId);
       if (!plan?.enabled) throw new Error('计划不存在或尚未启用');
       validatePlan(plan, state.settings);
+      if (plan.deviceId !== null && plan.deviceId !== params.deviceId) throw new Error('任务表已绑定其他设备，请使用绑定设备执行');
       if (!plan.tasks.some(taskEnabled)) throw new Error('任务表至少需要启用一条任务才能执行');
       if (!device || device.state !== 'idle') throw new Error('设备不可用或正在执行任务');
       const run: Run = { id: crypto.randomUUID(), planId: plan.id, deviceId: device.id, status: 'running', progress: 0, message: '模拟执行开始', startedAt: now(), finishedAt: null };
@@ -203,7 +257,7 @@ export async function mockRpc(method: string, params: Record<string, unknown>): 
       if (!message) throw new Error('请输入目标');
       await delay(250);
       const stage = message.match(/\b\d{1,2}-\d{1,2}\b/)?.[0];
-      const plan: Plan = { id: crypto.randomUUID(), name: stage ? 'Agent 刷图计划 · ' + stage : 'Agent 日常计划', enabled: true, schedule: null, tasks: stage
+      const plan: Plan = { id: crypto.randomUUID(), name: stage ? 'Agent 刷图计划 · ' + stage : 'Agent 日常计划', description: '', deviceId: null, group: 'daily', budgets: null, enabled: true, schedule: null, tasks: stage
         ? [{ enabled: true, type: 'Fight', params: { stage, times: 6, medicine: 0, stone: 0 } }]
         : clone(state.plans.find((item) => item.id === 'daily')?.tasks || defaults().plans[0].tasks) };
       emit('agent.proposed', '模拟 Agent 提出待确认计划');

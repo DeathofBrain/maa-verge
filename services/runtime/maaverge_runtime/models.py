@@ -39,18 +39,22 @@ class Task(StrictModel):
     enabled: bool = True
 
 
-class Plan(StrictModel):
-    id: str = ""
-    name: str = Field(min_length=1, max_length=80)
-    tasks: list[Task] = Field(min_length=1, max_length=30)
-    schedule: str | None = None
-    enabled: bool = True
-
-
 class Budgets(StrictModel):
     originium: int = Field(default=0, ge=0, le=100)
     medicine: int = Field(default=0, ge=0, le=100)
     expedited: int = Field(default=0, ge=0, le=100)
+
+
+class Plan(StrictModel):
+    id: str = ""
+    name: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=500)
+    deviceId: str | None = Field(default=None, min_length=1, max_length=200)
+    group: Literal["daily", "specialized"] = "daily"
+    budgets: Budgets | None = None
+    tasks: list[Task] = Field(min_length=1, max_length=30)
+    schedule: str | None = None
+    enabled: bool = True
 
 
 class ModelSettings(StrictModel):
@@ -64,7 +68,7 @@ class Settings(StrictModel):
     autoUpdateCore: bool = True
     autoUpdateResource: bool = True
     minimizeToTray: bool = True
-    theme: Literal["dark", "light", "system"] = "dark"
+    theme: Literal["dark", "light", "system"] = "system"
     budgets: Budgets = Field(default_factory=Budgets)
     model: ModelSettings = Field(default_factory=ModelSettings)
 

@@ -249,7 +249,11 @@ class Runtime:
         plan = self.store.get("plan", params["planId"])
         if not plan:
             raise RpcError(-32004, "计划不存在")
-        self.validate_policy(Plan.model_validate(plan))
+        validated_plan = Plan.model_validate(plan)
+        self.validate_policy(validated_plan)
+        plan = validated_plan.model_dump()
+        if plan["deviceId"] is not None and plan["deviceId"] != params["deviceId"]:
+            raise RpcError(-32011, "任务表已绑定其他设备，请使用绑定设备执行")
         if not plan["enabled"]:
             raise RpcError(-32011, "计划已禁用")
         plan = {

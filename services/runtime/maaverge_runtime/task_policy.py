@@ -303,6 +303,15 @@ def validate_task(task: Task) -> None:
 
 
 def validate_plan(plan: Plan, settings: Settings) -> None:
+    effective_budgets = plan.budgets or settings.budgets
+    if plan.budgets is not None:
+        for key, limit in plan.budgets.model_dump().items():
+            if limit > getattr(settings.budgets, key):
+                raise RpcError(
+                    -32010,
+                    "任务表消耗上限超出应用已授权额度",
+                    {"budget": key, "limit": limit},
+                )
     totals = {"originium": 0, "medicine": 0, "expedited": 0}
     for task in plan.tasks:
         validate_task(task)
@@ -325,7 +334,7 @@ def validate_plan(plan: Plan, settings: Settings) -> None:
             # recruit counter, so times is not a strict consumption cap either.
             reject("当前核心不执行加急次数上限，暂不能在有限预算下启用加急")
     for key, requested in totals.items():
-        if requested > getattr(settings.budgets, key):
+        if requested > getattr(effective_budgets, key):
             raise RpcError(
                 -32010, "计划消耗超出已授权额度", {"budget": key, "requested": requested}
             )
