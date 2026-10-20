@@ -182,3 +182,115 @@ def test_auto_connect_reuses_connected_alias_and_retries_failed_idle_worker(
     assert old_worker.closed
     assert result["devices"][0]["address"] == "emulator-5554"
     assert not auto_runtime.store.all("run")
+
+
+@pytest.mark.parametrize(
+    "socket", [None, "tcp:localhost:5037", "tcp:127.0.0.1:5037", "tcp:[::1]:5037", "tcp:5037"]
+)
+def test_adb_server_socket_aliases_share_lock_namespace(monkeypatch, socket):
+    monkeypatch.delenv("ANDROID_ADB_SERVER_PORT", raising=False)
+    monkeypatch.delenv("ANDROID_ADB_SERVER_ADDRESS", raising=False)
+    if socket is None:
+        monkeypatch.delenv("ADB_SERVER_SOCKET", raising=False)
+    else:
+        monkeypatch.setenv("ADB_SERVER_SOCKET", socket)
+    assert adb.adb_server_identity() == "tcp:127.0.0.1:5037"
+
+
+def test_adb_server_identity_uses_selected_environment_and_socket_precedence(monkeypatch, tmp_path):
+    monkeypatch.delenv("ADB_SERVER_SOCKET", raising=False)
+    monkeypatch.setenv("ANDROID_ADB_SERVER_PORT", "5038")
+    monkeypatch.setenv("ANDROID_ADB_SERVER_ADDRESS", "LOCALHOST")
+    assert adb.adb_server_identity() == "tcp:127.0.0.1:5038"
+    monkeypatch.setenv("ADB_SERVER_SOCKET", "tcp:remote.example:5040")
+    assert adb.adb_server_identity() == "tcp:remote.example:5040"
+    socket = tmp_path / "server.sock"
+    monkeypatch.setenv("ADB_SERVER_SOCKET", f"localfilesystem:{tmp_path}/unused/../server.sock")
+    assert adb.adb_server_identity() == f"localfilesystem:{socket}"
+    monkeypatch.setenv("ADB_SERVER_SOCKET", "tcp:localhost:99999")
+    with pytest.raises(ValueError, match="端口"):
+        adb.adb_server_identity()
+
+
+def test_equivalent_adb_server_and_serial_aliases_cannot_take_two_controllers(
+    auto_runtime, monkeypatch
+):
+    monkeypatch.delenv("ADB_SERVER_SOCKET", raising=False)
+    monkeypatch.delenv("ANDROID_ADB_SERVER_ADDRESS", raising=False)
+    monkeypatch.delenv("ANDROID_ADB_SERVER_PORT", raising=False)
+    auto_runtime.handle("device.connect", {"address": "emulator-5554"})
+    other = Runtime(
+        auto_runtime.root.parent / "second",
+        "native",
+        worker_factory=FixtureWorker,
+        update_source=FixtureSource(),
+        validator=lambda *_: None,
+    )
+    try:
+        other.updates.check("core")
+        other.updates.prepare("core")
+        other.updates.activate("core")
+        monkeypatch.setenv("ADB_SERVER_SOCKET", "tcp:127.0.0.1:5037")
+        with pytest.raises(RpcError, match="其他本地实例"):
+            other.handle("device.connect", {"address": "localhost:5555"})
+        assert not other.workers
+    finally:
+        other.close()
+
+
+def test_disabling_auto_connect_during_discovery_prevents_new_controller(auto_runtime, monkeypatch):
+    def discover_then_disable():
+        settings = auto_runtime.snapshot()["settings"]
+        settings["autoConnect"] = False
+        auto_runtime.handle("settings.save", {"settings": settings})
+        return fixture_discovery()
+
+    monkeypatch.setattr("maaverge_runtime.runtime.auto_discover", discover_then_disable)
+    auto_runtime.next_auto_connect = 0
+    auto_runtime.automatic_connections()
+    assert not auto_runtime.workers
+    assert not auto_runtime.store.all("device")
+    assert not auto_runtime.store.all("run")
+
+
+def test_manual_disconnect_between_discovery_and_reservation_is_preserved(
+    auto_runtime, monkeypatch
+):
+    device = auto_runtime.handle("device.connect", {"address": "emulator-5554"})
+    auto_runtime.tick(force=True)
+    auto_runtime.handle("device.disconnect", {"id": device["id"]})
+    auto_runtime.auto_connect_suppressed.clear()
+    original = auto_runtime.connect_device
+
+    def disconnect_at_reservation(candidate, **kwargs):
+        auto_runtime.handle("device.disconnect", {"id": device["id"]})
+        return original(candidate, **kwargs)
+
+    monkeypatch.setattr(auto_runtime, "connect_device", disconnect_at_reservation)
+    monkeypatch.setattr("maaverge_runtime.runtime.auto_discover", fixture_discovery)
+    result = auto_runtime.auto_connect_devices(automatic=True)
+    assert not auto_runtime.workers
+    assert not result["devices"]
+    assert "127.0.0.1:5555" in auto_runtime.auto_connect_suppressed
+
+
+def test_disabling_automatic_connection_during_handshake_closes_unpublished_worker(
+    auto_runtime, monkeypatch
+):
+    instances = []
+
+    class DisableOnConnect(FixtureWorker):
+        def connect(self):
+            super().connect()
+            settings = auto_runtime.snapshot()["settings"]
+            settings["autoConnect"] = False
+            auto_runtime.handle("settings.save", {"settings": settings})
+            instances.append(self)
+
+    auto_runtime.worker_factory = DisableOnConnect
+    with pytest.raises(RpcError, match="自动连接已关闭"):
+        auto_runtime.connect_device({"address": "127.0.0.1:5555"}, automatic=True)
+    assert instances[0].closed
+    assert not auto_runtime.workers
+    assert not auto_runtime.connecting
+    assert not auto_runtime.store.all("device")

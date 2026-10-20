@@ -1,7 +1,6 @@
 """Deterministic mock runtime and shared application service boundary."""
 
 import hashlib
-import os
 import re
 import threading
 import time
@@ -14,6 +13,7 @@ from pydantic import ValidationError
 
 from .adb import (
     adb_path,
+    adb_server_identity,
     auto_discover,
     device_lock_address,
     discover,
@@ -336,7 +336,9 @@ class Runtime:
         if lease := self.device_locks.pop(ident, None):
             lease.release()
 
-    def connect_device(self, params: dict, *, internal: bool = False) -> dict:
+    def connect_device(
+        self, params: dict, *, internal: bool = False, automatic: bool = False
+    ) -> dict:
         if self.mode == "mock":
             return self.devices()[0]
         ident = None
@@ -348,7 +350,9 @@ class Runtime:
                 if not self.running:
                     raise RpcError(-32011, "应用运行时正在退出")
                 address = validate_address(params.get("address"))
-                if not internal:
+                if automatic:
+                    self.validate_automatic_connection(address)
+                elif not internal:
                     self.auto_connect_suppressed.discard(device_lock_address(address))
                 combo = self.store.get("active", "combo", {})
                 if not combo.get("core"):
@@ -361,11 +365,7 @@ class Runtime:
                 self.connecting.add(ident)
                 reserved = True
             executable = adb_path()
-            key = (
-                os.environ.get("ADB_SERVER_SOCKET", "tcp:localhost:5037")
-                + "|"
-                + device_lock_address(address)
-            )
+            key = adb_server_identity() + "|" + device_lock_address(address)
             lease = FileLock(device_lock_path(key), thread_local=False)
             lease.acquire(timeout=0)
             config = {
@@ -387,6 +387,12 @@ class Runtime:
                 if not self.running:
                     worker.close()
                     raise RpcError(-32011, "应用运行时正在退出")
+                if automatic:
+                    try:
+                        self.validate_automatic_connection(address)
+                    except RpcError:
+                        worker.close()
+                        raise
                 self.workers[ident] = worker
                 device = {
                     "id": ident,
@@ -409,6 +415,14 @@ class Runtime:
             if ident and reserved:
                 with self.lock:
                     self.connecting.discard(ident)
+
+    def validate_automatic_connection(self, address: str) -> None:
+        """Caller holds self.lock: do not undo a changed setting or manual disconnect."""
+        settings = Settings.model_validate(self.store.get("settings", "main"))
+        if not settings.autoConnect:
+            raise RpcError(-32011, "自动连接已关闭")
+        if device_lock_address(address) in self.auto_connect_suppressed:
+            raise RpcError(-32011, "该设备已手动断开，自动连接已跳过")
 
     def auto_connect_devices(self, *, automatic: bool = False) -> dict:
         """Discover local emulators and request MaaCore connections, never start tasks."""
@@ -468,7 +482,7 @@ class Runtime:
                             # A completed failed connection may be retried, but an
                             # active task or pending async operation is never replaced.
                             self.disconnect_device(existing["id"], internal=True)
-                    devices.append(self.connect_device(candidate))
+                    devices.append(self.connect_device(candidate, automatic=automatic))
                 except RpcError as error:
                     diagnostics.append(f"{address}：{error.message}")
             if not devices:

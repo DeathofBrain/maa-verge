@@ -1,6 +1,6 @@
 # 模拟器自动连接
 
-本地原生模式在启动并具备已启用 MaaCore 后自动发现模拟器，每 30 秒在空闲时重试。设置 `autoConnect` 默认开启；关闭后仅保留用户主动触发的连接。手动断开设备后，该设备不会立即被后台重连；重新开启自动连接、主动点击自动连接或重启应用可以解除抑制。
+本地原生模式在启动并具备已启用 MaaCore 后自动发现模拟器，每 30 秒在空闲时重试。设置 `autoConnect` 默认开启；关闭后仅保留用户主动触发的连接。手动断开设备后，该设备不会立即被后台重连；重新开启自动连接、主动点击自动连接或重启应用可以解除抑制。后台发现期间关闭自动连接或手动断开设备，会阻止该轮随后建立新的核心连接。
 
 `device.auto_connect` 返回：
 
@@ -20,6 +20,8 @@ ADB 优先使用 `MAAVERGE_ADB_PATH`，其次 PATH、Android SDK 与常见模拟
 - `MAAVERGE_EMULATOR_ADDRESSES`：最多 16 个以逗号分隔的 `127.0.0.1:端口`、`localhost:端口` 或 `[::1]:端口`。
 - `MAAVERGE_BLUESTACKS_CONFIG`：动态实例端口配置 `bluestacks.conf` 的路径。
 - `ANDROID_HOME` / `ANDROID_SDK_ROOT`：Android SDK 根目录。
+
+设备锁同时规范化 ADB server 的回环主机别名与默认端口，并遵循 `ADB_SERVER_SOCKET`（优先）、`ANDROID_ADB_SERVER_ADDRESS` / `ANDROID_ADB_SERVER_PORT` 的选择；ADB 子进程与核心工作进程继承相同环境。
 
 相同 ADB server 上的 `emulator-5554` 与 `127.0.0.1:5555` 等别名使用同一个共享设备锁，避免不同本地实例通过别名同时取得控制权。连接异步完成前不能运行任务；组件切换时不新增连接。
 

@@ -65,6 +65,38 @@ def device_lock_address(address: str) -> str:
     return address
 
 
+def adb_server_identity() -> str:
+    """Canonical lock namespace matching the server selected by ADB's environment.
+
+    Both our fixed-argv ADB commands and MaaCore's worker inherit this environment.
+    Resolve only textual/local filesystem aliases; never contact a server or DNS.
+    """
+    selected = os.environ.get("ADB_SERVER_SOCKET")
+    if not selected:
+        host = os.environ.get("ANDROID_ADB_SERVER_ADDRESS") or "localhost"
+        port = os.environ.get("ANDROID_ADB_SERVER_PORT") or "5037"
+        selected = f"tcp:{host}:{port}"
+    if selected.startswith("localfilesystem:"):
+        return "localfilesystem:" + os.path.realpath(selected.removeprefix("localfilesystem:"))
+    if not selected.startswith("tcp:"):
+        return selected
+    endpoint = selected.removeprefix("tcp:")
+    if endpoint.isdecimal():
+        host, port = "localhost", endpoint
+    elif ":" in endpoint:
+        host, port = endpoint.rsplit(":", 1)
+    else:
+        raise ValueError("ADB server socket 缺少有效端口")
+    if not port.isdecimal() or not 0 < int(port) <= 65535:
+        raise ValueError("ADB server 端口必须在 1 到 65535 之间")
+    host = host.lower().rstrip(".").strip("[]")
+    if host in {"", "localhost", "127.0.0.1", "::1"}:
+        host = "127.0.0.1"
+    elif ":" in host:
+        host = f"[{host}]"
+    return f"tcp:{host}:{int(port)}"
+
+
 def _adb_candidates() -> list[Path]:
     candidates = []
     if path := shutil.which("adb"):
