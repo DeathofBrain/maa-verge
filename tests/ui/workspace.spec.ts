@@ -410,3 +410,17 @@ test('copilot entries focus the exact task when a table contains duplicate task 
   await expect(wb(page).getByLabel('作业文件路径', { exact: true })).toHaveValue('/synthetic/second.json');
   await expect(wb(page).getByText('第 5 条任务 · 独立设置', { exact: true })).toBeVisible();
 });
+
+test('moving an existing table to specialized tasks follows it and restores the group after reload', async ({ page }) => {
+  await openWorkspace(page);
+  await tab(page, '任务表设置');
+  await wb(page).getByLabel('任务分组', { exact: true }).selectOption('specialized');
+  await wb(page).getByRole('button', { name: '保存任务表', exact: true }).click();
+  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('专项任务');
+  await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('专项任务');
+  await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
+  await tab(page, '任务表设置');
+  await expect(wb(page).getByLabel('任务分组', { exact: true })).toHaveValue('specialized');
+});
