@@ -8,6 +8,8 @@ const integer = (value: unknown, label: string, min = 0, max = 2_147_483_647): n
   return value;
 };
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
+const booleanKeys = new Set(('enable start_game_enabled refresh set_time expedite skip_robot report_to_penguin report_to_yituliu DrGrandet replenish dorm_notstationed_enabled dorm_trust_enabled fiammetta_recovery_enabled use_pinus_sylvestris use_perception_information use_worldly_plight use_abyssal_hunter reception_message_board reception_clue_exchange reception_send_clue continue_training visit_friends shopping force_shopping_if_credit_full only_buy_discount reserve_max_credit credit_fight award mail recruit orundum mining specialaccess signinevent formation use_sanity_potion add_trust ignore_requirements clear_store').split(' '));
+const stringLists = new Set('first_tags preserve_tags buy_first blacklist fiammetta_targets themes task_names tools_to_craft'.split(' '));
 function jsonTree(value: unknown, depth = 0) {
   if (depth > 32) reject('任务参数嵌套过深');
   if (object(value)) for (const [key, item] of Object.entries(value)) {
@@ -28,10 +30,16 @@ export function validatePlan(plan: Plan, settings: Settings) {
     const p = task.params;
     if (!object(p)) reject('任务参数必须是对象');
     jsonTree(p);
+    for (const [key, value] of Object.entries(p)) {
+      if (booleanKeys.has(key) && typeof value !== 'boolean') reject(`${key} 必须是布尔值`);
+      if (stringLists.has(key) && !(Array.isArray(value) && value.every((item) => typeof item === 'string'))) reject(`${key} 必须是文本数组`);
+    }
     if (new TextEncoder().encode(JSON.stringify(p)).length > 512 * 1024) reject('单项任务参数不得超过 512 KiB');
-    if ('client_type' in p && !['', 'Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'].includes(String(p.client_type))) reject('客户端必须是官方支持的渠道');
+    if ('client_type' in p && !(typeof p.client_type === 'string' && ['', 'Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'].includes(p.client_type))) reject('客户端必须是官方支持的渠道');
     if (typeof task.enabled !== 'boolean') reject('任务启用状态必须是布尔值');
     if (!taskEnabled(task)) continue;
+    if ('mode' in p && ['Infrast', 'Roguelike', 'Reclamation'].includes(task.type)) integer(p.mode, '运行模式');
+    if ('theme' in p && typeof p.theme !== 'string') reject('主题必须是文本');
     totals.originium += integer(p.stone ?? 0, '源石额度');
     totals.medicine += integer(p.medicine ?? 0, '理智药额度');
     if (integer(p.expiring_medicine ?? 0, '临期理智药设置') || integer(p.medicine_expire_days ?? 0, '临期理智药设置')) reject('当前核心的临期理智药不受数量限制，暂不能在有限预算下启用');
@@ -69,9 +77,18 @@ export function validatePlan(plan: Plan, settings: Settings) {
     }
     if (['Copilot', 'SSSCopilot', 'ParadoxCopilot', 'VideoRecognition'].includes(task.type)) {
       const entries = task.type === 'Copilot' ? p.copilot_list : task.type === 'ParadoxCopilot' ? p.list : undefined;
-      if (!(typeof p.filename === 'string' && p.filename.trim())) {
+      if ('filename' in p) {
+        if (typeof p.filename !== 'string' || !p.filename.trim()) reject('文件路径不可为空');
+      } else {
         if (!Array.isArray(entries) || !entries.length) reject('请选择本地文件，或填写非空作业列表');
-        for (const entry of entries as unknown[]) if (!(task.type === 'ParadoxCopilot' && typeof entry === 'string' && entry.trim()) && !(object(entry) && typeof entry.filename === 'string' && entry.filename.trim())) reject('作业列表格式无效');
+        if (task.type === 'ParadoxCopilot' && !(entries as unknown[]).every((entry) => typeof entry === 'string') && !(entries as unknown[]).every(object)) reject('悖论作业列表必须全部是文件路径，或全部是带整数 ID 的对象');
+        for (const entry of entries as unknown[]) {
+          if (task.type === 'ParadoxCopilot' && typeof entry === 'string' && entry.trim()) continue;
+          if (!object(entry) || typeof entry.filename !== 'string' || !entry.filename.trim()) reject('作业列表格式无效');
+          const item = entry as Record<string, unknown>;
+          if (task.type === 'ParadoxCopilot' || 'id' in item) integer(item.id, '作业 ID', -2_147_483_648);
+          if ('is_raid' in item && typeof item.is_raid !== 'boolean') reject('作业突袭选项必须是布尔值');
+        }
       }
       if ('loop_times' in p) integer(p.loop_times, '循环次数', 1);
     }

@@ -162,7 +162,10 @@ test('advanced JSON stays editable without losing invalid drafts and updates lis
   await editor.getByRole('button', { name: '保存任务表', exact: true }).click();
   await expect(editor.getByRole('alert').last()).toContainText('有效 JSON');
   await expect(editor.getByLabel('任务参数 JSON')).toHaveValue('{"confirm":');
-  await editor.getByLabel('任务参数 JSON').fill('{"confirm":[4,5],"times":0}');
+  await editor.getByLabel('任务参数 JSON').fill('{"enable":false,"confirm":[4,5],"times":0}');
+  await expect(editor.getByLabel('启用第 2 条任务')).not.toBeChecked();
+  await editor.getByLabel('启用第 2 条任务').check();
+  expect(JSON.parse(await editor.getByLabel('任务参数 JSON').inputValue()).enable).toBe(true);
   await expect(editor.getByLabel('自动确认星级')).toHaveValue('4, 5');
   await editor.getByRole('button', { name: '保存任务表', exact: true }).click();
   await expect(editor).toBeHidden();
@@ -198,4 +201,38 @@ test('task budgets and all-disabled execution are checked after saving', async (
   const card = page.locator('.plan-card').filter({ has: page.getByRole('heading', { name: '预算校验', exact: true }) });
   await card.getByRole('button', { name: '开始执行', exact: true }).click();
   await expect(page.locator('.toast.error')).toContainText('至少需要启用一条任务');
+});
+
+test('all upstream task entries can be configured and restored', async ({ page }) => {
+  await openWorkspace(page);
+  await page.getByRole('button', { name: '添加任务表', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: '创建任务表' });
+  await editor.getByLabel('任务表名称').fill('上游任务参数');
+  const options = ['StartUp', 'CloseDown', 'Fight', 'Recruit', 'Infrast', 'Mall', 'Award', 'SwitchTheme', 'Roguelike', 'Copilot', 'SSSCopilot', 'ParadoxCopilot', 'Depot', 'OperBox', 'Reclamation', 'Custom', 'SingleStep', 'VideoRecognition', 'OperProgress'];
+  for (const type of options) {
+    await editor.getByLabel('添加任务类型').selectOption(type);
+    await editor.getByRole('button', { name: '添加任务', exact: true }).click();
+    if (['Copilot', 'SSSCopilot', 'ParadoxCopilot', 'VideoRecognition'].includes(type)) await editor.locator('.task-fields input[type="text"]').first().fill(`/synthetic/${type}.json`);
+    if (type === 'Custom') await editor.getByLabel('资源任务入口', { exact: true }).fill('MiniGame@PixelPaint@Begin');
+  }
+  await editor.getByRole('button', { name: '保存任务表', exact: true }).click();
+  await expect(editor).toBeHidden();
+  await page.reload();
+  await page.getByRole('button', { name: '配置任务表上游任务参数', exact: true }).click();
+  await expect(page.locator('.editor-steps > li')).toHaveCount(22);
+  await page.getByRole('button', { name: '设置第 13 条自动作业', exact: true }).click();
+  await expect(page.getByLabel('作业文件路径', { exact: true })).toHaveValue('/synthetic/Copilot.json');
+});
+
+test('budget form saves multiple values together', async ({ page }) => {
+  await openWorkspace(page);
+  await page.getByRole('button', { name: '设置与更新', exact: true }).click();
+  await page.getByLabel('理智药预算', { exact: true }).fill('2');
+  await page.getByLabel('源石预算', { exact: true }).fill('1');
+  await page.getByRole('button', { name: '保存预算', exact: true }).click();
+  await expect(page.getByRole('status').last()).toContainText('消耗预算已保存');
+  await page.reload();
+  await page.getByRole('button', { name: '设置与更新', exact: true }).click();
+  await expect(page.getByLabel('理智药预算', { exact: true })).toHaveValue('2');
+  await expect(page.getByLabel('源石预算', { exact: true })).toHaveValue('1');
 });
