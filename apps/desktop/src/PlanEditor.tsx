@@ -25,6 +25,8 @@ const fields: Record<string, Field[]> = {
   Custom: [{ key: 'task_names', label: '资源任务入口', kind: 'list', hint: '当前仅接受已审核的入口；未审核任务会被策略拒绝。' }],
   SingleStep: [{ key: 'type', label: '任务协议', kind: 'select', options: ['copilot'] }, { key: 'subtype', label: '步骤类型', kind: 'select', options: [['stage', '设置关卡'], ['start', '开始作战'], ['action', '战斗动作']] }],
 };
+export const taskFieldSearch = Object.entries(fields).flatMap(([type, entries]) => entries.map(({ key, label }) => ({ type: type as Task['type'], key, label })));
+
 const createStep = (type: string, initialParams?: Task['params']): Step => {
   const params = { ...structuredClone(taskDefaults[type] || {}), ...structuredClone(initialParams || {}) };
   return { key: crypto.randomUUID(), task: { type: type as Task['type'], params, enabled: true }, json: JSON.stringify(params, null, 2) };
@@ -88,13 +90,13 @@ export function taskSummary(task: Task): string {
   switch (task.type) {
     case 'StartUp': return `${clients.find(([id]) => id === p.client_type)?.[1] || '当前客户端'} · ${p.start_game_enabled === false ? '仅唤醒' : '启动游戏'}`;
     case 'CloseDown': return '关闭当前游戏客户端';
-    case 'Fight': return `${String(p.stage || '当前关卡')} · ${String(p.times ?? 1)} 次 · ${Number(p.medicine) > 0 ? `理智药 ${p.medicine}` : '零用药'}${Number(p.stone) > 0 ? ` · 源石 ${p.stone}` : ''}`;
-    case 'Recruit': return `${Number(p.times) === 0 ? '仅计算标签' : `${String(p.times ?? 0)} 次招募`} · ${p.expedite ? '使用加急' : '不加急'}`;
-    case 'Infrast': return `${Number(p.mode) === 10000 ? '自定义排班' : Number(p.mode) === 20000 ? '轮换排班' : '默认排班'} · ${Array.isArray(p.facility) ? p.facility.length : 0} 个设施`;
+    case 'Fight': return `${String(p.stage || '当前关卡')} · ${p.times === undefined ? '次数用核心默认' : `${String(p.times)} 次`} · ${Number(p.medicine) > 0 ? `理智药 ${p.medicine}` : '零用药'}${Number(p.stone) > 0 ? ` · 源石 ${p.stone}` : ''}`;
+    case 'Recruit': return `${Number(p.times) === 0 ? '仅计算标签' : `${p.times === undefined ? '次数用核心默认' : `${String(p.times)} 次招募`}`} · ${p.expedite ? '使用加急' : '不加急'}`;
+    case 'Infrast': return `${Number(p.mode) === 10000 ? '自定义排班' : Number(p.mode) === 20000 ? '轮换排班' : '默认排班'} · ${Array.isArray(p.facility) ? `${p.facility.length} 个设施` : '设施用核心默认'}`;
     case 'Mall': return `${p.shopping === false ? '仅领取信用' : '信用购物'} · ${p.only_buy_discount ? '仅折扣商品' : '按优先级购买'}`;
     case 'Award': return [p.award && '任务', p.mail && '邮件', p.signinevent && '签到', p.recruit && '免费招募'].filter(Boolean).join(' · ') || '按奖励开关领取';
     case 'SwitchTheme': return Array.isArray(p.themes) && p.themes.length ? p.themes.join(' / ') : '未设置候选主题';
-    case 'Roguelike': return `${String(p.theme || '未选主题')} · 模式 ${String(p.mode ?? 0)} · ${String(p.starts_count ?? 1)} 次`;
+    case 'Roguelike': return `${String(p.theme || '未选主题')} · ${p.mode === undefined ? '模式用核心默认' : `模式 ${String(p.mode)}`} · ${p.starts_count === undefined ? '次数用核心默认' : `${String(p.starts_count)} 次`}`;
     case 'Reclamation': return `${p.theme === 'RelaunchAnchor' ? '重启锚点' : '沙洲遗闻'} · 模式 ${String(p.mode ?? 0)}`;
     case 'Copilot': case 'SSSCopilot': case 'ParadoxCopilot': return filename || (Array.isArray(p.copilot_list) ? `${p.copilot_list.length} 份作业` : '未选择作业文件');
     case 'VideoRecognition': return filename || '未选择视频文件';
