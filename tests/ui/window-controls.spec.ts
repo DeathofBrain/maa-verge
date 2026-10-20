@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 type WindowHarness = {
   commands: string[];
+  backgrounds: { command: string; value: unknown }[];
   releaseSnapshot: () => void;
   emitResize: (maximized: boolean) => void;
   resizeListeners: () => number;
@@ -18,6 +19,7 @@ async function installDesktopWindowMock(page: Page) {
   await page.addInitScript(({ mockModuleUrl }) => {
     Object.defineProperty(navigator, 'platform', { configurable: true, value: 'Win32' });
     const commands: string[] = [];
+    const backgrounds: { command: string; value: unknown }[] = [];
     const callbacks = new Map<number, (event: unknown) => void>();
     const listeners = new Map<number, { event: string; handler: number }>();
     let sequence = 0;
@@ -30,6 +32,7 @@ async function installDesktopWindowMock(page: Page) {
     };
     target.windowHarness = {
       commands,
+      backgrounds,
       releaseSnapshot,
       emitResize: (next) => {
         maximized = next;
@@ -65,6 +68,10 @@ async function installDesktopWindowMock(page: Page) {
           return;
         }
         if (command === 'plugin:window|is_maximized') return maximized;
+        if (['plugin:window|set_background_color', 'plugin:webview|set_webview_background_color'].includes(command)) {
+          backgrounds.push({ command, value: args.value });
+          return;
+        }
         if (['plugin:window|minimize', 'plugin:window|toggle_maximize', 'plugin:window|close'].includes(command)) {
           commands.push(command);
           return;
@@ -106,6 +113,7 @@ test('desktop window controls work during loading and track native resize after 
   await expect(page.getByText('正在连接本地应用服务…', { exact: true })).toBeVisible();
   const controls = page.getByRole('group', { name: '窗口控制', exact: true });
   await expect(controls).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as HarnessWindow).windowHarness.backgrounds.some(({ command, value }) => command === 'plugin:webview|set_webview_background_color' && value === '#f5f7fa'))).toBe(true);
   await expect.poll(() => page.evaluate(() => (window as HarnessWindow).windowHarness.resizeListeners())).toBe(1);
   await controls.getByRole('button', { name: '最小化窗口', exact: true }).click();
   await controls.getByRole('button', { name: '最大化窗口', exact: true }).click();
@@ -120,6 +128,13 @@ test('desktop window controls work during loading and track native resize after 
   await expect(controls).toHaveCount(1);
   await expect(controls.getByRole('button', { name: '还原窗口', exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as HarnessWindow).windowHarness.resizeListeners())).toBe(1);
+  await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
+  await page.getByLabel('界面主题', { exact: true }).selectOption('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect.poll(() => page.evaluate(() => (window as HarnessWindow).windowHarness.backgrounds.slice(-2))).toEqual([
+    { command: 'plugin:window|set_background_color', value: '#191d26' },
+    { command: 'plugin:webview|set_webview_background_color', value: '#191d26' },
+  ]);
   for (const width of [900, 1280, 1700, 1280, 900]) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate(() => (window as HarnessWindow).windowHarness.emitResize(true));

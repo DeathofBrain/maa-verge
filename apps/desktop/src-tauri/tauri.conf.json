@@ -17,7 +17,8 @@
         "minWidth": 900,
         "minHeight": 640,
         "center": true,
-        "backgroundColor": "#101210"
+        "decorations": false,
+        "backgroundColor": "#f5f7fa"
       }
     ],
     "security": {

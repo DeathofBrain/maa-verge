@@ -5,6 +5,45 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
 
+#[cfg(target_os = "windows")]
+fn configure_window_transitions(app: &tauri::AppHandle) {
+    use std::ffi::c_void;
+
+    #[link(name = "dwmapi")]
+    unsafe extern "system" {
+        fn DwmSetWindowAttribute(
+            hwnd: *mut c_void,
+            attribute: u32,
+            value: *const c_void,
+            size: u32,
+        ) -> i32;
+    }
+
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let Ok(hwnd) = window.hwnd() else {
+        return;
+    };
+    // DWM stretches a cached WebView frame during maximize/restore. Disable that
+    // transition for this window so the integrated title bar keeps its size.
+    const DWMWA_TRANSITIONS_FORCEDISABLED: u32 = 3;
+    let disabled = 1_i32;
+    // SAFETY: hwnd belongs to the live main window; value points to a BOOL for
+    // the duration of this synchronous call and its size is supplied exactly.
+    let result = unsafe {
+        DwmSetWindowAttribute(
+            hwnd.0,
+            DWMWA_TRANSITIONS_FORCEDISABLED,
+            (&disabled as *const i32).cast(),
+            std::mem::size_of_val(&disabled) as u32,
+        )
+    };
+    if result < 0 {
+        eprintln!("Could not configure window transitions: HRESULT {result:#x}");
+    }
+}
+
 fn show_main(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -21,6 +60,8 @@ pub fn run() {
         }))
         .invoke_handler(tauri::generate_handler![runtime::runtime_request])
         .setup(|app| {
+            #[cfg(target_os = "windows")]
+            configure_window_transitions(app.handle());
             let runtime = tauri::async_runtime::block_on(Runtime::start(app.handle().clone()))
                 .map_err(std::io::Error::other)?;
             app.manage(runtime);

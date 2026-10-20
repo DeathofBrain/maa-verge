@@ -594,7 +594,9 @@ textarea.text-input {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
+  height: 57px;
   min-height: 57px;
+  max-height: 57px;
   padding: 0 28px;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
@@ -607,6 +609,98 @@ textarea.text-input {
   align-items: center;
   gap: 16px;
   min-width: 0;
+}
+
+[data-tauri-drag-region] {
+  user-select: none;
+}
+
+[data-tauri-drag-region="false"] {
+  user-select: auto;
+}
+
+[data-desktop-platform] .topbar {
+  padding-right: 0;
+}
+
+[data-desktop-platform="macos"] .topbar {
+  padding-right: 28px;
+}
+
+[data-desktop-platform] .sidebar>.brand {
+  height: 57px;
+}
+
+[data-desktop-platform="macos"] .sidebar>.brand {
+  padding-left: 82px;
+  padding-right: 8px;
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+[data-desktop-platform="macos"] .sidebar>.brand .brand-mark {
+  display: none;
+}
+
+[data-desktop-platform] .topbar-actions {
+  align-self: stretch;
+  height: 100%;
+}
+
+.window-controls {
+  display: flex;
+  align-self: stretch;
+  flex: none;
+  margin-left: 8px;
+  position: relative;
+  height: 100%;
+}
+
+.window-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+  transition: background-color .16s ease, color .16s ease;
+}
+
+.window-control:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.window-control:active {
+  background: var(--line);
+}
+
+.window-control.window-close:hover {
+  color: #fff;
+  background: #c42b1c;
+}
+
+.window-control.window-close:active {
+  background: #a92216;
+}
+
+.window-error {
+  position: absolute;
+  right: 8px;
+  top: calc(100% + 8px);
+  width: max-content;
+  max-width: 320px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .workspace-name {
@@ -866,6 +960,15 @@ textarea.text-input {
 
 .boot-screen .brand {
   color: var(--text);
+}
+
+.boot-titlebar {
+  position: fixed;
+  inset: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  height: 57px;
+  z-index: 40;
 }
 
 .run-dock {
@@ -1686,7 +1789,9 @@ textarea.text-input {
   }
   .topbar {
     padding: 0 15px;
+    height: 54px;
     min-height: 54px;
+    max-height: 54px;
   }
   .workspace-context {
     gap: 10px;
