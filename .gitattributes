@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.woff2 binary
+# Preserve upstream trailing blank lines in license and vendored sources.
+LICENSE whitespace=-blank-at-eof
+services/runtime/maaverge_runtime/vendor/** whitespace=-blank-at-eof
