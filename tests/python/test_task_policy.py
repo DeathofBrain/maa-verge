@@ -1,6 +1,7 @@
 """Task compatibility, persistence and consumable-policy regression tests."""
 
 import pytest
+from maaverge_runtime.__main__ import process_request
 from maaverge_runtime.models import TASK_TYPES, Plan, RpcError, Settings
 from maaverge_runtime.runtime import Runtime
 from maaverge_runtime.task_policy import native_task, validate_plan
@@ -19,7 +20,7 @@ TASK_EXAMPLES = {
     "Roguelike": {"theme": "Sami", "mode": 5, "expected_collapsal_paradigms": ["指令"]},
     "Copilot": {"copilot_list": [{"filename": "1-7.json", "is_raid": False}]},
     "SSSCopilot": {"filename": "sss.json", "loop_times": 1},
-    "ParadoxCopilot": {"list": ["paradox.json", {"id": "1", "filename": "other.json"}]},
+    "ParadoxCopilot": {"list": [{"id": 1, "filename": "paradox.json"}]},
     "Depot": {},
     "OperBox": {},
     "Reclamation": {"theme": "RelaunchAnchor", "mode": 16},
@@ -59,8 +60,8 @@ def test_all_registered_tasks_round_trip_with_advanced_parameters(tmp_path):
         restored.close()
 
 
-@pytest.mark.parametrize("kind", list(TASK_EXAMPLES))
-def test_registered_tasks_reach_native_adapter_without_losing_params(tmp_path, monkeypatch, kind):
+@pytest.fixture
+def task_native(tmp_path, monkeypatch):
     monkeypatch.setenv("MAAVERGE_DEVICE_LOCK_DIR", str(tmp_path / "locks"))
     monkeypatch.setattr("maaverge_runtime.runtime.adb_path", lambda: "fixture-adb")
     runtime = Runtime(
@@ -74,21 +75,166 @@ def test_registered_tasks_reach_native_adapter_without_losing_params(tmp_path, m
         runtime.updates.check("core")
         runtime.updates.prepare("core")
         runtime.updates.activate("core")
-        plan = runtime.handle(
-            "plan.save",
-            {"plan": {"name": kind, "tasks": [{"type": kind, "params": TASK_EXAMPLES[kind]}]}},
-        )
         device = runtime.handle("device.connect", {"address": "127.0.0.1:5555"})
         runtime.tick(force=True)
-        run = runtime.handle(
-            "run.start", {"planId": plan["id"], "deviceId": device["id"], "requestId": kind}
+        yield runtime, device
+    finally:
+        runtime.close()
+
+
+@pytest.mark.parametrize("kind", list(TASK_EXAMPLES))
+def test_registered_tasks_reach_native_adapter_without_losing_params(task_native, kind):
+    runtime, device = task_native
+    plan = runtime.handle(
+        "plan.save",
+        {"plan": {"name": kind, "tasks": [{"type": kind, "params": TASK_EXAMPLES[kind]}]}},
+    )
+    run = runtime.handle(
+        "run.start", {"planId": plan["id"], "deviceId": device["id"], "requestId": kind}
+    )
+    worker = runtime.workers[device["id"]]
+    for key, value in TASK_EXAMPLES[kind].items():
+        assert worker.tasks[0]["params"][key] == value
+    worker.complete()
+    runtime.tick(force=True)
+    assert runtime.store.get("run", run["id"])["status"] == "completed"
+
+
+def test_late_callbacks_from_prior_task_cannot_abort_current_task(task_native):
+    runtime, device = task_native
+    plan = runtime.handle(
+        "plan.save",
+        {
+            "plan": {
+                "name": "回调隔离",
+                "tasks": [
+                    {"type": "Award", "params": {}},
+                    {"type": "Depot", "params": {}},
+                ],
+            }
+        },
+    )
+    run = runtime.handle(
+        "run.start", {"planId": plan["id"], "deviceId": device["id"], "requestId": "late"}
+    )
+    worker = runtime.workers[device["id"]]
+    worker.complete()
+    runtime.tick(force=True)
+    assert worker.task_id == 2
+    for message in (10004, 3):
+        worker.events.put({"type": "callback", "message": message, "details": {"taskid": 1}})
+    worker.events.put({"type": "status", "running": False, "pendingAsync": []})
+    runtime.tick(force=True)
+    assert runtime.store.get("run", run["id"])["status"] == "running"
+    worker.complete()
+    runtime.tick(force=True)
+    assert runtime.store.get("run", run["id"])["status"] == "completed"
+
+
+@pytest.mark.parametrize("outcome", ["wrong_id", "queue_only", "failed"])
+@pytest.mark.parametrize("kind", ["Roguelike", "SingleStep", "Depot", "VideoRecognition"])
+def test_extended_tasks_require_matching_success_evidence_and_idle(task_native, kind, outcome):
+    runtime, device = task_native
+    plan = runtime.handle(
+        "plan.save",
+        {"plan": {"name": kind, "tasks": [{"type": kind, "params": TASK_EXAMPLES[kind]}]}},
+    )
+    run = runtime.handle(
+        "run.start", {"planId": plan["id"], "deviceId": device["id"], "requestId": kind}
+    )
+    worker = runtime.workers[device["id"]]
+    if outcome != "queue_only":
+        worker.events.put(
+            {
+                "type": "callback",
+                "message": 10000 if outcome == "failed" else 10002,
+                "details": {"taskid": worker.task_id + (outcome == "wrong_id")},
+            }
         )
-        worker = runtime.workers[device["id"]]
-        for key, value in TASK_EXAMPLES[kind].items():
-            assert worker.tasks[0]["params"][key] == value
-        worker.complete()
-        runtime.tick(force=True)
-        assert runtime.store.get("run", run["id"])["status"] == "completed"
+    worker.events.put({"type": "callback", "message": 3, "details": {"taskid": worker.task_id}})
+    runtime.tick(force=True)
+    # Completion/failure must still wait for a separately observed idle status.
+    assert runtime.store.get("run", run["id"])["status"] == "running"
+    worker.running = False
+    worker.events.put({"type": "status", "running": False, "pendingAsync": []})
+    runtime.tick(force=True)
+    assert runtime.store.get("run", run["id"])["status"] == "failed"
+
+
+@pytest.mark.parametrize(
+    "kind,field",
+    [
+        ("StartUp", "client_type"),
+        ("Fight", "server"),
+        ("Infrast", "mode"),
+        ("Infrast", "drones"),
+        ("Roguelike", "theme"),
+        ("Roguelike", "mode"),
+        ("Reclamation", "theme"),
+        ("Reclamation", "mode"),
+        ("SingleStep", "subtype"),
+    ],
+)
+@pytest.mark.parametrize("value", [[], {}, True, None])
+def test_malformed_enum_shapes_return_policy_errors(tmp_path, kind, field, value):
+    runtime = Runtime(tmp_path)
+    try:
+        task = {"type": kind, "params": {**TASK_EXAMPLES[kind], field: value}}
+        response = process_request(
+            runtime,
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "plan.save",
+                "params": {"plan": {"name": "坏参数", "tasks": [task]}},
+            },
+        )
+        assert response["error"]["code"] == -32010
+        assert len(runtime.snapshot()["plans"]) == 2
+    finally:
+        runtime.close()
+
+
+@pytest.mark.parametrize(
+    "kind,params",
+    [
+        ("Copilot", {"filename": "", "copilot_list": [{"filename": "valid.json"}]}),
+        ("ParadoxCopilot", {"list": ["a.json", {"id": 2, "filename": "b.json"}]}),
+        ("ParadoxCopilot", {"list": [{"id": "2", "filename": "b.json"}]}),
+        ("ParadoxCopilot", {"list": [{"filename": "b.json"}]}),
+        ("Copilot", {"copilot_list": [{"filename": "a.json", "is_raid": 1}]}),
+    ],
+)
+def test_work_file_shapes_match_versioned_core_parser(kind, params):
+    with pytest.raises(RpcError):
+        validate_plan(make_plan([{"type": kind, "params": params}]), Settings())
+
+
+def test_paradox_also_accepts_homogeneous_legacy_filename_list():
+    validate_plan(
+        make_plan([{"type": "ParadoxCopilot", "params": {"list": ["a.json", "b.json"]}}]),
+        Settings(),
+    )
+
+
+def test_invalid_unicode_is_a_policy_error_instead_of_internal_error(tmp_path):
+    runtime = Runtime(tmp_path)
+    try:
+        response = process_request(
+            runtime,
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "plan.save",
+                "params": {
+                    "plan": {
+                        "name": "文本",
+                        "tasks": [{"type": "Award", "params": {"future": "\ud800"}}],
+                    }
+                },
+            },
+        )
+        assert response["error"]["code"] == -32010
     finally:
         runtime.close()
 

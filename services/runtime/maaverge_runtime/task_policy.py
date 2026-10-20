@@ -99,6 +99,13 @@ def string(value: Any, name: str, *, nonempty: bool = False) -> str:
     return value
 
 
+def enum_string(value: Any, name: str, choices: set[str]) -> str:
+    value = string(value, name)
+    if value not in choices:
+        reject(f"{name}无效")
+    return value
+
+
 def json_tree(value: Any, depth: int = 0) -> None:
     if depth > 32:
         reject("任务参数嵌套过深")
@@ -108,28 +115,47 @@ def json_tree(value: Any, depth: int = 0) -> None:
                 reject("任务参数键必须是文本")
             if key.casefold() in COMMAND_KEYS:
                 reject("任务不得包含任意命令")
+            json_tree(key, depth + 1)
             json_tree(item, depth + 1)
     elif isinstance(value, list):
         for item in value:
             json_tree(item, depth + 1)
     elif isinstance(value, float) and not math.isfinite(value):
         reject("任务参数不得包含非有限数值")
+    elif isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            reject("任务参数包含无效 Unicode 文本")
     elif value is not None and not isinstance(value, str | int | float | bool):
         reject("任务参数必须是 JSON 数据")
 
 
 def filenames(params: dict, list_key: str | None = None, *, strings: bool = False) -> None:
-    if params.get("filename"):
+    # The core gives any present string filename priority, even an empty one.
+    # Do not accept a valid list while silently passing a blank filename to it.
+    if "filename" in params:
         string(params["filename"], "文件路径", nonempty=True)
         return
     entries = params.get(list_key) if list_key else None
     if not isinstance(entries, list) or not entries:
         reject("请选择本地文件，或填写非空作业列表")
+    if strings and not (
+        all(isinstance(entry, str) for entry in entries)
+        or all(isinstance(entry, dict) for entry in entries)
+    ):
+        reject("悖论作业列表必须全部是文件路径，或全部是带整数 ID 的对象")
     for entry in entries:
         if strings and isinstance(entry, str):
             string(entry, "作业文件路径", nonempty=True)
         elif isinstance(entry, dict):
             string(entry.get("filename"), "作业文件路径", nonempty=True)
+            if strings or "id" in entry:
+                integer(entry.get("id"), "作业 ID", -2_147_483_648)
+            if "is_raid" in entry and not isinstance(entry["is_raid"], bool):
+                reject("作业突袭选项必须是布尔值")
+            if entry.get("nav_name_override") is not None:
+                string(entry["nav_name_override"], "作业导航关卡")
         else:
             reject("作业列表格式无效")
 
@@ -147,10 +173,10 @@ def validate_task(task: Task) -> None:
             reject(f"{key} 必须是文本数组")
         for value in p[key]:
             string(value, key)
-    if "client_type" in p and p["client_type"] not in CLIENTS:
-        reject("客户端必须是官方支持的渠道")
-    if "server" in p and p["server"] not in {"CN", "US", "JP", "KR"}:
-        reject("服务器参数无效")
+    if "client_type" in p:
+        enum_string(p["client_type"], "客户端渠道", CLIENTS)
+    if "server" in p:
+        enum_string(p["server"], "服务器参数", {"CN", "US", "JP", "KR"})
     if not task.enabled or p.get("enable") is False:
         return
     if task.type == "Fight":
@@ -180,15 +206,15 @@ def validate_task(task: Task) -> None:
                     reject("招募时限星级必须在 3 到 6 之间")
                 integer(minutes, "招募时限（分钟）", 60, 540)
     elif task.type == "Infrast":
-        if p.get("mode", 0) not in {0, 10000, 20000}:
+        mode = integer(p.get("mode", 0), "基建模式")
+        if mode not in {0, 10000, 20000}:
             reject("基建模式无效")
         if "facility" in p and (
             not isinstance(p["facility"], list)
             or any(not isinstance(v, str) or v not in FACILITIES for v in p["facility"])
         ):
             reject("基建设施无效")
-        if p.get("drones", "_NotUse") not in DRONES:
-            reject("无人机用途无效")
+        enum_string(p.get("drones", "_NotUse"), "无人机用途", DRONES)
         threshold = p.get("threshold", 0.3)
         if isinstance(threshold, bool) or not isinstance(threshold, int | float):
             reject("心情阈值必须是 0 到 1 之间的数值")
@@ -200,16 +226,13 @@ def validate_task(task: Task) -> None:
     elif task.type == "SwitchTheme" and "themes" not in p:
         reject("请选择候选游戏主题")
     elif task.type == "Roguelike":
-        if p.get("theme", "Phantom") not in {
-            "Phantom",
-            "Mizuki",
-            "Sami",
-            "Sarkaz",
-            "JieGarden",
-            "BlackFlow",
-        }:
-            reject("集成战略主题无效")
-        if p.get("mode", 0) not in {0, 1, 4, 5, 6, 7, 10001, 20001, 30001, 30003}:
+        enum_string(
+            p.get("theme", "Phantom"),
+            "集成战略主题",
+            {"Phantom", "Mizuki", "Sami", "Sarkaz", "JieGarden", "BlackFlow"},
+        )
+        mode = integer(p.get("mode", 0), "集成战略模式")
+        if mode not in {0, 1, 4, 5, 6, 7, 10001, 20001, 30001, 30003}:
             reject("集成战略模式无效或已被上游移除")
     elif task.type in {"Copilot", "ParadoxCopilot", "SSSCopilot", "VideoRecognition"}:
         filenames(
@@ -224,11 +247,10 @@ def validate_task(task: Task) -> None:
         if "loop_times" in p:
             integer(p["loop_times"], "循环次数", 1)
     elif task.type == "Reclamation":
-        theme, mode = p.get("theme", "Tales"), p.get("mode", 0)
-        if (
-            (theme == "Tales" and mode not in {0, 1})
-            or (theme == "RelaunchAnchor" and mode not in {16, 32, 48})
-            or theme not in {"Tales", "RelaunchAnchor"}
+        theme = enum_string(p.get("theme", "Tales"), "生息演算主题", {"Tales", "RelaunchAnchor"})
+        mode = integer(p.get("mode", 0), "生息演算模式")
+        if (theme == "Tales" and mode not in {0, 1}) or (
+            theme == "RelaunchAnchor" and mode not in {16, 32, 48}
         ):
             reject("生息演算主题与模式组合无效")
     elif task.type == "Custom":
@@ -244,8 +266,8 @@ def validate_task(task: Task) -> None:
             ):
                 reject("此自定义任务链尚未通过消耗策略审核，请使用对应的标准任务")
     elif task.type == "SingleStep":
-        if p.get("type") != "copilot" or p.get("subtype") not in {"stage", "start", "action"}:
-            reject("单步任务类型无效")
+        enum_string(p.get("type"), "单步任务类型", {"copilot"})
+        enum_string(p.get("subtype"), "单步任务子类型", {"stage", "start", "action"})
         details = p.get("details", {})
         if not isinstance(details, dict):
             reject("单步任务 details 必须是对象")

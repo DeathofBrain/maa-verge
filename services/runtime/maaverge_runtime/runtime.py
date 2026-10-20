@@ -678,9 +678,9 @@ class Runtime:
                             state["failed"] = True
                         if message == 10002 and task_matches:
                             state["completed"] = True
-                        if message == 3:
+                        if message == 3 and ("taskid" not in details or task_matches):
                             state["queueEnded"] = True
-                        if message == 10004:
+                        if message == 10004 and task_matches:
                             state["failed"] = True
                         self.store.put("execution", run["id"], state)
                     if details.get("what") == "UnsupportedLevel":
