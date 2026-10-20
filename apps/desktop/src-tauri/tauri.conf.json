@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MAAVerge",
+  "productName": "Maa Verge",
   "version": "0.1.0",
   "identifier": "io.maaverge.desktop",
   "build": {
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "MAAVerge",
+        "title": "Maa Verge",
         "width": 1360,
         "height": 900,
         "minWidth": 900,

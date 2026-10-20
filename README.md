@@ -1,10 +1,10 @@
-# MAAVerge
+# Maa Verge
 
 基于 MaaCore 的本地明日方舟桌面助手，使用 Tauri 2、React/TypeScript 与 Python 3.12，目标平台为 Windows、macOS 和 Linux。界面与业务服务通过类型化 JSON-RPC 通信，原生核心与桌面进程隔离。
 
 这是开发中的工程，请以 [开发状态](docs/STATUS.md) 判断当前实际能力；[完整计划](PLAN.md) 描述后续交付。默认开发和 CI 使用 mock，不连接真实游戏、不调用付费模型。
 
-![MAAVerge 的 Mock 开发界面](docs/images/mock-workspace.png)
+![Maa Verge 的 Mock 开发界面](docs/images/mock-workspace.png)
 
 ## 开始开发
 
@@ -41,6 +41,6 @@ MaaCore 首次安装、核心更新与资源更新使用独立通道。更新在
 
 跨电脑使用 Git 同步源码、文档和锁文件，在各机重新安装依赖。设备、数据库、缓存、密钥和虚拟环境不进入 Git。自动化贡献者先读 [AGENTS.md](AGENTS.md)，提交方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-MAAVerge 采用 **AGPL-3.0-only**。MAA/MaaCore 为 [MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 上游项目；MAAVerge 使用独立名称，不代表游戏官方或上游官方客户端。
+Maa Verge 采用 **AGPL-3.0-only**。MAA/MaaCore 为 [MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 上游项目；Maa Verge 使用独立名称，不代表游戏官方或上游官方客户端。
 
 默认日常工作台提供任务表管理、逐项参数、排序与启停，支持表级设备绑定、消耗限额和跨页运行条；原生模式支持正在运行的本地模拟器自动连接。完整原 MAA 兼容是交付目标，当前仍为开发预览，详细范围与缺口见 [功能覆盖与验收](docs/maa-compatibility.md) 和 [自动连接说明](docs/emulator-connection.md)。

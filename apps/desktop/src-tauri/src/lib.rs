@@ -24,7 +24,7 @@ pub fn run() {
             let runtime = tauri::async_runtime::block_on(Runtime::start(app.handle().clone()))
                 .map_err(std::io::Error::other)?;
             app.manage(runtime);
-            let show = MenuItem::with_id(app, "show", "显示 MAAVerge", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "显示 Maa Verge", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
             let mut pixels = vec![0_u8; 32 * 32 * 4];
@@ -36,7 +36,7 @@ pub fn run() {
             }
             TrayIconBuilder::with_id("main")
                 .icon(tauri::image::Image::new_owned(pixels, 32, 32))
-                .tooltip("MAAVerge · 明日方舟助手")
+                .tooltip("Maa Verge · 明日方舟助手")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -70,7 +70,7 @@ pub fn run() {
             }
         })
         .build(tauri::generate_context!())
-        .expect("MAAVerge desktop initialization failed");
+        .expect("Maa Verge desktop initialization failed");
     app.run(|app, event| {
         if let tauri::RunEvent::Exit = event {
             if let Some(runtime) = app.try_state::<Runtime>() {

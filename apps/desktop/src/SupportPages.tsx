@@ -24,7 +24,7 @@ const updateLabels: Record<UpdateChannel['status'], string> = {
   idle: '等待检查', checking: '正在检查', available: '发现新版本', downloading: '正在准备',
   staged: '已验证，待生效', waiting_idle: '等待空闲生效', active: '已更新', failed: '更新失败',
 };
-const channelLabels: Record<UpdateChannel['id'], string> = { app: 'MAAVerge 应用', core: 'MaaCore 核心', resource: '游戏资源' };
+const channelLabels: Record<UpdateChannel['id'], string> = { app: 'Maa Verge 应用', core: 'MaaCore 核心', resource: '游戏资源' };
 const formatDate = (value: string) => new Date(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 const displayValue = (value: unknown, fallback = '使用默认值') => value === undefined || value === null || value === '' ? fallback : Array.isArray(value) ? value.join('、') : String(value);
 
@@ -128,7 +128,7 @@ export function SettingsPage({ snapshot, busy, onAction, searchQuery }: SupportP
       {selected.id === 'services' && <Section title="外部服务"><dl className="sp-description-list"><div><dt>社区作业服务</dt><dd>尚未接入，当前使用本机作业文件</dd></div><div><dt>MirrorChyan 加速</dt><dd>尚未接入</dd></div><div><dt>数据汇报</dt><dd>默认关闭；按任务参数显式配置</dd></div></dl><p className="sp-help">核心与资源更新可使用官方来源，无需配置付费加速服务。</p></Section>}
       {selected.id === 'updates' && <><div className="sp-content-heading"><div><h2>更新</h2><p>后台准备，空闲生效；三个通道独立检查。</p></div><button className="button secondary" disabled={busy} onClick={() => void checkAll()}><RefreshCw size={15} />检查全部更新</button></div>{snapshot.updates.map((channel) => <UpdateSection key={channel.id} channel={channel} settings={snapshot.settings} hasActiveRun={snapshot.runs.some((run) => run.status === 'running')} busy={busy} onAction={onAction} onSave={saveSettings} />)}<Notice>下载完成、验证通过与已生效是不同状态。任务执行期间继续使用原版本，失败时保留旧组合。</Notice></>}
       {selected.id === 'data' && <Section title="数据与诊断"><dl className="sp-description-list"><div><dt>数据归属</dt><dd>保存在本机</dd></div><div><dt>任务表</dt><dd>{snapshot.plans.length} 张</dd></div><div><dt>执行记录</dt><dd>{snapshot.runs.length} 条</dd></div><div><dt>当前事件</dt><dd>{snapshot.events.length} 条</dd></div></dl><div className="sp-form-actions"><button className="button secondary" onClick={() => downloadJson('maaverge-events.json', snapshot.events)}><Download size={15} />导出当前事件</button></div><p className="sp-help">导出到本机文件，不上传数据。事件中可能包含你配置的文件路径，分享前请自行检查。</p></Section>}
-      {selected.id === 'about' && <Section title="关于 MAAVerge"><p className="sp-about-intro">以任务为中心的本地桌面助手。</p><dl className="sp-description-list"><div><dt>应用版本</dt><dd>0.1.0 开发预览</dd></div><div><dt>运行模式</dt><dd>{snapshot.mode === 'mock' ? '确定性模拟工作空间' : '本地原生运行时'}</dd></div><div><dt>开源许可证</dt><dd>AGPL-3.0-only</dd></div><div><dt>界面语言</dt><dd>简体中文</dd></div></dl><Notice>完整原 MAA 兼容仍在推进中。各项能力以实际接入与验证状态为准。</Notice></Section>}
+      {selected.id === 'about' && <Section title="关于 Maa Verge"><p className="sp-about-intro">以任务为中心的本地桌面助手。</p><dl className="sp-description-list"><div><dt>应用版本</dt><dd>0.1.0 开发预览</dd></div><div><dt>运行模式</dt><dd>{snapshot.mode === 'mock' ? '确定性模拟工作空间' : '本地原生运行时'}</dd></div><div><dt>开源许可证</dt><dd>AGPL-3.0-only</dd></div><div><dt>界面语言</dt><dd>简体中文</dd></div></dl><Notice>完整原 MAA 兼容仍在推进中。各项能力以实际接入与验证状态为准。</Notice></Section>}
     </>}</div></div>
   </div>;
 }

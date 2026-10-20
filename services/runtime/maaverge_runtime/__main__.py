@@ -54,7 +54,7 @@ def main() -> None:
 
         helper_main()
         return
-    parser = argparse.ArgumentParser(description="MAAVerge local runtime")
+    parser = argparse.ArgumentParser(description="Maa Verge local runtime")
     parser.add_argument(
         "--mode", choices=("mock", "native"), default=os.environ.get("MAAVERGE_MODE", "mock")
     )

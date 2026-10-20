@@ -1,8 +1,8 @@
-# MAAVerge development guide
+# Maa Verge development guide
 
 ## Context
 
-Read PLAN.md and docs/STATUS.md before changes. MAAVerge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript and a Python 3.12 runtime. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese.
+Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript and a Python 3.12 runtime. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese.
 
 ## Boundaries
 

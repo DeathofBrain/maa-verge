@@ -1,4 +1,4 @@
-# MAAVerge desktop UI
+# Maa Verge desktop UI
 
 The React interface uses the typed `@maaverge/contracts` transport for every business operation. Browser development uses its deterministic mock adapter; the Tauri host connects the same interface to Python. The frontend never invokes ADB, native MaaCore or shell commands.
 

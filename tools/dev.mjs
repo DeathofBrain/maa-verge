@@ -5,7 +5,7 @@ import { root, desktop, port, run, start, terminate, devEnvironment, fail } from
 const mock = process.argv.includes('--mock');
 const environment = devEnvironment();
 const url = `http://127.0.0.1:${port}`;
-console.log(`MAAVerge ${mock ? 'browser mock' : 'desktop'} · ${url}`);
+console.log(`Maa Verge ${mock ? 'browser mock' : 'desktop'} · ${url}`);
 console.log(`数据目录: ${environment.MAAVERGE_DATA_DIR}`);
 
 async function main() {
