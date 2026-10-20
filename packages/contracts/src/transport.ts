@@ -11,6 +11,7 @@ interface Results {
   'plan.delete': { deleted: boolean };
   'device.discover': { address: string; name: string; adbState: string }[];
   'device.connect': Device;
+  'device.auto_connect': { devices: Device[]; discovered: { address: string; name: string; adbState: string }[]; diagnostics: string[] };
   'device.disconnect': { disconnected: boolean };
   'run.start': Run;
   'run.stop': Run;

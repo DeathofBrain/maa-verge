@@ -139,8 +139,8 @@ class Runtime:
         return [
             {
                 "id": "mock-device-1",
-                "name": "罗德岛 · 演示设备",
-                "address": "mock://rhodes",
+                "name": "本地演示设备",
+                "address": "mock://local",
                 "state": "running" if self.busy() else "idle",
                 "coreVersion": self.updates.channel("core")["currentVersion"],
                 "resourceVersion": self.updates.channel("resource")["currentVersion"],
@@ -185,7 +185,7 @@ class Runtime:
                 if method == "device.discover":
                     if self.mode == "mock":
                         return [
-                            {"address": "mock://rhodes", "name": "演示设备", "adbState": "device"}
+                            {"address": "mock://local", "name": "演示设备", "adbState": "device"}
                         ]
                     try:
                         return discover()
@@ -416,7 +416,7 @@ class Runtime:
             return {
                 "devices": self.devices(),
                 "discovered": [
-                    {"address": "mock://rhodes", "name": "演示设备", "adbState": "device"}
+                    {"address": "mock://local", "name": "演示设备", "adbState": "device"}
                 ],
                 "diagnostics": ["模拟模式：未扫描端口、调用 ADB 或连接真实设备"],
             }

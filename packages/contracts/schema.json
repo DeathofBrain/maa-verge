@@ -274,6 +274,11 @@
     "Settings": {
       "additionalProperties": false,
       "properties": {
+        "autoConnect": {
+          "default": true,
+          "title": "Autoconnect",
+          "type": "boolean"
+        },
         "autoUpdateCore": {
           "default": true,
           "title": "Autoupdatecore",
@@ -307,6 +312,7 @@
         }
       },
       "required": [
+        "autoConnect",
         "autoUpdateCore",
         "autoUpdateResource",
         "minimizeToTray",
@@ -321,6 +327,27 @@
       "additionalProperties": false,
       "properties": {
         "type": {
+          "enum": [
+            "StartUp",
+            "CloseDown",
+            "Fight",
+            "Recruit",
+            "Infrast",
+            "Mall",
+            "Award",
+            "SwitchTheme",
+            "Roguelike",
+            "Copilot",
+            "SSSCopilot",
+            "ParadoxCopilot",
+            "Depot",
+            "OperBox",
+            "Reclamation",
+            "Custom",
+            "SingleStep",
+            "VideoRecognition",
+            "OperProgress"
+          ],
           "title": "Type",
           "type": "string"
         },
@@ -328,11 +355,17 @@
           "additionalProperties": true,
           "title": "Params",
           "type": "object"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
         }
       },
       "required": [
         "type",
-        "params"
+        "params",
+        "enabled"
       ],
       "title": "Task",
       "type": "object"

@@ -15,9 +15,29 @@ export type Name1 = string;
  * @maxItems 30
  */
 export type Tasks = [Task, ...Task[]];
-export type Type = string;
-export type Schedule = string | null;
+export type Type =
+  | 'StartUp'
+  | 'CloseDown'
+  | 'Fight'
+  | 'Recruit'
+  | 'Infrast'
+  | 'Mall'
+  | 'Award'
+  | 'SwitchTheme'
+  | 'Roguelike'
+  | 'Copilot'
+  | 'SSSCopilot'
+  | 'ParadoxCopilot'
+  | 'Depot'
+  | 'OperBox'
+  | 'Reclamation'
+  | 'Custom'
+  | 'SingleStep'
+  | 'VideoRecognition'
+  | 'OperProgress';
 export type Enabled = boolean;
+export type Schedule = string | null;
+export type Enabled1 = boolean;
 export type Plans = Plan[];
 export type Id2 = string;
 export type Planid = string;
@@ -36,6 +56,7 @@ export type Status1 =
 export type Progress1 = number;
 export type Message1 = string;
 export type Updates = UpdateChannel[];
+export type Autoconnect = boolean;
 export type Autoupdatecore = boolean;
 export type Autoupdateresource = boolean;
 export type Minimizetotray = boolean;
@@ -74,11 +95,12 @@ export interface Plan {
   name: Name1;
   tasks: Tasks;
   schedule: Schedule;
-  enabled: Enabled;
+  enabled: Enabled1;
 }
 export interface Task {
   type: Type;
   params: Params;
+  enabled: Enabled;
 }
 export interface Params {
   [k: string]: unknown;
@@ -102,6 +124,7 @@ export interface UpdateChannel {
   message: Message1;
 }
 export interface Settings {
+  autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
   minimizeToTray: Minimizetotray;

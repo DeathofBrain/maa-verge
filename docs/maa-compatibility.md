@@ -63,4 +63,11 @@
 | 设置与外部服务 | 原版通知/推送、作业站/公共数据接口、MirrorChyan、自定义基建文件管理、其他原版设置的覆盖或等价路径 |
 | 发行与兼容 | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测 |
 
+其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：
+
+- **库存保持**：仓库缓存、目标库存、材料缺口、关卡开放时间、掉落更新、预更新与补货优先级。依据：[库存保持说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/depot-maintain.md)。
+- **数据更新与工具箱**：干员/仓库定期更新、结果缓存与时间、公招计算、JSON/Markdown/CSV 导出、截图监控、小游戏及需明确消耗授权的工具。依据：[数据更新](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/user-data-update.md)、[工具箱](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/tools.md)。
+- **定时、多配置与系统动作**：原版定时器及强制启动语义、配置切换、启动/结束动作、通知、远控、配置导入导出与运行诊断。用户手工配置的前后脚本必须保持在模型工具表之外。依据：[其他设置](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/others.md)、[原版设置实现](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/v6.20.0/src/MaaWpfGui/ViewModels/UserControl/Settings)。
+- **作业管理**：本地/社区作业导入、列表顺序、练习/突袭、自动编队、助战选择和结果查看。依据：[自动作业](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/copilot.md)。
+
 真实验收记录至少包含：上游标签、核心实际版本、资源 commit、宿主系统、连接方式、客户端、使用的参数（脱敏）、成功证据、停止/失败结果，以及明确的已知限制。未全部关闭差距前，产品状态保持开发预览。

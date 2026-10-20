@@ -1,8 +1,10 @@
 import type { Event, Plan, Run, Settings, Snapshot, UpdateChannel } from './types';
+import { taskEnabled, validatePlan } from './task-policy';
 
 const workspace = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID || 'browser';
 const key = 'maaverge:mock:v1:' + workspace;
 const listeners = new Set<(event: Event) => void>();
+const executionTasks = new Map<string, Plan['tasks']>();
 const requestRuns = new Map<string, string>();
 const now = () => new Date().toISOString();
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -11,11 +13,11 @@ const defaults = (): Snapshot => ({
   devices: [{ id: 'mock-device-1', name: '本地模拟设备', address: '127.0.0.1:5555', state: 'idle', coreVersion: 'v6.19.0', resourceVersion: '2026-10-18' }],
   plans: [
     { id: 'daily', name: '每日长草计划', enabled: true, schedule: null, tasks: [
-      { type: 'StartUp', params: { client_type: 'Official' } },
-      { type: 'Recruit', params: {} }, { type: 'Infrast', params: {} },
-      { type: 'Mall', params: {} }, { type: 'Award', params: {} },
+      { enabled: true, type: 'StartUp', params: { client_type: 'Official' } },
+      { enabled: true, type: 'Recruit', params: {} }, { enabled: true, type: 'Infrast', params: {} },
+      { enabled: true, type: 'Mall', params: {} }, { enabled: true, type: 'Award', params: {} },
     ] },
-    { id: 'farm-1-7', name: '固源岩补给', enabled: true, schedule: null, tasks: [{ type: 'Fight', params: { stage: '1-7', times: 6, medicine: 0, stone: 0 } }] },
+    { id: 'farm-1-7', name: '固源岩补给', enabled: true, schedule: null, tasks: [{ enabled: true, type: 'Fight', params: { stage: '1-7', times: 6, medicine: 0, stone: 0 } }] },
   ],
   runs: [],
   updates: [
@@ -23,7 +25,7 @@ const defaults = (): Snapshot => ({
     { id: 'core', currentVersion: 'v6.19.0', latestVersion: null, status: 'idle', progress: 0, message: '演示核心版本，未加载原生库' },
     { id: 'resource', currentVersion: '2026-10-18', latestVersion: null, status: 'idle', progress: 0, message: '演示资源快照，不访问网络' },
   ],
-  settings: { autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'dark', budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' } },
+  settings: { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'dark', budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' } },
   events: [],
 });
 
@@ -33,6 +35,8 @@ function restore(): Snapshot {
     if (!raw) return defaults();
     const state = JSON.parse(raw) as Snapshot;
     if (state.mode !== 'mock' || !state.settings?.budgets || !Array.isArray(state.updates)) return defaults();
+    state.settings = { ...defaults().settings, ...state.settings };
+    state.plans.forEach((plan) => plan.tasks.forEach((task) => { task.enabled ??= true; }));
     for (const run of state.runs) {
       if (run.status === 'running') { run.status = 'failed'; run.message = '页面重启，模拟执行已中断，未自动重放'; run.finishedAt = now(); }
     }
@@ -80,9 +84,10 @@ const timer = globalThis.setInterval(() => {
   for (const run of state.runs) {
     if (run.status !== 'running') continue;
     run.progress = Math.min(100, run.progress + 6);
-    const plan = state.plans.find((item) => item.id === run.planId);
-    run.message = '模拟执行 · ' + (plan?.tasks[Math.min((plan?.tasks.length || 1) - 1, Math.floor(run.progress / 100 * (plan?.tasks.length || 1)))]?.type || '任务收尾');
+    const tasks = executionTasks.get(run.id) || state.plans.find((item) => item.id === run.planId)?.tasks.filter(taskEnabled) || [];
+    run.message = '模拟执行 · ' + (tasks[Math.min(tasks.length - 1, Math.floor(run.progress / 100 * tasks.length))]?.type || '任务收尾');
     if (run.progress === 100) {
+      executionTasks.delete(run.id);
       run.status = 'completed'; run.finishedAt = now(); run.message = '模拟任务完成，未操作真实游戏';
       const device = state.devices.find((item) => item.id === run.deviceId);
       if (device) device.state = 'idle';
@@ -103,34 +108,18 @@ export function onMockEvent(callback: (event: Event) => void): () => void {
 }
 
 const delay = (ms: number) => new Promise((resolve) => globalThis.setTimeout(resolve, ms));
-function validatePlan(plan: Plan) {
-  if (!plan || !plan.name?.trim() || plan.name.length > 80 || !Array.isArray(plan.tasks) || !plan.tasks.length || plan.tasks.length > 30) throw new Error('计划需要名称和 1–30 个任务');
-  if (plan.schedule) throw new Error('定时调度尚未实现，请使用手动执行');
-  const totals = { originium: 0, medicine: 0, expedited: 0 };
-  for (const task of plan.tasks) {
-    if (!['StartUp', 'Fight', 'Recruit', 'Infrast', 'Mall', 'Award', 'CloseDown'].includes(task.type)) throw new Error('包含不支持的任务类型');
-    if (!task.params || typeof task.params !== 'object' || Array.isArray(task.params)) throw new Error('任务参数必须是对象');
-    if (['shell', 'command', 'script', 'adb'].some((key) => key in task.params)) throw new Error('任务不得包含任意命令');
-    for (const [key, budget] of [['stone', 'originium'], ['medicine', 'medicine'], ['expiring_medicine', 'medicine'], ['expedite_times', 'expedited']] as const) {
-      const value = task.params[key] ?? 0;
-      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) throw new Error('消耗额度必须是非负整数');
-      totals[budget] += value;
-    }
-    if (task.params.expedite && !task.params.expedite_times) throw new Error('加急必须设置明确额度');
-    if (task.type === 'Fight') {
-      const times = task.params.times ?? 1;
-      if (typeof times !== 'number' || !Number.isInteger(times) || times < 1 || times > 999) throw new Error('作战次数必须在 1 到 999 之间');
-      if (typeof (task.params.stage ?? '') !== 'string' || String(task.params.stage ?? '').length > 40) throw new Error('关卡参数无效');
-    }
-  }
-  if (Object.entries(totals).some(([key, value]) => value > state.settings.budgets[key as keyof typeof totals])) throw new Error('消耗超过已配置预算');
-}
 export async function mockRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
     case 'app.snapshot': return clone(state);
+    case 'device.discover': return state.devices.map((device) => ({ address: device.address, name: device.name, adbState: 'device' }));
+    case 'device.auto_connect': {
+      const discovered = state.devices.map((device) => ({ address: device.address, name: device.name, adbState: 'device' }));
+      emit('device.discovery', '模拟：已发现本地演示设备，未访问真实 ADB');
+      return clone({ devices: state.devices, discovered, diagnostics: ['模拟模式：已连接演示设备；未访问真实模拟器，也未启动游戏任务。'] });
+    }
     case 'plan.save': {
       const plan = clone(params.plan) as Plan;
-      validatePlan(plan);
+      validatePlan(plan, state.settings);
       plan.id ||= crypto.randomUUID();
       const index = state.plans.findIndex((item) => item.id === plan.id);
       if (index >= 0) state.plans[index] = plan; else state.plans.push(plan);
@@ -154,9 +143,11 @@ export async function mockRpc(method: string, params: Record<string, unknown>): 
       const plan = state.plans.find((item) => item.id === params.planId);
       const device = state.devices.find((item) => item.id === params.deviceId);
       if (!plan?.enabled) throw new Error('计划不存在或尚未启用');
-      validatePlan(plan);
+      validatePlan(plan, state.settings);
+      if (!plan.tasks.some(taskEnabled)) throw new Error('任务表至少需要启用一条任务才能执行');
       if (!device || device.state !== 'idle') throw new Error('设备不可用或正在执行任务');
       const run: Run = { id: crypto.randomUUID(), planId: plan.id, deviceId: device.id, status: 'running', progress: 0, message: '模拟执行开始', startedAt: now(), finishedAt: null };
+      executionTasks.set(run.id, clone(plan.tasks.filter(taskEnabled)) as Plan['tasks']);
       device.state = 'running'; state.runs.unshift(run);
       requestRuns.set(String(params.requestId), run.id);
       emit('run.started', '模拟执行：' + plan.name);
@@ -165,6 +156,7 @@ export async function mockRpc(method: string, params: Record<string, unknown>): 
     case 'run.stop': {
       const run = state.runs.find((item) => item.id === params.id);
       if (!run || run.status !== 'running') throw new Error('任务当前未运行');
+      executionTasks.delete(run.id);
       run.status = 'stopped'; run.message = '模拟执行已停止'; run.finishedAt = now();
       const device = state.devices.find((item) => item.id === run.deviceId);
       if (device) device.state = 'idle';
@@ -212,7 +204,7 @@ export async function mockRpc(method: string, params: Record<string, unknown>): 
       await delay(250);
       const stage = message.match(/\b\d{1,2}-\d{1,2}\b/)?.[0];
       const plan: Plan = { id: crypto.randomUUID(), name: stage ? 'Agent 刷图计划 · ' + stage : 'Agent 日常计划', enabled: true, schedule: null, tasks: stage
-        ? [{ type: 'Fight', params: { stage, times: 6, medicine: 0, stone: 0 } }]
+        ? [{ enabled: true, type: 'Fight', params: { stage, times: 6, medicine: 0, stone: 0 } }]
         : clone(state.plans.find((item) => item.id === 'daily')?.tasks || defaults().plans[0].tasks) };
       emit('agent.proposed', '模拟 Agent 提出待确认计划');
       return { reply: '这是本地规则生成的演示计划，尚未调用云模型。已保持零碎石、零理智药预算。你可以检查和编辑计划，再决定是否执行。', plan, requiresConfirmation: true, mode: 'mock' };
