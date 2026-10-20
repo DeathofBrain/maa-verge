@@ -45,6 +45,7 @@ class ModelSettings(StrictModel):
 
 
 class Settings(StrictModel):
+    autoConnect: bool = True
     autoUpdateCore: bool = True
     autoUpdateResource: bool = True
     minimizeToTray: bool = True

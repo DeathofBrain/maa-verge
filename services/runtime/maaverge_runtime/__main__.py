@@ -102,6 +102,18 @@ def main() -> None:
 
     update_thread = threading.Thread(target=update_loop, name="component-updater", daemon=True)
     update_thread.start()
+
+    def connection_loop():
+        while not stop.wait(1):
+            try:
+                runtime.automatic_connections()
+            except Exception:
+                logging.exception("Background emulator connection failed")
+
+    connection_thread = threading.Thread(
+        target=connection_loop, name="emulator-connector", daemon=True
+    )
+    connection_thread.start()
     try:
         for line in sys.stdin:
             if len(line) > 1024 * 1024:
@@ -130,7 +142,10 @@ def main() -> None:
                 options.mode == "native"
                 and isinstance(request, dict)
                 and isinstance(request.get("method"), str)
-                and request["method"].startswith("updates.")
+                and (
+                    request["method"].startswith("updates.")
+                    or request["method"] == "device.auto_connect"
+                )
             ):
                 if not update_slots.acquire(blocking=False):
                     if "id" in request:
@@ -138,7 +153,7 @@ def main() -> None:
                             {
                                 "jsonrpc": "2.0",
                                 "id": request["id"],
-                                "error": {"code": -32021, "message": "已有更新请求在处理中"},
+                                "error": {"code": -32021, "message": "已有后台请求在处理中"},
                             }
                         )
                     continue
@@ -155,6 +170,7 @@ def main() -> None:
             runtime.updates.source.client.close()
         thread.join(timeout=2)
         update_thread.join(timeout=2)
+        connection_thread.join(timeout=2)
         for worker in request_workers:
             worker.join(timeout=0.5)
         # A daemon network operation may still be unwinding. The OS will close
@@ -162,6 +178,7 @@ def main() -> None:
         runtime.close(
             close_store=not thread.is_alive()
             and not update_thread.is_alive()
+            and not connection_thread.is_alive()
             and not any(w.is_alive() for w in request_workers)
         )
 

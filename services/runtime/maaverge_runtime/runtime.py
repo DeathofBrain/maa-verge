@@ -12,7 +12,14 @@ from pathlib import Path
 from filelock import FileLock, Timeout
 from pydantic import ValidationError
 
-from .adb import adb_path, discover, validate_address
+from .adb import (
+    adb_path,
+    auto_discover,
+    device_lock_address,
+    discover,
+    is_local_emulator,
+    validate_address,
+)
 from .config import device_lock_path
 from .models import Plan, RpcError, Settings, Snapshot
 from .storage import Store, now
@@ -42,6 +49,10 @@ class Runtime:
         self.worker_factory = worker_factory or CoreWorker
         self.reconnect_after_update: list[dict] = []
         self.switching_components = False
+        self.auto_connect_lock = threading.Lock()
+        self.auto_connect_suppressed: set[str] = set()
+        self.next_auto_connect = time.monotonic() + 2
+        self.last_connection_diagnostics: list[str] = []
         self.running = True
         # Startup checks are delayed to let the first snapshot render. Explicit
         # native mode bootstraps its own core; mock mode never accesses the network.
@@ -155,6 +166,8 @@ class Runtime:
             raise RpcError(-32602, "params 必须是对象")
         if method == "device.connect":
             return self.connect_device(params)
+        if method == "device.auto_connect":
+            return self.auto_connect_devices()
         # Updates may download or validate in an isolated subprocess. Never hold
         # the app lock across them: snapshots and progress notifications stay live.
         if method in {"updates.check", "updates.prepare", "updates.activate", "updates.rollback"}:
@@ -207,6 +220,10 @@ class Runtime:
                     return self.agent_message(params["message"])
                 if method == "settings.save":
                     settings = Settings.model_validate(params["settings"])
+                    previous = Settings.model_validate(self.store.get("settings", "main"))
+                    if settings.autoConnect and not previous.autoConnect:
+                        self.auto_connect_suppressed.clear()
+                        self.next_auto_connect = 0
                     self.store.put("settings", "main", settings.model_dump())
                     self.emit("settings.saved", "设置已保存")
                     return settings.model_dump()
@@ -349,6 +366,8 @@ class Runtime:
                 if not self.running:
                     raise RpcError(-32011, "应用运行时正在退出")
                 address = validate_address(params.get("address"))
+                if not internal:
+                    self.auto_connect_suppressed.discard(device_lock_address(address))
                 combo = self.store.get("active", "combo", {})
                 if not combo.get("core"):
                     raise ValueError("请先在更新中心安装并启用核心")
@@ -360,7 +379,11 @@ class Runtime:
                 self.connecting.add(ident)
                 reserved = True
             executable = adb_path()
-            key = os.environ.get("ADB_SERVER_SOCKET", "tcp:localhost:5037") + "|" + address
+            key = (
+                os.environ.get("ADB_SERVER_SOCKET", "tcp:localhost:5037")
+                + "|"
+                + device_lock_address(address)
+            )
             lease = FileLock(device_lock_path(key), thread_local=False)
             lease.acquire(timeout=0)
             config = {
@@ -405,6 +428,107 @@ class Runtime:
                 with self.lock:
                     self.connecting.discard(ident)
 
+    def auto_connect_devices(self, *, automatic: bool = False) -> dict:
+        """Discover local emulators and request MaaCore connections, never start tasks."""
+        if self.mode == "mock":
+            return {
+                "devices": self.devices(),
+                "discovered": [
+                    {"address": "mock://rhodes", "name": "演示设备", "adbState": "device"}
+                ],
+                "diagnostics": ["模拟模式：未扫描端口、调用 ADB 或连接真实设备"],
+            }
+        if not self.auto_connect_lock.acquire(blocking=False):
+            raise RpcError(-32011, "模拟器自动连接正在进行")
+        try:
+            with self.lock:
+                if not self.running or self.switching_components:
+                    raise RpcError(-32011, "正在退出或切换核心，请稍后重试")
+                if not automatic:
+                    self.auto_connect_suppressed.clear()
+                if not self.store.get("active", "combo", {}).get("core"):
+                    raise RpcError(-32040, "请先在更新中心安装并启用核心，再自动连接模拟器")
+            try:
+                discovered, diagnostics = auto_discover()
+            except Exception as error:
+                raise RpcError(-32040, "模拟器自动发现失败", str(error)) from error
+            devices = []
+            seen: set[str] = set()
+            for candidate in discovered:
+                address = candidate["address"]
+                key = device_lock_address(address)
+                if (
+                    candidate["adbState"] != "device"
+                    or not is_local_emulator(address)
+                    or key in seen
+                    or (automatic and key in self.auto_connect_suppressed)
+                ):
+                    continue
+                seen.add(key)
+                try:
+                    with self.lock:
+                        existing = next(
+                            (
+                                self.store.get("device", ident)
+                                for ident in self.workers
+                                if device_lock_address(self.store.get("device", ident)["address"])
+                                == key
+                            ),
+                            None,
+                        )
+                        if existing:
+                            worker = self.workers[existing["id"]]
+                            if worker.connected or not worker.safe_idle:
+                                devices.append(existing)
+                                continue
+                            # A completed failed connection may be retried, but an
+                            # active task or pending async operation is never replaced.
+                            self.disconnect_device(existing["id"], internal=True)
+                    devices.append(self.connect_device(candidate))
+                except RpcError as error:
+                    diagnostics.append(f"{address}：{error.message}")
+            if not devices:
+                diagnostics.append(
+                    "未连接到可用模拟器；请启动模拟器并开启 ADB 调试，或手动填写地址"
+                )
+            if not automatic or diagnostics != self.last_connection_diagnostics:
+                self.emit(
+                    "device.auto_connect",
+                    "模拟器自动连接检查完成",
+                    {
+                        "requested": len(devices),
+                        "diagnostics": diagnostics,
+                    },
+                )
+            self.last_connection_diagnostics = diagnostics
+            return {"devices": devices, "discovered": discovered, "diagnostics": diagnostics}
+        finally:
+            self.auto_connect_lock.release()
+
+    def automatic_connections(self) -> None:
+        """Dedicated background loop: startup, newly enabled setting, then every 30s."""
+        if self.mode != "native" or not self.running:
+            return
+        with self.lock:
+            settings = Settings.model_validate(self.store.get("settings", "main"))
+            if (
+                not settings.autoConnect
+                or time.monotonic() < self.next_auto_connect
+                or self.switching_components
+                or self.busy()
+            ):
+                return
+            self.next_auto_connect = time.monotonic() + 30
+            if not self.store.get("active", "combo", {}).get("core"):
+                return
+        try:
+            self.auto_connect_devices(automatic=True)
+        except RpcError as error:
+            diagnostics = [error.message, str(error.data or "")]
+            if diagnostics != self.last_connection_diagnostics and self.running:
+                self.emit("device.auto_connect_failed", error.message, {"detail": error.data})
+            self.last_connection_diagnostics = diagnostics
+
     def disconnect_device(self, ident: str, *, internal: bool = False) -> dict:
         if self.switching_components and not internal:
             raise RpcError(-32011, "正在切换核心与资源，暂不能断开设备")
@@ -416,6 +540,8 @@ class Runtime:
         if worker := self.workers.pop(ident, None):
             worker.close()
         if device := self.store.get("device", ident):
+            if not internal:
+                self.auto_connect_suppressed.add(device_lock_address(device["address"]))
             device["state"] = "offline"
             self.store.put("device", ident, device)
         self.emit("device.disconnected", "设备控制权已释放", {"deviceId": ident})
