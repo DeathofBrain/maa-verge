@@ -1,27 +1,42 @@
 """Public JSON-RPC data models. Camel-case names match the UI contract."""
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
 
-TASK_TYPES = {"StartUp", "Fight", "Recruit", "Infrast", "Mall", "Award", "CloseDown"}
+TaskType = Literal[
+    "StartUp",
+    "CloseDown",
+    "Fight",
+    "Recruit",
+    "Infrast",
+    "Mall",
+    "Award",
+    "SwitchTheme",
+    "Roguelike",
+    "Copilot",
+    "SSSCopilot",
+    "ParadoxCopilot",
+    "Depot",
+    "OperBox",
+    "Reclamation",
+    "Custom",
+    "SingleStep",
+    "VideoRecognition",
+    "OperProgress",
+]
+TASK_TYPES = set(get_args(TaskType))
 
 
 class Task(StrictModel):
-    type: str
+    type: TaskType
     params: dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator("type")
-    @classmethod
-    def known_type(cls, value: str) -> str:
-        if value not in TASK_TYPES:
-            raise ValueError("不支持的任务类型")
-        return value
+    enabled: bool = True
 
 
 class Plan(StrictModel):

@@ -23,6 +23,7 @@ from .adb import (
 from .config import device_lock_path
 from .models import Plan, RpcError, Settings, Snapshot
 from .storage import Store, now
+from .task_policy import native_task, validate_plan
 from .updates import UpdateService
 from .worker import CoreWorker
 
@@ -233,36 +234,7 @@ class Runtime:
 
     def validate_policy(self, plan: Plan) -> None:
         settings = Settings.model_validate(self.store.get("settings", "main"))
-        totals = {"originium": 0, "medicine": 0, "expedited": 0}
-        for task in plan.tasks:
-            if any(k in task.params for k in ("shell", "command", "script", "adb")):
-                raise RpcError(-32010, "任务不得包含任意命令")
-            for key, budget in (
-                ("stone", "originium"),
-                ("medicine", "medicine"),
-                ("expiring_medicine", "medicine"),
-                ("expedite_times", "expedited"),
-            ):
-                value = task.params.get(key, 0)
-                if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-                    raise RpcError(-32010, "消耗额度必须是非负整数")
-                totals[budget] += value
-            if self.mode == "native" and task.params.get("client_type", "Official") != "Official":
-                raise RpcError(-32010, "首版真实执行仅支持官服客户端")
-            if task.params.get("expedite") and not task.params.get("expedite_times"):
-                raise RpcError(-32010, "加急必须设置明确额度")
-            if task.type == "Fight":
-                times = task.params.get("times", 1)
-                if not isinstance(times, int) or isinstance(times, bool) or not 1 <= times <= 999:
-                    raise RpcError(-32010, "作战次数必须在 1 到 999 之间")
-                stage = task.params.get("stage", "")
-                if not isinstance(stage, str) or len(stage) > 40:
-                    raise RpcError(-32010, "关卡参数无效")
-        for key, value in totals.items():
-            if value > getattr(settings.budgets, key):
-                raise RpcError(
-                    -32010, "计划消耗超出已授权额度", {"budget": key, "requested": value}
-                )
+        validate_plan(plan, settings)
 
     def start_run(self, params: dict) -> dict:
         if self.switching_components:
@@ -280,6 +252,16 @@ class Runtime:
         self.validate_policy(Plan.model_validate(plan))
         if not plan["enabled"]:
             raise RpcError(-32011, "计划已禁用")
+        plan = {
+            **plan,
+            "tasks": [
+                task
+                for task in plan["tasks"]
+                if task.get("enabled", True) and task["params"].get("enable", True)
+            ],
+        }
+        if not plan["tasks"]:
+            raise RpcError(-32010, "任务表至少需要启用一条任务才能执行")
         device = next((d for d in self.devices() if d["id"] == params["deviceId"]), None)
         if not device:
             raise RpcError(-32004, "设备不存在")
@@ -618,29 +600,7 @@ class Runtime:
             "stopRequested": None,
         }
         self.store.put("execution", run["id"], state)
-        task = {**plan["tasks"][index], "params": dict(plan["tasks"][index]["params"])}
-        # Only official mainland client is enabled initially. No reports or paid
-        # consumables can be enabled through MaaCore's implicit default values.
-        if task["type"] in {"StartUp", "CloseDown"}:
-            task["params"].setdefault("client_type", "Official")
-        if task["type"] == "StartUp":
-            task["params"].setdefault("start_game_enabled", True)
-        if task["type"] == "Fight":
-            for key in ("medicine", "stone", "expiring_medicine"):
-                task["params"].setdefault(key, 0)
-            task["params"].update(report_to_penguin=False, report_to_yituliu=False)
-            task["params"].setdefault("times", 1)
-        if task["type"] == "Recruit":
-            task["params"].setdefault("expedite", False)
-            task["params"].setdefault("expedite_times", 0)
-            task["params"].setdefault("select", [3, 4, 5])
-            task["params"].setdefault("confirm", [3, 4])
-        if task["type"] == "Infrast":
-            task["params"].setdefault(
-                "facility", ["Mfg", "Trade", "Power", "Control", "Reception", "Office", "Dorm"]
-            )
-            task["params"].setdefault("drones", "_NotUse")
-            task["params"].setdefault("threshold", 0.3)
+        task = native_task(plan["tasks"][index])
         try:
             result = self.workers[run["deviceId"]].task(task)
             state["taskId"] = result["taskId"]
