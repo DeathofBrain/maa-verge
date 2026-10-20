@@ -1,7 +1,17 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Minimal desktop bridge and runtime event access",
+  "description": "Desktop bridge, runtime events and integrated window controls",
   "windows": ["main"],
-  "permissions": ["core:event:default"]
+  "permissions": [
+    "core:event:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-close",
+    "core:window:allow-set-background-color",
+    "core:webview:allow-set-webview-background-color"
+  ]
 }

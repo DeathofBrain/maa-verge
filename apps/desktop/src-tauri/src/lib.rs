@@ -5,6 +5,45 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
 
+#[cfg(target_os = "windows")]
+fn configure_window_transitions(app: &tauri::AppHandle) {
+    use std::ffi::c_void;
+
+    #[link(name = "dwmapi")]
+    unsafe extern "system" {
+        fn DwmSetWindowAttribute(
+            hwnd: *mut c_void,
+            attribute: u32,
+            value: *const c_void,
+            size: u32,
+        ) -> i32;
+    }
+
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let Ok(hwnd) = window.hwnd() else {
+        return;
+    };
+    // DWM stretches a cached WebView frame during maximize/restore. Disable that
+    // transition for this window so the integrated title bar keeps its size.
+    const DWMWA_TRANSITIONS_FORCEDISABLED: u32 = 3;
+    let disabled = 1_i32;
+    // SAFETY: hwnd belongs to the live main window; value points to a BOOL for
+    // the duration of this synchronous call and its size is supplied exactly.
+    let result = unsafe {
+        DwmSetWindowAttribute(
+            hwnd.0,
+            DWMWA_TRANSITIONS_FORCEDISABLED,
+            (&disabled as *const i32).cast(),
+            std::mem::size_of_val(&disabled) as u32,
+        )
+    };
+    if result < 0 {
+        eprintln!("Could not configure window transitions: HRESULT {result:#x}");
+    }
+}
+
 fn show_main(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -21,22 +60,21 @@ pub fn run() {
         }))
         .invoke_handler(tauri::generate_handler![runtime::runtime_request])
         .setup(|app| {
+            #[cfg(target_os = "windows")]
+            configure_window_transitions(app.handle());
             let runtime = tauri::async_runtime::block_on(Runtime::start(app.handle().clone()))
                 .map_err(std::io::Error::other)?;
             app.manage(runtime);
-            let show = MenuItem::with_id(app, "show", "显示 MAAVerge", true, None::<&str>)?;
+            let show = MenuItem::with_id(app, "show", "显示 Maa Verge", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
-            let mut pixels = vec![0_u8; 32 * 32 * 4];
-            for y in 4..28 {
-                for x in 4..28 {
-                    let offset = (y * 32 + x) * 4;
-                    pixels[offset..offset + 4].copy_from_slice(&[176, 235, 105, 255]);
-                }
-            }
+            let icon = app
+                .default_window_icon()
+                .cloned()
+                .ok_or_else(|| std::io::Error::other("Application icon is missing"))?;
             TrayIconBuilder::with_id("main")
-                .icon(tauri::image::Image::new_owned(pixels, 32, 32))
-                .tooltip("MAAVerge · 明日方舟助手")
+                .icon(icon)
+                .tooltip("Maa Verge · 明日方舟助手")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -70,7 +108,7 @@ pub fn run() {
             }
         })
         .build(tauri::generate_context!())
-        .expect("MAAVerge desktop initialization failed");
+        .expect("Maa Verge desktop initialization failed");
     app.run(|app, event| {
         if let tauri::RunEvent::Exit = event {
             if let Some(runtime) = app.try_state::<Runtime>() {

@@ -1,7 +1,7 @@
 [project]
 name = "maaverge-runtime"
 version = "0.1.0"
-description = "Local execution, planning and immutable runtime updates for MAAVerge"
+description = "Local execution, planning and immutable runtime updates for Maa Verge"
 requires-python = ">=3.12,<3.13"
 license = "AGPL-3.0-only"
 dependencies = [

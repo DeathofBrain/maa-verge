@@ -95,7 +95,7 @@ MAAVERGE_MODE=native bash tools/pnpm.sh dev
 node tools/package-runtime.mjs
 ```
 
-PyInstaller 产物位于 `dist/runtime/maaverge-runtime`；Tauri 安装包位于 `apps/desktop/src-tauri/target/release/bundle`。构建中会运行 `node tools/smoke-runtime.mjs`，使用临时 mock 数据目录验证打包服务的 JSON-RPC 快照和 EOF 正常退出，并通过本地无害 ZIP 验证 frozen 辅助进程实际调用官方 Updater。该检查不会下载核心、连接设备或调用模型。开发 cargo 检查创建的占位资源目录不包含可执行文件，不能替代实际打包。图标从 `tools/generate-icons.mjs` 确定性生成，修改源后运行该脚本。
+PyInstaller 产物位于 `dist/runtime/maaverge-runtime`；Tauri 安装包位于 `apps/desktop/src-tauri/target/release/bundle`。构建中会运行 `node tools/smoke-runtime.mjs`，使用临时 mock 数据目录验证打包服务的 JSON-RPC 快照和 EOF 正常退出，并通过本地无害 ZIP 验证 frozen 辅助进程实际调用官方 Updater。该检查不会下载核心、连接设备或调用模型。开发 cargo 检查创建的占位资源目录不包含可执行文件，不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`，由已安装的 Tauri CLI 生成桌面图标；不需要调用图片模型。设计与提示词见 [branding.md](branding.md)。
 
 CI 的应用检查覆盖类型、Python、构建和浏览器 mock 端到端；原生矩阵覆盖 Windows x64、Ubuntu x64、macOS arm64/x64 的 fmt/clippy/test 和未签名构建。CI 配置存在不等于平台已验证，以实际工作流结果和 `docs/STATUS.md` 为准。开发检查在没有 cargo 时明确跳过原生部分；CI 禁止跳过。
 

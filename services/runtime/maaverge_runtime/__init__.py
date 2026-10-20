@@ -1,3 +1,3 @@
-"""MAAVerge local application runtime."""
+"""Maa Verge local application runtime."""
 
 __version__ = "0.1.0"

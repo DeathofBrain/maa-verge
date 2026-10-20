@@ -48,7 +48,7 @@ fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
                 "maaverge-runtime"
             });
         if !executable.is_file() {
-            return Err("应用安装包缺少 Python runtime，请重新安装 MAAVerge".into());
+            return Err("应用安装包缺少 Python runtime，请重新安装 Maa Verge".into());
         }
         Ok((executable, vec![]))
     }
@@ -114,7 +114,7 @@ impl Runtime {
                 }
             }
             for (_, sender) in replies.lock().expect("pending lock").drain() {
-                let _ = sender.send(Err("本地服务已退出，请重启 MAAVerge".into()));
+                let _ = sender.send(Err("本地服务已退出，请重启 Maa Verge".into()));
             }
             let _ = event_app.emit(
                 "runtime.disconnected",

@@ -1,8 +1,8 @@
-# MAAVerge development guide
+# Maa Verge development guide
 
 ## Context
 
-Read PLAN.md and docs/STATUS.md before changes. MAAVerge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript and a Python 3.12 runtime. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese.
+Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript and a Python 3.12 runtime. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese.
 
 ## Boundaries
 
@@ -20,6 +20,7 @@ Read PLAN.md and docs/STATUS.md before changes. MAAVerge is an AGPL-3.0-only, lo
 - Use standard user-data paths and configurable roots; never hardcode a developer's drive, username or ADB location.
 - Do not commit credentials, local databases, screenshots of real accounts, native downloads, virtual environments or build output.
 - Commit dependency lockfiles. Update contracts and documentation with interface changes. Generated files must be regenerated from their source.
+- Use Conventional Commits (`feat:`, `fix:`, `docs:`, etc.); write the description after the colon in Simplified Chinese, for example `feat: 添加主页仪表盘` or `fix(ui): 修复窗口缩放闪烁`.
 - Keep docs/STATUS.md accurate: implemented behavior, verification, limitations and next actions. Never report an untested platform as verified.
 
 ## Commands

@@ -48,7 +48,7 @@ class OfficialSource:
 
     def __init__(self, client: httpx.Client | None = None):
         self.client = client or httpx.Client(
-            timeout=30, follow_redirects=True, headers={"User-Agent": "MAAVerge/0.1"}
+            timeout=30, follow_redirects=True, headers={"User-Agent": "maa-verge/0.1"}
         )
 
     def get_json(self, url: str):
