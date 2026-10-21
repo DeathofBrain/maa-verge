@@ -136,6 +136,9 @@ jobs:
       - run: node tools/check-native.mjs --required
       - name: Build unsigned package with standalone TypeScript service and C++ worker
         run: pnpm build
+      - name: Smoke packaged backend in clean Ubuntu 22.04 container
+        if: runner.os == 'Linux'
+        run: node tools/smoke-clean-linux.mjs
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
