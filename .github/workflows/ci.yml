@@ -12,8 +12,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  bun-probe:
+    name: Bun standalone gate (${{ matrix.os }}, ${{ matrix.architecture }})
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            architecture: x64
+          - os: ubuntu-22.04
+            architecture: x64
+          - os: macos-14
+            architecture: arm64
+          - os: macos-15-intel
+            architecture: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install and verify pinned Bun
+        run: node tools/setup-bun.mjs
+      - name: Compile and execute without host runtimes
+        run: node tools/probe-bun.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bun-probe-${{ matrix.os }}-${{ matrix.architecture }}
+          path: .tools/bun-probe/*/result.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+
   application:
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -26,8 +63,13 @@ jobs:
           enable-cache: true
       - run: pnpm install --frozen-lockfile
       - run: uv sync --frozen
+      - run: node tools/setup-bun.mjs
       - run: pnpm contracts:check
       - run: pnpm -r check
+      - name: Validate generated public and worker contracts
+        run: node --test packages/contracts/test/validators.test.mjs
+      - name: Test TypeScript backend without real devices or models
+        run: pnpm test:runtime
       - run: uv run --frozen ruff check services/runtime
       - name: Type check runtime for supported platforms
         run: |
@@ -48,6 +90,8 @@ jobs:
           if-no-files-found: ignore
 
   native:
+    needs: bun-probe
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -84,9 +128,20 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
       - run: pnpm install --frozen-lockfile
       - run: uv sync --frozen
+      - run: node tools/setup-bun.mjs
+      - name: Build C++ worker and run synthetic CTest fixtures
+        run: node tools/build-core-worker.mjs
+      - name: Test TypeScript backend
+        run: pnpm test:runtime
       - run: node tools/check-native.mjs --required
-      - name: Build unsigned native package and Python runtime
+      - name: Build unsigned package with standalone TypeScript service and C++ worker
         run: pnpm build
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: native-test-diagnostics-${{ matrix.os }}-${{ matrix.architecture }}
+          path: build/native/Testing/Temporary/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: unsigned-${{ matrix.os }}-${{ matrix.architecture }}
