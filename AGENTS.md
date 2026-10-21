@@ -2,12 +2,15 @@
 
 ## Context
 
-Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript and a Python 3.12 runtime. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese.
+Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript, a TypeScript application service on pinned Bun, and a C++20 MaaCore worker. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese. See docs/runtime-migration.md for the Python reference and migration boundaries.
 
 ## Boundaries
 
 - React uses the typed transport in packages/contracts; it never executes shell, ADB or native calls.
-- Python owns plans, persistence, policy and updates. JSON-RPC 2.0 uses newline-delimited JSON over stdio; stdout is protocol-only, diagnostics go to stderr.
+- TypeScript owns plans, persistence, policy, Agent proposals and updates. C++ owns MaaCore loading, device leases and native calls; it never writes the business database. JSON-RPC 2.0 uses newline-delimited JSON over stdio; stdout is protocol-only, diagnostics go to stderr.
+- JSON Schema in packages/contracts/schemas is authoritative; regenerate TypeScript types and standalone validators with pnpm contracts:generate. Native NDJSON output uses protocolVersion 1.
+- Production includes the Bun-compiled service and C++ worker, with no Python fallback. MAAVERGE_BACKEND=python selects the retained reference only in debug builds. Do not replace a failed service with another backend automatically.
+- Both services must hold the same dedicated SQLite data-root lease before opening business data. Never delete its lock file. Back up existing data with serialize, fsync, integrity validation and rename; preserve implicit rowids and persistent run.start requestId deduplication.
 - Runtime adapters must support deterministic mock operation without MaaCore, a simulator, model keys or paid requests.
 - A device has one controller. Never replace files referenced by active workers. Updates stage immutable core/resource generations, validate, then activate at idle boundaries with rollback.
 - AsstStop clears the native queue; it is not pause/resume. Task-completion messages alone do not prove action success.
@@ -25,8 +28,8 @@ Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, l
 
 ## Commands
 
-The root package.json is the command source of truth: pnpm dev:mock, pnpm dev, pnpm run doctor, pnpm check, pnpm test:e2e:mock, pnpm build.
-Python: uv sync --frozen; uv run pytest. Rust: cargo fmt --check and cargo clippy --locked when the native toolchain is available.
+The root package.json is the command source of truth: pnpm dev:mock, pnpm dev, pnpm setup:bun, pnpm run doctor, pnpm check, pnpm test:runtime, pnpm test:packaging, pnpm test:desktop-runtime, pnpm test:e2e:mock, pnpm build.
+Use .bun-version and tools/setup-bun.mjs for the pinned runtime; do not depend on a global Bun. C++: node tools/build-core-worker.mjs (synthetic CTest), or --production without Python. Python reference/fixture tests: uv sync --frozen; uv run pytest. Rust: cargo fmt --check and cargo clippy --locked when the native toolchain is available.
 Use targeted checks while developing, then the relevant project checks. Do not modify formatting or dependencies unrelated to the task.
 
 ## Real-world effects

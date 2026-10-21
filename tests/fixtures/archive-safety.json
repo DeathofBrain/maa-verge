@@ -1,0 +1,16 @@
+[
+  { "name": "traversal", "files": { "../ignored.exe": "bad" }, "error": "路径" },
+  { "name": "absolute", "files": { "/ignored.exe": "bad" }, "error": "路径" },
+  { "name": "drive", "files": { "C:/ignored.exe": "bad" }, "error": "路径" },
+  { "name": "backslash", "files": { "ignored\\..\\outside": "bad" }, "error": "路径" },
+  { "name": "ascii-case", "files": { "ignored/GUI.dll": "a", "ignored/gui.dll": "b" }, "error": "重复" },
+  { "name": "full-casefold", "files": { "ignored/Straße.dll": "a", "ignored/STRASSE.dll": "b" }, "error": "重复" },
+  { "name": "sigma-casefold", "files": { "ignored/σ.dll": "a", "ignored/ς.dll": "b" }, "error": "重复" },
+  { "name": "ligature-casefold", "files": { "ignored/ﬃ.dll": "a", "ignored/FFI.dll": "b" }, "error": "重复" },
+  { "name": "parent-casefold", "files": { "ignored": "a", "IGNORED/file": "b" }, "error": "父级" },
+  { "name": "link-escape", "links": { "ignored/alias": "../../outside" }, "error": "链接" },
+  { "name": "link-cycle", "links": { "ignored/a": "b", "ignored/b": "a" }, "error": "链接" },
+  { "name": "link-missing", "links": { "ignored/a": "missing" }, "error": "链接" },
+  { "name": "link-directory", "links": { "ignored/a": "../resource" }, "error": "链接" },
+  { "name": "excluded-target", "files": { "ignored/GUI.dll": "gui" }, "links": { "native.dll": "ignored/GUI.dll" }, "error": "保留" }
+]

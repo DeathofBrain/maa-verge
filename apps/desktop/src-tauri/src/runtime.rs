@@ -12,6 +12,7 @@ use tokio::sync::{oneshot, Mutex as AsyncMutex};
 
 type Reply = Result<Value, String>;
 type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Reply>>>>;
+type Emit = Arc<dyn Fn(&str, Value) + Send + Sync>;
 
 pub struct Runtime {
     child: AsyncMutex<Option<Child>>,
@@ -27,15 +28,36 @@ fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
             .join("../../..")
             .canonicalize()
             .map_err(|error| error.to_string())?;
-        let python = project.join(if cfg!(windows) {
-            ".venv/Scripts/python.exe"
-        } else {
-            ".venv/bin/python"
-        });
-        if !python.is_file() {
-            return Err("Python 环境未准备，请先运行 uv sync --frozen".into());
+        if std::env::var("MAAVERGE_BACKEND").as_deref() == Ok("python") {
+            let python = project.join(if cfg!(windows) {
+                ".venv/Scripts/python.exe"
+            } else {
+                ".venv/bin/python"
+            });
+            if !python.is_file() {
+                return Err("Python 参考环境未准备，请运行 uv sync --frozen".into());
+            }
+            return Ok((python, vec!["-m".into(), "maaverge_runtime".into()]));
         }
-        Ok((python, vec!["-m".into(), "maaverge_runtime".into()]))
+        let bun = project.join(if cfg!(windows) {
+            ".tools/bun/bun.exe"
+        } else {
+            ".tools/bun/bun"
+        });
+        if !bun.is_file() {
+            return Err("Bun 环境未准备，请运行 pnpm setup:bun".into());
+        }
+        Ok((
+            bun,
+            vec![
+                "run".into(),
+                "--no-env-file".into(),
+                project
+                    .join("services/backend/src/entry.ts")
+                    .to_string_lossy()
+                    .into(),
+            ],
+        ))
     } else {
         let executable = app
             .path()
@@ -48,7 +70,7 @@ fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
                 "maaverge-runtime"
             });
         if !executable.is_file() {
-            return Err("应用安装包缺少 Python runtime，请重新安装 Maa Verge".into());
+            return Err("应用安装包缺少本地服务，请重新安装 Maa Verge".into());
         }
         Ok((executable, vec![]))
     }
@@ -58,8 +80,20 @@ impl Runtime {
     pub async fn start(app: AppHandle) -> Result<Self, String> {
         let (executable, arguments) = program(&app)?;
         let mut command = Command::new(executable);
+        command.args(arguments);
+        let emit: Emit = Arc::new(move |event, payload| {
+            let _ = app.emit(event, payload);
+        });
+        Self::start_process(command, emit).await
+    }
+
+    // The desktop and packaged integration smoke share the same transport and cleanup.
+    async fn start_process(mut command: Command, emit: Emit) -> Result<Self, String> {
         command
-            .args(arguments)
+            .env_remove("BUN_OPTIONS")
+            .env_remove("BUN_BE_BUN")
+            .env_remove("NODE_OPTIONS")
+            .env_remove("NODE_PATH")
             .env("PYTHONUNBUFFERED", "1")
             .env("PYTHONUTF8", "1")
             .stdin(Stdio::piped())
@@ -84,7 +118,6 @@ impl Runtime {
         let stderr = child.stderr.take().ok_or("runtime stderr unavailable")?;
         let pending: Pending = Arc::new(Mutex::new(HashMap::new()));
         let replies = pending.clone();
-        let event_app = app.clone();
         tauri::async_runtime::spawn(async move {
             let mut lines = BufReader::new(stdout).lines();
             while let Ok(Some(line)) = lines.next_line().await {
@@ -110,14 +143,15 @@ impl Runtime {
                     }
                 } else if message.get("method").and_then(Value::as_str) == Some("runtime.event") {
                     let payload = message.get("params").cloned().unwrap_or(Value::Null);
-                    let _ = event_app.emit("runtime.event", payload);
+                    // JSON-RPC method names may contain dots; Tauri event names may not.
+                    emit("runtime-event", payload);
                 }
             }
             for (_, sender) in replies.lock().expect("pending lock").drain() {
                 let _ = sender.send(Err("本地服务已退出，请重启 Maa Verge".into()));
             }
-            let _ = event_app.emit(
-                "runtime.disconnected",
+            emit(
+                "runtime-disconnected",
                 json!({ "reason": "本地服务已退出" }),
             );
         });
@@ -205,7 +239,7 @@ impl Runtime {
     }
 
     pub async fn shutdown(&self) {
-        // EOF lets Python stop workers and close the database before forced termination.
+        // EOF lets the service destroy native instances and close storage first.
         self.stdin.lock().await.take();
         if let Some(mut child) = self.child.lock().await.take() {
             if tokio::time::timeout(Duration::from_secs(5), child.wait())
@@ -216,6 +250,143 @@ impl Runtime {
                 let _ = child.wait().await;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use std::path::Path;
+
+    fn lease(worker: &Path, lock: &Path) -> std::process::Output {
+        let mut command = std::process::Command::new(worker);
+        command
+            .arg("--lease-only")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
+        }
+        let mut child = command.spawn().expect("packaged C++ worker");
+        writeln!(
+            child.stdin.take().unwrap(),
+            "{}",
+            json!({"protocolVersion": 1, "lockPath": lock, "lockTimeoutMs": 0})
+        )
+        .unwrap();
+        child.wait_with_output().unwrap()
+    }
+
+    #[test]
+    #[ignore = "requires standalone runtime; run pnpm test:desktop-runtime"]
+    fn packaged_runtime_transport() {
+        let executable = PathBuf::from(
+            std::env::var_os("MAAVERGE_TEST_RUNTIME").expect("standalone runtime path"),
+        );
+        let data =
+            PathBuf::from(std::env::var_os("MAAVERGE_TEST_DATA").expect("isolated test root"));
+        let worker = executable.with_file_name(if cfg!(windows) {
+            "maaverge-core-worker.exe"
+        } else {
+            "maaverge-core-worker"
+        });
+        let locks = data.join("locks");
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let captured = events.clone();
+        let emit: Emit = Arc::new(move |name, payload| {
+            captured.lock().unwrap().push((name.to_owned(), payload))
+        });
+        let command = || {
+            let mut command = Command::new(&executable);
+            command
+                .args(["--mode", "mock", "--data-dir"])
+                .arg(&data)
+                .current_dir(&data)
+                .env("PATH", "")
+                .env("MAAVERGE_MODE", "mock")
+                .env("MAAVERGE_DEVICE_LOCK_DIR", &locks)
+                .env_remove("MAAVERGE_CORE_WORKER_PATH")
+                .env("BUN_OPTIONS", "--invalid-option")
+                .env("BUN_BE_BUN", "1")
+                .env("NODE_OPTIONS", "--invalid-option")
+                .env("NODE_PATH", "invalid");
+            command
+        };
+        tauri::async_runtime::block_on(async {
+            let runtime = Runtime::start_process(command(), emit.clone())
+                .await
+                .unwrap();
+            let snapshot = runtime
+                .request("app.snapshot".into(), json!({}))
+                .await
+                .unwrap();
+            assert_eq!(snapshot["mode"], "mock");
+            let mut settings = snapshot["settings"].clone();
+            settings["minimizeToTray"] = json!(false);
+            runtime
+                .request("settings.save".into(), json!({"settings": settings}))
+                .await
+                .unwrap();
+            assert!(!runtime.minimize_to_tray());
+            let proposal = runtime
+                .request("agent.message".into(), json!({"message": "刷1-7材料3次"}))
+                .await
+                .unwrap();
+            let mut plan = proposal["plan"].clone();
+            plan["id"] = json!("desktop-smoke");
+            runtime
+                .request("plan.save".into(), json!({"plan": plan}))
+                .await
+                .unwrap();
+            let params = json!({"planId":"desktop-smoke", "deviceId":"mock-device-1", "requestId":"desktop-once"});
+            let run = runtime
+                .request("run.start".into(), params.clone())
+                .await
+                .unwrap();
+            assert_eq!(run["status"], "running");
+            assert_eq!(
+                runtime
+                    .request("run.start".into(), params.clone())
+                    .await
+                    .unwrap()["id"],
+                run["id"]
+            );
+            let lock = std::fs::read_dir(&locks)
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap()
+                .path();
+            assert!(
+                !lease(&worker, &lock).status.success(),
+                "C++ lease must exclude a second controller"
+            );
+            runtime
+                .request("run.stop".into(), json!({"id": run["id"]}))
+                .await
+                .unwrap();
+            runtime.shutdown().await;
+            assert!(
+                lease(&worker, &lock).status.success(),
+                "shutdown must release the C++ device lease"
+            );
+            let restarted = Runtime::start_process(command(), emit).await.unwrap();
+            assert!(!restarted.minimize_to_tray());
+            assert_eq!(
+                restarted.request("run.start".into(), params).await.unwrap()["id"],
+                run["id"]
+            );
+            restarted.shutdown().await;
+            assert!(events
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|(name, _)| name == "runtime-event"));
+        });
     }
 }
 

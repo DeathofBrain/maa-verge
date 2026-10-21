@@ -1,4 +1,4 @@
-/* Generated from Python Pydantic models. Run pnpm contracts:generate. Do not edit. */
+/* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */
 
 export type Mode = 'mock' | 'native';
 export type Id = string;

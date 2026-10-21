@@ -1,4 +1,7 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://maaverge.local/contracts/runtime.schema.json",
+  "$comment": "Authoritative runtime contract. Edit this source, then run pnpm contracts:generate. Defaults are applied by the application models, not validators.",
   "$defs": {
     "Budgets": {
       "additionalProperties": false,

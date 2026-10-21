@@ -15,7 +15,7 @@ from pathlib import Path
 
 import httpx
 
-from .archives import extract_archive, normalize_runtime_root
+from .archives import extract_archive, extract_core_archive, normalize_runtime_root
 from .models import RpcError
 from .paths import fs_path
 from .storage import Store, now
@@ -347,7 +347,7 @@ class UpdateService:
                     }
                 )
             else:
-                extract_archive(archive, generation)
+                extract_core_archive(archive, generation)
             normalize_runtime_root(generation)
             self.validator(generation, generation, metadata["version"])
         else:

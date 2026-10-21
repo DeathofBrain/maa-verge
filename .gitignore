@@ -2,6 +2,7 @@ node_modules/
 .pnpm-store/
 .venv/
 .tools/
+.bun-cache/
 __pycache__/
 *.py[cod]
 *.egg-info/

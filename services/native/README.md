@@ -1,0 +1,68 @@
+# MaaCore 工作进程
+
+C++20 可执行文件 `maaverge-core-worker` 独立于 UI 和业务数据库。生产构建不需要
+Python；CTest 的开发测试使用 Python 3.12 和 filelock。仅将此文件夹作为 CMake
+source：
+
+```sh
+cmake -S services/native -B build/native -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+cmake --build build/native --config Release
+cmake --install build/native --config Release --prefix dist/native
+```
+
+Windows 在 Visual Studio 开发环境使用 Ninja，或使用匹配本机工具的 Visual Studio
+generator。Windows 的目标使用 `/MT`（Debug 为 `/MTd`）；Linux 静态链接 libstdc++
+和 libgcc，保留系统 libc/loader；macOS 使用系统库。MaaCore 及其依赖动态加载，不
+随工作进程编译或下载。nlohmann/json 3.12.0 的来源和哈希固定在 CMakeLists.txt。
+
+## 协议
+
+stdin/stdout 使用 UTF-8 NDJSON，每条消息最多 4 MiB。所有输出包含
+`protocolVersion: 1`。为兼容 Python supervisor，输入可暂时省略版本；显式版本必须
+为 1。原生日志的 CRT stdout 和系统 stdout handle 在加载动态库前改向 stderr，
+协议描述符不被原生子进程继承。调用者应继续对进程设置总体超时。
+
+三种模式互斥：
+
+- 默认或 `--worker`：首行配置包含 `core`、`resource`、`userDir`、`adb`、`address`、
+  `lockPath`。取得设备锁、加载资源和创建实例后输出 `{type:"ready",protocolVersion:1}`。
+  后续命令为 `{id,operation:"connect"}`、`{id,operation:"task",task:{type,params}}` 或
+  `{id,operation:"stop"}`。返回现有 `response`、`callback` 与 `status` 消息；异步调用的
+  ID、task ID、`pendingAsync` 和 `running` 与 Python 实现相同。参数、授权和预算仍由
+  确定性业务服务校验。AsstStop 清空原生队列，不提供暂停恢复。
+- `--validate`：读取一条 `{core,resource,version}`，在临时用户目录检查 11 个必需
+  API、版本及资源加载。成功仅输出一条 `{version,resourceLoaded:true,protocolVersion:1}`。
+  不创建控制实例、不连接设备；失败日志保留最后 8 条错误，至多 1200 字节。
+- `--lease-only`：读取 `{lockPath,lockTimeoutMs?}`，取得锁后输出
+  `{type:"ready",mode:"lease-only",protocolVersion:1}`。stdin EOF 释放锁；不接受操作命令，
+  不加载 MaaCore。用于 mock 设备租约，不承担业务数据根锁。
+
+Windows 锁为相同文件 offset 0、length 1 的独占 LockFileEx，Unix 为 flock，兼容
+Python filelock。调用者计算现有规范化 ADB server/设备标识的哈希和共享锁目录；
+工作进程只持有传入的锁文件。无 soft-lock 回退，Unix 不删除锁文件。锁一直持有至
+AsstDestroy 和动态库卸载完成。EOF 先停止、销毁再退出；回调 context 在 Destroy
+返回前保持有效，借用字符串会立即复制到队列。
+
+可选超时（毫秒）：`lockTimeoutMs` 默认 10000、最大 60000，允许 0 表示立即尝试；
+`startupTimeoutMs` 默认 45000；`nativeCallTimeoutMs` 默认 20000（validate 为 90000）；
+`asyncTimeoutMs` 默认 30000；`shutdownTimeoutMs` 默认 5000。其余上限 120000。
+原生调用无法安全取消；超时将以 124 退出，执行结果未知，supervisor 必须阻止自动重放。
+状态泵和卸载异常以 70 退出；协议管道断开以 74 退出。初始化/配置失败以 1 退出，
+单条命令失败返回 response.error。Linux/macOS 的 supervisor 应在启动时设置核心
+目录对应的 LD_LIBRARY_PATH/DYLD_LIBRARY_PATH，供原生依赖解析。
+
+## 合成测试
+
+```sh
+cmake -S services/native -B build/native -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build/native --config Release
+ctest --test-dir build/native -C Release --output-on-failure
+```
+
+可用 `-DPython3_EXECUTABLE=/path/to/python` 指定开发解释器。测试现场编译两份
+`vsynthetic` 动态库，完全不连接 ADB、模拟器或游戏，不使用 MaaCore 下载与模型。
+四组 CTest 覆盖版本/符号/资源错误、协议隔离、Unicode 路径、回调复制、异步与原生
+调用超时、停止清队列、销毁回调寿命、Python/C++ 锁互斥及异常退出释放。
+
+Windows x64 已运行上述 Release 构建和合成测试；其他平台的代码和 CI 配置不代表
+对应平台原生加载或设备行为已经验收。

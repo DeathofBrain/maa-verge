@@ -1,6 +1,6 @@
 # 开发状态
 
-更新日期：2026-10-21。当前为 **0.1.0 开发预览**。工程和首批功能已落地，[PLAN.md](../PLAN.md) 中的完整产品与研究路线尚未全部交付。
+更新日期：2026-10-22。当前为 **0.1.0 开发预览**。工程和首批功能已落地，[PLAN.md](../PLAN.md) 中的完整产品与研究路线尚未全部交付。
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表从独立的“任务表”入口管理，保留页内编排、逐任务设置和常驻运行条。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。定时、库存保持、社区作业与工具结果等后端缺口仍明确标为未接入，完整原 MAA 兼容继续按功能矩阵验收。
 
@@ -8,26 +8,55 @@
 
 | 范围 | 当前行为 |
 | --- | --- |
-| 工程与环境 | pnpm workspace、uv/Python 3.12、Cargo/rustup；版本文件、三个依赖锁、跨平台 bootstrap、doctor、AGENTS.md 和贡献说明 |
+| 工程与环境 | pnpm workspace、固定 Bun 1.4.3、CMake/C++20、Cargo/rustup；保留 uv/Python 3.12 作为参考与回归工具，发行链路不调用 Python；依赖锁、bootstrap、doctor 和贡献说明 |
 | 界面 | 默认主页状态仪表盘；独立任务表/专项任务入口，进入后展开对应任务表树与三栏编辑工作台；页内分组参数、任务编排/任务表设置/定时计划三页签；作业中心、工具箱、设备、分类设置、Agent 与记录；浅色/深色/跟随系统、侧栏悬停加深与轻量页面/按钮/卡片/运行面板过渡、尊重减少动态效果、窄窗返回路径及常驻运行/日志/停止栏 |
 | 任务表配置 | 新建/复制/导出任务表，保存说明、日常/专项分组、固定设备和可继承全局的整表限额；同类任务重复/复制/拖动与按钮排序/启停；19类任务常用字段和完整JSON，保留未知参数与无效草稿；草稿在会话内跨页/重载保留，保存与开始行为明确分开 |
-| 通信与数据 | Tauri → Python 换行 JSON-RPC；Pydantic 输出 schema 生成 TypeScript；SQLite 保存计划、运行、设置和事件；请求去重、崩溃后不自动重放结果未知的执行 |
+| 通信与数据 | Tauri → TypeScript/Bun 换行 JSON-RPC；独立 JSON Schema 生成 TypeScript 与预编译校验器；bun:sqlite 保持原库格式、rowid 顺序、事件与请求去重；Python/Bun 使用独立 SQLite 锁库互斥，首次接管 serialize 一致性备份；崩溃后不自动重放未知结果 |
 | Mock | 浏览器与桌面均可在无核心、无模拟器、无模型 Key 的情况下开发；明确模拟状态，支持设备发现/连接/断开、别名去重、表级策略、运行/停止、提案审阅与更新 |
-| 原生设备适配 | 启动后/空闲期间自动发现并连接本地模拟器，支持手动触发、开关、诊断和断开抑制；SDK/PATH/内置 ADB、默认多开端口与 BlueStacks 动态端口；每设备独立 MaaCore 进程；异步结果确认及设备/ADB server 别名共享锁；详见 [连接说明](emulator-connection.md) |
+| 原生设备适配 | TypeScript 监督设备发现与连接；独立 C++20 进程动态加载 MaaCore C API，协议版本握手、回调复制入队、异步结果及空闲状态确认；C++ 持有跨实例/跨语言设备锁直到实例销毁；保留 SDK/PATH/内置 ADB、多开端口、BlueStacks 及别名处理；详见 [连接说明](emulator-connection.md) |
 | 任务策略 | 登记全部 19 类非 Debug MaaCore 任务与六种客户端代码；逐任务参数校验、默认零消耗、数据汇报默认关闭、仅执行启用任务；回调 taskid 匹配及空闲状态后继续；接口覆盖和受限选项见 [功能矩阵](maa-compatibility.md) |
 | 首次安装 | 原生模式自动检查并下载官方稳定版核心；验证架构对应资产、版本、必需符号与资源加载后启用；核心和基础资源无需手动安装 |
-| 核心更新 | 首次安装单独解压；已有安装在候选目录调用所保留的官方 Python `Updater.update()`，外层固定元数据、验证下载及安全解压，并独立校验结果；C API 本身无更新接口 |
+| 核心更新 | 已合入两项精简提取提交，并迁移至 TypeScript；首装和更新共用选择性安全解压，整个归档先验证后筛选；保留运行库、资源、许可证及合法版本别名，跳过 GUI/.NET/WPF；独立编译后端的更新作业进程解压，C++ 隔离校验，不写业务数据库；[提取规则](maacore-runtime.md) |
 | 资源更新 | 与核心独立；固定 MaaResource commit，同一提交查询及下载；从当前核心的基础资源重新构建候选，再应用当前完整覆盖快照，记录来源文件、提交、时间与内容哈希；移除上次覆盖的残留并保留基础任务与模型 |
 | 更新切换 | 不可变版本目录；新进程校验；等待当前任务边界和异步调用结束后切换工作进程，保留后续任务；失败保留旧组合，可回滚上一组核心/资源 |
-| 自动检查 | 原生模式启动时、核心每 24 小时、资源每 6 小时；失败五分钟后重试；下载与执行轮询分线程；关闭自动检查后支持手动操作 |
+| 自动检查 | 原生模式启动时、核心每 24 小时、资源每 6 小时；失败五分钟后重试；异步下载、独立更新作业进程与执行轮询互不阻塞；关闭自动检查后支持手动操作 |
 | 桌面生命周期 | 一体化可拖动顶栏及最小化/最大化/还原/关闭，加载期保留窗口操作；Windows 修正最大化旧画面拉伸、主题同步窗口/WebView 背景；单实例、托盘、设置控制关窗行为、完全退出时关闭本地服务；开发默认 mock，安装版默认 native，可用环境变量覆盖 |
-| CI | 应用检查及 Windows x64、Ubuntu x64、macOS arm64/x64 的未签名构建矩阵；具体结果以 GitHub Actions 为准 |
+| 发行与 CI | Tauri 携带 Bun 单文件后端、C++ 工作进程和许可文本，无 Python 环境、node_modules 或原生 JS 插件；/MT、Linux 静态 libstdc++/libgcc、MaaCore 动态更新；四宿主 Bun 探针门禁、原生构建矩阵和 Linux 干净容器测试，实际结果见下文 |
 
 原生设备路径已实现，尚未通过真实账号的游戏操作验收。单独成功加载核心也不能证明所有关卡或任务语义兼容。
 
 ## 平台验证
 
-### Windows x64
+### 本次 TypeScript/C++20 迁移（Windows x64，2026-10-22）
+
+- 固定 Bun 1.4.3，保留 Node 24.22.0/pnpm 10.20.0 前端工具链。本机完成四目标最小后端交叉编译和 Windows x64 执行；覆盖 stdio、SQLite、子进程、ZIP/TAR、保 rowid 备份与独占锁。空 PATH、损坏 dotenv/bunfig 不影响独立后端启动；其他宿主结果见下文 CI 记录。
+- `pnpm check` 通过：契约同步、TypeScript、7 项契约测试、611 项 Bun 测试、Python ruff/mypy 与 274 项 pytest、Rust fmt/clippy/test。Bun 另有 1 项 Windows 不支持的可移植 SIGTERM 测试明确跳过；默认 Cargo 检查跳过需独立包的集成测试，该项已在打包阶段单独执行通过。Python 针对 Linux/macOS/Windows 的 mypy 均通过，28 项 Chromium mock E2E 通过。移除 PyInstaller 及其专用依赖后，冻结同步和 274 项 Python 回归、完整 `pnpm check` 再次通过。
+- Python↔Bun 双向争锁、崩溃释放、保 rowid 备份、事件顺序、请求去重、停止竞态、EOF 尾帧与 stdout 断管清理回归通过。全部 19 类任务的参数/预算及 mock Agent 与 Python 对照通过，包括显式 null、Unicode、数字 token、重启后严格整数校验和未知大整数保留。
+- Windows C++ Release 的 4 组 CTest 覆盖 23 个合成情形，包括回调、异步确认、超时/崩溃/EOF、跨语言设备互斥；生产构建不依赖 Python，工作进程 PE 导入表仅含 KERNEL32.dll。它动态加载的 MaaCore 仍有自己的原生依赖。
+- 自包含后端 → C++ mock 设备锁、RPC、提案、持久化、去重、停止、资源等待切换与重启通过；同一编译后端的更新作业 → 选择性提取 → C++ 合成 MaaCore 校验通过。桌面宿主共用 Rust transport → 编译后端 → C++ 锁的冒烟测试通过，同时检查事件转发与退出释放。
+- `pnpm test:desktop-webview` 已在本机真实 release WebView2 窗口通过：DOM 操作启动/停止计划、包内 C++ worker 出现及释放、正常关窗退出、重启后保留停止记录；页面异常与退出后残留进程均为零。独立数据、设备锁和 WebView profile 在测试后清理。该测试发现并修复了 Tauri 不允许点号事件名的问题，宿主改用 `runtime-event`，内部 JSON-RPC 继续使用 `runtime.event`；相同测试能检出旧程序的错误。应用进程树没有 Python/Node/Bun 解释器进程，但开发机本身仍装有这些工具。
+- Windows MSI 与 NSIS 完整本地构建通过，运行时目录仅包含两个可执行文件、build-info 和许可证；未交互安装、签名或发布。新版安装包尚未在卸载全部开发工具的干净系统中验收，空 PATH 测试仅证明本次进程路径不依赖外部语言运行时。
+- macOS 13.5、Ubuntu 22.04 为目标基线；Ubuntu 22.04 已覆盖宿主构建和后端容器运行，macOS 13.5 实机仍未验证。正式签名/公证、下载后的真实 MaaCore 加载、三平台干净系统交互安装以及 Linux/macOS 实际 WebView 生命周期仍待验收；宿主 CI 和容器不能替代这些结果。
+
+本轮只运行 mock、替代 ADB 与合成库，未连接真实游戏设备、调用付费模型或发布 release。迁移交接见 [runtime-migration.md](runtime-migration.md)。下列较早记录属于当时的 Python 架构，不能作为新版跨平台验收结果。
+
+### 四平台宿主 CI（2026-10-22）
+
+提交 `302d52e` 的 [完整工作流 39644328852](https://github.com/DeathofBrain/maa-verge/actions/runs/39644328852) 全部成功。四个宿主分别编译并执行 Bun 1.4.3 最小探针，验证空 PATH、SQLite/WAL、独立 DELETE journal 备份、稀疏 rowid、独占锁、stdio、子进程和 ZIP/TAR。随后原生矩阵实际执行以下验证：
+
+| 宿主与架构 | CMake/CTest | 后端测试 | 完整构建产物 |
+| --- | --- | --- | --- |
+| `windows-2022` x64 | 4/4 通过 | 611 通过、1 项 SIGTERM 跳过 | MSI、NSIS |
+| Ubuntu 22.04 x64 | 4/4 通过 | 612 通过 | DEB、RPM、AppImage |
+| `macos-14` arm64 | 4/4 通过 | 612 通过 | `.app`、DMG |
+| `macos-15-intel` x64 | 4/4 通过 | 612 通过 | `.app`、DMG |
+
+- 四平台 Rust fmt/clippy/test、包内独立后端 smoke、编译后更新作业 → 精简提取 → C++ 合成核心校验，以及 Tauri Rust transport → 后端 → C++ 设备锁 smoke 均通过。macOS 两个后端可执行文件使用各自权限进行 ad-hoc hardened 签名，签名检查和签名后启动通过；未使用正式证书或公证。
+- Ubuntu 应用 job 的契约、前端、Python lint/三平台类型检查与 274 项测试、28 项浏览器 mock E2E 通过。该 job 无原生测试产物，后端为 610 项通过、2 项明确跳过；原生矩阵则执行相应编译后辅助进程测试。
+- `pnpm test:clean-linux` 在 Linux CI 非 root 用户下通过：原始 Ubuntu 22.04 容器确认没有 Python/python3/Node/Bun，运行会话断网，只挂载只读运行时和独立数据目录，验证 mock 提案、计划/设置持久化、C++ 设备锁、请求去重、停止及 EOF 后重启。另已将该安装包内的后端取出，在本机 Docker Linux 引擎中复验通过。容器与临时数据退出后清理。
+- 发行运行时目录检查仅含两个可执行文件、build-info 与许可证；没有 Python 环境目录、node_modules 或原生 JS 插件。完整安装包作为未正式签名的 CI artifact 保存，不构成已发布 release。后端容器、Windows 实际 WebView 与目标系统安装的验收边界见上一节。
+
+### 历史 Windows x64（Python 运行时）
 
 宿主：Windows x64；Node 24.22.0、pnpm 10.20.0、Python 3.12.15、Rust 1.90.0。工具与虚拟环境保留在本机忽略目录，不提交至 Git。
 
@@ -104,6 +133,14 @@
 - 合并后的 `pnpm check` 通过：契约同步、TypeScript、Python ruff/mypy、202 项 Python 测试和 Rust fmt/clippy/test 编译检查；Rust 仍无独立业务单元测试。`pnpm test:e2e:mock` 的 28 项 Chromium 测试全部通过，README 本地链接和图片路径已检查。
 - 本次集成未重新构建发行安装包或进行其他平台、真实游戏设备的验收，沿用上述各次验证的实际范围。
 
+### 本次 MaaCore 选择性安装验证（Windows x64，2026-10-21）
+
+- 参考 maa-cli 的库/资源分别提取方式，为首装与官方 Python Updater 的 ZIP/TAR 更新统一接入选择性安全解压。保留顶层原生依赖、控制单元插件、完整基础资源和运行根许可声明，跳过原 GUI、独立更新器、.NET/WPF、示例与界面素材；不从任意子目录扁平化收集 DLL。[规则与依据](maacore-runtime.md)。
+- Python ruff、针对 Windows/Linux/macOS 的 mypy、**242 项 Python 测试**通过。覆盖三平台库筛选、完整资源、版本化文件别名、跳过内容不打开/落盘、被跳过成员的路径/重复/特殊文件/链接检查，以及首装、更新、原版本不变和回滚。
+- PyInstaller Python 侧进程构建与冒烟检查通过：mock JSON-RPC 快照、EOF 正常退出，以及 frozen 官方 Updater 的本地合成 ZIP 选择性提取均已验证；合成库文件只作文本载荷，不加载为原生库。
+- 官方 v6.20.1 Windows x64 ZIP 下载及 SHA-256 校验通过；精简后约 **325.1 MiB**，较全部归档展开约 **545.0 MiB** 减少 **40.35%**。首装、从 v6.20.0 更新、空闲等待后激活及回滚均通过真实核心隔离进程的版本/API/资源加载校验；原核心文件哈希未变。没有连接游戏设备。
+- 本轮未修改前端、契约或 Rust，未重复浏览器、原生窗口或完整安装包验收。macOS/Linux 选择规则由合成归档覆盖，尚未在对应平台加载精简后的真实核心；此前已安装的完整 generation 不做原位裁剪。
+
 ## 尚未实现及边界
 
 - Agent 当前提供 **mock 规则提案**，供审阅、编辑和手动执行；真实模式的云模型、资料检索、自主托管、视觉工具和自动打新关卡尚未接入。
@@ -121,7 +158,7 @@
 
 ## 后续交接
 
-1. 在目标平台与模拟器上验证首次安装、任务回调、停止、断线与更新切换；记录核心版本、资源 commit 和脱敏设备信息。
+1. 完成 macOS 13.5 最低系统、正式签名/公证和三平台干净系统交互安装验收，补 Linux/macOS 实际 WebView 路径及真实下载核心的加载验证；随后由用户明确选择模拟器测试首次安装、任务回调、停止、断线与更新切换，记录版本及脱敏设备信息。
 2. 以 [原 MAA 功能矩阵](maa-compatibility.md) 为发布门槛，补齐全参数专用表单、受限消耗控制、识别/库存工具、定时多配置、作业管理和失败恢复；继续连接诊断、平台专用驱动及六种客户端资源验证。
 3. 接入用户自备模型 API、系统钥匙串、工具权限和费用预算，再逐步开放 Agent 的真实执行。
 4. 完成三平台签名发行与应用更新，再推进独立战斗研究及评测。
