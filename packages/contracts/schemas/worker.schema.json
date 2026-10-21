@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://maaverge.local/contracts/worker.schema.json",
+  "$comment": "NDJSON protocol v1. Every native output carries protocolVersion=1. Parent process owns persistence and task policy.",
+  "title": "WorkerProtocol",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["configuration", "leaseConfiguration", "validationConfiguration", "command", "event", "validation"],
+  "properties": {
+    "configuration": { "$ref": "#/$defs/WorkerConfiguration" },
+    "leaseConfiguration": { "$ref": "#/$defs/WorkerLeaseConfiguration" },
+    "validationConfiguration": { "$ref": "#/$defs/WorkerValidationConfiguration" },
+    "command": { "$ref": "#/$defs/WorkerCommand" },
+    "event": { "$ref": "#/$defs/WorkerEvent" },
+    "validation": { "$ref": "#/$defs/WorkerValidation" }
+  },
+  "$defs": {
+    "WorkerLeaseConfiguration": {
+      "type": "object", "additionalProperties": false, "required": ["protocolVersion", "lockPath"],
+      "properties": {
+        "protocolVersion": { "const": 1 }, "lockPath": { "type": "string", "minLength": 1 },
+        "lockTimeoutMs": { "type": "integer", "minimum": 0, "maximum": 60000 }
+      }
+    },
+    "WorkerValidationConfiguration": {
+      "type": "object", "additionalProperties": false, "required": ["protocolVersion", "core", "resource", "version"],
+      "properties": {
+        "protocolVersion": { "const": 1 }, "core": { "type": "string", "minLength": 1 },
+        "resource": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 },
+        "nativeCallTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 }
+      }
+    },
+    "WorkerConfiguration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocolVersion", "core", "resource", "adb", "address", "userDir", "lockPath"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "core": { "type": "string", "minLength": 1 },
+        "resource": { "type": "string", "minLength": 1 },
+        "adb": { "type": "string", "minLength": 1 },
+        "address": { "type": "string", "minLength": 1 },
+        "userDir": { "type": "string", "minLength": 1 },
+        "lockPath": { "type": "string", "minLength": 1 },
+        "lockTimeoutMs": { "type": "integer", "minimum": 0, "maximum": 60000 },
+        "startupTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 },
+        "nativeCallTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 },
+        "asyncTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 },
+        "shutdownTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 }
+      }
+    },
+    "WorkerCommand": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["protocolVersion", "id", "operation"],
+          "properties": {
+            "protocolVersion": { "const": 1 }, "id": { "type": ["string", "integer"] }, "operation": { "enum": ["connect", "stop"] }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["protocolVersion", "id", "operation", "task"],
+          "properties": {
+            "protocolVersion": { "const": 1 }, "id": { "type": ["string", "integer"] }, "operation": { "const": "task" },
+            "task": {
+              "type": "object", "additionalProperties": false, "required": ["type", "params"],
+              "properties": { "type": { "type": "string", "minLength": 1 }, "params": { "type": "object", "additionalProperties": true } }
+            }
+          }
+        }
+      ]
+    },
+    "WorkerEvent": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["protocolVersion", "type"],
+          "properties": { "protocolVersion": { "const": 1 }, "type": { "const": "ready" }, "mode": { "const": "lease-only" } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["protocolVersion", "type", "id", "result"],
+          "properties": {
+            "protocolVersion": { "const": 1 }, "type": { "const": "response" }, "id": { "type": ["string", "integer", "null"] },
+            "result": { "type": "object", "additionalProperties": true }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["protocolVersion", "type", "id", "error"],
+          "properties": {
+            "protocolVersion": { "const": 1 }, "type": { "const": "response" }, "id": { "type": ["string", "integer", "null"] },
+            "error": { "type": "string" }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["protocolVersion", "type", "message", "details"],
+          "properties": {
+            "protocolVersion": { "const": 1 }, "type": { "const": "callback" }, "message": { "type": "integer" },
+            "details": { "type": "object", "additionalProperties": true }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["protocolVersion", "type", "running", "pendingAsync"],
+          "properties": {
+            "protocolVersion": { "const": 1 }, "type": { "const": "status" }, "running": { "type": "boolean" },
+            "pendingAsync": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "uniqueItems": true }
+          }
+        }
+      ]
+    },
+    "WorkerValidation": {
+      "type": "object", "additionalProperties": false, "required": ["protocolVersion", "version", "resourceLoaded"],
+      "properties": { "protocolVersion": { "const": 1 }, "version": { "type": "string" }, "resourceLoaded": { "const": true } }
+    }
+  }
+}
