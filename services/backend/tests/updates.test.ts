@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { OfficialSource, platformAsset, runUpdateJob, treeHash, UpdateService, type UpdateSource, type UpdateStore } from "../src/updates.ts";
@@ -22,6 +22,24 @@ test("platform assets cover all release architectures", () => {
   expect(platformAsset("Windows", "AMD64")).toBe("win-x64.zip");
   expect(platformAsset("Linux", "x86_64")).toBe("linux-x86_64.tar.gz");
   expect(() => platformAsset("Windows", "x86")).toThrow();
+});
+test("tree hashes preserve Python pathlib component ordering and Unicode code points", async () => {
+  const root = await temp(); await mkdir(path.join(root, "a"));
+  const contents = new Map([["a.txt", "1"], ["a/item", "2"], ["Z", "3"], ["b", "4"], ["\ue000", "5"], ["\u{10000}", "6"]]);
+  for (const [relative, content] of contents) await writeFile(path.join(root, relative), content);
+  const order = process.platform === "win32" ? ["a/item", "a.txt", "b", "Z", "\ue000", "\u{10000}"] : ["Z", "a/item", "a.txt", "b", "\ue000", "\u{10000}"];
+  const digest = createHash("sha256");
+  for (const relative of order) digest.update(relative).update(contents.get(relative)!);
+  expect(await treeHash(root)).toBe(digest.digest("hex"));
+});
+test("all update states expose the nullable latest version contract and await finish hooks", async () => {
+  const root = await temp(), store = new MemoryStore(); let finished = false;
+  const updates = new UpdateService(root, store, () => {}, () => false, { finishActivate: async () => { await Bun.sleep(10); finished = true; } });
+  for (const state of updates.channels()) expect(state.latestVersion).toBeNull();
+  const old = store.get("update", "core"); delete old.latestVersion; store.put("update", "core", old);
+  expect(updates.channel("core").latestVersion).toBeNull();
+  await updates.check("core"); await updates.prepare("core"); await updates.activate("core");
+  expect(finished).toBe(true);
 });
 test("official resource metadata pins version and archive to the same commit", async () => {
   const urls: string[] = [], commit = "a".repeat(40);
@@ -165,3 +183,14 @@ test.skipIf(!process.env.MAAVERGE_TEST_NATIVE_WORKER || !process.env.MAAVERGE_TE
   expect(code, stderr).toBe(0); expect(JSON.parse(stdout)).toEqual({});
   expect(await Bun.file(path.join(root, "out", "MAA.exe")).exists()).toBe(false);
 });
+test.skipIf(!process.env.MAAVERGE_TEST_COMPILE_UPDATE || !process.env.MAAVERGE_TEST_NATIVE_WORKER || !process.env.MAAVERGE_TEST_CORE_LIBRARY)("compiled service reexecutes itself for update jobs without a Bun environment", async () => {
+  const root = await temp(), executable = path.join(root, process.platform === "win32" ? "update-service.exe" : "update-service");
+  const build = Bun.spawnSync([process.execPath, "build", "--compile", "--no-compile-autoload-dotenv", "--no-compile-autoload-bunfig", "--outfile", executable, path.join(import.meta.dir, "fixtures/compiled-update.ts")]);
+  expect(build.exitCode, build.stderr.toString()).toBe(0);
+  const archive = path.join(root, "synthetic.zip"), coreName = process.platform === "win32" ? "MaaCore.dll" : process.platform === "darwin" ? "libMaaCore.dylib" : "libMaaCore.so";
+  await writeFile(archive, zipBytes([{ name: coreName, content: await readFile(process.env.MAAVERGE_TEST_CORE_LIBRARY!) }, { name: "resource/version.json", content: "{}" }]));
+  const child = Bun.spawn([executable], { cwd: root, env: { ...process.env, PATH: "", NODE_PATH: "", NODE_OPTIONS: "", BUN_OPTIONS: "", BUN_BE_BUN: "" },
+    stdin: new Blob([JSON.stringify({ root: path.join(root, "data"), archive, workerPath: process.env.MAAVERGE_TEST_NATIVE_WORKER })]), stdout: "pipe", stderr: "pipe" });
+  const [stdout, stderr, code] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]);
+  expect(code, stderr).toBe(0); expect(JSON.parse(stdout)).toEqual({ standalone: true, staged: "vsynthetic" });
+}, 30_000);
