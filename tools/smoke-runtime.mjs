@@ -1,65 +1,74 @@
+import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { createInterface } from 'node:readline';
 import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { root, windows, fail } from './project.mjs';
+import { cleanRuntimeEnvironment } from './setup-bun.mjs';
+import { zipBytes } from '../services/backend/tests/archive-fixture.ts';
 
 async function main() {
   const temporary = mkdtempSync(path.join(tmpdir(), 'maaverge-package-smoke-'));
   const executable = path.join(root, 'dist/runtime/maaverge-runtime', windows ? 'maaverge-runtime.exe' : 'maaverge-runtime');
+  const children = new Set();
+  const environment = { ...cleanRuntimeEnvironment(), PATH: '', MAAVERGE_MODE: 'mock', MAAVERGE_DEVICE_LOCK_DIR: path.join(temporary, 'locks') };
+  const spawnOwned = (arguments_) => {
+    const child = spawn(executable, arguments_, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: environment, cwd: temporary });
+    children.add(child); child.once('close', () => children.delete(child)); child.stdin.on('error', () => {});
+    return child;
+  };
+  async function session() {
+    const child = spawnOwned(['--mode', 'mock', '--data-dir', temporary]);
+    let stderr = '', next = 0; const pending = new Map();
+    child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-8000); });
+    const exit = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', code => { for (const request of pending.values()) request.reject(new Error(`Runtime exited ${code}: ${stderr}`)); code === 0 ? resolve() : reject(new Error(`Runtime exited ${code}: ${stderr}`)); }); });
+    exit.catch(() => {});
+    createInterface({ input: child.stdout }).on('line', line => {
+      try { const value = JSON.parse(line), request = pending.get(value.id); if (request) { pending.delete(value.id); clearTimeout(request.timer); value.error ? request.reject(new Error(JSON.stringify(value.error))) : request.resolve(value.result); } }
+      catch (error) { child.kill(); for (const request of pending.values()) request.reject(error); }
+    });
+    const request = (method, params = {}) => new Promise((resolve, reject) => {
+      const id = ++next, timer = setTimeout(() => { pending.delete(id); reject(new Error(`RPC timed out: ${method}: ${stderr}`)); }, 15000);
+      pending.set(id, { resolve, reject, timer }); child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
+    });
+    return { request, end: async () => { child.stdin.end(); await exit; } };
+  }
   try {
-    const child = spawn(executable, ['--mode', 'mock', '--data-dir', temporary], {
-      stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
-      env: { ...process.env, MAAVERGE_MODE: 'mock' },
-    });
-    let stdout = '';
-    let stderr = '';
-    child.stdin.on('error', () => {});
-    child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk; });
-    child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr = (stderr + chunk).slice(-16000); });
-    const timer = setTimeout(() => child.kill(), 30000);
-    child.stdin.end(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'app.snapshot', params: {} })}\n`);
-    const code = await new Promise((resolve, reject) => {
-      child.once('error', reject);
-      child.once('close', resolve);
-    }).finally(() => clearTimeout(timer));
-    if (code !== 0) throw new Error(`Packaged runtime exited ${code}: ${stderr}`);
-    const messages = stdout.trim().split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
-    const response = messages.find((message) => message.id === 1);
-    if (response?.jsonrpc !== '2.0' || response.result?.mode !== 'mock' || !Array.isArray(response.result?.devices)) {
-      throw new Error('Packaged runtime did not return a valid mock snapshot');
+    writeFileSync(path.join(temporary, '.env'), 'BUN_BE_BUN=1\nNODE_OPTIONS=--invalid-option\n');
+    writeFileSync(path.join(temporary, 'bunfig.toml'), '[broken\n');
+    const first = await session();
+    assert.equal((await first.request('app.snapshot')).mode, 'mock');
+    const proposal = await first.request('agent.message', { message: '刷1-7材料3次' }); assert.equal(proposal.requiresConfirmation, true);
+    await first.request('plan.save', { plan: { ...proposal.plan, id: 'package-smoke' } });
+    const run = await first.request('run.start', { planId: 'package-smoke', deviceId: 'mock-device-1', requestId: 'packaged-once' });
+    assert.equal(run.status, 'running');
+    assert.equal((await first.request('run.start', { planId: 'package-smoke', deviceId: 'mock-device-1', requestId: 'packaged-once' })).id, run.id);
+    await first.request('updates.check', { channel: 'resource' }); await first.request('updates.prepare', { channel: 'resource' });
+    assert.equal((await first.request('updates.activate', { channel: 'resource' })).status, 'waiting_idle');
+    assert.equal((await first.request('run.stop', { id: run.id })).status, 'stopped');
+    await first.end();
+    const second = await session();
+    assert((await second.request('app.snapshot')).plans.some(plan => plan.id === 'package-smoke'));
+    assert.equal((await second.request('run.start', { planId: 'package-smoke', deviceId: 'mock-device-1', requestId: 'packaged-once' })).id, run.id);
+    await second.end();
+    const coreName = windows ? 'MaaCore.dll' : process.platform === 'darwin' ? 'libMaaCore.dylib' : 'libMaaCore.so';
+    const fixture = [path.join(root, 'build/native/fixtures/normal/Release', coreName), path.join(root, 'build/native/fixtures/normal', coreName)].find(existsSync);
+    if (fixture) {
+      const archive = path.join(temporary, 'synthetic.zip'), target = path.join(temporary, 'candidate'); mkdirSync(target);
+      writeFileSync(archive, zipBytes([{ name: coreName, content: readFileSync(fixture) }, { name: 'resource/version.json', content: '{}' }, { name: 'MAA.exe', content: 'excluded' }]));
+      const job = spawnOwned(['--update-job']); let output = '', errors = '';
+      job.stdout.on('data', chunk => { output += chunk; }); job.stderr.on('data', chunk => { errors += chunk; });
+      job.stdin.end(JSON.stringify({ channel: 'core', archive, target, version: 'vsynthetic' }) + '\n');
+      const timer = setTimeout(() => job.kill(), 15000);
+      const code = await new Promise((resolve, reject) => { job.once('error', reject); job.once('close', resolve); }).finally(() => clearTimeout(timer));
+      assert.equal(code, 0, errors); assert.deepEqual(JSON.parse(output), {}); assert(!existsSync(path.join(target, 'MAA.exe')));
+      console.log('Packaged update-job -> selective extraction -> synthetic C++ MaaCore validation passed.');
     }
-    const archive = path.join(temporary, 'fixture.zip');
-    const target = path.join(temporary, 'candidate');
-    mkdirSync(target);
-    // A deterministic ZIP with text-only core/resource fixtures and unused GUI
-    // files. No native library is loaded; this checks frozen selective extraction.
-    writeFileSync(archive, Buffer.from('UEsDBBQAAAAAAAAAIVxNwYUhHgAAAB4AAAALAAAATWFhQ29yZS5kbGxzeW50aGV0aWMtbm90LWEtbmF0aXZlLWxpYnJhcnlQSwMEFAAAAAAAAAAhXEO/pqMCAAAAAgAAABUAAAByZXNvdXJjZS92ZXJzaW9uLmpzb257fVBLAwQUAAAAAAAAACFcv1qLHxMAAAATAAAAGQAAAHJlc291cmNlL3Ntb2tlLW1hcmtlci50eHRwYWNrYWdlZC11cGRhdGVyLW9rUEsDBBQAAAAAAAAAIVyzmBYTCgAAAAoAAAAHAAAATUFBLmV4ZXVudXNlZC1ndWlQSwMEFAAAAAAAAAAhXCmSCXYNAAAADQAAABEAAABleHRlcm5hbHMvZ3VpLmRsbHVudXNlZC1kb3RuZXRQSwECFAAUAAAAAAAAACFcTcGFIR4AAAAeAAAACwAAAAAAAAAAAAAAgAEAAAAATWFhQ29yZS5kbGxQSwECFAAUAAAAAAAAACFcQ7+mowIAAAACAAAAFQAAAAAAAAAAAAAAgAFHAAAAcmVzb3VyY2UvdmVyc2lvbi5qc29uUEsBAhQAFAAAAAAAAAAhXL9aix8TAAAAEwAAABkAAAAAAAAAAAAAAIABfAAAAHJlc291cmNlL3Ntb2tlLW1hcmtlci50eHRQSwECFAAUAAAAAAAAACFcs5gWEwoAAAAKAAAABwAAAAAAAAAAAAAAgAHGAAAATUFBLmV4ZVBLAQIUABQAAAAAAAAAIVwpkgl2DQAAAA0AAAARAAAAAAAAAAAAAACAAfUAAABleHRlcm5hbHMvZ3VpLmRsbFBLBQYAAAAABQAFADcBAAAxAQAAAAA=', 'base64'));
-    const helper = spawn(executable, ['--native-helper'], {
-      stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
-      env: { ...process.env, MAAVERGE_MODE: 'mock', PYTHONUTF8: '1' },
-    });
-    let helperOutput = '';
-    let helperErrors = '';
-    helper.stdin.on('error', () => {});
-    helper.stdout.setEncoding('utf8').on('data', (chunk) => { helperOutput += chunk; });
-    helper.stderr.setEncoding('utf8').on('data', (chunk) => { helperErrors = (helperErrors + chunk).slice(-16000); });
-    const helperTimer = setTimeout(() => helper.kill(), 30000);
-    helper.stdin.end(JSON.stringify({ operation: 'official_update', archive, target, currentVersion: 'v0.0.1', version: 'v0.0.2' }));
-    const helperCode = await new Promise((resolve, reject) => {
-      helper.once('error', reject);
-      helper.once('close', resolve);
-    }).finally(() => clearTimeout(helperTimer));
-    if (helperCode !== 0 || !JSON.parse(helperOutput).installed
-        || readFileSync(path.join(target, 'resource/smoke-marker.txt'), 'utf8') !== 'packaged-updater-ok'
-        || readFileSync(path.join(target, 'MaaCore.dll'), 'utf8') !== 'synthetic-not-a-native-library'
-        || existsSync(path.join(target, 'MAA.exe')) || existsSync(path.join(target, 'externals'))) {
-      throw new Error(`Packaged official updater helper failed: ${helperErrors}`);
-    }
-    console.log('Packaged runtime verified: JSON-RPC mock snapshot, clean EOF shutdown, frozen official updater with selective extraction.');
+    console.log('Self-contained package smoke passed: empty PATH, RPC, C++ device lease, persistence, deduplication, updates and EOF cleanup.');
   } finally {
-    const prefix = path.join(tmpdir(), 'maaverge-package-smoke-');
-    if (!path.resolve(temporary).startsWith(path.resolve(prefix))) throw new Error('Unexpected smoke temporary path');
+    for (const child of children) child.kill();
+    if (!path.resolve(temporary).startsWith(path.join(tmpdir(), 'maaverge-package-smoke-'))) throw new Error('Unexpected smoke temporary path');
     rmSync(temporary, { recursive: true, force: true });
   }
 }

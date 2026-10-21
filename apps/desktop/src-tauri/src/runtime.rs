@@ -27,15 +27,33 @@ fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
             .join("../../..")
             .canonicalize()
             .map_err(|error| error.to_string())?;
-        let python = project.join(if cfg!(windows) {
-            ".venv/Scripts/python.exe"
-        } else {
-            ".venv/bin/python"
-        });
-        if !python.is_file() {
-            return Err("Python 环境未准备，请先运行 uv sync --frozen".into());
+        if std::env::var("MAAVERGE_BACKEND").as_deref() == Ok("python") {
+            let python = project.join(if cfg!(windows) {
+                ".venv/Scripts/python.exe"
+            } else {
+                ".venv/bin/python"
+            });
+            if !python.is_file() {
+                return Err("Python 参考环境未准备，请运行 uv sync --frozen".into());
+            }
+            return Ok((python, vec!["-m".into(), "maaverge_runtime".into()]));
         }
-        Ok((python, vec!["-m".into(), "maaverge_runtime".into()]))
+        let bun = project.join(if cfg!(windows) {
+            ".tools/bun/bun.exe"
+        } else {
+            ".tools/bun/bun"
+        });
+        if !bun.is_file() {
+            return Err("Bun 环境未准备，请运行 pnpm setup:bun".into());
+        }
+        Ok((
+            bun,
+            vec![
+                "run".into(),
+                "--no-env-file".into(),
+                project.join("services/backend/src/entry.ts").to_string_lossy().into(),
+            ],
+        ))
     } else {
         let executable = app
             .path()
@@ -48,7 +66,7 @@ fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
                 "maaverge-runtime"
             });
         if !executable.is_file() {
-            return Err("应用安装包缺少 Python runtime，请重新安装 Maa Verge".into());
+            return Err("应用安装包缺少本地服务，请重新安装 Maa Verge".into());
         }
         Ok((executable, vec![]))
     }
@@ -60,6 +78,10 @@ impl Runtime {
         let mut command = Command::new(executable);
         command
             .args(arguments)
+            .env_remove("BUN_OPTIONS")
+            .env_remove("BUN_BE_BUN")
+            .env_remove("NODE_OPTIONS")
+            .env_remove("NODE_PATH")
             .env("PYTHONUNBUFFERED", "1")
             .env("PYTHONUTF8", "1")
             .stdin(Stdio::piped())
@@ -205,7 +227,7 @@ impl Runtime {
     }
 
     pub async fn shutdown(&self) {
-        // EOF lets Python stop workers and close the database before forced termination.
+        // EOF lets the service destroy native instances and close storage first.
         self.stdin.lock().await.take();
         if let Some(mut child) = self.child.lock().await.take() {
             if tokio::time::timeout(Duration::from_secs(5), child.wait())
