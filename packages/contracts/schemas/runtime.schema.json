@@ -1,0 +1,548 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://maaverge.local/contracts/runtime.schema.json",
+  "$comment": "Authoritative runtime contract. Edit this source, then run pnpm contracts:generate. Defaults are applied by the application models, not validators.",
+  "$defs": {
+    "Budgets": {
+      "additionalProperties": false,
+      "properties": {
+        "originium": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Originium",
+          "type": "integer"
+        },
+        "medicine": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Medicine",
+          "type": "integer"
+        },
+        "expedited": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Expedited",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "originium",
+        "medicine",
+        "expedited"
+      ],
+      "title": "Budgets",
+      "type": "object"
+    },
+    "Device": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "address": {
+          "title": "Address",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "idle",
+            "running",
+            "offline"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "coreVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coreversion"
+        },
+        "resourceVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resourceversion"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "address",
+        "state",
+        "coreVersion",
+        "resourceVersion"
+      ],
+      "title": "Device",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Createdat",
+          "type": "string"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "message",
+        "createdAt",
+        "data"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "ModelSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "default": "none",
+          "title": "Provider",
+          "type": "string"
+        },
+        "baseUrl": {
+          "default": "",
+          "title": "Baseurl",
+          "type": "string"
+        },
+        "model": {
+          "default": "",
+          "title": "Model",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "baseUrl",
+        "model"
+      ],
+      "title": "ModelSettings",
+      "type": "object"
+    },
+    "Plan": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "default": "",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Description",
+          "type": "string"
+        },
+        "deviceId": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deviceid"
+        },
+        "group": {
+          "default": "daily",
+          "enum": [
+            "daily",
+            "specialized"
+          ],
+          "title": "Group",
+          "type": "string"
+        },
+        "budgets": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Budgets"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/Task"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "title": "Tasks",
+          "type": "array"
+        },
+        "schedule": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Schedule"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "deviceId",
+        "group",
+        "budgets",
+        "tasks",
+        "schedule",
+        "enabled"
+      ],
+      "title": "Plan",
+      "type": "object"
+    },
+    "Run": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "planId": {
+          "title": "Planid",
+          "type": "string"
+        },
+        "deviceId": {
+          "title": "Deviceid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "running",
+            "completed",
+            "failed",
+            "stopped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "progress": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Progress",
+          "type": "integer"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "startedAt": {
+          "title": "Startedat",
+          "type": "string"
+        },
+        "finishedAt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finishedat"
+        }
+      },
+      "required": [
+        "id",
+        "planId",
+        "deviceId",
+        "status",
+        "progress",
+        "message",
+        "startedAt",
+        "finishedAt"
+      ],
+      "title": "Run",
+      "type": "object"
+    },
+    "Settings": {
+      "additionalProperties": false,
+      "properties": {
+        "autoConnect": {
+          "default": true,
+          "title": "Autoconnect",
+          "type": "boolean"
+        },
+        "autoUpdateCore": {
+          "default": true,
+          "title": "Autoupdatecore",
+          "type": "boolean"
+        },
+        "autoUpdateResource": {
+          "default": true,
+          "title": "Autoupdateresource",
+          "type": "boolean"
+        },
+        "minimizeToTray": {
+          "default": true,
+          "title": "Minimizetotray",
+          "type": "boolean"
+        },
+        "theme": {
+          "default": "system",
+          "enum": [
+            "dark",
+            "light",
+            "system"
+          ],
+          "title": "Theme",
+          "type": "string"
+        },
+        "budgets": {
+          "$ref": "#/$defs/Budgets"
+        },
+        "model": {
+          "$ref": "#/$defs/ModelSettings"
+        }
+      },
+      "required": [
+        "autoConnect",
+        "autoUpdateCore",
+        "autoUpdateResource",
+        "minimizeToTray",
+        "theme",
+        "budgets",
+        "model"
+      ],
+      "title": "Settings",
+      "type": "object"
+    },
+    "Task": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "StartUp",
+            "CloseDown",
+            "Fight",
+            "Recruit",
+            "Infrast",
+            "Mall",
+            "Award",
+            "SwitchTheme",
+            "Roguelike",
+            "Copilot",
+            "SSSCopilot",
+            "ParadoxCopilot",
+            "Depot",
+            "OperBox",
+            "Reclamation",
+            "Custom",
+            "SingleStep",
+            "VideoRecognition",
+            "OperProgress"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "params",
+        "enabled"
+      ],
+      "title": "Task",
+      "type": "object"
+    },
+    "UpdateChannel": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "app",
+            "core",
+            "resource"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "currentVersion": {
+          "title": "Currentversion",
+          "type": "string"
+        },
+        "latestVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latestversion"
+        },
+        "status": {
+          "default": "idle",
+          "enum": [
+            "idle",
+            "checking",
+            "available",
+            "downloading",
+            "staged",
+            "waiting_idle",
+            "active",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "progress": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Progress",
+          "type": "integer"
+        },
+        "message": {
+          "default": "",
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "currentVersion",
+        "latestVersion",
+        "status",
+        "progress",
+        "message"
+      ],
+      "title": "UpdateChannel",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "mode": {
+      "enum": [
+        "mock",
+        "native"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "devices": {
+      "items": {
+        "$ref": "#/$defs/Device"
+      },
+      "title": "Devices",
+      "type": "array"
+    },
+    "plans": {
+      "items": {
+        "$ref": "#/$defs/Plan"
+      },
+      "title": "Plans",
+      "type": "array"
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/Run"
+      },
+      "title": "Runs",
+      "type": "array"
+    },
+    "updates": {
+      "items": {
+        "$ref": "#/$defs/UpdateChannel"
+      },
+      "title": "Updates",
+      "type": "array"
+    },
+    "settings": {
+      "$ref": "#/$defs/Settings"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/Event"
+      },
+      "title": "Events",
+      "type": "array"
+    }
+  },
+  "required": [
+    "mode",
+    "devices",
+    "plans",
+    "runs",
+    "updates",
+    "settings",
+    "events"
+  ],
+  "title": "Snapshot",
+  "type": "object"
+}

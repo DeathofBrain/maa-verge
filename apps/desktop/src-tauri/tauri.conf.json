@@ -34,7 +34,7 @@
       "../../../dist/runtime/maaverge-runtime/": "runtime/"
     },
     "macOS": {
-      "minimumSystemVersion": "13.3",
+      "minimumSystemVersion": "13.5",
       "entitlements": "Entitlements.plist"
     },
     "windows": {

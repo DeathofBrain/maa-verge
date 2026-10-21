@@ -15,9 +15,15 @@
     "contracts:check": "node tools/generate-contracts.mjs --check",
     "test:e2e:mock": "playwright test",
     "test:python": "uv run pytest",
+    "setup:bun": "node tools/setup-bun.mjs",
+    "test:runtime": "node tools/test-runtime.mjs",
+    "test:packaging": "node tools/probe-bun.mjs",
+    "build:native-worker": "node tools/build-core-worker.mjs",
     "test:ui": "playwright test"
   },
   "devDependencies": {
+    "ajv": "8.17.1",
+    "esbuild": "0.28.2",
     "@playwright/test": "^1.56.1",
     "@tauri-apps/cli": "^2.9.0",
     "@types/node": "^24.10.0",

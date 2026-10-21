@@ -17,6 +17,10 @@ def serialized(method):
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         with self.lock:
+            if method.__name__ != "close":
+                if not self.lease.in_transaction:
+                    raise RuntimeError("数据目录锁已失效，停止业务读写")
+                self.lease.execute("SELECT 1")
             return method(self, *args, **kwargs)
 
     return wrapper
@@ -26,6 +30,20 @@ class Store:
     def __init__(self, root: Path):
         self.lock = threading.RLock()
         root.mkdir(parents=True, exist_ok=True)
+        # Shared with the TypeScript service. The service itself owns the lease;
+        # a helper process must never release it while the writer remains alive.
+        self.lease = sqlite3.connect(
+            root / ".runtime-lock.sqlite3", timeout=0, check_same_thread=False
+        )
+        try:
+            mode = self.lease.execute("PRAGMA journal_mode=DELETE").fetchone()[0]
+            if mode != "delete":
+                raise RuntimeError("无法建立数据目录独占锁")
+            self.lease.execute("PRAGMA busy_timeout=0")
+            self.lease.execute("BEGIN EXCLUSIVE")
+        except Exception:
+            self.lease.close()
+            raise
         self.db = sqlite3.connect(root / "maaverge.sqlite3", check_same_thread=False)
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript("""
@@ -98,4 +116,7 @@ class Store:
 
     @serialized
     def close(self) -> None:
-        self.db.close()
+        try:
+            self.db.close()
+        finally:
+            self.lease.close()
