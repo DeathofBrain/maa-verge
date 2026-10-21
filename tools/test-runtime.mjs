@@ -8,6 +8,11 @@ async function main() {
   const coreName = process.platform === 'win32' ? 'MaaCore.dll' : process.platform === 'darwin' ? 'libMaaCore.dylib' : 'libMaaCore.so';
   const worker = ['Release/', ''].map(prefix => path.join(root, 'build/native', prefix, workerName)).find(existsSync);
   const core = ['Release/', ''].map(prefix => path.join(root, 'build/native/fixtures/normal', prefix, coreName)).find(existsSync);
-  await run(await ensureBun(), ['test', 'services/backend/tests'], { env: { ...cleanRuntimeEnvironment(), ...(worker && core ? { MAAVERGE_TEST_NATIVE_WORKER: worker, MAAVERGE_TEST_CORE_LIBRARY: core } : {}) } });
+  const python = path.join(root, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
+  await run(await ensureBun(), ['test', 'services/backend/tests'], { env: {
+    ...cleanRuntimeEnvironment(),
+    ...(existsSync(python) ? { MAAVERGE_REFERENCE_PYTHON: python } : {}),
+    ...(worker && core ? { MAAVERGE_TEST_NATIVE_WORKER: worker, MAAVERGE_TEST_CORE_LIBRARY: core, MAAVERGE_TEST_COMPILE_UPDATE: '1' } : {}),
+  } });
 }
 main().catch(fail);

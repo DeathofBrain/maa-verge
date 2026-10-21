@@ -20,7 +20,7 @@ const digests = {
 export function cleanRuntimeEnvironment(environment = process.env) {
   const result = { ...environment };
   for (const key of Object.keys(result)) {
-    if (['NODE_OPTIONS', 'NODE_PATH', 'BUN_OPTIONS', 'BUN_INSTALL', 'BUN_RUNTIME_TRANSPILER_CACHE_PATH'].includes(key.toUpperCase())) delete result[key];
+    if (['NODE_OPTIONS', 'NODE_PATH', 'BUN_OPTIONS', 'BUN_BE_BUN', 'BUN_INSTALL', 'BUN_RUNTIME_TRANSPILER_CACHE_PATH'].includes(key.toUpperCase())) delete result[key];
   }
   return result;
 }
