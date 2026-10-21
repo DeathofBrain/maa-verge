@@ -1,0 +1,19 @@
+{
+  "name": "@maaverge/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "tar": "7.5.22",
+    "yauzl": "3.4.0"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "@types/yauzl": "3.4.0"
+  }
+}

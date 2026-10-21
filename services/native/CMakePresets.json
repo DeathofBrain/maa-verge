@@ -1,0 +1,11 @@
+{
+  "version": 6,
+  "configurePresets": [{
+    "name": "release",
+    "generator": "Ninja",
+    "binaryDir": "${sourceDir}/../../build/native",
+    "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "BUILD_TESTING": "ON" }
+  }],
+  "buildPresets": [{ "name": "release", "configurePreset": "release" }],
+  "testPresets": [{ "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } }]
+}

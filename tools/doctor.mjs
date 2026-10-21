@@ -1,6 +1,7 @@
 import { existsSync, accessSync, constants } from 'node:fs';
 import path from 'node:path';
 import { root, pinnedNode, probe, devEnvironment } from './project.mjs';
+import { bunVersion, ensureBun } from './setup-bun.mjs';
 
 let failures = 0;
 function report(ok, label, detail, required = true) {
@@ -11,14 +12,15 @@ const native = process.argv.includes('--native');
 const checks = [
   ['Node.js', 'node', /^v24\./u, `Node ${pinnedNode}`],
   ['pnpm', 'pnpm', /^10\./u, 'pnpm 10'],
-  ['uv', 'uv', /^uv /u, 'uv'],
 ];
 for (const [label, executable, pattern, expected] of checks) {
   const result = probe(executable);
   report(result.ok && pattern.test(result.output), label, result.output.split('\n')[0] || `Install ${expected}`);
 }
+try { report(true, 'Bun', `${bunVersion}: ${await ensureBun({ download: false })}`); }
+catch (error) { report(false, 'Bun', `${error.message}; run pnpm setup:bun`); }
 const python = probe('uv', ['run', '--frozen', '--no-sync', 'python', '--version']);
-report(python.ok && /^Python 3\.12\./u.test(python.output), 'Python environment', python.output || 'Run uv sync --frozen');
+report(python.ok && /^Python 3\.12\./u.test(python.output), 'Python reference tests (optional)', python.output || 'Run uv sync --frozen for reference tests', false);
 for (const file of ['pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock']) {
   report(existsSync(path.join(root, file)), file, existsSync(path.join(root, file)) ? 'present' : 'missing');
 }
