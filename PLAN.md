@@ -1,6 +1,6 @@
 # Maa Verge 开发计划
 
-状态：工程已初始化，M0/M1/M2 部分能力已实现，尚未通过完整发行验收；当前实现与验证记录见 [docs/STATUS.md](docs/STATUS.md)。本文件保留完整交付路线，不把待办视为已交付。更新日期：2026-10-21。
+状态：工程已初始化，M0/M1/M2 部分能力已实现，尚未通过完整发行验收；当前实现与验证记录见 [docs/STATUS.md](docs/STATUS.md)。本文件保留完整交付路线，不把待办视为已交付。更新日期：2026-10-22。
 
 ## 1. 产品目标与总体架构
 
@@ -27,38 +27,39 @@
 | 桌面外壳 | Tauri 2、少量 Rust | 窗口、托盘、通知、系统集成、侧进程管理、应用更新 |
 | 页面 | React、TypeScript、Vite | 共用桌面页面、任务表单、Agent 交互和执行可视化 |
 | 样式组件 | Tailwind CSS、shadcn/ui | 明暗主题、键盘操作、响应式布局与统一组件 |
-| 本地应用服务 | Python 3.12、Pydantic | 设备、计划、策略、调度、数据与更新服务 |
-| Agent | LangGraph、LiteLLM | 可持久化编排、工具调用、云模型接入与调用预算 |
-| 自动化核心 | MaaCore C API、Python ctypes | 复用日常、公招、基建、作战和识别任务 |
-| 视觉控制 | 固定 ADB 操作、本地 OpenCV/OCR | 截图、点击、滑动、观察与动作验证 |
-| 持久化 | SQLite WAL、LangGraph SQLite checkpoint | 业务记录、事件和 Agent 状态 |
-| 凭据 | 系统密钥环 | 用户模型密钥；不可用时只在当前会话持有 |
+| 本地应用服务 | TypeScript、固定 Bun 1.4.3 | 设备、计划、策略、数据与独立更新服务；调度继续按里程碑交付 |
+| Agent | TypeScript harness | 当前为确定性 mock 提案；云模型、持久化编排和调用预算待接入 |
+| 自动化核心 | 独立 C++20 worker、MaaCore C API | 原生加载、回调复制、设备锁和调用超时；复用 MAA 任务 |
+| 视觉控制 | 固定 ADB 操作、本地 OCR/视觉适配（后续） | 截图、点击、滑动、观察与动作验证 |
+| 持久化 | bun:sqlite、SQLite WAL | 业务记录、事件、请求去重；后续 Agent checkpoint 使用同一存储边界 |
+| 凭据 | 系统密钥环（待接入） | 用户模型密钥；不可用时只在当前会话持有 |
 | 本地通信 | JSON-RPC 2.0 over stdio、Tauri 命令与事件 | 类型化请求、响应和执行事件 |
 
-Tauri 的外壳较轻，但 Python、MaaCore 和资源仍占主要包体。原生打包和下载后动态库加载必须在第一阶段验证。
+发行服务由 Bun `--compile` 打包，内嵌 JavaScriptCore；用户无需安装 Python、Node 或 Bun。C++ worker 独立携带，MaaCore 与资源运行期安装。自包含仍依赖系统库与 WebView，不等于全静态机器码。Python 3.12 只保留为显式开发参考和合成测试工具；迁移、备份与发行重建边界见 [运行时迁移交接](docs/runtime-migration.md)。
 
 ### 1.3 进程与数据边界
 
 ~~~mermaid
 flowchart TD
     UI[React 页面] <--> Host[Tauri 桌面进程]
-    Host <-->|本地 IPC| Runtime[Python 应用服务]
-    Runtime <--> Store[SQLite 与 Agent checkpoint]
-    Runtime <--> Model[用户配置的云端模型 API]
+    Host <-->|JSON-RPC / NDJSON| Runtime[TypeScript 应用服务 / Bun]
+    Runtime <--> Store[SQLite / 计划、运行、事件、去重]
+    Runtime -.后续接入.-> Model[用户配置的云端模型 API]
     Runtime --> Updates[安装及更新服务]
     Runtime --> Broker[设备控制权管理]
-    Broker --> Core[MaaCore 工作进程：每设备独立]
-    Broker --> Vision[视觉控制器]
+    Broker --> Core[C++20 MaaCore worker：每设备独立]
+    Broker -.后续接入.-> Vision[视觉控制器]
     Core --> Device[ADB 模拟器或安卓设备]
     Vision --> Device
 ~~~
 
-- Tauri 负责进程生命周期；业务逻辑集中在 Python 应用服务，界面不直接调用 MaaCore、ADB 或 Shell。
+- Tauri 负责进程生命周期；业务逻辑集中在 TypeScript 应用服务，界面不直接调用 MaaCore、ADB 或 Shell。release 仅启动包内服务，不自动回退到 Python。
 - 每个设备的 MaaCore 在独立进程中加载，隔离原生崩溃和进程级资源状态。
 - 任务、事件、设备控制权和更新状态由应用服务管理，核心工作进程不直接写业务数据库。
-- 使用 Pydantic 定义 IPC schema 并生成 TypeScript 类型；请求和运行分别有唯一标识，事件带递增序号。
+- 以 `packages/contracts/schemas` 的 JSON Schema 为协议来源，生成 TypeScript 参数/结果类型和独立校验器；请求和运行分别有唯一标识，事件带递增序号。C++ worker 输出使用 `protocolVersion: 1`。
 - 设备、计划、执行、截图、Agent 和更新都通过业务接口访问；模型不能访问任意文件或构造任意系统命令。
 - SQLite 使用版本化 SQL 迁移。核心版本回滚不回滚业务数据库，工作进程协议须保持兼容。
+- TypeScript 与 Python 参考实现互斥持有同一专用 SQLite 数据根锁。首次接管现有数据库时先 serialize、fsync、检查完整性再原子改名备份，保留隐式 rowid 与已存请求去重键。
 
 ## 2. 执行能力、Agent 与界面
 
@@ -145,17 +146,17 @@ flowchart TD
 | 对象 | 默认检测 | 来源与实现 |
 | --- | --- | --- |
 | Maa Verge 应用 | 启动时和手动 | Tauri 更新机制、项目发布源 |
-| MaaCore 二进制及基础依赖 | 启动时、每 24 小时、手动 | 官方版本 API 与发布资产，优先复用官方 Python Updater |
+| MaaCore 二进制及基础依赖 | 启动时、每 24 小时、手动 | TypeScript 查询官方版本 API、固定发布资产并选择性提取 |
 | 游戏资源 | 启动时、每 6 小时、手动；UnsupportedLevel 触发带冷却的检查 | 官方 MaaResource 固定提交快照；MirrorChyan 为可选加速源 |
 
 三者独立展示版本、更新说明、检查时间、进度和失败状态。用户可关闭自动下载、固定版本或手动回滚。定时检测增加轻量随机抖动和失败退避。
 
-MaaCore C API 当前没有更新入口，只有版本查询和资源加载。官方 Python Updater 可更新已有安装；核心版本不变时直接返回，因此不能代替独立资源更新服务。
+MaaCore C API 当前没有更新入口，只有版本查询和资源加载。TypeScript 服务直接实现核心更新与资源更新；旧版官方 Python Updater 的行为保留作参考，发行路径不再调用它。核心版本相同仍须独立检查 MaaResource。
 
 ### 3.2 首次自动安装
 
 - 自动识别 OS 和 CPU 架构，下载官方稳定版组件；macOS 选择 runtime-universal.zip。
-- 复用官方版本查询和下载辅助逻辑。空目录首次安装不直接调用需要现有 MaaCore 的 Updater 构造器。
+- 按官方版本查询与资产布局选择对应包，首次安装与更新共用 TypeScript 下载、归档提取和 C++ 验证路径。
 - 下载、解压到用户数据目录下的候选版本目录，检查目标架构、必需文件、实际核心版本和资源加载。
 - 成功后设置活动版本，失败保留错误信息并允许重试；不要求用户手动下载 MaaCore。
 - 核心安装后独立检查最新游戏资源，资源源不可达时保留可用基础资源并显示其时间。
@@ -163,9 +164,9 @@ MaaCore C API 当前没有更新入口，只有版本查询和资源加载。官
 
 ### 3.3 MaaCore 更新
 
-- Windows/Linux 优先在候选目录中调用官方 Updater.update；macOS 适配其资产选择逻辑。
-- 官方更新器放在受监控的独立进程中，设置超时，并把输出转换成结构化事件。
-- Updater 没有可靠的结构化成功返回，外层必须验证实际版本和资源加载，并防止意外降级。
+- TypeScript 固定官方版本及下载资产，在候选目录中选择性提取原生依赖、完整基础资源和声明文件；macOS 选择 runtime-universal 资产。
+- 解压任务由同一服务可执行文件的 `--update-job` 独立模式运行，不打开业务数据库；随后通过 C++ `--validate` 检查版本、必需符号和资源。
+- 下载或解压成功不能代替实际加载校验。校验失败、版本不符或意外降级时保留旧组合。
 - 更新包只写候选目录。工作进程不引用随时变化的 current 路径，而固定使用实际版本路径。
 - 保存官方包提供的基础资源，避免将旧资源快照无条件覆盖到新核心。
 - Maa Verge 应用更新与核心更新分离。核心更新不要求退出桌面应用。
@@ -207,8 +208,10 @@ maa-verge/
   README.md
   CONTRIBUTING.md
   apps/desktop/          React 与 Tauri，Rust 桥接位于 src-tauri
-  services/runtime/      Python 应用服务、Agent、设备、更新与工作进程
-  packages/contracts/    Pydantic 导出的 schema 与 TypeScript 类型
+  services/backend/      TypeScript 应用服务、Agent、设备、数据与更新
+  services/native/       C++20 MaaCore worker 与合成 CTest
+  services/runtime/      Python 参考实现，仅显式 debug 与回归比较
+  packages/contracts/    JSON Schema、生成的 TypeScript 类型与校验器
   tests/fixtures/        合成或脱敏场景、事件与截图
   tools/                 环境引导、诊断、测试、打包脚本
   docs/                  架构决策、三平台环境、测试与交接文档
@@ -235,8 +238,8 @@ M0 初始化 Git 仓库并建立公共主分支及功能分支流程；远程仓
 
 ### 4.3 工具链、锁文件与配置
 
-- Node 24 LTS、pnpm 10、Python 3.12/uv、Rust/rustup。
-- 提交 Node 版本文件、packageManager 字段、.python-version、rust-toolchain.toml 和所有依赖锁文件。
+- Node 24 LTS、pnpm 10、固定 Bun 1.4.3、CMake 3.25+/C++20、Rust/rustup；Python 3.12/uv 用于参考与合成测试。
+- 提交 Node/Bun 版本文件、packageManager 字段、.python-version、rust-toolchain.toml 和所有依赖锁文件。
 - Node 与 Rust 在首次环境验证后锁定具体补丁版本；CI 与引导脚本读取相同版本源。
 - 提交 pnpm-lock.yaml、uv.lock、Cargo.lock；持续集成使用 frozen/locked 模式。
 - 提供根 package.json、pnpm-workspace.yaml、Python pyproject.toml、Rust 配置、.editorconfig、.gitattributes 和 .gitignore。
@@ -251,23 +254,27 @@ M0 初始化 Git 仓库并建立公共主分支及功能分支流程；远程仓
 | 命令 | 用途 |
 | --- | --- |
 | pnpm dev:mock | 无模拟器、无 MaaCore、无模型 Key 的完整开发模式 |
-| pnpm dev | 启动 React、Tauri 和通过 uv 管理的 Python 服务 |
+| pnpm dev | 启动 React、Tauri、项目固定 Bun 的 TypeScript 服务及 C++ worker |
+| pnpm setup:bun | 下载并校验项目固定版本的 Bun |
 | pnpm run doctor | 检查工具链、原生 SDK、数据目录、ADB 和核心加载 |
 | pnpm check | 运行格式检查、lint、类型、契约及必要测试 |
 | pnpm test:e2e:mock | 基于相同 IPC 和事件模型验证产品流程 |
-| pnpm build | 构建当前 OS/架构的应用与 Python 侧进程 |
+| pnpm test:runtime | TypeScript 服务与可用原生合成库的集成测试 |
+| pnpm test:packaging | 当前宿主的 Bun 独立运行探针 |
+| pnpm test:desktop-runtime | Rust transport 与包内服务、C++ mock 租约的集成 smoke，不启动 WebView |
+| pnpm build | 构建当前 OS/架构的应用、自包含服务和 C++ worker |
 
 doctor 的设备连接和云模型网络检查为显式选项，不在普通检查中操作真实游戏或消耗模型费用。不同 worktree 隔离运行数据、日志和开发端口。
 
-为 Windows、macOS、Linux 分别记录 Tauri 原生 SDK、WebView、Python 打包和 ADB 设置。原生开发不以 Docker 为前提。
+为 Windows、macOS、Linux 分别记录 Tauri 原生 SDK、WebView、Bun/C++ 打包和 ADB 设置。原生开发不以 Docker 为前提。
 
 ### 4.5 Mock、测试与 CI
 
 - MaaCore、ADB、模型和下载源均定义可替换适配器；mock 模式使用相同接口与事件模型。
 - 固定场景覆盖任务进度、失败、掉线、worker 崩溃、首次安装、核心更新、独立资源更新、空闲切换和回滚。
 - 视觉与坐标测试使用合成或脱敏图片；真实账号数据保持本地。
-- PR 检查包含前端 lint/类型/测试，Python lint/类型/测试，Rust fmt/clippy/测试，schema 一致性和 mock 端到端测试。
-- 原生构建覆盖 Windows x64、Linux x64、macOS arm64/x64；Python 在目标 OS 与架构上打包，不假设跨平台编译。
+- PR 检查包含 TypeScript 类型与服务测试、C++ 合成 CTest、Python 参考 lint/类型/测试、Rust fmt/clippy/测试、schema 一致性和 mock 端到端测试。
+- Windows x64、Linux x64、macOS arm64/x64 先在各宿主编译并执行 Bun 独立运行探针，再进行原生打包。跨编译成功不替代宿主执行；未签名工件不替代实际安装验收。
 - 真实核心的加载及资源契约测试单独执行，普通 CI 不依赖模拟器、真实账号或付费模型。
 - 发布流水线执行签名、公证和发布元数据生成，凭据使用 CI secret，产物可追溯至提交和锁文件。
 
@@ -294,7 +301,7 @@ M0 完成后，战斗研究可与产品阶段并行；M1 的更新和版本管�
 - macOS 签名后的发行包能够加载后续下载的原生组件；Linux 在最低支持系统构建并验证新系统。
 - 在另一台电脑从干净 checkout 按文档搭建，不需要复制原电脑路径、虚拟环境或聊天记录。
 
-首批支持目标为 Windows 10/11 x64、macOS 13.3+ arm64/x64、Ubuntu 22.04/24.04 x64。Linux 其他发行版及 Windows/Linux arm64 在建立相应构建和实机验证后扩展。
+首批支持目标为 Windows 10/11 x64、macOS 13.5+ arm64/x64、Ubuntu 22.04/24.04 x64。macOS 最低版本受固定 Bun 运行时约束。Linux 其他发行版及 Windows/Linux arm64 在建立相应构建和实机验证后扩展。
 
 项目采用 AGPL-3.0-only 开源路线，保留上游声明，使用独立品牌和美术资源。应用资源和第三方游戏资料分别保留来源与授权说明。
 

@@ -2,47 +2,52 @@
 
 ## 统一版本与恢复
 
-版本来源为 `.node-version`（Node 24）、`package.json#packageManager`（pnpm 10）、`.python-version`（Python 3.12）和 `rust-toolchain.toml`。依赖由 `pnpm-lock.yaml`、`uv.lock`、`apps/desktop/src-tauri/Cargo.lock` 锁定。
+版本来源为 `.node-version`（Node 24）、`package.json#packageManager`（pnpm 10）、`.bun-version`（Bun 1.4.3）和 `rust-toolchain.toml`。C++ worker 使用 CMake 3.25+ 与 C++20。`.python-version` 的 Python 3.12 仅供保留的参考实现和合成测试。依赖由 `pnpm-lock.yaml`、`uv.lock`、`apps/desktop/src-tauri/Cargo.lock` 及 CMake 中的源码哈希锁定。
 
 每台机器从相同 Git 提交重新执行引导脚本。不要复制其他电脑的 `node_modules`、`.venv`、`.tools`、Rust target 或产品数据库。
 
 ```powershell
-# Windows：完整 Python + 前端；-Native 额外验证原生依赖
+# Windows：前端及 Python 参考/合成测试；-Native 额外验证原生依赖
 powershell -ExecutionPolicy Bypass -File tools/bootstrap.ps1
+powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 setup:bun
 ```
 
 ```bash
 # macOS / Linux
 bash tools/bootstrap.sh
+bash tools/pnpm.sh setup:bun
 ```
 
-引导脚本只在仓库 `.tools` 安装缺少的 Node/pnpm/uv，并使用 uv 管理的 Python。Node 下载通过官方 SHA256 清单验证。Rust 和系统 SDK 需要单独安装，不由引导脚本更改管理员配置。脚本不修改用户 PATH；没有全局 Node/pnpm 时，使用 `powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 <command>` 或 `bash tools/pnpm.sh <command>`，包装脚本会选择本地工具。
+引导脚本在仓库 `.tools` 安装缺少的 Node/pnpm/uv，并使用 uv 管理参考测试所需的 Python；`-MockOnly` / `--mock-only` 跳过 Python。`pnpm setup:bun` 下载官方固定版本归档，按仓库保存的 SHA-256 校验后安装 `.tools/bun`，不会采用 PATH 中的全局 Bun。Node 下载通过官方 SHA256 清单验证。Rust、CMake、C++ 编译器和系统 SDK 需要单独安装。脚本不修改用户 PATH；没有全局 Node/pnpm 时，使用 `powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 <command>` 或 `bash tools/pnpm.sh <command>`，包装脚本会选择本地工具。
 
 已有工具链的机器可直接运行：
 
 ```bash
 pnpm install --frozen-lockfile
 uv sync --frozen
+pnpm setup:bun
 pnpm run doctor
 pnpm dev:mock
 ```
 
-浏览器 mock 完全不需要 Python、Rust、ADB、MaaCore 或模型 Key。它验证 UI/协议与确定性场景，不证明真实核心加载或游戏自动化成功。原生桌面开发默认也使用 mock 适配器，安装版默认 native。
+浏览器 mock 不需要 Python、Bun、Rust、C++ 编译器、ADB、MaaCore 或模型 Key。它验证 UI/协议与确定性场景，不证明真实核心加载或游戏自动化成功。桌面开发使用 TypeScript 服务与 C++ worker，默认仍为 mock；安装版默认 native。
 
 ## 三平台原生依赖
 
 | 平台 | 系统依赖 |
 | --- | --- |
-| Windows x64 | Visual Studio 2022 Build Tools，选择“使用 C++ 的桌面开发”、MSVC x64/x86 和 Windows 10/11 SDK；Microsoft Edge WebView2 Runtime；Rust MSVC 工具链 |
-| macOS 13.3+ | `xcode-select --install`；Rust；在目标 CPU 架构运行 Node、Python 与构建；签名/公证另外配置 |
+| Windows x64 | Visual Studio 2022 Build Tools，选择“使用 C++ 的桌面开发”、MSVC x64/x86、Windows 10/11 SDK 和 CMake 工具；Microsoft Edge WebView2 Runtime；Rust MSVC 工具链 |
+| macOS 13.5+ | `xcode-select --install`；CMake 3.25+；Rust；在目标 CPU 架构运行 Node/Bun 与构建；签名/公证另外配置 |
 | Ubuntu 22.04/24.04 x64 | 下方 apt 包、Rust；图形桌面用于运行，CI 可只编译；AppImage 运行需要 FUSE |
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
+sudo apt-get install -y build-essential cmake curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
 ```
 
 Rust 使用 [rustup](https://rustup.rs/) 安装；在仓库运行 cargo 会按 `rust-toolchain.toml` 选择版本。Windows 从 Developer PowerShell for VS 2022 启动可帮助诊断链接器。若选择本地 `.tools/cargo` 与 `.tools/rustup`，工具脚本会自动识别；不要提交这些目录。
+
+确认 `cmake --version` 至少为 3.25；系统仓库版本过旧时从 [CMake 官方下载](https://cmake.org/download/) 安装相应版本。C++20 worker 的独立构建、协议和合成测试见 [services/native/README.md](../services/native/README.md)。
 
 ```bash
 node tools/doctor.mjs --native
@@ -51,9 +56,11 @@ node tools/check-native.mjs --required
 pnpm build
 ```
 
-`pnpm dev` 同步冻结 Python 依赖，运行 Vite，再启动 Tauri；Tauri 只运行项目 `.venv` 内的 `python -m maaverge_runtime`。前端不能传入可执行文件路径或 Shell。打包版本运行资源目录内的固定 `runtime/maaverge-runtime`，默认使用 native 模式；显式设置 `MAAVERGE_MODE=mock` 可覆盖，开发脚本始终默认 mock。两种模式的数据存于各自的 `<data-root>/<mode>`，避免演示数据进入真实运行。退出时先关闭 stdin，让 Python 收尾，5 秒后仍不退出则终止服务进程。
+`pnpm dev` 验证项目固定 Bun、以生产配置构建 C++ worker，再运行 Vite 和 Tauri；Tauri 使用 `.tools/bun` 执行 `services/backend/src/entry.ts`。前端不能传入可执行文件路径或 Shell。release 只运行资源目录内的固定 `runtime/maaverge-runtime`，缺失时直接报错，不查找系统 Python/Node/Bun，也不切换后端。安装版默认 native；显式 `MAAVERGE_MODE=mock` 可覆盖，开发脚本始终默认 mock。两种模式的数据存于各自的 `<data-root>/<mode>`。退出时先关闭 stdin，让服务释放设备和数据库，超时再终止。
 
-需要验证原生核心时，显式启用 native 模式。它会自动下载核心与资源；设备连接仍在设置中手动发起，连接后也不会自动执行计划。
+比较旧实现时，可在终端显式设置 `MAAVERGE_BACKEND=python` 后运行 `pnpm dev`；启动器此时执行 `uv sync --frozen`，debug Tauri 选择项目 `.venv` 内的 `python -m maaverge_runtime`。该 selector 在 release 不生效。不要同时让新旧服务打开同一模式的数据目录；两者使用相同 SQLite 租约，首次 TypeScript 接管会备份旧数据库。交接和手动恢复步骤见 [runtime-migration.md](runtime-migration.md)。
+
+需要验证原生核心时，显式启用 native 模式。它会自动下载核心与资源，并按自动连接偏好发现、连接本机模拟器；可在设置关闭自动连接或手动触发。连接后不会自动执行计划。常规开发和 CI 保持 mock。
 
 ```powershell
 $env:MAAVERGE_MODE = 'native'
@@ -89,16 +96,24 @@ MAAVERGE_MODE=native bash tools/pnpm.sh dev
 
 ## 构建与持续集成
 
-`pnpm build` 依次构建 TypeScript/React、通过锁定的 PyInstaller 生成 Python `onedir` 侧进程，再调用 Tauri 打包。Python 的包及数据一并收集；MaaCore 和游戏资源由运行期安装器下载，不嵌入应用包。不能在 Windows 构建 Linux/macOS 的 Python 原生依赖。
+`pnpm build` 先检查工作区并构建 React，再由 Bun 1.4.3 `--compile` 生成自包含 TypeScript 服务，构建并复制 C++20 worker、收集许可，执行包内及 Rust transport 集成 smoke，最后调用 Tauri 打包。生产 C++ 配置使用 `BUILD_TESTING=OFF`，不查找 Python；发行目录不包含 `.venv`、`node_modules` 或独立解释器安装。MaaCore 和游戏资源由运行期安装器下载。
 
 MaaCore 首装和更新从官方归档中选择性提取原生依赖与完整资源，跳过原 GUI 和 .NET/WPF；提取规则、上游参考和验证边界见 [maacore-runtime.md](maacore-runtime.md)。
 
 ```bash
 node tools/package-runtime.mjs
+node tools/smoke-runtime.mjs
+pnpm test:desktop-runtime
 ```
 
-PyInstaller 产物位于 `dist/runtime/maaverge-runtime`；Tauri 安装包位于 `apps/desktop/src-tauri/target/release/bundle`。构建中会运行 `node tools/smoke-runtime.mjs`，使用临时 mock 数据目录验证打包服务的 JSON-RPC 快照和 EOF 正常退出，并通过本地无害 ZIP 验证 frozen 辅助进程实际调用官方 Updater。该检查不会下载核心、连接设备或调用模型。开发 cargo 检查创建的占位资源目录不包含可执行文件，不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`，由已安装的 Tauri CLI 生成桌面图标；不需要调用图片模型。设计与提示词见 [branding.md](branding.md)。
+服务目录为 `dist/runtime/maaverge-runtime`，包含 `maaverge-runtime[.exe]`、`maaverge-core-worker[.exe]`、`build-info.json` 和 `licenses/`；Tauri 安装包位于 `apps/desktop/src-tauri/target/release/bundle`。自包含服务内嵌 Bun/JavaScriptCore，仍需系统库与 WebView。Bun SQLite 在 Windows/Linux 随运行时链接，macOS 使用系统 SQLite。C++ worker 在 Windows 使用 `/MT`，Linux 静态链接 libstdc++/libgcc，macOS 使用系统 libc++；MaaCore 仍动态加载。
 
-CI 的应用检查覆盖类型、Python、构建和浏览器 mock 端到端；原生矩阵覆盖 Windows x64、Ubuntu x64、macOS arm64/x64 的 fmt/clippy/test 和未签名构建。CI 配置存在不等于平台已验证，以实际工作流结果和 `docs/STATUS.md` 为准。开发检查在没有 cargo 时明确跳过原生部分；CI 禁止跳过。
+smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下执行包内服务，覆盖 RPC、C++ mock 设备租约、持久化、请求去重、更新等待空闲及 EOF 退出；若已构建 CTest 合成库，还会测试包内 `--update-job` 选择性提取及 C++ 验证链路。这些检查不下载真实核心、不连接设备或调用模型。完整测试先运行 `uv sync --frozen`、`pnpm build:native-worker` 和 `pnpm check`；参考 Python 与 CTest 解释器都仅用于开发。
 
-macOS 主应用与 Python 侧进程包含允许加载后续下载库的 entitlement，但正式发行仍须为全部嵌套 Mach-O/动态库签名、公证，并验证下载 MaaCore 后的加载。Windows 签名和 Tauri 应用自动更新发布源也需要发行凭据；当前 CI 只生成未签名工件，不自动发布。
+`pnpm test:desktop-runtime` 直接使用桌面 `Runtime` 的同一 Rust transport，连接包内 TypeScript 服务和实际 C++ mock 租约进程，检查事件转发、设置与去重的重启持久化、空 PATH、环境清理和设备锁排他/释放。它执行 Rust 集成测试，不启动真实窗口或 WebView；浏览器 E2E 和原生窗口交互仍需分别验收。
+
+许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`；设计与提示词见 [branding.md](branding.md)。
+
+CI 先在 Windows x64、Ubuntu x64、macOS arm64/x64 分别编译并执行 Bun 探针，检查 SQLite/WAL、保留 rowid 的备份、跨进程锁、子进程 NDJSON 和 ZIP/TAR。四宿主 gate 成功后才运行原生矩阵的 C++ CTest、TypeScript 测试、Rust fmt/clippy/test 和未签名构建。应用 job 另保留 Python 参考、契约及浏览器 mock 端到端检查。当前迁移在本机只执行了 Windows 验证；CI 配置和跨编译成功不等于 Linux/macOS 已实测，以实际工作流结果和 `docs/STATUS.md` 为准。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
+
+macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的签名、公证和下载 MaaCore 后的加载。Windows 签名和 Tauri 应用自动更新发布源也需要发行凭据；当前 CI 不自动发布。

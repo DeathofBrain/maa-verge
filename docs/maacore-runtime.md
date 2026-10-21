@@ -1,6 +1,8 @@
 # MaaCore 运行文件的选择性安装
 
-Maa Verge 从官方稳定 Release 下载对应架构的完整归档，在不可变候选目录中选择性解压，再由独立进程校验核心版本、API 和资源加载。首次安装和后续调用官方 Python Updater 的更新共用同一提取规则；独立 MaaResource 覆盖包继续使用通用安全解压。
+Maa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完整归档，在不可变候选目录中选择性解压，再由独立 C++20 进程校验核心版本、API 和资源加载。首次安装和后续核心更新共用同一 TypeScript 提取规则；独立 MaaResource 覆盖包使用通用安全解压。发行路径不再调用官方 Python Updater。
+
+核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/updates.ts)。Python 原实现仍用于回归比较；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。
 
 ## 与 maa-cli 的关系
 
@@ -24,6 +26,8 @@ maa-cli 会将任意子目录中匹配动态库名称的文件扁平化到库目
 
 文件只写入新候选 generation。验证失败不切换；验证成功后仍等待任务空闲边界。已有活动 generation 与回滚文件不做原位精简。此前安装的完整包会保留，到下一次核心版本更新时才使用精简的新目录。
 
+解压由包内服务的 `--update-job` 模式完成，该进程不打开业务数据库；随后调用 `maaverge-core-worker --validate`，检查必需符号、实际版本和资源加载。资源更新固定 MaaResource commit，候选以对应核心的完整基础资源重新构建，再应用该提交覆盖包，清除前次覆盖残留。核心版本相同不跳过资源检查。
+
 ## 官方分发情况（2026-10-21）
 
 Windows v6.20.1 的稳定 Release 只有完整 ZIP。官方 [构建工作流](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.1/.github/workflows/ci.yml#L158) 提供 `MAARuntime-win-*`，但它是需要 GitHub 认证、有保留期限的 Actions 产物，且仍带独立更新器，不作为默认更新源。macOS 已有 `macos-runtime-universal.zip`，Linux 使用 `linux-*.tar.gz`。
@@ -31,6 +35,8 @@ Windows v6.20.1 的稳定 Release 只有完整 ZIP。官方 [构建工作流](ht
 若以后需要减少下载流量，可以推动上游正式发布 Windows runtime，或按固定官方 tag 构建并分发自己的运行时包；选择性解压主要减少本地磁盘占用。
 
 ## Windows x64 验证（2026-10-21）
+
+以下为迁移前 Python 路径的历史验收记录，保留用于对照包体和提取规则；当前 TypeScript/C++ 路径的实际测试见 [STATUS.md](STATUS.md)，不据此推定新路径或其他平台已完成实测。
 
 下载官方 `MAA-v6.20.1-win-x64.zip`，大小 297,879,254 字节，SHA-256 为 `28a6c812c184f4bd6e8a7e7448b2ffa6312d711de7d39595deac771e3e784ea8`，与 Release 元数据一致。全部归档文件展开共 571,424,588 字节（约 545.0 MiB）；选择性首装后的目录含本项目 manifest 共 340,850,391 字节（约 325.1 MiB），减少 **40.35%**。
 
