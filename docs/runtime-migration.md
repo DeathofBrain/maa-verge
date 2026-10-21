@@ -75,7 +75,7 @@ Bun `--compile` 将应用代码和 Bun/JavaScriptCore 放入同一可执行文�
 
 C++ worker 固定 C++20 与 nlohmann/json 3.12.0（CMake 固定 SHA-256）。Windows 使用 `/MT`，Debug 为 `/MTd`；Linux 静态链接 libstdc++/libgcc，仍依赖系统 libc 与动态加载器；macOS 使用系统 libc++。MaaCore、控制单元和其依赖在不可变 generation 中动态加载，不能把 worker 的静态 CRT 当作 MaaCore 没有依赖。
 
-当前发行目标为 Windows x64、Linux x64、macOS arm64/x64。macOS 最低目标为 13.5，受 Bun 约束；Tauri/WebView、操作系统库、图形环境及原生 SDK 仍需满足平台要求。正式签名、公证、安装及下载后动态库加载须在对应平台验收。
+当前发行目标为 Windows x64、Linux x64、macOS arm64/x64。macOS 最低目标为 13.5，受 Bun 约束；Tauri/WebView、操作系统库、图形环境及原生 SDK 仍需满足平台要求。C++ worker 的 macOS 权限单独允许动态库校验例外与 DYLD 搜索路径，服务单独持有 JIT 权限；主应用不申请这些例外。正式签名、公证、安装及下载后动态库加载须在对应平台验收，预签名所用证书需提前导入构建机钥匙串。
 
 ```bash
 pnpm install --frozen-lockfile

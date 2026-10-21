@@ -3,7 +3,7 @@ import { closeSync, mkdirSync, openSync, writeSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { childEnvironment } from './config';
+import { childEnvironment, nativeEnvironment } from './config';
 import { nativeWorkerPath } from './native-path';
 
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
@@ -28,8 +28,7 @@ export class CoreWorker {
     mkdirSync(directory, { recursive: true });
     this.log = openSync(path.join(directory, 'worker.stderr.log'), 'a');
     const command = options.command || [nativeWorkerPath(), ...(options.leaseOnly ? ['--lease-only'] : ['--worker'])];
-    const env = childEnvironment();
-    if (config.core && process.platform !== 'win32') { const key = process.platform === 'darwin' ? 'DYLD_LIBRARY_PATH' : 'LD_LIBRARY_PATH'; env[key] = config.core + path.delimiter + (env[key] || ''); }
+    const env = config.core ? nativeEnvironment(config.core) : childEnvironment();
     this.child = spawn(command[0]!, command.slice(1), { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     this.child.stderr.on('data', bytes => { if (this.log !== undefined) { try { writeSync(this.log, bytes); } catch { /* process is unwinding */ } } });
     let resolveReady!: () => void, rejectReady!: (error: Error) => void;

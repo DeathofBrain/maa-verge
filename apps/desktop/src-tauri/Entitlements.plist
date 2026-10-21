@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-  <!-- Downloaded MaaCore libraries are intentionally loaded by the Python sidecar. -->
-  <key>com.apple.security.cs.disable-library-validation</key>
-  <true/>
-</dict>
+<!-- JIT and downloaded-core permissions are scoped to the two side processes. -->
+<dict/>
 </plist>
