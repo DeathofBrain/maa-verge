@@ -55,7 +55,7 @@ function session(data) {
     '--user', `${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`,
     '--network=none', '--read-only', '--tmpfs', '/tmp:rw,nosuid,nodev,size=128m',
     '--mount', bind(runtime, '/opt/maaverge', true), '--mount', bind(data, '/data'),
-    '--workdir', '/data', '--env', 'HOME=/data', '--env', 'MAAVERGE_MODE=mock',
+    '--workdir', '/data', '--env', 'MAAVERGE_MODE=mock',
     '--env', 'MAAVERGE_DEVICE_LOCK_DIR=/data/device-locks',
     '--env', 'MAAVERGE_CORE_WORKER_PATH=/opt/maaverge/maaverge-core-worker',
     image, '/bin/sh', '-ec', command,

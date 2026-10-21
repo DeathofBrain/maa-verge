@@ -138,7 +138,7 @@ jobs:
         run: pnpm build
       - name: Smoke packaged backend in clean Ubuntu 22.04 container
         if: runner.os == 'Linux'
-        run: node tools/smoke-clean-linux.mjs
+        run: pnpm test:clean-linux
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
