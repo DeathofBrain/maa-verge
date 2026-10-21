@@ -1,22 +1,66 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { compile } from 'json-schema-to-typescript';
-import { root, devEnvironment } from './project.mjs';
+import Ajv from 'ajv';
+import standaloneCode from 'ajv/dist/standalone/index.js';
+import { build } from 'esbuild';
+import { root } from './project.mjs';
 
-const python = path.join(root, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
-const code = 'import json;from maaverge_runtime.models import Snapshot;print(json.dumps(Snapshot.model_json_schema(mode="serialization"),ensure_ascii=False))';
-const result = spawnSync(python, ['-c', code], { cwd: root, env: { ...devEnvironment(), PYTHONPATH: path.join(root, 'services/runtime') }, encoding: 'utf8' });
-if (result.status !== 0) throw new Error(result.stderr || 'Run uv sync before generating contracts');
-const schema = JSON.parse(result.stdout);
+const source = path.join(root, 'packages/contracts/schemas/runtime.schema.json');
+const schema = JSON.parse(readFileSync(source, 'utf8'));
+const bannerComment = '/* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */';
 const types = await compile(schema, 'Snapshot', {
-  bannerComment: '/* Generated from Python Pydantic models. Run pnpm contracts:generate. Do not edit. */',
+  bannerComment,
   additionalProperties: false,
   style: { singleQuote: true, semi: true, tabWidth: 2 },
 });
+
+// Build validators once, including Ajv's small runtime helpers. The application
+// ships neither Ajv's schema compiler nor dynamically evaluated validation code.
+const ajv = new Ajv({ allErrors: true, strict: true, code: { source: true, esm: true }, useDefaults: false, coerceTypes: false });
+ajv.addSchema(schema);
+const validators = {
+  validateSnapshot: schema.$id,
+  validatePlan: `${schema.$id}#/$defs/Plan`,
+  validateSettings: `${schema.$id}#/$defs/Settings`,
+};
+const standalone = standaloneCode(ajv, validators);
+const require = createRequire(import.meta.url);
+const bundled = await build({
+  stdin: { contents: standalone, resolveDir: root, sourcefile: 'validators.generated.js', loader: 'js' },
+  bundle: true, write: false, format: 'esm', platform: 'neutral', target: 'es2022', legalComments: 'none',
+  plugins: [{
+    name: 'stable-ajv-runtime-paths',
+    setup(builder) {
+      builder.onResolve({ filter: /^ajv\/dist\/runtime\// }, ({ path: runtimePath }) => ({ path: runtimePath, namespace: 'ajv-runtime' }));
+      builder.onLoad({ filter: /.*/, namespace: 'ajv-runtime' }, ({ path: runtimePath }) => ({ contents: readFileSync(require.resolve(runtimePath), 'utf8'), loader: 'js' }));
+    },
+  }],
+  banner: { js: bannerComment },
+});
+const declaration = `${bannerComment}
+import type { Plan, Settings, Snapshot } from './types';
+export interface ValidationError {
+  instancePath: string;
+  schemaPath: string;
+  keyword: string;
+  params: Record<string, unknown>;
+  message?: string;
+}
+export interface Validator<T> {
+  (data: unknown): data is T;
+  errors: ValidationError[] | null;
+}
+export const validateSnapshot: Validator<Snapshot>;
+export const validatePlan: Validator<Plan>;
+export const validateSettings: Validator<Settings>;
+`;
 const files = new Map([
   ['packages/contracts/schema.json', JSON.stringify(schema, null, 2) + '\n'],
   ['packages/contracts/src/types.ts', types],
+  ['packages/contracts/src/validators.js', bundled.outputFiles[0].text],
+  ['packages/contracts/src/validators.d.ts', declaration],
 ]);
 for (const [relative, content] of files) {
   const filename = path.join(root, relative);
@@ -24,4 +68,4 @@ for (const [relative, content] of files) {
     if (readFileSync(filename, 'utf8') !== content) throw new Error(relative + ' is stale. Run pnpm contracts:generate.');
   } else { mkdirSync(path.dirname(filename), { recursive: true }); writeFileSync(filename, content); }
 }
-console.log('Python ↔ TypeScript contracts are synchronized.');
+console.log('JSON Schema, TypeScript types and standalone validators are synchronized.');
