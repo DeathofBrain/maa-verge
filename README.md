@@ -4,7 +4,7 @@
 
 # Maa Verge
 
-基于 MaaCore 的本地明日方舟桌面助手，使用 Tauri 2、React/TypeScript 与 Python 3.12，目标平台为 Windows、macOS 和 Linux。界面与业务服务通过类型化 JSON-RPC 通信，原生核心与桌面进程隔离。
+基于 MaaCore 的本地明日方舟桌面助手，使用 Tauri 2、React/TypeScript、TypeScript 本地服务与 C++20 核心工作进程，目标平台为 Windows、macOS 和 Linux。界面与业务服务通过类型化 JSON-RPC 通信，原生核心与桌面进程隔离。
 
 当前为 **0.1.0 开发预览**。请以 [开发状态](docs/STATUS.md) 判断当前实际能力；[完整计划](PLAN.md) 描述后续交付。默认开发和 CI 使用 mock，可在没有模拟器、MaaCore 或模型密钥的环境中开发。
 
@@ -37,19 +37,25 @@ bash tools/bootstrap.sh --mock-only
 bash tools/pnpm.sh dev:mock
 ```
 
-不加 `-MockOnly` / `--mock-only` 时还会准备 uv、Python 3.12 和锁定的 Python 依赖。脚本将缺少的 Node、pnpm、uv 放入忽略的 `.tools` 目录，不改系统 PATH 或用户配置。上面的包装脚本可在没有全局 Node/pnpm 的终端使用；已有固定版本工具链时直接运行 `pnpm dev:mock`。表中其他 pnpm 命令也可通过同一包装脚本执行。
+不加 `-MockOnly` / `--mock-only` 时还会准备 uv、Python 3.12 和锁定依赖，供保留的 Python 参考测试及 C++ 合成测试使用。默认桌面服务已改为 TypeScript；首次运行 `pnpm dev` 会下载并校验 `.bun-version` 固定的 Bun 1.4.3，并构建 C++ worker。工具放入忽略的 `.tools` 目录，不改系统 PATH 或用户配置。上面的包装脚本可在没有全局 Node/pnpm 的终端使用；已有固定版本工具链时直接运行 `pnpm dev:mock`。表中其他 pnpm 命令也可通过同一包装脚本执行。
 
-原生开发还需 Rust 与对应系统 SDK，详见 [环境搭建](docs/development.md)。
+原生开发还需 Rust、CMake 3.25+、C++20 编译器与对应系统 SDK，详见 [环境搭建](docs/development.md)。macOS 当前最低目标为 13.5。
 
 | 命令 | 用途 |
 | --- | --- |
 | `pnpm dev:mock` | 浏览器 mock，无需模拟器、MaaCore、Rust 或模型密钥 |
-| `pnpm dev` | React + Tauri + 本地 Python 服务，默认仍使用 mock 适配器 |
+| `pnpm dev` | React + Tauri + TypeScript 服务与 C++ worker，默认使用 mock 适配器 |
+| `pnpm setup:bun` | 下载、SHA-256 校验并安装项目固定的 Bun |
 | `pnpm run doctor` | 工具链、依赖和本地环境诊断 |
-| `pnpm check` | TypeScript、Python 与可用时的 Rust 检查 |
+| `pnpm check` | 契约、TypeScript 后端、C++ 合成测试、Python 参考及可用时的 Rust 检查 |
+| `pnpm test:runtime` | TypeScript 服务测试；构建原生合成库后还执行对应集成场景 |
+| `pnpm test:packaging` | 编译并执行当前平台的 Bun 自包含发行探针 |
+| `pnpm test:desktop-runtime` | 构建服务后检查 Rust transport → 包内服务 → C++ mock 设备租约 |
 | `pnpm test:e2e:mock` | 浏览器 mock 端到端测试 |
-| `pnpm -r build` | 前端类型检查与生产构建 |
-| `pnpm build` | 当前系统与架构的桌面包和 Python 侧进程 |
+| `pnpm -r build` | 工作区类型检查与前端生产构建 |
+| `pnpm build` | 当前系统与架构的桌面包、自包含 TypeScript 服务及 C++ worker |
+
+发行包内嵌 Bun/JavaScriptCore，用户无需安装 Python、Node 或 Bun。它仍使用系统库及桌面 WebView；MaaCore 和资源按需下载安装。Python 仅保留为开发参考，显式 `MAAVERGE_BACKEND=python` 只在 debug 桌面构建生效，发行包不会回退到 Python。数据库交接、构建产物、第三方许可和 Bun/JSC 重建说明见 [运行时迁移交接](docs/runtime-migration.md)。
 
 MaaCore 与游戏资源在候选目录准备，不覆盖正在使用的文件；核心版本不变时仍独立检测资源更新。自动连接行为与配置见 [连接说明](docs/emulator-connection.md)。修改 Logo 主资源后，运行 `node tools/generate-icons.mjs` 重新生成桌面图标。
 
