@@ -9,7 +9,15 @@ from test_updates import FixtureSource
 
 
 def test_adb_environment_sdk_and_emulator_paths(tmp_path, monkeypatch):
-    monkeypatch.delenv("MAAVERGE_ADB_PATH", raising=False)
+    # CI runners and developer machines may provide an SDK or emulator before
+    # the fixture's candidates. Exercise only the paths created by this test.
+    for variable in (
+        "MAAVERGE_ADB_PATH",
+        "ANDROID_HOME",
+        "ANDROID_SDK_ROOT",
+        "MAAVERGE_EMULATOR_DIRS",
+    ):
+        monkeypatch.delenv(variable, raising=False)
     monkeypatch.setattr(adb.shutil, "which", lambda *_: None)
     monkeypatch.setattr(adb.sys, "platform", "linux")
     sdk = tmp_path / "sdk"
