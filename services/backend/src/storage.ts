@@ -40,11 +40,18 @@ export class Store {
       writeFileSync(temporary, image, { flag: 'wx', mode: 0o600 });
       const fd = openSync(temporary, 'r+');
       try { fsyncSync(fd); } finally { closeSync(fd); }
-      const check = new Database(temporary, { readonly: true });
+      // serialize() retains the WAL header. System SQLite on macOS cannot
+      // read it without a writable connection to initialize its sidecars.
+      // Convert only this private snapshot to a portable, standalone file.
+      const check = new Database(temporary);
       try {
+        const mode = check.query('PRAGMA journal_mode=DELETE').get() as { journal_mode: string };
+        if (mode.journal_mode !== 'delete') throw new Error('旧数据库备份无法转换为独立文件');
         const result = check.query('PRAGMA integrity_check').get() as { integrity_check: string };
         if (result.integrity_check !== 'ok') throw new Error('旧数据库备份完整性检查失败');
       } finally { check.close(); }
+      const finalized = openSync(temporary, 'r+');
+      try { fsyncSync(finalized); } finally { closeSync(finalized); }
       renameSync(temporary, path.join(this.root, 'pre-typescript.sqlite3'));
     } catch (error) { if (existsSync(temporary)) unlinkSync(temporary); throw error; }
   }

@@ -132,6 +132,27 @@ test('SQLite preserves rowid order, event sequence, exclusive data lease and bac
   expect(backup.query('SELECT id FROM objects WHERE kind=? ORDER BY rowid').all('plan')).toEqual([{ id: 'z' }, { id: 'a' }]); expect(backup.query('SELECT count(*) n FROM events').get()).toEqual({ n: 1 }); backup.close();
 });
 
+test('WAL takeover backup is standalone, read-only accessible and preserves sparse rowids', () => {
+  const root = temp(), source = new Database(path.join(root, 'maaverge.sqlite3'));
+  let store: Store | undefined;
+  try {
+    source.exec('PRAGMA journal_mode=WAL; CREATE TABLE objects(kind TEXT,id TEXT,value TEXT,PRIMARY KEY(kind,id))');
+    source.query('INSERT INTO objects(rowid,kind,id,value) VALUES(?,?,?,?)').run(7, 'plan', 'z', '{"id":"z"}');
+    source.query('INSERT INTO objects(rowid,kind,id,value) VALUES(?,?,?,?)').run(2, 'plan', 'a', '{"id":"a"}');
+    expect(existsSync(path.join(root, 'maaverge.sqlite3-wal'))).toBe(true);
+    const original = source.query('SELECT rowid,* FROM objects ORDER BY rowid').all();
+    store = new Store(root);
+    const file = path.join(root, 'pre-typescript.sqlite3'), backup = new Database(file, { readonly: true });
+    try {
+      expect(backup.query('PRAGMA journal_mode').get()).toEqual({ journal_mode: 'delete' });
+      expect(backup.query('PRAGMA integrity_check').get()).toEqual({ integrity_check: 'ok' });
+      expect(backup.query('SELECT rowid,* FROM objects ORDER BY rowid').all()).toEqual(original);
+      expect(existsSync(`${file}-wal`)).toBe(false);
+      expect(existsSync(`${file}-shm`)).toBe(false);
+    } finally { backup.close(); }
+  } finally { store?.close(); source.close(); }
+});
+
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const python = path.join(repo, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
 test.skipIf(!existsSync(python))('Python and Bun services have identical deterministic RPC results', async () => {

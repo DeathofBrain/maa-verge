@@ -116,10 +116,18 @@ if (process.argv[2] === '--echo') {
   const temporary = backupPath + '.tmp';
   const descriptor = openSync(temporary, 'wx');
   try { writeFileSync(descriptor, snapshot); fsyncSync(descriptor); } finally { closeSync(descriptor); }
-  const backup = new Database(temporary, { readonly: true });
+  const backup = new Database(temporary);
+  assert.equal(Object.values(backup.query('PRAGMA journal_mode=DELETE').get())[0], 'delete');
   assert.equal(Object.values(backup.query('PRAGMA integrity_check').get())[0], 'ok');
   assert.deepEqual(backup.query('SELECT rowid,* FROM objects ORDER BY rowid').all(), original);
-  backup.close(); renameSync(temporary, backupPath);
+  backup.close();
+  const finalized = openSync(temporary, 'r+');
+  try { fsyncSync(finalized); } finally { closeSync(finalized); }
+  renameSync(temporary, backupPath);
+  const readonly = new Database(backupPath, { readonly: true });
+  assert.equal(Object.values(readonly.query('PRAGMA integrity_check').get())[0], 'ok');
+  assert.deepEqual(readonly.query('SELECT rowid,* FROM objects ORDER BY rowid').all(), original);
+  readonly.close();
   const sqliteVersion = Object.values(db.query('SELECT sqlite_version()').get())[0];
   db.close(); guard.run('ROLLBACK'); guard.close();
   const echo = await child(['--echo'], JSON.stringify({ jsonrpc: '2.0', id: 42, params: { text: '逐行通信' } }) + '\\n');
