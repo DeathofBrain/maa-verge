@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { adbCandidates, adbPath, adbServerIdentity, deviceLockAddress, emulatorAddresses, isLocalEmulator, parseAdbDevices, validateAddress } from "../src/adb.ts";
@@ -41,7 +41,7 @@ test("discovery parses adb state and model without executing anything", () => {
 test("configured ADB path is validated before discovery; all platforms retain bundled candidates", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "maaverge-adb-")); roots.push(root);
   const adb = path.join(root, "adb-file"); await writeFile(adb, "synthetic");
-  expect(adbPath({ MAAVERGE_ADB_PATH: adb })).toBe(adb);
+  expect(adbPath({ MAAVERGE_ADB_PATH: adb })).toBe(await realpath(adb));
   expect(() => adbPath({ MAAVERGE_ADB_PATH: path.join(root, "missing") })).toThrow("不存在");
   for (const platform of ["win32", "darwin", "linux"] as const) {
     const candidates = adbCandidates({ PATH: "", MAAVERGE_EMULATOR_DIRS: root }, platform);

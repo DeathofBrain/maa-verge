@@ -53,6 +53,12 @@ export class Store {
       const finalized = openSync(temporary, 'r+');
       try { fsyncSync(finalized); } finally { closeSync(finalized); }
       renameSync(temporary, path.join(this.root, 'pre-typescript.sqlite3'));
+      // Persist the directory entry before permitting any business writes.
+      // Windows does not expose directory handles through fs.openSync.
+      if (process.platform !== 'win32') {
+        const directory = openSync(this.root, 'r');
+        try { fsyncSync(directory); } finally { closeSync(directory); }
+      }
     } catch (error) { if (existsSync(temporary)) unlinkSync(temporary); throw error; }
   }
   private check() {
