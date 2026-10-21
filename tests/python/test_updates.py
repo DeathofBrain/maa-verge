@@ -97,9 +97,27 @@ def test_platform_selection():
         platform_asset("Windows", "x86")
 
 
-def test_official_updater_reused_in_isolated_process(tmp_path):
-    archive = tmp_path / "official-fixture.zip"
-    archive.write_bytes(zip_bytes({"resource/version.json": "{}", "marker": "new-core"}))
+@pytest.mark.parametrize("kind", ["zip", "tar"])
+def test_official_updater_reused_in_isolated_process(tmp_path, kind):
+    files = {
+        "MaaCore.dll": "new-core",
+        "MaaUtils.dll": "native-dependency",
+        "resource/version.json": "{}",
+        "resource/minitouch/arm64-v8a/minitouch": "device-tool",
+        "MAA.exe": "gui",
+        "MAA.Updater.exe": "gui-updater",
+        "externals/System.Private.CoreLib.dll": "dotnet",
+    }
+    archive = tmp_path / ("official-fixture.zip" if kind == "zip" else "official-fixture.tar.gz")
+    if kind == "zip":
+        archive.write_bytes(zip_bytes(files))
+    else:
+        with tarfile.open(archive, "w:gz") as package:
+            for name, content in files.items():
+                data = content.encode()
+                info = tarfile.TarInfo(name)
+                info.size = len(data)
+                package.addfile(info, io.BytesIO(data))
     target = tmp_path / "staging"
     target.mkdir()
     result = run_helper(
@@ -112,7 +130,12 @@ def test_official_updater_reused_in_isolated_process(tmp_path):
         }
     )
     assert result["installed"]
-    assert (target / "marker").read_text() == "new-core"
+    assert (target / "MaaCore.dll").read_text() == "new-core"
+    assert (target / "MaaUtils.dll").read_text() == "native-dependency"
+    assert (target / "resource/minitouch/arm64-v8a/minitouch").read_text() == "device-tool"
+    assert not (target / "MAA.exe").exists()
+    assert not (target / "MAA.Updater.exe").exists()
+    assert not (target / "externals").exists()
     assert archive.exists()  # helper deletes its staged copy only
 
 
@@ -163,6 +186,80 @@ class FixtureSource:
         destination.write_bytes(zip_bytes(files))
         progress(90)
         return hashlib.sha256(destination.read_bytes()).hexdigest()
+
+
+def test_native_core_install_and_upgrade_select_files_before_validation(tmp_path):
+    class CoreSource(FixtureSource):
+        version = "v6.20.0"
+
+        def check(self, channel):
+            return {**super().check(channel), "version": self.version}
+
+        def download(self, metadata, destination, progress):
+            destination.write_bytes(
+                zip_bytes(
+                    {
+                        "MaaCore.dll": metadata["version"],
+                        "MaaUtils.dll": "native-dependency",
+                        "resource/version.json": "{}",
+                        "resource/onnx/model.onnx": "model",
+                        "resource/minitouch/arm64-v8a/minitouch": "device-tool",
+                        "MAA.exe": "gui",
+                        "MAA.dll": "managed-gui",
+                        "MAA.Updater.exe": "gui-updater",
+                        "hostfxr.dll": "dotnet-host",
+                        "externals/coreclr.dll": "dotnet",
+                        "Res/gui.mp4": "video",
+                        "Python/sample.py": "sample",
+                    }
+                )
+            )
+            progress(90)
+            return hashlib.sha256(destination.read_bytes()).hexdigest()
+
+    validated = []
+
+    def validator(core, resource, version):
+        assert (core / "MaaCore.dll").read_text() == version
+        assert (core / "MaaUtils.dll").is_file()
+        assert (resource / "resource/onnx/model.onnx").read_text() == "model"
+        assert (resource / "resource/minitouch/arm64-v8a/minitouch").is_file()
+        for unused in (
+            "MAA.exe",
+            "MAA.dll",
+            "MAA.Updater.exe",
+            "hostfxr.dll",
+            "externals",
+            "Res",
+            "Python",
+        ):
+            assert not (core / unused).exists()
+        validated.append((core, version))
+
+    source = CoreSource()
+    runtime = Runtime(tmp_path, mode="native", update_source=source, validator=validator)
+    try:
+        updates = runtime.updates
+        updates.check("core")
+        updates.prepare("core")
+        updates.activate("core")
+        original = runtime.store.get("active", "combo")["core"]
+        source.version = "v6.20.1"
+        updates.check("core")
+        updates.prepare("core")
+        # Updating the next generation must not alter a worker's current files.
+        assert (Path(original["path"]) / "MaaCore.dll").read_text() == "v6.20.0"
+        assert runtime.store.get("active", "combo")["core"] == original
+        candidate = runtime.store.get("staged", "core")
+        assert candidate["path"] != original["path"]
+        assert (Path(candidate["path"]) / "MaaCore.dll").read_text() == "v6.20.1"
+        updates.activate("core")
+        assert runtime.store.get("active", "combo")["core"]["version"] == "v6.20.1"
+        updates.rollback("core")
+        assert runtime.store.get("active", "combo")["core"] == original
+        assert {version for _, version in validated} == {"v6.20.0", "v6.20.1"}
+    finally:
+        runtime.close()
 
 
 def test_native_fixture_install_overlay_validation_failure_and_rollback(tmp_path):

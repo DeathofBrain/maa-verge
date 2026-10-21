@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { root, windows, fail } from './project.mjs';
@@ -32,9 +32,9 @@ async function main() {
     const archive = path.join(temporary, 'fixture.zip');
     const target = path.join(temporary, 'candidate');
     mkdirSync(target);
-    // A deterministic ZIP containing one harmless text file. No DLL, device,
-    // network or model is involved; this verifies the frozen upstream helper path.
-    writeFileSync(archive, Buffer.from('UEsDBBQAAAAAAAAAIVy/WosfEwAAABMAAAAQAAAAc21va2UtbWFya2VyLnR4dHBhY2thZ2VkLXVwZGF0ZXItb2tQSwECFAAUAAAAAAAAACFcv1qLHxMAAAATAAAAEAAAAAAAAAAAAAAAgAEAAAAAc21va2UtbWFya2VyLnR4dFBLBQYAAAAAAQABAD4AAABBAAAAAAA=', 'base64'));
+    // A deterministic ZIP with text-only core/resource fixtures and unused GUI
+    // files. No native library is loaded; this checks frozen selective extraction.
+    writeFileSync(archive, Buffer.from('UEsDBBQAAAAAAAAAIVxNwYUhHgAAAB4AAAALAAAATWFhQ29yZS5kbGxzeW50aGV0aWMtbm90LWEtbmF0aXZlLWxpYnJhcnlQSwMEFAAAAAAAAAAhXEO/pqMCAAAAAgAAABUAAAByZXNvdXJjZS92ZXJzaW9uLmpzb257fVBLAwQUAAAAAAAAACFcv1qLHxMAAAATAAAAGQAAAHJlc291cmNlL3Ntb2tlLW1hcmtlci50eHRwYWNrYWdlZC11cGRhdGVyLW9rUEsDBBQAAAAAAAAAIVyzmBYTCgAAAAoAAAAHAAAATUFBLmV4ZXVudXNlZC1ndWlQSwMEFAAAAAAAAAAhXCmSCXYNAAAADQAAABEAAABleHRlcm5hbHMvZ3VpLmRsbHVudXNlZC1kb3RuZXRQSwECFAAUAAAAAAAAACFcTcGFIR4AAAAeAAAACwAAAAAAAAAAAAAAgAEAAAAATWFhQ29yZS5kbGxQSwECFAAUAAAAAAAAACFcQ7+mowIAAAACAAAAFQAAAAAAAAAAAAAAgAFHAAAAcmVzb3VyY2UvdmVyc2lvbi5qc29uUEsBAhQAFAAAAAAAAAAhXL9aix8TAAAAEwAAABkAAAAAAAAAAAAAAIABfAAAAHJlc291cmNlL3Ntb2tlLW1hcmtlci50eHRQSwECFAAUAAAAAAAAACFcs5gWEwoAAAAKAAAABwAAAAAAAAAAAAAAgAHGAAAATUFBLmV4ZVBLAQIUABQAAAAAAAAAIVwpkgl2DQAAAA0AAAARAAAAAAAAAAAAAACAAfUAAABleHRlcm5hbHMvZ3VpLmRsbFBLBQYAAAAABQAFADcBAAAxAQAAAAA=', 'base64'));
     const helper = spawn(executable, ['--native-helper'], {
       stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
       env: { ...process.env, MAAVERGE_MODE: 'mock', PYTHONUTF8: '1' },
@@ -50,10 +50,13 @@ async function main() {
       helper.once('error', reject);
       helper.once('close', resolve);
     }).finally(() => clearTimeout(helperTimer));
-    if (helperCode !== 0 || !JSON.parse(helperOutput).installed || readFileSync(path.join(target, 'smoke-marker.txt'), 'utf8') !== 'packaged-updater-ok') {
+    if (helperCode !== 0 || !JSON.parse(helperOutput).installed
+        || readFileSync(path.join(target, 'resource/smoke-marker.txt'), 'utf8') !== 'packaged-updater-ok'
+        || readFileSync(path.join(target, 'MaaCore.dll'), 'utf8') !== 'synthetic-not-a-native-library'
+        || existsSync(path.join(target, 'MAA.exe')) || existsSync(path.join(target, 'externals'))) {
       throw new Error(`Packaged official updater helper failed: ${helperErrors}`);
     }
-    console.log('Packaged runtime verified: JSON-RPC mock snapshot, clean EOF shutdown, frozen official updater using a local fixture.');
+    console.log('Packaged runtime verified: JSON-RPC mock snapshot, clean EOF shutdown, frozen official updater with selective extraction.');
   } finally {
     const prefix = path.join(tmpdir(), 'maaverge-package-smoke-');
     if (!path.resolve(temporary).startsWith(path.resolve(prefix))) throw new Error('Unexpected smoke temporary path');

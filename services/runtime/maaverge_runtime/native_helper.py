@@ -12,7 +12,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from .archives import extract_archive
+from .archives import extract_core_archive
 from .paths import fs_path
 
 
@@ -117,10 +117,10 @@ def official_update(config: dict) -> None:
         def extractall(self, path=None, members=None, pwd=None):
             if members is not None or pwd is not None:
                 raise ValueError("不支持部分或加密更新包")
-            # extract_archive uses zipfile too: restore the original during extraction.
+            # The shared extractor uses zipfile too: restore it during extraction.
             updater.zipfile.ZipFile = zip_class
             try:
-                extract_archive(archive, Path(path))
+                extract_core_archive(archive, Path(path))
             finally:
                 updater.zipfile.ZipFile = CheckedZip
 
@@ -137,7 +137,7 @@ def official_update(config: dict) -> None:
         def extractall(self, path):
             updater.tarfile.open = tar_open
             try:
-                extract_archive(archive, Path(path))
+                extract_core_archive(archive, Path(path))
             finally:
                 updater.tarfile.open = CheckedTar
 
