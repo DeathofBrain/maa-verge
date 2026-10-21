@@ -52,6 +52,8 @@ JSON-RPC 使用 UTF-8 换行 JSON，stdout 仅承载协议，日志进入 stderr
 
 TypeScript 首次打开已有数据库时，先获得数据目录租约，再使用 `bun:sqlite.serialize()` 取得包含已提交 WAL 数据的完整镜像，写临时文件、fsync、执行 `PRAGMA integrity_check`，最后改名为同目录 `pre-typescript.sqlite3`。备份失败则拒绝启动；已有该备份时不覆盖。完整镜像保留隐式 rowid、事件 ID 和去重记录。开始接收请求后，遗留的 running 记录会标记为中断，不自动继续执行。
 
+RPC、对象存取和原生任务发送使用数值 token 保留器：严格整数参数继续区分 `1` 与 `1.0` / `1e0`，禁用任务保存并重启后也保留原校验结果；未知扩展中的大整数按原始 JSON 数值文本传递。该实现使用固定 Bun 的 reviver source 与 `JSON.rawJSON`，不把额外标记写进业务对象。
+
 需要比较或恢复时，先退出所有相关服务，保全当前数据库及其 WAL/SHM 文件，再把 `pre-typescript.sqlite3` 复制为一个新隔离数据根对应模式目录中的 `maaverge.sqlite3`，通过 `MAAVERGE_DATA_DIR` 指向该根。先以 mock 比较计划顺序、参数和记录，不直接覆盖仍在使用的数据。预迁移备份不包含迁移后的新增记录，恢复它也不会回滚 MaaCore/资源目录或游戏状态。
 
 Python 参考只在 debug 桌面构建中显式启用：

@@ -6,7 +6,7 @@ import { parseWireJson, stringifyWireJson } from './wire-json';
 
 export const now = () => new Date().toISOString();
 
-/** Schema v1 is deliberately byte/row compatible with the Python reference. */
+/** Schema v1 preserves the Python reference's database layout and row order. */
 export class Store {
   readonly db!: Database;
   private readonly lease: Database;

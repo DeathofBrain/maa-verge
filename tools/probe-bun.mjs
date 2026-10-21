@@ -82,6 +82,10 @@ if (process.argv[2] === '--echo') {
   assert.equal(process.env.MAAVERGE_BUN_PROBE_LEAK, undefined);
   assert.equal(process.env.BUN_OPTIONS, undefined);
   assert.equal(process.env.NODE_OPTIONS, undefined);
+  const tokens = [];
+  JSON.parse('{"integer":1,"float":1.0}', (key, value, context) => { if (context?.source) tokens.push(context.source); return value; });
+  assert.deepEqual(tokens, ['1', '1.0']);
+  assert.equal(JSON.stringify({ wide: JSON.rawJSON('9007199254740993') }), '{"wide":9007199254740993}');
   assert.equal(createHash('sha256').update('probe').digest('hex').length, 64);
   const root = process.env.MAAVERGE_PROBE_ROOT;
   mkdirSync(root, { recursive: true });
