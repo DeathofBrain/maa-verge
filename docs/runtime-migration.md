@@ -131,6 +131,6 @@ Windows 使用 `.tools/bun/bun.exe` 和 `.exe` 输出名。记录自建 Bun/WebK
 
 `.github/workflows/ci.yml` 的 Bun gate 在四个原生宿主分别编译并执行：Windows x64、Ubuntu x64、macOS arm64、macOS x64；全部成功后原生矩阵才构建 C++ 合成测试、运行 TypeScript 测试、Rust 检查和桌面打包。`node tools/probe-bun.mjs --all-targets` 可以交叉生成四种探针，但只有当前宿主会执行，结果中的 `executed: false` 不能计作平台验收。
 
-本轮工作主机是 Windows x64；Linux/macOS 的配置、源码和交叉编译结果不代表对应平台已执行或游戏行为已验证。确切测试数量、包内 smoke、安装包及平台实况由 [STATUS.md](STATUS.md) 记录。
+本轮开发主机是 Windows x64，另使用四平台宿主 CI 和 Ubuntu 22.04 干净容器验证。`pnpm test:desktop-webview` 检查 Windows 实际 release 窗口；`pnpm test:clean-linux` 检查没有 Python/Node/Bun 的 Linux 容器后端。这些结果与干净系统安装、正式签名、公证和真实游戏行为分别记录。确切测试数量、包内 smoke、安装包及平台实况由 [STATUS.md](STATUS.md) 记录。
 
-后续先完成 Linux/macOS 宿主 gate、签名与安装、真实核心的加载和资源组合验证，再安排用户明确选择的设备行为测试。只有这些门槛完成，才评估删除 Python 参考；云模型 harness、视觉工具和持续托管仍按产品计划独立交付。
+后续先完成最低系统、正式签名与安装、真实核心的加载和资源组合验证，再安排用户明确选择的设备行为测试。只有这些门槛完成，才评估删除 Python 参考；云模型 harness、视觉工具和持续托管仍按产品计划独立交付。
