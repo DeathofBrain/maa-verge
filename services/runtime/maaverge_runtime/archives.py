@@ -1,5 +1,6 @@
 """Archive extraction with identical safety rules on Windows, Linux and macOS."""
 
+import re
 import shutil
 import stat
 import tarfile
@@ -28,6 +29,64 @@ def safe_destination(root: Path, name: str) -> Path:
 
 
 def extract_archive(archive: Path, destination: Path) -> None:
+    _extract_archive(archive, destination, core_only=False)
+
+
+def extract_core_archive(archive: Path, destination: Path) -> None:
+    """Extract runtime files while retaining an official archive's wrapper directory."""
+    _extract_archive(archive, destination, core_only=True)
+
+
+def _core_members(destination: Path, kinds: dict[Path, str]) -> set[Path]:
+    platforms = {
+        "MaaCore.dll": "windows",
+        "libMaaCore.so": "linux",
+        "libMaaCore.dylib": "macos",
+    }
+    roots = []
+    for target, kind in kinds.items():
+        relative = target.relative_to(destination)
+        if kind not in {"file", "link"} or len(relative.parts) not in {1, 2}:
+            continue
+        system = platforms.get(target.name)
+        if system and kinds.get(target.parent / "resource" / "version.json") in {"file", "link"}:
+            roots.append((target.parent, system))
+    if len(roots) != 1:
+        raise ValueError("核心归档必须包含唯一的平铺运行库或一层运行库外目录")
+    root, system = roots[0]
+    windows_gui = {"maa.dll", "hostfxr.dll", "hostpolicy.dll"}
+
+    def selected(target: Path, kind: str) -> bool:
+        if not target.is_relative_to(root):
+            return False
+        parts = target.relative_to(root).parts
+        if not parts:
+            return True
+        if parts[0] == "resource":
+            return True
+        first = parts[0].casefold()
+        if first in {"licenses", "licences", "notices"}:
+            return True
+        if len(parts) != 1 or kind == "directory":
+            return False
+        name = parts[0]
+        if re.fullmatch(
+            r"(?:licen[cs]es?|copying|copyright|notice|(?:third|3rd)[-_]party"
+            r"(?:[-_](?:licen[cs]es?|notices?))?)(?:[._-].*)?",
+            name,
+            re.IGNORECASE,
+        ):
+            return True
+        if system == "windows":
+            return name.casefold().endswith(".dll") and name.casefold() not in windows_gui
+        if system == "linux":
+            return re.fullmatch(r"lib[^/]+\.so(?:\.[0-9]+)*", name) is not None
+        return name.startswith("lib") and name.endswith(".dylib")
+
+    return {target for target, kind in kinds.items() if selected(target, kind)}
+
+
+def _extract_archive(archive: Path, destination: Path, *, core_only: bool) -> None:
     archive, destination = fs_path(archive), fs_path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     destination = destination.resolve()
@@ -77,12 +136,31 @@ def extract_archive(archive: Path, destination: Path) -> None:
         return safe_destination(destination, "/".join(parts))
 
     def check_parents() -> None:
+        canonical_kinds = {str(path).casefold(): kind for path, kind in kinds.items()}
         for target in kinds:
             for parent in target.parents:
                 if parent == destination:
                     break
-                if parent in kinds and kinds[parent] != "directory":
+                if canonical_kinds.get(str(parent).casefold(), "directory") != "directory":
                     raise ValueError("压缩包路径父级不是目录，不允许目录链接")
+
+    def select_members() -> set[Path]:
+        check_parents()
+        # Validate every link, including skipped entries, before writing any data.
+        for alias in links:
+            visiting: set[Path] = set()
+            source = alias
+            while source in links:
+                if source in visiting:
+                    raise ValueError("压缩包链接包含循环")
+                visiting.add(source)
+                source = links[source]
+            if kinds.get(source) != "file":
+                raise ValueError("压缩包链接必须指向归档内的普通文件")
+        selected = _core_members(destination, kinds) if core_only else set(kinds)
+        if any(alias in selected and source not in selected for alias, source in links.items()):
+            raise ValueError("核心归档链接必须指向保留的运行文件")
+        return selected
 
     if zipfile.is_zipfile(archive):
         with zipfile.ZipFile(archive) as package:
@@ -107,8 +185,10 @@ def extract_archive(archive: Path, destination: Path) -> None:
                         raise ValueError("压缩包链接目标编码无效") from error
                     links[target] = link_target(target, name)
                 entries.append((info, target, kind, mode))
-            check_parents()
+            selected = select_members()
             for info, target, kind, mode in entries:
+                if target not in selected:
+                    continue
                 if kind == "directory":
                     target.mkdir(parents=True, exist_ok=True)
                 elif kind == "file":
@@ -133,8 +213,10 @@ def extract_archive(archive: Path, destination: Path) -> None:
                 if kind == "link":
                     links[target] = link_target(target, member.linkname, hard=member.islnk())
                 tar_entries.append((member, target, kind))
-            check_parents()
+            selected = select_members()
             for member, target, kind in tar_entries:
+                if target not in selected:
+                    continue
                 if kind == "directory":
                     target.mkdir(parents=True, exist_ok=True)
                 elif kind == "file":
@@ -149,6 +231,8 @@ def extract_archive(archive: Path, destination: Path) -> None:
 
     materialized: set[Path] = set()
     for alias in links:
+        if alias not in selected:
+            continue
         chain: list[Path] = []
         visiting: set[Path] = set()
         source_path = alias
