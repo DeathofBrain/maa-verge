@@ -17,6 +17,7 @@
     "test:python": "uv run pytest",
     "setup:bun": "node tools/setup-bun.mjs",
     "test:runtime": "node tools/test-runtime.mjs",
+    "test:desktop-runtime": "node tools/smoke-desktop-runtime.mjs",
     "test:packaging": "node tools/probe-bun.mjs",
     "build:native-worker": "node tools/build-core-worker.mjs",
     "test:ui": "playwright test"

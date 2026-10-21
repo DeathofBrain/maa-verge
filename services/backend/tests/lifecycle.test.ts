@@ -1,0 +1,174 @@
+import { afterEach, describe, expect, test } from 'bun:test';
+import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { Store } from '../src/storage';
+
+const repo = fileURLToPath(new URL('../../..', import.meta.url));
+const entry = path.join(repo, 'services/backend/src/entry.ts');
+const storeModule = pathToFileURL(path.join(repo, 'services/backend/src/storage.ts')).href;
+const python = path.join(repo, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
+const roots: string[] = [];
+const children: ManagedChild[] = [];
+const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+function temp() {
+  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-lifecycle-'));
+  roots.push(root); return root;
+}
+
+function environment(root: string) {
+  const env = { ...process.env, PYTHONPATH: path.join(repo, 'services/runtime'), MAAVERGE_MODE: 'mock', MAAVERGE_DATA_DIR: root, MAAVERGE_DEVICE_LOCK_DIR: path.join(root, 'device-locks') };
+  for (const key of Object.keys(env)) if (['NODE_OPTIONS', 'NODE_PATH', 'BUN_OPTIONS', 'BUN_BE_BUN', 'BUN_INSTALL', 'BUN_RUNTIME_TRANSPILER_CACHE_PATH'].includes(key.toUpperCase())) delete env[key as keyof typeof env];
+  return env;
+}
+
+async function bounded<T>(promise: Promise<T>, description: string, milliseconds = 8000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(description)), milliseconds); })]);
+  } finally { clearTimeout(timer); }
+}
+
+class ManagedChild {
+  readonly child: ChildProcessWithoutNullStreams;
+  readonly closed: Promise<{ code: number | null; signal: NodeJS.Signals | null }>;
+  stdout = '';
+  stderr = '';
+  constructor(command: string[], root: string) {
+    this.child = spawn(command[0]!, command.slice(1), { cwd: repo, env: environment(root), windowsHide: true, stdio: 'pipe' });
+    this.child.stdout.setEncoding('utf8'); this.child.stderr.setEncoding('utf8');
+    this.child.stdout.on('data', bytes => { this.stdout += bytes.toString('utf8'); });
+    this.child.stderr.on('data', bytes => { this.stderr += bytes.toString('utf8'); });
+    this.child.stdin.on('error', () => { /* The lifecycle tests deliberately close transports. */ });
+    this.closed = new Promise((resolve, reject) => {
+      this.child.once('error', reject);
+      this.child.once('close', (code, signal) => resolve({ code, signal }));
+    });
+    children.push(this);
+  }
+  async waitFor(predicate: () => boolean) {
+    await bounded((async () => {
+      while (!predicate()) {
+        if (this.child.exitCode !== null || this.child.signalCode !== null) throw new Error('服务提前退出: ' + this.stderr);
+        await delay(10);
+      }
+    })(), '等待服务消息超时: ' + this.stderr);
+  }
+  async exit() { return bounded(this.closed, '服务未退出: ' + this.stderr); }
+  async crash() {
+    if (this.child.exitCode === null && this.child.signalCode === null) this.child.kill('SIGKILL');
+    await this.exit();
+  }
+}
+
+afterEach(async () => {
+  for (const child of children.splice(0)) await child.crash();
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
+
+async function service(root: string) {
+  const process = new ManagedChild([globalThis.process.execPath, entry, '--mode', 'mock', '--data-dir', root], root);
+  process.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 'ready', method: 'app.snapshot' }) + '\n');
+  const messages = () => process.stdout.split('\n').slice(0, -1).filter(Boolean).map(line => JSON.parse(line));
+  await process.waitFor(() => messages().some(value => value.id === 'ready'));
+  const ready = messages().find(value => value.id === 'ready');
+  expect(ready.error, process.stderr).toBeUndefined();
+  expect(ready.result.mode).toBe('mock');
+  expect(() => new Store(path.join(root, 'mock'))).toThrow('其他本地服务');
+  return process;
+}
+
+function assertLeaseReleased(root: string) {
+  const reopened = new Store(path.join(root, 'mock'));
+  try { expect(reopened.get('meta', 'initialized')).toBe(true); }
+  finally { reopened.close(); }
+}
+
+describe('stdio service lifecycle', () => {
+  test('normal EOF processes the last frame and releases the data root lease', async () => {
+    const root = temp(), process = await service(root);
+    process.child.stdin.end(JSON.stringify({ jsonrpc: '2.0', id: 'last', method: 'plan.save', params: { plan: { id: 'last-frame', name: '末帧保存', tasks: [{ type: 'Award' }] } } }));
+    expect(await process.exit(), process.stderr).toEqual({ code: 0, signal: null });
+    expect(process.stdout.split('\n').filter(Boolean).map(line => JSON.parse(line)).find(value => value.id === 'last')?.result.id).toBe('last-frame');
+    assertLeaseReleased(root);
+    const reopened = new Store(path.join(root, 'mock'));
+    try { expect(reopened.get('plan', 'last-frame').name).toBe('末帧保存'); }
+    finally { reopened.close(); }
+  }, 15000);
+
+  test('a broken stdout pipe unwinds the premature stdin close and releases the lease', async () => {
+    const root = temp(), process = await service(root);
+    const closedOutput = new Promise<void>(resolve => process.child.stdout.once('close', resolve));
+    process.child.stdout.destroy();
+    await bounded(closedOutput, 'stdout 读取端未关闭');
+    // Keep stdin open: the service must destroy it after this response hits EPIPE.
+    process.child.stdin.write('{\n');
+    expect(await process.exit(), process.stderr).toEqual({ code: 0, signal: null });
+    expect(process.stderr).not.toContain('ERR_STREAM_PREMATURE_CLOSE');
+    assertLeaseReleased(root);
+  }, 15000);
+
+  test.skipIf(process.platform === 'win32')('SIGTERM performs graceful cleanup (Windows has no portable graceful SIGTERM)', async () => {
+    const root = temp(), process = await service(root);
+    expect(process.child.kill('SIGTERM')).toBe(true);
+    expect(await process.exit(), process.stderr).toEqual({ code: 0, signal: null });
+    assertLeaseReleased(root);
+  }, 15000);
+});
+
+function seed(root: string) {
+  const store = new Store(root);
+  try {
+    store.put('plan', 'z', { id: 'z', value: 'first' });
+    store.put('plan', 'a', { id: 'a', value: 'second' });
+    store.put('plan', 'z', { id: 'z', value: 'updated' });
+    store.event('seed', '保留原始事件序号');
+  } finally { store.close(); }
+}
+
+const databaseImage = (root: string) => ['maaverge.sqlite3', 'maaverge.sqlite3-wal'].map(name => {
+  const file = path.join(root, name); return existsSync(file) ? readFileSync(file) : null;
+});
+
+const pythonHold = `import sys\nfrom pathlib import Path\nfrom maaverge_runtime.storage import Store\ns = Store(Path(sys.argv[1]))\nprint('{"ready":true}', flush=True)\nsys.stdin.read()\ns.close()\n`;
+
+describe.skipIf(!existsSync(python))('Python and Bun data root lease interoperability', () => {
+  test('Python ownership rejects Bun before backup or writes; Bun recovers after a crash', async () => {
+    const root = temp(); seed(root);
+    const owner = new ManagedChild([python, '-c', pythonHold, root], root);
+    await owner.waitFor(() => owner.stdout.includes('"ready":true'));
+    const original = databaseImage(root);
+    expect(() => new Store(root)).toThrow('其他本地服务');
+    expect(databaseImage(root)).toEqual(original);
+    expect(existsSync(path.join(root, 'pre-typescript.sqlite3'))).toBe(false);
+    expect(owner.child.exitCode).toBeNull();
+    await owner.crash();
+    const recovered = new Store(root);
+    try {
+      expect(recovered.all('plan')).toEqual([{ id: 'z', value: 'updated' }, { id: 'a', value: 'second' }]);
+      expect(recovered.event('recovered', '已重获锁').id).toBe(2);
+    } finally { recovered.close(); }
+  }, 15000);
+
+  test('Bun ownership rejects Python without writes; Python recovers after a crash', async () => {
+    const root = temp(); seed(root);
+    const code = `import { Store } from ${JSON.stringify(storeModule)}; const store = new Store(${JSON.stringify(root)}); console.log('{"ready":true}'); process.stdin.resume(); process.stdin.on('end', () => store.close());`;
+    const owner = new ManagedChild([process.execPath, '--eval', code], root);
+    await owner.waitFor(() => owner.stdout.includes('"ready":true'));
+    const original = databaseImage(root);
+    const contenderCode = `import json, sqlite3, sys\nfrom pathlib import Path\nfrom maaverge_runtime.storage import Store\ntry:\n s = Store(Path(sys.argv[1]))\nexcept sqlite3.OperationalError:\n print(json.dumps({'locked': True}))\nelse:\n s.put('plan', 'intruder', {})\n s.close()\n raise RuntimeError('unexpected concurrent ownership')\n`;
+    const contender = new ManagedChild([python, '-c', contenderCode, root], root); contender.child.stdin.end();
+    expect((await contender.exit()).code, contender.stderr).toBe(0);
+    expect(JSON.parse(contender.stdout)).toEqual({ locked: true });
+    expect(databaseImage(root)).toEqual(original);
+    expect(owner.child.exitCode).toBeNull();
+    await owner.crash();
+    const inspect = `import json, sys\nfrom pathlib import Path\nfrom maaverge_runtime.storage import Store\ns = Store(Path(sys.argv[1]))\nprint(json.dumps({'rows': s.all('plan'), 'eventId': s.event('recovered', 'recovered')['id']}))\ns.close()\n`;
+    const recovered = new ManagedChild([python, '-c', inspect, root], root); recovered.child.stdin.end();
+    expect((await recovered.exit()).code, recovered.stderr).toBe(0);
+    expect(JSON.parse(recovered.stdout)).toEqual({ rows: [{ id: 'z', value: 'updated' }, { id: 'a', value: 'second' }], eventId: 2 });
+  }, 15000);
+});

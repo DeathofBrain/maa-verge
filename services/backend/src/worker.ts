@@ -3,8 +3,9 @@ import { closeSync, mkdirSync, openSync, writeSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { childEnvironment } from './config';
+import { childEnvironment, nativeEnvironment } from './config';
 import { nativeWorkerPath } from './native-path';
+import { stringifyWireJson } from './wire-json';
 
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 export class CoreWorker {
@@ -28,8 +29,7 @@ export class CoreWorker {
     mkdirSync(directory, { recursive: true });
     this.log = openSync(path.join(directory, 'worker.stderr.log'), 'a');
     const command = options.command || [nativeWorkerPath(), ...(options.leaseOnly ? ['--lease-only'] : ['--worker'])];
-    const env = childEnvironment();
-    if (config.core && process.platform !== 'win32') { const key = process.platform === 'darwin' ? 'DYLD_LIBRARY_PATH' : 'LD_LIBRARY_PATH'; env[key] = config.core + path.delimiter + (env[key] || ''); }
+    const env = config.core ? nativeEnvironment(config.core) : childEnvironment();
     this.child = spawn(command[0]!, command.slice(1), { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     this.child.stderr.on('data', bytes => { if (this.log !== undefined) { try { writeSync(this.log, bytes); } catch { /* process is unwinding */ } } });
     let resolveReady!: () => void, rejectReady!: (error: Error) => void;
@@ -63,7 +63,7 @@ export class CoreWorker {
         }
       } catch (error) { this.events.push({ type: 'protocol_error' }); rejectReady(error as Error); void this.close(); }
     });
-    this.child.stdin.write(JSON.stringify({ ...config, protocolVersion: 1 }) + '\n');
+    this.child.stdin.write(stringifyWireJson({ ...config, protocolVersion: 1 }) + '\n');
     try { await ready; if (this.exited) throw new Error('核心工作进程启动失败'); }
     catch (error) { await this.close(); throw error; }
     finally { clearTimeout(timer); }
@@ -74,7 +74,7 @@ export class CoreWorker {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { this.requests.delete(id); reject(new Error('核心工作进程未确认操作，结果未知')); }, 20_000);
       this.requests.set(id, { resolve, reject, timer });
-      this.child.stdin.write(JSON.stringify({ id, operation, protocolVersion: 1, ...params }) + '\n', error => {
+      this.child.stdin.write(stringifyWireJson({ id, operation, protocolVersion: 1, ...params }) + '\n', error => {
         if (error) { clearTimeout(timer); this.requests.delete(id); reject(error); }
       });
     });

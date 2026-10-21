@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { extractArchive, extractCoreArchive, normalizeRuntimeRoot } from "./archives.ts";
 import { RpcError } from "./errors.ts";
 import { nativeWorkerPath } from "./native-path.ts";
+import { childEnvironment, nativeEnvironment } from "./config.ts";
 
 const GITHUB = "https://api.github.com/repos/MaaAssistantArknights";
 export const MAX_DOWNLOAD_BYTES = 2 * 1024 ** 3;
@@ -115,11 +116,11 @@ export class OfficialSource implements UpdateSource {
   }
 }
 
-function executeJson(command: string[], input: unknown, timeout: number, children?: Set<ChildProcess>, newGroup = true): Promise<any> {
+function executeJson(command: string[], input: unknown, timeout: number, children?: Set<ChildProcess>, newGroup = true, env = childEnvironment()): Promise<any> {
   return new Promise((resolve, reject) => {
     const child = spawn(command[0], command.slice(1), {
       windowsHide: true, detached: newGroup && process.platform !== "win32", stdio: ["pipe", "pipe", "pipe"],
-      env: Object.fromEntries(Object.entries(process.env).filter(([key]) => !["BUN_OPTIONS", "BUN_BE_BUN", "NODE_OPTIONS", "NODE_PATH"].includes(key.toUpperCase()))),
+      env,
     });
     let stdout = "", stderr = "", count = 0, failure: Error | undefined;
     const timer = setTimeout(() => { failure = new Error("隔离进程超时"); void terminateChild(child); }, timeout);
@@ -164,7 +165,7 @@ function terminateChild(child: ChildProcess): Promise<void> {
   });
 }
 export async function validateNative(core: string, resource: string, version: string, executable = nativeWorkerPath(), children?: Set<ChildProcess>, newGroup = true): Promise<void> {
-  const result = await executeJson([executable, "--validate"], { core, resource, version }, 90_000, children, newGroup);
+  const result = await executeJson([executable, "--validate"], { core, resource, version, protocolVersion: 1 }, 90_000, children, newGroup, nativeEnvironment(core));
   if (result.protocolVersion !== 1 || result.resourceLoaded !== true || result.version !== version) throw new Error("核心版本或资源隔离校验失败");
 }
 export async function treeHash(root: string): Promise<string> {

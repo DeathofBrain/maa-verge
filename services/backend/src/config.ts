@@ -15,8 +15,16 @@ export function deviceLockPath(key: string): string {
       : path.join(process.env.XDG_DATA_HOME || path.join(homedir(), '.local', 'share'), 'MAAVerge');
   return path.join(process.env.MAAVERGE_DEVICE_LOCK_DIR || path.join(standard, 'device-locks'), createHash('sha256').update(key).digest('hex') + '.lock');
 }
-export function childEnvironment(): NodeJS.ProcessEnv {
-  const env = { ...process.env };
-  for (const key of ['BUN_OPTIONS', 'BUN_BE_BUN', 'NODE_OPTIONS', 'NODE_PATH']) delete env[key];
+export function childEnvironment(source = process.env): NodeJS.ProcessEnv {
+  const env = { ...source };
+  for (const key of Object.keys(env)) if (['BUN_OPTIONS', 'BUN_BE_BUN', 'NODE_OPTIONS', 'NODE_PATH'].includes(key.toUpperCase())) delete env[key];
+  return env;
+}
+export function nativeEnvironment(core: string, platform = process.platform): NodeJS.ProcessEnv {
+  const env = childEnvironment();
+  if (platform !== 'win32') {
+    const key = platform === 'darwin' ? 'DYLD_LIBRARY_PATH' : 'LD_LIBRARY_PATH';
+    env[key] = path.resolve(core) + (env[key] ? ':' + env[key] : '');
+  }
   return env;
 }
