@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { validatePlan, validateSettings, validateSnapshot } from '../src/validators.js';
+import {
+  validatePlan, validateSettings, validateSnapshot, validateRpcRequest, validateRpcEvent,
+  validateWorkerCommand, validateWorkerConfiguration, validateWorkerLeaseConfiguration,
+  validateWorkerValidationConfiguration, validateWorkerEvent, validateWorkerValidation,
+} from '../src/validators.js';
 
 const settings = () => ({
   autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system',
@@ -50,4 +54,49 @@ test('generated validators have no external imports or runtime schema compiler',
   assert.doesNotMatch(source, /^import\s/mu);
   assert.doesNotMatch(source, /\b(?:eval|Function)\s*\(/u);
   assert.doesNotMatch(source, /[A-Za-z]:\\|\.\.\/typescript-cpp-runtime/u);
+});
+
+test('JSON-RPC envelopes preserve notifications and reject malformed protocol data', () => {
+  assert.equal(validateRpcRequest({ jsonrpc: '2.0', id: 1, method: 'app.snapshot', params: {} }), true);
+  assert.equal(validateRpcRequest({ jsonrpc: '2.0', method: 'future.method' }), true);
+  for (const change of [{ jsonrpc: '1.0' }, { method: 1 }, { id: true }, { params: [] }, { shell: 'arbitrary' }]) {
+    assert.equal(validateRpcRequest({ jsonrpc: '2.0', method: 'app.snapshot', ...change }), false);
+  }
+  const event = { jsonrpc: '2.0', method: 'runtime.event', params: { id: 1, type: 'test', message: '事件', createdAt: '2026-10-22T00:00:00Z', data: {} } };
+  assert.equal(validateRpcEvent(event), true);
+  assert.equal(validateRpcEvent({ ...event, method: 'unknown.event' }), false);
+  assert.equal(validateRpcEvent({ ...event, params: { ...event.params, id: '1' } }), false);
+});
+
+test('native v1 commands require task payloads and bounded integer timeouts', () => {
+  const configuration = { protocolVersion: 1, core: '/core', resource: '/resource', adb: '/adb', address: '127.0.0.1:5555', userDir: '/user', lockPath: '/locks/device.lock' };
+  assert.equal(validateWorkerConfiguration(configuration), true);
+  for (const change of [{ protocolVersion: 2 }, { lockTimeoutMs: -1 }, { startupTimeoutMs: 0 }, { nativeCallTimeoutMs: 120001 }, { asyncTimeoutMs: 1.5 }]) {
+    assert.equal(validateWorkerConfiguration({ ...configuration, ...change }), false);
+  }
+  assert.equal(validateWorkerCommand({ protocolVersion: 1, id: 'connect', operation: 'connect' }), true);
+  const command = { protocolVersion: 1, id: 2, operation: 'task', task: { type: 'Fight', params: { future: [1, { nested: true }] } } };
+  const original = structuredClone(command);
+  assert.equal(validateWorkerCommand(command), true);
+  assert.deepEqual(command, original);
+  assert.equal(validateWorkerCommand({ protocolVersion: 1, id: 2, operation: 'task' }), false);
+  assert.equal(validateWorkerCommand({ ...command, operation: 'stop' }), false);
+  assert.equal(validateWorkerCommand({ ...command, protocolVersion: 0 }), false);
+  assert.equal(validateWorkerLeaseConfiguration({ protocolVersion: 1, lockPath: '/locks/device.lock', lockTimeoutMs: 0 }), true);
+  assert.equal(validateWorkerLeaseConfiguration({ protocolVersion: 1, lockPath: '/locks/device.lock', address: 'unexpected' }), false);
+  assert.equal(validateWorkerValidationConfiguration({ protocolVersion: 1, core: '/core', resource: '/resource', version: 'v6.20.0' }), true);
+  assert.equal(validateWorkerValidationConfiguration({ protocolVersion: 1, core: '/core', resource: '/resource' }), false);
+});
+
+test('native responses contain exactly one result or error and reject unknown versions', () => {
+  const response = { protocolVersion: 1, type: 'response', id: 1 };
+  assert.equal(validateWorkerEvent({ ...response, result: { taskId: 1 } }), true);
+  assert.equal(validateWorkerEvent({ ...response, id: null, error: 'invalid command' }), true);
+  assert.equal(validateWorkerEvent(response), false);
+  assert.equal(validateWorkerEvent({ ...response, result: {}, error: 'ambiguous' }), false);
+  assert.equal(validateWorkerEvent({ protocolVersion: 1, type: 'callback', message: 20002, details: { taskid: 1 } }), true);
+  assert.equal(validateWorkerEvent({ protocolVersion: 1, type: 'status', running: false, pendingAsync: [1, 1] }), false);
+  assert.equal(validateWorkerEvent({ protocolVersion: 2, type: 'ready' }), false);
+  assert.equal(validateWorkerValidation({ protocolVersion: 1, version: 'v6.20.0', resourceLoaded: true }), true);
+  assert.equal(validateWorkerValidation({ protocolVersion: 1, version: 'v6.20.0', resourceLoaded: false }), false);
 });

@@ -1,37 +1,24 @@
-import type { Device, Event, Plan, Run, Settings, Snapshot, UpdateChannel } from './types';
+import type { Event } from './types';
+import type { RpcContract } from './rpc-types';
 import { mockRpc, onMockEvent } from './mock';
 
 function isDesktop(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
-interface Results {
-  'app.snapshot': Snapshot;
-  'plan.save': Plan;
-  'plan.delete': { deleted: boolean };
-  'device.discover': { address: string; name: string; adbState: string }[];
-  'device.connect': Device;
-  'device.auto_connect': { devices: Device[]; discovered: { address: string; name: string; adbState: string }[]; diagnostics: string[] };
-  'device.disconnect': { disconnected: boolean };
-  'run.start': Run;
-  'run.stop': Run;
-  'updates.check': UpdateChannel;
-  'updates.prepare': UpdateChannel;
-  'updates.activate': UpdateChannel;
-  'updates.rollback': UpdateChannel;
-  'settings.save': Settings;
-  'agent.message': { reply: string; plan?: Plan; requiresConfirmation: boolean; mode: string };
-}
+export type RpcMethod = keyof RpcContract['params'];
+export type RpcParams<M extends RpcMethod> = keyof RpcContract['params'][M] extends never
+  ? Record<string, never> : RpcContract['params'][M];
+export type RpcResult<M extends RpcMethod> = RpcContract['results'][M];
 
-export function rpc<M extends keyof Results>(method: M, params?: Record<string, unknown>): Promise<Results[M]>;
-export function rpc<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T>;
-export async function rpc<T = unknown>(
-  method: string,
-  params: Record<string, unknown> = {},
-): Promise<T> {
-  if (!isDesktop()) return mockRpc(method, params) as Promise<T>;
+export async function rpc<M extends RpcMethod>(
+  method: M,
+  ...arguments_: keyof RpcContract['params'][M] extends never ? [params?: RpcParams<M>] : [params: RpcParams<M>]
+): Promise<RpcResult<M>> {
+  const params = arguments_[0] ?? {};
+  if (!isDesktop()) return mockRpc(method, params) as Promise<RpcResult<M>>;
   const { invoke } = await import('@tauri-apps/api/core');
-  return invoke<T>('runtime_request', { method, params });
+  return invoke<RpcResult<M>>('runtime_request', { method, params });
 }
 
 export function subscribe(callback: (event: Event) => void): () => void {

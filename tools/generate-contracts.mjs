@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { compile } from 'json-schema-to-typescript';
+import { compile, compileFromFile } from 'json-schema-to-typescript';
 import Ajv from 'ajv';
 import standaloneCode from 'ajv/dist/standalone/index.js';
 import { build } from 'esbuild';
@@ -9,21 +9,38 @@ import { root } from './project.mjs';
 
 const source = path.join(root, 'packages/contracts/schemas/runtime.schema.json');
 const schema = JSON.parse(readFileSync(source, 'utf8'));
+const rpcSource = path.join(root, 'packages/contracts/schemas/rpc.schema.json');
+const workerSource = path.join(root, 'packages/contracts/schemas/worker.schema.json');
+const rpcSchema = JSON.parse(readFileSync(rpcSource, 'utf8'));
+const workerSchema = JSON.parse(readFileSync(workerSource, 'utf8'));
 const bannerComment = '/* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */';
-const types = await compile(schema, 'Snapshot', {
+const typeOptions = {
   bannerComment,
   additionalProperties: false,
   style: { singleQuote: true, semi: true, tabWidth: 2 },
-});
+};
+const types = await compile(schema, 'Snapshot', typeOptions);
+const rpcTypes = await compileFromFile(rpcSource, { ...typeOptions, unreachableDefinitions: true });
+const workerTypes = await compile(workerSchema, 'WorkerProtocol', typeOptions);
 
 // Build validators once, including Ajv's small runtime helpers. The application
 // ships neither Ajv's schema compiler nor dynamically evaluated validation code.
-const ajv = new Ajv({ allErrors: true, strict: true, code: { source: true, esm: true }, useDefaults: false, coerceTypes: false });
+const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, code: { source: true, esm: true }, useDefaults: false, coerceTypes: false });
 ajv.addSchema(schema);
+ajv.addSchema(rpcSchema);
+ajv.addSchema(workerSchema);
 const validators = {
   validateSnapshot: schema.$id,
   validatePlan: `${schema.$id}#/$defs/Plan`,
   validateSettings: `${schema.$id}#/$defs/Settings`,
+  validateRpcRequest: `${rpcSchema.$id}#/$defs/RpcRequest`,
+  validateRpcEvent: `${rpcSchema.$id}#/$defs/RpcEvent`,
+  validateWorkerConfiguration: `${workerSchema.$id}#/$defs/WorkerConfiguration`,
+  validateWorkerLeaseConfiguration: `${workerSchema.$id}#/$defs/WorkerLeaseConfiguration`,
+  validateWorkerValidationConfiguration: `${workerSchema.$id}#/$defs/WorkerValidationConfiguration`,
+  validateWorkerCommand: `${workerSchema.$id}#/$defs/WorkerCommand`,
+  validateWorkerEvent: `${workerSchema.$id}#/$defs/WorkerEvent`,
+  validateWorkerValidation: `${workerSchema.$id}#/$defs/WorkerValidation`,
 };
 const standalone = standaloneCode(ajv, validators);
 const require = createRequire(import.meta.url);
@@ -41,6 +58,8 @@ const bundled = await build({
 });
 const declaration = `${bannerComment}
 import type { Plan, Settings, Snapshot } from './types';
+import type { RpcRequest, RpcEvent } from './rpc-types';
+import type { WorkerProtocol } from './worker-types';
 export interface ValidationError {
   instancePath: string;
   schemaPath: string;
@@ -55,10 +74,20 @@ export interface Validator<T> {
 export const validateSnapshot: Validator<Snapshot>;
 export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
+export const validateRpcRequest: Validator<RpcRequest>;
+export const validateRpcEvent: Validator<RpcEvent>;
+export const validateWorkerConfiguration: Validator<WorkerProtocol['configuration']>;
+export const validateWorkerLeaseConfiguration: Validator<WorkerProtocol['leaseConfiguration']>;
+export const validateWorkerValidationConfiguration: Validator<WorkerProtocol['validationConfiguration']>;
+export const validateWorkerCommand: Validator<WorkerProtocol['command']>;
+export const validateWorkerEvent: Validator<WorkerProtocol['event']>;
+export const validateWorkerValidation: Validator<WorkerProtocol['validation']>;
 `;
 const files = new Map([
   ['packages/contracts/schema.json', JSON.stringify(schema, null, 2) + '\n'],
   ['packages/contracts/src/types.ts', types],
+  ['packages/contracts/src/rpc-types.ts', rpcTypes],
+  ['packages/contracts/src/worker-types.ts', workerTypes],
   ['packages/contracts/src/validators.js', bundled.outputFiles[0].text],
   ['packages/contracts/src/validators.d.ts', declaration],
 ]);

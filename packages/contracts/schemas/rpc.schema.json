@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://maaverge.local/contracts/rpc.schema.json",
+  "$comment": "Public NDJSON JSON-RPC method parameter/result maps. Requests and runtime events use the envelope definitions below.",
+  "title": "RpcContract",
+  "type": "object", "additionalProperties": false, "required": ["params", "results"],
+  "properties": {
+    "params": {
+      "type": "object", "additionalProperties": false,
+      "required": ["app.snapshot", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "properties": {
+        "app.snapshot": { "$ref": "#/$defs/EmptyParams" },
+        "plan.save": { "type": "object", "additionalProperties": false, "required": ["plan"], "properties": { "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" } } },
+        "plan.delete": { "$ref": "#/$defs/IdParams" },
+        "device.discover": { "$ref": "#/$defs/EmptyParams" },
+        "device.connect": { "type": "object", "additionalProperties": false, "required": ["address"], "properties": { "address": { "type": "string" }, "name": { "type": "string" } } },
+        "device.auto_connect": { "$ref": "#/$defs/EmptyParams" },
+        "device.disconnect": { "$ref": "#/$defs/IdParams" },
+        "run.start": {
+          "type": "object", "additionalProperties": false, "required": ["planId", "deviceId", "requestId"],
+          "properties": { "planId": { "type": "string" }, "deviceId": { "type": "string" }, "requestId": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        },
+        "run.stop": { "$ref": "#/$defs/IdParams" },
+        "updates.check": { "$ref": "#/$defs/ChannelParams" },
+        "updates.prepare": { "$ref": "#/$defs/ChannelParams" },
+        "updates.activate": { "$ref": "#/$defs/ChannelParams" },
+        "updates.rollback": { "$ref": "#/$defs/ChannelParams" },
+        "settings.save": { "type": "object", "additionalProperties": false, "required": ["settings"], "properties": { "settings": { "$ref": "./runtime.schema.json#/$defs/Settings" } } },
+        "agent.message": {
+          "type": "object", "additionalProperties": false, "required": ["message"],
+          "properties": { "message": { "type": "string", "minLength": 1, "maxLength": 4000 }, "deviceId": { "type": "string" } }
+        }
+      }
+    },
+    "results": {
+      "type": "object", "additionalProperties": false,
+      "required": ["app.snapshot", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "properties": {
+        "app.snapshot": { "$ref": "./runtime.schema.json" },
+        "plan.save": { "$ref": "./runtime.schema.json#/$defs/Plan" },
+        "plan.delete": { "type": "object", "additionalProperties": false, "required": ["deleted"], "properties": { "deleted": { "type": "boolean" } } },
+        "device.discover": { "type": "array", "items": { "$ref": "#/$defs/DiscoveredDevice" } },
+        "device.connect": { "$ref": "./runtime.schema.json#/$defs/Device" },
+        "device.auto_connect": {
+          "type": "object", "additionalProperties": false, "required": ["devices", "discovered", "diagnostics"],
+          "properties": {
+            "devices": { "type": "array", "items": { "$ref": "./runtime.schema.json#/$defs/Device" } },
+            "discovered": { "type": "array", "items": { "$ref": "#/$defs/DiscoveredDevice" } },
+            "diagnostics": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "device.disconnect": { "type": "object", "additionalProperties": false, "required": ["disconnected"], "properties": { "disconnected": { "type": "boolean" } } },
+        "run.start": { "$ref": "./runtime.schema.json#/$defs/Run" },
+        "run.stop": { "$ref": "./runtime.schema.json#/$defs/Run" },
+        "updates.check": { "$ref": "./runtime.schema.json#/$defs/UpdateChannel" },
+        "updates.prepare": { "$ref": "./runtime.schema.json#/$defs/UpdateChannel" },
+        "updates.activate": { "$ref": "./runtime.schema.json#/$defs/UpdateChannel" },
+        "updates.rollback": { "$ref": "./runtime.schema.json#/$defs/UpdateChannel" },
+        "settings.save": { "$ref": "./runtime.schema.json#/$defs/Settings" },
+        "agent.message": {
+          "type": "object", "additionalProperties": false, "required": ["reply", "requiresConfirmation", "mode"],
+          "properties": { "reply": { "type": "string" }, "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" }, "requiresConfirmation": { "type": "boolean" }, "mode": { "type": "string" } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "EmptyParams": { "type": "object", "additionalProperties": false },
+    "IdParams": { "type": "object", "additionalProperties": false, "required": ["id"], "properties": { "id": { "type": "string" } } },
+    "ChannelParams": { "type": "object", "additionalProperties": false, "required": ["channel"], "properties": { "channel": { "enum": ["app", "core", "resource"] } } },
+    "DiscoveredDevice": {
+      "type": "object", "additionalProperties": false, "required": ["address", "name", "adbState"],
+      "properties": { "address": { "type": "string" }, "name": { "type": "string" }, "adbState": { "type": "string" } }
+    },
+    "RpcRequest": {
+      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "method"],
+      "properties": { "jsonrpc": { "const": "2.0" }, "method": { "type": "string" }, "id": { "type": ["string", "integer", "null"] }, "params": { "type": "object", "additionalProperties": true } }
+    },
+    "RpcEvent": {
+      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "method", "params"],
+      "properties": { "jsonrpc": { "const": "2.0" }, "method": { "const": "runtime.event" }, "params": { "$ref": "./runtime.schema.json#/$defs/Event" } }
+    }
+  }
+}
