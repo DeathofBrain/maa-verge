@@ -91,6 +91,8 @@ MAAVERGE_MODE=native bash tools/pnpm.sh dev
 
 `pnpm build` 依次构建 TypeScript/React、通过锁定的 PyInstaller 生成 Python `onedir` 侧进程，再调用 Tauri 打包。Python 的包及数据一并收集；MaaCore 和游戏资源由运行期安装器下载，不嵌入应用包。不能在 Windows 构建 Linux/macOS 的 Python 原生依赖。
 
+MaaCore 首装和更新从官方归档中选择性提取原生依赖与完整资源，跳过原 GUI 和 .NET/WPF；提取规则、上游参考和验证边界见 [maacore-runtime.md](maacore-runtime.md)。
+
 ```bash
 node tools/package-runtime.mjs
 ```
