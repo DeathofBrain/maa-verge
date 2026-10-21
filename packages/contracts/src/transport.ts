@@ -25,8 +25,9 @@ export function subscribe(callback: (event: Event) => void): () => void {
   if (!isDesktop()) return onMockEvent(callback);
   let disposed = false;
   let unlisten: (() => void) | undefined;
+  // The desktop host maps the stdio method runtime.event to a legal Tauri name.
   void import('@tauri-apps/api/event')
-    .then(({ listen }) => listen<Event>('runtime.event', ({ payload }) => callback(payload)))
+    .then(({ listen }) => listen<Event>('runtime-event', ({ payload }) => callback(payload)))
     .then((dispose) => { if (disposed) dispose(); else unlisten = dispose; });
   return () => { disposed = true; unlisten?.(); };
 }
