@@ -114,6 +114,10 @@ smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下�
 
 许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`；设计与提示词见 [branding.md](branding.md)。
 
-CI 先在 Windows x64、Ubuntu x64、macOS arm64/x64 分别编译并执行 Bun 探针，检查 SQLite/WAL、保留 rowid 的备份、跨进程锁、子进程 NDJSON 和 ZIP/TAR。四宿主 gate 成功后才运行原生矩阵的 C++ CTest、TypeScript 测试、Rust fmt/clippy/test 和未签名构建。应用 job 另保留 Python 参考、契约及浏览器 mock 端到端检查。当前迁移在本机只执行了 Windows 验证；CI 配置和跨编译成功不等于 Linux/macOS 已实测，以实际工作流结果和 `docs/STATUS.md` 为准。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
+CI 先在 Windows x64、Ubuntu x64、macOS arm64/x64 分别编译并执行 Bun 探针，检查 SQLite/WAL、保留 rowid 的备份、跨进程锁、子进程 NDJSON 和 ZIP/TAR。四宿主 gate 成功后才运行原生矩阵的 C++ CTest、TypeScript 测试、Rust fmt/clippy/test 和未签名构建。应用 job 另保留 Python 参考、契约及浏览器 mock 端到端检查。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
+
+Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runtime/maaverge-runtime` 中的 Linux x64 两个可执行文件。测试驱动在宿主 Node 中运行，容器使用原始 Ubuntu 22.04 镜像并确认没有 Python、Node、Bun；后端会话断网，覆盖包内 C++ 设备锁、持久化、去重、停止和 EOF 重启。CI 在 Linux 构建后自动执行。这是后端容器测试，桌面和安装器仍需单独验收。
+
+Windows 完整构建后可运行 `pnpm test:desktop-webview`，需要本机已有 WebView2。工具通过独立环回 CDP 端口操作真实 release 窗口，使用专属 mock 数据和 WebView profile，检查初始化异常、运行/停止、C++ 进程释放、正常关窗与重启记录；测试前须先退出其他 Maa Verge 实例。日志与截图保留在忽略目录 `build/webview-smoke`，临时数据和 profile 退出后清理。该项由宿主 Node/Playwright 驱动，不代表卸载开发工具后的干净系统安装验收。
 
 macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的签名、公证和下载 MaaCore 后的加载。Windows 签名和 Tauri 应用自动更新发布源也需要发行凭据；当前 CI 不自动发布。
