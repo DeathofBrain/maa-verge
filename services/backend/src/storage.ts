@@ -2,6 +2,7 @@ import { Database } from 'bun:sqlite';
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { parseWireJson, stringifyWireJson } from './wire-json';
 
 export const now = () => new Date().toISOString();
 
@@ -53,21 +54,21 @@ export class Store {
   }
   transaction<T>(fn: () => T): T { this.check(); return this.db.transaction(fn)(); }
   put(kind: string, id: string, value: unknown): void {
-    this.check(); this.db.query('INSERT INTO objects VALUES(?,?,?) ON CONFLICT(kind,id) DO UPDATE SET value=excluded.value').run(kind, id, JSON.stringify(value));
+    this.check(); this.db.query('INSERT INTO objects VALUES(?,?,?) ON CONFLICT(kind,id) DO UPDATE SET value=excluded.value').run(kind, id, stringifyWireJson(value));
   }
   get<T = any>(kind: string, id: string, fallback?: any): T {
     this.check(); const row = this.db.query('SELECT value FROM objects WHERE kind=? AND id=?').get(kind, id) as { value: string } | null;
-    return row ? JSON.parse(row.value) : fallback as T;
+    return row ? parseWireJson(row.value) : fallback as T;
   }
-  all<T = any>(kind: string): T[] { this.check(); return (this.db.query('SELECT value FROM objects WHERE kind=? ORDER BY rowid').all(kind) as { value: string }[]).map(r => JSON.parse(r.value)); }
+  all<T = any>(kind: string): T[] { this.check(); return (this.db.query('SELECT value FROM objects WHERE kind=? ORDER BY rowid').all(kind) as { value: string }[]).map(r => parseWireJson(r.value)); }
   delete(kind: string, id: string): void { this.check(); this.db.query('DELETE FROM objects WHERE kind=? AND id=?').run(kind, id); }
   event(type: string, message: string, data: any = {}): any {
     this.check(); const createdAt = now();
-    const row = this.db.query('INSERT INTO events(type,message,created_at,data) VALUES(?,?,?,?)').run(type, message, createdAt, JSON.stringify(data));
+    const row = this.db.query('INSERT INTO events(type,message,created_at,data) VALUES(?,?,?,?)').run(type, message, createdAt, stringifyWireJson(data));
     return { id: Number(row.lastInsertRowid), type, message, createdAt, data };
   }
   events(): any[] {
-    this.check(); return (this.db.query('SELECT id,type,message,created_at,data FROM events ORDER BY id DESC LIMIT 100').all() as any[]).reverse().map(r => ({ id: r.id, type: r.type, message: r.message, createdAt: r.created_at, data: JSON.parse(r.data) }));
+    this.check(); return (this.db.query('SELECT id,type,message,created_at,data FROM events ORDER BY id DESC LIMIT 100').all() as any[]).reverse().map(r => ({ id: r.id, type: r.type, message: r.message, createdAt: r.created_at, data: parseWireJson(r.data) }));
   }
   close(): void { if (!this.closed) { this.closed = true; try { this.db.close(); } finally { this.lease.close(); } } }
 }
