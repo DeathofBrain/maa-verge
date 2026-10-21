@@ -3,12 +3,13 @@ import { Runtime } from './runtime';
 import { RpcError } from './errors';
 import { dataRoot } from './config';
 import { runUpdateJobStdio } from './updates';
+import { isWireFloat, parseWireJson, stringifyWireJson } from './wire-json';
 
 export async function processRequest(runtime: Pick<Runtime, 'handle'>, request: any): Promise<any> {
   const id = request && typeof request === 'object' && !Array.isArray(request) ? request.id ?? null : null;
   try {
     if (!request || typeof request !== 'object' || Array.isArray(request) || request.jsonrpc !== '2.0' || typeof request.method !== 'string'
-      || ('id' in request && id !== null && typeof id !== 'string' && !(typeof id === 'number' && Number.isSafeInteger(id)))) throw new RpcError(-32600, '无效的 JSON-RPC 请求');
+      || ('id' in request && id !== null && typeof id !== 'string' && !(typeof id === 'number' && Number.isSafeInteger(id) && !isWireFloat(request, 'id')))) throw new RpcError(-32600, '无效的 JSON-RPC 请求');
     const result = await runtime.handle(request.method, request.params);
     return 'id' in request ? { jsonrpc: '2.0', id, result } : undefined;
   } catch (error) {
@@ -27,7 +28,7 @@ export async function main() {
   const mode = option('--mode') || process.env.MAAVERGE_MODE || 'mock';
   if (mode !== 'mock' && mode !== 'native') throw new Error('运行模式必须是 mock 或 native');
   let transportBroken = false, signalled = false;
-  const send = (message: any) => { if (!transportBroken && message !== undefined && !process.stdout.destroyed) process.stdout.write(JSON.stringify(message) + '\n'); };
+  const send = (message: any) => { if (!transportBroken && message !== undefined && !process.stdout.destroyed) process.stdout.write(stringifyWireJson(message) + '\n'); };
   process.stdout.on('error', () => { transportBroken = true; process.stdin.destroy(); });
   const runtime = new Runtime(path.join(path.resolve(option('--data-dir') || dataRoot()), mode), mode, { notify: send });
   const inflight = new Set<Promise<unknown>>();
@@ -40,7 +41,7 @@ export async function main() {
   ];
   const dispatch = (bytes: Buffer) => {
     let request: any;
-    try { request = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
+    try { request = parseWireJson(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
     catch { send({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'JSON 解析失败' } }); return; }
     const background = mode === 'native' && typeof request?.method === 'string' && (request.method.startsWith('updates.') || request.method === 'device.auto_connect');
     if (background && backgroundSlots >= 2) { if (Object.hasOwn(request, 'id')) send({ jsonrpc: '2.0', id: request.id, error: { code: -32021, message: '已有后台请求在处理中' } }); return; }

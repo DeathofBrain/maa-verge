@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { childEnvironment, nativeEnvironment } from './config';
 import { nativeWorkerPath } from './native-path';
+import { stringifyWireJson } from './wire-json';
 
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 export class CoreWorker {
@@ -62,7 +63,7 @@ export class CoreWorker {
         }
       } catch (error) { this.events.push({ type: 'protocol_error' }); rejectReady(error as Error); void this.close(); }
     });
-    this.child.stdin.write(JSON.stringify({ ...config, protocolVersion: 1 }) + '\n');
+    this.child.stdin.write(stringifyWireJson({ ...config, protocolVersion: 1 }) + '\n');
     try { await ready; if (this.exited) throw new Error('核心工作进程启动失败'); }
     catch (error) { await this.close(); throw error; }
     finally { clearTimeout(timer); }
@@ -73,7 +74,7 @@ export class CoreWorker {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { this.requests.delete(id); reject(new Error('核心工作进程未确认操作，结果未知')); }, 20_000);
       this.requests.set(id, { resolve, reject, timer });
-      this.child.stdin.write(JSON.stringify({ id, operation, protocolVersion: 1, ...params }) + '\n', error => {
+      this.child.stdin.write(stringifyWireJson({ id, operation, protocolVersion: 1, ...params }) + '\n', error => {
         if (error) { clearTimeout(timer); this.requests.delete(id); reject(error); }
       });
     });
