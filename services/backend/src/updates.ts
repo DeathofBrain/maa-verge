@@ -28,7 +28,7 @@ type Validator = (core: string, resource: string, version: string) => Promise<vo
 type Hook = () => Promise<void> | void;
 export interface UpdateOptions {
   mode?: string; source?: UpdateSource; validator?: Validator;
-  beforeActivate?: Hook; afterActivate?: Hook; finishActivate?: (error?: string) => void;
+  beforeActivate?: Hook; afterActivate?: Hook; finishActivate?: (error?: string) => Promise<void> | void;
   jobCommand?: string[];
   jobRunner?: (config: UpdateJobConfig) => Promise<UpdateJobResult>;
 }
@@ -115,10 +115,10 @@ export class OfficialSource implements UpdateSource {
   }
 }
 
-function executeJson(command: string[], input: unknown, timeout: number, children?: Set<ChildProcess>): Promise<any> {
+function executeJson(command: string[], input: unknown, timeout: number, children?: Set<ChildProcess>, newGroup = true): Promise<any> {
   return new Promise((resolve, reject) => {
     const child = spawn(command[0], command.slice(1), {
-      windowsHide: true, detached: process.platform !== "win32", stdio: ["pipe", "pipe", "pipe"],
+      windowsHide: true, detached: newGroup && process.platform !== "win32", stdio: ["pipe", "pipe", "pipe"],
       env: Object.fromEntries(Object.entries(process.env).filter(([key]) => !["BUN_OPTIONS", "BUN_BE_BUN", "NODE_OPTIONS", "NODE_PATH"].includes(key.toUpperCase()))),
     });
     let stdout = "", stderr = "", count = 0, failure: Error | undefined;
@@ -163,8 +163,8 @@ function terminateChild(child: ChildProcess): Promise<void> {
     }
   });
 }
-export async function validateNative(core: string, resource: string, version: string, executable = nativeWorkerPath(), children?: Set<ChildProcess>): Promise<void> {
-  const result = await executeJson([executable, "--validate"], { core, resource, version }, 90_000, children);
+export async function validateNative(core: string, resource: string, version: string, executable = nativeWorkerPath(), children?: Set<ChildProcess>, newGroup = true): Promise<void> {
+  const result = await executeJson([executable, "--validate"], { core, resource, version }, 90_000, children, newGroup);
   if (result.protocolVersion !== 1 || result.resourceLoaded !== true || result.version !== version) throw new Error("核心版本或资源隔离校验失败");
 }
 export async function treeHash(root: string): Promise<string> {
@@ -187,18 +187,28 @@ async function treeFiles(root: string): Promise<string[]> {
     }
   };
   await visit(root, "");
-  // Python sorts Unicode code points, while JavaScript sorts UTF-16 code units.
-  return result.sort((left, right) => {
+  // pathlib compares path components, with normcase on Windows, rather than
+  // sorting slash-separated strings. Within components Python compares code points.
+  const compare = (left: string, right: string) => {
     const a = Array.from(left), b = Array.from(right);
     for (let index = 0; index < Math.min(a.length, b.length); index++) {
       const difference = a[index].codePointAt(0)! - b[index].codePointAt(0)!;
       if (difference) return difference;
     }
     return a.length - b.length;
+  };
+  return result.sort((left, right) => {
+    const a = (process.platform === "win32" ? left.toLowerCase() : left).split("/");
+    const b = (process.platform === "win32" ? right.toLowerCase() : right).split("/");
+    for (let index = 0; index < Math.min(a.length, b.length); index++) {
+      const difference = compare(a[index], b[index]);
+      if (difference) return difference;
+    }
+    return a.length - b.length;
   });
 }
 
-export async function runUpdateJob(config: UpdateJobConfig, validator: Validator = (core, resource, version) => validateNative(core, resource, version, config.workerPath)): Promise<UpdateJobResult> {
+export async function runUpdateJob(config: UpdateJobConfig, validator: Validator = (core, resource, version) => validateNative(core, resource, version, config.workerPath, undefined, false)): Promise<UpdateJobResult> {
   if (!config || !["core", "resource"].includes(config.channel) || !config.archive || !config.target || !config.version) throw new Error("更新作业配置无效");
   if (config.channel === "core") {
     await extractCoreArchive(config.archive, config.target);
@@ -235,7 +245,7 @@ export async function runUpdateJobStdio(): Promise<void> {
 }
 function defaultJobCommand(): string[] {
   // Source development uses a dedicated TS entry; compile embeds the main entry.
-  return typeof Bun !== "undefined" && Bun.main.includes("$bunfs") ? [process.execPath, "--update-job"] :
+  return typeof Bun !== "undefined" && Bun.isStandaloneExecutable ? [process.execPath, "--update-job"] :
     [process.execPath, fileURLToPath(new URL("./update-job.ts", import.meta.url))];
 }
 
@@ -245,7 +255,7 @@ export class UpdateService {
   private readonly validator: Validator;
   private readonly beforeActivate: Hook;
   private readonly afterActivate: Hook;
-  private readonly finishActivate: (error?: string) => void;
+  private readonly finishActivate: (error?: string) => Promise<void> | void;
   private readonly jobRunner: (config: UpdateJobConfig) => Promise<UpdateJobResult>;
   private queue: Promise<unknown> = Promise.resolve();
   private readonly children = new Set<ChildProcess>();
@@ -293,12 +303,12 @@ export class UpdateService {
     await Promise.all([...this.children].map(terminateChild));
     await this.queue;
   }
-  channels(): any[] { return this.store.all("update"); }
+  channels(): any[] { return this.store.all("update").map((value) => ({ latestVersion: null, ...value })); }
   channel(channel: string): any {
     if (!["app", "core", "resource"].includes(channel)) throw new RpcError(-32602, "未知更新通道");
-    return this.store.get("update", channel);
+    return { latestVersion: null, ...this.store.get("update", channel) };
   }
-  private save(value: any): any { this.store.put("update", value.id, value); return value; }
+  private save(value: any): any { value = { latestVersion: null, ...value }; this.store.put("update", value.id, value); return value; }
   private change(channel: string, changes: any): any {
     const value = this.save({ ...this.channel(channel), ...changes });
     this.emit("update.changed", value.message, { channel, update: value }); return value;
@@ -380,11 +390,11 @@ export class UpdateService {
         this.change("resource", { currentVersion: "bundled@" + staged.version, status: "active", message: "使用新核心附带的已验证基础资源" });
       }
       const result = this.change(channel, { currentVersion: staged.version, status: "active", progress: 100, message: "新快照已生效，桌面无需重启" });
-      this.finishActivate(); return result;
+      await this.finishActivate(); return result;
     } catch (error) { this.change(channel, { status: "failed", message: "切换校验失败，保留原版本: " + message(error) }); throw new RpcError(-32020, "更新切换失败，已保留原版本", message(error)); }
   }
   private async switchCombo(candidate: any, original: any): Promise<void> {
-    try { await this.beforeActivate(); } catch (error) { this.finishActivate(message(error)); throw error; }
+    try { await this.beforeActivate(); } catch (error) { await this.finishActivate(message(error)); throw error; }
     this.store.put("active", "combo", candidate);
     try { await this.afterActivate(); }
     catch (error) {
@@ -392,9 +402,9 @@ export class UpdateService {
       catch (restoreError) {
         this.store.put("active", "combo", original);
         const failure = `候选版本重连失败: ${message(error)}；原版本重连也失败: ${message(restoreError)}`;
-        this.finishActivate(failure); throw new Error(failure);
+        await this.finishActivate(failure); throw new Error(failure);
       }
-      this.finishActivate(); throw new Error(`候选版本重连失败，已恢复原版本: ${message(error)}`);
+      await this.finishActivate(); throw new Error(`候选版本重连失败，已恢复原版本: ${message(error)}`);
     }
   }
   async activatePending(): Promise<void> {
@@ -415,6 +425,6 @@ export class UpdateService {
     } catch (error) { this.change(channel, { status: "failed", message: "回滚初始化失败，已恢复活动版本" }); throw new RpcError(-32020, "回滚初始化失败，已恢复活动版本", message(error)); }
     this.store.put("previous", "combo", active);
     for (const key of ["core", "resource"]) if (previous[key]) this.change(key, { currentVersion: previous[key].version, status: "active", message: "已恢复上一组验证通过的核心与资源", progress: 100 });
-    this.finishActivate(); return this.channel(channel);
+    await this.finishActivate(); return this.channel(channel);
   }
 }
