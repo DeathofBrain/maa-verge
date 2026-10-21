@@ -143,14 +143,15 @@ impl Runtime {
                     }
                 } else if message.get("method").and_then(Value::as_str) == Some("runtime.event") {
                     let payload = message.get("params").cloned().unwrap_or(Value::Null);
-                    emit("runtime.event", payload);
+                    // JSON-RPC method names may contain dots; Tauri event names may not.
+                    emit("runtime-event", payload);
                 }
             }
             for (_, sender) in replies.lock().expect("pending lock").drain() {
                 let _ = sender.send(Err("本地服务已退出，请重启 Maa Verge".into()));
             }
             emit(
-                "runtime.disconnected",
+                "runtime-disconnected",
                 json!({ "reason": "本地服务已退出" }),
             );
         });
@@ -384,7 +385,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .iter()
-                .any(|(name, _)| name == "runtime.event"));
+                .any(|(name, _)| name == "runtime-event"));
         });
     }
 }
