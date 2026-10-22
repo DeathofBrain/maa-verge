@@ -518,6 +518,30 @@
   margin: 0;
 }
 
+.sp-capture-form {
+  display: grid;
+  gap: 18px;
+  max-width: 760px;
+}
+
+.sp-capture-fields {
+  display: grid;
+  grid-template-columns: minmax(0,2fr) minmax(0,1fr);
+  gap: 20px;
+}
+
+.sp-capture-form .sp-field {
+  min-width: 0;
+}
+
+.sp-capture-form .sp-help,.sp-capture-form .sp-notice {
+  margin: 0;
+}
+
+.sp-capture-form .sp-form-actions {
+  padding-top: 0;
+}
+
 .sp-about-intro {
   font-size: 14px;
   line-height: 1.8;
@@ -1194,7 +1218,7 @@
   .sp-setting-row .sp-inline-select {
     width: 135px;
   }
-  .sp-budget-fields {
+  .sp-budget-fields,.sp-capture-fields {
     grid-template-columns: 1fr;
   }
   .sp-field {
