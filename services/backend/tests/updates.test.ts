@@ -34,7 +34,7 @@ test("tree hashes preserve Python pathlib component ordering and Unicode code po
 });
 test("all update states expose the nullable latest version contract and await finish hooks", async () => {
   const root = await temp(), store = new MemoryStore(); let finished = false;
-  const updates = new UpdateService(root, store, () => {}, () => false, { finishActivate: async () => { await Bun.sleep(10); finished = true; } });
+  const updates = fixtureUpdates(root, store, () => false, new FixtureSource(), { finishActivate: async () => { await Bun.sleep(10); finished = true; } });
   for (const state of updates.channels()) expect(state.latestVersion).toBeNull();
   const old = store.get("update", "core"); delete old.latestVersion; store.put("update", "core", old);
   expect(updates.channel("core").latestVersion).toBeNull();
@@ -60,17 +60,20 @@ test("download validates SHA-256/size and removes partial files", async () => {
   expect(await source.download(metadata, destination, () => {})).toBe(metadata.digest.slice(7));
   expect(await readFile(destination)).toEqual(body);
 });
-test("mock resource update activates only at idle and rolls back independently", async () => {
-  const root = await temp(), store = new MemoryStore(); let busy = true;
-  const updates = new UpdateService(root, store, () => {}, () => busy);
+test("fixture resource update activates only at idle and rolls back independently", async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource(); let busy = false;
+  const updates = fixtureUpdates(root, store, () => busy, source);
+  await updates.check("core"); await updates.prepare("core"); await updates.activate("core");
+  await updates.check("resource"); await updates.prepare("resource"); await updates.activate("resource");
   const core = updates.channel("core").currentVersion;
+  source.resourceVersion = "b".repeat(40); busy = true;
   await updates.check("resource"); await updates.prepare("resource");
   expect((await updates.activate("resource")).status).toBe("waiting_idle");
-  expect(updates.channel("resource").currentVersion).toBe("2026.10.18");
+  expect(updates.channel("resource").currentVersion).toBe("a".repeat(40));
   busy = false; await updates.activatePending();
-  expect(updates.channel("resource").currentVersion).toBe("2026.10.20.2");
+  expect(updates.channel("resource").currentVersion).toBe("b".repeat(40));
   expect(updates.channel("core").currentVersion).toBe(core);
-  await updates.rollback("resource"); expect(updates.channel("resource").currentVersion).toBe("2026.10.18");
+  await updates.rollback("resource"); expect(updates.channel("resource").currentVersion).toBe("a".repeat(40));
 });
 class FixtureSource implements UpdateSource {
   coreVersion = "v6.20.0"; resourceVersion = "a".repeat(40);
@@ -89,6 +92,13 @@ class FixtureSource implements UpdateSource {
     await writeFile(destination, bytes); progress(90); return createHash("sha256").update(bytes).digest("hex");
   }
 }
+function fixtureUpdates(root: string, store: MemoryStore, busy: () => boolean, source = new FixtureSource(), hooks: {
+  afterActivate?: () => void | Promise<void>; finishActivate?: (error?: string) => void | Promise<void>;
+} = {}) {
+  const validator = async () => {};
+  return new UpdateService(root, store, () => {}, busy, { source, validator, jobRunner: config => runUpdateJob(config, validator), ...hooks });
+}
+
 test("native install/update use selective extraction; resource overlays rebase on immutable core", async () => {
   const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
   const validator = async (core: string, resource: string, version: string) => {
@@ -97,7 +107,7 @@ test("native install/update use selective extraction; resource overlays rebase o
     expect(await Bun.file(path.join(core, "MAA.dll")).exists()).toBe(false);
     expect(await Bun.file(path.join(core, "externals/coreclr.dll")).exists()).toBe(false);
   };
-  const updates = new UpdateService(root, store, () => {}, () => false, { mode: "native", source, validator, jobRunner: (config) => runUpdateJob(config, validator) });
+  const updates = new UpdateService(root, store, () => {}, () => false, { source, validator, jobRunner: (config) => runUpdateJob(config, validator) });
   await updates.check("core"); await updates.prepare("core"); await updates.activate("core");
   const core = store.get("active", "combo").core, coreHash = await treeHash(core.path);
   await updates.check("resource"); await updates.prepare("resource"); await updates.activate("resource");
@@ -119,19 +129,21 @@ test("native install/update use selective extraction; resource overlays rebase o
   await updates.rollback("core"); expect(store.get("active", "combo").core).toEqual(core);
 });
 test("failed candidate reconnection restores original pointer and reinitializes old workers", async () => {
-  const root = await temp(), store = new MemoryStore(); let attempts = 0;
-  const updates = new UpdateService(root, store, () => {}, () => false, { afterActivate: () => { if (++attempts === 1) throw new Error("synthetic reconnect failure"); } });
-  const original = store.get("active", "combo");
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource(); let attempts = 0, fail = false;
+  const updates = fixtureUpdates(root, store, () => false, source, { afterActivate: () => { if (fail && ++attempts === 1) throw new Error("synthetic reconnect failure"); } });
+  await updates.check("core"); await updates.prepare("core"); await updates.activate("core");
+  const original = store.get("active", "combo"); source.coreVersion = "v6.20.1"; fail = true;
   await updates.check("core"); await updates.prepare("core");
   await expect(updates.activate("core")).rejects.toThrow("更新切换失败");
   expect(store.get("active", "combo")).toEqual(original); expect(attempts).toBe(2);
   expect(store.get("staged", "core")).toBeDefined();
 });
+
 test("restart marks interrupted preparations failed; stable channel rejects downgrade", async () => {
   const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
   new UpdateService(root, store, () => {}, () => false);
   store.put("update", "core", { ...store.get("update", "core"), status: "downloading", currentVersion: "v6.21.0" });
-  const updates = new UpdateService(root, store, () => {}, () => false, { mode: "native", source });
+  const updates = new UpdateService(root, store, () => {}, () => false, { source });
   expect(updates.channel("core").status).toBe("failed");
   await expect(updates.check("core")).rejects.toThrow("检查更新失败");
   expect(updates.channel("core").message).toContain("拒绝自动降级");
@@ -144,7 +156,7 @@ test("close aborts an owned metadata request and drains writes before Store clos
     entered();
     return new Promise((_resolve, reject) => options.signal.addEventListener("abort", () => reject(options.signal.reason), { once: true }));
   }) as typeof fetch);
-  const updates = new UpdateService(root, store, () => {}, () => false, { mode: "native", source });
+  const updates = new UpdateService(root, store, () => {}, () => false, { source });
   const pending = updates.check("core"); const failure = pending.catch(() => {});
   await started; await updates.close(); await failure;
   expect(updates.channel("core").status).toBe("failed");
@@ -155,7 +167,7 @@ test("close aborts an owned metadata request and drains writes before Store clos
 test("close terminates an owned update job before returning", async () => {
   const root = await temp(), store = new MemoryStore(), script = path.join(root, "job.ts");
   await writeFile(script, 'const config=await Bun.stdin.json();await Bun.write(config.target+"/started","ready");await Bun.sleep(60000);');
-  const updates = new UpdateService(root, store, () => {}, () => false, { mode: "native", source: new FixtureSource(), jobCommand: [process.execPath, script] });
+  const updates = new UpdateService(root, store, () => {}, () => false, { source: new FixtureSource(), jobCommand: [process.execPath, script] });
   await updates.check("core");
   const preparation = updates.prepare("core"); const failure = preparation.catch(() => {});
   let started = false;

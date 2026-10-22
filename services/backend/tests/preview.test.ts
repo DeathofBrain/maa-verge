@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ScreenFrame } from '../../../packages/contracts/src/rpc-types';
-import { mockPreviewImage } from '../../../packages/contracts/src/preview-mock';
+import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 import { Runtime } from '../src/runtime';
 import { CoreWorker } from '../src/worker';
 
@@ -29,13 +29,9 @@ class FakeWorker {
   async close() { this.closed = true; }
   async waitConnected() { return this.connected && this.safeIdle; }
 }
-function mockRuntime() {
-  const runtime = new Runtime(temporary(), 'mock', { leaseFactory: async () => new FakeWorker() });
-  runtimes.push(runtime); return runtime;
-}
 async function nativeRuntime() {
   const worker = new FakeWorker();
-  const runtime = new Runtime(temporary(), 'native', { workerFactory: async () => worker, adbExecutable: () => 'synthetic-adb' });
+  const runtime = new Runtime(temporary(), { workerFactory: async () => worker, adbExecutable: () => 'synthetic-adb' });
   runtimes.push(runtime);
   runtime.store.put('active', 'combo', { core: { path: 'synthetic-core', version: 'v1' }, resource: { path: 'synthetic-resource', version: 'r1' } });
   const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
@@ -54,11 +50,11 @@ afterEach(async () => {
 });
 
 describe('transient screen frames', () => {
-  test('mock preview has fresh metadata and a tap never persists image bytes', async () => {
-    const runtime = mockRuntime(), before = runtime.snapshot();
+  test('native preview has fresh metadata and a tap never persists image bytes', async () => {
+    const { runtime, device } = await nativeRuntime(), before = runtime.snapshot();
     const objects = runtime.store.db.query('SELECT * FROM objects ORDER BY rowid').all();
-    const frame = await getFrame(runtime, 'mock-device-1');
-    expect(frame).toMatchObject({ ...mockPreviewImage, deviceId: 'mock-device-1', canControl: true });
+    const frame = await getFrame(runtime, device.id);
+    expect(frame).toMatchObject({ ...mockPreviewImage, deviceId: device.id, canControl: true });
     expect(frame.latencyMs).toBeGreaterThanOrEqual(0);
     expect(frame.frameId).toBeTruthy();
     expect(Math.abs(Date.now() - Date.parse(frame.capturedAt))).toBeLessThan(1000);
@@ -75,7 +71,7 @@ describe('transient screen frames', () => {
   });
 
   test('frame and tap parameters reject unknown fields and invalid coordinates', async () => {
-    const runtime = mockRuntime(), frame = await getFrame(runtime, 'mock-device-1');
+    const { runtime, device } = await nativeRuntime(), frame = await getFrame(runtime, device.id);
     for (const params of [{}, { deviceId: '' }, { deviceId: frame.deviceId, shell: 'invalid' }]) {
       await expect(runtime.handle('device.frame', params)).rejects.toMatchObject({ code: -32602 });
     }

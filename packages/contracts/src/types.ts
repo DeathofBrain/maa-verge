@@ -1,6 +1,6 @@
 /* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */
 
-export type Mode = 'mock' | 'native';
+export type Mode = 'native';
 export type Id = string;
 export type Name = string;
 export type Address = string;

@@ -22,7 +22,9 @@ test('standalone validators preserve normalized data and arbitrary task paramete
   assert.equal(validatePlan(value), true);
   assert.deepEqual(value, original);
   assert.equal(validateSettings(settings()), true);
-  assert.equal(validateSnapshot({ mode: 'mock', devices: [], plans: [value], runs: [], updates: [], settings: settings(), events: [] }), true);
+  const snapshot = { mode: 'native', devices: [], plans: [value], runs: [], updates: [], settings: settings(), events: [] };
+  assert.equal(validateSnapshot(snapshot), true);
+  assert.equal(validateSnapshot({ ...snapshot, mode: 'mock' }), false);
 });
 
 test('missing defaults, invalid metadata and unknown model keys are rejected without coercion', () => {

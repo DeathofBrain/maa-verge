@@ -9,11 +9,12 @@ import net from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { root } from './project.mjs';
+import { seedNativeData } from './test-support/seed-native.mjs';
 
 const require = createRequire(import.meta.url);
 const option = process.argv.indexOf('--executable');
 if (process.argv.includes('--help')) {
-  console.log('node tools/smoke-webview-windows.mjs [--executable <release maaverge.exe>]\nRequires Windows, installed WebView2, pnpm dependencies, and release/runtime binaries.\nUses an isolated mock workspace and temporary WebView profile; no devices or models.');
+  console.log('node tools/smoke-webview-windows.mjs [--executable <release maaverge.exe>]\nRequires Windows, installed WebView2, pnpm dependencies, and release/runtime binaries.\nUses an isolated native workspace with automatic connection/download disabled and a temporary WebView profile.');
   process.exit(0);
 }
 if (process.platform !== 'win32') throw new Error('This native WebView smoke requires Windows; it does not install WebView2.');
@@ -80,7 +81,7 @@ async function start() {
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   const port = server.address().port;
   await new Promise(resolve => server.close(resolve));
-  const env = { ...process.env, MAAVERGE_MODE: 'mock', MAAVERGE_DATA_DIR: data, MAAVERGE_DEVICE_LOCK_DIR: locks, WEBVIEW2_USER_DATA_FOLDER: profile, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1` };
+  const env = { ...process.env, MAAVERGE_MODE: 'native', MAAVERGE_DATA_DIR: data, MAAVERGE_DEVICE_LOCK_DIR: locks, WEBVIEW2_USER_DATA_FOLDER: profile, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1` };
   for (const key of ['MAAVERGE_BACKEND', 'MAAVERGE_CORE_WORKER_PATH', 'BUN_OPTIONS', 'BUN_BE_BUN', 'NODE_OPTIONS', 'NODE_PATH']) delete env[key];
   child = spawn(executable, [], { cwd: root, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout.on('data', chunk => output += chunk);
@@ -105,16 +106,16 @@ async function start() {
   assert.ok(page, 'The CDP target must be the native packaged Tauri page');
   page.setDefaultTimeout(12_000);
   page.on('pageerror', error => report.pageErrors.push(error.message));
-  // Reload only this isolated mock page after attaching the listener. Otherwise
+  // Reload only this isolated test page after attaching the listener. Otherwise
   // initialization errors (including illegal Tauri event names) can precede CDP.
   await page.reload({ waitUntil: 'load' });
   await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
-  await expect(page.locator('.environment-badge')).toHaveText('模拟工作空间');
-  await expect(page.getByLabel('设备统计', { exact: true }).locator('strong')).toHaveText('1');
+  await expect(page.locator('.environment-badge')).toHaveText('本地运行');
+  await expect(page.getByLabel('设备统计', { exact: true }).locator('strong')).toHaveText('0');
   await delay(200); // Let initialization IPC listener rejections reach pageerror.
   assertNoPageErrors();
   ownTree();
-  report.phases.push({ phase: 'native-WebView-ready', url: page.url(), mode: 'mock' });
+  report.phases.push({ phase: 'native-WebView-ready', url: page.url(), mode: 'native' });
 }
 async function closeThroughUI() {
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
@@ -136,34 +137,30 @@ function removeOwnedDirectory(directory) {
 }
 
 try {
-  console.log('Starting an isolated Windows release mock WebView smoke.');
+  await seedNativeData(data);
+  console.log('Starting an isolated Windows release native WebView smoke.');
+  await start();
+  await page.locator('.sidebar').getByRole('button', { name: /^Agent 助手/ }).click();
+  await page.getByRole('button', { name: '制定刷 6 次 1-7 的计划', exact: true }).click();
+  await page.getByRole('button', { name: '检查并保存计划', exact: true }).click();
+  const workspace = page.getByRole('region', { name: '任务表工作台', exact: true });
+  await expect(workspace.getByRole('heading', { name: '1-7 材料补给', exact: true })).toBeVisible();
+  await workspace.getByRole('button', { name: '保存任务表', exact: true }).click();
+  await expect(workspace.locator('.wb-save-state')).toHaveText('已保存');
+  const activeTree = ownTree();
+  assert.ok(activeTree.some(process => process.Name === 'maaverge-runtime.exe'));
+  assert.ok(!activeTree.some(process => process.Name === 'maaverge-core-worker.exe'), 'An empty workspace must not create a device worker');
+  assert.ok(!activeTree.some(process => /python|node|bun/i.test(process.Name)), 'The application must use only its packaged runtime');
+  await page.locator('.sidebar').getByRole('button', { name: '执行记录', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '还没有执行记录', exact: true })).toBeVisible();
+  await page.screenshot({ path: path.join(runRoot, 'native-empty-history.png'), animations: 'disabled' });
+  assertNoPageErrors();
+  report.phases.push({ phase: 'local-proposal-saved-without-execution', processes: activeTree });
+  await closeThroughUI();
   await start();
   await page.locator('.sidebar').getByRole('button', { name: '任务表', exact: true }).click();
   await page.locator('.sidebar').getByRole('button', { name: '配置任务表1-7 材料补给', exact: true }).click();
-  const workspace = page.getByRole('region', { name: '任务表工作台', exact: true });
-  await expect(workspace.getByRole('heading', { name: '1-7 材料补给', exact: true })).toBeVisible();
-  await workspace.getByRole('button', { name: '开始日常', exact: true }).click();
-  const dock = page.getByRole('contentinfo', { name: '执行状态栏', exact: true });
-  await expect(dock).toContainText('执行中');
-  const activeTree = ownTree();
-  assert.ok(activeTree.some(process => process.Name === 'maaverge-runtime.exe'));
-  assert.ok(activeTree.some(process => process.Name === 'maaverge-core-worker.exe'));
-  assert.ok(!activeTree.some(process => /python|node|bun/i.test(process.Name)), 'The application must use only its packaged runtime');
-  report.phases.push({ phase: 'run-started', processes: activeTree });
-  await dock.getByRole('button', { name: '停止执行', exact: true }).click();
-  await expect(dock.getByRole('button', { name: '停止执行', exact: true })).toBeHidden();
-  await waitUntil(() => !ownTree().some(process => process.Name === 'maaverge-core-worker.exe'));
-  await page.locator('.sidebar').getByRole('button', { name: '执行记录', exact: true }).click();
-  await expect(page.getByRole('cell', { name: '已停止', exact: true })).toBeVisible();
-  await expect(page.getByRole('cell', { name: '模拟执行已停止，原计划保留', exact: true })).toBeVisible();
-  await page.screenshot({ path: path.join(runRoot, 'stopped.png'), animations: 'disabled' });
-  assertNoPageErrors();
-  report.phases.push({ phase: 'run-stopped-worker-released' });
-  await closeThroughUI();
-  await start();
-  await page.locator('.sidebar').getByRole('button', { name: '执行记录', exact: true }).click();
-  await expect(page.getByRole('cell', { name: '已停止', exact: true })).toHaveCount(1);
-  await expect(page.getByRole('cell', { name: '模拟执行已停止，原计划保留', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '任务表工作台', exact: true }).getByRole('heading', { name: '1-7 材料补给', exact: true })).toBeVisible();
   report.phases.push({ phase: 'restart-persistence' });
   await closeThroughUI();
   assertNoPageErrors();

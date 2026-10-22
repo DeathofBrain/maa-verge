@@ -46,7 +46,7 @@ test('MuMu SDK selection unifies the actual emulator serial and TCP aliases', ()
 test('native connection records core capture evidence and preserves preferences across restart', async () => {
   const root = temporary();
   const worker = { events: [] as any[], connected: false, safeIdle: true, async connect() {}, async close() {}, async task() {}, async stop() {}, async waitConnected() { return false; } };
-  const runtime = new Runtime(root, 'native', { workerFactory: async () => worker, adbExecutable: () => 'synthetic-adb' });
+  const runtime = new Runtime(root, { workerFactory: async () => worker, adbExecutable: () => 'synthetic-adb' });
   try {
     runtime.store.put('active', 'combo', { core: { path: 'synthetic-core', version: 'v1' }, resource: { path: 'synthetic-resource', version: 'r1' } });
     const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
@@ -64,6 +64,6 @@ test('native connection records core capture evidence and preserves preferences 
     expect(runtime.snapshot().devices[0].captureMethod).toBeUndefined();
     expect(runtime.snapshot().events.some(e => e.message.includes('expected MumuExtras'))).toBe(true);
   } finally { await runtime.close(); }
-  const reopened = new Runtime(root, 'native');
+  const reopened = new Runtime(root);
   try { expect(reopened.snapshot().settings.capture?.method).toBe('mumu'); } finally { await reopened.close(); }
 });

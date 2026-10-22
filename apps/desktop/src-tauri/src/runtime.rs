@@ -78,6 +78,9 @@ fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
 
 impl Runtime {
     pub async fn start(app: AppHandle) -> Result<Self, String> {
+        if std::env::var_os("MAAVERGE_MODE").is_some_and(|mode| mode != "native") {
+            return Err("模拟运行模式已移除，请移除 MAAVERGE_MODE 环境变量或设置为 native".into());
+        }
         let (executable, arguments) = program(&app)?;
         let mut command = Command::new(executable);
         command.args(arguments);
@@ -100,16 +103,7 @@ impl Runtime {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(true);
-        if std::env::var_os("MAAVERGE_MODE").is_none() {
-            command.env(
-                "MAAVERGE_MODE",
-                if cfg!(debug_assertions) {
-                    "mock"
-                } else {
-                    "native"
-                },
-            );
-        }
+        command.env("MAAVERGE_MODE", "native");
         #[cfg(windows)]
         command.creation_flags(0x08000000); // CREATE_NO_WINDOW
         let mut child = command.spawn().map_err(|error| error.to_string())?;
@@ -256,7 +250,7 @@ impl Runtime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use std::io::{BufRead, BufReader, Write};
     use std::path::Path;
 
     fn lease(worker: &Path, lock: &Path) -> std::process::Output {
@@ -303,11 +297,11 @@ mod tests {
         let command = || {
             let mut command = Command::new(&executable);
             command
-                .args(["--mode", "mock", "--data-dir"])
+                .args(["--mode", "native", "--data-dir"])
                 .arg(&data)
                 .current_dir(&data)
                 .env("PATH", "")
-                .env("MAAVERGE_MODE", "mock")
+                .env("MAAVERGE_MODE", "native")
                 .env("MAAVERGE_DEVICE_LOCK_DIR", &locks)
                 .env_remove("MAAVERGE_CORE_WORKER_PATH")
                 .env("BUN_OPTIONS", "--invalid-option")
@@ -324,7 +318,9 @@ mod tests {
                 .request("app.snapshot".into(), json!({}))
                 .await
                 .unwrap();
-            assert_eq!(snapshot["mode"], "mock");
+            assert_eq!(snapshot["mode"], "native");
+            assert_eq!(snapshot["devices"], json!([]));
+            assert_eq!(snapshot["plans"], json!([]));
             let mut settings = snapshot["settings"].clone();
             settings["minimizeToTray"] = json!(false);
             runtime
@@ -342,44 +338,51 @@ mod tests {
                 .request("plan.save".into(), json!({"plan": plan}))
                 .await
                 .unwrap();
-            let params = json!({"planId":"desktop-smoke", "deviceId":"mock-device-1", "requestId":"desktop-once"});
-            let run = runtime
-                .request("run.start".into(), params.clone())
-                .await
+            let params = json!({"planId":"desktop-smoke", "deviceId":"missing-device", "requestId":"desktop-once"});
+            assert!(runtime.request("run.start".into(), params).await.is_err());
+            let lock = locks.join("synthetic-controller.lock");
+            std::fs::create_dir_all(&locks).unwrap();
+            // Exercise the packaged worker's lease with a synthetic key only.
+            let mut owner = std::process::Command::new(&worker)
+                .arg("--lease-only")
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
                 .unwrap();
-            assert_eq!(run["status"], "running");
+            writeln!(
+                owner.stdin.as_mut().unwrap(),
+                "{}",
+                json!({"protocolVersion":1,"lockPath":lock,"lockTimeoutMs":0})
+            )
+            .unwrap();
+            let mut ready = String::new();
+            BufReader::new(owner.stdout.take().unwrap())
+                .read_line(&mut ready)
+                .unwrap();
             assert_eq!(
-                runtime
-                    .request("run.start".into(), params.clone())
-                    .await
-                    .unwrap()["id"],
-                run["id"]
+                serde_json::from_str::<Value>(&ready).unwrap()["type"],
+                "ready"
             );
-            let lock = std::fs::read_dir(&locks)
-                .unwrap()
-                .next()
-                .unwrap()
-                .unwrap()
-                .path();
             assert!(
                 !lease(&worker, &lock).status.success(),
                 "C++ lease must exclude a second controller"
             );
-            runtime
-                .request("run.stop".into(), json!({"id": run["id"]}))
-                .await
-                .unwrap();
+            owner.stdin.take();
+            assert!(owner.wait().unwrap().success());
             runtime.shutdown().await;
             assert!(
                 lease(&worker, &lock).status.success(),
-                "shutdown must release the C++ device lease"
+                "EOF must release the C++ device lease"
             );
             let restarted = Runtime::start_process(command(), emit).await.unwrap();
             assert!(!restarted.minimize_to_tray());
-            assert_eq!(
-                restarted.request("run.start".into(), params).await.unwrap()["id"],
-                run["id"]
-            );
+            let recovered = restarted
+                .request("app.snapshot".into(), json!({}))
+                .await
+                .unwrap();
+            assert_eq!(recovered["plans"][0]["id"], "desktop-smoke");
+            assert_eq!(recovered["runs"], json!([]));
             restarted.shutdown().await;
             assert!(events
                 .lock()

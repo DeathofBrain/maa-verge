@@ -164,9 +164,9 @@ test('a disabled floating-point task remains invalid when enabled after runtime 
   const root = mkdtempSync(path.join(tmpdir(), 'maaverge-wire-restart-'));
   let runtime: Runtime | undefined;
   try {
-    runtime = new Runtime(root, 'mock');
+    runtime = new Runtime(root);
     const saved = await runtime.handle('plan.save', { plan: parseWireJson(rawPlan('Fight', '{"times":1.0}', false)) });
-    await runtime.close(); runtime = new Runtime(root, 'mock');
+    await runtime.close(); runtime = new Runtime(root);
     const plan = runtime.store.get('plan', saved.id);
     expect(isWireFloat(plan.tasks[0].params, 'times')).toBe(true);
     plan.tasks[0].enabled = true;
@@ -196,7 +196,7 @@ test('stdio parses raw numeric tokens before application validation', () => {
       `{"jsonrpc":"2.0","method":"plan.save","id":2,"params":{"plan":${rawPlan('Fight', '{"times":1}')}}}`,
       `{"jsonrpc":"2.0","method":"plan.save","id":3,"params":{"plan":${rawPlan('Infrast', '{"threshold":1.0}')}}}`,
     ].join('\n') + '\n';
-    const result = spawnSync(process.execPath, [path.resolve(import.meta.dir, '../src/entry.ts'), '--mode', 'mock', '--data-dir', root], {
+    const result = spawnSync(process.execPath, [path.resolve(import.meta.dir, '../src/entry.ts'), '--mode', 'native', '--data-dir', root], {
       input, encoding: 'utf8', timeout: 10_000,
     });
     expect(result.status, result.stderr).toBe(0);

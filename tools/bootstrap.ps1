@@ -1,4 +1,4 @@
-param([switch]$MockOnly, [switch]$Native)
+param([switch]$SkipReference, [switch]$Native)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $toolRoot = Join-Path $projectRoot '.tools'
@@ -10,7 +10,7 @@ if (!(Test-Path -LiteralPath $nodeExecutable)) {
     if ($nodeCommand -and ((& $nodeCommand.Source --version) -eq "v$nodeVersion")) {
         $nodeExecutable = $nodeCommand.Source
     } else {
-        if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'This bootstrap supports Windows x64. Use browser mock with a matching official Node 24 distribution on other architectures.' }
+        if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'This bootstrap supports Windows x64. Install the matching official Node 24 distribution on other architectures.' }
         $archiveName = "node-v$nodeVersion-win-x64.zip"
         $downloadUrl = "https://nodejs.org/dist/v$nodeVersion"
         $archivePath = Join-Path $toolRoot $archiveName
@@ -36,7 +36,7 @@ Push-Location $projectRoot
 try {
     & $nodeExecutable $pnpmEntry install --frozen-lockfile
     if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency sync failed' }
-    if (!$MockOnly) {
+    if (!$SkipReference) {
         $uvCommand = Get-Command uv -ErrorAction SilentlyContinue
         $uvExecutable = Join-Path $toolRoot 'uv/uv.exe'
         if (Test-Path -LiteralPath $uvExecutable) { $uvCommand = @{ Source = $uvExecutable } }
@@ -58,5 +58,5 @@ try {
         & $nodeExecutable (Join-Path $PSScriptRoot 'doctor.mjs') --native
         if ($LASTEXITCODE -ne 0) { throw 'Native prerequisites are incomplete; follow docs/development.md' }
     }
-    Write-Host 'Ready. Run: powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 dev:mock'
+    Write-Host 'Ready. Run: powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 dev'
 } finally { Pop-Location }

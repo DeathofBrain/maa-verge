@@ -22,7 +22,7 @@ if (process.argv.includes("--update-job")) {
       return createHash("sha256").update(await readFile(destination)).digest("hex");
     },
   };
-  const updates = new UpdateService(config.root, store, () => {}, () => false, { mode: "native", source });
+  const updates = new UpdateService(config.root, store, () => {}, () => false, { source });
   try {
     await updates.check("core"); await updates.prepare("core");
     process.stdout.write(JSON.stringify({ standalone: Bun.isStandaloneExecutable, staged: store.get("staged", "core").version }) + "\n");

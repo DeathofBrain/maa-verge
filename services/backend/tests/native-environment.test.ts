@@ -18,10 +18,13 @@ test('isolated core validation receives the generation library path and clean ru
       if (process.platform !== 'win32' && process.env[key]?.split(':')[0] !== input.core) process.exit(3);
       console.log(JSON.stringify({protocolVersion:1, resourceLoaded:true, version:input.version}));
     `);
-    const build = Bun.spawn([process.execPath, 'build', '--compile', '--no-compile-autoload-dotenv', '--no-compile-autoload-bunfig', source, '--outfile', executable], { env: childEnvironment(), stdout: 'ignore', stderr: 'pipe' });
-    expect(await build.exited).toBe(0);
+    // Bun creates its intermediate PE in cwd before renaming it to --outfile.
+    // Keep that file in this test's directory instead of the watched checkout.
+    const build = Bun.spawn([process.execPath, 'build', '--compile', '--no-compile-autoload-dotenv', '--no-compile-autoload-bunfig', source, '--outfile', executable], { cwd: root, env: childEnvironment(), stdout: 'ignore', stderr: 'pipe' });
+    const diagnostics = await new Response(build.stderr).text();
+    expect(await build.exited, diagnostics).toBe(0);
     for (const key of options) process.env[key] = '--invalid';
-    expect(childEnvironment({ Bun_Options: 'bad', NODE_OPTIONS: 'bad', MAAVERGE_MODE: 'mock' })).toEqual({ MAAVERGE_MODE: 'mock' });
+    expect(childEnvironment({ Bun_Options: 'bad', NODE_OPTIONS: 'bad', MAAVERGE_MODE: 'native' })).toEqual({ MAAVERGE_MODE: 'native' });
     for (const platform of ['linux', 'darwin'] as const) {
       const key = platform === 'darwin' ? 'DYLD_LIBRARY_PATH' : 'LD_LIBRARY_PATH';
       expect(nativeEnvironment(root, platform)[key]?.startsWith(root)).toBe(true);

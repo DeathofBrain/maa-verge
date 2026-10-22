@@ -2,12 +2,14 @@ import { mkdtempSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { root, run, windows, devEnvironment, fail } from './project.mjs';
+import { seedNativeData } from './test-support/seed-native.mjs';
 
 async function main() {
   const executable = path.join(root, 'dist/runtime/maaverge-runtime', windows ? 'maaverge-runtime.exe' : 'maaverge-runtime');
   if (!existsSync(executable)) throw new Error('Build the standalone runtime first: node tools/package-runtime.mjs');
   const temporary = mkdtempSync(path.join(tmpdir(), 'maaverge-desktop-smoke-'));
   try {
+    await seedNativeData(temporary);
     writeFileSync(path.join(temporary, '.env'), 'BUN_BE_BUN=1\nNODE_OPTIONS=--invalid-option\n');
     writeFileSync(path.join(temporary, 'bunfig.toml'), '[broken\n');
     await run('cargo', ['test', '--manifest-path', 'apps/desktop/src-tauri/Cargo.toml', '--locked', '--lib', 'runtime::tests::packaged_runtime_transport', '--', '--ignored', '--nocapture'], {

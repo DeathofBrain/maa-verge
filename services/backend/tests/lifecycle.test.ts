@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Store } from '../src/storage';
+import { parseSettings } from '../src/models';
 
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const entry = path.join(repo, 'services/backend/src/entry.ts');
@@ -23,7 +24,7 @@ function temp() {
 }
 
 function environment(root: string) {
-  const env = { ...process.env, PYTHONPATH: path.join(repo, 'services/runtime'), MAAVERGE_MODE: 'mock', MAAVERGE_DATA_DIR: root, MAAVERGE_DEVICE_LOCK_DIR: path.join(root, 'device-locks') };
+  const env = { ...process.env, PYTHONPATH: path.join(repo, 'services/runtime'), MAAVERGE_MODE: 'native', MAAVERGE_DATA_DIR: root, MAAVERGE_DEVICE_LOCK_DIR: path.join(root, 'device-locks') };
   for (const key of Object.keys(env)) if (['NODE_OPTIONS', 'NODE_PATH', 'BUN_OPTIONS', 'BUN_BE_BUN', 'BUN_INSTALL', 'BUN_RUNTIME_TRANSPILER_CACHE_PATH'].includes(key.toUpperCase())) delete env[key as keyof typeof env];
   return env;
 }
@@ -76,32 +77,66 @@ afterEach(async () => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
+function initializeServiceData(root: string) {
+  const store = new Store(path.join(root, 'native'));
+  try {
+    store.put('settings', 'main', parseSettings({ autoConnect: false, autoUpdateCore: false, autoUpdateResource: false }));
+    store.put('meta', 'initialized', true);
+  } finally { store.close(); }
+}
+
 async function service(root: string) {
-  const process = new ManagedChild([globalThis.process.execPath, entry, '--mode', 'mock', '--data-dir', root], root);
+  initializeServiceData(root);
+  const process = new ManagedChild([globalThis.process.execPath, entry, '--mode', 'native', '--data-dir', root], root);
   process.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 'ready', method: 'app.snapshot' }) + '\n');
   const messages = () => process.stdout.split('\n').slice(0, -1).filter(Boolean).map(line => JSON.parse(line));
   await process.waitFor(() => messages().some(value => value.id === 'ready'));
   const ready = messages().find(value => value.id === 'ready');
   expect(ready.error, process.stderr).toBeUndefined();
-  expect(ready.result.mode).toBe('mock');
-  expect(() => new Store(path.join(root, 'mock'))).toThrow('其他本地服务');
+  expect(ready.result.mode).toBe('native');
+  expect(() => new Store(path.join(root, 'native'))).toThrow('其他本地服务');
   return process;
 }
 
 function assertLeaseReleased(root: string) {
-  const reopened = new Store(path.join(root, 'mock'));
+  const reopened = new Store(path.join(root, 'native'));
   try { expect(reopened.get('meta', 'initialized')).toBe(true); }
   finally { reopened.close(); }
 }
 
 describe('stdio service lifecycle', () => {
+  test('legacy mock arguments and environment fail before opening business data', async () => {
+    for (const command of [
+      [globalThis.process.execPath, entry, '--mode', 'mock'],
+      [globalThis.process.execPath, entry],
+    ]) {
+      const root = temp(), child = new ManagedChild(command, root, { MAAVERGE_MODE: 'mock' });
+      child.child.stdin.end();
+      expect((await child.exit()).code).not.toBe(0);
+      expect(child.stdout).toBe('');
+      expect(child.stderr).toContain('仅支持 native 运行模式');
+      expect(existsSync(path.join(root, 'mock', 'maaverge.sqlite3'))).toBe(false);
+      expect(existsSync(path.join(root, 'native', 'maaverge.sqlite3'))).toBe(false);
+    }
+  }, 15000);
+
+  test('startup without a mode selects native and preserves empty business collections', async () => {
+    const root = temp(); initializeServiceData(root);
+    const child = new ManagedChild([globalThis.process.execPath, entry], root, { MAAVERGE_MODE: undefined });
+    child.child.stdin.end(JSON.stringify({ jsonrpc: '2.0', id: 'snapshot', method: 'app.snapshot' }) + '\n');
+    expect(await child.exit(), child.stderr).toEqual({ code: 0, signal: null });
+    const response = child.stdout.split('\n').filter(Boolean).map(line => JSON.parse(line)).find(value => value.id === 'snapshot');
+    expect(response.result).toMatchObject({ mode: 'native', devices: [], plans: [], runs: [] });
+    assertLeaseReleased(root);
+  }, 15000);
+
   test('normal EOF processes the last frame and releases the data root lease', async () => {
     const root = temp(), process = await service(root);
     process.child.stdin.end(JSON.stringify({ jsonrpc: '2.0', id: 'last', method: 'plan.save', params: { plan: { id: 'last-frame', name: '末帧保存', tasks: [{ type: 'Award' }] } } }));
     expect(await process.exit(), process.stderr).toEqual({ code: 0, signal: null });
     expect(process.stdout.split('\n').filter(Boolean).map(line => JSON.parse(line)).find(value => value.id === 'last')?.result.id).toBe('last-frame');
     assertLeaseReleased(root);
-    const reopened = new Store(path.join(root, 'mock'));
+    const reopened = new Store(path.join(root, 'native'));
     try { expect(reopened.get('plan', 'last-frame').name).toBe('末帧保存'); }
     finally { reopened.close(); }
   }, 15000);
@@ -140,7 +175,8 @@ Runtime.prototype.handle = async function(method, params) {
 };
 await main();
 `);
-      const service = new ManagedChild([process.execPath, wrapper, '--mode', 'mock', '--data-dir', root], root, {
+      initializeServiceData(root);
+      const service = new ManagedChild([process.execPath, wrapper, '--mode', 'native', '--data-dir', root], root, {
         MAAVERGE_CORE_WORKER_PATH: executable, MAAVERGE_SYNTHETIC_CASE: 'screencap-wrong-id',
         MAAVERGE_SYNTHETIC_TRACE: trace,
       });

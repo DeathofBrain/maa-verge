@@ -2,7 +2,7 @@ import { rpc } from '../src/transport';
 import type { Snapshot } from '../src/types';
 
 // Compile-only assertions: the generated method map must prevent invalid calls
-// before they can reach Tauri or a mock adapter. This function is never invoked.
+// before they can reach Tauri. This function is never invoked.
 void function verifyTransportTypes() {
   const snapshot: Promise<Snapshot> = rpc('app.snapshot');
   void snapshot;

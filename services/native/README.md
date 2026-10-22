@@ -39,7 +39,7 @@ stdin/stdout 使用 UTF-8 NDJSON，每条消息最多 4 MiB。所有输出包含
   不创建控制实例、不连接设备；失败日志保留最后 8 条错误，至多 1200 字节。
 - `--lease-only`：读取 `{lockPath,lockTimeoutMs?}`，取得锁后输出
   `{type:"ready",mode:"lease-only",protocolVersion:1}`。stdin EOF 释放锁；不接受操作命令，
-  不加载 MaaCore。用于 mock 设备租约，不承担业务数据根锁。
+  不加载 MaaCore。仅用于独立租约测试，不承担业务数据根锁；产品设备控制使用 `--worker`。
 
 Windows 锁为相同文件 offset 0、length 1 的独占 LockFileEx，Unix 为 flock，兼容
 Python filelock。调用者计算现有规范化 ADB server/设备标识的哈希和共享锁目录；

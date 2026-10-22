@@ -37,7 +37,7 @@ export function devEnvironment() {
       CARGO_HOME: path.join(root, '.tools', 'cargo'), RUSTUP_HOME: path.join(root, '.tools', 'rustup'),
     } : {}),
     ...(existsSync(path.join(root, '.tools', 'python')) ? { UV_PYTHON_INSTALL_DIR: path.join(root, '.tools', 'python') } : {}),
-    MAAVERGE_MODE: process.env.MAAVERGE_MODE || 'mock',
+    MAAVERGE_MODE: process.env.MAAVERGE_MODE || 'native',
     MAAVERGE_DATA_DIR: process.env.MAAVERGE_DATA_DIR || path.join(base, 'MAAVerge-dev', workspaceId),
     VITE_WORKSPACE_ID: workspaceId,
   };

@@ -8,7 +8,7 @@ import { parseSettings } from '../src/models';
 import { validatePlan } from '../src/task-policy';
 
 type Expected = 'daily' | { stage: string; times: number } | { error: number };
-type Fixture = { name: string; message: unknown; mode?: string; expected: Expected };
+type Fixture = { name: string; message: unknown; expected: Expected };
 const fixtures: Fixture[] = [
   { name: 'daily proposal', message: '做日常', expected: 'daily' },
   { name: 'spaced stage', message: '刷 2-8 材料 3次', expected: { stage: '2-8', times: 3 } },
@@ -26,8 +26,8 @@ const fixtures: Fixture[] = [
   { name: 'null message rejected', message: null, expected: { error: -32602 } },
   { name: '4000 supplementary code points accepted', message: '😀'.repeat(4000), expected: 'daily' },
   { name: '4001 supplementary code points rejected', message: '😀'.repeat(4001), expected: { error: -32602 } },
-  { name: 'native proposal remains unavailable', message: '做日常', mode: 'native', expected: { error: -32030 } },
-  { name: 'text validation precedes mode error', message: '  ', mode: 'native', expected: { error: -32602 } },
+  { name: 'local proposal remains available without a device', message: '做日常', expected: 'daily' },
+  { name: 'text validation remains required', message: '  ', expected: { error: -32602 } },
   { name: 'adjacent mathematical digit blocks', message: '刷 𝟚-𝟠 𝟛次', expected: { stage: '𝟚-𝟠', times: 3 } },
   { name: 'mixed Unicode decimal blocks', message: '刷 2-8 1٢３次', expected: { stage: '2-8', times: 123 } },
   { name: 'BOM is not count whitespace', message: '刷 2-8 3\ufeff次', expected: { stage: '2-8', times: 6 } },
@@ -37,7 +37,7 @@ const fixtures: Fixture[] = [
 for (const fixture of fixtures) test(fixture.name, () => {
   let validations = 0;
   try {
-    const value = propose(fixture.message, fixture.mode || 'mock', plan => {
+    const value = propose(fixture.message, plan => {
       validations++;
       validatePlan(plan, parseSettings());
     });
@@ -67,7 +67,7 @@ from maaverge_runtime.models import RpcError
 output = []
 for case in json.load(sys.stdin):
     runtime = Runtime.__new__(Runtime)
-    runtime.mode = case.get('mode', 'mock')
+    runtime.mode = 'mock'
     runtime.validate_policy = lambda plan: None
     runtime.emit = lambda *args: None
     try:
@@ -84,7 +84,7 @@ print(json.dumps(output, ensure_ascii=True))
   expect(reference.error).toBeUndefined();
   expect(reference.status, reference.stderr).toBe(0);
   const current = fixtures.map(fixture => {
-    try { return propose(fixture.message, fixture.mode || 'mock', () => {}); }
+    try { return propose(fixture.message, () => {}); }
     catch (error) { return { error: (error as RpcError).asDict() }; }
   });
   expect(current).toEqual(JSON.parse(reference.stdout));

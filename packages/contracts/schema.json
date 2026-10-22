@@ -527,7 +527,6 @@
   "properties": {
     "mode": {
       "enum": [
-        "mock",
         "native"
       ],
       "title": "Mode",

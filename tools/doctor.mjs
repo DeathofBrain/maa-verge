@@ -35,7 +35,7 @@ let writable = true;
 try { accessSync(ancestor, constants.W_OK); } catch { writable = false; }
 report(writable, 'Data root', environment.MAAVERGE_DATA_DIR);
 const adb = probe(process.env.MAAVERGE_ADB_PATH || 'adb', ['version']);
-report(adb.ok, 'ADB (optional)', adb.ok ? adb.output.split('\n')[0] : 'Not installed; mock mode is available', false);
+report(adb.ok, 'ADB', adb.ok ? adb.output.split('\n')[0] : 'Configure MAAVERGE_ADB_PATH or discover the emulator bundled ADB', false);
 if (process.platform === 'linux') {
   for (const pkg of ['webkit2gtk-4.1', 'gtk+-3.0', 'ayatana-appindicator3-0.1']) {
     const result = probe('pkg-config', ['--modversion', pkg]);

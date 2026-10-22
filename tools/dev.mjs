@@ -2,15 +2,16 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { root, desktop, port, run, start, terminate, devEnvironment, fail } from './project.mjs';
 
-const mock = process.argv.includes('--mock');
+const uiOnly = process.argv.includes('--ui-only');
 const environment = devEnvironment();
 const url = `http://127.0.0.1:${port}`;
-console.log(`Maa Verge ${mock ? 'browser mock' : 'desktop'} · ${url}`);
+console.log(`Maa Verge ${uiOnly ? 'UI development server' : 'desktop'} · ${url}`);
 console.log(`数据目录: ${environment.MAAVERGE_DATA_DIR}`);
 
 async function main() {
+  if (process.argv.includes('--mock') || environment.MAAVERGE_MODE !== 'native') throw new Error('模拟运行模式已移除。请使用 pnpm dev 连接真实设备，并移除 MAAVERGE_MODE=mock。');
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('MAAVERGE_DEV_PORT must be between 1024 and 65535');
-  if (!mock) {
+  if (!uiOnly) {
     if (process.env.MAAVERGE_BACKEND === 'python') await run('uv', ['sync', '--frozen']);
     else {
       await run('node', ['tools/setup-bun.mjs']);
@@ -22,7 +23,7 @@ async function main() {
     await run('node', ['tools/prepare-native-check.mjs']);
   }
   const vite = start('pnpm', ['--filter', '@maaverge/desktop', 'dev', '--port', String(port), '--strictPort'], {
-    env: { ...environment, VITE_MAAVERGE_MOCK: mock ? '1' : '0' },
+    env: environment,
   });
   let viteError;
   vite.once('error', (error) => { viteError = error; });
@@ -33,7 +34,7 @@ async function main() {
   };
   process.once('SIGINT', cleanup);
   process.once('SIGTERM', cleanup);
-  if (mock) {
+  if (uiOnly) {
     await new Promise((resolve, reject) => {
       vite.once('error', reject);
       vite.once('exit', (code) => code === 0 || code === null ? resolve() : reject(new Error(`Vite exited ${code}`)));
