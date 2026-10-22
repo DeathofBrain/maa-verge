@@ -6,6 +6,7 @@ import {
   validateWorkerCommand, validateWorkerConfiguration, validateWorkerLeaseConfiguration,
   validateWorkerValidationConfiguration, validateWorkerEvent, validateWorkerValidation,
   validateDeviceFrameParams, validateDeviceClickParams, validateScreenFrame, validateWorkerFrame,
+  validateStageListParams, validateStageListResult,
 } from '../src/validators.js';
 
 const settings = () => ({
@@ -15,6 +16,19 @@ const settings = () => ({
 const plan = () => ({
   id: 'legacy', name: '旧版任务表', description: '', deviceId: null, group: 'daily', budgets: null,
   tasks: [{ type: 'Award', params: { future_option: { nested: [1, '保留'] } }, enabled: true }], schedule: null, enabled: true,
+});
+
+test('stage catalogs expose bounded local metadata and reject caller filesystem paths', () => {
+  assert.equal(validateStageListParams({}), true);
+  assert.equal(validateStageListParams({ clientType: 'Bilibili' }), true);
+  assert.equal(validateStageListParams({ clientType: 'unknown' }), false);
+  assert.equal(validateStageListParams({ resourcePath: '/arbitrary' }), false);
+  const result = { clientType: 'Official', resourceVersion: null, source: 'builtin', generatedAt: '2026-10-23T00:00:00Z', stages: [{ value: '', label: '当前 / 上次关卡', category: 'default', available: true }], activities: [], message: '常驻关卡', diagnostics: [] };
+  assert.equal(validateStageListResult(result), true);
+  const activity = { id: 'sample', name: '活动', startAt: null, endAt: null, clientType: 'Official', status: 'unknown', source: 'resource-version' };
+  assert.equal(validateStageListResult({ ...result, activities: [activity] }), true);
+  assert.equal(validateStageListResult({ ...result, activities: [{ ...activity, status: 'expired' }] }), false);
+  assert.equal(validateStageListResult({ ...result, stages: [{ ...result.stages[0], available: 'true' }] }), false);
 });
 
 test('standalone validators preserve normalized data and arbitrary task parameters', () => {
