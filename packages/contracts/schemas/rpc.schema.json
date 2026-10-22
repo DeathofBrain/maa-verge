@@ -7,9 +7,10 @@
   "properties": {
     "params": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "stages.list", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "#/$defs/EmptyParams" },
+        "stages.list": { "$ref": "#/$defs/StageListParams" },
         "plan.save": { "type": "object", "additionalProperties": false, "required": ["plan"], "properties": { "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" } } },
         "plan.delete": { "$ref": "#/$defs/IdParams" },
         "device.discover": { "$ref": "#/$defs/EmptyParams" },
@@ -36,9 +37,10 @@
     },
     "results": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "stages.list", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "./runtime.schema.json" },
+        "stages.list": { "$ref": "#/$defs/StageListResult" },
         "plan.save": { "$ref": "./runtime.schema.json#/$defs/Plan" },
         "plan.delete": { "type": "object", "additionalProperties": false, "required": ["deleted"], "properties": { "deleted": { "type": "boolean" } } },
         "device.discover": { "type": "array", "items": { "$ref": "#/$defs/DiscoveredDevice" } },
@@ -69,6 +71,50 @@
     }
   },
   "$defs": {
+    "ClientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
+    "StageListParams": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "clientType": { "$ref": "#/$defs/ClientType" } }
+    },
+    "StageOption": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "label", "category", "available"],
+      "properties": {
+        "value": { "type": "string", "maxLength": 200 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "category": { "enum": ["default", "activity", "permanent"] },
+        "available": { "type": "boolean" },
+        "tip": { "type": "string", "maxLength": 1000 },
+        "activityId": { "type": "string", "maxLength": 200 }
+      }
+    },
+    "StageActivity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "startAt", "endAt", "clientType", "status", "source"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "startAt": { "type": ["string", "null"], "maxLength": 40 },
+        "endAt": { "type": ["string", "null"], "maxLength": 40 },
+        "clientType": { "$ref": "#/$defs/ClientType" },
+        "status": { "enum": ["active", "upcoming", "unknown"] },
+        "source": { "enum": ["activity-metadata", "resource-version"] }
+      }
+    },
+    "StageListResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["clientType", "resourceVersion", "source", "generatedAt", "stages", "activities", "message", "diagnostics"],
+      "properties": {
+        "clientType": { "$ref": "#/$defs/ClientType" },
+        "resourceVersion": { "type": ["string", "null"], "maxLength": 200 },
+        "source": { "enum": ["installed", "builtin"] },
+        "generatedAt": { "type": "string", "maxLength": 40 },
+        "stages": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/StageOption" } },
+        "activities": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/StageActivity" } },
+        "message": { "type": "string", "maxLength": 1000 },
+        "diagnostics": { "type": "array", "items": { "type": "string", "maxLength": 1000 } }
+      }
+    },
     "DeviceFrameParams": {
       "type": "object", "additionalProperties": false, "required": ["deviceId"],
       "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 } }

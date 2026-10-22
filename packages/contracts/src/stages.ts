@@ -1,0 +1,21 @@
+/** MAA v6.20 StageManager permanent presets. Sunday is 0; game days reset at 04:00. */
+export const stagePresets: { value: string; label: string; openDays?: number[] }[] = [
+  { value: '', label: '当前 / 上次关卡' },
+  { value: '1-7', label: '1-7' },
+  { value: 'R8-11', label: 'R8-11' },
+  { value: '12-17-HARD', label: '12-17（磨难）' },
+  { value: 'CE-6', label: '龙门币 · CE-6 / 5', openDays: [2, 4, 6, 0] },
+  { value: 'AP-5', label: '红票 · AP-5', openDays: [1, 4, 6, 0] },
+  { value: 'CA-5', label: '技能书 · CA-5', openDays: [2, 3, 5, 0] },
+  { value: 'LS-6', label: '经验 · LS-6 / 5' },
+  { value: 'SK-5', label: '碳 · SK-5', openDays: [1, 3, 5, 6] },
+  { value: 'Annihilation', label: '当期剿灭' },
+  { value: 'PR-A-1', label: '医疗 / 重装芯片', openDays: [1, 4, 5, 0] },
+  { value: 'PR-A-2', label: '医疗 / 重装芯片组', openDays: [1, 4, 5, 0] },
+  { value: 'PR-B-1', label: '术师 / 狙击芯片', openDays: [1, 2, 5, 6] },
+  { value: 'PR-B-2', label: '术师 / 狙击芯片组', openDays: [1, 2, 5, 6] },
+  { value: 'PR-C-1', label: '先锋 / 辅助芯片', openDays: [3, 4, 6, 0] },
+  { value: 'PR-C-2', label: '先锋 / 辅助芯片组', openDays: [3, 4, 6, 0] },
+  { value: 'PR-D-1', label: '近卫 / 特种芯片', openDays: [2, 3, 6, 0] },
+  { value: 'PR-D-2', label: '近卫 / 特种芯片组', openDays: [2, 3, 6, 0] },
+];

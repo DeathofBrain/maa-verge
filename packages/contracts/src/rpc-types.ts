@@ -1,5 +1,10 @@
 /* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */
 
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ClientType".
+ */
+export type ClientType = 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
 export type Id = string;
 export type Name = string;
 export type Description = string;
@@ -80,6 +85,7 @@ export type Events = Event[];
 export interface RpcContract {
   params: {
     'app.snapshot': EmptyParams;
+    'stages.list': StageListParams;
     'plan.save': {
       plan: Plan;
     };
@@ -113,6 +119,7 @@ export interface RpcContract {
   };
   results: {
     'app.snapshot': Snapshot;
+    'stages.list': StageListResult;
     'plan.save': Plan;
     'plan.delete': {
       deleted: boolean;
@@ -151,6 +158,13 @@ export interface RpcContract {
  * via the `definition` "EmptyParams".
  */
 export interface EmptyParams {}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "StageListParams".
+ */
+export interface StageListParams {
+  clientType?: ClientType;
+}
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
  * via the `definition` "Plan".
@@ -351,6 +365,51 @@ export interface Event {
 }
 export interface Data {
   [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "StageListResult".
+ */
+export interface StageListResult {
+  clientType: ClientType;
+  resourceVersion: string | null;
+  source: 'installed' | 'builtin';
+  generatedAt: string;
+  /**
+   * @maxItems 2000
+   */
+  stages: StageOption[];
+  /**
+   * @maxItems 100
+   */
+  activities: StageActivity[];
+  message: string;
+  diagnostics: string[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "StageOption".
+ */
+export interface StageOption {
+  value: string;
+  label: string;
+  category: 'default' | 'activity' | 'permanent';
+  available: boolean;
+  tip?: string;
+  activityId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "StageActivity".
+ */
+export interface StageActivity {
+  id: string;
+  name: string;
+  startAt: string | null;
+  endAt: string | null;
+  clientType: ClientType;
+  status: 'active' | 'upcoming' | 'unknown';
+  source: 'activity-metadata' | 'resource-version';
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
