@@ -26,7 +26,7 @@ test('LDPlayer list2 excludes stopped, invalid and conflicting rows and bounds t
 test('running LDPlayer installations are queried independently with fixed bounded list2 argv', async () => {
   const first = 'D:\\模拟器 A', second = 'F:\\雷电 B', calls: string[] = [];
   const inventory = await queryWindowsEmulatorInventory({ isFile: value => value.endsWith('ldconsole.exe'), query: async (executable, args, options) => {
-    if (executable.endsWith('powershell.exe')) return JSON.stringify({ processes: [process(first, 10), process(first, 11), process(second, 20)], listeners: [] });
+    if (executable.endsWith('powershell.exe')) return JSON.stringify({ processes: [process(first, 10), process(first, 11), process(second, 20)], listeners: [listener(5555, 2001), listener(5561, 2002), listener(5565, 2004)] });
     calls.push(executable); expect(args).toEqual(['list2']); expect(options).toEqual({ timeout: 4000, maxBuffer: 256 * 1024, windowsHide: true });
     // Console field 5 need not match the window process captured earlier.
     return executable.startsWith('D:') ? `${row(0, 1001, 2001)}\n${row(3, 1002, 2002)}\n${row(4, 1003, 2003, 0)}` : row(5, 1004, 2004);
@@ -63,7 +63,7 @@ test('a shared reported PID does not merge distinct LDPlayer instances', async (
 
 test('MuMu and LDPlayer enumeration coexist while retaining each kind and independent PID', async () => {
   const inventory = await queryWindowsEmulatorInventory({ isFile: value => value.endsWith('ldconsole.exe') || value.endsWith('nx_main\\MuMuManager.exe'), query: async executable => {
-    if (executable.endsWith('powershell.exe')) return JSON.stringify({ processes: [process('D:\\雷电', 1001), { Name: 'MuMuNxMain.exe', ExecutablePath: 'F:\\MuMu\\nx_main\\MuMuNxMain.exe', ProcessId: 3001 }], listeners: [] });
+    if (executable.endsWith('powershell.exe')) return JSON.stringify({ processes: [process('D:\\雷电', 1001), { Name: 'MuMuNxMain.exe', ExecutablePath: 'F:\\MuMu\\nx_main\\MuMuNxMain.exe', ProcessId: 3001 }], listeners: [listener(5559, 2002)] });
     return executable.endsWith('ldconsole.exe') ? row(2, 1002, 2002) : JSON.stringify({ 0: { index: '0', adb_host_ip: '127.0.0.1', adb_port: 16384, pid: 3002, is_android_started: true, is_process_started: true } });
   } });
   expect(inventory.instances.map(instance => [instance.kind, instance.index, instance.pid])).toEqual([['mumu', 0, 3002], ['ldplayer', 2, 1002]]);
@@ -72,11 +72,20 @@ test('MuMu and LDPlayer enumeration coexist while retaining each kind and indepe
 
 test('a failed LDPlayer console or missing executable preserves other emulator installations', async () => {
   const inventory = await queryWindowsEmulatorInventory({ isFile: value => value.endsWith('ldconsole.exe') && !value.startsWith('G:'), query: async executable => {
-    if (executable.endsWith('powershell.exe')) return JSON.stringify({ processes: [process('D:\\bad', 10), process('F:\\good', 20), process('G:\\missing', 30)], listeners: [] });
+    if (executable.endsWith('powershell.exe')) return JSON.stringify({ processes: [process('D:\\bad', 10), process('F:\\good', 20), process('G:\\missing', 30)], listeners: [listener(5559, 2002)] });
     if (executable.startsWith('D:')) throw new Error('synthetic console timeout');
     return row(2, 1002, 2002);
   } });
   expect(inventory.instances.map(instance => instance.index)).toEqual([2]); expect(inventory.diagnostics).toHaveLength(1); expect(inventory.diagnostics[0]).toContain('雷电多开信息读取失败');
+});
+
+test('an LDPlayer process without its ADB listener cannot trigger automatic SDK selection', async () => {
+  const inventory = await queryWindowsEmulatorInventory({ isFile: value => value.endsWith('ldconsole.exe'), query: async executable => {
+    if (executable.endsWith('powershell.exe')) return JSON.stringify({ processes: [process('D:\\雷电', 1001)], listeners: [listener(19000, 2001)] });
+    return row(0, 1001, 2001);
+  } });
+  expect(inventory.instances).toEqual([]); expect(inventory.identities).toEqual({});
+  expect(inventory.diagnostics[0]).toContain('ADB 端口尚未就绪');
 });
 
 test('LDPlayer installation enumeration stops at four consoles and limits concurrent queries to two', async () => {

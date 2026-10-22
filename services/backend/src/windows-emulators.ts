@@ -188,11 +188,13 @@ export async function queryWindowsEmulatorInventory(options: { env?: Record<stri
           // The window PID and VM PID are distinct on some LDPlayer versions.
           // Neither proves an ADB alias without a canonical loopback listener.
           const owner = snapshot.listeners.find(listener => listener.address === instance.address && [instance.pid, vmPid].includes(listener.pid));
-          if (!owner && snapshot.listeners.some(listener => listener.address === instance.address)) {
-            consoleMessages[position] = '雷电默认 ADB 端口由其他进程占用；已跳过不匹配的实例，请检查多开地址或手动配置';
+          if (!owner) {
+            consoleMessages[position] = snapshot.listeners.some(listener => listener.address === instance.address)
+              ? '雷电默认 ADB 端口由其他进程占用；已跳过不匹配的实例，请检查多开地址或手动配置'
+              : '雷电实例的 ADB 端口尚未就绪；已保留默认端口发现，请稍后重试或手动配置';
             return [];
           }
-          if (!owner || instances.filter(other => [other.pid, other.vmPid].includes(owner.pid)).length !== 1) return [instance];
+          if (instances.filter(other => [other.pid, other.vmPid].includes(owner.pid)).length !== 1) return [instance];
           const aliases = snapshot.listeners.filter(listener => listener.pid === owner.pid && listener.address !== instance.address).map(listener => listener.address);
           for (const address of [instance.address, ...aliases]) result.identities![address] = `ldplayer-process:${owner.pid}`;
           return [{ ...instance, aliases }];
