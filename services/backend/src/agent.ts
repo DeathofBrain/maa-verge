@@ -20,9 +20,8 @@ function decimalInteger(text: string): number {
 }
 
 /** Deterministic proposal harness. Tools execute only through the reviewed RPC plan. */
-export function propose(message: unknown, mode: string, validate: (plan: Plan) => void) {
+export function propose(message: unknown, validate: (plan: Plan) => void) {
   if (typeof message !== 'string' || !nonWhitespace.test(message) || [...message].length > 4000) throw new RpcError(-32602, '请输入 1 到 4000 字的目标');
-  if (mode !== 'mock') throw new RpcError(-32030, '云模型尚未接入；请切换 mock 查看本地计划演示');
   let name = 'Agent 日常计划', tasks: any[];
   if (['刷', '作战', '1-7', '材料'].some(word => message.includes(word))) {
     const stage = message.match(stagePattern)?.[0] || '1-7';

@@ -25,12 +25,12 @@ export async function processRequest(runtime: Pick<Runtime, 'handle'>, request: 
 export async function main() {
   if (process.argv.includes('--update-job')) { await runUpdateJobStdio(); return; }
   const args = process.argv.slice(2), option = (name: string) => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1]; };
-  const mode = option('--mode') || process.env.MAAVERGE_MODE || 'mock';
-  if (mode !== 'mock' && mode !== 'native') throw new Error('运行模式必须是 mock 或 native');
+  const mode = option('--mode') ?? process.env.MAAVERGE_MODE ?? 'native';
+  if ((args.includes('--mode') && option('--mode') !== 'native') || mode !== 'native') throw new Error('仅支持 native 运行模式；mock 已移除');
   let transportBroken = false, signalled = false;
   const send = (message: any) => { if (!transportBroken && message !== undefined && !process.stdout.destroyed) process.stdout.write(stringifyWireJson(message) + '\n'); };
   process.stdout.on('error', () => { transportBroken = true; process.stdin.destroy(); });
-  const runtime = new Runtime(path.join(path.resolve(option('--data-dir') || dataRoot()), mode), mode, { notify: send });
+  const runtime = new Runtime(path.join(path.resolve(option('--data-dir') || dataRoot()), 'native'), { notify: send });
   const inflight = new Set<Promise<unknown>>();
   let stopped = false, updateBusy = false, connectionBusy = false, backgroundSlots = 0;
   const track = (promise: Promise<unknown>) => { inflight.add(promise); void promise.catch(error => console.error(error)).finally(() => inflight.delete(promise)); };
@@ -43,7 +43,7 @@ export async function main() {
     let request: any;
     try { request = parseWireJson(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
     catch { send({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'JSON 解析失败' } }); return; }
-    const background = mode === 'native' && typeof request?.method === 'string' && (request.method.startsWith('updates.') || request.method === 'device.auto_connect');
+    const background = typeof request?.method === 'string' && (request.method.startsWith('updates.') || request.method === 'device.auto_connect');
     if (background && backgroundSlots >= 2) { if (Object.hasOwn(request, 'id')) send({ jsonrpc: '2.0', id: request.id, error: { code: -32021, message: '已有后台请求在处理中' } }); return; }
     if (background) backgroundSlots++;
     track(processRequest(runtime, request).then(send).finally(() => { if (background) backgroundSlots--; }));

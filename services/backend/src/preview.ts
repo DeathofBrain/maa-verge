@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import type { RpcContract, ScreenFrame } from '../../../packages/contracts/src/rpc-types';
-import { mockPreviewImage } from '../../../packages/contracts/src/preview-mock';
 import { validateDeviceClickParams, validateDeviceFrameParams, validateWorkerFrame } from '../../../packages/contracts/src/validators.js';
 import { RpcError } from './errors';
 
@@ -13,7 +12,6 @@ export interface PreviewWorker {
   click?: (x: number, y: number) => Promise<unknown>;
 }
 interface Owner {
-  mode: 'mock' | 'native';
   available: () => boolean;
   device: (id: string) => { state: string } | undefined;
   worker: (id: string) => PreviewWorker | undefined;
@@ -39,7 +37,7 @@ export class Preview {
     const device = this.owner.device(deviceId);
     if (!device) throw new RpcError(-32004, '设备不存在');
     const worker = this.owner.worker(deviceId);
-    if (device.state === 'offline' || (this.owner.mode === 'native' && !worker?.connected)) throw new RpcError(-32040, '设备尚未连接，请先连接设备');
+    if (device.state === 'offline' || !worker?.connected) throw new RpcError(-32040, '设备尚未连接，请先连接设备');
     return { device, worker };
   }
   frame(params: unknown): Promise<ScreenFrame> {
@@ -55,9 +53,9 @@ export class Preview {
   }
   private async read(deviceId: string): Promise<ScreenFrame> {
     const { worker } = this.device(deviceId), started = Date.now();
-    if (this.owner.mode === 'native' && !worker?.frame) throw new RpcError(-32040, '当前核心不支持画面预览');
+    if (!worker?.frame) throw new RpcError(-32040, '当前核心不支持画面预览');
     let image: unknown;
-    try { image = this.owner.mode === 'mock' ? { ...mockPreviewImage, canControl: true } : await worker!.frame!(); }
+    try { image = await worker.frame(); }
     catch (error) { throw new RpcError(-32040, '获取画面失败：' + (error instanceof Error ? error.message : String(error))); }
     if (!validateWorkerFrame(image) || image.width * image.height > 16_777_216) throw new RpcError(-32040, '核心返回了无效的画面');
     const png = Buffer.from(image.data, 'base64');
@@ -69,7 +67,7 @@ export class Preview {
     const current = this.device(deviceId);
     if (current.worker !== worker) throw new RpcError(-32040, '设备连接已更换，请刷新画面');
     const canControl = image.canControl && current.device.state === 'idle' && !this.owner.hasRun(deviceId) &&
-      !this.clicking.has(deviceId) && (this.owner.mode === 'mock' || !!worker?.safeIdle);
+      !this.clicking.has(deviceId) && worker.safeIdle;
     for (const [id, frame] of this.frames) if (Date.now() - frame.issuedAt > 2000) this.frames.delete(id);
     // Keep several recent frames: rendering can legitimately lag the newest RPC.
     const recent = [...this.frames.entries()].filter(([, frame]) => frame.deviceId === deviceId);
@@ -105,16 +103,14 @@ export class Preview {
         throw new RpcError(-32011, '画面已失效，请刷新后再点击');
       }
       if (x >= frame.width || y >= frame.height) throw new RpcError(-32602, '点击位置超出画面范围');
-      if (device.state !== 'idle' || this.owner.hasRun(deviceId) || (this.owner.mode === 'native' && !worker?.safeIdle)) {
+      if (device.state !== 'idle' || this.owner.hasRun(deviceId) || !worker?.safeIdle) {
         throw new RpcError(-32011, '设备正在执行任务，暂不能手动点击');
       }
-      if (this.owner.mode === 'native') {
-        if (!worker?.click) throw new RpcError(-32040, '当前核心不支持画面点击');
-        let result: unknown;
-        try { result = await worker.click(x, y); }
-        catch (error) { throw new RpcError(-32040, '点击未获确认，结果可能未知，请查看画面后再操作：' + (error instanceof Error ? error.message : String(error))); }
-        if (!result || typeof result !== 'object' || !('accepted' in result) || result.accepted !== true) throw new RpcError(-32040, '核心未确认点击，结果未知，请查看画面');
-      }
+      if (!worker.click) throw new RpcError(-32040, '当前核心不支持画面点击');
+      let result: unknown;
+      try { result = await worker.click(x, y); }
+      catch (error) { throw new RpcError(-32040, '点击未获确认，结果可能未知，请查看画面后再操作：' + (error instanceof Error ? error.message : String(error))); }
+      if (!result || typeof result !== 'object' || !('accepted' in result) || result.accepted !== true) throw new RpcError(-32040, '核心未确认点击，结果未知，请查看画面');
       if (this.owner.available()) this.owner.clicked(params);
       return { accepted: true };
     } finally { this.invalidate(deviceId); this.clicking.delete(deviceId); }

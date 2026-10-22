@@ -28,7 +28,7 @@ export interface UpdateSource {
 type Validator = (core: string, resource: string, version: string) => Promise<void> | void;
 type Hook = () => Promise<void> | void;
 export interface UpdateOptions {
-  mode?: string; source?: UpdateSource; validator?: Validator;
+  source?: UpdateSource; validator?: Validator;
   beforeActivate?: Hook; afterActivate?: Hook; finishActivate?: (error?: string) => Promise<void> | void;
   jobCommand?: string[];
   jobRunner?: (config: UpdateJobConfig) => Promise<UpdateJobResult>;
@@ -251,7 +251,6 @@ function defaultJobCommand(): string[] {
 }
 
 export class UpdateService {
-  readonly mode: string;
   private readonly source: UpdateSource;
   private readonly validator: Validator;
   private readonly beforeActivate: Hook;
@@ -264,7 +263,6 @@ export class UpdateService {
   constructor(readonly root: string, private readonly store: UpdateStore,
     private readonly emit: (kind: string, text: string, data: any) => void,
     private readonly busy: () => boolean, options: UpdateOptions = {}) {
-    this.mode = options.mode ?? "mock";
     this.source = options.source ?? new OfficialSource();
     this.validator = options.validator ?? ((core, resource, version) => {
       if (this.closing) throw new Error("更新服务正在关闭");
@@ -278,14 +276,10 @@ export class UpdateService {
     });
     mkdirSync(path.join(root, "generations"), { recursive: true }); mkdirSync(path.join(root, "downloads"), { recursive: true });
     if (!store.get("update", "core")) {
-      const versions = { app: "0.1.0", core: this.mode === "mock" ? "v6.20.0" : "未安装", resource: this.mode === "mock" ? "2026.10.18" : "未安装" };
-      for (const [channel, version] of Object.entries(versions)) this.save({ id: channel, currentVersion: version, status: "idle", progress: 0, message: this.mode === "mock" ? "模拟更新源" : "尚未检查" });
+      const versions = { app: "0.1.0", core: "未安装", resource: "未安装" };
+      for (const [channel, version] of Object.entries(versions)) this.save({ id: channel, currentVersion: version, status: "idle", progress: 0, message: "尚未检查" });
     }
     for (const state of this.channels()) if (["checking", "downloading"].includes(state.status)) this.save({ ...state, status: "failed", message: "上次更新准备被中断，请重试", progress: 0 });
-    if (this.mode === "mock" && !store.get("active", "combo")) {
-      const initial = path.join(root, "generations", "mock-initial"); mkdirSync(initial, { recursive: true });
-      store.put("active", "combo", Object.fromEntries(["core", "resource"].map((channel) => [channel, { version: this.channel(channel).currentVersion, path: initial, mode: "mock" }])));
-    }
   }
   private serial<T>(action: () => Promise<T>): Promise<T> {
     if (this.closing) return Promise.reject(new Error("更新服务正在关闭"));
@@ -321,7 +315,7 @@ export class UpdateService {
     if (channel === "app") return this.change(channel, { status: "idle", message: "开发预览版尚未配置应用发行更新源" });
     this.change(channel, { status: "checking", message: "正在检查官方版本", progress: 0 });
     try {
-      const metadata = this.mode === "mock" ? { version: channel === "core" ? "v6.21.0" : "2026.10.20.2", source: "mock" } : await this.source.check(channel);
+      const metadata = await this.source.check(channel);
       this.store.put("update_metadata", channel, metadata);
       const available = metadata.version !== current.currentVersion;
       if (channel === "core" && available) {
@@ -350,21 +344,15 @@ export class UpdateService {
     this.change(channel, { status: "downloading", progress: 0, message: "正在准备独立更新快照" });
     try {
       let digest: string;
-      if (this.mode === "mock") {
-        await mkdir(path.join(generation, "resource"));
-        await writeFile(path.join(generation, "resource/version.json"), JSON.stringify({ version: metadata.version, mock: true }));
-        digest = await treeHash(generation);
-      } else {
-        if (typeof metadata.name !== "string" || path.basename(metadata.name) !== metadata.name || metadata.name.includes("\\")) throw new Error("更新包文件名无效");
-        const archive = path.join(this.root, "downloads", randomUUID() + "-" + metadata.name);
-        try {
-          digest = await this.source.download(metadata, archive, (progress) => this.change(channel, { progress, message: "正在下载官方组件" }));
-          const core = this.store.get("active", "combo", {}).core;
-          const config: UpdateJobConfig = { channel: channel as "core" | "resource", archive, target: generation, version: metadata.version, core: core?.path, coreVersion: core?.version };
-          Object.assign(metadata, await this.jobRunner(config));
-        } finally { await rm(archive, { force: true }); }
-      }
-      const manifest = { ...metadata, path: generation, sha256: digest, validatedAt: new Date().toISOString(), mode: this.mode };
+      if (typeof metadata.name !== "string" || path.basename(metadata.name) !== metadata.name || metadata.name.includes("\\")) throw new Error("更新包文件名无效");
+      const archive = path.join(this.root, "downloads", randomUUID() + "-" + metadata.name);
+      try {
+        digest = await this.source.download(metadata, archive, (progress) => this.change(channel, { progress, message: "正在下载官方组件" }));
+        const core = this.store.get("active", "combo", {}).core;
+        const config: UpdateJobConfig = { channel: channel as "core" | "resource", archive, target: generation, version: metadata.version, core: core?.path, coreVersion: core?.version };
+        Object.assign(metadata, await this.jobRunner(config));
+      } finally { await rm(archive, { force: true }); }
+      const manifest = { ...metadata, path: generation, sha256: digest, validatedAt: new Date().toISOString() };
       await writeFile(path.join(generation, "manifest.json"), JSON.stringify(manifest));
       this.store.put("staged", channel, manifest);
       return this.change(channel, { status: "staged", progress: 100, message: "快照已校验，等待在空闲边界生效" });
@@ -379,14 +367,14 @@ export class UpdateService {
     const combo = this.store.get("active", "combo", {}), next = { ...combo };
     if (channel === "core") { next.core = staged; next.resource = staged; }
     else {
-      if (this.mode !== "mock" && staged.coreVersion !== combo.core?.version) throw new RpcError(-32020, "核心已变化，请重新准备资源快照");
+      if (staged.coreVersion !== combo.core?.version) throw new RpcError(-32020, "核心已变化，请重新准备资源快照");
       next.resource = staged;
     }
     try {
-      if (this.mode !== "mock") await this.validator(next.core.path, next.resource.path, next.core.version);
+      await this.validator(next.core.path, next.resource.path, next.core.version);
       await this.switchCombo(next, combo);
       this.store.put("previous", "combo", combo); this.store.delete("staged", channel);
-      if (channel === "core" && this.mode !== "mock") {
+      if (channel === "core") {
         this.store.delete("staged", "resource");
         this.change("resource", { currentVersion: "bundled@" + staged.version, status: "active", message: "使用新核心附带的已验证基础资源" });
       }
@@ -421,7 +409,7 @@ export class UpdateService {
     if (!previous || !previous[channel]) throw new RpcError(-32020, "没有可回滚的已验证版本");
     const active = this.store.get("active", "combo", {});
     try {
-      if (this.mode !== "mock") await this.validator(previous.core.path, previous.resource.path, previous.core.version);
+      await this.validator(previous.core.path, previous.resource.path, previous.core.version);
       await this.switchCombo(previous, active);
     } catch (error) { this.change(channel, { status: "failed", message: "回滚初始化失败，已恢复活动版本" }); throw new RpcError(-32020, "回滚初始化失败，已恢复活动版本", message(error)); }
     this.store.put("previous", "combo", active);
