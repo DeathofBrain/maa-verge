@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -9,9 +9,12 @@ import { Store } from '../src/storage';
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const entry = path.join(repo, 'services/backend/src/entry.ts');
 const storeModule = pathToFileURL(path.join(repo, 'services/backend/src/storage.ts')).href;
+const runtimeModule = pathToFileURL(path.join(repo, 'services/backend/src/runtime.ts')).href;
+const workerModule = pathToFileURL(path.join(repo, 'services/backend/src/worker.ts')).href;
 const python = path.join(repo, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
 const roots: string[] = [];
 const children: ManagedChild[] = [];
+const nativeChildren = new Set<number>();
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 function temp() {
@@ -37,8 +40,8 @@ class ManagedChild {
   readonly closed: Promise<{ code: number | null; signal: NodeJS.Signals | null }>;
   stdout = '';
   stderr = '';
-  constructor(command: string[], root: string) {
-    this.child = spawn(command[0]!, command.slice(1), { cwd: repo, env: environment(root), windowsHide: true, stdio: 'pipe' });
+  constructor(command: string[], root: string, overrides: NodeJS.ProcessEnv = {}) {
+    this.child = spawn(command[0]!, command.slice(1), { cwd: repo, env: { ...environment(root), ...overrides }, windowsHide: true, stdio: 'pipe' });
     this.child.stdout.setEncoding('utf8'); this.child.stderr.setEncoding('utf8');
     this.child.stdout.on('data', bytes => { this.stdout += bytes.toString('utf8'); });
     this.child.stderr.on('data', bytes => { this.stderr += bytes.toString('utf8'); });
@@ -66,6 +69,10 @@ class ManagedChild {
 
 afterEach(async () => {
   for (const child of children.splice(0)) await child.crash();
+  // Also clean up the native child if this regression test fails before the
+  // service reaches its shutdown code. Only PIDs from our wrapper are recorded.
+  for (const pid of nativeChildren) { try { process.kill(pid, 'SIGKILL'); } catch { /* already exited */ } }
+  nativeChildren.clear();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -98,6 +105,70 @@ describe('stdio service lifecycle', () => {
     try { expect(reopened.get('plan', 'last-frame').name).toBe('末帧保存'); }
     finally { reopened.close(); }
   }, 15000);
+
+  test.skipIf(!process.env.MAAVERGE_TEST_NATIVE_WORKER || !process.env.MAAVERGE_TEST_CORE_LIBRARY)(
+    'EOF interrupts a stalled synthetic frame and releases its native device lease', async () => {
+      const root = temp(), executable = process.env.MAAVERGE_TEST_NATIVE_WORKER!;
+      const resource = path.join(root, 'resource'), trace = path.join(root, 'native-trace.txt');
+      mkdirSync(path.join(resource, 'resource'), { recursive: true });
+      writeFileSync(path.join(resource, 'resource', 'version.json'), '{}');
+      const config = {
+        protocolVersion: 1, core: path.dirname(process.env.MAAVERGE_TEST_CORE_LIBRARY!), resource,
+        userDir: path.join(root, 'native-user'), adb: 'synthetic-never-executed', address: 'synthetic://no-device',
+        lockPath: path.join(root, 'device-locks', 'stalled-frame.lock'), version: 'vsynthetic',
+      };
+      // Refuse any library other than the synthetic C API before a connection.
+      const probe = new ManagedChild([executable, '--validate'], root);
+      probe.child.stdin.end(JSON.stringify(config) + '\n');
+      expect(await probe.exit(), probe.stderr).toEqual({ code: 0, signal: null });
+      expect(JSON.parse(probe.stdout).version).toBe('vsynthetic');
+
+      const wrapper = path.join(root, 'stalled-frame-service.mjs');
+      writeFileSync(wrapper, `
+import { Runtime } from ${JSON.stringify(runtimeModule)};
+import { CoreWorker } from ${JSON.stringify(workerModule)};
+import { main } from ${JSON.stringify(pathToFileURL(entry).href)};
+const original = Runtime.prototype.handle;
+Runtime.prototype.handle = async function(method, params) {
+  if (method !== 'synthetic.frame') return original.call(this, method, params);
+  const worker = await CoreWorker.start(${JSON.stringify(config)});
+  console.error('synthetic-frame-worker:' + worker.child.pid);
+  this.workers.set('synthetic-frame-worker', worker);
+  await worker.connect();
+  if (!await worker.waitConnected()) throw new Error('synthetic connection failed');
+  return worker.request('frame');
+};
+await main();
+`);
+      const service = new ManagedChild([process.execPath, wrapper, '--mode', 'mock', '--data-dir', root], root, {
+        MAAVERGE_CORE_WORKER_PATH: executable, MAAVERGE_SYNTHETIC_CASE: 'screencap-wrong-id',
+        MAAVERGE_SYNTHETIC_TRACE: trace,
+      });
+      service.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 'stalled', method: 'synthetic.frame' }) + '\n');
+      await service.waitFor(() => /synthetic-frame-worker:\d+/.test(service.stderr));
+      nativeChildren.add(Number(/synthetic-frame-worker:(\d+)/.exec(service.stderr)![1]));
+      await service.waitFor(() => existsSync(trace) && readFileSync(trace, 'utf8').includes('screencap-blocking'));
+
+      const competitor = new ManagedChild([executable, '--lease-only'], root);
+      competitor.child.stdin.end(JSON.stringify({ protocolVersion: 1, lockPath: config.lockPath, lockTimeoutMs: 0 }) + '\n');
+      expect((await competitor.exit()).code).not.toBe(0);
+      expect(competitor.stderr).toContain('device lock busy');
+
+      service.child.stdin.end();
+      expect(await service.exit(), service.stderr).toEqual({ code: 0, signal: null });
+      expect(service.stderr).not.toContain('本地服务退出超时');
+      const response = service.stdout.split('\n').filter(Boolean).map(line => JSON.parse(line)).find(value => value.id === 'stalled');
+      expect(response.error).toBeDefined();
+      assertLeaseReleased(root);
+
+      const replacement = new ManagedChild([executable, '--lease-only'], root);
+      replacement.child.stdin.write(JSON.stringify({ protocolVersion: 1, lockPath: config.lockPath, lockTimeoutMs: 0 }) + '\n');
+      await replacement.waitFor(() => replacement.stdout.includes('"type":"ready"'));
+      replacement.child.stdin.end();
+      expect(await replacement.exit(), replacement.stderr).toEqual({ code: 0, signal: null });
+      nativeChildren.clear();
+    }, 15000,
+  );
 
   test('a broken stdout pipe unwinds the premature stdin close and releases the lease', async () => {
     const root = temp(), process = await service(root);

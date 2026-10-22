@@ -35,6 +35,10 @@ const validators = {
   validateSettings: `${schema.$id}#/$defs/Settings`,
   validateRpcRequest: `${rpcSchema.$id}#/$defs/RpcRequest`,
   validateRpcEvent: `${rpcSchema.$id}#/$defs/RpcEvent`,
+  validateDeviceFrameParams: `${rpcSchema.$id}#/$defs/DeviceFrameParams`,
+  validateDeviceClickParams: `${rpcSchema.$id}#/$defs/DeviceClickParams`,
+  validateScreenFrame: `${rpcSchema.$id}#/$defs/ScreenFrame`,
+  validateWorkerFrame: `${workerSchema.$id}#/$defs/WorkerFrame`,
   validateWorkerConfiguration: `${workerSchema.$id}#/$defs/WorkerConfiguration`,
   validateWorkerLeaseConfiguration: `${workerSchema.$id}#/$defs/WorkerLeaseConfiguration`,
   validateWorkerValidationConfiguration: `${workerSchema.$id}#/$defs/WorkerValidationConfiguration`,
@@ -58,7 +62,7 @@ const bundled = await build({
 });
 const declaration = `${bannerComment}
 import type { Plan, Settings, Snapshot } from './types';
-import type { RpcRequest, RpcEvent } from './rpc-types';
+import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame } from './rpc-types';
 import type { WorkerProtocol } from './worker-types';
 export interface ValidationError {
   instancePath: string;
@@ -76,6 +80,10 @@ export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
 export const validateRpcRequest: Validator<RpcRequest>;
 export const validateRpcEvent: Validator<RpcEvent>;
+export const validateDeviceFrameParams: Validator<RpcContract['params']['device.frame']>;
+export const validateDeviceClickParams: Validator<RpcContract['params']['device.click']>;
+export const validateScreenFrame: Validator<ScreenFrame>;
+export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl'>>;
 export const validateWorkerConfiguration: Validator<WorkerProtocol['configuration']>;
 export const validateWorkerLeaseConfiguration: Validator<WorkerProtocol['leaseConfiguration']>;
 export const validateWorkerValidationConfiguration: Validator<WorkerProtocol['validationConfiguration']>;

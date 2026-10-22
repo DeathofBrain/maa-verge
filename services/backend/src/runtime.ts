@@ -7,15 +7,18 @@ import { nativeTask, validatePlan } from './task-policy';
 import { propose } from './agent';
 import { deviceLockPath } from './config';
 import { CoreWorker } from './worker';
+import { captureAdbPath, connectionCapture } from './capture';
+import { Preview } from './preview';
 import { UpdateService } from './updates';
 import { adbPath, adbServerIdentity, autoDiscover, deviceLockAddress, discover, isLocalEmulator, validateAddress } from './adb';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
-type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'>;
+type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
 export interface RuntimeOptions { notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; adbExecutable?: () => string; workerFactory?: (config: any) => Promise<Worker>; leaseFactory?: (config: any) => Promise<Worker> }
 export class Runtime {
   readonly store: Store;
   readonly updates: UpdateService;
+  readonly preview: Preview;
   readonly workers = new Map<string, Worker>();
   private leases = new Map<string, Worker>();
   private starts = new Map<string, { planId: string; deviceId: string; promise: Promise<any> }>();
@@ -49,11 +52,17 @@ export class Runtime {
       mode, source: options.source, validator: options.validator,
       beforeActivate: () => this.beforeSwitch(), afterActivate: () => this.afterSwitch(), finishActivate: (error?: string) => this.finishSwitch(error),
     });
+    this.preview = new Preview({
+      mode, available: () => this.running && !this.switching,
+      device: id => this.mode === 'native' ? this.store.get('device', id) : this.devices().find(device => device.id === id), worker: id => this.workers.get(id),
+      hasRun: id => this.store.hasRunningRun(id) || [...this.starts.values()].some(start => start.deviceId === id),
+      clicked: data => { this.emit('device.clicked', this.mode === 'mock' ? '模拟点击已接收，未操作真实设备' : '点击指令已获核心确认', data); },
+    });
   }
   emit(type: string, message: string, data: any = {}) { const event = this.store.event(type, message, data); this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event }); return event; }
-  busy() { return this.connecting.size > 0 || this.store.all('run').some(run => run.status === 'running' && !(this.mode === 'native' && this.store.get('execution', run.id, {}).boundaryWaiting)) || [...this.workers.values()].some(worker => !worker.safeIdle); }
+  busy() { return !!this.preview?.busy || this.connecting.size > 0 || this.store.all('run').some(run => run.status === 'running' && !(this.mode === 'native' && this.store.get('execution', run.id, {}).boundaryWaiting)) || [...this.workers.values()].some(worker => !worker.safeIdle); }
   devices(): any[] {
-    return this.mode === 'mock' ? [{ id: 'mock-device-1', name: '本地演示设备', address: 'mock://local', state: this.busy() ? 'running' : 'idle', coreVersion: this.updates.channel('core').currentVersion, resourceVersion: this.updates.channel('resource').currentVersion }] : this.store.all('device');
+    return this.mode === 'mock' ? [{ id: 'mock-device-1', name: '本地演示设备', address: 'mock://local', state: this.store.hasRunningRun() ? 'running' : 'idle', coreVersion: this.updates.channel('core').currentVersion, resourceVersion: this.updates.channel('resource').currentVersion }] : this.store.all('device');
   }
   snapshot() { return parseSnapshot({ mode: this.mode, devices: this.devices(), plans: this.store.all('plan').map(parsePlan), runs: this.store.all('run').reverse().slice(0, 100).map(run => ({ finishedAt: null, ...run })), updates: this.updates.channels(), settings: parseSettings(this.store.get('settings', 'main')), events: this.store.events() }); }
   async handle(method: string, params: any = {}) {
@@ -65,10 +74,12 @@ export class Runtime {
       case 'app.snapshot': return this.snapshot();
       case 'device.discover':
         if (this.mode === 'mock') return [{ address: 'mock://local', name: '演示设备', adbState: 'device' }];
-        try { return await discover(); } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
+        try { return await discover(this.adbExecutable()); } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
       case 'device.connect': return this.connectDevice(params);
       case 'device.auto_connect': return this.autoConnectDevices();
       case 'device.disconnect': required('id'); return this.disconnectDevice(params.id);
+      case 'device.frame': return this.preview.frame(params);
+      case 'device.click': return this.preview.click(params);
       case 'plan.save': {
         required('plan'); const plan = parsePlan(params.plan); if (plan.schedule) throw new RpcError(-32030, '定时调度尚未实现，请使用手动执行');
         this.validatePolicy(plan); if (!plan.id) plan.id = ident('plan'); this.store.put('plan', plan.id, plan); this.emit('plan.saved', '计划已保存', { planId: plan.id }); return plan;
@@ -116,8 +127,10 @@ export class Runtime {
     plan.tasks = plan.tasks.filter(task => task.enabled && task.params.enable !== false) as Plan['tasks'];
     if (!plan.tasks.length) throw new RpcError(-32010, '任务表至少需要启用一条任务才能执行');
     const device = this.devices().find(d => d.id === params.deviceId); if (!device) throw new RpcError(-32004, '设备不存在');
+    if (this.preview.isClicking(device.id)) throw new RpcError(-32011, '正在发送手动点击，请稍后启动计划');
     if (device.state !== 'idle') throw new RpcError(-32011, '设备已有控制者');
     if (this.store.all('run').some(r => r.deviceId === device.id && r.status === 'running')) throw new RpcError(-32011, '该设备已有尚未结束的计划');
+    this.preview.invalidate(device.id);
     const worker = this.workers.get(device.id); let lease: Worker | undefined;
     if (this.mode === 'native') { if (!worker?.connected || !worker.safeIdle) throw new RpcError(-32011, '核心尚未连接或异步操作未结束'); }
     else {
@@ -150,7 +163,14 @@ export class Runtime {
   }
   private validateAutomatic(address: string) {
     if (!parseSettings(this.store.get('settings', 'main')).autoConnect) throw new RpcError(-32011, '自动连接已关闭');
-    if (this.suppressed.has(deviceLockAddress(address))) throw new RpcError(-32011, '该设备已手动断开，自动连接已跳过');
+    if (this.suppressed.has(this.lockAddress(address))) throw new RpcError(-32011, '该设备已手动断开，自动连接已跳过');
+  }
+  private lockAddress(address: string) { return deviceLockAddress(address); }
+  private adbExecutable(): string {
+    if (this.options.adbExecutable) return this.options.adbExecutable();
+    if (process.env.MAAVERGE_ADB_PATH) return adbPath();
+    const capture = parseSettings(this.store.get('settings', 'main')).capture;
+    return captureAdbPath(capture) || adbPath();
   }
   async connectDevice(params: any, internal = false, automatic = false): Promise<any> {
     if (this.mode === 'mock') return this.devices()[0];
@@ -159,15 +179,17 @@ export class Runtime {
       if (this.switching && !internal) throw new RpcError(-32011, '正在切换核心与资源，暂不能连接设备');
       if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
       const address = validateAddress(params.address);
-      if (automatic) this.validateAutomatic(address); else if (!internal) this.suppressed.delete(deviceLockAddress(address));
+      if (automatic) this.validateAutomatic(address); else if (!internal) this.suppressed.delete(this.lockAddress(address));
       const combo = this.store.get('active', 'combo', {}); if (!combo.core) throw new Error('请先在更新中心安装并启用核心');
-      const canonical = deviceLockAddress(address), aliases = this.store.all('device').filter(d => deviceLockAddress(d.address) === canonical);
+      const canonical = this.lockAddress(address), aliases = this.store.all('device').filter(d => this.lockAddress(d.address) === canonical);
       const previous = aliases.find(d => this.workers.has(d.id)) || aliases[0];
       id = previous?.id || 'device-' + createHash('sha256').update(canonical).digest('hex').slice(0, 12);
       if (this.connecting.has(id!)) throw new RpcError(-32011, '该设备正在建立连接');
       if (this.workers.has(id!)) return this.store.get('device', id!);
       this.connecting.add(id!); reserved = true;
-      const config = { core: combo.core.path, resource: combo.resource.path, adb: (this.options.adbExecutable || adbPath)(), address, userDir: path.join(this.root, 'workers', id!), lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical) };
+      const capture = await connectionCapture(parseSettings(this.store.get('settings', 'main')).capture, address);
+      const adb = this.adbExecutable();
+      const config = { core: combo.core.path, resource: combo.resource.path, adb, address, capture, userDir: path.join(this.root, 'workers', id!), lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical) };
       worker = await (this.options.workerFactory || (c => CoreWorker.start(c)))(config); await worker.connect();
       if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
       if (automatic) this.validateAutomatic(address);
@@ -185,16 +207,16 @@ export class Runtime {
       if (!this.running || this.switching) throw new RpcError(-32011, '正在退出或切换核心，请稍后重试');
       if (!automatic) this.suppressed.clear();
       if (!this.store.get('active', 'combo', {}).core) throw new RpcError(-32040, '请先在更新中心安装并启用核心，再自动连接模拟器');
-      const result = await autoDiscover();
+      const result = await autoDiscover(this.adbExecutable());
       const { devices: discovered, diagnostics } = result;
       const devices: any[] = [], seen = new Set<string>();
       for (const candidate of discovered) {
-        const key = deviceLockAddress(candidate.address);
+        const key = this.lockAddress(candidate.address);
         if (candidate.adbState !== 'device' || !isLocalEmulator(candidate.address) || seen.has(key) || (automatic && this.suppressed.has(key))) continue;
         seen.add(key);
         try {
           if (this.switching || !this.running) throw new RpcError(-32011, '正在退出或切换核心，请稍后重试');
-          const previous = [...this.workers.keys()].map(id => this.store.get('device', id)).find(d => deviceLockAddress(d.address) === key);
+          const previous = [...this.workers.keys()].map(id => this.store.get('device', id)).find(d => this.lockAddress(d.address) === key);
           if (previous) { const worker = this.workers.get(previous.id)!; if (worker.connected || !worker.safeIdle) { devices.push(previous); continue; } await this.disconnectDevice(previous.id, true); }
           devices.push(await this.connectDevice(candidate, false, automatic));
         } catch (error) { diagnostics.push(candidate.address + '：' + (error instanceof Error ? error.message : String(error))); }
@@ -211,13 +233,16 @@ export class Runtime {
   }
   async disconnectDevice(id: string, internal = false) {
     if (this.switching && !internal) throw new RpcError(-32011, '正在切换核心与资源，暂不能断开设备');
+    if (this.preview.isClicking(id)) throw new RpcError(-32011, '点击尚未完成，请稍后断开设备');
+    this.preview.invalidate(id);
     if (!this.switching && this.store.all('run').some(r => r.deviceId === id && r.status === 'running')) throw new RpcError(-32011, '请先停止该设备的执行');
     const worker = this.workers.get(id); this.workers.delete(id); await worker?.close();
-    const device = this.store.get('device', id); if (device) { if (!internal) this.suppressed.add(deviceLockAddress(device.address)); device.state = 'offline'; this.store.put('device', id, device); }
+    const device = this.store.get('device', id); if (device) { if (!internal) this.suppressed.add(this.lockAddress(device.address)); device.state = 'offline'; this.store.put('device', id, device); }
     this.emit('device.disconnected', '设备控制权已释放', { deviceId: id }); return { disconnected: true };
   }
   async beforeSwitch() {
     if (!this.switching && this.busy()) throw new Error('核心或异步操作仍在运行'); this.switching = true;
+    this.preview.invalidate();
     const reconnect = new Map(this.reconnect.map(d => [d.id, d]));
     const workers = [...this.workers.entries()]; this.workers.clear();
     for (const [id] of workers) { const d = this.store.get('device', id); reconnect.set(id, d); d.state = 'offline'; this.store.put('device', id, d); this.emit('device.disconnected', '正在安全切换核心工作进程', { deviceId: id }); }
@@ -269,8 +294,18 @@ export class Runtime {
         }
         if (event.type === 'callback') {
           const { message, details } = event;
-          if (message === 4 && details.what === 'Connect') { worker.connected = !!details.details?.ret; const d = this.store.get('device', id); d.state = worker.connected ? 'idle' : 'offline'; this.store.put('device', id, d); this.emit(worker.connected ? 'device.connected' : 'device.failed', worker.connected ? '设备已连接' : '核心设备连接失败', { device: d }); }
-          if (message === 2 && ['Disconnect', 'ResolutionChanged'].includes(details.what)) { worker.connected = false; if (run) this.finishNativeRun(run, 'failed', '设备连接中断，请核对现场后重试'); run = undefined; }
+          if (message === 2 && details.what === 'FastestWayToScreencap' && typeof details.details?.method === 'string') {
+            const d = this.store.get('device', id); d.captureMethod = details.details.method; this.store.put('device', id, d);
+            this.emit('device.capture', '核心实际截图方式：' + d.captureMethod, { deviceId: id, method: d.captureMethod, cost: details.details.cost });
+          }
+          if (message === 4 && details.what === 'Connect') { worker.connected = !!details.details?.ret; const d = this.store.get('device', id); d.state = worker.connected ? 'idle' : 'offline'; this.store.put('device', id, d); this.emit(worker.connected ? 'device.connected' : 'device.failed', worker.connected ? '设备已连接' : '核心设备连接失败：' + (details.details?.error || '请查看本地核心日志'), { device: d }); }
+          if (message === 2 && ['Disconnect', 'ResolutionChanged'].includes(details.what)) {
+            worker.connected = false;
+            const d = this.store.get('device', id); d.state = 'offline'; delete d.captureMethod; this.store.put('device', id, d);
+            const reason = details.why === 'RequiredCaptureProtocolUnavailable' ? '增强截图不可用，已停止执行并断开：' + (details.details?.error || '未确认要求的截图协议') : '设备连接中断，请核对现场后重试';
+            this.emit('device.failed', reason, { device: d });
+            if (run) this.finishNativeRun(run, 'failed', reason); run = undefined;
+          }
           if (run) {
             const matches = details.taskid === state.taskId;
             if ([0, 1].includes(message) || (message === 10000 && matches) || (message === 10004 && matches)) state.failed = true;
@@ -324,6 +359,7 @@ export class Runtime {
   close(): Promise<void> { return this.closing ||= this.closeInner(); }
   private async closeInner() {
     this.running = false;
+    this.preview.invalidate();
     await this.updates.close();
     for (const run of this.store.all('run')) if (run.status === 'running') await this.stopRun(run.id);
     await Promise.all([...this.leases.keys()].map(id => this.release(id)));

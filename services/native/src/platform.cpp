@@ -118,6 +118,7 @@ Protocol::~Protocol() { if (stream_) std::fclose(stream_); }
 void Protocol::send(Json value) {
   value["protocolVersion"] = protocol_version;
   const auto text = value.dump(-1, ' ', true, Json::error_handler_t::replace) + "\n";
+  if (text.size() > max_message_bytes) throw std::runtime_error("protocol output exceeds 4 MiB");
   std::lock_guard guard(mutex_);
   if (std::fwrite(text.data(), 1, text.size(), stream_) != text.size() || std::fflush(stream_) != 0) {
     std::fprintf(stderr, "protocol output closed; isolated worker exiting\n");
@@ -240,17 +241,22 @@ Api::Api(const fs::path& core) {
     LOAD(start, "AsstStart");
     LOAD(stop, "AsstStop");
     LOAD(running, "AsstRunning");
+    // Older reference and synthetic cores can still use the default ADB path.
+    set_connection_extras = reinterpret_cast<decltype(set_connection_extras)>(symbol("AsstSetConnectionExtras", false));
+    screencap = reinterpret_cast<decltype(screencap)>(symbol("AsstAsyncScreencap", false));
+    get_image = reinterpret_cast<decltype(get_image)>(symbol("AsstGetImage", false));
+    click = reinterpret_cast<decltype(click)>(symbol("AsstAsyncClick", false));
 #undef LOAD
   } catch (...) { unload(); throw; }
 }
 
-void* Api::symbol(const char* name) {
+void* Api::symbol(const char* name, bool required) {
 #ifdef _WIN32
   auto address = reinterpret_cast<void*>(GetProcAddress(static_cast<HMODULE>(library_), name));
 #else
   auto address = dlsym(library_, name);
 #endif
-  if (!address) throw std::runtime_error(std::string("missing MaaCore C API symbol: ") + name);
+  if (!address && required) throw std::runtime_error(std::string("missing MaaCore C API symbol: ") + name);
   return address;
 }
 

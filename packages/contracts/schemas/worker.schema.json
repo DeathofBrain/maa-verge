@@ -41,6 +41,7 @@
         "address": { "type": "string", "minLength": 1 },
         "userDir": { "type": "string", "minLength": 1 },
         "lockPath": { "type": "string", "minLength": 1 },
+        "capture": { "$ref": "#/$defs/WorkerCaptureConfiguration" },
         "lockTimeoutMs": { "type": "integer", "minimum": 0, "maximum": 60000 },
         "startupTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 },
         "nativeCallTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 },
@@ -48,13 +49,45 @@
         "shutdownTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 }
       }
     },
+    "WorkerCaptureConfiguration": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["method"],
+          "properties": { "method": { "const": "adb" } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["method", "emulatorPath", "instanceIndex"],
+          "properties": {
+            "method": { "const": "mumu" }, "emulatorPath": { "type": "string", "minLength": 1 },
+            "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 2147483647 }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["method", "emulatorPath", "instanceIndex"],
+          "properties": {
+            "method": { "const": "ldplayer" }, "emulatorPath": { "type": "string", "minLength": 1 },
+            "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+            "pid": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+          }
+        }
+      ]
+    },
     "WorkerCommand": {
       "oneOf": [
         {
           "type": "object", "additionalProperties": false,
           "required": ["protocolVersion", "id", "operation"],
           "properties": {
-            "protocolVersion": { "const": 1 }, "id": { "type": ["string", "integer"] }, "operation": { "enum": ["connect", "stop"] }
+            "protocolVersion": { "const": 1 }, "id": { "type": ["string", "integer"] }, "operation": { "enum": ["connect", "stop", "screencap", "frame"] }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["protocolVersion", "id", "operation", "x", "y"],
+          "properties": {
+            "protocolVersion": { "const": 1 }, "id": { "type": ["string", "integer"] }, "operation": { "const": "click" },
+            "x": { "type": "integer", "minimum": 0, "maximum": 8191 },
+            "y": { "type": "integer", "minimum": 0, "maximum": 8191 }
           }
         },
         {
@@ -69,6 +102,16 @@
           }
         }
       ]
+    },
+    "WorkerFrame": {
+      "type": "object", "additionalProperties": false, "required": ["width", "height", "mimeType", "data", "canControl"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "mimeType": { "const": "image/png" },
+        "data": { "type": "string", "minLength": 1, "maxLength": 4183384 },
+        "canControl": { "type": "boolean" }
+      }
     },
     "WorkerEvent": {
       "oneOf": [

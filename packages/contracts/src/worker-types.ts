@@ -1,10 +1,32 @@
 /* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */
 
+export type WorkerCaptureConfiguration =
+  | {
+      method: 'adb';
+    }
+  | {
+      method: 'mumu';
+      emulatorPath: string;
+      instanceIndex: number;
+    }
+  | {
+      method: 'ldplayer';
+      emulatorPath: string;
+      instanceIndex: number;
+      pid?: number;
+    };
 export type WorkerCommand =
   | {
       protocolVersion: 1;
       id: string | number;
-      operation: 'connect' | 'stop';
+      operation: 'connect' | 'stop' | 'screencap' | 'frame';
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'click';
+      x: number;
+      y: number;
     }
   | {
       protocolVersion: 1;
@@ -68,6 +90,7 @@ export interface WorkerConfiguration {
   address: string;
   userDir: string;
   lockPath: string;
+  capture?: WorkerCaptureConfiguration;
   lockTimeoutMs?: number;
   startupTimeoutMs?: number;
   nativeCallTimeoutMs?: number;

@@ -36,6 +36,8 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+!.vscode/c_cpp_properties.json
+!.vscode/tasks.json
 # Native runtimes/resources are downloaded to user data or ignored build directories.
 MaaCore.dll
 libMaaCore.so

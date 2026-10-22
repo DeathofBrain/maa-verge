@@ -29,6 +29,8 @@ export class Store {
         CREATE TABLE IF NOT EXISTS migrations(version INTEGER PRIMARY KEY);
         INSERT OR IGNORE INTO migrations VALUES(1);
         CREATE TABLE IF NOT EXISTS objects(kind TEXT NOT NULL,id TEXT NOT NULL,value TEXT NOT NULL,PRIMARY KEY(kind,id));
+        CREATE INDEX IF NOT EXISTS active_run_device ON objects(json_extract(value,'$.deviceId'))
+          WHERE kind='run' AND json_extract(value,'$.status')='running';
         CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY AUTOINCREMENT,type TEXT NOT NULL,message TEXT NOT NULL,created_at TEXT NOT NULL,data TEXT NOT NULL);`);
     } catch (error) { this.db?.close(); this.lease.close(); throw error; }
   }
@@ -74,6 +76,12 @@ export class Store {
     return row ? parseWireJson(row.value) : fallback as T;
   }
   all<T = any>(kind: string): T[] { this.check(); return (this.db.query('SELECT value FROM objects WHERE kind=? ORDER BY rowid').all(kind) as { value: string }[]).map(r => parseWireJson(r.value)); }
+  hasRunningRun(deviceId?: string): boolean {
+    this.check();
+    const active = "SELECT 1 FROM objects WHERE kind='run' AND json_extract(value,'$.status')='running'";
+    return !!(deviceId === undefined ? this.db.query(active + ' LIMIT 1').get()
+      : this.db.query(active + " AND json_extract(value,'$.deviceId')=? LIMIT 1").get(deviceId));
+  }
   delete(kind: string, id: string): void { this.check(); this.db.query('DELETE FROM objects WHERE kind=? AND id=?').run(kind, id); }
   event(type: string, message: string, data: any = {}): any {
     this.check(); const createdAt = now();

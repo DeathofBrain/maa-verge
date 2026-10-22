@@ -3,6 +3,7 @@ import { validatePlan, validateSettings, validateSnapshot } from '../../../packa
 import { RpcError } from './errors';
 export type { Plan, Settings, Task, Snapshot };
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
+export const defaultCapture = () => ({ method: 'adb' as const, emulatorPath: '', instanceIndex: 0 });
 function record(value: any): value is Record<string, any> { return value !== null && typeof value === 'object' && [Object.prototype, null].includes(Object.getPrototypeOf(value)); }
 // Preserve the Python model's documented scalar coercions at the RPC boundary;
 // task params remain untouched and are checked strictly by task-policy.ts.
@@ -44,6 +45,7 @@ export function parsePlan(input: any): Plan {
 export function parseSettings(input: any = {}): Settings {
   if (!record(input)) throw new RpcError(-32602, '请求参数无效');
   const value = { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', ...input,
+    ...(Object.hasOwn(input, 'capture') ? { capture: record(input.capture) ? { ...defaultCapture(), ...input.capture } : input.capture } : {}),
     budgets: Object.hasOwn(input, 'budgets') ? budgets(input.budgets) : defaultBudgets(),
     model: Object.hasOwn(input, 'model') ? record(input.model) ? { provider: 'none', baseUrl: '', model: '', ...input.model } : input.model : { provider: 'none', baseUrl: '', model: '' } };
   for (const key of ['autoConnect', 'autoUpdateCore', 'autoUpdateResource', 'minimizeToTray'] as const) value[key] = boolean(value[key]);

@@ -7,7 +7,7 @@
   "properties": {
     "params": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "#/$defs/EmptyParams" },
         "plan.save": { "type": "object", "additionalProperties": false, "required": ["plan"], "properties": { "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" } } },
@@ -16,6 +16,8 @@
         "device.connect": { "type": "object", "additionalProperties": false, "required": ["address"], "properties": { "address": { "type": "string" }, "name": { "type": "string" } } },
         "device.auto_connect": { "$ref": "#/$defs/EmptyParams" },
         "device.disconnect": { "$ref": "#/$defs/IdParams" },
+        "device.frame": { "$ref": "#/$defs/DeviceFrameParams" },
+        "device.click": { "$ref": "#/$defs/DeviceClickParams" },
         "run.start": {
           "type": "object", "additionalProperties": false, "required": ["planId", "deviceId", "requestId"],
           "properties": { "planId": { "type": "string" }, "deviceId": { "type": "string" }, "requestId": { "type": "string", "minLength": 1, "maxLength": 200 } }
@@ -34,7 +36,7 @@
     },
     "results": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "./runtime.schema.json" },
         "plan.save": { "$ref": "./runtime.schema.json#/$defs/Plan" },
@@ -50,6 +52,8 @@
           }
         },
         "device.disconnect": { "type": "object", "additionalProperties": false, "required": ["disconnected"], "properties": { "disconnected": { "type": "boolean" } } },
+        "device.frame": { "$ref": "#/$defs/ScreenFrame" },
+        "device.click": { "type": "object", "additionalProperties": false, "required": ["accepted"], "properties": { "accepted": { "const": true } } },
         "run.start": { "$ref": "./runtime.schema.json#/$defs/Run" },
         "run.stop": { "$ref": "./runtime.schema.json#/$defs/Run" },
         "updates.check": { "$ref": "./runtime.schema.json#/$defs/UpdateChannel" },
@@ -65,6 +69,36 @@
     }
   },
   "$defs": {
+    "DeviceFrameParams": {
+      "type": "object", "additionalProperties": false, "required": ["deviceId"],
+      "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 } }
+    },
+    "DeviceClickParams": {
+      "type": "object", "additionalProperties": false, "required": ["deviceId", "frameId", "x", "y", "requestId"],
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "frameId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "x": { "type": "integer", "minimum": 0, "maximum": 8191 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 8191 },
+        "requestId": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "ScreenFrame": {
+      "description": "Transient MaaCore preview PNG. Its width/height are the click coordinate space; image bytes never enter snapshots or persistence.",
+      "type": "object", "additionalProperties": false,
+      "required": ["deviceId", "frameId", "capturedAt", "width", "height", "mimeType", "data", "canControl", "latencyMs"],
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "frameId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "capturedAt": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "mimeType": { "const": "image/png" },
+        "data": { "type": "string", "minLength": 1, "maxLength": 4183384 },
+        "canControl": { "type": "boolean" },
+        "latencyMs": { "type": "number", "minimum": 0 }
+      }
+    },
     "EmptyParams": { "type": "object", "additionalProperties": false },
     "IdParams": { "type": "object", "additionalProperties": false, "required": ["id"], "properties": { "id": { "type": "string" } } },
     "ChannelParams": { "type": "object", "additionalProperties": false, "required": ["channel"], "properties": { "channel": { "enum": ["app", "core", "resource"] } } },

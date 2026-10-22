@@ -5,6 +5,7 @@ import {
   validatePlan, validateSettings, validateSnapshot, validateRpcRequest, validateRpcEvent,
   validateWorkerCommand, validateWorkerConfiguration, validateWorkerLeaseConfiguration,
   validateWorkerValidationConfiguration, validateWorkerEvent, validateWorkerValidation,
+  validateDeviceFrameParams, validateDeviceClickParams, validateScreenFrame, validateWorkerFrame,
 } from '../src/validators.js';
 
 const settings = () => ({
@@ -99,4 +100,28 @@ test('native responses contain exactly one result or error and reject unknown ve
   assert.equal(validateWorkerEvent({ protocolVersion: 2, type: 'ready' }), false);
   assert.equal(validateWorkerValidation({ protocolVersion: 1, version: 'v6.20.0', resourceLoaded: true }), true);
   assert.equal(validateWorkerValidation({ protocolVersion: 1, version: 'v6.20.0', resourceLoaded: false }), false);
+});
+
+test('screen preview contracts bound image payloads and restrict input to integer coordinates', () => {
+  const params = { deviceId: 'device-1' };
+  const click = { ...params, frameId: 'frame-1', requestId: 'click-1', x: 0, y: 8191 };
+  assert.equal(validateDeviceFrameParams(params), true);
+  assert.equal(validateDeviceFrameParams({ ...params, command: 'shell' }), false);
+  assert.equal(validateDeviceClickParams(click), true);
+  for (const fields of [{ x: -1 }, { x: 8192 }, { y: 0.5 }, { requestId: '' }, { frameId: '' }, { shell: 'tap' }]) {
+    assert.equal(validateDeviceClickParams({ ...click, ...fields }), false);
+  }
+  const image = { width: 1280, height: 720, mimeType: 'image/png', data: 'iVBORw==', canControl: false };
+  const frame = { ...image, ...params, frameId: 'frame-1', capturedAt: '2026-10-22T00:00:00Z', latencyMs: 12.5 };
+  assert.equal(validateWorkerFrame(image), true);
+  assert.equal(validateScreenFrame(frame), true);
+  for (const fields of [{ width: 0 }, { height: 8193 }, { data: '' }, { data: 'A'.repeat(4183385) }, { mimeType: 'image/jpeg' }, { canControl: 1 }]) {
+    assert.equal(validateWorkerFrame({ ...image, ...fields }), false);
+    assert.equal(validateScreenFrame({ ...frame, ...fields }), false);
+  }
+  assert.equal(validateScreenFrame({ ...frame, latencyMs: -1 }), false);
+  assert.equal(validateScreenFrame({ ...frame, command: 'shell' }), false);
+  assert.equal(validateWorkerCommand({ protocolVersion: 1, id: 'frame', operation: 'frame' }), true);
+  assert.equal(validateWorkerCommand({ protocolVersion: 1, id: 'tap', operation: 'click', x: 1279, y: 719 }), true);
+  assert.equal(validateWorkerCommand({ protocolVersion: 1, id: 'tap', operation: 'click', x: 0.5, y: 0 }), false);
 });

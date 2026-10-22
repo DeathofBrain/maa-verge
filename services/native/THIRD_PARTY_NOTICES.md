@@ -8,8 +8,11 @@ and loaded independently and is not linked into this executable.
 
 Source: https://github.com/nlohmann/json/releases/tag/v3.12.0
 
-The CMake dependency archive is pinned with SHA-256
-`42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa`.
+The unmodified single header and upstream license are vendored in
+`3rdparty/nlohmann-json`. CMake verifies the header with SHA-256
+`aaf127c04cb31c406e5b04a63f1ae89369fccde6d8fa7cdda1ed4f32dfc5de63`.
+Source files: https://github.com/nlohmann/json/tree/v3.12.0/single_include/nlohmann
+and https://github.com/nlohmann/json/blob/v3.12.0/LICENSE.MIT.
 
 MIT License
 

@@ -83,6 +83,8 @@ def test_emulator_lock_aliases_share_identity():
     assert adb.device_lock_address("emulator-5554") == "127.0.0.1:5555"
     assert adb.device_lock_address("localhost:5555") == "127.0.0.1:5555"
     assert adb.device_lock_address("[::1]:5555") == "127.0.0.1:5555"
+    assert adb.device_lock_address("127.0.0.1:16384") == "127.0.0.1:5555"
+    assert adb.device_lock_address("localhost:16448") == adb.device_lock_address("emulator-5558")
     assert adb.device_lock_address("USB_SERIAL") == "USB_SERIAL"
     assert not adb.is_local_emulator("192.168.1.2:5555")
 
