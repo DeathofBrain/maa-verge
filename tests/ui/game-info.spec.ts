@@ -1,5 +1,6 @@
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 import type { Snapshot } from '../../packages/contracts/src/types';
+import type { RpcResult } from '../../packages/contracts/src/transport';
 
 test('manual infrastructure estimates persist and stay bound to the selected device', async ({ page }, testInfo) => {
   await page.goto('/');
@@ -39,19 +40,27 @@ test('the homepage distinguishes verified active events from resource markers wi
   await page.evaluate(() => {
     const harness = (window as HarnessWindow).runtimeHarness;
     const call = harness.call;
-    harness.call = async (method, params) => method === 'stages.list' ? {
-      clientType: 'Official', source: 'installed', resourceVersion: 'fixture', generatedAt: new Date().toISOString(), stages: [], diagnostics: [], message: '合成活动日历',
+    harness.call = async (method, params) => {
+      const result = await call(method, params);
+      if (method !== 'home.info') return result;
+      return { ...(result as RpcResult<'home.info'>), activityCatalog: {
+      clientType: 'Official', source: 'installed', resourceVersion: 'fixture', generatedAt: new Date().toISOString(), stages: [], diagnostics: [], message: params.refresh ? '合成活动日历已刷新' : '合成活动日历',
+      calendar: { source: 'official-cache', url: 'https://api.maa.plus/MaaAssistantArknights/api/gui/StageActivityV2.json', fetchedAt: '2026-10-01T00:00:00Z', checkedAt: new Date().toISOString(), nextRefreshAt: null, stale: true, refreshing: false, error: '合成网络暂不可用，使用上次日历' },
       activities: [
         { id: 'active', name: '合成限时活动', startAt: '2020-01-01T00:00:00Z', endAt: '2099-01-01T00:00:00Z', clientType: 'Official', status: 'active', source: 'activity-metadata' },
         { id: 'unknown', name: '合成资源活动', startAt: null, endAt: null, clientType: 'Official', status: 'unknown', source: 'resource-version' },
       ],
-    } : call(method, params);
+      } };
+    };
   });
   await page.getByRole('button', { name: '刷新游戏提醒', exact: true }).click();
   const panel = page.getByRole('region', { name: '游戏日与活动提醒', exact: true });
   await expect(panel).toContainText('合成限时活动');
   await expect(panel.getByText('进行中', { exact: true })).toHaveCount(1);
   await expect(panel).toContainText('资源标记活动 · 开放期未确认');
+  await expect(panel).toContainText('合成活动日历已刷新');
+  await expect(panel).toContainText('MAA 官方活动日历');
+  await expect(panel).toContainText('缓存待更新');
   await expect(panel).toContainText('未读取游戏内完成状态');
   await page.getByLabel('提醒使用的客户端', { exact: true }).selectOption('YoStarEN');
   await expect(panel).toContainText('国际服 · 游戏日');

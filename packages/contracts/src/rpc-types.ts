@@ -88,6 +88,7 @@ export interface RpcContract {
     'home.info': {
       deviceId?: string;
       clientType?: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+      refresh?: boolean;
     };
     'stages.list': StageListParams;
     'plan.save': {
@@ -169,6 +170,7 @@ export interface EmptyParams {}
  */
 export interface StageListParams {
   clientType?: ClientType;
+  refresh?: boolean;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -657,6 +659,7 @@ export interface HomeInfo {
   weekday: number;
   nextDailyResetAt: string;
   nextWeeklyResetAt: string;
+  activityCatalog: StageListResult;
   annihilation: {
     kind: 'weekly-reset' | 'weekly-last-day' | 'weekly';
     message: string;
@@ -666,22 +669,6 @@ export interface HomeInfo {
     message: string;
     lines: InfrastructureEstimate[];
   };
-}
-/**
- * This interface was referenced by `RpcContract`'s JSON-Schema
- * via the `definition` "InfrastructureEstimate".
- */
-export interface InfrastructureEstimate {
-  id: string;
-  name: string;
-  unit: string;
-  estimatedQuantity: number | null;
-  capacity: number;
-  hourlyRate: number;
-  lastCollectedAt: string;
-  full: boolean;
-  fullAt: string | null;
-  error: string | null;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -700,6 +687,7 @@ export interface StageListResult {
    * @maxItems 100
    */
   activities: StageActivity[];
+  calendar: CalendarStatus;
   message: string;
   diagnostics: string[];
 }
@@ -726,7 +714,37 @@ export interface StageActivity {
   endAt: string | null;
   clientType: ClientType;
   status: 'active' | 'upcoming' | 'unknown';
-  source: 'activity-metadata' | 'resource-version';
+  source: 'official-calendar' | 'activity-metadata' | 'resource-version';
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CalendarStatus".
+ */
+export interface CalendarStatus {
+  source: 'official-cache' | 'installed' | 'unavailable';
+  url: string | null;
+  fetchedAt: string | null;
+  checkedAt: string | null;
+  nextRefreshAt: string | null;
+  stale: boolean;
+  refreshing: boolean;
+  error: string | null;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "InfrastructureEstimate".
+ */
+export interface InfrastructureEstimate {
+  id: string;
+  name: string;
+  unit: string;
+  estimatedQuantity: number | null;
+  capacity: number;
+  hourlyRate: number;
+  lastCollectedAt: string;
+  full: boolean;
+  fullAt: string | null;
+  error: string | null;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

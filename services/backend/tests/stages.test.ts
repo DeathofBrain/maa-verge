@@ -93,12 +93,16 @@ describe('installed stage catalogs', () => {
     expect(result.message).toContain('未确认'); expect(validateStageListResult(result)).toBe(true);
   });
   test('global clients use their own resource version and merged navigation overrides', async () => {
-    const combo = pack({ 'version.json': { activity: { name: '国服活动', time: 1 } }, 'tasks/Stages/AA.json': nav('AA', '国服活动'), 'tasks/Stages/BB.json': nav('BB', '国服未译名'), 'global/YoStarEN/resource/version.json': { activity: { name: 'Synthetic EN', time: 1 } }, 'global/YoStarEN/resource/tasks/Stages/BB.json': { 'BB-OpenOcr': { text: ['Synthetic EN'] } } });
+    const combo = pack({ 'version.json': { activity: { name: '国服活动', time: 1 } }, 'tasks/Stages/AA.json': nav('AA', '国服活动'), 'tasks/Stages/BB.json': nav('BB', '国服未译名'), 'global/YoStarEN/resource/version.json': { activity: { name: 'Synthetic EN', time: 1 } }, 'global/YoStarEN/resource/tasks/Stages/BB.json': { 'BB-OpenOcr': { text: ['Synthetic EN'] }, 'BB-8': { text: ['translated'] } } });
     const result = await stageCatalog(combo, 'YoStarEN', clock);
     expect(result.activities[0].name).toBe('Synthetic EN');
     expect(result.stages.filter(stage => stage.category === 'activity').map(stage => stage.value)).toEqual(['BB-8', 'BB-6']);
     const missingClient = await stageCatalog(combo, 'YoStarJP', clock);
     expect(missingClient.activities).toEqual([]); expect(missingClient.stages.some(stage => stage.category === 'activity')).toBe(false);
+  });
+  test('resource-only fallback recognizes direct OpenOcr and OpenOpt navigation variants', async () => {
+    const combo = pack({ 'version.json': { activity: { name: '合成导航变体', time: 1 } }, 'tasks/Stages/AA.json': { 'AA-OpenOcr': { text: ['合成导航变体'] }, 'AA-8': { sub: ['AA-OpenOcr'] }, 'AA-9': { sub: ['AA-OpenOpt'] } } });
+    expect((await stageCatalog(combo, 'Official', clock)).stages.filter(stage => stage.category === 'activity').map(stage => stage.value)).toEqual(['AA-9', 'AA-8']);
   });
   test('corrupt or oversized metadata is bounded and falls back without failing the catalog', async () => {
     const combo = pack({ 'version.json': { activity: { name: '合成活动', time: 1 } }, 'tasks/Stages/AA.json': nav('AA', '合成活动') });
@@ -109,7 +113,7 @@ describe('installed stage catalogs', () => {
     expect(validateStageListResult(result)).toBe(true);
   });
   test('RPC reads the active generation on every call and accepts no filesystem path parameters', async () => {
-    const runtime = new Runtime(temporary(), { validator: async () => {} }); runtimes.push(runtime);
+    const runtime = new Runtime(temporary(), { validator: async () => {}, calendar: { fetcher: null } }); runtimes.push(runtime);
     const first = pack({ 'version.json': { activity: { name: '第一活动', time: 1 } }, 'tasks/Stages/AA.json': nav('AA', '第一活动') });
     const second = pack({ 'version.json': { activity: { name: '第二活动', time: 1 } }, 'tasks/Stages/BB.json': nav('BB', '第二活动') });
     runtime.store.put('active', 'combo', first);

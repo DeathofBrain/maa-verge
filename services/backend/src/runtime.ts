@@ -16,6 +16,8 @@ import { findDeviceProfile, profileIdentity } from './device-profiles';
 import { stageCatalog } from './stages';
 import { validateStageListParams } from '../../../packages/contracts/src/validators.js';
 import { homeInfo } from './home-info';
+import { ActivityCalendar, type ActivityCalendarOptions } from './activity-calendar';
+import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
@@ -32,12 +34,13 @@ function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
   } catch { return false; }
 }
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
-export interface RuntimeOptions { notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; adbExecutable?: () => string; workerFactory?: (config: any) => Promise<Worker> }
+export interface RuntimeOptions { notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; workerFactory?: (config: any) => Promise<Worker> }
 export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
   readonly updates: UpdateService;
   readonly preview: Preview;
+  readonly calendar: ActivityCalendar;
   readonly workers = new Map<string, Worker>();
   private starts = new Map<string, { planId: string; deviceId: string; promise: Promise<any> }>();
   private connecting = new Set<string>();
@@ -55,6 +58,7 @@ export class Runtime {
   running = true;
   constructor(readonly root: string, private options: RuntimeOptions = {}) {
     this.store = new Store(root);
+    this.calendar = new ActivityCalendar(path.join(root, 'cache'), { ...options.calendar, changed: () => { if (this.running) this.emit('calendar.changed', '活动日历缓存已更新'); } });
     if (!this.store.get('meta', 'initialized')) {
       this.store.put('settings', 'main', parseSettings());
       this.store.put('meta', 'initialized', true);
@@ -92,15 +96,16 @@ export class Runtime {
       case 'app.snapshot': return this.snapshot();
       case 'stages.list':
         if (!validateStageListParams(params)) throw new RpcError(-32602, '关卡目录请求参数无效');
-        return stageCatalog(this.store.get('active', 'combo', {}), params.clientType);
+        return this.stages(params.clientType, params.refresh);
       case 'home.info': {
-        if (Object.keys(params).some(key => !['deviceId', 'clientType'].includes(key)) || (params.deviceId !== undefined && (typeof params.deviceId !== 'string' || !params.deviceId || params.deviceId.length > 200))) throw new RpcError(-32602, '主页信息请求参数无效');
+        if (Object.keys(params).some(key => !['deviceId', 'clientType', 'refresh'].includes(key)) || (params.deviceId !== undefined && (typeof params.deviceId !== 'string' || !params.deviceId || params.deviceId.length > 200)) || (params.refresh !== undefined && typeof params.refresh !== 'boolean')) throw new RpcError(-32602, '主页信息请求参数无效');
         if (params.clientType !== undefined && !['Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'].includes(params.clientType)) throw new RpcError(-32602, '游戏客户端无效');
         if (params.deviceId && !this.store.get('device', params.deviceId)) throw new RpcError(-32004, '设备不存在');
         const settings = parseSettings(this.store.get('settings', 'main'));
         const device = params.deviceId ? this.store.get('device', params.deviceId) : undefined;
         const profile = device && (settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address));
-        return homeInfo(settings, params.deviceId, params.clientType ?? (params.deviceId ? this.store.get('device_client', params.deviceId) : null) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official');
+        const info = homeInfo(settings, params.deviceId, params.clientType ?? (params.deviceId ? this.store.get('device_client', params.deviceId) : null) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official');
+        return { ...info, activityCatalog: await this.stages(info.clientType, params.refresh === true) };
       }
       case 'device.discover':
         try { return await discover(this.adbExecutable()); } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
@@ -134,6 +139,10 @@ export class Runtime {
     }
   }
   validatePolicy(plan: Plan) { validatePlan(plan, parseSettings(this.store.get('settings', 'main'))); }
+  async stages(clientType: RpcContract['results']['stages.list']['clientType'] = 'Official', refresh = false) {
+    const calendar = await this.calendar.get(refresh);
+    return stageCatalog(this.store.get('active', 'combo', {}), clientType, this.options.calendar?.now?.() ?? new Date(), calendar);
+  }
   async startRun(params: any) {
     const token = params.requestId;
     if (typeof token !== 'string' || !token || [...token].length > 200) throw new RpcError(-32602, 'requestId 必须是非空字符串');
@@ -313,7 +322,9 @@ export class Runtime {
     const tasks = this.store.get('run_plan', run.id).tasks;
     if (typeof tasks[index].params.client_type === 'string' && tasks[index].params.client_type) return tasks[index].params.client_type;
     for (let previous = index - 1; previous >= 0; previous--) if (tasks[previous].type === 'StartUp') return tasks[previous].params.client_type || 'Official';
-    return this.store.get('device_client', run.deviceId, 'Official');
+    const settings = parseSettings(this.store.get('settings', 'main')), device = this.store.get('device', run.deviceId);
+    const profile = device && (settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address));
+    return this.store.get('device_client', run.deviceId) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';
   }
   private syncHistory(deviceId: string, clientType: string): { operatorsAt?: string | null; depotAt?: string | null } {
     const synced = this.store.get('user_data_sync', deviceId, {});
@@ -348,6 +359,10 @@ export class Runtime {
     }
     const state: any = { index, syncSteps, syncIndex, clientType, completed: false, failed: false, queueEnded: false, idleAfterEnd: false, taskId: null, stopRequested: null, submitting: true };
     const task = nativeTask(syncSteps ? { type: syncSteps[syncIndex]!.type, params: {}, enabled: true } : configuredTask);
+    if (task.type === 'Fight') {
+      if (!('client_type' in task.params)) task.params.client_type = clientType;
+      if (!('server' in task.params)) task.params.server = ({ YoStarEN: 'US', YoStarJP: 'JP', YoStarKR: 'KR' } as Record<string, string>)[clientType] ?? 'CN';
+    }
     if (['OperBox', 'Depot'].includes(task.type)) state.recognitionType = task.type;
     if (task.type === 'Mall') {
       const visited = this.store.get('mall_visit', run.deviceId);
@@ -463,6 +478,7 @@ export class Runtime {
   private async closeInner() {
     this.running = false;
     this.preview.invalidate();
+    await this.calendar.close();
     await this.updates.close();
     for (const run of this.store.all('run')) if (run.status === 'running') await this.stopRun(run.id);
     await Promise.all([...this.workers.values()].map(worker => worker.close())); this.workers.clear();

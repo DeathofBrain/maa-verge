@@ -29,7 +29,7 @@ class FakeWorker {
   complete(id: number, pending: number[] = []) { this.events.push({ type: 'callback', message: 10002, details: { taskid: id } }, { type: 'callback', message: 3, details: { taskid: id } }, { type: 'status', running: false, pendingAsync: pending }); this.safeIdle = !pending.length; }
 }
 function fresh(root = temp(), worker = new FakeWorker()) {
-  const runtime = new Runtime(root, { workerFactory: async () => worker, validator: async () => {}, adbExecutable: () => 'synthetic-adb' });
+  const runtime = new Runtime(root, { workerFactory: async () => worker, validator: async () => {}, adbExecutable: () => 'synthetic-adb', calendar: { fetcher: null } });
   runtimes.push(runtime); return runtime;
 }
 async function connectFixture(runtime: Runtime) {
@@ -327,6 +327,44 @@ describe('daily friend visits', () => {
     await r.startRun({ planId: 'mall', deviceId: device.id, requestId: 'again' }); expect(worker.submitted[1].params.visit_friends).toBe(true);
     visited(worker, 2, 'VisitNextBlack'); worker.events.push({ type: 'callback', message: 10000, details: { taskid: 2 } }); worker.complete(2); await r.tick(true);
     expect(r.store.get('mall_visit', device.id).visitedAt).toBeString();
+  });
+  test('Fight reporting follows StartUp and preserves explicit client and server parameters', async () => {
+    const { runtime: r, worker, device } = await native();
+    const reporting = { report_to_penguin: true, report_to_yituliu: true };
+    const tasks = [{ type: 'StartUp', params: { client_type: 'YoStarJP' } },
+      { type: 'Fight', params: reporting }, { type: 'Fight', params: { ...reporting, client_type: 'YoStarEN' } },
+      { type: 'Fight', params: { ...reporting, server: 'KR' } }, { type: 'Fight', params: { ...reporting, client_type: 'YoStarKR', server: 'US' } }];
+    await r.handle('plan.save', { plan: { id: 'fight-clients', name: '外服汇报', tasks } });
+    const run = await r.startRun({ planId: 'fight-clients', deviceId: device.id, requestId: 'fight-clients' });
+    for (let index = 0; index < tasks.length; index++) { worker.complete(index + 1); await r.tick(true); }
+    expect(worker.submitted.slice(1).map(task => [task.params.client_type, task.params.server])).toEqual([
+      ['YoStarJP', 'JP'], ['YoStarEN', 'US'], ['YoStarJP', 'KR'], ['YoStarKR', 'US'],
+    ]);
+    expect(r.store.get('run_plan', run.id).tasks.map((task: any) => task.params)).toEqual(tasks.map(task => task.params));
+    await r.handle('plan.save', { plan: { id: 'remembered-client', name: '记住渠道', tasks: [{ type: 'Fight', params: reporting }] } });
+    await r.startRun({ planId: 'remembered-client', deviceId: device.id, requestId: 'remembered-client' });
+    expect(worker.submitted.at(-1).params).toMatchObject({ client_type: 'YoStarJP', server: 'JP', ...reporting });
+  });
+  test('Fight reporting falls back through independent profile, global connection and Official defaults', async () => {
+    const profile = (clientType: string) => ({ id: 'independent', name: '独立实例', address: 'localhost:05555', connection: { clientType }, capture: {} });
+    for (const scenario of [
+      { settings: {}, client: 'Official', server: 'CN', remembered: undefined },
+      { settings: { connection: { clientType: 'YoStarEN' } }, client: 'YoStarEN', server: 'US', remembered: undefined },
+      { settings: { connection: { clientType: 'YoStarEN' }, deviceProfiles: [profile('YoStarJP')] }, client: 'YoStarJP', server: 'JP', remembered: undefined },
+      { settings: { connection: { clientType: 'YoStarEN' }, deviceProfiles: [profile('YoStarKR')] }, client: 'YoStarKR', server: 'KR', remembered: undefined },
+      { settings: { connection: { clientType: 'YoStarEN' }, deviceProfiles: [profile('YoStarJP')] }, client: 'txwy', server: 'CN', remembered: 'txwy' },
+      { settings: { connection: { clientType: 'Bilibili' } }, client: 'Bilibili', server: 'CN', remembered: undefined },
+    ]) {
+      const worker = new FakeWorker(), r = fresh(undefined, worker);
+      await r.handle('settings.save', { settings: scenario.settings });
+      const device = await connectFixture(r);
+      // Legacy records without a profile ID still resolve a canonical address alias.
+      if (scenario.client === 'YoStarKR') { delete device.connectionProfileId; r.store.put('device', device.id, device); }
+      if (scenario.remembered) r.store.put('device_client', device.id, scenario.remembered);
+      await r.handle('plan.save', { plan: { id: 'profile-fight', name: '实例渠道', tasks: [{ type: 'Fight', params: { report_to_penguin: true } }] } });
+      await r.startRun({ planId: 'profile-fight', deviceId: device.id, requestId: 'profile-fight' });
+      expect(worker.submitted[0].params).toMatchObject({ client_type: scenario.client, server: scenario.server, medicine: 0, stone: 0 });
+    }
   });
   test('successful StartUp stores client context across restarts and a current explicit client overrides it', async () => {
     const { runtime: r, worker, device } = await native();

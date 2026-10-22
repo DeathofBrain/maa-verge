@@ -3,6 +3,7 @@ import { open, readdir, stat } from 'node:fs/promises';
 import { stagePresets } from '../../../packages/contracts/src/stages';
 import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
 import { gameDate } from './user-data-sync';
+import { calendarPeriod as period, type CalendarSnapshot } from './activity-calendar';
 
 type Catalog = RpcContract['results']['stages.list'];
 type ClientType = Catalog['clientType'];
@@ -53,22 +54,6 @@ class ResourceReader {
   }
 }
 
-function time(value: ObjectValue, key: string): number | undefined {
-  const input = value[key], zone = value.TimeZone ?? 0;
-  if (typeof input !== 'string' || typeof zone !== 'number' || !Number.isInteger(zone) || Math.abs(zone) > 14) return;
-  const match = /^(\d{4})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(input);
-  if (!match) return;
-  const [, y, m, d, h, min, s] = match.map(Number);
-  const stamp = Date.UTC(y, m - 1, d, h, min, s), check = new Date(stamp);
-  if (y < 1970 || check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d || check.getUTCHours() !== h || check.getUTCMinutes() !== min || check.getUTCSeconds() !== s) return;
-  return stamp - zone * 3_600_000;
-}
-function period(value: unknown) {
-  if (!object(value)) return;
-  const start = time(value, 'UtcStartTime'), end = time(value, 'UtcExpireTime');
-  if (start === undefined || end === undefined || start >= end) return;
-  return { start, end };
-}
 function version(value: unknown): { numbers: number[]; pre: string[] } | undefined {
   if (typeof value !== 'string') return;
   const match = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.exec(value);
@@ -95,11 +80,11 @@ function meetsVersion(current: ReturnType<typeof version>, required: NonNullable
   return true;
 }
 
-function parseCalendar(client: ObjectValue, clientType: ClientType, at: number, coreVersion: string | undefined, diagnostics: string[]) {
+function parseCalendar(client: ObjectValue, clientType: ClientType, at: number, coreVersion: string | undefined, diagnostics: string[], source: Activity['source'] = 'activity-metadata') {
   const stages: Stage[] = [], activities: Activity[] = [], groups = client.sideStoryStage;
   const addActivity = (id: string, info: ObjectValue, dates: NonNullable<ReturnType<typeof period>>, fallbackName: string) => {
     if (at >= dates.end || activities.some(activity => activity.id === id) || activities.length >= 100) return;
-    activities.push({ id, name: text(info.StageName, 300) ?? fallbackName, startAt: new Date(dates.start).toISOString(), endAt: new Date(dates.end).toISOString(), clientType, status: at <= dates.start ? 'upcoming' : 'active', source: 'activity-metadata' });
+    activities.push({ id, name: text(info.StageName, 300) ?? fallbackName, startAt: new Date(dates.start).toISOString(), endAt: new Date(dates.end).toISOString(), clientType, status: at <= dates.start ? 'upcoming' : 'active', source });
   };
   if (object(groups)) for (const [id, group] of Object.entries(groups).slice(0, 100)) {
     if (!text(id, 200) || !object(group)) continue;
@@ -130,6 +115,41 @@ function parseCalendar(client: ObjectValue, clientType: ClientType, at: number, 
   return { stages, activities, collectionOpen };
 }
 
+async function navigationTasks(reader: ResourceReader, clientType: ClientType) {
+  const selected = clientResource(clientType);
+  const tasks: ObjectValue = Object.create(null);
+  const merge = (part: ObjectValue) => {
+    for (const [key, value] of Object.entries(part)) tasks[key] = object(tasks[key]) && object(value) ? { ...tasks[key], ...value } : value;
+  };
+  // Older resources used tasks.json; newer resources split stage navigation.
+  const roots = selected ? ['', selected] : [''];
+  for (const root of roots) {
+    for (const relative of ['tasks.json', path.join('tasks', 'tasks.json')]) {
+      const legacy = await reader.json(path.join(root, relative));
+      if (object(legacy)) merge(legacy);
+    }
+    for (const file of await reader.taskFiles(path.join(root, 'tasks', 'Stages'))) {
+      const part = await reader.json(file, 2 * 1024 * 1024);
+      if (object(part)) merge(part);
+    }
+  }
+  return tasks;
+}
+
+/** Mirrors MaaCore v6.20 StageNavigationTask::set_stage_name acceptance. */
+export function supportsStageNavigation(tasks: ObjectValue, stage: string): boolean {
+  const has = (key: string) => object(tasks[key]);
+  if (stage.startsWith('SSReopen-') && stage.length === 11) return has(stage.slice(9) + '-OpenOpt');
+  if (has(stage)) return true;
+  const match = /^([A-Za-z]{0,3})(\d{1,2})-(\d{1,2})(?:-?(\w+))*$/.exec(stage);
+  if (!match || !has('Episode' + match[2])) return false;
+  if (!match[4]) return true;
+  const difficulty = match[4][0].toUpperCase() + match[4].slice(1).toLowerCase(), chapter = Number(match[2]);
+  if (!['Normal', 'Hard'].includes(difficulty) || chapter < 10) return false;
+  if (chapter < 15) return has('ChapterDifficulty' + difficulty);
+  return difficulty === 'Hard' ? has('ChangeToRaidDifficulty') && has('RaidConfirm') : has('ChangeToNormalDifficulty') && has('NormalConfirm');
+}
+
 async function fallback(reader: ResourceReader, clientType: ClientType, at: number, diagnostics: string[]) {
   const selected = clientResource(clientType), result: { stages: Stage[]; activities: Activity[] } = { stages: [], activities: [] };
   const value = await reader.json(path.join(selected, 'version.json'), 256 * 1024);
@@ -139,22 +159,12 @@ async function fallback(reader: ResourceReader, clientType: ClientType, at: numb
   const start = typeof stamp === 'number' && Number.isFinite(stamp) && stamp > 0 && stamp < 8_640_000_000_000 ? new Date(stamp * 1000).toISOString() : null;
   const id = 'resource-current';
   result.activities.push({ id, name, startAt: start, endAt: null, clientType, status: start && at <= Date.parse(start) ? 'upcoming' : 'unknown', source: 'resource-version' });
-  const tasks: ObjectValue = Object.create(null);
-  // Older resources used tasks.json; newer resources split stage navigation.
-  const roots = selected ? ['', selected] : [''];
-  for (const root of roots) {
-    const legacy = await reader.json(path.join(root, 'tasks.json'));
-    if (object(legacy)) Object.assign(tasks, legacy);
-    for (const file of await reader.taskFiles(path.join(root, 'tasks', 'Stages'))) {
-      const part = await reader.json(file, 2 * 1024 * 1024);
-      if (object(part)) Object.assign(tasks, part);
-    }
-  }
+  const tasks = await navigationTasks(reader, clientType);
   const prefixes = new Set<string>();
   for (const [key, task] of Object.entries(tasks)) if (/^[A-Za-z0-9]+-OpenOcr$/.test(key) && object(task) && Array.isArray(task.text) && task.text.includes(name)) prefixes.add(key.slice(0, -'-OpenOcr'.length));
   for (const [key, task] of Object.entries(tasks)) {
     const match = /^([A-Za-z0-9]+)-(\d{1,2})$/.exec(key);
-    if (!match || !prefixes.has(match[1]) || !object(task) || !Array.isArray(task.sub) || !task.sub.some(sub => sub === `${key}@${match[1]}-OpenOpt`)) continue;
+    if (!match || !prefixes.has(match[1]) || !object(task) || !Array.isArray(task.sub) || !task.sub.some(sub => [`${key}@${match[1]}-OpenOpt`, `${match[1]}-OpenOpt`, `${match[1]}-OpenOcr`].includes(String(sub)))) continue;
     result.stages.push({ value: key, label: key, category: 'activity', available: result.activities[0].status !== 'upcoming', activityId: id, tip: '资源标记的活动关卡；本地资源未提供结束时间，请核对游戏内开放状态' });
   }
   result.stages.sort((a, b) => b.value.localeCompare(a.value, 'en', { numeric: true }));
@@ -163,28 +173,44 @@ async function fallback(reader: ResourceReader, clientType: ClientType, at: numb
   return result;
 }
 
-export async function stageCatalog(combo: Combo, clientType: ClientType = 'Official', at = new Date()): Promise<Catalog> {
+export async function stageCatalog(combo: Combo, clientType: ClientType = 'Official', at = new Date(), official?: CalendarSnapshot): Promise<Catalog> {
   const diagnostics: string[] = [], timestamp = at.getTime();
-  const result: Catalog = { clientType, resourceVersion: text(combo.resource?.version, 200) ?? null, source: 'builtin', generatedAt: at.toISOString(), stages: [], activities: [], message: '', diagnostics };
+  const result: Catalog = { clientType, resourceVersion: text(combo.resource?.version, 200) ?? null, source: 'builtin', generatedAt: at.toISOString(), stages: [], activities: [],
+    calendar: official?.status ?? { source: 'unavailable', url: null, fetchedAt: null, checkedAt: null, nextRefreshAt: null, stale: true, refreshing: false, error: null }, message: '', diagnostics };
   let collectionOpen = false;
   const root = combo.resource?.path ? path.join(combo.resource.path, 'resource') : undefined;
+  let reader: ResourceReader | undefined;
   if (root && await stat(root).then(info => info.isDirectory(), () => false)) {
     result.source = 'installed';
-    const reader = new ResourceReader(root, diagnostics);
-    let calendar: ObjectValue | undefined;
+    reader = new ResourceReader(root, diagnostics);
+  }
+  let calendar: ObjectValue | undefined;
+  const officialClient = official?.document?.[calendarClient(clientType)];
+  if (object(officialClient)) calendar = officialClient;
+  else if (!official?.document && reader) {
     for (const relative of [path.join('gui', 'StageActivityV2.json'), 'StageActivityV2.json']) {
       const value = await reader.json(relative, 2 * 1024 * 1024);
       if (object(value) && object(value[calendarClient(clientType)])) { calendar = value[calendarClient(clientType)] as ObjectValue; break; }
     }
-    if (calendar) {
-      const parsed = parseCalendar(calendar, clientType, timestamp, combo.core?.version, diagnostics);
-      result.stages = parsed.stages; result.activities = parsed.activities; collectionOpen = parsed.collectionOpen;
-      result.message = '已读取当前启用资源的活动日历';
+  }
+  if (calendar) {
+    const parsed = parseCalendar(calendar, clientType, timestamp, combo.core?.version, diagnostics, officialClient ? 'official-calendar' : 'activity-metadata');
+    result.stages = parsed.stages; result.activities = parsed.activities; collectionOpen = parsed.collectionOpen;
+    if (officialClient) {
+      const tasks = reader ? await navigationTasks(reader, clientType) : {};
+      result.stages = result.stages.map(stage => supportsStageNavigation(tasks, stage.value) ? stage : { ...stage, available: false, tip: '当前资源尚未支持该关卡导航，请在更新中心更新核心与资源' });
+      result.message = result.calendar.stale ? '使用上次有效官方活动日历缓存；已按当前时间重新判断开放期' : '已校验官方活动日历，关卡导航使用当前启用资源';
     } else {
-      Object.assign(result, await fallback(reader, clientType, timestamp, diagnostics));
-      result.message = result.activities.length ? '已读取资源标记的活动，开放时间未确认' : '当前资源未提供该客户端的活动信息';
+      result.calendar = { ...result.calendar, source: 'installed' };
+      result.message = '已读取当前启用资源的活动日历';
     }
+  } else if (official?.document) {
+    result.message = '官方活动日历暂未提供该客户端的信息';
+  } else if (reader) {
+    Object.assign(result, await fallback(reader, clientType, timestamp, diagnostics));
+    result.message = result.activities.length ? '已读取资源标记的活动，开放时间未确认' : '当前资源未提供该客户端的活动信息';
   } else result.message = '尚未启用可读取的资源，显示常驻关卡';
+  if (result.calendar.error) diagnostics.push(result.calendar.error);
   const day = gameDate(at, clientType).getUTCDay();
   const permanent: Stage[] = stagePresets.map(preset => {
     const available = !preset.openDays || collectionOpen || preset.openDays.includes(day);

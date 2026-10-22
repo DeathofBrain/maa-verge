@@ -153,12 +153,15 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       const clientType = String(params.clientType || 'Official');
       const jp = clientType === 'YoStarJP';
       const activity = { id: 'synthetic-activity', name: jp ? '日服合成活动' : '合成限时活动', clientType, startAt: new Date(Date.now() - 3_600_000).toISOString(), endAt: new Date(Date.now() + 86_400_000).toISOString(), status: 'active', source: 'activity-metadata' };
-      return { clientType, resourceVersion: 'synthetic-resource', generatedAt: now(), source: 'installed', activities: [activity], message: '已读取合成资源活动日历', diagnostics: [], stages: [
+      return { clientType, resourceVersion: 'synthetic-resource', generatedAt: now(), source: 'installed', activities: [activity], message: '已读取合成资源活动日历', diagnostics: [], calendar: { source: 'official-cache', url: 'https://api.maa.plus/MaaAssistantArknights/api/gui/StageActivityV2.json', fetchedAt: now(), checkedAt: now(), nextRefreshAt: new Date(Date.now() + 3_600_000).toISOString(), stale: false, refreshing: false, error: null }, stages: [
         ...stagePresets.map((stage) => ({ value: stage.value, label: stage.label, category: stage.value ? 'permanent' : 'default', available: true })),
         { value: jp ? 'JP-1' : 'TEST-1', label: jp ? 'JP-1 · 日服活动关卡' : 'TEST-1 · 活动关卡', category: 'activity', available: true, activityId: activity.id },
       ] };
     }
-    case 'home.info': return homeInfo(state.settings, params.deviceId as string | undefined, params.clientType as string | undefined);
+    case 'home.info': {
+      const info = homeInfo(state.settings, params.deviceId as string | undefined, params.clientType as string | undefined);
+      return { ...info, activityCatalog: await fixtureRpc('stages.list', { clientType: info.clientType }) };
+    }
     case 'device.frame': {
       if (!validateDeviceFrameParams(params)) throw new Error('画面请求参数无效');
       const device = state.devices.find(item => item.id === params.deviceId);

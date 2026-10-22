@@ -56,6 +56,7 @@ export async function main() {
       // A slow screenshot may outlive the service's exit deadline. Start the
       // workers' bounded shutdown before waiting for their pending RPCs.
       const workersClosing = Promise.allSettled([...runtime.workers.values()].map(worker => worker.close()));
+      await runtime.calendar.close();
       await runtime.updates.close();
       await Promise.allSettled([...inflight]); await workersClosing; await runtime.close();
     } finally { clearTimeout(deadline); }

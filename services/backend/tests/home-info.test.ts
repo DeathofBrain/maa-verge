@@ -40,7 +40,7 @@ test('settings reject duplicate identities, malformed dates and invalid numeric 
 });
 test('home.info uses persisted manual configuration and the selected device client without native calls', async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'maaverge-home-info-')); roots.push(root);
-  let runtime = new Runtime(root); runtimes.push(runtime);
+  let runtime = new Runtime(root, { calendar: { fetcher: null } }); runtimes.push(runtime);
   runtime.store.put('device', 'a', { id: 'a', name: '合成设备', address: '127.0.0.1:5555', state: 'offline', coreVersion: null, resourceVersion: null });
   runtime.store.put('device_client', 'a', 'YoStarJP');
   await runtime.handle('settings.save', { settings: { infrastructureEstimates: [{ deviceId: 'a', lines: [line] }] } });
@@ -49,17 +49,40 @@ test('home.info uses persisted manual configuration and the selected device clie
   await expect(runtime.handle('home.info', { clientType: null })).rejects.toMatchObject({ code: -32602 });
   expect(runtime.workers.size).toBe(0);
   await runtime.close(); runtimes.pop();
-  runtime = new Runtime(root); runtimes.push(runtime);
+  runtime = new Runtime(root, { calendar: { fetcher: null } }); runtimes.push(runtime);
   expect((await runtime.handle('home.info', { deviceId: 'a' })).infrastructure.lines[0].name).toBe(line.name);
 });
 
 test('home.info follows the selected instance client until a successful startup establishes account context', async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'maaverge-home-client-')); roots.push(root);
-  const runtime = new Runtime(root); runtimes.push(runtime);
+  const runtime = new Runtime(root, { calendar: { fetcher: null } }); runtimes.push(runtime);
   runtime.store.put('device', 'a', { id: 'a', name: '合成实例', address: '127.0.0.1:5555', state: 'offline', coreVersion: null, resourceVersion: null, connectionProfileId: 'profile-a' });
   await runtime.handle('settings.save', { settings: { connection: { ...defaultConnection(), clientType: 'YoStarEN' }, deviceProfiles: [{ id: 'profile-a', name: '合成实例', address: '127.0.0.1:5555', connection: { ...defaultConnection(), clientType: 'YoStarKR' }, capture: defaultCapture() }] } });
   expect((await runtime.handle('home.info', { deviceId: 'a' })).clientType).toBe('YoStarKR');
   runtime.store.put('device_client', 'a', 'YoStarJP');
   expect((await runtime.handle('home.info', { deviceId: 'a' })).clientType).toBe('YoStarJP');
   expect((await runtime.handle('home.info', { deviceId: 'a', clientType: 'Bilibili' })).clientType).toBe('Bilibili');
+});
+
+test('home.info and stage selectors share the official calendar cache and explicit refresh', async () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'maaverge-home-calendar-')); roots.push(root);
+  let requests = 0;
+  const fetcher = (async () => {
+    requests++;
+    return new Response(JSON.stringify({ Official: { sideStoryStage: { sample: {
+      Activity: { StageName: '合成官方活动', UtcStartTime: '2020/01/01 12:00:00', UtcExpireTime: '2099/01/01 12:00:00', TimeZone: 8 },
+      Stages: [{ Display: '合成活动关卡 AA-8', Value: 'AA-8' }],
+    } } } }), { headers: { ETag: '"synthetic-calendar"' } });
+  }) as typeof fetch;
+  const runtime = new Runtime(root, { calendar: { fetcher } }); runtimes.push(runtime);
+  const home = await runtime.handle('home.info', {});
+  expect(home.activityCatalog.activities[0]).toMatchObject({ name: '合成官方活动', status: 'active' });
+  expect(home.activityCatalog.calendar.source).toBe('official-cache');
+  const stages = await runtime.handle('stages.list', { clientType: 'Bilibili' });
+  expect(stages.activities[0]).toMatchObject({ name: '合成官方活动', clientType: 'Bilibili' });
+  expect(requests).toBe(1);
+  await runtime.handle('home.info', { refresh: true });
+  expect(requests).toBe(2);
+  await expect(runtime.handle('home.info', { refresh: 'true' })).rejects.toMatchObject({ code: -32602 });
+  expect(runtime.workers.size).toBe(0);
 });

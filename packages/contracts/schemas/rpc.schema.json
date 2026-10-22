@@ -10,7 +10,7 @@
       "required": ["app.snapshot", "home.info", "stages.list", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "#/$defs/EmptyParams" },
-        "home.info": { "type": "object", "additionalProperties": false, "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] } } },
+        "home.info": { "type": "object", "additionalProperties": false, "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "refresh": { "type": "boolean" } } },
         "stages.list": { "$ref": "#/$defs/StageListParams" },
         "plan.save": { "type": "object", "additionalProperties": false, "required": ["plan"], "properties": { "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" } } },
         "plan.delete": { "$ref": "#/$defs/IdParams" },
@@ -75,7 +75,7 @@
   "$defs": {
     "HomeInfo": {
       "type": "object", "additionalProperties": false,
-      "required": ["generatedAt", "clientType", "gameDate", "weekday", "nextDailyResetAt", "nextWeeklyResetAt", "annihilation", "infrastructure"],
+      "required": ["generatedAt", "clientType", "gameDate", "weekday", "nextDailyResetAt", "nextWeeklyResetAt", "annihilation", "infrastructure", "activityCatalog"],
       "properties": {
         "generatedAt": { "type": "string" },
         "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
@@ -83,6 +83,7 @@
         "weekday": { "type": "integer", "minimum": 0, "maximum": 6 },
         "nextDailyResetAt": { "type": "string" },
         "nextWeeklyResetAt": { "type": "string" },
+        "activityCatalog": { "$ref": "#/$defs/StageListResult" },
         "annihilation": {
           "type": "object", "additionalProperties": false, "required": ["kind", "message"],
           "properties": { "kind": { "enum": ["weekly-reset", "weekly-last-day", "weekly"] }, "message": { "type": "string" } }
@@ -111,7 +112,7 @@
     "ClientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
     "StageListParams": {
       "type": "object", "additionalProperties": false,
-      "properties": { "clientType": { "$ref": "#/$defs/ClientType" } }
+      "properties": { "clientType": { "$ref": "#/$defs/ClientType" }, "refresh": { "type": "boolean" } }
     },
     "StageOption": {
       "type": "object", "additionalProperties": false,
@@ -135,12 +136,26 @@
         "endAt": { "type": ["string", "null"], "maxLength": 40 },
         "clientType": { "$ref": "#/$defs/ClientType" },
         "status": { "enum": ["active", "upcoming", "unknown"] },
-        "source": { "enum": ["activity-metadata", "resource-version"] }
+        "source": { "enum": ["official-calendar", "activity-metadata", "resource-version"] }
+      }
+    },
+    "CalendarStatus": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source", "url", "fetchedAt", "checkedAt", "nextRefreshAt", "stale", "refreshing", "error"],
+      "properties": {
+        "source": { "enum": ["official-cache", "installed", "unavailable"] },
+        "url": { "type": ["string", "null"], "maxLength": 300 },
+        "fetchedAt": { "type": ["string", "null"], "maxLength": 40 },
+        "checkedAt": { "type": ["string", "null"], "maxLength": 40 },
+        "nextRefreshAt": { "type": ["string", "null"], "maxLength": 40 },
+        "stale": { "type": "boolean" },
+        "refreshing": { "type": "boolean" },
+        "error": { "type": ["string", "null"], "maxLength": 1000 }
       }
     },
     "StageListResult": {
       "type": "object", "additionalProperties": false,
-      "required": ["clientType", "resourceVersion", "source", "generatedAt", "stages", "activities", "message", "diagnostics"],
+      "required": ["clientType", "resourceVersion", "source", "generatedAt", "stages", "activities", "calendar", "message", "diagnostics"],
       "properties": {
         "clientType": { "$ref": "#/$defs/ClientType" },
         "resourceVersion": { "type": ["string", "null"], "maxLength": 200 },
@@ -148,6 +163,7 @@
         "generatedAt": { "type": "string", "maxLength": 40 },
         "stages": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/StageOption" } },
         "activities": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/StageActivity" } },
+        "calendar": { "$ref": "#/$defs/CalendarStatus" },
         "message": { "type": "string", "maxLength": 1000 },
         "diagnostics": { "type": "array", "items": { "type": "string", "maxLength": 1000 } }
       }

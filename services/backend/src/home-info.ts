@@ -22,7 +22,7 @@ export function validateInfrastructureProfiles(profiles: Settings['infrastructur
 }
 
 /** Manual estimates begin at zero on the user's last collection time. Never infer collection from a task callback. */
-export function homeInfo(settings: Settings, deviceId: string | undefined, clientType = 'Official', at = new Date()): RpcContract['results']['home.info'] {
+export function homeInfo(settings: Settings, deviceId: string | undefined, clientType = 'Official', at = new Date()): Omit<RpcContract['results']['home.info'], 'activityCatalog'> {
   if (!clients.includes(clientType)) throw new RpcError(-32602, '游戏客户端无效');
   const current = gameDate(at, clientType);
   const midnight = Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate());
