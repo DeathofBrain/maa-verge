@@ -6,20 +6,21 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { root, windows, fail } from './project.mjs';
 import { cleanRuntimeEnvironment } from './setup-bun.mjs';
+import { seedNativeData } from './test-support/seed-native.mjs';
 import { zipBytes } from '../services/backend/tests/archive-fixture.ts';
 
 async function main() {
   const temporary = mkdtempSync(path.join(tmpdir(), 'maaverge-package-smoke-'));
   const executable = path.join(root, 'dist/runtime/maaverge-runtime', windows ? 'maaverge-runtime.exe' : 'maaverge-runtime');
   const children = new Set();
-  const environment = { ...cleanRuntimeEnvironment(), PATH: '', MAAVERGE_MODE: 'mock', MAAVERGE_DEVICE_LOCK_DIR: path.join(temporary, 'locks') };
+  const environment = { ...cleanRuntimeEnvironment(), PATH: '', MAAVERGE_MODE: 'native', MAAVERGE_DEVICE_LOCK_DIR: path.join(temporary, 'locks') };
   const spawnOwned = (arguments_) => {
     const child = spawn(executable, arguments_, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: environment, cwd: temporary });
     children.add(child); child.once('close', () => children.delete(child)); child.stdin.on('error', () => {});
     return child;
   };
   async function session() {
-    const child = spawnOwned(['--mode', 'mock', '--data-dir', temporary]);
+    const child = spawnOwned(['--data-dir', temporary]);
     let stderr = '', next = 0; const pending = new Map();
     child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-8000); });
     const exit = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', code => { for (const request of pending.values()) request.reject(new Error(`Runtime exited ${code}: ${stderr}`)); code === 0 ? resolve() : reject(new Error(`Runtime exited ${code}: ${stderr}`)); }); });
@@ -35,23 +36,32 @@ async function main() {
     return { request, end: async () => { child.stdin.end(); await exit; } };
   }
   try {
+    await seedNativeData(temporary);
     writeFileSync(path.join(temporary, '.env'), 'BUN_BE_BUN=1\nNODE_OPTIONS=--invalid-option\n');
     writeFileSync(path.join(temporary, 'bunfig.toml'), '[broken\n');
     const first = await session();
-    assert.equal((await first.request('app.snapshot')).mode, 'mock');
-    const proposal = await first.request('agent.message', { message: '刷1-7材料3次' }); assert.equal(proposal.requiresConfirmation, true);
-    await first.request('plan.save', { plan: { ...proposal.plan, id: 'package-smoke' } });
-    const run = await first.request('run.start', { planId: 'package-smoke', deviceId: 'mock-device-1', requestId: 'packaged-once' });
-    assert.equal(run.status, 'running');
-    assert.equal((await first.request('run.start', { planId: 'package-smoke', deviceId: 'mock-device-1', requestId: 'packaged-once' })).id, run.id);
-    await first.request('updates.check', { channel: 'resource' }); await first.request('updates.prepare', { channel: 'resource' });
-    assert.equal((await first.request('updates.activate', { channel: 'resource' })).status, 'waiting_idle');
-    assert.equal((await first.request('run.stop', { id: run.id })).status, 'stopped');
+    const snapshot = await first.request('app.snapshot');
+    assert.equal(snapshot.mode, 'native'); assert.deepEqual(snapshot.devices, []); assert.deepEqual(snapshot.plans, []); assert.deepEqual(snapshot.runs, []);
+    assert(snapshot.updates.filter(update => update.id !== 'app').every(update => update.currentVersion === '未安装'));
+    const settings = { ...snapshot.settings, theme: 'dark' };
+    assert.deepEqual(await first.request('settings.save', { settings }), settings);
+    const proposal = await first.request('agent.message', { message: '刷1-7材料3次' });
+    assert.equal(proposal.requiresConfirmation, true); assert.equal(proposal.mode, 'mock');
+    assert.equal(proposal.plan.tasks[0].params.stage, '1-7');
+    const plan = await first.request('plan.save', { plan: { ...proposal.plan, id: 'package-smoke' } });
+    const request = { planId: plan.id, deviceId: 'missing-device', requestId: 'packaged-once' };
+    await assert.rejects(first.request('run.start', request), /"code":-32004/u);
+    await assert.rejects(first.request('device.frame', { deviceId: request.deviceId }), /"code":-32004/u);
+    assert.deepEqual((await first.request('app.snapshot')).runs, []);
     await first.end();
     const second = await session();
-    assert((await second.request('app.snapshot')).plans.some(plan => plan.id === 'package-smoke'));
-    assert.equal((await second.request('run.start', { planId: 'package-smoke', deviceId: 'mock-device-1', requestId: 'packaged-once' })).id, run.id);
+    const recovered = await second.request('app.snapshot');
+    assert.equal(recovered.mode, 'native'); assert.deepEqual(recovered.devices, []); assert.deepEqual(recovered.runs, []);
+    assert.deepEqual(recovered.settings, settings); assert.deepEqual(recovered.plans.find(item => item.id === plan.id), plan);
+    await assert.rejects(second.request('run.start', request), /"code":-32004/u);
     await second.end();
+    assert(existsSync(path.join(temporary, 'native/maaverge.sqlite3')));
+    assert(!existsSync(path.join(temporary, 'mock')));
     const coreName = windows ? 'MaaCore.dll' : process.platform === 'darwin' ? 'libMaaCore.dylib' : 'libMaaCore.so';
     const fixture = [path.join(root, 'build/native/fixtures/normal/Release', coreName), path.join(root, 'build/native/fixtures/normal', coreName)].find(existsSync);
     if (fixture) {
@@ -65,7 +75,7 @@ async function main() {
       assert.equal(code, 0, errors); assert.deepEqual(JSON.parse(output), {}); assert(!existsSync(path.join(target, 'MAA.exe')));
       console.log('Packaged update-job -> selective extraction -> synthetic C++ MaaCore validation passed.');
     }
-    console.log('Self-contained package smoke passed: empty PATH, RPC, C++ device lease, persistence, deduplication, updates and EOF cleanup.');
+    console.log('Self-contained native package smoke passed: empty PATH, RPC, empty devices, local Agent proposals, settings/plans persistence, missing-device rejection and EOF restart.');
   } finally {
     for (const child of children) child.kill();
     if (!path.resolve(temporary).startsWith(path.join(tmpdir(), 'maaverge-package-smoke-'))) throw new Error('Unexpected smoke temporary path');

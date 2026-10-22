@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { closeSync, existsSync, mkdtempSync, openSync, readSync, readdirSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, mkdtempSync, openSync, readSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { fail, root } from './project.mjs';
+import { seedNativeData } from './test-support/seed-native.mjs';
 
 // This exercises packaged backend processes in an OS container. Desktop,
 // installer and clean-VM acceptance remain separate platform checks.
@@ -48,14 +49,14 @@ function session(data) {
       fi
     done
     printf '%s\n' 'Clean image has no Python, Node or Bun commands.' >&2
-    exec /opt/maaverge/maaverge-runtime --mode mock --data-dir /data
+    exec /opt/maaverge/maaverge-runtime --data-dir /data
   `;
   const child = spawn('docker', [
     'run', '--rm', '--interactive', '--name', name, '--platform', platform,
     '--user', `${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`,
     '--network=none', '--read-only', '--tmpfs', '/tmp:rw,nosuid,nodev,size=128m',
     '--mount', bind(runtime, '/opt/maaverge', true), '--mount', bind(data, '/data'),
-    '--workdir', '/data', '--env', 'MAAVERGE_MODE=mock',
+    '--workdir', '/data', '--env', 'MAAVERGE_MODE=native',
     '--env', 'MAAVERGE_DEVICE_LOCK_DIR=/data/device-locks',
     '--env', 'MAAVERGE_CORE_WORKER_PATH=/opt/maaverge/maaverge-core-worker',
     image, '/bin/sh', '-ec', command,
@@ -114,39 +115,32 @@ async function main() {
   await docker(['pull', '--platform', platform, image], { timeout: 300_000 });
   const data = mkdtempSync(path.join(tmpdir(), 'maaverge-clean-linux-'));
   try {
+    await seedNativeData(data);
     const first = session(data);
     const snapshot = await first.request('app.snapshot');
-    assert.equal(snapshot.mode, 'mock');
+    assert.equal(snapshot.mode, 'native'); assert.deepEqual(snapshot.devices, []); assert.deepEqual(snapshot.plans, []); assert.deepEqual(snapshot.runs, []);
+    assert(snapshot.updates.filter(update => update.id !== 'app').every(update => update.currentVersion === '未安装'));
     const settings = { ...snapshot.settings, theme: 'dark', autoConnect: false, autoUpdateCore: false, autoUpdateResource: false };
     assert.deepEqual(await first.request('settings.save', { settings }), settings);
     const proposal = await first.request('agent.message', { message: '刷1-7材料3次' });
-    assert.equal(proposal.requiresConfirmation, true);
+    assert.equal(proposal.requiresConfirmation, true); assert.equal(proposal.mode, 'mock');
     assert.equal(proposal.plan.tasks[0].params.stage, '1-7');
     const plan = await first.request('plan.save', { plan: { ...proposal.plan, id: 'clean-linux-smoke' } });
-    const request = { planId: plan.id, deviceId: 'mock-device-1', requestId: 'clean-linux-once' };
-    const run = await first.request('run.start', request);
-    assert.equal(run.status, 'running');
-    assert.equal((await first.request('run.start', request)).id, run.id);
-    // Starting a mock run waits for the packaged C++ lease worker to be ready.
-    assert(existsSync(path.join(data, 'mock/workers/mock-lease/worker.stderr.log')));
-    assert(readdirSync(path.join(data, 'device-locks')).some(file => /^[a-f0-9]{64}\.lock$/u.test(file)));
-    assert.equal((await first.request('run.stop', { id: run.id })).status, 'stopped');
+    const request = { planId: plan.id, deviceId: 'missing-device', requestId: 'clean-linux-once' };
+    await assert.rejects(first.request('run.start', request), /"code":-32004/u);
+    await assert.rejects(first.request('device.frame', { deviceId: request.deviceId }), /"code":-32004/u);
+    assert.deepEqual((await first.request('app.snapshot')).runs, []);
     await first.end();
 
     const second = session(data);
     const recovered = await second.request('app.snapshot');
+    assert.equal(recovered.mode, 'native'); assert.deepEqual(recovered.devices, []); assert.deepEqual(recovered.runs, []);
     assert.deepEqual(recovered.settings, settings);
     assert.deepEqual(recovered.plans.find(item => item.id === plan.id), plan);
-    assert.equal(recovered.runs.find(item => item.id === run.id)?.status, 'stopped');
-    const duplicate = await second.request('run.start', request);
-    assert.equal(duplicate.id, run.id); assert.equal(duplicate.status, 'stopped');
-    assert.equal((await second.request('app.snapshot')).runs.filter(item => item.id === run.id).length, 1);
-    // A new request must reacquire the same packaged worker's device lock.
-    const next = await second.request('run.start', { ...request, requestId: 'clean-linux-after-restart' });
-    assert.notEqual(next.id, run.id);
-    assert.equal((await second.request('run.stop', { id: next.id })).status, 'stopped');
+    await assert.rejects(second.request('run.start', request), /"code":-32004/u);
     await second.end();
-    console.log('Ubuntu 22.04 container backend smoke passed: no Python/Node/Bun, packaged C++ device lease, settings/plans, persistent deduplication, stop and EOF restart.');
+    assert(existsSync(path.join(data, 'native/maaverge.sqlite3'))); assert(!existsSync(path.join(data, 'mock')));
+    console.log('Ubuntu 22.04 container native backend smoke passed: no Python/Node/Bun, empty devices, local Agent proposals, settings/plans persistence, missing-device rejection and EOF restart.');
   } finally {
     for (const name of containers) await docker(['rm', '--force', name], { quiet: true, timeout: 15_000 }).catch(() => {});
     assert.equal(path.dirname(path.resolve(data)), path.resolve(tmpdir()));
