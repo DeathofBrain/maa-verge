@@ -145,6 +145,10 @@ export interface UpdateChannel {
   message: Message1;
 }
 export interface Settings {
+  /**
+   * @maxItems 100
+   */
+  infrastructureEstimates?: InfrastructureEstimateProfile[];
   capture?: CaptureSettings;
   connection?: ConnectionSettings;
   /**
@@ -158,6 +162,252 @@ export interface Settings {
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;
+}
+export interface InfrastructureEstimateProfile {
+  deviceId: string;
+  /**
+   * @maxItems 20
+   */
+  lines:
+    | []
+    | [InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ];
+}
+export interface InfrastructureLine {
+  id: string;
+  name: string;
+  unit: string;
+  hourlyRate: number;
+  capacity: number;
+  lastCollectedAt: string;
 }
 export interface CaptureSettings {
   method: 'adb' | 'mumu' | 'ldplayer';

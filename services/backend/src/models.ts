@@ -2,6 +2,7 @@ import type { Plan, Settings, Task, Snapshot } from '../../../packages/contracts
 import { validatePlan, validateSettings, validateSnapshot } from '../../../packages/contracts/src/validators.js';
 import { RpcError } from './errors';
 import { validateDeviceProfiles } from './device-profiles';
+import { validateInfrastructureProfiles } from './home-info';
 export type { Plan, Settings, Task, Snapshot };
 export type { DeviceConnectionProfile } from '../../../packages/contracts/src/types';
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
@@ -60,6 +61,7 @@ export function parseSettings(input: any = {}): Settings {
     model: Object.hasOwn(input, 'model') ? record(input.model) ? { provider: 'none', baseUrl: '', model: '', ...input.model } : input.model : { provider: 'none', baseUrl: '', model: '' } };
   for (const key of ['autoConnect', 'autoUpdateCore', 'autoUpdateResource', 'minimizeToTray'] as const) value[key] = boolean(value[key]);
   if (!validateSettings(value)) throw new RpcError(-32602, '请求参数无效', validateSettings.errors);
+  validateInfrastructureProfiles(value.infrastructureEstimates);
   if ((value.capture?.mumuTouch || value.capture?.mumuBridge) && value.capture.method !== 'mumu') throw new RpcError(-32602, 'MuMu 触控增强和网络桥接需要启用 MuMu 截图增强');
   validateDeviceProfiles(value.deviceProfiles);
   return value as Settings;

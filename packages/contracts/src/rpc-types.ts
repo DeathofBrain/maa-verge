@@ -85,6 +85,10 @@ export type Events = Event[];
 export interface RpcContract {
   params: {
     'app.snapshot': EmptyParams;
+    'home.info': {
+      deviceId?: string;
+      clientType?: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+    };
     'stages.list': StageListParams;
     'plan.save': {
       plan: Plan;
@@ -119,6 +123,7 @@ export interface RpcContract {
   };
   results: {
     'app.snapshot': Snapshot;
+    'home.info': HomeInfo;
     'stages.list': StageListResult;
     'plan.save': Plan;
     'plan.delete': {
@@ -238,6 +243,10 @@ export interface ChannelParams {
  * via the `definition` "Settings".
  */
 export interface Settings {
+  /**
+   * @maxItems 100
+   */
+  infrastructureEstimates?: InfrastructureEstimateProfile[];
   capture?: CaptureSettings;
   connection?: ConnectionSettings;
   /**
@@ -251,6 +260,260 @@ export interface Settings {
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "InfrastructureEstimateProfile".
+ */
+export interface InfrastructureEstimateProfile {
+  deviceId: string;
+  /**
+   * @maxItems 20
+   */
+  lines:
+    | []
+    | [InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ];
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "InfrastructureLine".
+ */
+export interface InfrastructureLine {
+  id: string;
+  name: string;
+  unit: string;
+  hourlyRate: number;
+  capacity: number;
+  lastCollectedAt: string;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -382,6 +645,43 @@ export interface Event {
 }
 export interface Data {
   [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "HomeInfo".
+ */
+export interface HomeInfo {
+  generatedAt: string;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  gameDate: string;
+  weekday: number;
+  nextDailyResetAt: string;
+  nextWeeklyResetAt: string;
+  annihilation: {
+    kind: 'weekly-reset' | 'weekly-last-day' | 'weekly';
+    message: string;
+  };
+  infrastructure: {
+    deviceId: string | null;
+    message: string;
+    lines: InfrastructureEstimate[];
+  };
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "InfrastructureEstimate".
+ */
+export interface InfrastructureEstimate {
+  id: string;
+  name: string;
+  unit: string;
+  estimatedQuantity: number | null;
+  capacity: number;
+  hourlyRate: number;
+  lastCollectedAt: string;
+  full: boolean;
+  fullAt: string | null;
+  error: string | null;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

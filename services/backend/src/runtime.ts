@@ -15,6 +15,7 @@ import { syncDue, userDataSteps, type SyncStep } from './user-data-sync';
 import { findDeviceProfile, profileIdentity } from './device-profiles';
 import { stageCatalog } from './stages';
 import { validateStageListParams } from '../../../packages/contracts/src/validators.js';
+import { homeInfo } from './home-info';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
@@ -92,6 +93,15 @@ export class Runtime {
       case 'stages.list':
         if (!validateStageListParams(params)) throw new RpcError(-32602, '关卡目录请求参数无效');
         return stageCatalog(this.store.get('active', 'combo', {}), params.clientType);
+      case 'home.info': {
+        if (Object.keys(params).some(key => !['deviceId', 'clientType'].includes(key)) || (params.deviceId !== undefined && (typeof params.deviceId !== 'string' || !params.deviceId || params.deviceId.length > 200))) throw new RpcError(-32602, '主页信息请求参数无效');
+        if (params.clientType !== undefined && !['Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'].includes(params.clientType)) throw new RpcError(-32602, '游戏客户端无效');
+        if (params.deviceId && !this.store.get('device', params.deviceId)) throw new RpcError(-32004, '设备不存在');
+        const settings = parseSettings(this.store.get('settings', 'main'));
+        const device = params.deviceId ? this.store.get('device', params.deviceId) : undefined;
+        const profile = device && (settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address));
+        return homeInfo(settings, params.deviceId, params.clientType ?? (params.deviceId ? this.store.get('device_client', params.deviceId) : null) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official');
+      }
       case 'device.discover':
         try { return await discover(this.adbExecutable()); } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
       case 'device.connect': return this.connectDevice(params);

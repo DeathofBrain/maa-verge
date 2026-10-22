@@ -4,6 +4,7 @@ import { taskEnabled, validatePlan } from '../../../packages/contracts/src/task-
 import { mockPreviewImage } from '../../fixtures/preview-image';
 import { stagePresets } from '../../../packages/contracts/src/stages';
 import { validateDeviceClickParams, validateDeviceFrameParams } from '../../../packages/contracts/src/validators.js';
+import { homeInfo } from '../../../services/backend/src/home-info';
 
 const workspace = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID || 'browser';
 const key = 'maaverge:test-runtime:v1:' + workspace;
@@ -157,6 +158,7 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
         { value: jp ? 'JP-1' : 'TEST-1', label: jp ? 'JP-1 · 日服活动关卡' : 'TEST-1 · 活动关卡', category: 'activity', available: true, activityId: activity.id },
       ] };
     }
+    case 'home.info': return homeInfo(state.settings, params.deviceId as string | undefined, params.clientType as string | undefined);
     case 'device.frame': {
       if (!validateDeviceFrameParams(params)) throw new Error('画面请求参数无效');
       const device = state.devices.find(item => item.id === params.deviceId);
