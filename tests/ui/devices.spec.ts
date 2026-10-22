@@ -7,6 +7,9 @@ type DeviceHarness = {
   connection: 'normal' | 'empty' | 'error' | 'delayed';
   native: boolean;
   waiting: boolean;
+  readyDeviceIds: string[];
+  connectionErrors: Record<string, string>;
+  errorSnapshots: number;
   releaseDiscovery: () => void;
 };
 type HarnessWindow = Window & { deviceHarness: DeviceHarness };
@@ -32,7 +35,7 @@ async function installDeviceHarness(page: Page) {
     let subscribed = false;
     const target = window as unknown as HarnessWindow & { __TAURI_INTERNALS__: unknown; __TAURI_EVENT_PLUGIN_INTERNALS__: unknown };
     const harness: DeviceHarness = {
-      calls: [], holdDiscovery: false, discovery: 'normal', connection: 'normal', native: false, waiting: false,
+      calls: [], holdDiscovery: false, discovery: 'normal', connection: 'normal', native: false, waiting: false, readyDeviceIds: [], connectionErrors: {}, errorSnapshots: 0,
       releaseDiscovery: () => { harness.holdDiscovery = false; held.splice(0).forEach((release) => release()); },
     };
     target.deviceHarness = harness;
@@ -67,7 +70,12 @@ async function installDeviceHarness(page: Page) {
           }
           const response = await mock.fixtureRpc(method, args.params || {});
           if (method === 'app.snapshot' && harness.native) response.mode = 'native';
-          if (['app.snapshot', 'device.auto_connect'].includes(method) && harness.waiting) response.devices.forEach((device: { state: string }) => { device.state = 'offline'; });
+          if (method === 'app.snapshot' && Object.keys(harness.connectionErrors).length) harness.errorSnapshots++;
+          if (['app.snapshot', 'device.auto_connect'].includes(method) && harness.waiting) response.devices.forEach((device: { id: string; state: string; connectionError?: string }) => {
+            if (!harness.readyDeviceIds.includes(device.id)) device.state = 'offline';
+            // Failure evidence arrives in a later snapshot, like native Connect.
+            if (method === 'app.snapshot' && harness.connectionErrors[device.id]) device.connectionError = harness.connectionErrors[device.id];
+          });
           return response;
         }
         if (command === 'plugin:event|listen') {
@@ -162,4 +170,42 @@ test('an asynchronous connection that stays offline reports pending readiness wi
   await expect(page.locator('.connection-diagnostics')).toContainText('连接尚未就绪');
   await expect(page.locator('.sp-device-detail')).toContainText('已断开');
   await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeEnabled();
+});
+
+test('an explicit asynchronous connection failure finishes promptly and permits retry', async ({ page }) => {
+  await openDevices(page);
+  await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connection = 'delayed'; });
+  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+  await expect(result(page)).toHaveText('正在等待设备连接就绪（0/1）…');
+  await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connectionErrors['mock-device-1'] = '合成核心连接失败：ADB 地址不可达'; });
+  await expect(result(page)).toHaveText('连接结果：0 台已就绪，1 台连接失败。', { timeout: 5000 });
+  await expect(result(page)).toHaveAttribute('role', 'alert');
+  await expect(page.locator('.connection-diagnostics')).toContainText('合成核心连接失败：ADB 地址不可达');
+  await expect(page.locator('.connection-diagnostics')).not.toContainText('尚未就绪');
+  await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeEnabled();
+  await page.evaluate(() => { const harness = (window as HarnessWindow).deviceHarness; harness.connection = 'normal'; harness.waiting = false; harness.connectionErrors = {}; });
+  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+  await expect(result(page)).toHaveText('连接完成：1 台设备已就绪。');
+  await expect(page.locator('.connection-diagnostics')).not.toContainText('合成核心连接失败');
+});
+
+test('one failed instance leaves other pending instances waiting until their own result arrives', async ({ page }) => {
+  await openDevices(page);
+  await page.getByLabel('手动连接 ADB 地址', { exact: true }).fill('127.0.0.1:5557');
+  await page.getByRole('button', { name: '连接设备', exact: true }).click();
+  await expect(result(page)).toHaveText('连接完成：1 台设备已就绪。');
+  const secondId = await page.getByLabel('选择设备', { exact: true }).inputValue();
+  await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connection = 'delayed'; });
+  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+  await expect(result(page)).toHaveText('正在等待设备连接就绪（0/2）…');
+  await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connectionErrors['mock-device-1'] = '合成第一实例连接失败'; });
+  await expect.poll(() => page.evaluate(() => (window as HarnessWindow).deviceHarness.errorSnapshots)).toBeGreaterThan(0);
+  await expect(page.getByRole('button', { name: '正在连接…', exact: true })).toBeDisabled();
+  await expect(result(page)).toHaveAttribute('aria-busy', 'true');
+  await page.evaluate((id) => { (window as HarnessWindow).deviceHarness.readyDeviceIds = [id]; }, secondId);
+  await expect(result(page)).toHaveText('连接结果：1 台已就绪，1 台连接失败。', { timeout: 5000 });
+  await expect(page.locator('.connection-diagnostics')).toContainText('合成第一实例连接失败');
+  await expect(page.locator('.connection-diagnostics')).not.toContainText('尚未就绪');
+  await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeEnabled();
+  await expect(page.getByLabel('选择设备', { exact: true })).toHaveValue(secondId);
 });

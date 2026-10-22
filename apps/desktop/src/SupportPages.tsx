@@ -107,23 +107,27 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
   const waitForReady = async (devices: Device[], kind: 'auto-connect' | 'connect') => {
     const ids = new Set(devices.map((device) => device.id));
     let ready = devices.filter((device) => device.state !== 'offline');
+    let failed = devices.filter((device) => device.state === 'offline' && device.connectionError);
     // MaaCore allows 30s for an asynchronous connection; leave room for its
     // completion event before reporting that readiness is still pending.
     const deadline = Date.now() + 35_000;
-    while (ready.length < ids.size && Date.now() < deadline) {
+    while (ready.length + failed.length < ids.size && Date.now() < deadline) {
       setOperation({ kind, phase: 'working', message: `正在等待设备连接就绪（${ready.length}/${ids.size}）…` });
       await new Promise((resolve) => window.setTimeout(resolve, 250));
       const latest = await rpc('app.snapshot', {});
       ready = latest.devices.filter((device) => ids.has(device.id) && device.state !== 'offline');
+      failed = latest.devices.filter((device) => ids.has(device.id) && device.state === 'offline' && device.connectionError);
     }
     if (ready[0] || devices[0]) onSelectDevice((ready[0] || devices[0]).id);
-    const pending = ids.size - ready.length;
+    const pending = ids.size - ready.length - failed.length;
+    if (failed.length) setDiagnostics((previous) => [...previous, ...failed.map((device) => `${device.name}（${device.address}）：${device.connectionError}`)]);
     if (pending) {
       setDiagnostics((previous) => [...previous, `${pending} 台设备的连接尚未就绪。请确认模拟器已启动并开启 ADB 调试，稍后重试。`]);
     }
     const prefix = '连接';
-    setOperation({ kind, phase: pending ? 'empty' : 'complete', message: pending ? `${prefix}结果：${ready.length} 台已就绪，${pending} 台尚未就绪。` : `${prefix}完成：${ready.length} 台设备已就绪。` });
-    return pending === 0;
+    const incomplete = [failed.length ? `${failed.length} 台连接失败` : '', pending ? `${pending} 台尚未就绪` : ''].filter(Boolean);
+    setOperation({ kind, phase: failed.length ? 'error' : pending ? 'empty' : 'complete', message: incomplete.length ? `${prefix}结果：${ready.length} 台已就绪，${incomplete.join('，')}。` : `${prefix}完成：${ready.length} 台设备已就绪。` });
+    return ready.length === ids.size;
   };
 
   const discover = () => runDeviceOperation('discover', '正在发现设备…', async () => {
