@@ -21,12 +21,16 @@ const plan = () => ({
 test('stage catalogs expose bounded local metadata and reject caller filesystem paths', () => {
   assert.equal(validateStageListParams({}), true);
   assert.equal(validateStageListParams({ clientType: 'Bilibili' }), true);
+  assert.equal(validateStageListParams({ refresh: true }), true);
+  assert.equal(validateStageListParams({ refresh: 'true' }), false);
   assert.equal(validateStageListParams({ clientType: 'unknown' }), false);
   assert.equal(validateStageListParams({ resourcePath: '/arbitrary' }), false);
-  const result = { clientType: 'Official', resourceVersion: null, source: 'builtin', generatedAt: '2026-10-23T00:00:00Z', stages: [{ value: '', label: '当前 / 上次关卡', category: 'default', available: true }], activities: [], message: '常驻关卡', diagnostics: [] };
+  const result = { clientType: 'Official', resourceVersion: null, source: 'builtin', generatedAt: '2026-10-23T00:00:00Z', stages: [{ value: '', label: '当前 / 上次关卡', category: 'default', available: true }], activities: [], calendar: { source: 'unavailable', url: null, fetchedAt: null, checkedAt: null, nextRefreshAt: null, stale: true, refreshing: false, error: null }, message: '常驻关卡', diagnostics: [] };
   assert.equal(validateStageListResult(result), true);
   const activity = { id: 'sample', name: '活动', startAt: null, endAt: null, clientType: 'Official', status: 'unknown', source: 'resource-version' };
   assert.equal(validateStageListResult({ ...result, activities: [activity] }), true);
+  assert.equal(validateStageListResult({ ...result, activities: [{ ...activity, source: 'official-calendar', status: 'active' }] }), true);
+  assert.equal(validateStageListResult({ ...result, calendar: undefined }), false);
   assert.equal(validateStageListResult({ ...result, activities: [{ ...activity, status: 'expired' }] }), false);
   assert.equal(validateStageListResult({ ...result, stages: [{ ...result.stages[0], available: 'true' }] }), false);
 });

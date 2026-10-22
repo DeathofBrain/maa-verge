@@ -74,7 +74,7 @@
     "ClientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
     "StageListParams": {
       "type": "object", "additionalProperties": false,
-      "properties": { "clientType": { "$ref": "#/$defs/ClientType" } }
+      "properties": { "clientType": { "$ref": "#/$defs/ClientType" }, "refresh": { "type": "boolean" } }
     },
     "StageOption": {
       "type": "object", "additionalProperties": false,
@@ -98,12 +98,26 @@
         "endAt": { "type": ["string", "null"], "maxLength": 40 },
         "clientType": { "$ref": "#/$defs/ClientType" },
         "status": { "enum": ["active", "upcoming", "unknown"] },
-        "source": { "enum": ["activity-metadata", "resource-version"] }
+        "source": { "enum": ["official-calendar", "activity-metadata", "resource-version"] }
+      }
+    },
+    "CalendarStatus": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source", "url", "fetchedAt", "checkedAt", "nextRefreshAt", "stale", "refreshing", "error"],
+      "properties": {
+        "source": { "enum": ["official-cache", "installed", "unavailable"] },
+        "url": { "type": ["string", "null"], "maxLength": 300 },
+        "fetchedAt": { "type": ["string", "null"], "maxLength": 40 },
+        "checkedAt": { "type": ["string", "null"], "maxLength": 40 },
+        "nextRefreshAt": { "type": ["string", "null"], "maxLength": 40 },
+        "stale": { "type": "boolean" },
+        "refreshing": { "type": "boolean" },
+        "error": { "type": ["string", "null"], "maxLength": 1000 }
       }
     },
     "StageListResult": {
       "type": "object", "additionalProperties": false,
-      "required": ["clientType", "resourceVersion", "source", "generatedAt", "stages", "activities", "message", "diagnostics"],
+      "required": ["clientType", "resourceVersion", "source", "generatedAt", "stages", "activities", "calendar", "message", "diagnostics"],
       "properties": {
         "clientType": { "$ref": "#/$defs/ClientType" },
         "resourceVersion": { "type": ["string", "null"], "maxLength": 200 },
@@ -111,6 +125,7 @@
         "generatedAt": { "type": "string", "maxLength": 40 },
         "stages": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/StageOption" } },
         "activities": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/StageActivity" } },
+        "calendar": { "$ref": "#/$defs/CalendarStatus" },
         "message": { "type": "string", "maxLength": 1000 },
         "diagnostics": { "type": "array", "items": { "type": "string", "maxLength": 1000 } }
       }

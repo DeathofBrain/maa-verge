@@ -164,6 +164,7 @@ export interface EmptyParams {}
  */
 export interface StageListParams {
   clientType?: ClientType;
+  refresh?: boolean;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -383,6 +384,7 @@ export interface StageListResult {
    * @maxItems 100
    */
   activities: StageActivity[];
+  calendar: CalendarStatus;
   message: string;
   diagnostics: string[];
 }
@@ -409,7 +411,21 @@ export interface StageActivity {
   endAt: string | null;
   clientType: ClientType;
   status: 'active' | 'upcoming' | 'unknown';
-  source: 'activity-metadata' | 'resource-version';
+  source: 'official-calendar' | 'activity-metadata' | 'resource-version';
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CalendarStatus".
+ */
+export interface CalendarStatus {
+  source: 'official-cache' | 'installed' | 'unavailable';
+  url: string | null;
+  fetchedAt: string | null;
+  checkedAt: string | null;
+  nextRefreshAt: string | null;
+  stale: boolean;
+  refreshing: boolean;
+  error: string | null;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

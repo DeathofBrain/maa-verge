@@ -14,6 +14,8 @@ import { adbPath, configuredAdbPath, adbServerIdentity, autoDiscover, deviceLock
 import { syncDue, userDataSteps, type SyncStep } from './user-data-sync';
 import { stageCatalog } from './stages';
 import { validateStageListParams } from '../../../packages/contracts/src/validators.js';
+import { ActivityCalendar, type ActivityCalendarOptions } from './activity-calendar';
+import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
@@ -30,12 +32,13 @@ function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
   } catch { return false; }
 }
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
-export interface RuntimeOptions { notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; adbExecutable?: () => string; workerFactory?: (config: any) => Promise<Worker> }
+export interface RuntimeOptions { notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; workerFactory?: (config: any) => Promise<Worker> }
 export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
   readonly updates: UpdateService;
   readonly preview: Preview;
+  readonly calendar: ActivityCalendar;
   readonly workers = new Map<string, Worker>();
   private starts = new Map<string, { planId: string; deviceId: string; promise: Promise<any> }>();
   private connecting = new Set<string>();
@@ -53,6 +56,7 @@ export class Runtime {
   running = true;
   constructor(readonly root: string, private options: RuntimeOptions = {}) {
     this.store = new Store(root);
+    this.calendar = new ActivityCalendar(path.join(root, 'cache'), { ...options.calendar, changed: () => { if (this.running) this.emit('calendar.changed', '活动日历缓存已更新'); } });
     if (!this.store.get('meta', 'initialized')) {
       this.store.put('settings', 'main', parseSettings());
       this.store.put('meta', 'initialized', true);
@@ -90,7 +94,7 @@ export class Runtime {
       case 'app.snapshot': return this.snapshot();
       case 'stages.list':
         if (!validateStageListParams(params)) throw new RpcError(-32602, '关卡目录请求参数无效');
-        return stageCatalog(this.store.get('active', 'combo', {}), params.clientType);
+        return this.stages(params.clientType, params.refresh);
       case 'device.discover':
         try { return await discover(this.adbExecutable()); } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
       case 'device.connect': return this.connectDevice(params);
@@ -123,6 +127,10 @@ export class Runtime {
     }
   }
   validatePolicy(plan: Plan) { validatePlan(plan, parseSettings(this.store.get('settings', 'main'))); }
+  async stages(clientType: RpcContract['results']['stages.list']['clientType'] = 'Official', refresh = false) {
+    const calendar = await this.calendar.get(refresh);
+    return stageCatalog(this.store.get('active', 'combo', {}), clientType, this.options.calendar?.now?.() ?? new Date(), calendar);
+  }
   async startRun(params: any) {
     const token = params.requestId;
     if (typeof token !== 'string' || !token || [...token].length > 200) throw new RpcError(-32602, 'requestId 必须是非空字符串');
@@ -434,6 +442,7 @@ export class Runtime {
   private async closeInner() {
     this.running = false;
     this.preview.invalidate();
+    await this.calendar.close();
     await this.updates.close();
     for (const run of this.store.all('run')) if (run.status === 'running') await this.stopRun(run.id);
     await Promise.all([...this.workers.values()].map(worker => worker.close())); this.workers.clear();
