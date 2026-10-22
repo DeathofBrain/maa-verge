@@ -373,6 +373,82 @@ describe('daily friend visits', () => {
   });
 });
 
+describe('parallel device execution', () => {
+  async function dual() {
+    const { runtime, worker: first, device: deviceA } = await native();
+    const second = new FakeWorker(), deviceB = { ...deviceA, id: 'device-second', address: '127.0.0.1:5557' };
+    runtime.store.put('device', deviceB.id, deviceB); runtime.workers.set(deviceB.id, second);
+    return { r: runtime, first, second, deviceA, deviceB };
+  }
+  test('one unbound plan runs concurrently with independent snapshots and stopping one device preserves the other', async () => {
+    const { r, first, second, deviceA, deviceB } = await dual();
+    const save = (stage: string, times: number) => r.handle('plan.save', { plan: { id: 'shared', name: '多开', tasks: [{ type: 'Fight', params: { stage, times } }, { type: 'Award' }] } });
+    await save('1-7', 1);
+    const pendingA = r.startRun({ planId: 'shared', deviceId: deviceA.id, requestId: 'parallel-a' });
+    await save('CE-6', 2);
+    const pendingB = r.startRun({ planId: 'shared', deviceId: deviceB.id, requestId: 'parallel-b' });
+    const [runA, runB] = await Promise.all([pendingA, pendingB]);
+    expect(runA.status).toBe('running'); expect(runB.status).toBe('running');
+    expect(first.submitted[0].params).toMatchObject({ stage: '1-7', times: 1 }); expect(second.submitted[0].params).toMatchObject({ stage: 'CE-6', times: 2 });
+    expect(r.store.get('run_plan', runA.id).tasks[0].params.stage).toBe('1-7'); expect(r.store.get('run_plan', runB.id).tasks[0].params.stage).toBe('CE-6');
+    await expect(r.startRun({ planId: 'shared', deviceId: deviceA.id, requestId: 'duplicate-controller' })).rejects.toMatchObject({ code: -32011 });
+    await expect(r.startRun({ planId: 'shared', deviceId: deviceB.id, requestId: 'parallel-a' })).rejects.toMatchObject({ code: -32011 });
+    expect(first.submitted).toHaveLength(1); expect(second.submitted).toHaveLength(1);
+    await stopAtIdle(r, first, runA.id);
+    expect(r.store.get('run', runA.id).status).toBe('stopped'); expect(r.store.get('run', runB.id).status).toBe('running'); expect(second.stopped).toBe(false);
+    second.complete(1); await r.tick(true); expect(second.submitted.map(task => task.type)).toEqual(['Fight', 'Award']); expect(first.submitted).toHaveLength(1);
+    second.complete(2); await r.tick(true);
+    expect(r.store.get('run', runB.id).status).toBe('completed'); expect(r.store.get('run', runA.id).status).toBe('stopped');
+    expect(r.snapshot().devices.map(device => device.state)).toEqual(['idle', 'idle']);
+  });
+  test('colliding native task IDs and late recognition callbacks cannot cross device or run boundaries', async () => {
+    const { r, first, second, deviceA, deviceB } = await dual();
+    await r.handle('plan.save', { plan: { id: 'shared', name: '识别多开', tasks: [{ type: 'UserDataUpdate', params: { operators: true, depot: true, interval: 'always' } }] } });
+    const [runA, runB] = await Promise.all([
+      r.startRun({ planId: 'shared', deviceId: deviceA.id, requestId: 'recognize-a' }),
+      r.startRun({ planId: 'shared', deviceId: deviceB.id, requestId: 'recognize-b' }),
+    ]);
+    first.recognize(1, 'OperBox'); first.complete(1); second.complete(1); await r.tick(true);
+    expect(r.store.get('run', runA.id).status).toBe('running'); expect(r.store.get('run', runB.id).status).toBe('failed');
+    expect(r.snapshot().devices.find(device => device.id === deviceA.id)?.dataSync?.operatorsAt).toBeString();
+    expect(r.snapshot().devices.find(device => device.id === deviceB.id)?.dataSync).toEqual({ operatorsAt: null, depotAt: null });
+    second.recognize(1, 'OperBox'); await r.tick(true);
+    const stale = await r.startRun({ planId: 'shared', deviceId: deviceB.id, requestId: 'stale-b' });
+    second.recognize(1, 'OperBox'); second.complete(2); await r.tick(true);
+    expect(r.store.get('run', stale.id).status).toBe('failed'); expect(r.store.get('run', runA.id).status).toBe('running');
+    const retry = await r.startRun({ planId: 'shared', deviceId: deviceB.id, requestId: 'retry-b' });
+    second.recognize(3, 'OperBox'); second.complete(3); await r.tick(true);
+    first.recognize(1, 'OperBox'); first.recognize(2, 'Depot'); first.complete(2); await r.tick(true);
+    expect(r.store.get('run', runA.id).status).toBe('completed'); expect(r.store.get('run', retry.id).status).toBe('running');
+    second.recognize(3, 'OperBox'); second.recognize(4, 'Depot'); second.complete(4); await r.tick(true);
+    expect(r.store.get('run', retry.id).status).toBe('completed');
+    for (const device of r.snapshot().devices) { expect(device.dataSync?.operatorsAt).toBeString(); expect(device.dataSync?.depotAt).toBeString(); }
+    const synced = r.store.events().filter(event => event.type === 'device.data_synced');
+    expect(synced.filter(event => event.data.deviceId === deviceA.id).map(event => event.data.runId)).toEqual([runA.id, runA.id]);
+    expect(synced.filter(event => event.data.deviceId === deviceB.id).map(event => event.data.runId)).toEqual([retry.id, retry.id]);
+  });
+  test('global updates wait for both idle boundaries and preserve only the device still running its plan', async () => {
+    const { r, first, second, deviceA, deviceB } = await dual();
+    await r.handle('plan.save', { plan: { id: 'shared', name: '热切换多开', tasks: [{ type: 'Award' }, { type: 'Mall' }] } });
+    const [runA, runB] = await Promise.all([
+      r.startRun({ planId: 'shared', deviceId: deviceA.id, requestId: 'boundary-a' }),
+      r.startRun({ planId: 'shared', deviceId: deviceB.id, requestId: 'boundary-b' }),
+    ]);
+    const channel = r.updates.channel('resource'); r.store.put('update', 'resource', { ...channel, status: 'waiting_idle' });
+    first.complete(1); await r.tick(true);
+    expect(r.store.get('execution', runA.id).boundaryWaiting).toBe(true); expect(r.busy()).toBe(true);
+    await expect(r.beforeSwitch()).rejects.toThrow('核心或异步操作仍在运行');
+    second.complete(1, [9]); await r.tick(true); expect(r.busy()).toBe(true);
+    second.safeIdle = true; second.events.push({ type: 'status', running: false, pendingAsync: [] }); await r.tick(true);
+    expect(r.store.get('execution', runB.id).boundaryWaiting).toBe(true); expect(r.busy()).toBe(false);
+    expect(first.submitted).toHaveLength(1); expect(second.submitted).toHaveLength(1);
+    await stopAtIdle(r, first, runA.id); expect(r.store.get('run', runA.id).status).toBe('stopped'); expect(r.store.get('run', runB.id).status).toBe('running');
+    r.store.put('update', 'resource', { ...channel, status: 'active' }); await r.tick(true);
+    expect(first.submitted).toHaveLength(1); expect(second.submitted.map(task => task.type)).toEqual(['Award', 'Mall']);
+    second.complete(2); await r.tick(true); expect(r.store.get('run', runB.id).status).toBe('completed'); expect(r.store.get('run', runA.id).status).toBe('stopped');
+  });
+});
+
 test('shared and backend policies validate the new conventional settings consistently', () => {
   const valid = [
     ['UserDataUpdate', { operators: true, depot: false, interval: 'weekly' }],
