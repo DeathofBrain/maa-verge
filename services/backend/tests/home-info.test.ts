@@ -73,7 +73,7 @@ test('home.info and stage selectors share the official calendar cache and explic
       Activity: { StageName: '合成官方活动', UtcStartTime: '2020/01/01 12:00:00', UtcExpireTime: '2099/01/01 12:00:00', TimeZone: 8 },
       Stages: [{ Display: '合成活动关卡 AA-8', Value: 'AA-8' }],
     } } } }), { headers: { ETag: '"synthetic-calendar"' } });
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
   const runtime = new Runtime(root, { calendar: { fetcher } }); runtimes.push(runtime);
   const home = await runtime.handle('home.info', {});
   expect(home.activityCatalog.activities[0]).toMatchObject({ name: '合成官方活动', status: 'active' });
