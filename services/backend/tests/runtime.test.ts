@@ -336,7 +336,7 @@ describe('daily friend visits', () => {
       { type: 'Fight', params: { ...reporting, server: 'KR' } }, { type: 'Fight', params: { ...reporting, client_type: 'YoStarKR', server: 'US' } }];
     await r.handle('plan.save', { plan: { id: 'fight-clients', name: '外服汇报', tasks } });
     const run = await r.startRun({ planId: 'fight-clients', deviceId: device.id, requestId: 'fight-clients' });
-    for (let index = 0; index < tasks.length; index++) { worker.complete(index + 1); await r.tick(true); }
+    for (let index = 0; index < tasks.length; index++) { worker.complete(index + 1); await r.tick(true); await new Promise(resolve => setTimeout(resolve, 0)); }
     expect(worker.submitted.slice(1).map(task => [task.params.client_type, task.params.server])).toEqual([
       ['YoStarJP', 'JP'], ['YoStarEN', 'US'], ['YoStarJP', 'KR'], ['YoStarKR', 'US'],
     ]);
