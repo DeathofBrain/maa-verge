@@ -540,6 +540,54 @@
   margin: 12px 28px;
 }
 
+.sp-instance-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sp-instance-card,.sp-instance-editor {
+  border: 1px solid var(--border,#dde3ec);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.sp-instance-heading,.sp-instance-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sp-instance-actions {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+.sp-instance-heading .sp-help,.sp-instance-error {
+  overflow-wrap: anywhere;
+}
+
+.sp-instance-editor {
+  margin-top: 16px;
+}
+
+.sp-instance-error {
+  color: var(--danger,#c24141);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.sp-multi-instance .check-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .sp-capture-fields {
   display: grid;
   grid-template-columns: minmax(0,2fr) minmax(0,1fr);
