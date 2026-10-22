@@ -97,7 +97,7 @@ export function adbPath(env: Environment = process.env): string {
 }
 function run(executable: string, args: string[], timeout = 15_000): Promise<string> {
   return new Promise((resolve, reject) => execFile(executable, args, {
-    timeout, windowsHide: true, encoding: "utf8", maxBuffer: 4 * 1024 * 1024,
+    timeout, killSignal: "SIGKILL", windowsHide: true, encoding: "utf8", maxBuffer: 4 * 1024 * 1024,
   }, (error, stdout) => error ? reject(error) : resolve(stdout)));
 }
 export function parseAdbDevices(output: string): AdbDevice[] {
@@ -133,26 +133,53 @@ export function emulatorAddresses(env: Environment = process.env): string[] {
   }
   return [...new Set(addresses)].slice(0, 48);
 }
-function listening(address: string): Promise<boolean> {
+function listening(address: string, timeout = 150): Promise<boolean> {
   const split = address.lastIndexOf(":"), host = address.slice(0, split).replace(/^\[|\]$/g, ""), port = Number(address.slice(split + 1));
   return new Promise((resolve) => {
     const socket = net.createConnection({ host, port });
     let settled = false;
-    const done = (value: boolean) => { if (!settled) { settled = true; socket.destroy(); resolve(value); } };
-    socket.setTimeout(150); socket.once("connect", () => done(true)); socket.once("error", () => done(false)); socket.once("timeout", () => done(false));
+    const done = (value: boolean) => { if (!settled) { settled = true; clearTimeout(timer); socket.destroy(); resolve(value); } };
+    const timer = setTimeout(() => done(false), timeout);
+    socket.once("connect", () => done(true)); socket.once("error", () => done(false));
   });
 }
-export async function autoDiscover(executable = adbPath()): Promise<{ devices: AdbDevice[]; diagnostics: string[] }> {
-  const diagnostics: string[] = [];
-  const initial = await discover(executable), known = new Set(initial.filter((device) => device.adbState === "device").map((device) => device.address));
-  for (const address of emulatorAddresses()) {
-    if (known.has(address) || !await listening(address)) continue;
-    try {
-      const output = (await run(executable, ["connect", address], 3000)).trim();
-      if (!output.toLowerCase().includes("connected to")) diagnostics.push(`${address}：${output.slice(0, 180) || "ADB 未确认连接"}`);
-    } catch (error) { diagnostics.push(`${address}：ADB 连接失败（${error instanceof Error ? error.name : "Error"}）`); }
-  }
-  const devices = await discover(executable);
+interface DiscoveryOptions {
+  run?: typeof run;
+  listening?: typeof listening;
+  addresses?: () => string[];
+  now?: () => number;
+}
+export async function autoDiscover(executable = adbPath(), options: DiscoveryOptions = {}): Promise<{ devices: AdbDevice[]; diagnostics: string[] }> {
+  const execute = options.run || run, probe = options.listening || listening, now = options.now || (() => performance.now());
+  const deadline = now() + 60_000, scanDeadline = deadline - 15_000;
+  const remaining = (until: number) => Math.max(0, Math.ceil(until - now()));
+  const devicesAtDeadline = async () => {
+    const timeout = Math.min(15_000, remaining(deadline));
+    if (!timeout) throw new Error("模拟器自动发现超时；请检查 ADB 后重试");
+    return parseAdbDevices(await execute(executable, ["devices", "-l"], timeout));
+  };
+  const initial = await devicesAtDeadline(), known = new Set(initial.filter((device) => device.adbState === "device").map((device) => device.address));
+  const addresses = (options.addresses || emulatorAddresses)(), messages: (string | undefined)[] = [];
+  let next = 0, truncated = false;
+  // Bound both concurrency and elapsed time; reserve the last 15s for a fresh
+  // device list. Diagnostics retain address order even when clients finish out of order.
+  const scan = async () => {
+    while (next < addresses.length) {
+      if (!remaining(scanDeadline)) { truncated = true; return; }
+      const index = next++, address = addresses[index];
+      if (known.has(address) || !await probe(address, Math.min(150, remaining(scanDeadline)))) continue;
+      const timeout = Math.min(3000, remaining(scanDeadline));
+      if (!timeout) { truncated = true; return; }
+      try {
+        const output = (await execute(executable, ["connect", address], timeout)).trim();
+        if (!output.toLowerCase().includes("connected to")) messages[index] = `${address}：${output.slice(0, 180) || "ADB 未确认连接"}`;
+      } catch (error) { messages[index] = `${address}：ADB 连接失败（${(error instanceof Error ? error.message : String(error)).slice(0, 180)}）`; }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, addresses.length) }, scan));
+  const diagnostics = messages.filter((message): message is string => message !== undefined);
+  if (truncated) diagnostics.push("自动发现扫描达到时限，部分候选地址尚未检查；请重试或手动填写地址");
+  const devices = await devicesAtDeadline();
   for (const device of devices) if (isLocalEmulator(device.address) && device.adbState !== "device") diagnostics.push(`${device.address}：${device.adbState}，请检查模拟器 ADB 授权`);
   return { devices, diagnostics };
 }
