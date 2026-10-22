@@ -316,6 +316,73 @@ test('automatic connection is safe in mock mode and its preference persists', as
   await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
 });
 
+test('capture choices preserve drafts and save independently of the actual connected protocol', async ({ page }) => {
+  await openHome(page);
+  await navigate(page, '设备');
+  const form = page.locator('.sp-capture-form');
+  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('adb');
+  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认（模拟模式）');
+  await page.getByLabel('截图协议', { exact: true }).selectOption('mumu');
+  await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\MuMu');
+  await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
+  await navigate(page, '主页');
+  await navigate(page, '设备');
+  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('mumu');
+  await page.reload();
+  await navigate(page, '设备');
+  await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue('C:\\synthetic\\MuMu');
+  await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('2');
+  await expect(form).toContainText('有未保存的修改');
+  await form.getByRole('button', { name: '放弃修改', exact: true }).click();
+  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('adb');
+  await page.getByLabel('截图协议', { exact: true }).selectOption('mumu');
+  await page.getByLabel('模拟器安装目录', { exact: true }).fill('  C:\\synthetic\\MuMu  ');
+  await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
+  await form.getByRole('button', { name: '保存截图配置', exact: true }).click();
+  await expect(page.locator('.toast')).toContainText('断开设备后重新连接生效');
+  await expect(form.getByText('已保存', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认（模拟模式）');
+  await page.reload();
+  await navigate(page, '设备');
+  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('mumu');
+  await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue('C:\\synthetic\\MuMu');
+  await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('2');
+  await page.getByLabel('截图协议', { exact: true }).selectOption('ldplayer');
+  await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\LDPlayer');
+  await page.getByLabel('模拟器实例索引', { exact: true }).fill('0');
+  await form.getByRole('button', { name: '保存截图配置', exact: true }).click();
+  await expect(form.getByText('已保存', { exact: true })).toBeVisible();
+  await page.reload();
+  await navigate(page, '设备');
+  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('ldplayer');
+  await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue('C:\\synthetic\\LDPlayer');
+  await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('0');
+  await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).toBeChecked();
+  await page.getByRole('button', { name: '断开设备', exact: true }).click();
+  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认（设备已断开）');
+  await navigate(page, '执行记录');
+  await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
+});
+
+test('enhanced capture requires an installation directory and a nonnegative integer instance', async ({ page }) => {
+  await openHome(page);
+  await navigate(page, '设备');
+  const form = page.locator('.sp-capture-form');
+  await page.getByLabel('截图协议', { exact: true }).selectOption('ldplayer');
+  await expect(form).toContainText('不会自动改用 ADB 截图');
+  await form.getByRole('button', { name: '保存截图配置', exact: true }).click();
+  expect(await page.getByLabel('模拟器安装目录', { exact: true }).evaluate((input: HTMLInputElement) => input.validity.valueMissing)).toBe(true);
+  await page.getByLabel('模拟器安装目录', { exact: true }).fill('   ');
+  expect(await page.getByLabel('模拟器安装目录', { exact: true }).evaluate((input: HTMLInputElement) => input.validity.patternMismatch)).toBe(true);
+  await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\LDPlayer');
+  await page.getByLabel('模拟器实例索引', { exact: true }).fill('-1');
+  expect(await page.getByLabel('模拟器实例索引', { exact: true }).evaluate((input: HTMLInputElement) => input.validity.rangeUnderflow)).toBe(true);
+  await page.getByLabel('模拟器实例索引', { exact: true }).fill('1.5');
+  expect(await page.getByLabel('模拟器实例索引', { exact: true }).evaluate((input: HTMLInputElement) => input.validity.stepMismatch)).toBe(true);
+  await form.getByRole('button', { name: '放弃修改', exact: true }).click();
+  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('adb');
+});
+
 test('task budgets and all-disabled execution are checked after saving', async ({ page }) => {
   await openWorkspace(page);
   await createPlan(page, '预算校验');

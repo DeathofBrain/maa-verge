@@ -25,7 +25,7 @@ const defaults = (): Snapshot => ({
     { id: 'core', currentVersion: 'v6.19.0', latestVersion: null, status: 'idle', progress: 0, message: '演示核心版本，未加载原生库' },
     { id: 'resource', currentVersion: '2026-10-18', latestVersion: null, status: 'idle', progress: 0, message: '演示资源快照，不访问网络' },
   ],
-  settings: { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' } },
+  settings: { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' }, capture: { method: 'adb', emulatorPath: '', instanceIndex: 0 } },
   events: [],
 });
 
