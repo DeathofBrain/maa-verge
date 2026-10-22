@@ -64,6 +64,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: uv sync --frozen
       - run: node tools/setup-bun.mjs
+      - name: Test build environment diagnostics
+        run: node --test tools/tests/environment.test.mjs tools/tests/vite-cache.test.mjs tools/tests/process-tree.test.mjs
       - run: pnpm contracts:check
       - run: pnpm -r check
       - name: Validate generated public and worker contracts
@@ -125,10 +127,12 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential pkg-config curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
       - run: pnpm install --frozen-lockfile
       - run: uv sync --frozen
       - run: node tools/setup-bun.mjs
+      - name: Verify native build environment
+        run: pnpm run doctor --native
       - name: Build C++ worker and run synthetic CTest fixtures
         run: node tools/build-core-worker.mjs
       - name: Test TypeScript backend

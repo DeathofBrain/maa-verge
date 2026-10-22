@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { root, desktop, port, run, start, terminate, devEnvironment, fail } from './project.mjs';
+import { assertWorkspaceDependencies } from './environment.mjs';
 
 const mock = process.argv.includes('--mock');
 const environment = devEnvironment();
@@ -9,11 +10,13 @@ console.log(`Maa Verge ${mock ? 'browser mock' : 'desktop'} · ${url}`);
 console.log(`数据目录: ${environment.MAAVERGE_DATA_DIR}`);
 
 async function main() {
+  assertWorkspaceDependencies();
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('MAAVERGE_DEV_PORT must be between 1024 and 65535');
   if (!mock) {
     if (process.env.MAAVERGE_BACKEND === 'python') await run('uv', ['sync', '--frozen']);
     else {
       await run('node', ['tools/setup-bun.mjs']);
+      await run('node', ['tools/doctor.mjs', '--native']);
       await run('node', ['tools/build-core-worker.mjs', '--production']);
     }
     if (!existsSync(path.join(root, 'apps', 'desktop', 'src-tauri', 'Cargo.lock'))) {
@@ -22,7 +25,7 @@ async function main() {
     await run('node', ['tools/prepare-native-check.mjs']);
   }
   const vite = start('pnpm', ['--filter', '@maaverge/desktop', 'dev', '--port', String(port), '--strictPort'], {
-    env: { ...environment, VITE_MAAVERGE_MOCK: mock ? '1' : '0' },
+    env: { ...environment, MAAVERGE_DEV_PORT: String(port), VITE_MAAVERGE_MOCK: mock ? '1' : '0' },
   });
   let viteError;
   vite.once('error', (error) => { viteError = error; });

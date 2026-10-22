@@ -167,7 +167,8 @@ export default function App() {
     return results.slice(0, 9);
   }, [search, snapshot, selectedPlanId]);
   const platform = desktopPlatform();
-  if (!snapshot) return <div className="boot-screen" data-desktop-platform={platform || undefined}>{platform && <header className="boot-titlebar" data-tauri-drag-region="deep"><WindowControls /></header>}<Brand /><LoaderCircle className="spin" size={24} /><p>{error || '正在连接本地应用服务…'}</p>{error && <button className="button primary" onClick={() => void refresh()}>重新连接</button>}</div>;
+  const moduleLoadFailed = /importing a module script failed|failed to fetch dynamically imported module|error loading dynamically imported module/iu.test(error);
+  if (!snapshot) return <div className="boot-screen" data-desktop-platform={platform || undefined}>{platform && <header className="boot-titlebar" data-tauri-drag-region="deep"><WindowControls /></header>}<Brand /><LoaderCircle className="spin" size={24} /><p>{moduleLoadFailed ? '界面组件加载失败，请重新加载界面后重试。' : error || '正在连接本地应用服务…'}</p>{error && <button className="button primary" onClick={() => moduleLoadFailed ? window.location.reload() : void refresh()}>{moduleLoadFailed ? '重新加载界面' : '重新连接'}</button>}</div>;
   const supportProps = { snapshot, selectedDevice, onSelectDevice: setSelectedDevice, busy: pending.size > 0, onAction: action, onOpenPlan: choosePlan, onCreateTaskPlan: (type: Task['type'], params?: Task['params']) => createPlan(groupFor(type), type, params), searchQuery: pageSearch };
   const history = snapshot.runs.filter((run) => (historyFilter === 'all' || run.status === historyFilter) && `${snapshot.plans.find((item) => item.id === run.planId)?.name || ''} ${run.message}`.includes(historyQuery));
   return <div className={`app-root ${sidebarOpen ? 'nav-open' : ''}`} data-desktop-platform={platform || undefined}>

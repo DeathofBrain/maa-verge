@@ -28,6 +28,22 @@
 
 ## 平台验证
 
+### 本次开发启动模块加载修复（macOS arm64，2026-10-22）
+
+- 用户确认截图中的 `Importing a module script failed` 来自终端 `pnpm dev`。同一 checkout 的旧 Vite 实例共用 `.vite/deps`；不同依赖图覆盖预构建文件后，旧 Tauri 模块 URL 返回 `504 Outdated Optimize Dep`。现按实际开发端口隔离缓存，并提前包含 contracts 内动态导入的四个 Tauri API 模块。
+- 启动页识别三类浏览器的动态模块加载失败，显示「重新加载界面」并完整重载页面，清除 WebKit 缓存的失败导入；普通服务错误继续使用重新连接。开发启动器在 macOS/Linux 清理自己创建的整个进程组，Windows 保持 `taskkill /t`，避免退出后残留桌面/Bun 进程。
+- 最终 `pnpm check` 完整通过：9 项工程回归（环境 6、进程清理 2、实际 Vite 缓存隔离 1）、契约同步与 8 项契约测试、三个工作区类型检查、637 项 Bun 测试、4/4 CTest、Python ruff/mypy 与 274 项 pytest、Rust fmt/clippy/test。37 项 Chromium mock E2E 通过，包含人为中断 Tauri 模块请求后重载恢复。完整 `pnpm build` 再次通过，包含包内空 PATH smoke、Rust transport smoke、release `.app` 与 arm64 `.dmg`。
+- 实际 `pnpm dev` 编译 Debug 二进制后，将同一可执行文件复制到隔离的临时 `.app`，连接本轮 Vite；在 macOS WKWebView 中实测主页与任务表正常显示，确认 WebView → Rust → TypeScript/Bun 的 mock 数据通信。另一次直接 `pnpm dev` 启动后发送 SIGINT，启动命令退出 0，Vite、Tauri、桌面与 Bun 后代均结束，已有其他 mock 实例保留。
+- 本次验证使用独立 mock 数据与端口；未连接真实设备、请求模型、交互安装或发布。临时 Debug bundle 的开发 WebView 检查不代替发行包安装/退出验收。Windows/Linux 的本次变更仍待对应宿主执行。
+
+### 本次编译恢复与跨平台环境处理（macOS arm64，2026-10-22）
+
+- 在 macOS 26.6.2 / Apple Silicon 复现 `pnpm build` 无法解析 `tar` / `yauzl`，以及后端类型检查缺少 Bun 类型；原因是本地依赖未随 TypeScript 后端新增工作区同步。执行 `pnpm install --frozen-lockfile` 后恢复，依赖锁文件未修改。
+- 构建、开发、检查与后端入口现在提前检查各工作区的直接依赖，缺失时提示冻结同步。引导脚本校验并修复固定 Node/pnpm，默认安装固定 Bun；浏览器 MockOnly 跳过 Bun/Python，同时指定 Native 时仍安装 Bun。包装脚本拒绝缓存中的错误版本，Node 下载/校验失败保留旧工具。
+- 桌面编译前执行 `doctor --native`：校验固定 Node/pnpm/Bun/Rust、支持的宿主目标、CMake 3.25+ 与实际 C++20 编译/链接；Windows 复用 Visual Studio 内置 CMake，支持 `.tools/cmake/bin`，过期本地 CMake 可回退到合格系统工具。Linux 检查 pkg-config 系统库，文档明确 Ubuntu 22.04 的 CMake 升级路径与 24.04 的 FUSE 包差异。浏览器环境可用 `doctor --mock`。原生 CI 增加同一环境门禁。
+- macOS 本机 `pnpm check` 通过：契约同步、三个工作区类型检查、637 项 Bun 测试、8 项契约测试、4/4 CTest、Python ruff/mypy 与 274 项 pytest、Rust fmt/clippy/test；默认跳过的包内 Rust transport 测试已在构建阶段单独执行通过。6 项环境回归覆盖缺少后端依赖、旧 CMake、系统回退、Windows VS CMake 和平台提示；另有 9 项隔离 Bash fixture 验证引导选项、版本恢复、失败保留及参数传递。
+- 完整 `pnpm build` 通过，包含 Bun/C++ 自包含打包、空 PATH 包内 smoke、Rust transport smoke、release 桌面编译和 `.app` / arm64 `.dmg`。本轮未进行交互安装、WebView/界面重验、真实设备操作或发布；Windows/PowerShell、Linux 与 Intel macOS 的本次修改尚未在对应宿主执行，新增 CI 配置不作为已通过结果。
+
 ### 本次画面预览与人工点击（2026-10-22）
 
 - 底部「画面」接入类型化 `device.frame` / `device.click`，与顶部当前设备联动；刷新频率保存于 `maaverge:ui:preview-fps`，非法或不可读设置回到默认 60 Hz。页面隐藏、面板收起或切换设备时停止后续刷新并丢弃旧回复，画面先解码再替换，截图慢于目标间隔时不堆积请求。
@@ -182,7 +198,7 @@
 
 ## 后续交接
 
-1. 完成 macOS 13.5 最低系统、正式签名/公证和三平台干净系统交互安装验收，补 Linux/macOS 实际 WebView 路径及真实下载核心的加载验证；随后由用户明确选择模拟器测试首次安装、任务回调、停止、断线与更新切换，记录版本及脱敏设备信息。
+1. 完成 macOS 13.5 最低系统、正式签名/公证和三平台干净系统交互安装验收，补 Linux 实际 WebView、macOS 发行包生命周期及真实下载核心的加载验证；随后由用户明确选择模拟器测试首次安装、任务回调、停止、断线与更新切换，记录版本及脱敏设备信息。
 2. 以 [原 MAA 功能矩阵](maa-compatibility.md) 为发布门槛，补齐全参数专用表单、受限消耗控制、识别/库存工具、定时多配置、作业管理和失败恢复；继续连接诊断、平台专用驱动及六种客户端资源验证。
 3. 接入用户自备模型 API、系统钥匙串、工具权限和费用预算，再逐步开放 Agent 的真实执行。
 4. 完成三平台签名发行与应用更新，再推进独立战斗研究及评测。

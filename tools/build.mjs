@@ -1,6 +1,11 @@
 import { run, desktop, fail } from './project.mjs';
+import { assertWorkspaceDependencies } from './environment.mjs';
+import { ensureBun } from './setup-bun.mjs';
 
 async function main() {
+  assertWorkspaceDependencies();
+  await ensureBun();
+  await run('node', ['tools/doctor.mjs', '--native']);
   await run('pnpm', ['-r', 'build']);
   await run('node', ['tools/package-runtime.mjs']);
   await run('node', ['tools/smoke-runtime.mjs']);

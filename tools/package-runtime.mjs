@@ -4,8 +4,10 @@ import { root, run, windows, fail } from './project.mjs';
 import { bunVersion, ensureBun, cleanRuntimeEnvironment } from './setup-bun.mjs';
 import { buildCoreWorker } from './build-core-worker.mjs';
 import { writeRuntimeNotices } from './runtime-notices.mjs';
+import { assertWorkspaceDependencies } from './environment.mjs';
 
 async function main() {
+  assertWorkspaceDependencies();
   const bun = await ensureBun(), native = await buildCoreWorker({ testing: false });
   const directory = path.join(root, 'dist/runtime/maaverge-runtime');
   if (!path.resolve(directory).startsWith(path.join(root, 'dist') + path.sep)) throw new Error('Unexpected runtime build path');

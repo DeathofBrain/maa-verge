@@ -3,7 +3,9 @@ import { run, fail } from './project.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { root } from './project.mjs';
+import { assertWorkspaceDependencies } from './environment.mjs';
 async function main() {
+  assertWorkspaceDependencies();
   const workerName = process.platform === 'win32' ? 'maaverge-core-worker.exe' : 'maaverge-core-worker';
   const coreName = process.platform === 'win32' ? 'MaaCore.dll' : process.platform === 'darwin' ? 'libMaaCore.dylib' : 'libMaaCore.so';
   const worker = ['Release/', ''].map(prefix => path.join(root, 'build/native', prefix, workerName)).find(existsSync);

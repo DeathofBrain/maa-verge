@@ -28,7 +28,7 @@ export function devEnvironment() {
     : process.platform === 'darwin'
       ? path.join(homedir(), 'Library', 'Application Support')
       : process.env.XDG_DATA_HOME || path.join(homedir(), '.local', 'share');
-  const localPaths = [path.dirname(executable('node')), path.join(root, '.tools', 'uv'), path.join(root, '.tools', 'cargo', 'bin')]
+  const localPaths = [path.dirname(executable('node')), path.join(root, '.tools', 'cmake', 'bin'), path.join(root, '.tools', 'uv'), path.join(root, '.tools', 'cargo', 'bin')]
     .filter((entry) => entry !== '.');
   return {
     ...process.env,
@@ -86,9 +86,15 @@ export function run(name, args = [], options = {}) {
   });
 }
 
+const managedProcessGroups = new WeakMap();
+
 export function start(name, args = [], options = {}) {
   const [program, arguments_] = command(name, args);
-  return spawn(program, arguments_, { cwd: root, env: devEnvironment(), stdio: 'inherit', ...options });
+  // A dedicated group lets cleanup reach grandchildren such as the Tauri app,
+  // even when the package-manager/CLI process has already exited.
+  const child = spawn(program, arguments_, { cwd: root, env: devEnvironment(), stdio: 'inherit', ...options, ...(!windows ? { detached: true } : {}) });
+  if (!windows && child.pid) managedProcessGroups.set(child, child.pid);
+  return child;
 }
 
 export function probe(name, args = ['--version']) {
@@ -100,7 +106,15 @@ export function probe(name, args = ['--version']) {
 }
 
 export function terminate(child) {
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  if (!child) return;
+  const group = managedProcessGroups.get(child);
+  if (group) {
+    managedProcessGroups.delete(child);
+    try { process.kill(-group, 'SIGTERM'); }
+    catch (error) { if (error.code !== 'ESRCH') throw error; }
+    return;
+  }
+  if (child.exitCode !== null || child.signalCode !== null) return;
   if (windows && child.pid) {
     // Only the process tree launched by this development script is targeted.
     spawnSync('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore', windowsHide: true, timeout: 10000 });

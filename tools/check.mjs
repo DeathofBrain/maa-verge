@@ -1,6 +1,9 @@
 import { run, fail } from './project.mjs';
+import { assertWorkspaceDependencies } from './environment.mjs';
 
 async function main() {
+  assertWorkspaceDependencies();
+  await run('node', ['--test', 'tools/tests/environment.test.mjs', 'tools/tests/vite-cache.test.mjs', 'tools/tests/process-tree.test.mjs']);
   await run('pnpm', ['contracts:check']);
   await run('pnpm', ['-r', 'check']);
   await run('node', ['tools/build-core-worker.mjs']);
