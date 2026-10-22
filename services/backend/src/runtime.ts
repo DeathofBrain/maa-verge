@@ -313,7 +313,9 @@ export class Runtime {
     const tasks = this.store.get('run_plan', run.id).tasks;
     if (typeof tasks[index].params.client_type === 'string' && tasks[index].params.client_type) return tasks[index].params.client_type;
     for (let previous = index - 1; previous >= 0; previous--) if (tasks[previous].type === 'StartUp') return tasks[previous].params.client_type || 'Official';
-    return this.store.get('device_client', run.deviceId, 'Official');
+    const settings = parseSettings(this.store.get('settings', 'main')), device = this.store.get('device', run.deviceId);
+    const profile = device && (settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address));
+    return this.store.get('device_client', run.deviceId) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';
   }
   private syncHistory(deviceId: string, clientType: string): { operatorsAt?: string | null; depotAt?: string | null } {
     const synced = this.store.get('user_data_sync', deviceId, {});
@@ -348,6 +350,10 @@ export class Runtime {
     }
     const state: any = { index, syncSteps, syncIndex, clientType, completed: false, failed: false, queueEnded: false, idleAfterEnd: false, taskId: null, stopRequested: null, submitting: true };
     const task = nativeTask(syncSteps ? { type: syncSteps[syncIndex]!.type, params: {}, enabled: true } : configuredTask);
+    if (task.type === 'Fight') {
+      if (!('client_type' in task.params)) task.params.client_type = clientType;
+      if (!('server' in task.params)) task.params.server = ({ YoStarEN: 'US', YoStarJP: 'JP', YoStarKR: 'KR' } as Record<string, string>)[clientType] ?? 'CN';
+    }
     if (['OperBox', 'Depot'].includes(task.type)) state.recognitionType = task.type;
     if (task.type === 'Mall') {
       const visited = this.store.get('mall_visit', run.deviceId);
