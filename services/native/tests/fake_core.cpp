@@ -20,6 +20,7 @@
 
 namespace {
 std::string user_directory;
+std::size_t resource_load_count = 0;
 nlohmann::json connection_extras = nlohmann::json::object();
 std::string scenario() {
   const char* value = std::getenv("MAAVERGE_SYNTHETIC_CASE");
@@ -65,7 +66,10 @@ EXPORT bool AsstSetUserDir(const char* path) {
 #endif
   return scenario() != "user-failure";
 }
-EXPORT bool AsstLoadResource(const char*) {
+EXPORT bool AsstLoadResource(const char* resource) {
+  trace(("resource:" + std::string(resource)).c_str());
+  ++resource_load_count;
+  if (scenario() == "overlay-failure" && resource_load_count == 2) return false;
   if (scenario() != "resource-failure") return true;
   const auto path = std::filesystem::path(std::u8string(user_directory.begin(), user_directory.end())) / "debug";
   std::filesystem::create_directories(path);
@@ -75,6 +79,7 @@ EXPORT bool AsstLoadResource(const char*) {
 }
 EXPORT void* AsstCreate() { return nullptr; }
 EXPORT void* AsstCreateEx(maaverge::Callback callback, void* context) {
+  trace("create-instance");
   if (scenario() == "create-failure") return nullptr;
   auto* instance = new Instance;
   instance->callback = callback;

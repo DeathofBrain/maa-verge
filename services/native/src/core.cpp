@@ -116,8 +116,7 @@ Core::Core(const Json& config, Protocol& protocol)
   fs::create_directories(user);
   const auto user_text = to_utf8(user);
   if (!api_.set_user_dir(user_text.c_str())) throw std::runtime_error("cannot set core user directory");
-  const auto resource = to_utf8(absolute_path(required_string(config, "resource")));
-  if (!api_.load_resource(resource.c_str())) throw std::runtime_error("cannot load resource snapshot");
+  const auto resource = absolute_path(required_string(config, "resource"));
   required_string(config, "adb");
   required_string(config, "address");
   std::string touch_mode = "minitouch";
@@ -136,6 +135,23 @@ Core::Core(const Json& config, Protocol& protocol)
     client_type = required_string(connection, "clientType");
     const std::vector<std::string> clients = {"Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"};
     if (std::find(clients.begin(), clients.end(), client_type) == clients.end()) throw std::runtime_error("unsupported connection client type");
+  }
+  const auto resource_text = to_utf8(resource);
+  if (!api_.load_resource(resource_text.c_str())) throw std::runtime_error("cannot load resource snapshot");
+  if (client_type != "Official" && client_type != "Bilibili") {
+    // AsstLoadResource appends /resource. Client resources are sparse overlays,
+    // loaded after the base in this device's isolated worker process.
+    const auto client_root = resource / "resource" / "global" / client_type;
+    if (!fs::is_directory(client_root / "resource")) {
+      throw std::runtime_error("client resource directory missing for " + client_type);
+    }
+    if (!fs::is_regular_file(client_root / "resource" / "version.json")) {
+      throw std::runtime_error("client resource snapshot missing resource/version.json for " + client_type);
+    }
+    const auto client_text = to_utf8(client_root);
+    if (!api_.load_resource(client_text.c_str())) {
+      throw std::runtime_error("cannot load client resource snapshot for " + client_type);
+    }
   }
   if (config.contains("capture")) {
     const auto& capture = config["capture"];
