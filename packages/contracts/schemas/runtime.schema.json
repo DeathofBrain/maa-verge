@@ -42,13 +42,40 @@
       "properties": {
         "method": { "type": "string", "enum": ["adb", "mumu", "ldplayer"], "default": "adb" },
         "emulatorPath": { "type": "string", "maxLength": 4096, "default": "" },
-        "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 }
+        "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 },
+        "mumuTouch": { "type": "boolean", "default": false },
+        "mumuBridge": { "type": "boolean", "default": false }
       },
       "required": ["method", "emulatorPath", "instanceIndex"]
+    },
+    "ConnectionSettings": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "adbPath": { "type": "string", "maxLength": 4096, "default": "" },
+        "address": { "type": "string", "maxLength": 128, "default": "" },
+        "config": { "type": "string", "enum": ["General", "BlueStacks", "MuMuEmulator12", "MuMuArm", "LDPlayer", "Nox", "XYAZ", "Compatible", "SecondResolution", "CompatMac", "CompatPOSIXShell", "Waydroid", "AVD", "Androws", "WSA"], "default": "General" },
+        "touchMode": { "type": "string", "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"], "default": "minitouch" },
+        "adbLite": { "type": "boolean", "default": false },
+        "clientType": { "type": "string", "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"], "default": "Official" }
+      },
+      "required": ["adbPath", "address", "config", "touchMode", "adbLite", "clientType"]
+    },
+    "DeviceConnectionProfile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "address", "connection", "capture"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[A-Za-z0-9_-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "address": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "connection": { "$ref": "#/$defs/ConnectionSettings" },
+        "capture": { "$ref": "#/$defs/CaptureSettings" }
+      }
     },
     "Device": {
       "additionalProperties": false,
       "properties": {
+        "connectionProfileId": { "type": "string", "maxLength": 80 },
+        "connectionError": { "type": "string", "maxLength": 4096 },
         "id": {
           "title": "Id",
           "type": "string"
@@ -83,6 +110,7 @@
           "title": "Coreversion"
         },
         "captureMethod": { "type": "string", "maxLength": 128 },
+        "dataSync": { "$ref": "#/$defs/UserDataSync" },
         "resourceVersion": {
           "anyOf": [
             {
@@ -329,10 +357,32 @@
       "title": "Run",
       "type": "object"
     },
+    "InfrastructureLine": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "unit", "hourlyRate", "capacity", "lastCollectedAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "unit": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "hourlyRate": { "type": "number", "minimum": 0, "maximum": 1000000000 },
+        "capacity": { "type": "number", "exclusiveMinimum": 0, "maximum": 1000000000 },
+        "lastCollectedAt": { "type": "string", "minLength": 20, "maxLength": 40 }
+      }
+    },
+    "InfrastructureEstimateProfile": {
+      "type": "object", "additionalProperties": false, "required": ["deviceId", "lines"],
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "lines": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/InfrastructureLine" } }
+      }
+    },
     "Settings": {
       "additionalProperties": false,
       "properties": {
+        "infrastructureEstimates": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/InfrastructureEstimateProfile" } },
         "capture": { "$ref": "#/$defs/CaptureSettings" },
+        "connection": { "$ref": "#/$defs/ConnectionSettings" },
+        "deviceProfiles": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/DeviceConnectionProfile" } },
         "autoConnect": {
           "default": true,
           "title": "Autoconnect",
@@ -382,6 +432,15 @@
       "title": "Settings",
       "type": "object"
     },
+    "UserDataSync": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operatorsAt": { "type": ["string", "null"], "maxLength": 64 },
+        "depotAt": { "type": ["string", "null"], "maxLength": 64 }
+      },
+      "required": ["operatorsAt", "depotAt"]
+    },
     "Task": {
       "additionalProperties": false,
       "properties": {
@@ -405,7 +464,8 @@
             "Custom",
             "SingleStep",
             "VideoRecognition",
-            "OperProgress"
+            "OperProgress",
+            "UserDataUpdate"
           ],
           "title": "Type",
           "type": "string"

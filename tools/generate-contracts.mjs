@@ -37,6 +37,8 @@ const validators = {
   validateRpcEvent: `${rpcSchema.$id}#/$defs/RpcEvent`,
   validateDeviceFrameParams: `${rpcSchema.$id}#/$defs/DeviceFrameParams`,
   validateDeviceClickParams: `${rpcSchema.$id}#/$defs/DeviceClickParams`,
+  validateStageListParams: `${rpcSchema.$id}#/$defs/StageListParams`,
+  validateStageListResult: `${rpcSchema.$id}#/$defs/StageListResult`,
   validateScreenFrame: `${rpcSchema.$id}#/$defs/ScreenFrame`,
   validateWorkerFrame: `${workerSchema.$id}#/$defs/WorkerFrame`,
   validateWorkerConfiguration: `${workerSchema.$id}#/$defs/WorkerConfiguration`,
@@ -82,6 +84,8 @@ export const validateRpcRequest: Validator<RpcRequest>;
 export const validateRpcEvent: Validator<RpcEvent>;
 export const validateDeviceFrameParams: Validator<RpcContract['params']['device.frame']>;
 export const validateDeviceClickParams: Validator<RpcContract['params']['device.click']>;
+export const validateStageListParams: Validator<RpcContract['params']['stages.list']>;
+export const validateStageListResult: Validator<RpcContract['results']['stages.list']>;
 export const validateScreenFrame: Validator<ScreenFrame>;
 export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl'>>;
 export const validateWorkerConfiguration: Validator<WorkerProtocol['configuration']>;

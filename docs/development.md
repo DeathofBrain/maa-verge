@@ -105,11 +105,26 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 
 `pnpm run doctor` 检查固定工具版本、所有工作区的直接依赖和本地环境，不连接设备、不发模型请求、不输出密钥；显式写 `run` 可避免调用 pnpm 自带的同名命令。`pnpm run doctor --native` 将原生依赖设为必需。`pnpm build` 与默认 TypeScript 桌面 `pnpm dev` 在编译前执行原生诊断；构建、检查和运行入口若发现工作区依赖缺失，会直接提示冻结同步命令，避免到 Bun 打包时才出现 `Could not resolve tar/yauzl` 或缺少 Bun 类型。设备发现也会查找模拟器内置 ADB，非标准安装需配置路径。可选 ADB 的缺失不阻断界面测试。真实设备测试由用户明确选择，且必须记录核心、资源、平台及设备标识的脱敏值。
 
+## 清理 Codex worktree 与分支
+
+VS Code 中显示的 `codex/...` 条目可能是本地分支，删除 worktree 后这些分支仍会保留。`python tools/clean-codex-worktrees.py` 会先清理关联 `codex/*` 分支的额外 worktree，再单独查找和清理本地 `codex/*` 分支。默认只删除已合入 `main` 的分支，按提交可达性核验，不依赖 upstream 设置；经过 squash/cherry-pick 的分支可能仍被判定为未合并。
+
+脚本保留主工作区、当前工作区，以及仍被任意 worktree 占用的分支；默认保留含未提交改动、未跟踪文件或锁定的 worktree，删除失败时返回非零退出码。所有删除均通过 Git 执行，范围限定于本地 `codex/*`，不扫描其他目录或操作远程分支。
+
+```powershell
+python tools/clean-codex-worktrees.py --dry-run         # 预览 worktree 和本地分支
+python tools/clean-codex-worktrees.py                   # 清理干净的 worktree 和已合并分支
+python tools/clean-codex-worktrees.py --dry-run --force # 预览包括未合并分支的全部目标
+python tools/clean-codex-worktrees.py --force           # 允许删除脏 worktree 和未合并分支
+```
+
+`--worktrees-only` 仅清理 worktree、保留全部分支；`--repo <仓库路径>` 可指定其他仓库。脚本不删除 detached worktree 或已经脱离 Git 登记的目录。非强制模式要求仓库存在 `main`，缺失时保留所有分支。
+
 ## 模拟器连接与任务覆盖
 
-原生模式默认自动发现并连接已启动的本机模拟器，设置中可以关闭或手动触发。SDK/模拟器内置 ADB、默认多开端口和非标准路径配置见 [emulator-connection.md](emulator-connection.md)。此流程不会自动运行任务。
+原生模式默认自动连接已启动的本机模拟器，设置中可以关闭或手动触发；已保存实例清单时只逐项连接清单，没有清单时进行自动发现。SDK/模拟器内置 ADB、默认端口和非标准路径见 [emulator-connection.md](emulator-connection.md)，共享/逐实例连接设置见 [connection-settings.md](connection-settings.md)，并行执行与隔离边界见 [multi-instance.md](multi-instance.md)。此流程不会自动启动游戏或运行任务。
 
-侧边栏的「日常」与「专项任务」管理任务表，页内通过「任务编排」「任务表设置」「定时计划」组织配置。各步骤可以重复添加、排序、复制、启停并单独配置；常用字段之外的参数可通过高级 JSON 保留和编辑。上游任务边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
+侧边栏的「任务表」与「专项任务」管理任务表，页内通过「任务编排」「任务表设置」「定时计划」组织配置。新建日常表采用原版九项默认队列与参数，名称自动选择未占用的“日常表1”等；各步骤可重复添加、排序、复制、启停并单独配置，高级 JSON 保留常用字段之外的参数。逐项默认及执行映射见 [maa-task-settings.md](maa-task-settings.md)。官方活动日历、关卡目录和主页游戏提醒共用缓存，基建估算按设备手工校准，见 [game-reminders.md](game-reminders.md)。上游边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
 
 ## 构建与持续集成
 

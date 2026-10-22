@@ -120,9 +120,12 @@ class Base(unittest.TestCase):
         self.temporary.cleanup()
 
     def validate(self, config=None, scenario=""):
+        selected = config or self.config
         environment = {**os.environ, "MAAVERGE_SYNTHETIC_CASE": scenario}
+        if "trace" in selected:
+            environment["MAAVERGE_SYNTHETIC_TRACE"] = selected["trace"]
         result = subprocess.run(
-            [str(ARGS.worker), "--validate"], input=json.dumps(config or self.config),
+            [str(ARGS.worker), "--validate"], input=json.dumps(selected),
             text=True, encoding="utf-8", capture_output=True, timeout=6, env=environment,
         )
         messages = [json.loads(line) for line in result.stdout.splitlines()]
@@ -138,6 +141,21 @@ class Validation(Base):
         self.assertEqual(messages, [{"version": "vsynthetic", "resourceLoaded": True, "protocolVersion": 1}])
         self.assertIn("synthetic native stdout", result.stderr)
         self.assertFalse((self.root / "user").exists())
+
+    def test_validation_only_loads_base_even_with_a_client_connection(self):
+        config = {**self.config, "connection": {
+            "config": "General", "touchMode": "minitouch", "adbLite": False,
+            "clientType": "YoStarEN",
+        }}
+        result, _ = self.validate(config)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        trace = Path(config["trace"]).read_text(encoding="utf-8").splitlines()
+        loads = [
+            Path(line.removeprefix("resource:")) for line in trace if line.startswith("resource:")
+        ]
+        self.assertEqual(len(loads), 1)
+        self.assertTrue(loads[0].samefile(self.resource))
+        self.assertNotIn("create-instance", trace)
 
     def test_version_mismatch(self):
         result, messages = self.validate({**self.config, "version": "vwrong"})
@@ -195,6 +213,74 @@ class Worker(Base):
         response = session.response(ident)
         self.assertIn("result", response, response)
         return response["result"]
+
+    def test_client_resources_load_base_then_only_the_selected_overlay_before_creation(self):
+        for client in [None, "Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]:
+            with self.subTest(client=client):
+                config = {**self.config}
+                expected = [self.resource]
+                if client is not None:
+                    config["connection"] = {
+                        "config": "General", "touchMode": "minitouch", "adbLite": False,
+                        "clientType": client,
+                    }
+                if client not in [None, "Official", "Bilibili"]:
+                    overlay = self.resource / "resource/global" / client
+                    (overlay / "resource").mkdir(parents=True)
+                    # Sparse overlays inherit everything else from the base.
+                    (overlay / "resource/version.json").write_text("{}")
+                    expected.append(overlay)
+                Path(config["trace"]).unlink(missing_ok=True)
+                session = self.connected(config=config)
+                self.assertEqual(session.close()[0], 0)
+                trace = Path(config["trace"]).read_text(encoding="utf-8").splitlines()
+                loads = [line for line in trace if line.startswith("resource:")]
+                self.assertEqual(len(loads), len(expected))
+                for line, resource in zip(loads, expected, strict=True):
+                    self.assertTrue(Path(line.removeprefix("resource:")).samefile(resource))
+                    self.assertLess(trace.index(line), trace.index("create-instance"))
+                self.assertLess(trace.index("create-instance"), trace.index("connect:General"))
+                if client is not None:
+                    self.assertLess(trace.index(loads[-1]), trace.index("option:6:" + client))
+
+    def test_missing_or_rejected_client_overlay_fails_before_ready_or_instance_creation(self):
+        for client in ["YoStarEN", "YoStarJP", "YoStarKR", "txwy"]:
+            for failure in ["missing-directory", "missing-version", "overlay-failure"]:
+                with self.subTest(client=client, failure=failure):
+                    config = {**self.config, "connection": {
+                        "config": "General", "touchMode": "minitouch", "adbLite": False,
+                        "clientType": client,
+                    }}
+                    overlay = self.resource / "resource/global" / client
+                    if overlay.exists():
+                        shutil.rmtree(overlay)
+                    if failure != "missing-directory":
+                        (overlay / "resource").mkdir(parents=True)
+                    if failure == "overlay-failure":
+                        (overlay / "resource/version.json").write_text("{}")
+                    Path(config["trace"]).unlink(missing_ok=True)
+                    session = self.session(config, scenario=failure)
+                    code, errors = session.close()
+                    self.assertNotEqual(code, 0)
+                    self.assertIn(client, errors)
+                    expected_error = {
+                        "missing-directory": "client resource directory missing",
+                        "missing-version": "missing resource/version.json",
+                        "overlay-failure": "cannot load client resource snapshot",
+                    }[failure]
+                    self.assertIn(expected_error, errors)
+                    self.assertIsNone(session.messages.get_nowait())
+                    self.assertTrue(session.messages.empty())
+                    trace = Path(config["trace"]).read_text(encoding="utf-8").splitlines()
+                    loads = [line for line in trace if line.startswith("resource:")]
+                    self.assertEqual(len(loads), 2 if failure == "overlay-failure" else 1)
+                    self.assertTrue(Path(loads[0].removeprefix("resource:")).samefile(self.resource))
+                    if failure == "overlay-failure":
+                        self.assertTrue(Path(loads[1].removeprefix("resource:")).samefile(overlay))
+                    self.assertNotIn("create-instance", trace)
+                    self.assertFalse(any(
+                        line.startswith(("connect:", "append-task")) for line in trace
+                    ))
 
     def test_preview_and_click_confirm_native_callbacks_in_preview_pixels(self):
         session = self.connected()
@@ -390,6 +476,41 @@ class Worker(Base):
                 self.assertLess(trace.index(extra_line), trace.index("connect:" + name))
                 self.assertIn("screencap", trace)
 
+    def test_connection_profile_and_touch_options_precede_async_connect(self):
+        config = {**self.config, "connection": {
+            "config": "BlueStacks", "touchMode": "maatouch", "adbLite": True,
+            "clientType": "Bilibili",
+        }}
+        session = self.connected(config=config)
+        self.assertEqual(session.close()[0], 0)
+        trace = Path(config["trace"]).read_text(encoding="utf-8").splitlines()
+        for option in ["option:2:maatouch", "option:4:1", "option:5:0", "option:6:Bilibili"]:
+            self.assertIn(option, trace)
+            self.assertLess(trace.index(option), trace.index("connect:BlueStacks"))
+
+    def test_mumu_touch_enhancement_reaches_both_instance_and_connection_options(self):
+        config = self.capture_config(mumuTouch=True, mumuBridge=True)
+        session = self.connected(config=config)
+        self.assertEqual(session.close()[0], 0)
+        trace = Path(config["trace"]).read_text(encoding="utf-8").splitlines()
+        self.assertIn("option:2:MumuExtras", trace)
+        applied = json.loads(next(line for line in trace if line.startswith("extras:MuMuEmulator12:")).split(":", 2)[2])
+        self.assertIs(applied["touch"], True)
+        self.assertEqual(applied["index"], 3)
+
+    def test_rejected_instance_option_destroys_the_instance_before_startup_fails(self):
+        config = {**self.config, "connection": {
+            "config": "General", "touchMode": "minitouch", "adbLite": False,
+            "clientType": "Official",
+        }}
+        session = self.session(config, scenario="option-reject")
+        code, errors = session.close()
+        self.assertNotEqual(code, 0)
+        self.assertIn("rejected", errors)
+        trace = Path(config["trace"]).read_text(encoding="utf-8")
+        self.assertIn("destroy-done", trace)
+        self.assertNotIn("connect:", trace)
+
     def test_enhanced_task_requires_verified_connection(self):
         session = self.session(self.capture_config())
         session.wait(lambda value: value.get("type") == "ready")
@@ -398,7 +519,7 @@ class Worker(Base):
         session.send({"id": "frame", "operation": "screencap"})
         self.assertIn("must be connected", session.response("frame")["error"])
         self.assertEqual(session.close()[0], 0)
-        self.assertNotIn("append-task", Path(self.config["trace"]).read_text())
+        self.assertNotIn("append-task", Path(self.config["trace"]).read_text(encoding="utf-8"))
 
     def test_enhanced_fallback_missing_evidence_and_connect_failure_block_tasks(self):
         for scenario in ["capture-fallback", "capture-no-evidence", "capture-connect-failure"]:
@@ -480,7 +601,7 @@ class Worker(Base):
         session.wait(lambda value: value.get("type") == "status" and not value["running"])
         code, errors = session.close()
         self.assertEqual(code, 0, errors)
-        trace = Path(self.config["trace"]).read_text()
+        trace = Path(self.config["trace"]).read_text(encoding="utf-8")
         self.assertIn("destroy-done", trace)
         self.assertIn("synthetic native stdout: destroyed", errors)
 
@@ -517,7 +638,7 @@ class Worker(Base):
         session = self.connected("start-reject")
         session.send({"id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}})
         self.assertIn("rejected task start", session.response("task")["error"])
-        self.assertIn("stop-cleared-queue", Path(self.config["trace"]).read_text())
+        self.assertIn("stop-cleared-queue", Path(self.config["trace"]).read_text(encoding="utf-8"))
 
     def test_native_call_and_async_deadlines_exit_unknown(self):
         for scenario, key in [("call-hang", "nativeCallTimeoutMs"), ("async-hang", "asyncTimeoutMs")]:
@@ -560,7 +681,9 @@ class Lease(Base):
         session.child.stdin.close()
         deadline = time.monotonic() + 3
         trace = Path(self.config["trace"])
-        while time.monotonic() < deadline and (not trace.exists() or "destroy-start" not in trace.read_text()):
+        while time.monotonic() < deadline and (
+            not trace.exists() or "destroy-start" not in trace.read_text(encoding="utf-8")
+        ):
             time.sleep(0.01)
         lock = FileLock(self.config["lockPath"])
         with self.assertRaises(Timeout):

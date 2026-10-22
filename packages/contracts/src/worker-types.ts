@@ -8,6 +8,8 @@ export type WorkerCaptureConfiguration =
       method: 'mumu';
       emulatorPath: string;
       instanceIndex: number;
+      mumuTouch?: boolean;
+      mumuBridge?: boolean;
     }
   | {
       method: 'ldplayer';
@@ -91,11 +93,33 @@ export interface WorkerConfiguration {
   userDir: string;
   lockPath: string;
   capture?: WorkerCaptureConfiguration;
+  connection?: WorkerConnectionConfiguration;
   lockTimeoutMs?: number;
   startupTimeoutMs?: number;
   nativeCallTimeoutMs?: number;
   asyncTimeoutMs?: number;
   shutdownTimeoutMs?: number;
+}
+export interface WorkerConnectionConfiguration {
+  config:
+    | 'General'
+    | 'BlueStacks'
+    | 'MuMuEmulator12'
+    | 'MuMuArm'
+    | 'LDPlayer'
+    | 'Nox'
+    | 'XYAZ'
+    | 'Compatible'
+    | 'SecondResolution'
+    | 'CompatMac'
+    | 'CompatPOSIXShell'
+    | 'Waydroid'
+    | 'AVD'
+    | 'Androws'
+    | 'WSA';
+  touchMode: 'minitouch' | 'maatouch' | 'adb' | 'MaaFwAdb';
+  adbLite: boolean;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
 }
 export interface WorkerLeaseConfiguration {
   protocolVersion: 1;

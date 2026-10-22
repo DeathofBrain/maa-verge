@@ -20,6 +20,7 @@
 
 namespace {
 std::string user_directory;
+std::size_t resource_load_count = 0;
 nlohmann::json connection_extras = nlohmann::json::object();
 std::string scenario() {
   const char* value = std::getenv("MAAVERGE_SYNTHETIC_CASE");
@@ -65,7 +66,10 @@ EXPORT bool AsstSetUserDir(const char* path) {
 #endif
   return scenario() != "user-failure";
 }
-EXPORT bool AsstLoadResource(const char*) {
+EXPORT bool AsstLoadResource(const char* resource) {
+  trace(("resource:" + std::string(resource)).c_str());
+  ++resource_load_count;
+  if (scenario() == "overlay-failure" && resource_load_count == 2) return false;
   if (scenario() != "resource-failure") return true;
   const auto path = std::filesystem::path(std::u8string(user_directory.begin(), user_directory.end())) / "debug";
   std::filesystem::create_directories(path);
@@ -75,6 +79,7 @@ EXPORT bool AsstLoadResource(const char*) {
 }
 EXPORT void* AsstCreate() { return nullptr; }
 EXPORT void* AsstCreateEx(maaverge::Callback callback, void* context) {
+  trace("create-instance");
   if (scenario() == "create-failure") return nullptr;
   auto* instance = new Instance;
   instance->callback = callback;
@@ -92,6 +97,10 @@ EXPORT void AsstDestroy(void* handle) {
   std::fprintf(stdout, "synthetic native stdout: destroyed\n");
   delete instance;
 }
+EXPORT bool AsstSetInstanceOption(void*, int key, const char* value) {
+  trace(("option:" + std::to_string(key) + ":" + value).c_str());
+  return scenario() != "option-reject";
+}
 #ifndef OMIT_CAPTURE
 EXPORT void AsstSetConnectionExtras(const char* name, const char* extras) {
   connection_extras[name] = nlohmann::json::parse(extras);
@@ -105,10 +114,9 @@ EXPORT int AsstAsyncConnect(void* handle, const char*, const char*, const char* 
   auto* instance = static_cast<Instance*>(handle);
   instance->config = config;
   trace(("connect:" + instance->config).c_str());
-  if (instance->config != "General" && !connection_extras.contains(instance->config)) return 0;
   instance->threads.emplace_back([instance] {
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    if (instance->config != "General" && scenario() != "capture-no-evidence") {
+    if (connection_extras.contains(instance->config) && scenario() != "capture-no-evidence") {
       const std::string method = scenario() == "capture-fallback" ? "RawWithGzip" :
                                  instance->config == "MuMuEmulator12" ? "MumuExtras" : "LDExtras";
       instance->send(2, {{"what", "FastestWayToScreencap"}, {"details", {{"method", method}, {"cost", 2}}}});

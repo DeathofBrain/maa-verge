@@ -30,7 +30,7 @@ export async function connectionCapture(selected: Settings['capture'], address: 
   const capture = { ...defaultCapture(), ...selected } as Capture;
   if (capture.method === 'adb') return capture;
   if (platform !== 'win32') throw new Error('MuMu／雷电增强截图当前仅支持 Windows');
-  if (!isLocalEmulator(address)) throw new Error('增强截图仅支持本机模拟器');
+  if (!isLocalEmulator(address) && !(capture.method === 'mumu' && capture.mumuBridge)) throw new Error('增强截图仅支持本机模拟器；MuMu 网络桥接请显式启用桥接模式并指定实例编号');
   if (!path.isAbsolute(capture.emulatorPath.trim())) throw new Error('请选择模拟器安装根目录的绝对路径');
   capture.emulatorPath = realpathSync(capture.emulatorPath.trim());
   if (!statSync(capture.emulatorPath).isDirectory()) throw new Error('模拟器安装根目录无效');
@@ -40,7 +40,7 @@ export async function connectionCapture(selected: Settings['capture'], address: 
     if (!sdk.some(relative => file(path.join(capture.emulatorPath, relative, 'external_renderer_ipc.dll')))) throw new Error('未找到 MuMu 增强截图 SDK，请选择安装根目录');
     // An explicit SDK index must not capture a different instance from ADB.
     const expected = address.startsWith('emulator-') ? 5555 + capture.instanceIndex * 2 : 16384 + capture.instanceIndex * 32;
-    if (port !== expected && !(port === 7555 && capture.instanceIndex === 0)) throw new Error('MuMu 实例索引与 ADB 地址不匹配');
+    if (!capture.mumuBridge && port !== expected && !(port === 7555 && capture.instanceIndex === 0)) throw new Error('MuMu 实例索引与 ADB 地址不匹配');
   } else {
     if (port !== 5555 + capture.instanceIndex * 2) throw new Error('雷电实例索引与 ADB 地址不匹配');
     const executable = path.join(capture.emulatorPath, 'ldconsole.exe');

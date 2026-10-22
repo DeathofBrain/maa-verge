@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { rpc, taskLabels, type Device, type Event, type Plan, type Settings, type Snapshot, type Task, type UpdateChannel } from '@maaverge/contracts';
 import './support-pages.css';
+import { useSettingsDraft } from './settings-draft';
+import { TaskConnectionSettings } from './TaskConnectionSettings';
+import { MultiInstanceSettings } from './MultiInstanceSettings';
 
 export interface SupportPageProps {
   snapshot: Snapshot;
@@ -104,23 +107,27 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
   const waitForReady = async (devices: Device[], kind: 'auto-connect' | 'connect') => {
     const ids = new Set(devices.map((device) => device.id));
     let ready = devices.filter((device) => device.state !== 'offline');
+    let failed = devices.filter((device) => device.state === 'offline' && device.connectionError);
     // MaaCore allows 30s for an asynchronous connection; leave room for its
     // completion event before reporting that readiness is still pending.
     const deadline = Date.now() + 35_000;
-    while (ready.length < ids.size && Date.now() < deadline) {
+    while (ready.length + failed.length < ids.size && Date.now() < deadline) {
       setOperation({ kind, phase: 'working', message: `正在等待设备连接就绪（${ready.length}/${ids.size}）…` });
       await new Promise((resolve) => window.setTimeout(resolve, 250));
       const latest = await rpc('app.snapshot', {});
       ready = latest.devices.filter((device) => ids.has(device.id) && device.state !== 'offline');
+      failed = latest.devices.filter((device) => ids.has(device.id) && device.state === 'offline' && device.connectionError);
     }
     if (ready[0] || devices[0]) onSelectDevice((ready[0] || devices[0]).id);
-    const pending = ids.size - ready.length;
+    const pending = ids.size - ready.length - failed.length;
+    if (failed.length) setDiagnostics((previous) => [...previous, ...failed.map((device) => `${device.name}（${device.address}）：${device.connectionError}`)]);
     if (pending) {
       setDiagnostics((previous) => [...previous, `${pending} 台设备的连接尚未就绪。请确认模拟器已启动并开启 ADB 调试，稍后重试。`]);
     }
     const prefix = '连接';
-    setOperation({ kind, phase: pending ? 'empty' : 'complete', message: pending ? `${prefix}结果：${ready.length} 台已就绪，${pending} 台尚未就绪。` : `${prefix}完成：${ready.length} 台设备已就绪。` });
-    return pending === 0;
+    const incomplete = [failed.length ? `${failed.length} 台连接失败` : '', pending ? `${pending} 台尚未就绪` : ''].filter(Boolean);
+    setOperation({ kind, phase: failed.length ? 'error' : pending ? 'empty' : 'complete', message: incomplete.length ? `${prefix}结果：${ready.length} 台已就绪，${incomplete.join('，')}。` : `${prefix}完成：${ready.length} 台设备已就绪。` });
+    return ready.length === ids.size;
   };
 
   const discover = () => runDeviceOperation('discover', '正在发现设备…', async () => {
@@ -155,7 +162,7 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
   return <div className="sp-page"><PageHeading title="设备" text="发现、连接与管理模拟器，连接后由你选择执行任务。" actions={<><button className="button secondary" disabled={disabled} onClick={() => void discover()}>{working && operation.kind === 'discover' ? <LoaderCircle size={16} className="spin" /> : <Search size={16} />}{working && operation.kind === 'discover' ? '正在发现…' : '发现设备'}</button><button className="button primary" disabled={disabled} onClick={() => void autoConnect()}>{working && operation.kind === 'auto-connect' ? <LoaderCircle size={16} className="spin" /> : <Wifi size={16} />}{working && operation.kind === 'auto-connect' ? '正在连接…' : '自动连接模拟器'}</button></>} />
     {operation && <div className="sp-notice" role={operation.phase === 'error' ? 'alert' : 'status'} aria-label="设备操作结果" aria-atomic="true" aria-busy={working}>{working ? <LoaderCircle size={17} className="spin" /> : operation.phase === 'complete' ? <Check size={17} /> : <Info size={17} />}<div>{operation.message}</div></div>}
     <div className="sp-device-layout"><aside className="sp-device-list" aria-label="设备列表"><div className="sp-list-heading">已知设备 <span>{snapshot.devices.length}</span></div>{snapshot.devices.length ? snapshot.devices.map((device) => <button key={device.id} className={`sp-device-item ${selected?.id === device.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === device.id} onClick={() => onSelectDevice(device.id)}><Monitor size={20} /><span><strong>{device.name}</strong><small>{device.address}</small></span><i className={`status-dot ${device.state === 'offline' ? 'offline' : ''}`} /></button>) : <p className="sp-small-empty">启动模拟器后尝试自动连接。</p>}</aside>
-      <div className="sp-device-detail"><Section title="连接配置" description="自动连接不会启动游戏，也不会自动执行任务。"><Toggle label="自动连接模拟器" description="启动后与空闲期间发现本地模拟器；手动断开后保持断开。" checked={snapshot.settings.autoConnect} disabled={disabled} onChange={(autoConnect) => void onAction('settings', () => rpc('settings.save', { settings: { ...snapshot.settings, autoConnect } }), '连接偏好已保存')} />
+      <div className="sp-device-detail"><MultiInstanceSettings settings={snapshot.settings} devices={snapshot.devices} events={snapshot.events} busy={disabled} onSelectDevice={onSelectDevice} onConnect={connect} onSaveSettings={(settings) => onAction('settings', () => rpc('settings.save', { settings }), '多开实例配置已保存')} /><Section title="连接配置" description="自动连接不会启动游戏，也不会自动执行任务。"><Toggle label="自动连接模拟器" description="启动后与空闲期间发现本地模拟器；手动断开后保持断开。" checked={snapshot.settings.autoConnect} disabled={disabled} onChange={(autoConnect) => void onAction('settings', () => rpc('settings.save', { settings: { ...snapshot.settings, autoConnect } }), '连接偏好已保存')} />
         {selected && <><div className="sp-device-detail-heading"><Monitor size={28} /><div><h3>{selected.name}</h3><span className={`sp-state ${selected.state}`}>{deviceLabels[selected.state]}</span></div><button className="button secondary" disabled={disabled || selected.state === 'running' || selected.state === 'offline'} onClick={() => void runDeviceOperation('disconnect', '正在断开设备…', async () => {
           await rpc('device.disconnect', { id: selected.id });
           setOperation({ kind: 'disconnect', phase: 'complete', message: '设备已断开。' });
@@ -163,7 +170,7 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
         })}><Unplug size={15} />断开设备</button></div><dl className="sp-description-list"><div><dt>连接地址</dt><dd className="sp-mono">{selected.address}</dd></div><div><dt>连接方式</dt><dd>ADB</dd></div><div><dt>实际截图方式</dt><dd aria-label="实际截图方式">{actualCaptureMethod(selected)}</dd></div><div><dt>核心版本</dt><dd className="sp-mono">{selected.coreVersion || '尚未加载'}</dd></div><div><dt>资源版本</dt><dd className="sp-mono">{selected.resourceVersion || '尚未加载'}</dd></div></dl>{selected.state === 'running' && <p className="sp-help">请先停止执行，再断开设备。其他页面仍可通过底部运行栏停止。</p>}</>}
         <form className="sp-connect-form" onSubmit={(event) => { event.preventDefault(); void connect(address); }}><label htmlFor="manual-device-address">手动连接 ADB 地址</label><div><input id="manual-device-address" className="text-input" placeholder="127.0.0.1:5555 或 USB 序列号" value={address} onChange={(event) => setAddress(event.target.value)} /><button type="submit" className="button secondary" disabled={disabled || !address.trim()}>{working && operation.kind === 'connect' ? <LoaderCircle size={15} className="spin" /> : <Wifi size={15} />}{working && operation.kind === 'connect' ? '正在连接…' : '连接设备'}</button></div></form>
         {discovered.length > 0 && <div className="sp-discovered"><h3>发现的设备</h3>{discovered.map((item) => <div key={item.address}><span><strong>{item.name}</strong><small>{item.address} · {item.adbState}</small></span><button className="button secondary" disabled={disabled} onClick={() => void connect(item.address)}>连接</button></div>)}</div>}
-      </Section><CaptureForm settings={snapshot.settings} busy={disabled} onSave={(capture) => onAction('settings', () => rpc('settings.save', { settings: { ...snapshot.settings, capture } }), '截图配置已保存，请断开设备后重新连接生效')} /><Section title="连接诊断" description="本次发现、连接结果和失败原因显示在这里。">{diagnostics.length ? <div className="connection-diagnostics sp-diagnostics" role="status">{diagnostics.map((message, index) => <p key={index}>{message}</p>)}</div> : <p className="sp-help">发现或连接设备后可查看本次结果。</p>}</Section></div>
+      </Section><TaskConnectionSettings settings={snapshot.settings} selectedDeviceId={selected?.id} deviceProfileId={selected?.connectionProfileId} busy={disabled} showAutomatic={false} onSaveSettings={(settings) => onAction('settings', () => rpc('settings.save', { settings }), '连接配置已保存，请断开设备后重新连接生效')} /><Section title="连接诊断" description="本次发现、连接结果和失败原因显示在这里。">{diagnostics.length ? <div className="connection-diagnostics sp-diagnostics" role="status">{diagnostics.map((message, index) => <p key={index}>{message}</p>)}</div> : <p className="sp-help">发现或连接设备后可查看本次结果。</p>}</Section></div>
     </div>
   </div>;
 }
@@ -206,45 +213,6 @@ export function SettingsPage({ snapshot, busy, onAction, searchQuery }: SupportP
 }
 
 // Only unsaved form drafts live in the session; saved settings remain runtime-owned.
-function useSettingsDraft<T extends object>(key: string, saved: T) {
-  const fingerprint = JSON.stringify(saved);
-  const [state, setState] = useState<{ base: string; value: T }>(() => {
-    try {
-      const cached = JSON.parse(sessionStorage.getItem(`maaverge:settings-draft:${key}`) || 'null');
-      const valid = cached && typeof cached.base === 'string' && cached.value && Object.entries(saved).every(([field, value]) => typeof cached.value[field] === typeof value && (typeof value !== 'number' || Number.isFinite(cached.value[field])));
-      if (valid && JSON.stringify(cached.value) !== cached.base) return cached;
-    } catch { /* A damaged cache should not block application settings. */ }
-    return { base: fingerprint, value: saved };
-  });
-  useEffect(() => {
-    setState((current) => JSON.stringify(current.value) === current.base || JSON.stringify(current.value) === fingerprint ? { base: fingerprint, value: saved } : current);
-  }, [fingerprint]);
-  useEffect(() => {
-    try {
-      const cacheKey = `maaverge:settings-draft:${key}`;
-      if (JSON.stringify(state.value) === state.base) sessionStorage.removeItem(cacheKey);
-      else sessionStorage.setItem(cacheKey, JSON.stringify(state));
-    } catch { /* Session caching is optional. */ }
-  }, [key, state]);
-  const setDraft = (update: T | ((value: T) => T)) => setState((current) => ({ ...current, value: typeof update === 'function' ? update(current.value) : update }));
-  return [state.value, setDraft, () => setState({ base: fingerprint, value: saved })] as const;
-}
-
-function CaptureForm({ settings, busy, onSave }: { settings: Settings; busy: boolean; onSave: (capture: NonNullable<Settings['capture']>) => Promise<boolean> }) {
-  const saved: NonNullable<Settings['capture']> = settings.capture ?? { method: 'adb', emulatorPath: '', instanceIndex: 0 };
-  const [draft, setDraft, resetDraft] = useSettingsDraft('capture', saved);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
-  const enhanced = draft.method !== 'adb';
-  return <Section title="截图方式" description="保存后用于下一次连接；已连接设备继续使用当前截图方式。">
-    <form className="sp-capture-form" onSubmit={(event) => { event.preventDefault(); const capture = { ...draft, emulatorPath: draft.emulatorPath.trim() }; void onSave(capture).then((saved) => { if (saved) setDraft(capture); }); }}>
-      <label className="sp-field">截图协议<select className="text-input" aria-label="截图协议" value={draft.method} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, method: event.target.value as NonNullable<Settings['capture']>['method'] }))}>{Object.entries(captureLabels).map(([method, label]) => <option key={method} value={method}>{label}</option>)}</select></label>
-      {enhanced && <><Notice>增强截图使用模拟器提供的快速接口，仅支持相应的 Windows 模拟器。连接时若增强接口不可用，将明确报错，不会自动改用 ADB 截图。</Notice><div className="sp-capture-fields"><label className="sp-field">模拟器安装目录<input className="text-input" aria-label="模拟器安装目录" placeholder="填写模拟器安装根目录" value={draft.emulatorPath} disabled={busy} required pattern=".*\S.*" onChange={(event) => setDraft((previous) => ({ ...previous, emulatorPath: event.target.value }))} /><span className="sp-help">使用模拟器的安装根目录，不是 ADB 可执行文件路径。</span></label><label className="sp-field">模拟器实例索引<input className="text-input" type="number" aria-label="模拟器实例索引" min={0} step={1} required value={draft.instanceIndex} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, instanceIndex: Number(event.target.value) }))} /><span className="sp-help">与模拟器多开管理器中的实例编号一致，首个实例通常为 0。</span></label></div></>}
-      <p className="sp-help">保存后请先停止执行，再断开并重新连接设备。可在“实际截图方式”中核对本次连接确认的协议。</p>
-      <div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button secondary" type="button" disabled={busy || !dirty} onClick={resetDraft}>放弃修改</button><button className="button primary" type="submit" disabled={busy}>保存截图配置</button></div>
-    </form>
-  </Section>;
-}
-
 function BudgetForm({ settings, busy, onSave }: { settings: Settings; busy: boolean; onSave: (budgets: Settings['budgets']) => Promise<boolean> }) {
   const [draft, setDraft, resetDraft] = useSettingsDraft('budgets', settings.budgets);
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.budgets);

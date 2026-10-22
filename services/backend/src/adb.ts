@@ -4,6 +4,7 @@ import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import net from "node:net";
+import { deviceAddressIdentity } from '../../../packages/contracts/src/device-profiles';
 
 export const EMULATOR_PORTS = [5555, 5556, 5565, 5575, 5585, 5595, 5554,
   16384, 16416, 16448, 16480, 16512, 16544, 16576, 5557, 5559, 5561, 7555, 62001, 59865, 21503, 58526] as const;
@@ -23,15 +24,7 @@ export function isLocalEmulator(address: string): boolean {
   return Boolean(match && Number(match[1]) > 0 && Number(match[1]) <= 65535);
 }
 export function deviceLockAddress(address: string): string {
-  if (/^emulator-\d{1,5}$/.test(address)) return `127.0.0.1:${Number(address.slice(9)) + 1}`;
-  if (isLocalEmulator(address)) {
-    let port = Number(address.slice(address.lastIndexOf(":") + 1));
-    // MuMu's TCP endpoints alias its standard emulator serials. This identity
-    // must be independent of the selected capture method, including other apps.
-    if (port >= 16384 && (port - 16384) % 32 === 0) port = 5555 + (port - 16384) / 16;
-    return `127.0.0.1:${port}`;
-  }
-  return address;
+  return deviceAddressIdentity(address);
 }
 export function adbServerIdentity(env: Environment = process.env): string {
   const selected = env.ADB_SERVER_SOCKET || `tcp:${env.ANDROID_ADB_SERVER_ADDRESS || "localhost"}:${env.ANDROID_ADB_SERVER_PORT || "5037"}`;
@@ -94,6 +87,14 @@ export function adbPath(env: Environment = process.env): string {
   }
   for (const candidate of adbCandidates(env)) if (isFile(candidate)) return realpathSync(candidate);
   throw new Error("未找到 ADB；请安装 Android platform-tools，或配置 MAAVERGE_ADB_PATH / MAAVERGE_EMULATOR_DIRS");
+}
+/** UI paths are rooted explicitly; `adb` selects the normal PATH/SDK discovery. */
+export function configuredAdbPath(value: string, env: Environment = process.env): string {
+  const selected = value.trim();
+  if (selected === 'adb') return adbPath({ ...env, MAAVERGE_ADB_PATH: undefined });
+  const expanded = expandUser(selected);
+  if (!path.isAbsolute(expanded)) throw new Error('ADB 路径必须是可执行文件的绝对路径，或填写 adb 使用系统环境');
+  return adbPath({ ...env, MAAVERGE_ADB_PATH: expanded });
 }
 function run(executable: string, args: string[], timeout = 15_000): Promise<string> {
   return new Promise((resolve, reject) => execFile(executable, args, {

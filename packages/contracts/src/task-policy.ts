@@ -8,7 +8,9 @@ const integer = (value: unknown, label: string, min = 0, max = 2_147_483_647): n
   return value;
 };
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
-const booleanKeys = new Set(('enable start_game_enabled refresh set_time expedite skip_robot report_to_penguin report_to_yituliu DrGrandet replenish dorm_notstationed_enabled dorm_trust_enabled fiammetta_recovery_enabled use_pinus_sylvestris use_perception_information use_worldly_plight use_abyssal_hunter reception_message_board reception_clue_exchange reception_send_clue continue_training visit_friends shopping force_shopping_if_credit_full only_buy_discount reserve_max_credit credit_fight award mail recruit orundum mining specialaccess signinevent formation use_sanity_potion add_trust ignore_requirements clear_store').split(' '));
+const facilities = new Set(['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Recycle', 'Dorm', 'Processing', 'Training', 'AssistantChange']);
+const drones = new Set(['_NotUse', 'Money', 'SyntheticJade', 'CombatRecord', 'PureGold', 'OriginStone', 'Chip']);
+const booleanKeys = new Set(('enable start_game_enabled refresh set_time expedite skip_robot report_to_penguin report_to_yituliu DrGrandet replenish dorm_notstationed_enabled dorm_trust_enabled fiammetta_recovery_enabled use_pinus_sylvestris use_perception_information use_worldly_plight use_abyssal_hunter reception_message_board reception_clue_exchange reception_send_clue continue_training visit_friends visit_friends_once_a_day shopping force_shopping_if_credit_full only_buy_discount reserve_max_credit credit_fight award mail recruit orundum mining specialaccess signinevent formation use_sanity_potion add_trust ignore_requirements clear_store').split(' '));
 const stringLists = new Set('first_tags preserve_tags buy_first blacklist fiammetta_targets themes task_names tools_to_craft'.split(' '));
 function jsonTree(value: unknown, depth = 0) {
   if (depth > 32) reject('任务参数嵌套过深');
@@ -20,7 +22,7 @@ function jsonTree(value: unknown, depth = 0) {
   else if (typeof value === 'number' && !Number.isFinite(value)) reject('任务参数不得包含非有限数值');
 }
 
-/** Mirrors the native policy for browser development; Python remains authoritative. */
+/** Validates editable plans before they reach the application service. */
 export function validatePlan(plan: Plan, settings: Settings) {
   if (!plan || !plan.name?.trim() || plan.name.length > 80 || !Array.isArray(plan.tasks) || !plan.tasks.length || plan.tasks.length > 30) reject('任务表需要名称和 1–30 个任务');
   if (plan.schedule) reject('定时调度尚未实现，请使用手动执行');
@@ -49,6 +51,10 @@ export function validatePlan(plan: Plan, settings: Settings) {
     if ('client_type' in p && !(typeof p.client_type === 'string' && ['', 'Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'].includes(p.client_type))) reject('客户端必须是官方支持的渠道');
     if (typeof task.enabled !== 'boolean') reject('任务启用状态必须是布尔值');
     if (!taskEnabled(task)) continue;
+    if (task.type === 'UserDataUpdate') {
+      for (const key of ['operators', 'depot']) if (key in p && typeof p[key] !== 'boolean') reject(`${key} 必须是布尔值`);
+      if (!['always', 'daily', 'weekly'].includes(String('interval' in p ? p.interval : 'always'))) reject('数据同步触发间隔无效');
+    }
     if ('mode' in p && ['Infrast', 'Roguelike', 'Reclamation'].includes(task.type)) integer(p.mode, '运行模式');
     if ('theme' in p && typeof p.theme !== 'string') reject('主题必须是文本');
     totals.originium += integer(p.stone ?? 0, '源石额度');
@@ -71,11 +77,21 @@ export function validatePlan(plan: Plan, settings: Settings) {
         if (!Array.isArray(p[key])) reject('招募星级必须是数组');
         (p[key] as unknown[]).forEach((value) => integer(value, '招募星级', 1, 6));
       }
+      if ('extra_tags_mode' in p) integer(p.extra_tags_mode, '额外标签模式', 0, 2);
+      if ('recruitment_time' in p) {
+        if (!object(p.recruitment_time)) reject('招募时限必须是对象');
+        for (const [level, minutes] of Object.entries(p.recruitment_time as Record<string, unknown>)) {
+          if (!['3', '4', '5', '6'].includes(level)) reject('招募时限星级必须在 3 到 6 之间');
+          integer(minutes, '招募时限（分钟）', 60, 540);
+        }
+      }
     }
     if (task.type === 'Infrast') {
       if (![0, 10000, 20000].includes(Number(p.mode ?? 0))) reject('基建模式无效');
       if (p.mode === 10000) { if (typeof p.filename !== 'string' || !p.filename.trim()) reject('请选择自定义排班文件'); integer(p.plan_index, '排班方案序号'); }
       if (typeof (p.threshold ?? 0.3) !== 'number' || Number(p.threshold ?? 0.3) < 0 || Number(p.threshold ?? 0.3) > 1) reject('心情阈值必须在 0 到 1 之间');
+      if ('facility' in p && !(Array.isArray(p.facility) && p.facility.every(value => typeof value === 'string' && facilities.has(value)))) reject('基建设施无效');
+      if ('drones' in p && !(typeof p.drones === 'string' && drones.has(p.drones))) reject('无人机用途无效');
     }
     if (task.type === 'SwitchTheme' && !Array.isArray(p.themes)) reject('请选择候选游戏主题');
     if (task.type === 'Roguelike') {

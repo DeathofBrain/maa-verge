@@ -1,0 +1,67 @@
+import { expect, test, type HarnessWindow } from './fixtures/desktop';
+
+test('multi-instance profiles keep independent capture and connection fields across edits and reloads', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  const editor = page.getByRole('form', { name: '多开实例配置', exact: true });
+  for (const [name, address, index, touch] of [
+    ['日常实例', '127.0.0.1:16384', '0', 'minitouch'],
+    ['小号实例', '127.0.0.1:16416', '1', 'maatouch'],
+  ]) {
+    await page.getByRole('button', { name: '添加多开实例', exact: true }).click();
+    await editor.getByLabel('实例名称', { exact: true }).fill(name);
+    await editor.getByLabel('连接地址', { exact: true }).fill(address);
+    await editor.getByLabel('ADB 路径', { exact: true }).fill(`C:\\synthetic\\${index}\\adb.exe`);
+    await editor.getByLabel('连接配置', { exact: true }).selectOption('MuMuEmulator12');
+    await editor.getByLabel('触控模式', { exact: true }).selectOption(touch);
+    await editor.getByLabel('截图协议', { exact: true }).selectOption('mumu');
+    await editor.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\MuMu');
+    await editor.getByLabel('模拟器实例索引', { exact: true }).fill(index);
+    await editor.getByRole('button', { name: '保存实例配置', exact: true }).click();
+    await expect(editor).toHaveCount(0);
+  }
+  const first = page.getByRole('article', { name: '多开实例：日常实例', exact: true });
+  const second = page.getByRole('article', { name: '多开实例：小号实例', exact: true });
+  await expect(first).toContainText('实例 0');
+  await expect(second).toContainText('实例 1');
+  await second.getByRole('button', { name: '编辑实例', exact: true }).click();
+  await expect(editor.getByLabel('触控模式', { exact: true })).toHaveValue('maatouch');
+  await editor.getByLabel('模拟器实例索引', { exact: true }).fill('2');
+  await editor.getByRole('button', { name: '保存实例配置', exact: true }).click();
+  await page.reload();
+  await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await expect(first).toContainText('实例 0');
+  await expect(second).toContainText('实例 2');
+  await first.getByRole('button', { name: '编辑实例', exact: true }).click();
+  await expect(editor.getByLabel('ADB 路径', { exact: true })).toHaveValue('C:\\synthetic\\0\\adb.exe');
+  await expect(editor.getByLabel('触控模式', { exact: true })).toHaveValue('minitouch');
+  await editor.getByRole('button', { name: '取消编辑', exact: true }).click();
+  const snapshot = await page.evaluate(() => (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as { settings: { capture: { method: string }; deviceProfiles: unknown[] } };
+  expect(snapshot.settings.capture.method).toBe('adb');
+  expect(snapshot.settings.deviceProfiles).toHaveLength(2);
+});
+
+test('duplicate device aliases are rejected and a connected instance must disconnect before deletion', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  const editor = page.getByRole('form', { name: '多开实例配置', exact: true });
+  await page.getByRole('button', { name: '添加多开实例', exact: true }).click();
+  await editor.getByLabel('实例名称', { exact: true }).fill('第二实例');
+  await editor.getByLabel('连接地址', { exact: true }).fill('127.0.0.1:5557');
+  await editor.getByRole('button', { name: '保存实例配置', exact: true }).click();
+  const card = page.getByRole('article', { name: '多开实例：第二实例', exact: true });
+  await expect(card).toContainText('未连接');
+  await page.getByRole('button', { name: '添加多开实例', exact: true }).click();
+  await editor.getByLabel('连接地址', { exact: true }).fill('emulator-5556');
+  await editor.getByRole('button', { name: '保存实例配置', exact: true }).click();
+  await expect(editor.getByRole('alert')).toContainText('同一设备只能配置一个控制实例');
+  await editor.getByRole('button', { name: '取消编辑', exact: true }).click();
+  await expect(page.getByRole('article', { name: /^多开实例：/ })).toHaveCount(1);
+  await card.getByRole('button', { name: '连接实例', exact: true }).click();
+  await expect(card).toContainText('已连接');
+  await expect(card.getByRole('button', { name: '删除实例', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '断开设备', exact: true }).click();
+  await expect(card.getByRole('button', { name: '删除实例', exact: true })).toBeEnabled();
+  await card.getByRole('button', { name: '删除实例', exact: true }).click();
+  await expect(card).toHaveCount(0);
+});

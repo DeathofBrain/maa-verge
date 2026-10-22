@@ -1,5 +1,10 @@
 /* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */
 
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ClientType".
+ */
+export type ClientType = 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
 export type Id = string;
 export type Name = string;
 export type Description = string;
@@ -32,7 +37,8 @@ export type Type =
   | 'Custom'
   | 'SingleStep'
   | 'VideoRecognition'
-  | 'OperProgress';
+  | 'OperProgress'
+  | 'UserDataUpdate';
 export type Enabled = boolean;
 export type Schedule = string | null;
 export type Enabled1 = boolean;
@@ -79,6 +85,12 @@ export type Events = Event[];
 export interface RpcContract {
   params: {
     'app.snapshot': EmptyParams;
+    'home.info': {
+      deviceId?: string;
+      clientType?: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+      refresh?: boolean;
+    };
+    'stages.list': StageListParams;
     'plan.save': {
       plan: Plan;
     };
@@ -112,6 +124,8 @@ export interface RpcContract {
   };
   results: {
     'app.snapshot': Snapshot;
+    'home.info': HomeInfo;
+    'stages.list': StageListResult;
     'plan.save': Plan;
     'plan.delete': {
       deleted: boolean;
@@ -150,6 +164,14 @@ export interface RpcContract {
  * via the `definition` "EmptyParams".
  */
 export interface EmptyParams {}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "StageListParams".
+ */
+export interface StageListParams {
+  clientType?: ClientType;
+  refresh?: boolean;
+}
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
  * via the `definition` "Plan".
@@ -223,7 +245,16 @@ export interface ChannelParams {
  * via the `definition` "Settings".
  */
 export interface Settings {
+  /**
+   * @maxItems 100
+   */
+  infrastructureEstimates?: InfrastructureEstimateProfile[];
   capture?: CaptureSettings;
+  connection?: ConnectionSettings;
+  /**
+   * @maxItems 32
+   */
+  deviceProfiles?: DeviceConnectionProfile[];
   autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
@@ -234,12 +265,306 @@ export interface Settings {
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "InfrastructureEstimateProfile".
+ */
+export interface InfrastructureEstimateProfile {
+  deviceId: string;
+  /**
+   * @maxItems 20
+   */
+  lines:
+    | []
+    | [InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ];
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "InfrastructureLine".
+ */
+export interface InfrastructureLine {
+  id: string;
+  name: string;
+  unit: string;
+  hourlyRate: number;
+  capacity: number;
+  lastCollectedAt: string;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
  * via the `definition` "CaptureSettings".
  */
 export interface CaptureSettings {
   method: 'adb' | 'mumu' | 'ldplayer';
   emulatorPath: string;
   instanceIndex: number;
+  mumuTouch?: boolean;
+  mumuBridge?: boolean;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "ConnectionSettings".
+ */
+export interface ConnectionSettings {
+  adbPath: string;
+  address: string;
+  config:
+    | 'General'
+    | 'BlueStacks'
+    | 'MuMuEmulator12'
+    | 'MuMuArm'
+    | 'LDPlayer'
+    | 'Nox'
+    | 'XYAZ'
+    | 'Compatible'
+    | 'SecondResolution'
+    | 'CompatMac'
+    | 'CompatPOSIXShell'
+    | 'Waydroid'
+    | 'AVD'
+    | 'Androws'
+    | 'WSA';
+  touchMode: 'minitouch' | 'maatouch' | 'adb' | 'MaaFwAdb';
+  adbLite: boolean;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "DeviceConnectionProfile".
+ */
+export interface DeviceConnectionProfile {
+  id: string;
+  name: string;
+  address: string;
+  connection: ConnectionSettings;
+  capture: CaptureSettings;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -264,13 +589,24 @@ export interface Snapshot {
  * via the `definition` "Device".
  */
 export interface Device {
+  connectionProfileId?: string;
+  connectionError?: string;
   id: Id1;
   name: Name1;
   address: Address;
   state: State;
   coreVersion: Coreversion;
   captureMethod?: string;
+  dataSync?: UserDataSync;
   resourceVersion: Resourceversion;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "UserDataSync".
+ */
+export interface UserDataSync {
+  operatorsAt: string | null;
+  depotAt: string | null;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -311,6 +647,104 @@ export interface Event {
 }
 export interface Data {
   [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "HomeInfo".
+ */
+export interface HomeInfo {
+  generatedAt: string;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  gameDate: string;
+  weekday: number;
+  nextDailyResetAt: string;
+  nextWeeklyResetAt: string;
+  activityCatalog: StageListResult;
+  annihilation: {
+    kind: 'weekly-reset' | 'weekly-last-day' | 'weekly';
+    message: string;
+  };
+  infrastructure: {
+    deviceId: string | null;
+    message: string;
+    lines: InfrastructureEstimate[];
+  };
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "StageListResult".
+ */
+export interface StageListResult {
+  clientType: ClientType;
+  resourceVersion: string | null;
+  source: 'installed' | 'builtin';
+  generatedAt: string;
+  /**
+   * @maxItems 2000
+   */
+  stages: StageOption[];
+  /**
+   * @maxItems 100
+   */
+  activities: StageActivity[];
+  calendar: CalendarStatus;
+  message: string;
+  diagnostics: string[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "StageOption".
+ */
+export interface StageOption {
+  value: string;
+  label: string;
+  category: 'default' | 'activity' | 'permanent';
+  available: boolean;
+  tip?: string;
+  activityId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "StageActivity".
+ */
+export interface StageActivity {
+  id: string;
+  name: string;
+  startAt: string | null;
+  endAt: string | null;
+  clientType: ClientType;
+  status: 'active' | 'upcoming' | 'unknown';
+  source: 'official-calendar' | 'activity-metadata' | 'resource-version';
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CalendarStatus".
+ */
+export interface CalendarStatus {
+  source: 'official-cache' | 'installed' | 'unavailable';
+  url: string | null;
+  fetchedAt: string | null;
+  checkedAt: string | null;
+  nextRefreshAt: string | null;
+  stale: boolean;
+  refreshing: boolean;
+  error: string | null;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "InfrastructureEstimate".
+ */
+export interface InfrastructureEstimate {
+  id: string;
+  name: string;
+  unit: string;
+  estimatedQuantity: number | null;
+  capacity: number;
+  hourlyRate: number;
+  lastCollectedAt: string;
+  full: boolean;
+  fullAt: string | null;
+  error: string | null;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

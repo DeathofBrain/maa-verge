@@ -40,7 +40,8 @@ export type Type =
   | 'Custom'
   | 'SingleStep'
   | 'VideoRecognition'
-  | 'OperProgress';
+  | 'OperProgress'
+  | 'UserDataUpdate';
 export type Enabled = boolean;
 export type Schedule = string | null;
 export type Enabled1 = boolean;
@@ -86,13 +87,20 @@ export interface Snapshot {
   events: Events;
 }
 export interface Device {
+  connectionProfileId?: string;
+  connectionError?: string;
   id: Id;
   name: Name;
   address: Address;
   state: State;
   coreVersion: Coreversion;
   captureMethod?: string;
+  dataSync?: UserDataSync;
   resourceVersion: Resourceversion;
+}
+export interface UserDataSync {
+  operatorsAt: string | null;
+  depotAt: string | null;
 }
 export interface Plan {
   id: Id1;
@@ -137,7 +145,16 @@ export interface UpdateChannel {
   message: Message1;
 }
 export interface Settings {
+  /**
+   * @maxItems 100
+   */
+  infrastructureEstimates?: InfrastructureEstimateProfile[];
   capture?: CaptureSettings;
+  connection?: ConnectionSettings;
+  /**
+   * @maxItems 32
+   */
+  deviceProfiles?: DeviceConnectionProfile[];
   autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
@@ -146,10 +163,288 @@ export interface Settings {
   budgets: Budgets;
   model: ModelSettings;
 }
+export interface InfrastructureEstimateProfile {
+  deviceId: string;
+  /**
+   * @maxItems 20
+   */
+  lines:
+    | []
+    | [InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ]
+    | [
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine,
+        InfrastructureLine
+      ];
+}
+export interface InfrastructureLine {
+  id: string;
+  name: string;
+  unit: string;
+  hourlyRate: number;
+  capacity: number;
+  lastCollectedAt: string;
+}
 export interface CaptureSettings {
   method: 'adb' | 'mumu' | 'ldplayer';
   emulatorPath: string;
   instanceIndex: number;
+  mumuTouch?: boolean;
+  mumuBridge?: boolean;
+}
+export interface ConnectionSettings {
+  adbPath: string;
+  address: string;
+  config:
+    | 'General'
+    | 'BlueStacks'
+    | 'MuMuEmulator12'
+    | 'MuMuArm'
+    | 'LDPlayer'
+    | 'Nox'
+    | 'XYAZ'
+    | 'Compatible'
+    | 'SecondResolution'
+    | 'CompatMac'
+    | 'CompatPOSIXShell'
+    | 'Waydroid'
+    | 'AVD'
+    | 'Androws'
+    | 'WSA';
+  touchMode: 'minitouch' | 'maatouch' | 'adb' | 'MaaFwAdb';
+  adbLite: boolean;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+}
+export interface DeviceConnectionProfile {
+  id: string;
+  name: string;
+  address: string;
+  connection: ConnectionSettings;
+  capture: CaptureSettings;
 }
 export interface ModelSettings {
   provider: Provider;

@@ -6,6 +6,7 @@ import {
   validateWorkerCommand, validateWorkerConfiguration, validateWorkerLeaseConfiguration,
   validateWorkerValidationConfiguration, validateWorkerEvent, validateWorkerValidation,
   validateDeviceFrameParams, validateDeviceClickParams, validateScreenFrame, validateWorkerFrame,
+  validateStageListParams, validateStageListResult,
 } from '../src/validators.js';
 
 const settings = () => ({
@@ -17,6 +18,23 @@ const plan = () => ({
   tasks: [{ type: 'Award', params: { future_option: { nested: [1, '保留'] } }, enabled: true }], schedule: null, enabled: true,
 });
 
+test('stage catalogs expose bounded local metadata and reject caller filesystem paths', () => {
+  assert.equal(validateStageListParams({}), true);
+  assert.equal(validateStageListParams({ clientType: 'Bilibili' }), true);
+  assert.equal(validateStageListParams({ refresh: true }), true);
+  assert.equal(validateStageListParams({ refresh: 'true' }), false);
+  assert.equal(validateStageListParams({ clientType: 'unknown' }), false);
+  assert.equal(validateStageListParams({ resourcePath: '/arbitrary' }), false);
+  const result = { clientType: 'Official', resourceVersion: null, source: 'builtin', generatedAt: '2026-10-23T00:00:00Z', stages: [{ value: '', label: '当前 / 上次关卡', category: 'default', available: true }], activities: [], calendar: { source: 'unavailable', url: null, fetchedAt: null, checkedAt: null, nextRefreshAt: null, stale: true, refreshing: false, error: null }, message: '常驻关卡', diagnostics: [] };
+  assert.equal(validateStageListResult(result), true);
+  const activity = { id: 'sample', name: '活动', startAt: null, endAt: null, clientType: 'Official', status: 'unknown', source: 'resource-version' };
+  assert.equal(validateStageListResult({ ...result, activities: [activity] }), true);
+  assert.equal(validateStageListResult({ ...result, activities: [{ ...activity, source: 'official-calendar', status: 'active' }] }), true);
+  assert.equal(validateStageListResult({ ...result, calendar: undefined }), false);
+  assert.equal(validateStageListResult({ ...result, activities: [{ ...activity, status: 'expired' }] }), false);
+  assert.equal(validateStageListResult({ ...result, stages: [{ ...result.stages[0], available: 'true' }] }), false);
+});
+
 test('standalone validators preserve normalized data and arbitrary task parameters', () => {
   const value = plan(), original = structuredClone(value);
   assert.equal(validatePlan(value), true);
@@ -25,6 +43,10 @@ test('standalone validators preserve normalized data and arbitrary task paramete
   const snapshot = { mode: 'native', devices: [], plans: [value], runs: [], updates: [], settings: settings(), events: [] };
   assert.equal(validateSnapshot(snapshot), true);
   assert.equal(validateSnapshot({ ...snapshot, mode: 'mock' }), false);
+  const device = { id: 'device', name: '设备', address: '127.0.0.1:5555', state: 'idle', coreVersion: null, resourceVersion: null };
+  assert.equal(validateSnapshot({ ...snapshot, devices: [{ ...device, dataSync: { operatorsAt: '2026-10-23T00:00:00.000Z', depotAt: null } }] }), true);
+  assert.equal(validateSnapshot({ ...snapshot, devices: [{ ...device, dataSync: { operatorsAt: true, depotAt: null } }] }), false);
+  assert.equal(validateSnapshot({ ...snapshot, devices: [{ ...device, dataSync: { operatorsAt: null } }] }), false);
 });
 
 test('missing defaults, invalid metadata and unknown model keys are rejected without coercion', () => {

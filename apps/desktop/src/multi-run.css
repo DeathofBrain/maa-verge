@@ -1,0 +1,23 @@
+.multi-run-panel { padding: 24px; }
+.multi-run-heading { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; }
+.multi-run-heading h2 { margin: 0 0 8px; font-size: 17px; }
+.multi-run-heading p,.multi-run-note { font-size: 12px; color: var(--muted); line-height: 1.8; margin: 0; }
+.multi-run-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: 16px; }
+.multi-run-card { padding: 18px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.multi-run-card header { display: flex; align-items: center; gap: 10px; }
+.multi-run-card header>div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.multi-run-card h3 { font-size: 14px; margin: 0 0 4px; }
+.multi-run-card small,.multi-run-card p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.7; overflow-wrap: anywhere; }
+.multi-run-card>strong { font-size: 13px; }
+.multi-run-card progress { width: 100%; accent-color: var(--accent); height: 7px; }
+.multi-run-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.multi-run-actions .button { flex: 1; justify-content: center; }
+.multi-run-note { margin-top: 18px; }
+.dock-instance-count { white-space: nowrap; color: var(--accent); }
+.execution-drawer.has-instances { height: min(650px,calc(100dvh - 140px)); }
+@media(max-width:580px) {
+  .multi-run-panel { padding: 16px; }
+  .execution-drawer-heading { flex-wrap: wrap; padding-inline: 12px; gap: 4px; }
+  .drawer-tabs { gap: 16px; min-height: 42px; flex: 1; white-space: nowrap; }
+  .drawer-actions select { max-width: 130px; }
+}

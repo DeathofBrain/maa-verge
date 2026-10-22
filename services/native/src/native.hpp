@@ -83,6 +83,7 @@ struct Api final {
   void* (*create_ex)(Callback, void*) = nullptr;
   void (*destroy)(void*) = nullptr;
   void (*set_connection_extras)(const char*, const char*) = nullptr;
+  bool (*set_instance_option)(void*, int, const char*) = nullptr;
   int (*connect)(void*, const char*, const char*, const char*, bool) = nullptr;
   int (*screencap)(void*, bool) = nullptr;
   std::uint64_t (*get_image)(void*, void*, std::uint64_t) = nullptr;
