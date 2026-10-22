@@ -435,9 +435,82 @@
       "title": "Run",
       "type": "object"
     },
+    "InfrastructureLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "unit",
+        "hourlyRate",
+        "capacity",
+        "lastCollectedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "hourlyRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "capacity": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000
+        },
+        "lastCollectedAt": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 40
+        }
+      }
+    },
+    "InfrastructureEstimateProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId",
+        "lines"
+      ],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "lines": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/InfrastructureLine"
+          }
+        }
+      }
+    },
     "Settings": {
       "additionalProperties": false,
       "properties": {
+        "infrastructureEstimates": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/InfrastructureEstimateProfile"
+          }
+        },
         "capture": {
           "$ref": "#/$defs/CaptureSettings"
         },

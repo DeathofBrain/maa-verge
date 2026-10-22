@@ -1,6 +1,7 @@
 import { Activity, ArrowRight, BookOpen, Bot, CalendarDays, Check, CircleCheck, Clock3, History, LoaderCircle, Monitor, Settings2, ShieldCheck, Square, Terminal } from 'lucide-react';
 import { type Run, type Snapshot, type UpdateChannel } from '@maaverge/contracts';
 import './home-dashboard.css';
+import GameInfoPanel from './GameInfoPanel';
 
 type Destination = 'devices' | 'settings' | 'history' | 'copilot' | 'agent';
 type Props = {
@@ -42,6 +43,7 @@ export default function HomeDashboard({ snapshot, selectedDevice, stopping, onSt
         <strong className="numeric">{value}</strong><small>{detail}</small>
       </div>)}</div>
 
+      <GameInfoPanel device={device} settings={snapshot.settings} />
       <div className="home-columns">
         <div className="home-primary">
           <section className={`home-panel home-current ${currentRun ? 'has-run' : ''}`} aria-label="当前执行">

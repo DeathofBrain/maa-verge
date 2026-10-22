@@ -3,6 +3,8 @@ import type { Device, Event, Plan, Run, Settings, Snapshot, UpdateChannel } from
 import { taskEnabled, validatePlan } from '../../../packages/contracts/src/task-policy';
 import { mockPreviewImage } from '../../fixtures/preview-image';
 import { validateDeviceClickParams, validateDeviceFrameParams } from '../../../packages/contracts/src/validators.js';
+import { homeInfo } from '../../../services/backend/src/home-info';
+import { stagePresets } from '../../../packages/contracts/src/stages';
 
 const workspace = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID || 'browser';
 const key = 'maaverge:test-runtime:v1:' + workspace;
@@ -147,6 +149,8 @@ function mockAddress(value: unknown): string {
 export async function fixtureRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
     case 'app.snapshot': return clone(state);
+    case 'home.info': return homeInfo(state.settings, params.deviceId as string | undefined, params.clientType as string | undefined);
+    case 'stages.list': return { clientType: params.clientType || 'Official', resourceVersion: 'synthetic-fixture', source: 'builtin', generatedAt: now(), activities: [], diagnostics: [], message: '合成常驻关卡，不读取真实游戏资源', stages: stagePresets.map(stage => ({ value: stage.value, label: stage.label, category: stage.value ? 'permanent' : 'default', available: true })) };
     case 'device.frame': {
       if (!validateDeviceFrameParams(params)) throw new Error('画面请求参数无效');
       const device = state.devices.find(item => item.id === params.deviceId);

@@ -7,9 +7,10 @@
   "properties": {
     "params": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "stages.list", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "home.info", "stages.list", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "#/$defs/EmptyParams" },
+        "home.info": { "type": "object", "additionalProperties": false, "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] } } },
         "stages.list": { "$ref": "#/$defs/StageListParams" },
         "plan.save": { "type": "object", "additionalProperties": false, "required": ["plan"], "properties": { "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" } } },
         "plan.delete": { "$ref": "#/$defs/IdParams" },
@@ -37,9 +38,10 @@
     },
     "results": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "stages.list", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "home.info", "stages.list", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "./runtime.schema.json" },
+        "home.info": { "$ref": "#/$defs/HomeInfo" },
         "stages.list": { "$ref": "#/$defs/StageListResult" },
         "plan.save": { "$ref": "./runtime.schema.json#/$defs/Plan" },
         "plan.delete": { "type": "object", "additionalProperties": false, "required": ["deleted"], "properties": { "deleted": { "type": "boolean" } } },
@@ -71,6 +73,41 @@
     }
   },
   "$defs": {
+    "HomeInfo": {
+      "type": "object", "additionalProperties": false,
+      "required": ["generatedAt", "clientType", "gameDate", "weekday", "nextDailyResetAt", "nextWeeklyResetAt", "annihilation", "infrastructure"],
+      "properties": {
+        "generatedAt": { "type": "string" },
+        "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
+        "gameDate": { "type": "string" },
+        "weekday": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "nextDailyResetAt": { "type": "string" },
+        "nextWeeklyResetAt": { "type": "string" },
+        "annihilation": {
+          "type": "object", "additionalProperties": false, "required": ["kind", "message"],
+          "properties": { "kind": { "enum": ["weekly-reset", "weekly-last-day", "weekly"] }, "message": { "type": "string" } }
+        },
+        "infrastructure": {
+          "type": "object", "additionalProperties": false, "required": ["deviceId", "message", "lines"],
+          "properties": {
+            "deviceId": { "type": ["string", "null"] }, "message": { "type": "string" },
+            "lines": { "type": "array", "items": { "$ref": "#/$defs/InfrastructureEstimate" } }
+          }
+        }
+      }
+    },
+    "InfrastructureEstimate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "unit", "estimatedQuantity", "capacity", "hourlyRate", "lastCollectedAt", "full", "fullAt", "error"],
+      "properties": {
+        "id": { "type": "string" }, "name": { "type": "string" }, "unit": { "type": "string" },
+        "estimatedQuantity": { "type": ["number", "null"], "minimum": 0 },
+        "capacity": { "type": "number", "exclusiveMinimum": 0 },
+        "hourlyRate": { "type": "number", "minimum": 0 },
+        "lastCollectedAt": { "type": "string" }, "full": { "type": "boolean" },
+        "fullAt": { "type": ["string", "null"] }, "error": { "type": ["string", "null"] }
+      }
+    },
     "ClientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
     "StageListParams": {
       "type": "object", "additionalProperties": false,
