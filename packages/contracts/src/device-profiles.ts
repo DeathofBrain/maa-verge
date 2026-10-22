@@ -23,19 +23,16 @@ function mumuSdkIdentity(profile: DeviceConnectionProfile): string {
 }
 
 export function deviceProfileIdentity(profile: DeviceConnectionProfile): string {
-  return profile.capture.method === 'mumu'
-    ? mumuDefaultAdbAddress(profile.capture.instanceIndex) ?? mumuSdkIdentity(profile)
+  return profile.capture.method === 'mumu' && profile.capture.mumuBridge
+    ? mumuSdkIdentity(profile)
     : deviceAddressIdentity(profile.address);
 }
 
 function profileAddressIdentities(profile: DeviceConnectionProfile): Set<string> {
-  const identities = new Set([deviceAddressIdentity(profile.address), deviceProfileIdentity(profile)]);
-  // Only an explicitly selected MuMu SDK index supplies a relationship between
-  // its default TCP endpoint and legacy emulator serial. A port alone cannot.
-  if (profile.capture.method === 'mumu' && mumuDefaultAdbAddress(profile.capture.instanceIndex)) {
-    const serialPort = 5554 + profile.capture.instanceIndex * 2;
-    if (serialPort < 65535) identities.add(deviceAddressIdentity(`emulator-${serialPort}`));
-  }
+  const identities = new Set([deviceAddressIdentity(profile.address)]);
+  // A directory and SDK index identify a configured local capture instance.
+  // Its actual ADB endpoints are established only from running-instance metadata.
+  if (profile.capture.method === 'mumu') identities.add(mumuSdkIdentity(profile));
   return identities;
 }
 
@@ -43,7 +40,7 @@ export function matchingDeviceProfile(settings: Pick<Settings, 'deviceProfiles'>
   const exact = settings.deviceProfiles?.find(profile => profile.address === address);
   if (exact) return exact;
   const identity = deviceAddressIdentity(address);
-  return settings.deviceProfiles?.find(profile => profileAddressIdentities(profile).has(identity));
+  return settings.deviceProfiles?.find(profile => deviceAddressIdentity(profile.address) === identity);
 }
 
 export function deviceProfileListError(profiles: DeviceConnectionProfile[]): string | undefined {
