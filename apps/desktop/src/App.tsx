@@ -87,6 +87,7 @@ export default function App() {
   }, []);
   const action = useCallback(async (key: string, call: () => Promise<unknown>, success?: string) => {
     if (pendingRef.current.has(key)) return false;
+    setToast(null);
     pendingRef.current.add(key); setPending(new Set(pendingRef.current));
     try { await call(); await refresh(); if (success) setToast({ text: success }); return true; }
     catch (cause) { setToast({ text: cause instanceof Error ? cause.message : String(cause), error: true }); return false; }
