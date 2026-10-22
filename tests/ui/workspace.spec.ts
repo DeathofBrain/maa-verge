@@ -307,7 +307,7 @@ test('advanced JSON preserves invalid drafts and updates list fields and switche
 test('routine fight settings preserve targets, multiplier and unlimited count after reload', async ({ page }) => {
   await openWorkspace(page);
   await openSavedPlan(page, '固源岩补给');
-  await wb(page).getByLabel('关卡预设', { exact: true }).selectOption('CE-6');
+  await wb(page).getByLabel('作战关卡', { exact: true }).selectOption('CE-6');
   await expect(wb(page).getByLabel('作战关卡', { exact: true })).toHaveValue('CE-6');
   await wb(page).getByRole('checkbox', { name: '指定次数', exact: true }).uncheck();
   await wb(page).getByLabel('代理倍率', { exact: true }).selectOption('0');

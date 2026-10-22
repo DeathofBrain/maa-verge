@@ -2,6 +2,7 @@
 import type { Device, Event, Plan, Run, Settings, Snapshot, UpdateChannel } from '../../../packages/contracts/src/types';
 import { taskEnabled, validatePlan } from '../../../packages/contracts/src/task-policy';
 import { mockPreviewImage } from '../../fixtures/preview-image';
+import { stagePresets } from '../../../packages/contracts/src/stages';
 import { validateDeviceClickParams, validateDeviceFrameParams } from '../../../packages/contracts/src/validators.js';
 
 const workspace = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID || 'browser';
@@ -147,6 +148,15 @@ function mockAddress(value: unknown): string {
 export async function fixtureRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
     case 'app.snapshot': return clone(state);
+    case 'stages.list': {
+      const clientType = String(params.clientType || 'Official');
+      const jp = clientType === 'YoStarJP';
+      const activity = { id: 'synthetic-activity', name: jp ? '日服合成活动' : '合成限时活动', clientType, startAt: new Date(Date.now() - 3_600_000).toISOString(), endAt: new Date(Date.now() + 86_400_000).toISOString(), status: 'active', source: 'activity-metadata' };
+      return { clientType, resourceVersion: 'synthetic-resource', generatedAt: now(), source: 'installed', activities: [activity], message: '已读取合成资源活动日历', diagnostics: [], stages: [
+        ...stagePresets.map((stage) => ({ value: stage.value, label: stage.label, category: stage.value ? 'permanent' : 'default', available: true })),
+        { value: jp ? 'JP-1' : 'TEST-1', label: jp ? 'JP-1 · 日服活动关卡' : 'TEST-1 · 活动关卡', category: 'activity', available: true, activityId: activity.id },
+      ] };
+    }
     case 'device.frame': {
       if (!validateDeviceFrameParams(params)) throw new Error('画面请求参数无效');
       const device = state.devices.find(item => item.id === params.deviceId);

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import type { RpcParams } from '@maaverge/contracts';
+import StageSelector from './StageSelector';
 
 export type Field = {
   key: string; label: string;
@@ -12,13 +14,6 @@ const facilities = [
   ['Reception', '会客室'], ['Recycle', '回收站'], ['Dorm', '宿舍'], ['Processing', '加工站'], ['Training', '训练室'], ['AssistantChange', '副手换人'],
 ] as const;
 const defaultFacilities = ['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Dorm'];
-const stages = [
-  ['', '当前 / 上次关卡'], ['Annihilation', '当期剿灭'], ['1-7', '1-7'], ['R8-11', 'R8-11'], ['12-17-HARD', '12-17（磨难）'],
-  ['CE-6', '龙门币 · CE-6 / 5'], ['CE-5', '龙门币 · CE-5'], ['AP-5', '红票 · AP-5'], ['CA-5', '技能书 · CA-5'],
-  ['LS-6', '经验 · LS-6 / 5'], ['LS-5', '经验 · LS-5'], ['SK-5', '碳 · SK-5'],
-  ['PR-A-1', '医疗 / 重装芯片'], ['PR-A-2', '医疗 / 重装芯片组'], ['PR-B-1', '术师 / 狙击芯片'], ['PR-B-2', '术师 / 狙击芯片组'],
-  ['PR-C-1', '先锋 / 辅助芯片'], ['PR-C-2', '先锋 / 辅助芯片组'], ['PR-D-1', '近卫 / 特种芯片'], ['PR-D-2', '近卫 / 特种芯片组'],
-];
 const isObject = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const unlimited = 2_147_483_647;
 const materials: [string, string][] = [
@@ -28,8 +23,8 @@ const materials: [string, string][] = [
   ['31043', '半自然溶剂'], ['31053', '化合切削液'], ['31063', '转质盐组'],
 ];
 
-export default function TaskParameterField({ field, params, onChange }: {
-  field: Field; params: Record<string, unknown>; onChange: (patch: Record<string, unknown>) => void;
+export default function TaskParameterField({ field, params, onChange, clientType }: {
+  field: Field; params: Record<string, unknown>; clientType?: RpcParams<'stages.list'>['clientType']; onChange: (patch: Record<string, unknown>) => void;
 }) {
   const value = params[field.key];
   const [accountEnabled, setAccountEnabled] = useState(typeof value === 'string' && value.length > 0);
@@ -65,7 +60,8 @@ export default function TaskParameterField({ field, params, onChange }: {
   }
   if (field.kind === 'account') return <div className="param-field wide"><label className="param-check"><input type="checkbox" checked={accountEnabled || textValue.length > 0} onChange={(event) => { setAccountEnabled(event.target.checked); if (!event.target.checked) set(''); }} />账号切换</label>{(accountEnabled || textValue.length > 0) && <><label className="field-label" htmlFor={id}>{field.label}</label><input id={id} className="text-input" value={textValue} placeholder="已登录账号显示名的唯一片段" onChange={(event) => { setAccountEnabled(true); set(event.target.value); }} /></>}{hint}</div>;
   if (field.kind === 'check') return <div className="param-field"><label className="param-check" htmlFor={id}><input id={id} type="checkbox" aria-label={field.label} disabled={field.disabled} ref={(input) => { if (input) input.indeterminate = value === undefined && !field.disabled; }} checked={value === true} onChange={(event) => set(event.target.checked)} />{field.label}{value === undefined && !field.disabled && <small>核心默认</small>}</label>{hint}</div>;
-  return <div className={`param-field ${field.kind === 'list' || field.hint || field.kind === 'stage' ? 'wide' : ''}`}><label className="field-label" htmlFor={id}>{field.label}</label>{field.kind === 'stage' ? <><select className="text-input" aria-label="关卡预设" value={stages.some(([code]) => code === textValue) ? textValue : '__custom'} onChange={(event) => { if (event.target.value !== '__custom') set(event.target.value); }}><option value="__custom">自定义关卡</option>{stages.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select><input id={id} className="text-input" value={textValue} placeholder="留空使用当前 / 上次关卡" onChange={(event) => set(event.target.value)} /></> : field.kind === 'select' ? <select id={id} className="text-input" value={textValue} onChange={(event) => set(event.target.value === '' ? undefined : field.numeric || field.key === 'mode' ? Number(event.target.value) : event.target.value)}><option value="">使用核心默认值</option>{textValue && !field.options?.some((option) => (Array.isArray(option) ? option[0] : option) === textValue) && <option value={textValue}>{textValue}</option>}{field.options?.map((option) => { const [v, label] = Array.isArray(option) ? option : [option, option]; return <option key={v} value={v}>{label}</option>; })}</select> : field.kind === 'list' || field.kind === 'numbers' ? <ListInput id={id} value={textValue} numeric={field.kind === 'numbers'} onChange={set} /> : <input id={id} className="text-input" type={field.kind === 'number' ? 'number' : 'text'} min={field.min} max={field.max} step={field.step ?? 1} value={textValue} onChange={(event) => set(field.kind === 'number' ? event.target.value === '' ? undefined : Number(event.target.value) : event.target.value)} />}{hint}</div>;
+  if (field.kind === 'stage') return <div className="param-field wide"><StageSelector id={id} label={field.label} value={textValue} onChange={set} clientType={clientType} />{hint}</div>;
+  return <div className={`param-field ${field.kind === 'list' || field.hint ? 'wide' : ''}`}><label className="field-label" htmlFor={id}>{field.label}</label>{field.kind === 'select' ? <select id={id} className="text-input" value={textValue} onChange={(event) => set(event.target.value === '' ? undefined : field.numeric || field.key === 'mode' ? Number(event.target.value) : event.target.value)}><option value="">使用核心默认值</option>{textValue && !field.options?.some((option) => (Array.isArray(option) ? option[0] : option) === textValue) && <option value={textValue}>{textValue}</option>}{field.options?.map((option) => { const [v, label] = Array.isArray(option) ? option : [option, option]; return <option key={v} value={v}>{label}</option>; })}</select> : field.kind === 'list' || field.kind === 'numbers' ? <ListInput id={id} value={textValue} numeric={field.kind === 'numbers'} onChange={set} /> : <input id={id} className="text-input" type={field.kind === 'number' ? 'number' : 'text'} min={field.min} max={field.max} step={field.step ?? 1} value={textValue} onChange={(event) => set(field.kind === 'number' ? event.target.value === '' ? undefined : Number(event.target.value) : event.target.value)} />}{hint}</div>;
 }
 
 function FacilityOrder({ selected, onChange }: { selected: string[]; onChange: (value: unknown) => void }) {
