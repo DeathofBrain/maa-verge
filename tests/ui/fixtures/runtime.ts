@@ -248,7 +248,7 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       executionTasks.set(run.id, clone(plan.tasks.filter(taskEnabled)) as Plan['tasks']);
       device.state = 'running'; state.runs.unshift(run);
       requestRuns.set(String(params.requestId), run.id);
-      emit('run.started', '模拟执行：' + plan.name);
+      emit('run.started', '模拟执行：' + plan.name, { run: clone(run) });
       return clone(run);
     }
     case 'run.stop': {
@@ -258,7 +258,7 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       run.status = 'stopped'; run.message = '模拟执行已停止'; run.finishedAt = now();
       const device = state.devices.find((item) => item.id === run.deviceId);
       if (device) device.state = 'idle';
-      emit('run.stopped', run.message);
+      emit('run.stopped', run.message, { run: clone(run) });
       return clone(run);
     }
     case 'updates.check': {

@@ -1112,3 +1112,90 @@
   opacity: .68;
   cursor: progress;
 }
+
+.wb-facilities,.wb-star-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(120px,1fr));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line,#dde3ec);
+  border-radius: 6px;
+}
+
+.wb-field-actions {
+  display: flex;
+  gap: 18px;
+}
+
+.wb-facility-order {
+  display: grid;
+  gap: 5px;
+  max-width: 380px;
+}
+
+.wb-facility-order>div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.wb-facility-order>div>span {
+  flex: 1;
+}
+
+.wb-facility-order button {
+  border: 1px solid var(--line,#dde3ec);
+  background: var(--surface,#fff);
+  color: var(--text,#202734);
+  border-radius: 4px;
+  width: 27px;
+  height: 25px;
+  cursor: pointer;
+}
+
+.wb-facility-order button:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+.wb-recruit-confirm,.wb-drop-targets {
+  display: grid;
+  gap: 12px;
+}
+
+.wb-recruit-row,.wb-drop-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wb-recruit-row .text-input {
+  width: 115px;
+}
+
+.wb-drop-row>span {
+  min-width: 95px;
+  font-size: 13px;
+}
+
+.wb-drop-row .text-input {
+  flex: 1;
+  min-width: 110px;
+  max-width: 260px;
+}
+
+.wb-param-hint {
+  color: var(--muted,#697587);
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.wb-sync-times {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted,#697587);
+  margin-top: 15px;
+}
