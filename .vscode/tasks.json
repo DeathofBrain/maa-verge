@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "构建 C++ worker（生产配置）",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "tools/build-core-worker.mjs",
+        "--production"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc",
+        "$msCompile"
+      ]
+    }
+  ]
+}

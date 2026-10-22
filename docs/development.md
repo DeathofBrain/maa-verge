@@ -121,3 +121,11 @@ Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runti
 Windows 完整构建后可运行 `pnpm test:desktop-webview`，需要本机已有 WebView2。工具通过独立环回 CDP 端口操作真实 release 窗口，使用专属 mock 数据和 WebView profile，检查初始化异常、运行/停止、C++ 进程释放、正常关窗与重启记录；测试前须先退出其他 Maa Verge 实例。日志与截图保留在忽略目录 `build/webview-smoke`，临时数据和 profile 退出后清理。该项由宿主 Node/Playwright 驱动，不代表卸载开发工具后的干净系统安装验收。
 
 macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的签名、公证和下载 MaaCore 后的加载。Windows 签名和 Tauri 应用自动更新发布源也需要发行凭据；当前 CI 不自动发布。
+
+## VS Code 的 C++ 配置
+
+用 VS Code 打开仓库根目录，安装工作区推荐的 C/C++ 与 CMake Tools 扩展。首次打开会配置 `services/native`，在 `CMake: Select a Kit` 中选择本机 C++20 工具链；Windows 选择已安装的 Visual Studio C++ 工具链。若未自动配置，运行 `CMake: Configure`。配置会下载固定版本的 nlohmann/json，并将构建文件放在忽略目录 `build/native`。
+
+C/C++ 扩展通过 CMake Tools 从实际 target 获取编译器、系统 SDK、宏和头文件路径；工作区另提供 `services/native/src` 与下载后的 nlohmann/json include 目录作为兜底，语言标准为 C++20。不需要填写个人安装路径。`CMAKE_EXPORT_COMPILE_COMMANDS` 仅对 Ninja/Makefile 等生成器生效，Visual Studio/MSBuild 不生成 `compile_commands.json`，仍通过配置提供器解析。
+
+按 `Ctrl+Shift+B` 执行“构建 C++ worker（生产配置）”，调用 `node tools/build-core-worker.mjs --production`，不查找 Python 或运行合成测试。需要 CTest 时仍按原生 worker 文档运行开发构建命令。
