@@ -101,14 +101,7 @@ impl Runtime {
             .stderr(Stdio::piped())
             .kill_on_drop(true);
         if std::env::var_os("MAAVERGE_MODE").is_none() {
-            command.env(
-                "MAAVERGE_MODE",
-                if cfg!(debug_assertions) {
-                    "mock"
-                } else {
-                    "native"
-                },
-            );
+            command.env("MAAVERGE_MODE", "native");
         }
         #[cfg(windows)]
         command.creation_flags(0x08000000); // CREATE_NO_WINDOW

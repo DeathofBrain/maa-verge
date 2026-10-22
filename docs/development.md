@@ -33,7 +33,7 @@ pnpm run doctor
 pnpm dev:mock
 ```
 
-浏览器 mock 不需要 Python、Bun、Rust、C++ 编译器、ADB、MaaCore 或模型 Key。它验证 UI/协议与确定性场景，不证明真实核心加载或游戏自动化成功。桌面开发使用 TypeScript 服务与 C++ worker，默认仍为 mock；安装版默认 native。
+浏览器 mock 不需要 Python、Bun、Rust、C++ 编译器、ADB、MaaCore 或模型 Key。它验证 UI/协议与确定性场景，不证明真实核心加载或游戏自动化成功。桌面开发使用 TypeScript 服务与 C++ worker，和安装版一样默认 native。
 
 仅检查浏览器环境时使用 `pnpm run doctor --mock`；不要用 `--native`，后者检查完整桌面工具链。
 
@@ -70,11 +70,11 @@ node tools/check-native.mjs --required
 pnpm build
 ```
 
-`pnpm dev` 验证项目固定 Bun、以生产配置构建 C++ worker，再运行 Vite 和 Tauri；Tauri 使用 `.tools/bun` 执行 `services/backend/src/entry.ts`。前端不能传入可执行文件路径或 Shell。release 只运行资源目录内的固定 `runtime/maaverge-runtime`，缺失时直接报错，不查找系统 Python/Node/Bun，也不切换后端。安装版默认 native；显式 `MAAVERGE_MODE=mock` 可覆盖，开发脚本始终默认 mock。两种模式的数据存于各自的 `<data-root>/<mode>`。退出时先关闭 stdin，让服务释放设备和数据库，超时再终止。
+`pnpm dev` 验证项目固定 Bun、以生产配置构建 C++ worker，再运行 Vite 和 Tauri；Tauri 使用 `.tools/bun` 执行 `services/backend/src/entry.ts`。前端不能传入可执行文件路径或 Shell。release 只运行资源目录内的固定 `runtime/maaverge-runtime`，缺失时直接报错，不查找系统 Python/Node/Bun，也不切换后端。桌面开发与安装版默认 native；显式 `MAAVERGE_MODE=mock` 可覆盖。两种模式的数据存于各自的 `<data-root>/<mode>`。退出时先关闭 stdin，让服务释放设备和数据库，超时再终止。
 
 比较旧实现时，可在终端显式设置 `MAAVERGE_BACKEND=python` 后运行 `pnpm dev`；启动器此时执行 `uv sync --frozen`，debug Tauri 选择项目 `.venv` 内的 `python -m maaverge_runtime`。该 selector 在 release 不生效。不要同时让新旧服务打开同一模式的数据目录；两者使用相同 SQLite 租约，首次 TypeScript 接管会备份旧数据库。交接和手动恢复步骤见 [runtime-migration.md](runtime-migration.md)。
 
-需要验证原生核心时，显式启用 native 模式。它会自动下载核心与资源，并按自动连接偏好发现、连接本机模拟器；可在设置关闭自动连接或手动触发。连接后不会自动执行计划。常规开发和 CI 保持 mock。
+桌面 `pnpm dev` 默认启用 native 模式，会自动下载核心与资源，并按自动连接偏好发现、连接本机模拟器；可在设置关闭自动连接或手动触发。连接后不会自动执行计划。浏览器开发与 CI 保持 mock。若旧终端曾设置 `MAAVERGE_MODE=mock`，应移除该变量或改为 `native`，并完全退出旧应用后重新启动。
 
 ```powershell
 $env:MAAVERGE_MODE = 'native'
@@ -85,6 +85,8 @@ powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 dev
 ```bash
 MAAVERGE_MODE=native bash tools/pnpm.sh dev
 ```
+
+仅验证桌面通信与窗口时，使用 `MAAVERGE_MODE=mock bash tools/pnpm.sh dev`；PowerShell 先设置 `$env:MAAVERGE_MODE = 'mock'`。自动测试显式选 mock 或替代 ADB，不使用桌面默认模式。Playwright 直接在受管理的进程中运行浏览器 mock 服务，避免测试退出后遗留开发进程；`MAAVERGE_TEST_PORT` 可设置独立测试端口。
 
 窗口关闭默认进入托盘；关闭设置中的“关闭窗口时最小化到托盘”后，关闭窗口会完全退出。托盘的“退出”始终完全退出。无系统托盘的 Linux 桌面不属于已验证交互环境，需后续实机确认。
 

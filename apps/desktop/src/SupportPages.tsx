@@ -105,7 +105,9 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
   const waitForReady = async (devices: Device[], kind: 'auto-connect' | 'connect') => {
     const ids = new Set(devices.map((device) => device.id));
     let ready = devices.filter((device) => device.state !== 'offline');
-    const deadline = Date.now() + 15_000;
+    // MaaCore allows 30s for an asynchronous connection; leave room for its
+    // completion event before reporting that readiness is still pending.
+    const deadline = Date.now() + 35_000;
     while (ready.length < ids.size && Date.now() < deadline) {
       setOperation({ kind, phase: 'working', message: `正在等待设备连接就绪（${ready.length}/${ids.size}）…` });
       await new Promise((resolve) => window.setTimeout(resolve, 250));

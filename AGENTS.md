@@ -34,5 +34,5 @@ Use targeted checks while developing, then the relevant project checks. Do not m
 
 ## Real-world effects
 
-Development and CI default to mock adapters. Do not connect to or operate a real game, invoke paid models, publish releases or upload account data as part of routine tests. Explicit real-device testing must be selected and recorded.
+Desktop `pnpm dev` defaults to native adapters; `pnpm dev:mock` and routine tests/CI use mock adapters explicitly. Do not connect to or operate a real game, invoke paid models, publish releases or upload account data as part of routine tests. Explicit real-device testing must be selected and recorded.
 Default consumable budgets are zero. Model-generated actions pass deterministic validation. Never expose arbitrary shell commands to the model.

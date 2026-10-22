@@ -6,7 +6,7 @@
 
 基于 MaaCore 的本地明日方舟桌面助手，使用 Tauri 2、React/TypeScript、TypeScript 本地服务与 C++20 核心工作进程，目标平台为 Windows、macOS 和 Linux。界面与业务服务通过类型化 JSON-RPC 通信，原生核心与桌面进程隔离。
 
-当前为 **0.1.0 开发预览**。请以 [开发状态](docs/STATUS.md) 判断当前实际能力；[完整计划](PLAN.md) 描述后续交付。默认开发和 CI 使用 mock，可在没有模拟器、MaaCore 或模型密钥的环境中开发。
+当前为 **0.1.0 开发预览**。请以 [开发状态](docs/STATUS.md) 判断当前实际能力；[完整计划](PLAN.md) 描述后续交付。桌面 `pnpm dev` 默认使用真实设备模式；`pnpm dev:mock` 和 CI 使用 mock，可在没有模拟器、MaaCore 或模型密钥的环境中开发界面。
 
 默认进入主页仪表盘，任务表通过独立侧栏入口管理。Logo 采用蓝色渐变与帕拉斯白色头部图形，保留双角和玫瑰；[设计说明](docs/branding.md) 记录图标来源、提示词和生成方式。仓库：[DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。
 
@@ -44,7 +44,7 @@ bash tools/pnpm.sh dev:mock
 | 命令 | 用途 |
 | --- | --- |
 | `pnpm dev:mock` | 浏览器 mock，无需模拟器、MaaCore、Rust 或模型密钥 |
-| `pnpm dev` | React + Tauri + TypeScript 服务与 C++ worker，默认使用 mock 适配器 |
+| `pnpm dev` | React + Tauri + TypeScript 服务与 C++ worker，默认 native，发现真实设备 |
 | `pnpm setup:bun` | 下载、SHA-256 校验并安装项目固定的 Bun |
 | `pnpm run doctor` | 工具链、依赖和本地环境诊断 |
 | `pnpm check` | 契约、TypeScript 后端、C++ 合成测试、Python 参考及可用时的 Rust 检查 |

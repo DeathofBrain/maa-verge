@@ -160,7 +160,7 @@ test('an asynchronous connection that stays offline reports pending readiness wi
   await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connection = 'delayed'; });
   await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
   await expect(result(page)).toHaveText('正在等待设备连接就绪（0/1）…');
-  await page.clock.setFixedTime(new Date(Date.now() + 20_000));
+  await page.clock.setFixedTime(new Date(Date.now() + 40_000));
   await expect(result(page)).toHaveText('模拟连接结果：0 台已就绪，1 台尚未就绪。');
   await expect(page.locator('.connection-diagnostics')).toContainText('连接尚未就绪');
   await expect(page.locator('.sp-device-detail')).toContainText('已断开');

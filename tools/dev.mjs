@@ -4,13 +4,15 @@ import { root, desktop, port, run, start, terminate, devEnvironment, fail } from
 import { assertWorkspaceDependencies } from './environment.mjs';
 
 const mock = process.argv.includes('--mock');
-const environment = devEnvironment();
+const environment = { ...devEnvironment(), MAAVERGE_MODE: mock ? 'mock' : process.env.MAAVERGE_MODE || 'native' };
 const url = `http://127.0.0.1:${port}`;
 console.log(`Maa Verge ${mock ? 'browser mock' : 'desktop'} · ${url}`);
+console.log(`运行模式: ${environment.MAAVERGE_MODE === 'native' ? '真实设备（native）' : '模拟（mock）'}`);
 console.log(`数据目录: ${environment.MAAVERGE_DATA_DIR}`);
 
 async function main() {
   assertWorkspaceDependencies();
+  if (!['mock', 'native'].includes(environment.MAAVERGE_MODE)) throw new Error('MAAVERGE_MODE must be mock or native');
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('MAAVERGE_DEV_PORT must be between 1024 and 65535');
   if (!mock) {
     if (process.env.MAAVERGE_BACKEND === 'python') await run('uv', ['sync', '--frozen']);
@@ -57,7 +59,7 @@ async function main() {
     mkdirSync(configDirectory, { recursive: true });
     const config = path.join(configDirectory, 'tauri-dev.json');
     writeFileSync(config, JSON.stringify({ identifier: `io.maaverge.dev.w${environment.VITE_WORKSPACE_ID}`, build: { devUrl: url } }));
-    tauri = start('pnpm', ['exec', 'tauri', 'dev', '--config', config], { cwd: desktop });
+    tauri = start('pnpm', ['exec', 'tauri', 'dev', '--config', config], { cwd: desktop, env: environment });
     await new Promise((resolve, reject) => {
       tauri.once('error', reject);
       tauri.once('exit', (code) => code === 0 || code === null ? resolve() : reject(new Error(`Tauri exited ${code}`)));
