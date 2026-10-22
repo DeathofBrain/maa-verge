@@ -21,6 +21,7 @@ export default function GameInfoPanel({ device, settings }: { device?: Device; s
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(false);
   const estimatesKey = JSON.stringify(settings.infrastructureEstimates);
+  const deviceEstimatesKey = JSON.stringify(settings.infrastructureEstimates?.find(profile => profile.deviceId === device?.id)?.lines || []);
   useEffect(() => {
     let active = true, busy = false;
     const refresh = async () => {
@@ -61,7 +62,7 @@ export default function GameInfoPanel({ device, settings }: { device?: Device; s
       <div className="game-info-body">
         <p className="game-muted">{info?.infrastructure.message || '根据手工填写的产线参数计算，未读取游戏库存。'}</p>
         {info?.infrastructure.lines.map(line => <article className="game-production" key={line.id}><div><strong>{line.name}</strong><span className={line.full ? 'is-full' : ''}>{line.error ? '待校准' : `约 ${Math.floor(line.estimatedQuantity || 0).toLocaleString('zh-CN')} / ${line.capacity.toLocaleString('zh-CN')} ${line.unit}`}</span></div><progress max={line.capacity} value={line.estimatedQuantity || 0} aria-label={`${line.name}估算容量`} /><small>{line.error || (line.full ? '预计已满，请到游戏中核对并收取' : line.fullAt ? `预计 ${time(line.fullAt)} 满仓（本机时间）` : '速率为 0，不累积产出')}</small></article>)}
-        {device && <InfrastructureEditor key={device.id} deviceId={device.id} settings={settings} onSaved={() => setRevision(value => value + 1)} />}
+        {device && <InfrastructureEditor key={`${device.id}:${deviceEstimatesKey}`} deviceId={device.id} settings={settings} onSaved={() => setRevision(value => value + 1)} />}
       </div>
     </section>
   </section>;

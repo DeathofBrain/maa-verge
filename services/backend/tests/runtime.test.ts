@@ -371,6 +371,54 @@ describe('daily friend visits', () => {
     seed('YoStarJP'); await context('YoStarJP', '', 'unknown-account'); expect(r.snapshot().devices[0].dataSync).toEqual({ operatorsAt: null, depotAt: null }); expect(r.store.get('mall_visit', device.id)).toBeUndefined();
     expect(r.store.get('device_account', device.id)).toBe('');
   });
+  test('account changes invalidate only the current device estimates after successful idle completion', async () => {
+    const { runtime: r, worker, device } = await native();
+    r.store.put('device_client', device.id, 'Official'); r.store.put('device_account', device.id, 'A');
+    const line = { id: 'gold', name: '赤金', unit: '块', hourlyRate: 20, capacity: 100, lastCollectedAt: '2020-01-01T00:00:00Z' };
+    const settings = { ...r.snapshot().settings, theme: 'dark', infrastructureEstimates: [{ deviceId: device.id, lines: [line] }, { deviceId: 'other-device', lines: [{ ...line, id: 'other-gold' }] }] };
+    const remaining = { ...settings, infrastructureEstimates: settings.infrastructureEstimates.slice(1) };
+    const seed = () => r.store.put('settings', 'main', settings);
+    const start = async (client_type: string, account_name: string, requestId: string) => {
+      await r.handle('plan.save', { plan: { id: 'estimate-account', name: '估算账号', tasks: [{ type: 'StartUp', params: { client_type, account_name } }] } });
+      return r.startRun({ planId: 'estimate-account', deviceId: device.id, requestId });
+    };
+    const invalidations = () => r.store.events().filter(event => event.type === 'device.infrastructure_estimate_invalidated');
+    seed();
+    await start('Official', 'A', 'estimate-same'); worker.complete(1); await r.tick(true);
+    expect(r.store.get('settings', 'main')).toEqual(settings); expect(invalidations()).toHaveLength(0);
+    const switched = await start('Official', 'B', 'estimate-other-account'); worker.complete(2, [42]); await r.tick(true);
+    expect(r.store.get('settings', 'main')).toEqual(settings); expect(r.store.get('device_account', device.id)).toBe('A');
+    worker.safeIdle = true; worker.events.push({ type: 'status', running: false, pendingAsync: [] }); await r.tick(true);
+    expect(r.store.get('settings', 'main')).toEqual(remaining);
+    expect(invalidations()).toHaveLength(1); expect(invalidations()[0].data).toEqual({ deviceId: device.id, runId: switched.id });
+    expect((await r.handle('home.info', { deviceId: device.id })).infrastructure.lines).toEqual([]);
+    for (const [client, account, requestId] of [['YoStarJP', 'B', 'estimate-other-client'], ['YoStarJP', '', 'estimate-unknown-account']]) {
+      seed(); await start(client!, account!, requestId!); worker.complete(worker.submitted.length); await r.tick(true);
+      expect(r.store.get('settings', 'main')).toEqual(remaining);
+    }
+    expect(invalidations()).toHaveLength(3);
+    await start('YoStarJP', 'C', 'estimate-already-empty'); worker.complete(worker.submitted.length); await r.tick(true);
+    expect(invalidations()).toHaveLength(3); expect(r.store.get('settings', 'main')).toEqual(remaining);
+  });
+  test('failed, unproven or stopped startup cannot clear estimates or change the remembered account', async () => {
+    for (const evidence of ['failed', 'queue-only', 'stopped']) {
+      const { runtime: r, worker, device } = await native();
+      r.store.put('device_client', device.id, 'Official'); r.store.put('device_account', device.id, 'A');
+      const settings = { ...r.snapshot().settings, infrastructureEstimates: [{ deviceId: device.id, lines: [{ id: 'gold', name: '赤金', unit: '块', hourlyRate: 20, capacity: 100, lastCollectedAt: '2020-01-01T00:00:00Z' }] }] };
+      r.store.put('settings', 'main', settings);
+      await r.handle('plan.save', { plan: { id: 'estimate-unconfirmed', name: '未知结果', tasks: [{ type: 'StartUp', params: { client_type: 'YoStarJP', account_name: 'B' } }] } });
+      const run = await r.startRun({ planId: 'estimate-unconfirmed', deviceId: device.id, requestId: evidence });
+      if (evidence === 'stopped') await r.stopRun(run.id);
+      if (evidence === 'failed') worker.events.push({ type: 'callback', message: 10000, details: { taskid: 1 } });
+      if (evidence === 'queue-only') {
+        worker.events.push({ type: 'callback', message: 3, details: { taskid: 1 } }, { type: 'status', running: false, pendingAsync: [] }); worker.safeIdle = true;
+      } else worker.complete(1);
+      await r.tick(true);
+      expect(r.store.get('run', run.id).status).toBe(evidence === 'stopped' ? 'stopped' : 'failed');
+      expect(r.store.get('settings', 'main')).toEqual(settings); expect(r.store.get('device_account', device.id)).toBe('A'); expect(r.store.get('device_client', device.id)).toBe('Official');
+      expect(r.store.events().some(event => event.type === 'device.infrastructure_estimate_invalidated')).toBe(false);
+    }
+  });
 });
 
 describe('parallel device execution', () => {
