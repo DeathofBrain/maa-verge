@@ -14,6 +14,19 @@ import { adbPath, configuredAdbPath, adbServerIdentity, autoDiscover, deviceLock
 import { syncDue, userDataSteps, type SyncStep } from './user-data-sync';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
+function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
+  const result = details.details;
+  if (details.taskchain !== type || details.what !== (type === 'OperBox' ? 'OperBoxInfo' : 'DepotInfo') || result?.done !== true) return false;
+  const object = (value: any) => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (type === 'OperBox') return Array.isArray(result.own_opers) && result.own_opers.length > 0 && result.own_opers.every((oper: any) => object(oper)
+    && typeof oper.id === 'string' && oper.id.length > 0 && typeof oper.name === 'string' && oper.name.length > 0 && typeof oper.own === 'boolean'
+    && ['elite', 'level', 'potential', 'rarity'].every(key => Number.isInteger(oper[key]) && oper[key] >= -2_147_483_648 && oper[key] <= 2_147_483_647));
+  if (typeof result.data !== 'string') return false;
+  try {
+    const items = JSON.parse(result.data);
+    return object(items) && Object.keys(items).length > 0 && Object.entries(items).every(([id, quantity]) => id.length > 0 && Number.isInteger(quantity) && Number(quantity) > 0 && Number(quantity) <= 2_147_483_647);
+  } catch { return false; }
+}
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
 export interface RuntimeOptions { notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; adbExecutable?: () => string; workerFactory?: (config: any) => Promise<Worker> }
 export class Runtime {
@@ -60,7 +73,10 @@ export class Runtime {
   emit(type: string, message: string, data: any = {}) { const event = this.store.event(type, message, data); this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event }); return event; }
   busy() { return !!this.preview?.busy || this.connecting.size > 0 || this.store.all('run').some(run => run.status === 'running' && !this.store.get('execution', run.id, {}).boundaryWaiting) || [...this.workers.values()].some(worker => !worker.safeIdle); }
   devices(): any[] {
-    return this.store.all('device').map(device => ({ ...device, dataSync: this.store.get('user_data_sync', device.id, { operatorsAt: null, depotAt: null }) }));
+    return this.store.all('device').map(device => {
+      const synced = this.syncHistory(device.id, this.store.get('device_client', device.id, 'Official'));
+      return { ...device, dataSync: { operatorsAt: synced.operatorsAt ?? null, depotAt: synced.depotAt ?? null } };
+    });
   }
   snapshot() { return parseSnapshot({ mode: this.mode, devices: this.devices(), plans: this.store.all('plan').map(parsePlan), runs: this.store.all('run').reverse().slice(0, 100).map(run => ({ finishedAt: null, ...run })), updates: this.updates.channels(), settings: parseSettings(this.store.get('settings', 'main')), events: this.store.events() }); }
   async handle(method: string, params: any = {}) {
@@ -273,12 +289,25 @@ export class Runtime {
     for (let previous = index - 1; previous >= 0; previous--) if (tasks[previous].type === 'StartUp') return tasks[previous].params.client_type || 'Official';
     return this.store.get('device_client', run.deviceId, 'Official');
   }
+  private syncHistory(deviceId: string, clientType: string): { operatorsAt?: string | null; depotAt?: string | null } {
+    const synced = this.store.get('user_data_sync', deviceId, {});
+    return (synced.clientType ?? this.store.get('device_client', deviceId, 'Official')) === clientType ? synced : {};
+  }
+  private rememberClient(run: any, params: any) {
+    const clientType = params.client_type || 'Official', accountName = typeof params.account_name === 'string' ? params.account_name : '';
+    this.store.transaction(() => {
+      if (clientType !== this.store.get('device_client', run.deviceId, 'Official') || accountName !== this.store.get('device_account', run.deviceId, '')) {
+        this.store.delete('user_data_sync', run.deviceId); this.store.delete('mall_visit', run.deviceId);
+      }
+      this.store.put('device_client', run.deviceId, clientType); this.store.put('device_account', run.deviceId, accountName);
+    });
+  }
   async submitNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
     const current = this.store.get('run', run.id);
     if (!this.running || this.switching || current?.status !== 'running' || this.store.get('execution', run.id, {}).stopRequested) return;
     const plan = this.store.get('run_plan', run.id), configuredTask = plan.tasks[index], clientType = this.taskClient(run, index);
     if (configuredTask.type === 'UserDataUpdate') {
-      syncSteps ??= userDataSteps(configuredTask.params, this.store.get('user_data_sync', run.deviceId, {}), new Date(), clientType);
+      syncSteps ??= userDataSteps(configuredTask.params, this.syncHistory(run.deviceId, clientType), new Date(), clientType);
       if (!syncSteps.length) {
         this.emit('run.task_skipped', '更新数据已在当前周期完成或未选择识别项目，已跳过', { runId: run.id, index });
         await this.advanceNativeTask(run, index + 1); return;
@@ -286,8 +315,10 @@ export class Runtime {
     }
     const state: any = { index, syncSteps, syncIndex, clientType, completed: false, failed: false, queueEnded: false, idleAfterEnd: false, taskId: null, stopRequested: null, submitting: true };
     const task = nativeTask(syncSteps ? { type: syncSteps[syncIndex]!.type, params: {}, enabled: true } : configuredTask);
+    if (['OperBox', 'Depot'].includes(task.type)) state.recognitionType = task.type;
     if (task.type === 'Mall') {
-      if (configuredTask.params.visit_friends_once_a_day && !syncDue(this.store.get('mall_visit', run.deviceId)?.visitedAt, 'daily', new Date(), clientType)) task.params.visit_friends = false;
+      const visited = this.store.get('mall_visit', run.deviceId);
+      if (configuredTask.params.visit_friends_once_a_day && visited?.clientType === clientType && !syncDue(visited.visitedAt, 'daily', new Date(), clientType)) task.params.visit_friends = false;
       state.mallVisitEnabled = task.params.visit_friends !== false;
     }
     this.store.put('execution', run.id, state);
@@ -343,6 +374,7 @@ export class Runtime {
             if ([0, 1].includes(message) || (message === 10000 && matches) || (message === 10004 && matches)) state.failed = true;
             if (message === 10002 && matches) state.completed = true;
             if (message === 3 && (!('taskid' in details) || matches)) state.queueEnded = true;
+            if (message === 20003 && matches && state.recognitionType && !state.completed && !state.failed && !state.queueEnded && !state.stopRequested && recognitionResult(state.recognitionType, details)) state.recognitionResultAt = now();
             if (message === 20002 && matches && state.mallVisitEnabled && details.subtask === 'ProcessTask' && details.taskchain === 'Mall' && ['VisitLimited', 'VisitNextBlack'].includes(details.details?.task)) state.mallVisitedAt = now();
             this.store.put('execution', run.id, state);
           }
@@ -360,12 +392,13 @@ export class Runtime {
         }
         if (state.stopRequested) this.finishNativeRun(run, 'stopped', '执行已停止，未执行计划保留');
         else if (state.failed || !state.completed) this.finishNativeRun(run, 'failed', '核心任务失败或缺少成功证据；不会继续后续任务');
+        else if (state.recognitionType && !state.recognitionResultAt) this.finishNativeRun(run, 'failed', '识别任务已结束但缺少有效的最终识别结果，结果未知；未记录同步成功');
         else {
           const configured = this.store.get('run_plan', run.id).tasks[state.index];
-          if (configured.type === 'StartUp') this.store.put('device_client', run.deviceId, configured.params.client_type || 'Official');
+          if (configured.type === 'StartUp') this.rememberClient(run, configured.params);
           const step: SyncStep | undefined = state.syncSteps?.[state.syncIndex] ?? (configured.type === 'OperBox' ? { type: 'OperBox', key: 'operatorsAt' } : configured.type === 'Depot' ? { type: 'Depot', key: 'depotAt' } : undefined);
           if (step) {
-            const synced = this.store.get('user_data_sync', run.deviceId, { operatorsAt: null, depotAt: null }); synced[step.key] = now();
+            const synced = { operatorsAt: null, depotAt: null, ...this.syncHistory(run.deviceId, state.clientType), clientType: state.clientType }; synced[step.key] = state.recognitionResultAt;
             this.store.put('user_data_sync', run.deviceId, synced);
             this.emit('device.data_synced', step.type === 'OperBox' ? '干员识别已成功同步' : '仓库识别已成功同步', { deviceId: run.deviceId, runId: run.id, type: step.type, syncedAt: synced[step.key] });
             if (state.syncSteps && state.syncIndex + 1 < state.syncSteps.length) { await this.advanceNativeTask(run, state.index, state.syncSteps, state.syncIndex + 1); continue; }

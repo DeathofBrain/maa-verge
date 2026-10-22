@@ -22,6 +22,10 @@ class FakeWorker {
   async stop() { this.stopped = true; return { stopping: true }; }
   async close() { this.closed = true; }
   async waitConnected() { return this.connected && this.safeIdle; }
+  recognize(id: number, type: 'OperBox' | 'Depot', result?: any, extra: any = {}) {
+    const details = result ?? (type === 'OperBox' ? { done: true, own_opers: [{ id: 'char_172_svrash', name: '银灰', own: true, elite: 2, level: 90, potential: 1, rarity: 6 }] } : { done: true, data: '{"30012":12,"4001":12345}' });
+    this.events.push({ type: 'callback', message: 20003, details: { taskid: id, taskchain: type, what: type === 'OperBox' ? 'OperBoxInfo' : 'DepotInfo', details, ...extra } });
+  }
   complete(id: number, pending: number[] = []) { this.events.push({ type: 'callback', message: 10002, details: { taskid: id } }, { type: 'callback', message: 3, details: { taskid: id } }, { type: 'status', running: false, pendingAsync: pending }); this.safeIdle = !pending.length; }
 }
 function fresh(root = temp(), worker = new FakeWorker()) {
@@ -152,14 +156,14 @@ describe('combined user data update', () => {
     const run = await r.startRun({ planId: 'sync', deviceId: device.id, requestId: 'sync' });
     expect(r.store.get('run_plan', run.id).tasks).toHaveLength(2);
     expect(worker.submitted.map(task => task.type)).toEqual(['OperBox']);
-    worker.complete(1, [9]); await r.tick(true);
+    worker.recognize(1, 'OperBox'); worker.complete(1, [9]); await r.tick(true);
     expect(r.snapshot().devices[0].dataSync).toEqual({ operatorsAt: null, depotAt: null });
     worker.safeIdle = true; worker.events.push({ type: 'status', running: false, pendingAsync: [] }); await r.tick(true);
     expect(worker.submitted.map(task => task.type)).toEqual(['OperBox', 'Depot']);
     expect(r.snapshot().devices[0].dataSync?.operatorsAt).toBeString();
     expect(r.snapshot().devices[0].dataSync?.depotAt).toBeNull();
     expect(r.store.get('run', run.id).progress).toBe(0);
-    worker.complete(2); await r.tick(true);
+    worker.recognize(2, 'Depot'); worker.complete(2); await r.tick(true);
     expect(worker.submitted.map(task => task.type)).toEqual(['OperBox', 'Depot', 'Award']);
     expect(r.snapshot().devices[0].dataSync?.depotAt).toBeString();
     expect(r.store.get('run', run.id).progress).toBe(50);
@@ -173,7 +177,7 @@ describe('combined user data update', () => {
     const { runtime: r, worker, device } = await native();
     await r.handle('plan.save', { plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }] } });
     const run = await r.startRun({ planId: 'sync', deviceId: device.id, requestId: 'partial' });
-    worker.complete(1); await r.tick(true);
+    worker.recognize(1, 'OperBox'); worker.complete(1); await r.tick(true);
     worker.events.push({ type: 'callback', message: 10000, details: { taskid: 2 } }); worker.complete(2); await r.tick(true);
     expect(r.store.get('run', run.id).status).toBe('failed');
     const synced = r.snapshot().devices[0].dataSync;
@@ -183,7 +187,7 @@ describe('combined user data update', () => {
     expect(reopened.snapshot().devices[0].dataSync).toEqual(synced);
     const retry = await reopened.startRun({ planId: 'sync', deviceId: reconnected.id, requestId: 'retry' });
     expect(replacement.submitted.map(task => task.type)).toEqual(['Depot']);
-    replacement.complete(1); await reopened.tick(true); expect(reopened.store.get('run', retry.id).status).toBe('completed');
+    replacement.recognize(1, 'Depot'); replacement.complete(1); await reopened.tick(true); expect(reopened.store.get('run', retry.id).status).toBe('completed');
   });
   test('unmatched completion, queue-end only, and stopped tasks never record success', async () => {
     for (const evidence of ['unmatched', 'queue-only', 'stopped']) {
@@ -203,11 +207,11 @@ describe('combined user data update', () => {
     await r.handle('plan.save', { plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }] } });
     const run = await r.startRun({ planId: 'sync', deviceId: device.id, requestId: 'boundary' });
     const channel = r.updates.channel('resource'); r.store.put('update', 'resource', { ...channel, status: 'waiting_idle' });
-    worker.complete(1); await r.tick(true);
+    worker.recognize(1, 'OperBox'); worker.complete(1); await r.tick(true);
     expect(worker.submitted).toHaveLength(1); expect(r.busy()).toBe(false);
     r.store.put('update', 'resource', { ...channel, status: 'idle' }); await r.tick(true);
     expect(worker.submitted.map(task => task.type)).toEqual(['OperBox', 'Depot']);
-    worker.complete(2); await r.tick(true); expect(r.store.get('run', run.id).status).toBe('completed');
+    worker.recognize(2, 'Depot'); worker.complete(2); await r.tick(true); expect(r.store.get('run', run.id).status).toBe('completed');
   });
   test('nothing selected and an entirely synced period finish without native calls', async () => {
     const { runtime: r, worker, device } = await native();
@@ -223,7 +227,7 @@ describe('combined user data update', () => {
     const other = { ...device, id: 'second-device', address: '127.0.0.1:5557' }, otherWorker = new FakeWorker();
     r.store.put('device', other.id, other); r.workers.set(other.id, otherWorker);
     await r.handle('plan.save', { plan: { id: 'oper', name: '干员', tasks: [{ type: 'OperBox' }] } });
-    await r.startRun({ planId: 'oper', deviceId: device.id, requestId: 'oper' }); worker.complete(1); await r.tick(true);
+    await r.startRun({ planId: 'oper', deviceId: device.id, requestId: 'oper' }); worker.recognize(1, 'OperBox'); worker.complete(1); await r.tick(true);
     expect(r.snapshot().devices.find(d => d.id === device.id)?.dataSync?.operatorsAt).toBeString();
     expect(r.snapshot().devices.find(d => d.id === other.id)?.dataSync).toEqual({ operatorsAt: null, depotAt: null });
     await r.handle('plan.save', { plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }] } });
@@ -231,6 +235,43 @@ describe('combined user data update', () => {
     await r.startRun({ planId: 'sync', deviceId: other.id, requestId: 'other-device' });
     expect(worker.submitted.map(task => task.type)).toEqual(['OperBox', 'Depot']);
     expect(otherWorker.submitted.map(task => task.type)).toEqual(['OperBox']);
+  });
+  test('standalone recognition rejects absent, malformed, stale and late final results', async () => {
+    const { runtime: r, worker, device } = await native();
+    for (const type of ['OperBox', 'Depot'] as const) for (const evidence of ['none', 'partial', 'empty', 'invalid', 'wrong-id', 'wrong-chain', 'wrong-what', 'wrong-message', 'late', 'no-chain-success', 'failed-chain']) {
+      await r.handle('plan.save', { plan: { id: 'recognize', name: '识别', tasks: [{ type }] } });
+      const run = await r.startRun({ planId: 'recognize', deviceId: device.id, requestId: type + evidence }), id = worker.submitted.length;
+      if (evidence !== 'none' && evidence !== 'late') {
+        const result = evidence === 'partial' ? { done: false, own_opers: [], data: '{}' }
+          : evidence === 'empty' ? { done: true, own_opers: [], data: '{}' }
+          : evidence === 'invalid' ? { done: true, own_opers: [{ id: 'id', name: 'name', own: 'true', elite: 0, level: 1, potential: 0, rarity: 0 }], data: '{"item":1.5}' } : undefined;
+        worker.recognize(evidence === 'wrong-id' ? id - 1 : id, type, result,
+          evidence === 'wrong-chain' ? { taskchain: type === 'OperBox' ? 'Depot' : 'OperBox' }
+            : evidence === 'wrong-what' ? { what: type === 'OperBox' ? 'DepotInfo' : 'OperBoxInfo' } : {});
+        if (evidence === 'wrong-message') worker.events[worker.events.length - 1].message = 20002;
+      }
+      if (evidence === 'failed-chain') worker.events.push({ type: 'callback', message: 10000, details: { taskid: id } });
+      if (evidence === 'no-chain-success') {
+        worker.events.push({ type: 'callback', message: 3, details: { taskid: id } }, { type: 'status', running: false, pendingAsync: [] }); worker.safeIdle = true;
+      } else worker.complete(id);
+      if (evidence === 'late') worker.recognize(id, type);
+      await r.tick(true);
+      expect(r.store.get('run', run.id).status).toBe('failed');
+      if (!['no-chain-success', 'failed-chain'].includes(evidence)) expect(r.store.get('run', run.id).message).toContain('结果未知');
+      expect(r.snapshot().devices[0].dataSync).toEqual({ operatorsAt: null, depotAt: null });
+      // A late callback after the failed run cannot revive its result.
+      worker.recognize(id, type); await r.tick(true);
+      expect(r.store.get('run', run.id).status).toBe('failed');
+    }
+  });
+  test('an earlier recognition result cannot authorize its successor', async () => {
+    const { runtime: r, worker, device } = await native();
+    await r.handle('plan.save', { plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }] } });
+    const run = await r.startRun({ planId: 'sync', deviceId: device.id, requestId: 'stale-result' });
+    worker.recognize(1, 'OperBox'); worker.complete(1); await r.tick(true);
+    worker.recognize(1, 'OperBox'); worker.recognize(1, 'Depot'); worker.complete(2); await r.tick(true);
+    expect(r.store.get('run', run.id).status).toBe('failed');
+    expect(r.snapshot().devices[0].dataSync?.operatorsAt).toBeString(); expect(r.snapshot().devices[0].dataSync?.depotAt).toBeNull();
   });
   test('periods use client game days and Monday weeks with independent item history', () => {
     const monday = new Date('2026-10-18T20:00:00Z'), sunday = new Date('2026-10-18T19:59:59Z'), friday = new Date('2026-10-23T02:00:00Z');
@@ -298,6 +339,37 @@ describe('daily friend visits', () => {
     const run = await reopened.startRun({ planId: 'mall', deviceId: reconnected.id, requestId: 'new-plan' });
     expect(reopened.store.get('execution', run.id).clientType).toBe('YoStarEN'); replacement.complete(1); await reopened.tick(true);
     expect(reopened.store.get('execution', run.id).clientType).toBe('YoStarJP'); replacement.complete(2); await reopened.tick(true);
+  });
+  test('explicit client overrides do not inherit another client\'s visit or recognition history', async () => {
+    const { runtime: r, worker, device } = await native();
+    const syncedAt = new Date().toISOString();
+    r.store.put('user_data_sync', device.id, { clientType: 'YoStarEN', operatorsAt: syncedAt, depotAt: syncedAt });
+    r.store.put('mall_visit', device.id, { clientType: 'YoStarEN', visitedAt: syncedAt });
+    expect(r.snapshot().devices[0].dataSync).toEqual({ operatorsAt: null, depotAt: null });
+    await r.handle('plan.save', { plan: { id: 'different-client', name: '渠道隔离', tasks: [{ type: 'Mall', params }, { type: 'UserDataUpdate', params: { operators: true, depot: false, interval: 'daily' } }] } });
+    await r.startRun({ planId: 'different-client', deviceId: device.id, requestId: 'different-client' });
+    expect(worker.submitted[0].params.visit_friends).toBe(true);
+    worker.complete(1); await r.tick(true); expect(worker.submitted[1].type).toBe('OperBox');
+    worker.recognize(2, 'OperBox'); worker.complete(2); await r.tick(true);
+    expect(r.snapshot().devices[0].dataSync?.operatorsAt).toBeString(); expect(r.snapshot().devices[0].dataSync?.depotAt).toBeNull();
+  });
+  test('successful explicit account or client changes clear per-device period state', async () => {
+    const { runtime: r, worker, device } = await native();
+    const context = async (client_type: string, account_name: string, requestId: string) => {
+      await r.handle('plan.save', { plan: { id: 'context', name: '账号', tasks: [{ type: 'StartUp', params: { client_type, account_name } }] } });
+      await r.startRun({ planId: 'context', deviceId: device.id, requestId }); worker.complete(worker.submitted.length); await r.tick(true);
+    };
+    const seed = (clientType = 'Official') => {
+      const at = new Date().toISOString();
+      r.store.put('user_data_sync', device.id, { clientType, operatorsAt: at, depotAt: at });
+      r.store.put('mall_visit', device.id, { clientType, visitedAt: at });
+    };
+    await context('Official', 'A', 'account-a'); seed();
+    await context('Official', 'A', 'same-account'); expect(r.snapshot().devices[0].dataSync?.operatorsAt).toBeString(); expect(r.store.get('mall_visit', device.id)).toBeDefined();
+    await context('Official', 'B', 'account-b'); expect(r.snapshot().devices[0].dataSync).toEqual({ operatorsAt: null, depotAt: null }); expect(r.store.get('mall_visit', device.id)).toBeUndefined();
+    seed(); await context('YoStarJP', 'B', 'other-client'); expect(r.snapshot().devices[0].dataSync).toEqual({ operatorsAt: null, depotAt: null }); expect(r.store.get('mall_visit', device.id)).toBeUndefined();
+    seed('YoStarJP'); await context('YoStarJP', '', 'unknown-account'); expect(r.snapshot().devices[0].dataSync).toEqual({ operatorsAt: null, depotAt: null }); expect(r.store.get('mall_visit', device.id)).toBeUndefined();
+    expect(r.store.get('device_account', device.id)).toBe('');
   });
 });
 
