@@ -4,6 +4,7 @@ import { RpcError } from './errors';
 export type { Plan, Settings, Task, Snapshot };
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
 export const defaultCapture = () => ({ method: 'adb' as const, emulatorPath: '', instanceIndex: 0 });
+export const defaultConnection = () => ({ adbPath: '', address: '', config: 'General' as const, touchMode: 'minitouch' as const, adbLite: false, clientType: 'Official' as const });
 function record(value: any): value is Record<string, any> { return value !== null && typeof value === 'object' && [Object.prototype, null].includes(Object.getPrototypeOf(value)); }
 // Preserve the Python model's documented scalar coercions at the RPC boundary;
 // task params remain untouched and are checked strictly by task-policy.ts.
@@ -46,10 +47,12 @@ export function parseSettings(input: any = {}): Settings {
   if (!record(input)) throw new RpcError(-32602, '请求参数无效');
   const value = { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', ...input,
     ...(Object.hasOwn(input, 'capture') ? { capture: record(input.capture) ? { ...defaultCapture(), ...input.capture } : input.capture } : {}),
+    ...(Object.hasOwn(input, 'connection') ? { connection: record(input.connection) ? { ...defaultConnection(), ...input.connection } : input.connection } : {}),
     budgets: Object.hasOwn(input, 'budgets') ? budgets(input.budgets) : defaultBudgets(),
     model: Object.hasOwn(input, 'model') ? record(input.model) ? { provider: 'none', baseUrl: '', model: '', ...input.model } : input.model : { provider: 'none', baseUrl: '', model: '' } };
   for (const key of ['autoConnect', 'autoUpdateCore', 'autoUpdateResource', 'minimizeToTray'] as const) value[key] = boolean(value[key]);
   if (!validateSettings(value)) throw new RpcError(-32602, '请求参数无效', validateSettings.errors);
+  if ((value.capture?.mumuTouch || value.capture?.mumuBridge) && value.capture.method !== 'mumu') throw new RpcError(-32602, 'MuMu 触控增强和网络桥接需要启用 MuMu 截图增强');
   return value as Settings;
 }
 export function parseSnapshot(value: unknown): Snapshot {

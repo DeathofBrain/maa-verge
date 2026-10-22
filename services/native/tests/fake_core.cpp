@@ -92,6 +92,10 @@ EXPORT void AsstDestroy(void* handle) {
   std::fprintf(stdout, "synthetic native stdout: destroyed\n");
   delete instance;
 }
+EXPORT bool AsstSetInstanceOption(void*, int key, const char* value) {
+  trace(("option:" + std::to_string(key) + ":" + value).c_str());
+  return scenario() != "option-reject";
+}
 #ifndef OMIT_CAPTURE
 EXPORT void AsstSetConnectionExtras(const char* name, const char* extras) {
   connection_extras[name] = nlohmann::json::parse(extras);
@@ -105,10 +109,9 @@ EXPORT int AsstAsyncConnect(void* handle, const char*, const char*, const char* 
   auto* instance = static_cast<Instance*>(handle);
   instance->config = config;
   trace(("connect:" + instance->config).c_str());
-  if (instance->config != "General" && !connection_extras.contains(instance->config)) return 0;
   instance->threads.emplace_back([instance] {
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    if (instance->config != "General" && scenario() != "capture-no-evidence") {
+    if (connection_extras.contains(instance->config) && scenario() != "capture-no-evidence") {
       const std::string method = scenario() == "capture-fallback" ? "RawWithGzip" :
                                  instance->config == "MuMuEmulator12" ? "MumuExtras" : "LDExtras";
       instance->send(2, {{"what", "FastestWayToScreencap"}, {"details", {{"method", method}, {"cost", 2}}}});

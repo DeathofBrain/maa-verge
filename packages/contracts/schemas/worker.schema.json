@@ -42,11 +42,22 @@
         "userDir": { "type": "string", "minLength": 1 },
         "lockPath": { "type": "string", "minLength": 1 },
         "capture": { "$ref": "#/$defs/WorkerCaptureConfiguration" },
+        "connection": { "$ref": "#/$defs/WorkerConnectionConfiguration" },
         "lockTimeoutMs": { "type": "integer", "minimum": 0, "maximum": 60000 },
         "startupTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 },
         "nativeCallTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 },
         "asyncTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 },
         "shutdownTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 }
+      }
+    },
+    "WorkerConnectionConfiguration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["config", "touchMode", "adbLite", "clientType"],
+      "properties": {
+        "config": { "enum": ["General", "BlueStacks", "MuMuEmulator12", "MuMuArm", "LDPlayer", "Nox", "XYAZ", "Compatible", "SecondResolution", "CompatMac", "CompatPOSIXShell", "Waydroid", "AVD", "Androws", "WSA"] },
+        "touchMode": { "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"] },
+        "adbLite": { "type": "boolean" },
+        "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }
       }
     },
     "WorkerCaptureConfiguration": {
@@ -59,7 +70,8 @@
           "type": "object", "additionalProperties": false, "required": ["method", "emulatorPath", "instanceIndex"],
           "properties": {
             "method": { "const": "mumu" }, "emulatorPath": { "type": "string", "minLength": 1 },
-            "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 2147483647 }
+            "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+            "mumuTouch": { "type": "boolean" }, "mumuBridge": { "type": "boolean" }
           }
         },
         {

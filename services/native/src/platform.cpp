@@ -243,6 +243,7 @@ Api::Api(const fs::path& core) {
     LOAD(running, "AsstRunning");
     // Older reference and synthetic cores can still use the default ADB path.
     set_connection_extras = reinterpret_cast<decltype(set_connection_extras)>(symbol("AsstSetConnectionExtras", false));
+    set_instance_option = reinterpret_cast<decltype(set_instance_option)>(symbol("AsstSetInstanceOption", false));
     screencap = reinterpret_cast<decltype(screencap)>(symbol("AsstAsyncScreencap", false));
     get_image = reinterpret_cast<decltype(get_image)>(symbol("AsstGetImage", false));
     click = reinterpret_cast<decltype(click)>(symbol("AsstAsyncClick", false));
