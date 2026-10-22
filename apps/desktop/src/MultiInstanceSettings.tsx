@@ -31,7 +31,7 @@ export function MultiInstanceSettings({ settings, devices, events, busy, onSaveS
       const nativeError = device?.connectionError || (latest?.type === 'device.connection_failed' ? String(latest.data.error) : '');
       const status = device?.state === 'running' ? '执行中' : device?.state === 'idle' ? '已连接' : pending === profile.id || latest?.type === 'device.connecting' ? '正在连接' : nativeError ? '连接失败' : '未连接';
       return <article className="sp-instance-card" key={profile.id} aria-label={`多开实例：${profile.name}`}>
-        <div className="sp-instance-heading"><div><h3>{profile.name}</h3><p className="sp-help">{profile.address} · {profile.capture.method === 'adb' ? 'ADB 截图' : `${profile.capture.method === 'mumu' ? 'MuMu' : '雷电'} 增强截图 · 实例 ${profile.capture.instanceIndex}`}</p></div><span className="sp-value">{status}</span></div>
+        <div className="sp-instance-heading"><div><h3>{profile.name}</h3><p className="sp-help">{profile.autoDetected && '自动发现 · '}{profile.address} · {(profile.capture.autoDetect ?? (profile.capture.method === 'adb')) && '自动 · '}{profile.capture.method === 'adb' ? 'ADB 截图' : `${profile.capture.method === 'mumu' ? 'MuMu' : '雷电'} 增强截图 · 实例 ${profile.capture.instanceIndex}`}</p></div><span className="sp-value">{status}</span></div>
         {device && device.address !== profile.address && <p className="sp-help">当前设备地址：{device.address}；配置改动将在断开后重新连接时生效。</p>}
         {nativeError && <p className="sp-instance-error" role="alert">{nativeError}</p>}
         <div className="sp-instance-actions"><button className="button secondary" disabled={busy || !!pending} onClick={() => void connect(profile)}>{pending === profile.id ? '正在连接…' : '连接实例'}</button>{device && <button className="button secondary" onClick={() => onSelectDevice(device.id)}>选择设备</button>}<button className="button secondary" disabled={busy || !!pending} onClick={() => { setError(''); setEditing(profile); }}>编辑实例</button><button className="button secondary" disabled={busy || !!pending || (!!device && device.state !== 'offline')} title={device && device.state !== 'offline' ? '请先断开该实例再删除配置' : undefined} onClick={() => void onSaveSettings({ ...settings, deviceProfiles: profiles.filter(item => item.id !== profile.id) })}>删除实例</button></div>
@@ -53,7 +53,7 @@ function InstanceProfileEditor({ profile, profiles, busy, onSave, onCancel }: { 
   const [draft, setDraft, reset] = useSettingsDraft(`device-profile:${profile.id}`, profile);
   const [error, setError] = useState('');
   const submit = async () => {
-    const normalized = { ...draft, name: draft.name.trim(), address: draft.connection.address.trim(), connection: { ...draft.connection, address: draft.connection.address.trim(), adbPath: draft.connection.adbPath.trim() }, capture: { ...draft.capture, emulatorPath: draft.capture.emulatorPath.trim() } };
+    const normalized = { ...draft, autoDetected: false, name: draft.name.trim(), address: draft.connection.address.trim(), connection: { ...draft.connection, address: draft.connection.address.trim(), adbPath: draft.connection.adbPath.trim() }, capture: { ...draft.capture, emulatorPath: draft.capture.emulatorPath.trim() } };
     const next = [...profiles.filter(item => item.id !== normalized.id), normalized];
     const invalid = deviceProfileListError(next);
     if (invalid) { setError(invalid); return; }
