@@ -5,19 +5,25 @@ import { useSettingsDraft } from './settings-draft';
 const captureLabels = { adb: 'ADB 默认截图', mumu: 'MuMu 增强截图', ldplayer: '雷电增强截图' } as const;
 function Section({ title, children, description }: { title: string; children: ReactNode; description?: string }) { return <section className="sp-section"><div className="sp-section-title"><h2>{title}</h2><p>{description}</p></div>{children}</section>; }
 function Notice({ children }: { children: ReactNode }) { return <div className="sp-notice"><Info size={17} /><div>{children}</div></div>; }
-export function CaptureForm({ settings, busy, onSave }: { settings: Settings; busy: boolean; onSave: (capture: NonNullable<Settings['capture']>) => Promise<boolean> }) {
+export function CaptureForm({ settings, busy, onSave, draftKey = 'capture' }: { settings: Settings; busy: boolean; onSave: (capture: NonNullable<Settings['capture']>) => Promise<boolean>; draftKey?: string }) {
   const saved: NonNullable<Settings['capture']> = settings.capture ?? { method: 'adb', emulatorPath: '', instanceIndex: 0 };
-  const [draft, setDraft, resetDraft] = useSettingsDraft('capture', saved);
+  const [draft, setDraft, resetDraft] = useSettingsDraft(draftKey, saved);
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
-  const enhanced = draft.method !== 'adb';
   return <Section title="截图方式" description="保存后用于下一次连接；已连接设备继续使用当前截图方式。">
     <form className="sp-capture-form" onSubmit={(event) => { event.preventDefault(); const capture = { ...draft, emulatorPath: draft.emulatorPath.trim() }; void onSave(capture).then((saved) => { if (saved) setDraft(capture); }); }}>
-      <label className="sp-field">截图协议<select className="text-input" aria-label="截图协议" value={draft.method} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, method: event.target.value as NonNullable<Settings['capture']>['method'], mumuTouch: false, mumuBridge: false }))}>{Object.entries(captureLabels).map(([method, label]) => <option key={method} value={method}>{label}</option>)}</select></label>
-      {enhanced && <><Notice>增强截图使用模拟器提供的快速接口，仅支持相应的 Windows 模拟器。连接时若增强接口不可用，将明确报错，不会自动改用 ADB 截图。</Notice><div className="sp-capture-fields"><label className="sp-field">模拟器安装目录<input className="text-input" aria-label="模拟器安装目录" placeholder="填写模拟器安装根目录" value={draft.emulatorPath} disabled={busy} required pattern=".*\S.*" onChange={(event) => setDraft((previous) => ({ ...previous, emulatorPath: event.target.value }))} /><span className="sp-help">使用模拟器的安装根目录，不是 ADB 可执行文件路径。</span></label><label className="sp-field">模拟器实例索引<input className="text-input" type="number" aria-label="模拟器实例索引" min={0} step={1} required value={draft.instanceIndex} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, instanceIndex: Number(event.target.value) }))} /><span className="sp-help">与模拟器多开管理器中的实例编号一致，首个实例通常为 0。</span></label></div></>}
-      {draft.method === 'mumu' && <><label className="check-field"><input type="checkbox" checked={draft.mumuTouch ?? false} disabled={busy} onChange={event => setDraft(previous => ({ ...previous, mumuTouch: event.target.checked }))} />启用 MuMu 触控增强（实验性）</label><p className="sp-help">需 Windows x64 官方版 MuMu 6.3.2+，支持后台保活；方舟专版与国际版暂不支持。核心在接口不可用时可能回退 Minitouch。</p><label className="check-field"><input type="checkbox" checked={draft.mumuBridge ?? false} disabled={busy} onChange={event => setDraft(previous => ({ ...previous, mumuBridge: event.target.checked }))} />MuMu 网络桥接模式</label><p className="sp-help">桥接模式使用手动连接地址与上方明确指定的本机 MuMu 实例索引。请核对截图来自预期实例。</p></>}
+      <CaptureFields capture={draft} busy={busy} onChange={setDraft} />
       <p className="sp-help">保存后请先停止执行，再断开并重新连接设备。可在“实际截图方式”中核对本次连接确认的协议。</p>
       <div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button secondary" type="button" disabled={busy || !dirty} onClick={resetDraft}>放弃修改</button><button className="button primary" type="submit" disabled={busy}>保存截图配置</button></div>
     </form>
   </Section>;
 }
 
+
+export function CaptureFields({ capture: draft, busy = false, onChange: setDraft }: { capture: NonNullable<Settings['capture']>; busy?: boolean; onChange: (update: NonNullable<Settings['capture']> | ((previous: NonNullable<Settings['capture']>) => NonNullable<Settings['capture']>)) => void }) {
+  const enhanced = draft.method !== 'adb';
+  return <>
+      <label className="sp-field">截图协议<select className="text-input" aria-label="截图协议" value={draft.method} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, method: event.target.value as NonNullable<Settings['capture']>['method'], mumuTouch: false, mumuBridge: false }))}>{Object.entries(captureLabels).map(([method, label]) => <option key={method} value={method}>{label}</option>)}</select></label>
+      {enhanced && <><Notice>增强截图使用模拟器提供的快速接口，仅支持相应的 Windows 模拟器。连接时若增强接口不可用，将明确报错，不会自动改用 ADB 截图。</Notice><div className="sp-capture-fields"><label className="sp-field">模拟器安装目录<input className="text-input" aria-label="模拟器安装目录" placeholder="填写模拟器安装根目录" value={draft.emulatorPath} disabled={busy} required pattern=".*\S.*" onChange={(event) => setDraft((previous) => ({ ...previous, emulatorPath: event.target.value }))} /><span className="sp-help">使用模拟器的安装根目录，不是 ADB 可执行文件路径。</span></label><label className="sp-field">模拟器实例索引<input className="text-input" type="number" aria-label="模拟器实例索引" min={0} step={1} required value={draft.instanceIndex} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, instanceIndex: Number(event.target.value) }))} /><span className="sp-help">与模拟器多开管理器中的实例编号一致，首个实例通常为 0。</span></label></div></>}
+      {draft.method === 'mumu' && <><label className="check-field"><input type="checkbox" checked={draft.mumuTouch ?? false} disabled={busy} onChange={event => setDraft(previous => ({ ...previous, mumuTouch: event.target.checked }))} />启用 MuMu 触控增强（实验性）</label><p className="sp-help">需 Windows x64 官方版 MuMu 6.3.2+，支持后台保活；方舟专版与国际版暂不支持。核心在接口不可用时可能回退 Minitouch。</p><label className="check-field"><input type="checkbox" checked={draft.mumuBridge ?? false} disabled={busy} onChange={event => setDraft(previous => ({ ...previous, mumuBridge: event.target.checked }))} />MuMu 网络桥接模式</label><p className="sp-help">桥接模式使用手动连接地址与上方明确指定的本机 MuMu 实例索引。请核对截图来自预期实例。</p></>}
+  </>;
+}

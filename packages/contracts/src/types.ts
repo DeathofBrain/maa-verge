@@ -86,6 +86,8 @@ export interface Snapshot {
   events: Events;
 }
 export interface Device {
+  connectionProfileId?: string;
+  connectionError?: string;
   id: Id;
   name: Name;
   address: Address;
@@ -139,6 +141,10 @@ export interface UpdateChannel {
 export interface Settings {
   capture?: CaptureSettings;
   connection?: ConnectionSettings;
+  /**
+   * @maxItems 32
+   */
+  deviceProfiles?: DeviceConnectionProfile[];
   autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
@@ -176,6 +182,13 @@ export interface ConnectionSettings {
   touchMode: 'minitouch' | 'maatouch' | 'adb' | 'MaaFwAdb';
   adbLite: boolean;
   clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+}
+export interface DeviceConnectionProfile {
+  id: string;
+  name: string;
+  address: string;
+  connection: ConnectionSettings;
+  capture: CaptureSettings;
 }
 export interface ModelSettings {
   provider: Provider;

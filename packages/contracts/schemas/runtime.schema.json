@@ -60,9 +60,22 @@
       },
       "required": ["adbPath", "address", "config", "touchMode", "adbLite", "clientType"]
     },
+    "DeviceConnectionProfile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "name", "address", "connection", "capture"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[A-Za-z0-9_-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "address": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "connection": { "$ref": "#/$defs/ConnectionSettings" },
+        "capture": { "$ref": "#/$defs/CaptureSettings" }
+      }
+    },
     "Device": {
       "additionalProperties": false,
       "properties": {
+        "connectionProfileId": { "type": "string", "maxLength": 80 },
+        "connectionError": { "type": "string", "maxLength": 4096 },
         "id": {
           "title": "Id",
           "type": "string"
@@ -348,6 +361,7 @@
       "properties": {
         "capture": { "$ref": "#/$defs/CaptureSettings" },
         "connection": { "$ref": "#/$defs/ConnectionSettings" },
+        "deviceProfiles": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/DeviceConnectionProfile" } },
         "autoConnect": {
           "default": true,
           "title": "Autoconnect",

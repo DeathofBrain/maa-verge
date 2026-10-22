@@ -225,6 +225,10 @@ export interface ChannelParams {
 export interface Settings {
   capture?: CaptureSettings;
   connection?: ConnectionSettings;
+  /**
+   * @maxItems 32
+   */
+  deviceProfiles?: DeviceConnectionProfile[];
   autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
@@ -273,6 +277,17 @@ export interface ConnectionSettings {
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "DeviceConnectionProfile".
+ */
+export interface DeviceConnectionProfile {
+  id: string;
+  name: string;
+  address: string;
+  connection: ConnectionSettings;
+  capture: CaptureSettings;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
  * via the `definition` "ModelSettings".
  */
 export interface ModelSettings {
@@ -294,6 +309,8 @@ export interface Snapshot {
  * via the `definition` "Device".
  */
 export interface Device {
+  connectionProfileId?: string;
+  connectionError?: string;
   id: Id1;
   name: Name1;
   address: Address;

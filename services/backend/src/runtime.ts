@@ -2,7 +2,7 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { Store, now } from './storage';
 import { RpcError } from './errors';
-import { parsePlan, parseSettings, parseSnapshot, type Plan } from './models';
+import { parsePlan, parseSettings, parseSnapshot, type Plan, type Settings } from './models';
 import { nativeTask, validatePlan } from './task-policy';
 import { propose } from './agent';
 import { deviceLockPath } from './config';
@@ -11,6 +11,7 @@ import { captureAdbPath, connectionCapture } from './capture';
 import { Preview } from './preview';
 import { UpdateService } from './updates';
 import { adbPath, configuredAdbPath, adbServerIdentity, autoDiscover, deviceLockAddress, discover, isLocalEmulator, validateAddress } from './adb';
+import { findDeviceProfile, profileIdentity } from './device-profiles';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
@@ -155,29 +156,33 @@ export class Runtime {
     if (this.suppressed.has(this.lockAddress(address))) throw new RpcError(-32011, '该设备已手动断开，自动连接已跳过');
   }
   private lockAddress(address: string) { return this.store.get('device-alias', address, deviceLockAddress(address)); }
-  private adbExecutable(): string {
+  private adbExecutable(selected?: Pick<Settings, 'connection' | 'capture'>): string {
     if (this.options.adbExecutable) return this.options.adbExecutable();
-    const { capture, connection } = parseSettings(this.store.get('settings', 'main'));
+    const { capture, connection } = selected ?? parseSettings(this.store.get('settings', 'main'));
     if (connection?.adbPath.trim()) return configuredAdbPath(connection.adbPath);
     if (process.env.MAAVERGE_ADB_PATH) return adbPath();
     return captureAdbPath(capture) || adbPath();
   }
   async connectDevice(params: any, internal = false, automatic = false): Promise<any> {
-    let id: string | undefined, reservedAddress: string | undefined, reserved = false, worker: Worker | undefined;
+    let id: string | undefined, reservedAddress: string | undefined, profileId: string | undefined, attemptedAddress: string | undefined, reserved = false, worker: Worker | undefined;
     try {
       if (this.switching && !internal) throw new RpcError(-32011, '正在切换核心与资源，暂不能连接设备');
       if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
       const address = validateAddress(params.address);
+      attemptedAddress = address;
       if (automatic) this.validateAutomatic(address);
       const active = this.store.all('device').find(device => device.address === address && this.workers.has(device.id));
       if (active) return active;
       if (this.connectingAddresses.has(address)) throw new RpcError(-32011, '该设备正在建立连接');
       this.connectingAddresses.add(address); reservedAddress = address;
       const settings = parseSettings(this.store.get('settings', 'main'));
-      const capture = await connectionCapture(settings.capture, address);
+      const profile = findDeviceProfile(settings, address); profileId = profile?.id;
+      const selected = profile ? { capture: profile.capture, connection: profile.connection } : settings;
+      const capture = await connectionCapture(selected.capture, address);
       // A bridged ADB address still controls the selected local MuMu SDK instance.
       // Keep its alias after settings changes so reconnect/disconnect uses the same lease.
-      if (capture.method === 'mumu' && capture.mumuBridge) this.store.put('device-alias', address, deviceLockAddress(`emulator-${5554 + capture.instanceIndex * 2}`));
+      if (profile) this.store.put('device-alias', address, profileIdentity(profile));
+      else if (capture.method === 'mumu' && capture.mumuBridge) this.store.put('device-alias', address, deviceLockAddress(`emulator-${5554 + capture.instanceIndex * 2}`));
       else this.store.delete('device-alias', address);
       if (automatic) this.validateAutomatic(address); else if (!internal) this.suppressed.delete(this.lockAddress(address));
       const combo = this.store.get('active', 'combo', {}); if (!combo.core) throw new Error('请先在更新中心安装并启用核心');
@@ -187,8 +192,8 @@ export class Runtime {
       if (this.connecting.has(id!)) throw new RpcError(-32011, '该设备正在建立连接');
       if (this.workers.has(id!)) return this.store.get('device', id!);
       this.connecting.add(id!); reserved = true;
-      const adb = this.adbExecutable();
-      const connection = settings.connection ? (({ config, touchMode, adbLite, clientType }) => ({ config, touchMode, adbLite, clientType }))(settings.connection) : undefined;
+      const adb = this.adbExecutable(selected);
+      const connection = selected.connection ? (({ config, touchMode, adbLite, clientType }) => ({ config, touchMode, adbLite, clientType }))(selected.connection) : undefined;
       const { mumuTouch: _touch, mumuBridge: _bridge, ...plainCapture } = capture;
       const workerCapture = capture.method === 'adb' ? { method: 'adb' } : capture.method === 'mumu' ? capture : plainCapture;
       const config = { core: combo.core.path, resource: combo.resource.path, adb, address, capture: workerCapture, ...(connection ? { connection } : {}), userDir: path.join(this.root, 'workers', id!), lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical) };
@@ -196,9 +201,9 @@ export class Runtime {
       if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
       if (automatic) this.validateAutomatic(address);
       this.workers.set(id!, worker);
-      const device = { id, name: String(params.name || address).slice(0, 80), address, state: 'offline', coreVersion: combo.core.version, resourceVersion: combo.resource.version };
+      const device = { id, name: String(params.name || profile?.name || address).slice(0, 80), address, state: 'offline', ...(profile ? { connectionProfileId: profile.id } : {}), coreVersion: combo.core.version, resourceVersion: combo.resource.version };
       this.store.put('device', id!, device); this.emit('device.connecting', '正在异步连接设备', { device }); return device;
-    } catch (error) { if (worker && !this.workers.has(id!)) await worker.close(); if (error instanceof RpcError) throw error; throw new RpcError(-32040, '设备连接失败', String(error)); }
+    } catch (error) { if (worker && !this.workers.has(id!)) await worker.close(); if (profileId) this.emit('device.connection_failed', '多开实例连接失败', { profileId, address: attemptedAddress, error: String(error) }); if (error instanceof RpcError) throw error; throw new RpcError(-32040, '设备连接失败', String(error)); }
     finally { if (reserved) this.connecting.delete(id!); if (reservedAddress) this.connectingAddresses.delete(reservedAddress); }
   }
   async autoConnectDevices(automatic = false): Promise<any> {
@@ -208,21 +213,27 @@ export class Runtime {
       if (!this.running || this.switching) throw new RpcError(-32011, '正在退出或切换核心，请稍后重试');
       if (!automatic) this.suppressed.clear();
       if (!this.store.get('active', 'combo', {}).core) throw new RpcError(-32040, '请先在更新中心安装并启用核心，再自动连接模拟器');
-      let result;
-      try { result = await autoDiscover(this.adbExecutable()); }
-      catch (error) { throw new RpcError(-32040, '模拟器自动发现失败', String(error)); }
-      const { devices: discovered, diagnostics } = result;
+      const profiles = parseSettings(this.store.get('settings', 'main')).deviceProfiles ?? [];
+      let discovered: { address: string; name: string; adbState: string }[] = [], diagnostics: string[] = [];
+      if (!profiles.length) {
+        try { const result = await autoDiscover(this.adbExecutable()); discovered = result.devices; diagnostics = result.diagnostics; }
+        catch (error) { throw new RpcError(-32040, '模拟器自动发现失败', String(error)); }
+      }
+      // Explicit multi-instance profiles use their own ADB executables and SDK
+      // indices. A global enhanced-capture index must never be applied to all.
+      const candidates = profiles.length ? profiles.map(profile => ({ address: profile.address, name: profile.name, adbState: 'configured' })) : discovered;
       const devices: any[] = [], seen = new Set<string>();
-      for (const candidate of discovered) {
-        const key = this.lockAddress(candidate.address);
-        if (candidate.adbState !== 'device' || !isLocalEmulator(candidate.address) || seen.has(key) || (automatic && this.suppressed.has(key))) continue;
+      for (const candidate of candidates) {
+        const configured = findDeviceProfile({ deviceProfiles: profiles }, candidate.address);
+        const key = configured ? profileIdentity(configured) : this.lockAddress(candidate.address);
+        if ((!configured && (candidate.adbState !== 'device' || !isLocalEmulator(candidate.address))) || seen.has(key) || (automatic && this.suppressed.has(key))) continue;
         seen.add(key);
         try {
           if (this.switching || !this.running) throw new RpcError(-32011, '正在退出或切换核心，请稍后重试');
           const previous = [...this.workers.keys()].map(id => this.store.get('device', id)).find(d => this.lockAddress(d.address) === key);
           if (previous) { const worker = this.workers.get(previous.id)!; if (worker.connected || !worker.safeIdle) { devices.push(previous); continue; } await this.disconnectDevice(previous.id, true); }
           devices.push(await this.connectDevice(candidate, false, automatic));
-        } catch (error) { diagnostics.push(candidate.address + '：' + (error instanceof Error ? error.message : String(error))); }
+        } catch (error) { diagnostics.push(candidate.address + '：' + (error instanceof RpcError && error.data !== undefined ? `${error.message}：${String(error.data)}` : error instanceof Error ? error.message : String(error))); }
       }
       if (!devices.length) diagnostics.push('未连接到可用模拟器；请启动模拟器并开启 ADB 调试，或手动填写地址');
       if (!automatic || JSON.stringify(diagnostics) !== JSON.stringify(this.lastDiagnostics)) this.emit('device.auto_connect', '模拟器自动连接检查完成', { requested: devices.length, diagnostics });
@@ -293,7 +304,7 @@ export class Runtime {
         const event = worker.events.shift(), state = run ? this.store.get('execution', run.id, {}) : {};
         if (['exit', 'protocol_error'].includes(event.type)) {
           worker.connected = false; if (run) this.finishNativeRun(run, 'failed', '核心工作进程异常，执行结果未知；不会自动重放'); run = undefined;
-          const d = this.store.get('device', id); d.state = 'offline'; this.store.put('device', id, d); await worker.close(); this.workers.delete(id); break;
+          const d = this.store.get('device', id); d.state = 'offline'; d.connectionError = '核心工作进程异常退出，请查看本地日志后重连'; this.store.put('device', id, d); await worker.close(); this.workers.delete(id); break;
         }
         if (event.type === 'callback') {
           const { message, details } = event;
@@ -301,11 +312,12 @@ export class Runtime {
             const d = this.store.get('device', id); d.captureMethod = details.details.method; this.store.put('device', id, d);
             this.emit('device.capture', '核心实际截图方式：' + d.captureMethod, { deviceId: id, method: d.captureMethod, cost: details.details.cost });
           }
-          if (message === 4 && details.what === 'Connect') { worker.connected = !!details.details?.ret; const d = this.store.get('device', id); d.state = worker.connected ? 'idle' : 'offline'; this.store.put('device', id, d); this.emit(worker.connected ? 'device.connected' : 'device.failed', worker.connected ? '设备已连接' : '核心设备连接失败：' + (details.details?.error || '请查看本地核心日志'), { device: d }); }
+          if (message === 4 && details.what === 'Connect') { worker.connected = !!details.details?.ret; const d = this.store.get('device', id); d.state = worker.connected ? 'idle' : 'offline'; if (worker.connected) delete d.connectionError; else d.connectionError = String(details.details?.error || '请查看本地核心日志').slice(0, 4096); this.store.put('device', id, d); this.emit(worker.connected ? 'device.connected' : 'device.failed', worker.connected ? '设备已连接' : '核心设备连接失败：' + d.connectionError, { device: d }); }
           if (message === 2 && ['Disconnect', 'ResolutionChanged'].includes(details.what)) {
             worker.connected = false;
             const d = this.store.get('device', id); d.state = 'offline'; delete d.captureMethod; this.store.put('device', id, d);
             const reason = details.why === 'RequiredCaptureProtocolUnavailable' ? '增强截图不可用，已停止执行并断开：' + (details.details?.error || '未确认要求的截图协议') : '设备连接中断，请核对现场后重试';
+            d.connectionError = reason.slice(0, 4096); this.store.put('device', id, d);
             this.emit('device.failed', reason, { device: d });
             if (run) this.finishNativeRun(run, 'failed', reason); run = undefined;
           }
