@@ -18,7 +18,7 @@ flowchart LR
 | 范围 | 当前入口与约束 |
 | --- | --- |
 | 页面与 Tauri | 页面只使用 `packages/contracts` 的 transport；Rust 管理服务进程、窗口和系统集成 |
-| 应用服务 | `services/backend/src/entry.ts`；计划、策略、SQLite、设备发现、执行监督和三条独立更新通道 |
+| 应用服务 | `services/backend/src/entry.ts`；计划、策略、SQLite、设备发现、执行监督、画面令牌与人工点击准入、三条独立更新通道 |
 | Agent | `services/backend/src/agent.ts`；仅 mock 的确定性规则提案，需要审阅、保存后手动执行；真实云模型、持续托管及视觉 Agent 尚未接入 |
 | 原生调用 | `services/native`；C++20 动态加载 MaaCore，复制回调、持有设备锁、处理异步 ID、调用超时和销毁 |
 | 更新任务 | 包内服务 `--update-job`；选择性提取核心或合并固定提交的资源，调用 C++ `--validate`，不打开业务数据库 |
@@ -28,6 +28,14 @@ flowchart LR
 JSON-RPC 使用 UTF-8 换行 JSON，stdout 仅承载协议，日志进入 stderr。原生输出带 `protocolVersion: 1`。每个设备只有一个控制者；原生调用结果不明时停止并要求核对，不自动重放。`AsstStop` 清空队列，不能作为暂停恢复。
 
 stdio 通知方法保留 `runtime.event`；Tauri 宿主将其映射为合法事件名 `runtime-event`，页面订阅同名事件。宿主断连通知为 `runtime-disconnected`。Tauri 事件名不能包含点号，不能直接复用 JSON-RPC 方法名。
+
+画面预览新增类型化 `device.frame({deviceId})` 与 `device.click({deviceId,frameId,x,y,requestId})`，由当前 TypeScript 服务和 C++ `frame` / `click` 命令承接。`ScreenFrame` 包含 PNG base64、尺寸、`capturedAt`、`frameId`、`canControl` 及服务取帧耗时；空闲时确认新截图，任务中只读取 MaaCore 最近缓存并禁用点击，时间字段不是运行中缓存的原始采集时间。预览 PNG 坐标直接交给同一 MaaCore 缩放代理，不换算为设备物理像素。
+
+页面支持 5 / 10 / 15 / 30 / 60 / 90 / 120 Hz，默认目标 60 Hz，偏好保存在 `localStorage` 的 `maaverge:ui:preview-fps`；实际显示 FPS 与往返延迟单独呈现。前端请求与解码串行，服务合并同设备的未完成取帧；隐藏、收起或切设备时停止后续刷新，避免高频请求排队。目标 60 Hz 不保证真实 60 FPS，本轮新增能力只进行 mock 与合成核心验证。
+
+服务仅在内存中维护每设备最近 32 帧、最长 2 秒的控制记录，核验设备、worker、`canControl` 与空闲状态后接受点击；点击按会话内 `requestId` 缓存成功与失败结果，不持久化去重，也不自动重放未知动作。PNG 不写入业务数据库、事件或截图文件，也不上传；点击事件只携带操作元数据。Python debug 参考尚未实现这两个新接口，选中参考后会明确报错，不自动切换后端。详细接口及限制见 [画面预览与人工点击](emulator-connection.md#画面预览与人工点击)。
+
+高频预览的运行状态查询使用 `objects` 上仅覆盖运行中记录的 `active_run_device` 索引；表格式、业务值、隐式 rowid 和请求去重数据保持兼容，首次接管备份在创建索引前完成。服务退出时先启动已有 worker 的有界关闭，再等待请求收尾，避免挂起的取帧请求让设备锁滞留在退出后的原生进程中。
 
 核心精简提取的 `e6e8493` 和接入更新的 `103bc99` 已进入本次迁移基线，规则与测试已迁至 TypeScript；不需要另行重复应用。这部分只减少落盘范围，不减少官方完整包的下载流量。提取白名单和历史 Windows 数据见 [maacore-runtime.md](maacore-runtime.md)。
 
@@ -77,7 +85,7 @@ selector 选择旧应用服务及其原生适配路径，用于比较。release 
 
 Bun `--compile` 将应用代码和 Bun/JavaScriptCore 放入同一可执行文件，仍由嵌入的 JS 引擎执行代码。它不是把所有 TypeScript 编译为不含引擎的静态机器码。Bun SQLite 在 Windows/Linux 随运行时链接，macOS 使用系统 SQLite；无需 `.node` 扩展或用户安装的 JavaScript 环境。
 
-C++ worker 固定 C++20 与 nlohmann/json 3.12.0（CMake 固定 SHA-256）。Windows 使用 `/MT`，Debug 为 `/MTd`；Linux 静态链接 libstdc++/libgcc，仍依赖系统 libc 与动态加载器；macOS 使用系统 libc++。MaaCore、控制单元和其依赖在不可变 generation 中动态加载，不能把 worker 的静态 CRT 当作 MaaCore 没有依赖。
+C++ worker 固定 C++20 与 nlohmann/json 3.12.0（单头文件及许可证保存在 `3rdparty/nlohmann-json`，CMake 校验 SHA-256，配置时不下载）。Windows 使用 `/MT`，Debug 为 `/MTd`；Linux 静态链接 libstdc++/libgcc，仍依赖系统 libc 与动态加载器；macOS 使用系统 libc++。MaaCore、控制单元和其依赖在不可变 generation 中动态加载，不能把 worker 的静态 CRT 当作 MaaCore 没有依赖。
 
 当前发行目标为 Windows x64、Linux x64、macOS arm64/x64。macOS 最低目标为 13.5，受 Bun 约束；Tauri/WebView、操作系统库、图形环境及原生 SDK 仍需满足平台要求。C++ worker 的 macOS 权限单独允许动态库校验例外与 DYLD 搜索路径，服务单独持有 JIT 权限；主应用不申请这些例外。正式签名、公证、安装及下载后动态库加载须在对应平台验收，预签名所用证书需提前导入构建机钥匙串。
 

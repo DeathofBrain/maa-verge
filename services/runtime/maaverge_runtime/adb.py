@@ -61,7 +61,11 @@ def device_lock_address(address: str) -> str:
     if re.fullmatch(r"emulator-\d{1,5}", address):
         return f"127.0.0.1:{int(address.removeprefix('emulator-')) + 1}"
     if is_local_emulator(address):
-        return "127.0.0.1:" + str(int(address.rsplit(":", 1)[1]))
+        port = int(address.rsplit(":", 1)[1])
+        # MuMu TCP endpoints alias emulator serials regardless of capture mode.
+        if port >= 16384 and (port - 16384) % 32 == 0:
+            port = 5555 + (port - 16384) // 16
+        return f"127.0.0.1:{port}"
     return address
 
 

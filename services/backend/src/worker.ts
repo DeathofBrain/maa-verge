@@ -82,6 +82,8 @@ export class CoreWorker {
   connect() { this.connected = false; this.pending = 1; return this.request('connect'); }
   task(task: any) { this.running = true; return this.request('task', { task }); }
   stop() { return this.request('stop'); }
+  frame() { return this.request('frame'); }
+  click(x: number, y: number) { return this.request('click', { x, y }); }
   async waitConnected(timeout = 30_000) {
     const deadline = Date.now() + timeout;
     while (!this.exited && !this.closed && Date.now() < deadline) { if (this.connected && this.safeIdle) return true; await delay(20); }

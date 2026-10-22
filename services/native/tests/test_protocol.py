@@ -1,6 +1,7 @@
 """CTest-only synthetic native protocol checks. Never load a real core or use ADB."""
 
 import argparse
+import base64
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,7 @@ PARSER = argparse.ArgumentParser()
 PARSER.add_argument("--worker", type=Path, required=True)
 PARSER.add_argument("--core", type=Path, required=True)
 PARSER.add_argument("--missing", type=Path, required=True)
+PARSER.add_argument("--legacy", type=Path)
 PARSER.add_argument("--suite", required=True)
 ARGS = PARSER.parse_args()
 
@@ -42,6 +44,7 @@ class Session:
                 try:
                     value = json.loads(line)
                     assert value["protocolVersion"] == 1, value
+                    assert len(line.encode("utf-8")) <= 4 * 1024 * 1024, "oversized NDJSON output"
                     self.messages.put(value)
                 except Exception as error:
                     self.errors.append(str(error) + ": " + line)
@@ -170,8 +173,8 @@ class Validation(Base):
 
 
 class Worker(Base):
-    def connected(self, scenario=""):
-        session = self.session(scenario=scenario)
+    def connected(self, scenario="", config=None):
+        session = self.session(config, scenario=scenario)
         session.wait(lambda value: value.get("type") == "ready")
         session.send({"id": "connect", "operation": "connect"})
         self.assertEqual(session.response("connect")["result"], {"asyncId": 7})
@@ -179,6 +182,294 @@ class Worker(Base):
         self.assertTrue(callback["details"]["details"]["ret"])
         session.wait(lambda value: value.get("type") == "status" and not value["pendingAsync"])
         return session
+
+    def capture_config(self, method="mumu", **extras):
+        emulator = self.root / "模拟器"
+        emulator.mkdir(exist_ok=True)
+        return {**self.config, "capture": {
+            "method": method, "emulatorPath": str(emulator), "instanceIndex": 3, **extras,
+        }}
+
+    def preview(self, session, ident="preview"):
+        session.send({"id": ident, "operation": "frame"})
+        response = session.response(ident)
+        self.assertIn("result", response, response)
+        return response["result"]
+
+    def test_preview_and_click_confirm_native_callbacks_in_preview_pixels(self):
+        session = self.connected()
+        frame = self.preview(session)
+        self.assertEqual({key: frame[key] for key in ("width", "height", "mimeType", "canControl")}, {
+            "width": 2, "height": 2, "mimeType": "image/png", "canControl": True,
+        })
+        image = base64.b64decode(frame["data"], validate=True)
+        self.assertEqual(image[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertEqual(int.from_bytes(image[16:20], "big"), frame["width"])
+        self.assertEqual(int.from_bytes(image[20:24], "big"), frame["height"])
+        session.send({"id": "click", "operation": "click", "x": 1, "y": 1})
+        self.assertEqual(session.response("click")["result"], {"accepted": True})
+        for ident, what in [(17, "Screencap"), (27, "Click")]:
+            callback = next(value for value in session.seen if value.get("message") == 4
+                            and value.get("details", {}).get("async_call_id") == ident)
+            self.assertEqual(callback["details"]["what"], what)
+            self.assertIs(callback["details"]["details"]["ret"], True)
+        trace = Path(self.config["trace"]).read_text(encoding="utf-8").splitlines()
+        self.assertIn("screencap-blocking", trace)
+        self.assertIn("click:1:1:block", trace)
+        self.assertLess(trace.index("screencap-blocking"), trace.index("get-image"))
+
+    def test_preview_and_click_require_connection_and_frame(self):
+        session = self.session()
+        session.wait(lambda value: value.get("type") == "ready")
+        for operation in ["frame", "click"]:
+            session.send({"id": operation, "operation": operation, "x": 0, "y": 0})
+            self.assertIn("must be connected", session.response(operation)["error"])
+        self.assertEqual(session.close()[0], 0)
+        session = self.connected()
+        session.send({"id": "click", "operation": "click", "x": 0, "y": 0})
+        self.assertIn("frame is required", session.response("click")["error"])
+        self.assertNotIn("click:", Path(self.config["trace"]).read_text(encoding="utf-8"))
+
+    def test_preview_click_rejects_noninteger_and_out_of_frame_coordinates(self):
+        session = self.connected()
+        self.preview(session)
+        for index, coordinates in enumerate([
+            {}, {"x": True, "y": 0}, {"x": 0, "y": False}, {"x": 1.5, "y": 0},
+            {"x": "1", "y": 0}, {"x": -1, "y": 0}, {"x": 0, "y": -1},
+            {"x": 2, "y": 0}, {"x": 0, "y": 2}, {"x": 2 ** 64, "y": 0},
+        ]):
+            with self.subTest(coordinates=coordinates):
+                session.send({"id": index, "operation": "click", **coordinates})
+                self.assertIn("integers inside", session.response(index)["error"])
+        self.assertNotIn("click:", Path(self.config["trace"]).read_text(encoding="utf-8"))
+
+    def test_running_preview_only_reads_cached_image_and_blocks_click(self):
+        session = self.connected("task-hold")
+        self.preview(session)
+        session.send({"id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}})
+        self.assertEqual(session.response("task")["result"], {"taskId": 11})
+        self.assertIs(self.preview(session, "running-preview")["canControl"], False)
+        session.send({"id": "click", "operation": "click", "x": 0, "y": 0})
+        self.assertIn("not idle", session.response("click")["error"])
+        trace = Path(self.config["trace"]).read_text(encoding="utf-8").splitlines()
+        self.assertEqual(trace.count("screencap"), 1)
+        self.assertEqual(trace.count("get-image"), 2)
+        self.assertFalse(any(line.startswith("click:") for line in trace))
+
+    def test_delayed_native_callback_is_awaited_without_event_pump(self):
+        for scenario, operation, ident in [
+            ("screencap-callback-delay", "frame", 17), ("click-callback-delay", "click", 27),
+        ]:
+            with self.subTest(scenario=scenario):
+                session = self.connected(scenario)
+                if operation == "click":
+                    self.preview(session)
+                session.send({"id": "command", "operation": operation, "x": 0, "y": 0})
+                self.assertIn("result", session.response("command"))
+                self.assertTrue(any(value.get("details", {}).get("async_call_id") == ident
+                                    for value in session.seen))
+                self.assertEqual(session.close()[0], 0)
+
+    def test_preview_refuses_failed_or_mismatched_screencap_results(self):
+        for scenario in ["screencap-reject", "screencap-failure", "screencap-wrong-what"]:
+            with self.subTest(scenario=scenario):
+                session = self.connected(scenario)
+                session.send({"id": "frame", "operation": "frame"})
+                self.assertIn("error", session.response("frame"))
+                self.assertNotIn("get-image", Path(self.config["trace"]).read_text(encoding="utf-8"))
+                self.assertEqual(session.close()[0], 0)
+
+    def test_click_requires_successful_exact_callback_and_is_never_replayed(self):
+        for scenario in ["click-reject", "click-failure", "click-invalid-ret", "click-wrong-what", "click-disconnect"]:
+            with self.subTest(scenario=scenario):
+                Path(self.config["trace"]).unlink(missing_ok=True)
+                session = self.connected(scenario)
+                self.preview(session)
+                session.send({"id": "click", "operation": "click", "x": 1, "y": 0})
+                self.assertIn("error", session.response("click"))
+                trace = Path(self.config["trace"]).read_text(encoding="utf-8").splitlines()
+                self.assertEqual(sum(line.startswith("click:") for line in trace), 1)
+                self.assertEqual(session.close()[0], 0)
+
+    def test_preview_size_sentinel_png_header_and_dimensions_are_bounded(self):
+        for scenario in [
+            "image-null-size", "image-oversize", "image-empty", "image-truncated", "image-invalid-png",
+            "image-invalid-ihdr", "image-wide", "image-too-many-pixels", "image-zero-dimension",
+        ]:
+            with self.subTest(scenario=scenario):
+                session = self.connected(scenario)
+                session.send({"id": "frame", "operation": "frame"})
+                self.assertIn("error", session.response("frame"))
+                session.send({"id": "click", "operation": "click", "x": 0, "y": 0})
+                self.assertIn("frame is required", session.response("click")["error"])
+                self.assertEqual(session.close()[0], 0)
+
+    def test_largest_preview_fits_one_ndjson_message(self):
+        session = self.connected("image-limit")
+        frame = self.preview(session)
+        self.assertEqual(len(base64.b64decode(frame["data"], validate=True)), 3 * 1024 * 1024 - 8192)
+        self.assertLess(len(json.dumps(frame).encode("utf-8")), 4 * 1024 * 1024 - 8192)
+
+    @unittest.skipUnless(ARGS.legacy, "legacy fixture not supplied")
+    def test_optional_preview_symbols_preserve_legacy_core_tasks(self):
+        shutil.copyfile(ARGS.legacy, self.core / ARGS.core.name)
+        session = self.connected()
+        for operation, symbol in [("frame", "AsstGetImage"), ("click", "AsstAsyncClick")]:
+            session.send({"id": operation, "operation": operation, "x": 0, "y": 0})
+            self.assertIn(symbol, session.response(operation)["error"])
+        session.send({"id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}})
+        self.assertEqual(session.response("task")["result"], {"taskId": 11})
+        session.wait(lambda value: value.get("message") == 10002)
+        self.assertEqual(session.close()[0], 0)
+
+    def test_missing_exact_async_callback_exits_unknown_without_replaying(self):
+        for scenario, operation in [("screencap-wrong-id", "frame"), ("click-wrong-id", "click")]:
+            with self.subTest(scenario=scenario):
+                Path(self.config["trace"]).unlink(missing_ok=True)
+                session = self.connected(scenario, config={**self.config, "asyncTimeoutMs": 80})
+                if operation == "click":
+                    self.preview(session)
+                session.send({"id": "command", "operation": operation, "x": 0, "y": 0})
+                self.assertEqual(session.child.wait(timeout=3), 124)
+                code, errors = session.close()
+                self.assertEqual(code, 124)
+                self.assertIn("result unknown, do not replay", errors)
+                if operation == "click":
+                    trace = Path(self.config["trace"]).read_text(encoding="utf-8").splitlines()
+                    self.assertEqual(sum(line.startswith("click:") for line in trace), 1)
+
+    def test_enhanced_preview_failure_preserves_protocol_stop(self):
+        session = self.connected("capture-late-fallback", config=self.capture_config())
+        session.send({"id": "frame", "operation": "frame"})
+        self.assertIn("error", session.response("frame"))
+        self.assertTrue(any(value.get("details", {}).get("why") == "RequiredCaptureProtocolUnavailable"
+                            for value in session.seen))
+        trace = Path(self.config["trace"]).read_text(encoding="utf-8")
+        self.assertIn("stop-cleared-queue", trace)
+        self.assertNotIn("get-image", trace)
+
+    def test_enhanced_extras_precede_connection_and_new_screencap(self):
+        for method, name, expected, extras in [
+            ("mumu", "MuMuEmulator12", "MumuExtras", {}),
+            ("ldplayer", "LDPlayer", "LDExtras", {"pid": 4242}),
+        ]:
+            with self.subTest(method=method):
+                config = self.capture_config(method, **extras)
+                session = self.connected(config=config)
+                evidence = next(
+                    value for value in session.seen
+                    if value.get("details", {}).get("what") == "FastestWayToScreencap"
+                )
+                self.assertEqual(evidence["details"]["details"]["method"], expected)
+                session.send({"id": "frame", "operation": "screencap"})
+                self.assertEqual(session.response("frame")["result"], {"asyncId": 17})
+                frame = session.wait(
+                    lambda value: value.get("details", {}).get("what") == "Screencap"
+                )
+                self.assertTrue(frame["details"]["details"]["ret"])
+                session.wait(
+                    lambda value: value.get("type") == "status" and not value["pendingAsync"]
+                )
+                session.send({
+                    "id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}
+                })
+                self.assertEqual(session.response("task")["result"], {"taskId": 11})
+                session.wait(lambda value: value.get("message") == 10002)
+                self.assertEqual(session.close()[0], 0)
+                trace = Path(config["trace"]).read_text(encoding="utf-8").splitlines()
+                extra_line = next(line for line in trace if line.startswith("extras:" + name + ":"))
+                applied = json.loads(extra_line.split(":", 2)[2])
+                self.assertTrue(Path(applied["path"]).samefile(config["capture"]["emulatorPath"]))
+                if os.name == "nt":
+                    self.assertFalse(applied["path"].startswith("\\\\?\\"))
+                self.assertEqual(applied["index"], 3)
+                if method == "mumu":
+                    self.assertIs(applied["touch"], False)
+                else:
+                    self.assertEqual(applied["pid"], 4242)
+                self.assertLess(trace.index(extra_line), trace.index("connect:" + name))
+                self.assertIn("screencap", trace)
+
+    def test_enhanced_task_requires_verified_connection(self):
+        session = self.session(self.capture_config())
+        session.wait(lambda value: value.get("type") == "ready")
+        session.send({"id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}})
+        self.assertIn("protocol has not been verified", session.response("task")["error"])
+        session.send({"id": "frame", "operation": "screencap"})
+        self.assertIn("must be connected", session.response("frame")["error"])
+        self.assertEqual(session.close()[0], 0)
+        self.assertNotIn("append-task", Path(self.config["trace"]).read_text())
+
+    def test_enhanced_fallback_missing_evidence_and_connect_failure_block_tasks(self):
+        for scenario in ["capture-fallback", "capture-no-evidence", "capture-connect-failure"]:
+            with self.subTest(scenario=scenario):
+                session = self.session(self.capture_config(), scenario=scenario)
+                session.wait(lambda value: value.get("type") == "ready")
+                session.send({"id": "connect", "operation": "connect"})
+                session.response("connect")
+                result = session.wait(
+                    lambda value: value.get("message") == 4
+                    and value.get("details", {}).get("what") == "Connect"
+                )
+                details = result["details"]["details"]
+                self.assertIs(details["ret"], False)
+                self.assertEqual(details["expectedMethod"], "MumuExtras")
+                self.assertTrue(details["error"])
+                session.wait(
+                    lambda value: value.get("type") == "status" and not value["pendingAsync"]
+                )
+                session.send({
+                    "id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}
+                })
+                self.assertIn("protocol has not been verified", session.response("task")["error"])
+                self.assertEqual(session.close()[0], 0)
+                self.assertNotIn(
+                    "append-task", Path(self.config["trace"]).read_text(encoding="utf-8")
+                )
+
+    def test_enhanced_reprobe_fallback_and_screencap_failure_stop_and_disconnect(self):
+        for scenario in ["capture-late-fallback", "screencap-failure"]:
+            with self.subTest(scenario=scenario):
+                session = self.connected(scenario, config=self.capture_config())
+                session.send({"id": "frame", "operation": "screencap"})
+                session.response("frame")
+                failure = session.wait(
+                    lambda value: value.get("message") == 2
+                    and value.get("details", {}).get("what") == "Disconnect"
+                )
+                self.assertEqual(failure["details"]["why"], "RequiredCaptureProtocolUnavailable")
+                self.assertTrue(failure["details"]["details"]["error"])
+                frame = session.wait(
+                    lambda value: value.get("details", {}).get("what") == "Screencap"
+                )
+                self.assertIs(frame["details"]["details"]["ret"], False)
+                self.assertTrue(frame["details"]["details"]["error"])
+                session.wait(
+                    lambda value: value.get("type") == "status" and not value["pendingAsync"]
+                )
+                session.send({
+                    "id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}
+                })
+                self.assertIn("protocol has not been verified", session.response("task")["error"])
+                self.assertEqual(session.close()[0], 0)
+                trace = Path(self.config["trace"]).read_text(encoding="utf-8")
+                self.assertIn("stop-cleared-queue", trace)
+                self.assertNotIn("append-task", trace)
+
+    def test_invalid_capture_configuration_is_rejected(self):
+        configs = [
+            self.capture_config(instanceIndex=-1), self.capture_config(instanceIndex=True),
+            self.capture_config(instanceIndex=1.5), self.capture_config(pid=22),
+            self.capture_config("ldplayer", pid=0), self.capture_config("ldplayer", pid=2147483648),
+            self.capture_config("unsupported"),
+            self.capture_config(emulatorPath=str(self.root / "missing")),
+        ]
+        for config in configs:
+            with self.subTest(capture=config["capture"]):
+                session = self.session(config)
+                code, errors = session.close()
+                self.assertNotEqual(code, 0)
+                self.assertTrue(errors)
 
     def test_connect_task_callbacks_and_eof_destroy(self):
         session = self.connected()

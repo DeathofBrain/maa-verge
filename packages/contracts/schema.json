@@ -36,6 +36,37 @@
       "title": "Budgets",
       "type": "object"
     },
+    "CaptureSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": [
+            "adb",
+            "mumu",
+            "ldplayer"
+          ],
+          "default": "adb"
+        },
+        "emulatorPath": {
+          "type": "string",
+          "maxLength": 4096,
+          "default": ""
+        },
+        "instanceIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": 0
+        }
+      },
+      "required": [
+        "method",
+        "emulatorPath",
+        "instanceIndex"
+      ]
+    },
     "Device": {
       "additionalProperties": false,
       "properties": {
@@ -71,6 +102,10 @@
           ],
           "default": null,
           "title": "Coreversion"
+        },
+        "captureMethod": {
+          "type": "string",
+          "maxLength": 128
         },
         "resourceVersion": {
           "anyOf": [
@@ -321,6 +356,9 @@
     "Settings": {
       "additionalProperties": false,
       "properties": {
+        "capture": {
+          "$ref": "#/$defs/CaptureSettings"
+        },
         "autoConnect": {
           "default": true,
           "title": "Autoconnect",

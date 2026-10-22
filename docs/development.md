@@ -124,8 +124,8 @@ macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置�
 
 ## VS Code 的 C++ 配置
 
-用 VS Code 打开仓库根目录，安装工作区推荐的 C/C++ 与 CMake Tools 扩展。首次打开会配置 `services/native`，在 `CMake: Select a Kit` 中选择本机 C++20 工具链；Windows 选择已安装的 Visual Studio C++ 工具链。若未自动配置，运行 `CMake: Configure`。配置会下载固定版本的 nlohmann/json，并将构建文件放在忽略目录 `build/native`。
+用 VS Code 打开仓库根目录，安装工作区推荐的 C/C++ 与 CMake Tools 扩展。首次打开会配置 `services/native`，在 `CMake: Select a Kit` 中选择本机 C++20 工具链；Windows 选择已安装的 Visual Studio C++ 工具链。若未自动配置，运行 `CMake: Configure`。nlohmann/json 3.12.0 的头文件与许可证已保存在 `3rdparty/nlohmann-json`，配置时校验本地副本，无需下载；构建文件放在忽略目录 `build/native`。
 
-C/C++ 扩展通过 CMake Tools 从实际 target 获取编译器、系统 SDK、宏和头文件路径；工作区另提供 `services/native/src` 与下载后的 nlohmann/json include 目录作为兜底，语言标准为 C++20。不需要填写个人安装路径。`CMAKE_EXPORT_COMPILE_COMMANDS` 仅对 Ninja/Makefile 等生成器生效，Visual Studio/MSBuild 不生成 `compile_commands.json`，仍通过配置提供器解析。
+C/C++ 扩展通过 CMake Tools 从实际 target 获取编译器、系统 SDK、宏和头文件路径；工作区另提供 `services/native/src` 与 `3rdparty/nlohmann-json/include` 作为兜底，语言标准为 C++20。不需要填写个人安装路径。`CMAKE_EXPORT_COMPILE_COMMANDS` 仅对 Ninja/Makefile 等生成器生效，Visual Studio/MSBuild 不生成 `compile_commands.json`，仍通过配置提供器解析。
 
 按 `Ctrl+Shift+B` 执行“构建 C++ worker（生产配置）”，调用 `node tools/build-core-worker.mjs --production`，不查找 Python 或运行合成测试。需要 CTest 时仍按原生 worker 文档运行开发构建命令。

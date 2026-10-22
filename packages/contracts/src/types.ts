@@ -91,6 +91,7 @@ export interface Device {
   address: Address;
   state: State;
   coreVersion: Coreversion;
+  captureMethod?: string;
   resourceVersion: Resourceversion;
 }
 export interface Plan {
@@ -136,6 +137,7 @@ export interface UpdateChannel {
   message: Message1;
 }
 export interface Settings {
+  capture?: CaptureSettings;
   autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
@@ -143,6 +145,11 @@ export interface Settings {
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;
+}
+export interface CaptureSettings {
+  method: 'adb' | 'mumu' | 'ldplayer';
+  emulatorPath: string;
+  instanceIndex: number;
 }
 export interface ModelSettings {
   provider: Provider;

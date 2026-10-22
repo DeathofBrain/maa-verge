@@ -1,7 +1,7 @@
 export * from './types';
 export { rpc, subscribe } from './transport';
 export type { RpcMethod, RpcParams, RpcResult } from './transport';
-export type { RpcContract, RpcRequest, RpcEvent } from './rpc-types';
+export type { RpcContract, RpcRequest, RpcEvent, ScreenFrame } from './rpc-types';
 export type {
   WorkerProtocol, WorkerConfiguration, WorkerLeaseConfiguration, WorkerValidationConfiguration,
   WorkerCommand, WorkerEvent, WorkerValidation,

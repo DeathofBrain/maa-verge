@@ -132,6 +132,32 @@ test('SQLite preserves rowid order, event sequence, exclusive data lease and bac
   expect(backup.query('SELECT id FROM objects WHERE kind=? ORDER BY rowid').all('plan')).toEqual([{ id: 'z' }, { id: 'a' }]); expect(backup.query('SELECT count(*) n FROM events').get()).toEqual({ n: 1 }); backup.close();
 });
 
+test('active-run lookup tracks device changes, completion, deletion and transaction rollback', () => {
+  const store = new Store(temp());
+  try {
+    expect(store.hasRunningRun()).toBe(false);
+    store.put('run', 'history', { deviceId: 'a', status: 'completed' });
+    store.put('run', 'active', { deviceId: 'b', status: 'running' });
+    expect(store.hasRunningRun()).toBe(true);
+    expect(store.hasRunningRun('a')).toBe(false);
+    expect(store.hasRunningRun('b')).toBe(true);
+    expect(() => store.transaction(() => {
+      store.put('run', 'active', { deviceId: 'b', status: 'stopped' });
+      expect(store.hasRunningRun()).toBe(false);
+      throw new Error('rollback');
+    })).toThrow('rollback');
+    expect(store.hasRunningRun('b')).toBe(true);
+    store.put('run', 'active', { deviceId: 'a', status: 'running' });
+    expect(store.hasRunningRun('b')).toBe(false);
+    expect(store.hasRunningRun('a')).toBe(true);
+    store.put('run', 'active', { deviceId: 'a', status: 'completed' });
+    expect(store.hasRunningRun()).toBe(false);
+    store.put('run', 'active', { deviceId: 'a', status: 'running' });
+    store.delete('run', 'active');
+    expect(store.hasRunningRun()).toBe(false);
+  } finally { store.close(); }
+});
+
 test('WAL takeover backup is standalone, read-only accessible and preserves sparse rowids', () => {
   const root = temp(), source = new Database(path.join(root, 'maaverge.sqlite3'));
   let store: Store | undefined;

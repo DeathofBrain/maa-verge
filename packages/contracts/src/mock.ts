@@ -1,11 +1,18 @@
 import type { Device, Event, Plan, Run, Settings, Snapshot, UpdateChannel } from './types';
 import { taskEnabled, validatePlan } from './task-policy';
+import { mockPreviewImage } from './preview-mock';
+import { validateDeviceClickParams, validateDeviceFrameParams } from './validators.js';
 
 const workspace = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID || 'browser';
 const key = 'maaverge:mock:v1:' + workspace;
 const listeners = new Set<(event: Event) => void>();
 const executionTasks = new Map<string, Plan['tasks']>();
 const requestRuns = new Map<string, string>();
+const previewFrames = new Map<string, { deviceId: string; captured: number; canControl: boolean }>();
+const previewClicks = new Map<string, { signature: string; time: number; promise: Promise<{ accepted: true }> }>();
+function invalidatePreview(deviceId: string) {
+  for (const [id, frame] of previewFrames) if (frame.deviceId === deviceId) previewFrames.delete(id);
+}
 const now = () => new Date().toISOString();
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const defaults = (): Snapshot => ({
@@ -139,6 +146,40 @@ function mockAddress(value: unknown): string {
 export async function mockRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
     case 'app.snapshot': return clone(state);
+    case 'device.frame': {
+      if (!validateDeviceFrameParams(params)) throw new Error('画面请求参数无效');
+      const device = state.devices.find(item => item.id === params.deviceId);
+      if (!device || device.state === 'offline') throw new Error('设备尚未连接，请先连接设备');
+      const captured = Date.now(), frameId = crypto.randomUUID();
+      for (const [id, frame] of previewFrames) if (captured - frame.captured > 2000) previewFrames.delete(id);
+      const recent = [...previewFrames.entries()].filter(([, frame]) => frame.deviceId === device.id);
+      for (const [id] of recent.slice(0, Math.max(0, recent.length - 31))) previewFrames.delete(id);
+      const canControl = device.state === 'idle' && !state.runs.some(run => run.deviceId === device.id && run.status === 'running');
+      previewFrames.set(frameId, { deviceId: device.id, captured, canControl });
+      return { ...mockPreviewImage, deviceId: device.id, frameId, capturedAt: new Date(captured).toISOString(), canControl, latencyMs: 0 };
+    }
+    case 'device.click': {
+      if (!validateDeviceClickParams(params)) throw new Error('点击参数无效');
+      const signature = JSON.stringify([params.deviceId, params.frameId, params.x, params.y]);
+      const previous = previewClicks.get(params.requestId);
+      if (previous) {
+        if (previous.signature !== signature) throw new Error('同一点击标识不能用于不同操作');
+        return previous.promise;
+      }
+      for (const [id, click] of previewClicks) if (Date.now() - click.time > 300_000) previewClicks.delete(id);
+      if (previewClicks.size >= 2048) throw new Error('点击请求过于频繁，请稍后重试');
+      const promise = (async (): Promise<{ accepted: true }> => {
+        const device = state.devices.find(item => item.id === params.deviceId), frame = previewFrames.get(params.frameId);
+        if (!device || device.state !== 'idle' || state.runs.some(run => run.deviceId === device.id && run.status === 'running')) throw new Error('设备正在执行任务或尚未连接');
+        if (!frame || frame.deviceId !== device.id || !frame.canControl || Date.now() - frame.captured > 2000) throw new Error('画面已失效，请刷新后再点击');
+        if (params.x >= mockPreviewImage.width || params.y >= mockPreviewImage.height) throw new Error('点击位置超出画面范围');
+        invalidatePreview(device.id);
+        emit('device.clicked', '模拟点击已接收，未操作真实设备', { ...params });
+        return { accepted: true };
+      })();
+      previewClicks.set(params.requestId, { signature, time: Date.now(), promise });
+      return promise;
+    }
     case 'device.discover': return state.devices.map((device) => ({ address: device.address, name: device.name, adbState: 'device' }));
     case 'device.connect': {
       const address = mockAddress(params.address);
@@ -161,6 +202,7 @@ export async function mockRpc(method: string, params: Record<string, unknown>): 
       if (!device) throw new Error('设备不存在');
       if (device.state === 'running' || state.runs.some((run) => run.deviceId === device.id && run.status === 'running')) throw new Error('请先停止该设备的执行');
       device.state = 'offline';
+      invalidatePreview(device.id);
       emit('device.disconnected', '模拟设备控制权已释放', { deviceId: device.id });
       return { disconnected: true };
     }
@@ -201,6 +243,7 @@ export async function mockRpc(method: string, params: Record<string, unknown>): 
       if (!plan.tasks.some(taskEnabled)) throw new Error('任务表至少需要启用一条任务才能执行');
       if (!device || device.state !== 'idle') throw new Error('设备不可用或正在执行任务');
       const run: Run = { id: crypto.randomUUID(), planId: plan.id, deviceId: device.id, status: 'running', progress: 0, message: '模拟执行开始', startedAt: now(), finishedAt: null };
+      invalidatePreview(device.id);
       executionTasks.set(run.id, clone(plan.tasks.filter(taskEnabled)) as Plan['tasks']);
       device.state = 'running'; state.runs.unshift(run);
       requestRuns.set(String(params.requestId), run.id);

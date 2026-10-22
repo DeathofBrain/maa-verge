@@ -24,7 +24,14 @@ export function isLocalEmulator(address: string): boolean {
 }
 export function deviceLockAddress(address: string): string {
   if (/^emulator-\d{1,5}$/.test(address)) return `127.0.0.1:${Number(address.slice(9)) + 1}`;
-  return isLocalEmulator(address) ? `127.0.0.1:${Number(address.slice(address.lastIndexOf(":") + 1))}` : address;
+  if (isLocalEmulator(address)) {
+    let port = Number(address.slice(address.lastIndexOf(":") + 1));
+    // MuMu's TCP endpoints alias its standard emulator serials. This identity
+    // must be independent of the selected capture method, including other apps.
+    if (port >= 16384 && (port - 16384) % 32 === 0) port = 5555 + (port - 16384) / 16;
+    return `127.0.0.1:${port}`;
+  }
+  return address;
 }
 export function adbServerIdentity(env: Environment = process.env): string {
   const selected = env.ADB_SERVER_SOCKET || `tcp:${env.ANDROID_ADB_SERVER_ADDRESS || "localhost"}:${env.ANDROID_ADB_SERVER_PORT || "5037"}`;
@@ -135,8 +142,8 @@ function listening(address: string): Promise<boolean> {
     socket.setTimeout(150); socket.once("connect", () => done(true)); socket.once("error", () => done(false)); socket.once("timeout", () => done(false));
   });
 }
-export async function autoDiscover(): Promise<{ devices: AdbDevice[]; diagnostics: string[] }> {
-  const executable = adbPath(), diagnostics: string[] = [];
+export async function autoDiscover(executable = adbPath()): Promise<{ devices: AdbDevice[]; diagnostics: string[] }> {
+  const diagnostics: string[] = [];
   const initial = await discover(executable), known = new Set(initial.filter((device) => device.adbState === "device").map((device) => device.address));
   for (const address of emulatorAddresses()) {
     if (known.has(address) || !await listening(address)) continue;

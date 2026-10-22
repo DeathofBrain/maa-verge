@@ -53,8 +53,11 @@ export async function main() {
     const deadline = setTimeout(() => { console.error('本地服务退出超时；进行中的操作结果未知'); process.exit(1); }, 4500);
     deadline.unref();
     try {
+      // A slow screenshot may outlive the service's exit deadline. Start the
+      // workers' bounded shutdown before waiting for their pending RPCs.
+      const workersClosing = Promise.allSettled([...runtime.workers.values()].map(worker => worker.close()));
       await runtime.updates.close();
-      await Promise.allSettled([...inflight]); await runtime.close();
+      await Promise.allSettled([...inflight]); await workersClosing; await runtime.close();
     } finally { clearTimeout(deadline); }
   };
   let remaining = Buffer.alloc(0), dropping = false;

@@ -90,6 +90,8 @@ export interface RpcContract {
     };
     'device.auto_connect': EmptyParams;
     'device.disconnect': IdParams;
+    'device.frame': DeviceFrameParams;
+    'device.click': DeviceClickParams;
     'run.start': {
       planId: string;
       deviceId: string;
@@ -123,6 +125,10 @@ export interface RpcContract {
     };
     'device.disconnect': {
       disconnected: boolean;
+    };
+    'device.frame': ScreenFrame;
+    'device.click': {
+      accepted: true;
     };
     'run.start': Run;
     'run.stop': Run;
@@ -189,6 +195,24 @@ export interface IdParams {
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DeviceFrameParams".
+ */
+export interface DeviceFrameParams {
+  deviceId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DeviceClickParams".
+ */
+export interface DeviceClickParams {
+  deviceId: string;
+  frameId: string;
+  x: number;
+  y: number;
+  requestId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
  * via the `definition` "ChannelParams".
  */
 export interface ChannelParams {
@@ -199,6 +223,7 @@ export interface ChannelParams {
  * via the `definition` "Settings".
  */
 export interface Settings {
+  capture?: CaptureSettings;
   autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
@@ -206,6 +231,15 @@ export interface Settings {
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "CaptureSettings".
+ */
+export interface CaptureSettings {
+  method: 'adb' | 'mumu' | 'ldplayer';
+  emulatorPath: string;
+  instanceIndex: number;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -235,6 +269,7 @@ export interface Device {
   address: Address;
   state: State;
   coreVersion: Coreversion;
+  captureMethod?: string;
   resourceVersion: Resourceversion;
 }
 /**
@@ -285,6 +320,23 @@ export interface DiscoveredDevice {
   address: string;
   name: string;
   adbState: string;
+}
+/**
+ * Transient MaaCore preview PNG. Its width/height are the click coordinate space; image bytes never enter snapshots or persistence.
+ *
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ScreenFrame".
+ */
+export interface ScreenFrame {
+  deviceId: string;
+  frameId: string;
+  capturedAt: string;
+  width: number;
+  height: number;
+  mimeType: 'image/png';
+  data: string;
+  canControl: boolean;
+  latencyMs: number;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

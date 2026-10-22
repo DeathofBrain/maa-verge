@@ -5,7 +5,7 @@
       "configurationProvider": "ms-vscode.cmake-tools",
       "includePath": [
         "${workspaceFolder}/services/native/src",
-        "${workspaceFolder}/build/native/_deps/nlohmann_json-src/include"
+        "${workspaceFolder}/3rdparty/nlohmann-json/include"
       ],
       "defines": [
         "NOMINMAX",
