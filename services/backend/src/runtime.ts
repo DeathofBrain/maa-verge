@@ -11,6 +11,7 @@ import { captureAdbPath, connectionCapture } from './capture';
 import { Preview } from './preview';
 import { UpdateService } from './updates';
 import { adbPath, adbServerIdentity, autoDiscover, deviceLockAddress, discover, isLocalEmulator, validateAddress } from './adb';
+import { syncDue, userDataSteps, type SyncStep } from './user-data-sync';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
@@ -58,7 +59,7 @@ export class Runtime {
   emit(type: string, message: string, data: any = {}) { const event = this.store.event(type, message, data); this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event }); return event; }
   busy() { return !!this.preview?.busy || this.connecting.size > 0 || this.store.all('run').some(run => run.status === 'running' && !this.store.get('execution', run.id, {}).boundaryWaiting) || [...this.workers.values()].some(worker => !worker.safeIdle); }
   devices(): any[] {
-    return this.store.all('device');
+    return this.store.all('device').map(device => ({ ...device, dataSync: this.store.get('user_data_sync', device.id, { operatorsAt: null, depotAt: null }) }));
   }
   snapshot() { return parseSnapshot({ mode: this.mode, devices: this.devices(), plans: this.store.all('plan').map(parsePlan), runs: this.store.all('run').reverse().slice(0, 100).map(run => ({ finishedAt: null, ...run })), updates: this.updates.channels(), settings: parseSettings(this.store.get('settings', 'main')), events: this.store.events() }); }
   async handle(method: string, params: any = {}) {
@@ -251,11 +252,30 @@ export class Runtime {
     }
     this.reconnect = []; this.switching = false;
   }
-  async submitNativeTask(run: any, index: number) {
+  private taskClient(run: any, index: number): string {
+    const tasks = this.store.get('run_plan', run.id).tasks;
+    if (typeof tasks[index].params.client_type === 'string' && tasks[index].params.client_type) return tasks[index].params.client_type;
+    for (let previous = index - 1; previous >= 0; previous--) if (tasks[previous].type === 'StartUp') return tasks[previous].params.client_type || 'Official';
+    return this.store.get('device_client', run.deviceId, 'Official');
+  }
+  async submitNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
     const current = this.store.get('run', run.id);
     if (!this.running || this.switching || current?.status !== 'running' || this.store.get('execution', run.id, {}).stopRequested) return;
-    const plan = this.store.get('run_plan', run.id), state: any = { index, completed: false, failed: false, queueEnded: false, idleAfterEnd: false, taskId: null, stopRequested: null, submitting: true };
-    this.store.put('execution', run.id, state); const task = nativeTask(plan.tasks[index]);
+    const plan = this.store.get('run_plan', run.id), configuredTask = plan.tasks[index], clientType = this.taskClient(run, index);
+    if (configuredTask.type === 'UserDataUpdate') {
+      syncSteps ??= userDataSteps(configuredTask.params, this.store.get('user_data_sync', run.deviceId, {}), new Date(), clientType);
+      if (!syncSteps.length) {
+        this.emit('run.task_skipped', '更新数据已在当前周期完成或未选择识别项目，已跳过', { runId: run.id, index });
+        await this.advanceNativeTask(run, index + 1); return;
+      }
+    }
+    const state: any = { index, syncSteps, syncIndex, clientType, completed: false, failed: false, queueEnded: false, idleAfterEnd: false, taskId: null, stopRequested: null, submitting: true };
+    const task = nativeTask(syncSteps ? { type: syncSteps[syncIndex]!.type, params: {}, enabled: true } : configuredTask);
+    if (task.type === 'Mall') {
+      if (configuredTask.params.visit_friends_once_a_day && !syncDue(this.store.get('mall_visit', run.deviceId)?.visitedAt, 'daily', new Date(), clientType)) task.params.visit_friends = false;
+      state.mallVisitEnabled = task.params.visit_friends !== false;
+    }
+    this.store.put('execution', run.id, state);
     try {
       const result = await this.workers.get(run.deviceId)!.task(task);
       Object.assign(state, this.store.get('execution', run.id, {}), { taskId: result.taskId, submitting: false }); this.store.put('execution', run.id, state);
@@ -263,6 +283,15 @@ export class Runtime {
       Object.assign(run, { message: '正在执行 ' + task.type, progress: Math.floor(index * 100 / plan.tasks.length) }); this.store.put('run', run.id, run);
       const device = this.store.get('device', run.deviceId); device.state = 'running'; this.store.put('device', device.id, device); this.emit('run.progress', run.message, { run });
     } catch (error) { state.submitting = false; this.store.put('execution', run.id, state); this.finishNativeRun(run, 'failed', '任务提交失败或结果未知: ' + String(error)); }
+  }
+  private async advanceNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
+    const plan = this.store.get('run_plan', run.id);
+    if (index >= plan.tasks.length) this.finishNativeRun(run, 'completed', '所有任务链均报告成功且核心已空闲');
+    else if (this.updates.channels().some(c => c.status === 'waiting_idle')) {
+      const state = this.store.get('execution', run.id, {});
+      Object.assign(state, { boundaryWaiting: true, nextIndex: index, nextSyncSteps: syncSteps, nextSyncIndex: syncIndex }); this.store.put('execution', run.id, state);
+      Object.assign(run, { progress: Math.floor(index * 100 / plan.tasks.length), message: '当前任务完成，等待核心与资源热切换后继续剩余计划' }); this.store.put('run', run.id, run); this.emit('run.progress', run.message, { run });
+    } else await this.submitNativeTask(run, index, syncSteps, syncIndex);
   }
   finishNativeRun(run: any, status: string, message: string) {
     Object.assign(run, { status, message, finishedAt: now() }); if (status === 'completed') run.progress = 100; this.store.put('run', run.id, run);
@@ -299,6 +328,7 @@ export class Runtime {
             if ([0, 1].includes(message) || (message === 10000 && matches) || (message === 10004 && matches)) state.failed = true;
             if (message === 10002 && matches) state.completed = true;
             if (message === 3 && (!('taskid' in details) || matches)) state.queueEnded = true;
+            if (message === 20002 && matches && state.mallVisitEnabled && details.subtask === 'ProcessTask' && details.taskchain === 'Mall' && ['VisitLimited', 'VisitNextBlack'].includes(details.details?.task)) state.mallVisitedAt = now();
             this.store.put('execution', run.id, state);
           }
           if (details.what === 'UnsupportedLevel') this.nextChecks.resource = Math.min(this.nextChecks.resource!, Date.now() + 60_000);
@@ -306,16 +336,26 @@ export class Runtime {
       }
       if (!run) continue;
       const state = this.store.get('execution', run.id, {});
-      if (state.boundaryWaiting && !state.stopRequested) { if (worker.connected && worker.safeIdle && !this.updates.channels().some(c => c.status === 'waiting_idle') && !this.switching) await this.submitNativeTask(run, state.nextIndex); }
+      if (state.boundaryWaiting && !state.stopRequested) { if (worker.connected && worker.safeIdle && !this.updates.channels().some(c => c.status === 'waiting_idle') && !this.switching) await this.submitNativeTask(run, state.nextIndex, state.nextSyncSteps, state.nextSyncIndex); }
       else if (state.stopRequested && Date.now() - state.stopRequested > 15_000) { await worker.close(); this.workers.delete(id); this.finishNativeRun(run, 'stopped', '核心停止超时，已结束工作进程；请核对设备现场'); }
-      else if (state.idleAfterEnd) {
+      else if (state.idleAfterEnd && worker.safeIdle) {
+        if (state.mallVisitedAt) {
+          this.store.put('mall_visit', run.deviceId, { visitedAt: state.mallVisitedAt, clientType: state.clientType });
+          this.emit('device.friends_visited', '好友访问已获专用成功回调确认', { deviceId: run.deviceId, runId: run.id, visitedAt: state.mallVisitedAt });
+        }
         if (state.stopRequested) this.finishNativeRun(run, 'stopped', '执行已停止，未执行计划保留');
         else if (state.failed || !state.completed) this.finishNativeRun(run, 'failed', '核心任务失败或缺少成功证据；不会继续后续任务');
         else {
-          const index = state.index + 1, plan = this.store.get('run_plan', run.id);
-          if (index >= plan.tasks.length) this.finishNativeRun(run, 'completed', '所有任务链均报告成功且核心已空闲');
-          else if (this.updates.channels().some(c => c.status === 'waiting_idle')) { Object.assign(state, { boundaryWaiting: true, nextIndex: index }); this.store.put('execution', run.id, state); Object.assign(run, { progress: Math.floor(index * 100 / plan.tasks.length), message: '当前任务完成，等待核心与资源热切换后继续剩余计划' }); this.store.put('run', run.id, run); this.emit('run.progress', run.message, { run }); }
-          else await this.submitNativeTask(run, index);
+          const configured = this.store.get('run_plan', run.id).tasks[state.index];
+          if (configured.type === 'StartUp') this.store.put('device_client', run.deviceId, configured.params.client_type || 'Official');
+          const step: SyncStep | undefined = state.syncSteps?.[state.syncIndex] ?? (configured.type === 'OperBox' ? { type: 'OperBox', key: 'operatorsAt' } : configured.type === 'Depot' ? { type: 'Depot', key: 'depotAt' } : undefined);
+          if (step) {
+            const synced = this.store.get('user_data_sync', run.deviceId, { operatorsAt: null, depotAt: null }); synced[step.key] = now();
+            this.store.put('user_data_sync', run.deviceId, synced);
+            this.emit('device.data_synced', step.type === 'OperBox' ? '干员识别已成功同步' : '仓库识别已成功同步', { deviceId: run.deviceId, runId: run.id, type: step.type, syncedAt: synced[step.key] });
+            if (state.syncSteps && state.syncIndex + 1 < state.syncSteps.length) { await this.advanceNativeTask(run, state.index, state.syncSteps, state.syncIndex + 1); continue; }
+          }
+          await this.advanceNativeTask(run, state.index + 1);
         }
       }
     }

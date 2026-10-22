@@ -10,6 +10,8 @@ import { Store } from '../src/storage';
 import { parsePlan, parseSettings } from '../src/models';
 import { validatePlan, nativeTask } from '../src/task-policy';
 import { processRequest } from '../src/entry';
+import { syncDue, userDataSteps } from '../src/user-data-sync';
+import { validatePlan as validateSharedPlan } from '../../../packages/contracts/src/task-policy';
 
 const roots: string[] = [], runtimes: Runtime[] = [];
 const temp = () => { const root = mkdtempSync(path.join(tmpdir(), 'maaverge-ts-test-')); roots.push(root); return root; };
@@ -140,6 +142,182 @@ describe('native execution evidence', () => {
     expect(worker.submitted).toHaveLength(1); expect(r.store.get('run', run.id).status).toBe('stopped');
     acknowledge(); expect((await stopping).status).toBe('stopped');
   });
+});
+
+describe('combined user data update', () => {
+  const params = { operators: true, depot: true, interval: 'daily' };
+  test('keeps one application task while sequencing recognition and recording only idle success', async () => {
+    const { runtime: r, worker, device } = await native();
+    await r.handle('plan.save', { plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }, { type: 'Award' }] } });
+    const run = await r.startRun({ planId: 'sync', deviceId: device.id, requestId: 'sync' });
+    expect(r.store.get('run_plan', run.id).tasks).toHaveLength(2);
+    expect(worker.submitted.map(task => task.type)).toEqual(['OperBox']);
+    worker.complete(1, [9]); await r.tick(true);
+    expect(r.snapshot().devices[0].dataSync).toEqual({ operatorsAt: null, depotAt: null });
+    worker.safeIdle = true; worker.events.push({ type: 'status', running: false, pendingAsync: [] }); await r.tick(true);
+    expect(worker.submitted.map(task => task.type)).toEqual(['OperBox', 'Depot']);
+    expect(r.snapshot().devices[0].dataSync?.operatorsAt).toBeString();
+    expect(r.snapshot().devices[0].dataSync?.depotAt).toBeNull();
+    expect(r.store.get('run', run.id).progress).toBe(0);
+    worker.complete(2); await r.tick(true);
+    expect(worker.submitted.map(task => task.type)).toEqual(['OperBox', 'Depot', 'Award']);
+    expect(r.snapshot().devices[0].dataSync?.depotAt).toBeString();
+    expect(r.store.get('run', run.id).progress).toBe(50);
+    worker.complete(3); await r.tick(true);
+    expect(r.store.get('run', run.id).status).toBe('completed');
+    const next = await r.startRun({ planId: 'sync', deviceId: device.id, requestId: 'same-day' });
+    expect(worker.submitted.map(task => task.type)).toEqual(['OperBox', 'Depot', 'Award', 'Award']);
+    worker.complete(4); await r.tick(true); expect(r.store.get('run', next.id).status).toBe('completed');
+  });
+  test('partial failure preserves successful item and retries only the due item after restart', async () => {
+    const { runtime: r, worker, device } = await native();
+    await r.handle('plan.save', { plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }] } });
+    const run = await r.startRun({ planId: 'sync', deviceId: device.id, requestId: 'partial' });
+    worker.complete(1); await r.tick(true);
+    worker.events.push({ type: 'callback', message: 10000, details: { taskid: 2 } }); worker.complete(2); await r.tick(true);
+    expect(r.store.get('run', run.id).status).toBe('failed');
+    const synced = r.snapshot().devices[0].dataSync;
+    expect(synced?.operatorsAt).toBeString(); expect(synced?.depotAt).toBeNull();
+    await r.close();
+    const replacement = new FakeWorker(), reopened = fresh(r.root, replacement), reconnected = await connectFixture(reopened);
+    expect(reopened.snapshot().devices[0].dataSync).toEqual(synced);
+    const retry = await reopened.startRun({ planId: 'sync', deviceId: reconnected.id, requestId: 'retry' });
+    expect(replacement.submitted.map(task => task.type)).toEqual(['Depot']);
+    replacement.complete(1); await reopened.tick(true); expect(reopened.store.get('run', retry.id).status).toBe('completed');
+  });
+  test('unmatched completion, queue-end only, and stopped tasks never record success', async () => {
+    for (const evidence of ['unmatched', 'queue-only', 'stopped']) {
+      const { runtime: r, worker, device } = await native();
+      await r.handle('plan.save', { plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }] } });
+      const run = await r.startRun({ planId: 'sync', deviceId: device.id, requestId: evidence });
+      if (evidence === 'stopped') await r.stopRun(run.id);
+      if (evidence !== 'queue-only') worker.events.push({ type: 'callback', message: 10002, details: { taskid: evidence === 'unmatched' ? 999 : 1 } });
+      worker.events.push({ type: 'callback', message: 3, details: {} }, { type: 'status', running: false, pendingAsync: [] }); worker.safeIdle = true;
+      await r.tick(true);
+      expect(r.snapshot().devices[0].dataSync).toEqual({ operatorsAt: null, depotAt: null }); expect(worker.submitted).toHaveLength(1);
+      expect(r.store.get('run', run.id).status).toBe(evidence === 'stopped' ? 'stopped' : 'failed');
+    }
+  });
+  test('hot update boundary holds and resumes the remaining recognition step', async () => {
+    const { runtime: r, worker, device } = await native();
+    await r.handle('plan.save', { plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }] } });
+    const run = await r.startRun({ planId: 'sync', deviceId: device.id, requestId: 'boundary' });
+    const channel = r.updates.channel('resource'); r.store.put('update', 'resource', { ...channel, status: 'waiting_idle' });
+    worker.complete(1); await r.tick(true);
+    expect(worker.submitted).toHaveLength(1); expect(r.busy()).toBe(false);
+    r.store.put('update', 'resource', { ...channel, status: 'idle' }); await r.tick(true);
+    expect(worker.submitted.map(task => task.type)).toEqual(['OperBox', 'Depot']);
+    worker.complete(2); await r.tick(true); expect(r.store.get('run', run.id).status).toBe('completed');
+  });
+  test('nothing selected and an entirely synced period finish without native calls', async () => {
+    const { runtime: r, worker, device } = await native();
+    for (const [id, chosen] of [['none', { operators: false, depot: false }], ['done', params]] as const) {
+      r.store.put('user_data_sync', device.id, { operatorsAt: new Date().toISOString(), depotAt: new Date().toISOString() });
+      await r.handle('plan.save', { plan: { id, name: '数据', tasks: [{ type: 'UserDataUpdate', params: chosen }] } });
+      const run = await r.startRun({ planId: id, deviceId: device.id, requestId: id });
+      expect(run.status).toBe('completed'); expect(worker.submitted).toHaveLength(0);
+    }
+  });
+  test('standalone recognition shares success timestamps while device histories stay isolated', async () => {
+    const { runtime: r, worker, device } = await native();
+    const other = { ...device, id: 'second-device', address: '127.0.0.1:5557' }, otherWorker = new FakeWorker();
+    r.store.put('device', other.id, other); r.workers.set(other.id, otherWorker);
+    await r.handle('plan.save', { plan: { id: 'oper', name: '干员', tasks: [{ type: 'OperBox' }] } });
+    await r.startRun({ planId: 'oper', deviceId: device.id, requestId: 'oper' }); worker.complete(1); await r.tick(true);
+    expect(r.snapshot().devices.find(d => d.id === device.id)?.dataSync?.operatorsAt).toBeString();
+    expect(r.snapshot().devices.find(d => d.id === other.id)?.dataSync).toEqual({ operatorsAt: null, depotAt: null });
+    await r.handle('plan.save', { plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }] } });
+    await r.startRun({ planId: 'sync', deviceId: device.id, requestId: 'same-device' });
+    await r.startRun({ planId: 'sync', deviceId: other.id, requestId: 'other-device' });
+    expect(worker.submitted.map(task => task.type)).toEqual(['OperBox', 'Depot']);
+    expect(otherWorker.submitted.map(task => task.type)).toEqual(['OperBox']);
+  });
+  test('periods use client game days and Monday weeks with independent item history', () => {
+    const monday = new Date('2026-10-18T20:00:00Z'), sunday = new Date('2026-10-18T19:59:59Z'), friday = new Date('2026-10-23T02:00:00Z');
+    expect(syncDue(sunday.toISOString(), 'weekly', friday)).toBe(true);
+    expect(syncDue(monday.toISOString(), 'weekly', friday)).toBe(false);
+    expect(syncDue('2026-10-22T19:59:59Z', 'daily', friday)).toBe(true);
+    expect(syncDue('2026-10-22T20:00:00Z', 'daily', friday)).toBe(false);
+    expect(syncDue(friday.toISOString(), 'always', friday)).toBe(true);
+    expect(syncDue('invalid', 'daily', friday)).toBe(true);
+    expect(syncDue('2026-10-24T00:00:00Z', 'daily', friday)).toBe(true);
+    for (const [client, before, after] of [
+      ['Official', '2026-10-22T19:59:59Z', '2026-10-22T20:00:00Z'],
+      ['Bilibili', '2026-10-22T19:59:59Z', '2026-10-22T20:00:00Z'],
+      ['txwy', '2026-10-22T19:59:59Z', '2026-10-22T20:00:00Z'],
+      ['YoStarEN', '2026-10-23T10:59:59Z', '2026-10-23T11:00:00Z'],
+      ['YoStarJP', '2026-10-22T18:59:59Z', '2026-10-22T19:00:00Z'],
+      ['YoStarKR', '2026-10-22T18:59:59Z', '2026-10-22T19:00:00Z'],
+    ]) {
+      expect(syncDue(before, 'daily', new Date(after), client)).toBe(true);
+      expect(syncDue(after, 'daily', new Date(after), client)).toBe(false);
+    }
+    expect(userDataSteps(params, { operatorsAt: friday.toISOString(), depotAt: sunday.toISOString() }, friday)).toEqual([{ type: 'Depot', key: 'depotAt' }]);
+    expect(userDataSteps(params, {}, friday).map(step => step.type)).toEqual(['OperBox', 'Depot']);
+  });
+});
+
+describe('daily friend visits', () => {
+  const params = { visit_friends: true, visit_friends_once_a_day: true, shopping: true };
+  function visited(worker: FakeWorker, taskid: number, task = 'VisitLimited', extra: any = {}) {
+    worker.events.push({ type: 'callback', message: 20002, details: { taskid, subtask: 'ProcessTask', taskchain: 'Mall', details: { task }, ...extra } });
+  }
+  test('uses specific visit evidence and strips the application-only option before submission', async () => {
+    const { runtime: r, worker, device } = await native();
+    await r.handle('plan.save', { plan: { id: 'mall', name: '信用', tasks: [{ type: 'Mall', params }] } });
+    const start = (requestId: string) => r.startRun({ planId: 'mall', deviceId: device.id, requestId });
+    await start('first'); expect(worker.submitted[0].params).toEqual({ visit_friends: true, shopping: true });
+    visited(worker, 1); worker.complete(1, [5]); await r.tick(true);
+    expect(r.store.get('mall_visit', device.id)).toBeUndefined();
+    worker.safeIdle = true; worker.events.push({ type: 'status', running: false, pendingAsync: [] }); await r.tick(true);
+    expect(r.store.get('mall_visit', device.id).visitedAt).toBeString();
+    await start('second'); expect(worker.submitted[1].params.visit_friends).toBe(false);
+    worker.complete(2); await r.tick(true);
+    r.store.put('mall_visit', device.id, { visitedAt: new Date(Date.now() - 2 * 86_400_000).toISOString() });
+    await start('next-day'); expect(worker.submitted[2].params.visit_friends).toBe(true);
+    worker.complete(3); await r.tick(true);
+  });
+  test('overall Mall success and unrelated or stale subtask callbacks do not suppress visits', async () => {
+    const { runtime: r, worker, device } = await native();
+    await r.handle('plan.save', { plan: { id: 'mall', name: '信用', tasks: [{ type: 'Mall', params }] } });
+    await r.startRun({ planId: 'mall', deviceId: device.id, requestId: 'wrong-evidence' });
+    visited(worker, 999); visited(worker, 1, 'VisitLimited', { taskchain: 'Infrast' }); visited(worker, 1, 'VisitLimited', { subtask: 'Other' }); visited(worker, 1, 'CreditShopping');
+    worker.complete(1); await r.tick(true); expect(r.store.get('mall_visit', device.id)).toBeUndefined();
+    await r.startRun({ planId: 'mall', deviceId: device.id, requestId: 'again' }); expect(worker.submitted[1].params.visit_friends).toBe(true);
+    visited(worker, 2, 'VisitNextBlack'); worker.events.push({ type: 'callback', message: 10000, details: { taskid: 2 } }); worker.complete(2); await r.tick(true);
+    expect(r.store.get('mall_visit', device.id).visitedAt).toBeString();
+  });
+  test('successful StartUp stores client context across restarts and a current explicit client overrides it', async () => {
+    const { runtime: r, worker, device } = await native();
+    await r.handle('plan.save', { plan: { id: 'client', name: '渠道', tasks: [{ type: 'StartUp', params: { client_type: 'YoStarEN' } }, { type: 'Mall', params }] } });
+    await r.startRun({ planId: 'client', deviceId: device.id, requestId: 'client' }); worker.complete(1); await r.tick(true);
+    expect(r.store.get('execution', r.snapshot().runs[0].id).clientType).toBe('YoStarEN'); worker.complete(2); await r.tick(true);
+    await r.close();
+    const replacement = new FakeWorker(), reopened = fresh(r.root, replacement), reconnected = await connectFixture(reopened);
+    await reopened.handle('plan.save', { plan: { id: 'mall', name: '信用', tasks: [{ type: 'Mall', params }, { type: 'Mall', params: { ...params, client_type: 'YoStarJP' } }] } });
+    const run = await reopened.startRun({ planId: 'mall', deviceId: reconnected.id, requestId: 'new-plan' });
+    expect(reopened.store.get('execution', run.id).clientType).toBe('YoStarEN'); replacement.complete(1); await reopened.tick(true);
+    expect(reopened.store.get('execution', run.id).clientType).toBe('YoStarJP'); replacement.complete(2); await reopened.tick(true);
+  });
+});
+
+test('shared and backend policies validate the new conventional settings consistently', () => {
+  const valid = [
+    ['UserDataUpdate', { operators: true, depot: false, interval: 'weekly' }],
+    ['Mall', { visit_friends_once_a_day: true }],
+    ['Recruit', { set_time: true, recruitment_time: { '3': 60, '4': 540 }, extra_tags_mode: 2 }],
+    ['Infrast', { facility: ['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Recycle', 'Dorm', 'Processing', 'Training', 'AssistantChange'], drones: 'Money' }],
+  ] as const;
+  const invalid = [
+    ['UserDataUpdate', { operators: 'true' }], ['UserDataUpdate', { depot: null }], ['UserDataUpdate', { interval: 'monthly' }], ['UserDataUpdate', { interval: null }],
+    ['Mall', { visit_friends_once_a_day: 1 }], ['Recruit', { recruitment_time: [] }], ['Recruit', { recruitment_time: { '2': 540 } }], ['Recruit', { recruitment_time: { '3': 59 } }], ['Recruit', { recruitment_time: { '4': 541 } }], ['Recruit', { recruitment_time: { '5': true } }],
+    ['Infrast', { facility: ['Factory'] }], ['Infrast', { drones: 'invalid' }],
+  ] as const;
+  for (const validate of [validatePlan, validateSharedPlan]) {
+    for (const [type, params] of valid) expect(() => validate(parsePlan({ name: '配置', tasks: [{ type, params }] }), parseSettings())).not.toThrow();
+    for (const [type, params] of invalid) expect(() => validate(parsePlan({ name: '配置', tasks: [{ type, params }] }), parseSettings())).toThrow();
+  }
+  expect(() => nativeTask(parsePlan({ name: '配置', tasks: [{ type: 'UserDataUpdate' }] }).tasks[0])).toThrow();
 });
 
 test('task policy denies commands, unbounded consumables and malformed values', () => {
