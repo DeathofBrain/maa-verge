@@ -4,7 +4,7 @@
 
 服务在启动并具备已启用 MaaCore 后自动发现模拟器，每 30 秒在空闲时重试。设置 `autoConnect` 默认开启；关闭后仅保留用户主动触发的连接。手动断开设备后，该设备不会立即被后台重连；重新开启自动连接、主动点击自动连接或重启应用可以解除抑制。后台发现期间关闭自动连接或手动断开设备，会阻止该轮随后建立新的核心连接。真实数据继续位于 `<data-root>/native`；旧 `mock` 目录保留，产品不读取、迁移或删除它。
 
-保存独立实例清单后，自动连接只逐项尝试清单中的地址和配置，单项失败不阻止其他实例；没有清单时沿用下述自动发现。手动“发现设备”仍可扫描本机候选。共享/逐实例设置见 [连接设置](connection-settings.md)，同表并行、分别停止与客户端资源隔离见 [多开说明](multi-instance.md)。
+保存独立实例清单后，自动连接只逐项尝试清单中的地址和配置，单项失败不阻止其他实例；没有清单时沿用下述自动发现。手动“发现设备”也会连接已监听的本机候选 ADB 地址，再刷新设备列表；此步骤只建立 ADB 传输连接，不取得 MaaCore 控制权。共享/逐实例设置见 [连接设置](connection-settings.md)，同表并行、分别停止与客户端资源隔离见 [多开说明](multi-instance.md)。
 
 `device.auto_connect` 返回：
 
@@ -16,27 +16,31 @@
 }
 ```
 
-发现顺序为 ADB 现有设备、上游有限的默认本机端口和 BlueStacks 实例配置中的端口。只尝试已有监听服务的端口，不扫描端口范围。自动模式只接入回环地址与 `emulator-*`，USB 手机仍需手动选择。自动连接不会启动模拟器、启动游戏或运行任务。ADB 授权未完成的设备会出现在诊断中。
+发现先读取 ADB 现有设备，再优先检查 MuMu 多开管理器返回的实例地址，并以原版 MAA 的有限默认端口和 BlueStacks 实例配置端口作为补充。只尝试回环地址上已监听的候选端口，不扫描端口范围。自动模式只接入回环地址与 `emulator-*`，USB 手机仍需手动选择。发现和自动连接都不会创建或启停模拟器、启动游戏或运行任务。ADB 授权未完成的设备会出现在诊断中。
 
-ADB 优先使用 `MAAVERGE_ADB_PATH`，其次 PATH、Android SDK 与常见模拟器安装位置。非标准安装可通过以下环境变量配置，变量值不提交至仓库：
+ADB 优先使用连接设置中明确选择的路径或 `MAAVERGE_ADB_PATH`，再查找 PATH、Android SDK、已配置的模拟器目录与常见安装位置。Windows 未命中时，参照原版 MAA 的进程白名单及相对路径查找正在运行的模拟器内置 ADB，支持自定义安装盘和 MuMu `nx_main/adb.exe` 布局；不会遍历任意程序或注册表。显式配置的 ADB 不存在时会报错，不静默换用其他文件。仍未找到时，可在连接设置选择内置 ADB，或使用以下环境变量；变量值不提交至仓库：
 
 - `MAAVERGE_EMULATOR_DIRS`：以系统路径分隔符分隔的模拟器安装目录，定位内置 ADB。
 - `MAAVERGE_EMULATOR_ADDRESSES`：最多 16 个以逗号分隔的 `127.0.0.1:端口`、`localhost:端口` 或 `[::1]:端口`。
 - `MAAVERGE_BLUESTACKS_CONFIG`：动态实例端口配置 `bluestacks.conf` 的路径。
 - `ANDROID_HOME` / `ANDROID_SDK_ROOT`：Android SDK 根目录。
 
+Windows MuMu 从已识别的安装目录调用固定只读命令 `MuMuManager.exe info -v all`，枚举全部已启动实例的名称、编号、PID 与实际回环 ADB 端口。发现使用管理器报告的实际端口，支持高索引、非默认端口与多个安装目录，不按 `16384 + 32 × index` 猜测实例地址。管理器查询最多处理 4 个安装目录、并发 2 个，每次超时 4 秒；查询失败保留诊断并继续现有设备、有限默认端口与手动配置路径。
+
 设备锁同时规范化 ADB server 的回环主机别名与默认端口，并遵循 `ADB_SERVER_SOCKET`（优先）、`ANDROID_ADB_SERVER_ADDRESS` / `ANDROID_ADB_SERVER_PORT` 的选择；ADB 子进程与核心工作进程继承相同环境。
 
-相同 ADB server 上的 `emulator-5554` 与 `127.0.0.1:5555` 等别名使用同一个共享设备锁，避免不同本地实例通过别名同时取得控制权。连接异步完成前不能运行任务；组件切换时不新增连接。
+相同 ADB server 上的 `emulator-5554` 与 `127.0.0.1:5555` 等 Android 标准别名使用同一个共享设备锁。MuMu 结合管理器元数据和同一 MuMuNxDevice 进程的监听端口确认别名：同一实例的多个端口在列表中去重并共享租约，不同 PID 的多开实例独立保留。普通 `16384`、`5555`、`7555` 端口不再仅凭数字被全局合并。连接异步完成前不能运行任务；组件切换时不新增连接。
 
 参考固定上游版本 **v6.20.0**，实现未复制上游带关闭模拟器、杀进程等副作用的助手：
 
 - [连接说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/connection.md)：默认模拟器端口、ADB 路径和调试要求。
 - [连接设置](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaWpfGui/ViewModels/UserControl/Settings/ConnectSettingsUserControlModel.cs)：`DefaultAddress` 与实例发现思路。
+- [Windows 模拟器发现](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaWpfGui/Helper/WinAdapter.cs)：运行进程名称和内置 ADB 相对路径。
+- [MuMu 管理器定位](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaWpfGui/Helper/EmulatorHelper.cs)：MuMuNx 安装布局与管理器入口。
 - [macOS 设备说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/device/macos.md)：NoxAppPlayer 内置 ADB 路径，其他未命中路径可配置。
 - [Python 模拟器辅助](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/Python/asst/emulator.py)：BlueStacks `bst.instance.<实例>.status.adb_port`。
 
-自动发现回归使用测试中注入的替代 ADB、监听探测和合成核心工作进程；安装包及桌面 smoke 在全新隔离的 native 数据库中预先关闭自动连接与更新，不使用产品 mock 开关。本机 Windows MuMu 的历史实际验证见下节。Windows/macOS/Linux 的路径分支与默认端口是实现范围，不能据此声称三个平台的真实模拟器均已验收。MuMu 增强触控已有实验设置入口但尚未真实验收；自动启动模拟器、PlayCover、Windows 原生窗口及非标准安装进程探测仍需单独接入或配置。
+自动发现回归使用测试中注入的替代 ADB、监听探测和合成核心工作进程；安装包及桌面 smoke 在全新隔离的 native 数据库中预先关闭自动连接与更新，不使用产品 mock 开关。本机 Windows MuMu 的历史实际验证见下节；本次发现修复只在已启动的一个 Windows MuMu 实例上实测，真实多开仍需单独验收。Windows/macOS/Linux 的路径分支与默认端口是实现范围，不能据此声称三个平台的真实模拟器均已验收。MuMu 增强触控已有实验设置入口但尚未真实验收；自动启动模拟器、PlayCover、Windows 原生窗口仍需单独接入。
 
 ## 可选的模拟器增强截图
 
@@ -44,8 +48,8 @@ ADB 优先使用 `MAAVERGE_ADB_PATH`，其次 PATH、Android SDK 与常见模拟
 
 - MuMu 支持上游 MaaCore v6.20.1 的 MuMu 12 / MuMuNx Android 15 SDK 布局。传入安装根目录，worker 使用 `MuMuEmulator12` 和 `{path,index,touch}`；默认 `touch:false`，可显式启用实验性增强触控，接口限制见 [共享设置](connection-settings.md)。自动定位此根目录中的内置 ADB。
 - 雷电使用 `LDPlayer` 和 `{path,index,pid}`；连接时执行固定的 `ldconsole.exe list2`，取得所选已启动实例的 PID，不持久保存 PID。需安装根目录中存在 `ldopengl64.dll`。本轮尚未进行雷电实机验收。
-- 对标准 MuMu TCP 地址 `16384 + 32 × index`、`emulator-(5554 + 2 × index)` 和雷电 `5555 + 2 × index` 检查实例匹配，避免截图 SDK 与 ADB 控制不同实例；MuMu 自定义网络地址须显式启用桥接模式并指定 SDK 实例号，其他自定义端口尚未接入映射配置。
-- MuMu TCP 默认地址与 `emulator-*` 别名在 TypeScript/Python 中使用相同设备锁身份，与截图选项无关。同一 ADB server 下的别名不会创建第二个控制者；更新此锁规则前须退出旧版本实例。
+- MuMu 优先以管理器返回的安装目录、实例编号和实际 ADB 端口核对截图 SDK 与设备。管理器不可用时，仅对默认布局使用 `16384 + (index % 32) × 32 + floor(index / 32) × 4` 与 `emulator-(5554 + 2 × index)` 规则校验；这不是自定义端口的通用公式。雷电仍按 `5555 + 2 × index` 检查。MuMu 自定义网络地址须显式启用桥接模式并指定 SDK 实例号。
+- MuMu 已确认的本地端口别名与桥接地址共享同一实例租约，防止第二个控制者绕过互斥；不同安装目录的同编号实例独立识别。桥接模式必须能通过管理器确认本机实例，无法确认时拒绝连接。更新此锁规则前须退出旧版本实例。
 
 增强模式在连接前通过 `AsstSetConnectionExtras` 配置，随后核验 MaaCore 的 `FastestWayToScreencap` 回调，实际方法必须为 `MumuExtras` / `LDExtras`。初始化失败、缺少方法证据或选中 ADB 时，连接失败并禁止提交任务；已连接后收到增强截图失败或方法变化时，停止队列、将设备标记离线并报告原因。设备页的「实际截图方式」来自核心回调，离线或尚未确认方法时不显示已确认驱动。
 
