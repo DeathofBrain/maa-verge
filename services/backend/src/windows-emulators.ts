@@ -73,9 +73,11 @@ export function runningWindowsAdbCandidates(): Promise<string[]> {
 }
 
 export interface EmulatorInstance {
+  kind?: 'mumu' | 'ldplayer';
   address: string;
   name: string;
   index: number;
+  pid?: number;
   emulatorPath: string;
   aliases: string[];
 }
@@ -93,14 +95,33 @@ export function mumuManagerInstances(output: string, emulatorPath: string): (Emu
       || record.is_android_started !== true || record.is_process_started !== true || !positiveInteger(record.adb_port, 65535)
       || !['127.0.0.1', 'localhost', '::1', '[::1]'].includes(String(record.adb_host_ip))) continue;
     const host = ['::1', '[::1]'].includes(String(record.adb_host_ip)) ? '[::1]' : '127.0.0.1';
-    result.push({ address: `${host}:${record.adb_port}`, index, emulatorPath,
+    result.push({ kind: 'mumu', address: `${host}:${record.adb_port}`, index, emulatorPath,
       name: typeof record.name === 'string' && record.name.trim() ? record.name.replace(/[\0\r\n]/g, '').slice(0, 64) : `MuMu 实例 ${index}`,
       aliases: [], pid: positiveInteger(record.pid, 0xffffffff) ? record.pid as number : 0 });
   }
   return result;
 }
 
-/** Query every running MuMu installation; no create/start/stop commands or port-range scan. */
+/** MAA v6.20.0 LDPlayerExtra uses list2 field 5 as the screenshot SDK PID. */
+export function ldPlayerConsoleInstances(output: string, emulatorPath: string): (EmulatorInstance & { pid: number; vmPid: number })[] {
+  const result = new Map<number, EmulatorInstance & { pid: number; vmPid: number }>();
+  const duplicates = new Set<number>();
+  for (const line of output.replace(/^\uFEFF/, '').split(/\r?\n/).slice(0, 128)) {
+    const fields = line.split(',').map(field => field.trim());
+    if (fields.length < 7 || !/^\d+$/.test(fields[0]) || !/^\d+$/.test(fields[5]) || fields[4] !== '1') continue;
+    const index = Number(fields[0]), pid = Number(fields[5]), port = 5555 + index * 2;
+    if (!Number.isSafeInteger(index) || index < 0 || !positiveInteger(port, 65535) || !positiveInteger(pid, 0xffffffff)) continue;
+    // Conflicting rows cannot identify one SDK instance reliably.
+    if (result.has(index)) { result.delete(index); duplicates.add(index); }
+    if (duplicates.has(index)) continue;
+    const vmPid = /^\d+$/.test(fields[6]) && positiveInteger(Number(fields[6]), 0xffffffff) ? Number(fields[6]) : 0;
+    result.set(index, { kind: 'ldplayer', address: `127.0.0.1:${port}`, index, emulatorPath, pid, vmPid,
+      name: fields[1].replace(/[\0\r\n]/g, '').slice(0, 64) || `雷电实例 ${index}`, aliases: [] });
+  }
+  return [...result.values()];
+}
+
+/** Query running emulator installations; no create/start/stop commands or port-range scan. */
 export async function queryWindowsEmulatorInventory(options: { env?: Record<string, string | undefined>; query?: Query; isFile?: (value: string) => boolean } = {}): Promise<EmulatorInventory> {
   const result = emptyEmulatorInventory(), query = options.query ?? execute;
   let snapshot: Snapshot;
@@ -139,14 +160,47 @@ export async function queryWindowsEmulatorInventory(options: { env?: Record<stri
         const instances = mumuManagerInstances(await query(manager.executable, ['info', '-v', 'all'], { timeout: 4000, maxBuffer: 256 * 1024, windowsHide: true }), manager.emulatorPath);
         // Only an actual loopback listener owned by that installation's reported
         // instance process proves that another port is an alias. Never guess 7555.
-        groups[position] = instances.map(({ pid, ...instance }) => ({ ...instance, aliases: pid && manager.pids.has(pid)
-          && instances.filter(other => other.pid === pid).length === 1
-          && snapshot.listeners.some(listener => listener.pid === pid && listener.address === instance.address)
-          ? snapshot.listeners.filter(listener => listener.pid === pid && listener.address !== instance.address).map(listener => listener.address) : [] }));
+        groups[position] = instances.map(instance => ({ ...instance, aliases: instance.pid && manager.pids.has(instance.pid)
+          && instances.filter(other => other.pid === instance.pid).length === 1
+          && snapshot.listeners.some(listener => listener.pid === instance.pid && listener.address === instance.address)
+          ? snapshot.listeners.filter(listener => listener.pid === instance.pid && listener.address !== instance.address).map(listener => listener.address) : [] }));
       } catch { messages[position] = 'MuMu 多开信息读取失败；已保留其他实例及默认端口发现，可手动填写该安装目录的实例地址'; }
     }
   }));
   result.instances = groups.flat(); result.diagnostics.push(...messages.filter(Boolean));
+  const consoles = new Map<string, { executable: string; emulatorPath: string }>();
+  let consoleLimitReached = false;
+  for (const process of snapshot.processes.filter(process => process.name === 'dnplayer.exe')) {
+    const emulatorPath = path.win32.dirname(process.executable), executable = path.win32.join(emulatorPath, 'ldconsole.exe');
+    if (!file(executable) || consoles.has(executable.toLowerCase())) continue;
+    if (consoles.size >= 4) { consoleLimitReached = true; continue; }
+    consoles.set(executable.toLowerCase(), { executable, emulatorPath });
+  }
+  if (consoleLimitReached) result.diagnostics.push('运行中的雷电安装目录超过自动发现上限 4 个，请手动配置其余实例');
+  const consoleEntries = [...consoles.values()], consoleGroups: EmulatorInstance[][] = consoleEntries.map(() => []), consoleMessages: string[] = [];
+  let nextConsole = 0;
+  await Promise.all(Array.from({ length: Math.min(2, consoleEntries.length) }, async () => {
+    while (nextConsole < consoleEntries.length) {
+      const position = nextConsole++, console = consoleEntries[position];
+      try {
+        const instances = ldPlayerConsoleInstances(await query(console.executable, ['list2'], { timeout: 4000, maxBuffer: 256 * 1024, windowsHide: true }), console.emulatorPath);
+        consoleGroups[position] = instances.flatMap(({ vmPid, ...instance }) => {
+          // The window PID and VM PID are distinct on some LDPlayer versions.
+          // Neither proves an ADB alias without a canonical loopback listener.
+          const owner = snapshot.listeners.find(listener => listener.address === instance.address && [instance.pid, vmPid].includes(listener.pid));
+          if (!owner && snapshot.listeners.some(listener => listener.address === instance.address)) {
+            consoleMessages[position] = '雷电默认 ADB 端口由其他进程占用；已跳过不匹配的实例，请检查多开地址或手动配置';
+            return [];
+          }
+          if (!owner || instances.filter(other => [other.pid, other.vmPid].includes(owner.pid)).length !== 1) return [instance];
+          const aliases = snapshot.listeners.filter(listener => listener.pid === owner.pid && listener.address !== instance.address).map(listener => listener.address);
+          for (const address of [instance.address, ...aliases]) result.identities![address] = `ldplayer-process:${owner.pid}`;
+          return [{ ...instance, aliases }];
+        });
+      } catch { consoleMessages[position] = '雷电多开信息读取失败；已保留其他实例及默认端口发现，可手动填写该安装目录的实例地址'; }
+    }
+  }));
+  result.instances.push(...consoleGroups.flat()); result.diagnostics.push(...consoleMessages.filter(Boolean));
   return result;
 }
 
