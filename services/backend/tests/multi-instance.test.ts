@@ -37,9 +37,9 @@ test('multi-instance settings reject duplicate serial/TCP/bridge aliases and kee
   for (const duplicate of [
     { ...second, address: first.address }, { ...second, address: 'emulator-5554' },
     { ...second, address: 'localhost:05555' }, { ...second, id: first.id },
-    { ...second, address: '192.168.1.2:5555', capture: { ...second.capture, method: 'mumu', mumuBridge: true, instanceIndex: 0 } },
   ]) expect(() => parseSettings({ deviceProfiles: [first, duplicate] })).toThrow('重复');
   expect(parseSettings({ deviceProfiles: [first, { ...second, address: '127.0.0.1:16384' }] }).deviceProfiles).toHaveLength(2);
+  expect(parseSettings({ deviceProfiles: [first, { ...second, address: '192.168.1.2:5555', capture: { ...second.capture, method: 'mumu', mumuBridge: true, instanceIndex: 0 } }] }).deviceProfiles).toHaveLength(2);
   expect(() => parseSettings({ deviceProfiles: [{ ...first, address: '-unsafe' }] })).toThrow('地址');
   expect(() => parseSettings({ deviceProfiles: [{ ...first, capture: { ...first.capture, mumuTouch: true } }] })).toThrow('MuMu');
 });
