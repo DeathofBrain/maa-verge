@@ -1,5 +1,25 @@
 # 工作树与分支整合记录
 
+## 模拟器发现与增强截图整合（2026-10-23）
+
+本次基线为 `main` / `origin/main` 的 `7a50395`，主工作区位于 `codex/mumu-adb-discovery`。再次核对全部 6 个登记 worktree（含主目录），附加工作区提交后均干净；未发现其他未提交成果。下表来源提交通过 stable patch-id、`git cherry` 及提交差异核对后集成，随后记录全部来源分支的合并关系，保留已验证的最终文件内容。没有删除本机 worktree 或分支。
+
+| 来源分支 | 有效提交与集成证据 |
+| --- | --- |
+| `codex/mumu-adb-discovery` | `a47afb2` 自动定位 ADB、枚举 MuMu 全部实例和别名租约；`e618ead` 按实例自动配置增强截图、雷电 PID 边界及并发设置保护 |
+| `codex/rpc-error-message` | `b2c54c2` → `894285b`，RPC 错误转换为可读提示，原始 cause 保留 |
+| `codex/device-identities` | `115c2be` → `e3ebcdd`，`bfba528` → `3421dab`，明确实例别名、高编号及跨安装目录身份 |
+| `codex/discovery-docs` | `06f3fbb` → `7e3ef4c`，动态发现与控制权说明 |
+| `codex/auto-capture-ui` | `82c53c6` → `5458eb7`，自动识别契约、生成类型、界面与回归 |
+| `codex/ld-discovery` | `81ed665` → `f850c14`，`1024396` → `6416024`，雷电多开查询及 ADB 监听归属核实 |
+| `codex/auto-capture-docs` | `f67d9b1` 直接合并，README 及三份连接/多开说明同步自动增强截图规则 |
+
+前轮审计所列 36 个提交均存在且为本轮基线 main 的祖先，没有需要重放的旧功能。远端误上传分支 `codex/typescript-cpp-runtime` 已在前轮按用户要求删除，其 tip `6820a8c` 仍在 main 历史中。
+
+最终完整检查通过：764 项 Bun（另 1 项 Windows SIGTERM 跳过）、274 项 Python、10 项契约、4/4 CTest、10 项工程测试（另 2 项 Unix 测试跳过）、工作区类型及可用 Rust 检查；64 项 Edge 界面测试与前端生产构建通过。常规检查使用隔离数据和合成适配器。用户选择的真实验证限本机已运行的单个 MuMu：自动发现、别名去重、桌面空闲连接及自动 SDK 配置检查；未执行游戏任务、真实多开/雷电、付费模型或安装包发布。详细边界见 [STATUS.md](STATUS.md)。
+
+## 前轮任务表与主分支整合
+
 核对日期：2026-10-23。整合基线为 `main` / `origin/main` 的 `2f0ffce`，本轮任务分支为 `codex/maa-task-settings`。核对了全部 22 个本地 `codex/*` 分支，以及主工作区之外的 5 个已登记 worktree；额外 worktree 均无已跟踪或未跟踪改动。
 
 ## 核对方法与结论

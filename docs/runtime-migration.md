@@ -41,6 +41,8 @@ stdio 通知方法保留 `runtime.event`；Tauri 宿主将其映射为合法事�
 
 核心精简提取的 `e6e8493` 和接入更新的 `103bc99` 已进入本次迁移基线，规则与测试已迁至 TypeScript；不需要另行重复应用。这部分只减少落盘范围，不减少官方完整包的下载流量。提取白名单和历史 Windows 数据见 [maacore-runtime.md](maacore-runtime.md)。
 
+Windows 运行中模拟器的动态多开枚举、监听归属、自动增强截图和独立实例清单由 TypeScript 服务实现。`Settings.capture.autoDetect` 与 `DeviceConnectionProfile.autoDetected` 仅用于业务配置和界面，调用 C++ worker 前剥离；雷电截图 PID 在每次连接时核实，不写业务设置。Python debug 参考没有这些新能力，不能用参考后端替代或验收该路径。完整规则见 [连接设置](connection-settings.md) 和 [多开说明](multi-instance.md)。
+
 ## 分阶段取消 Python 的落点
 
 1. 固定协议：保留现有 JSON-RPC 方法和事件，改由独立 JSON Schema 生成类型与校验，先让语言切换不影响页面。
