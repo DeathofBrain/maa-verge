@@ -80,7 +80,9 @@ struct Api final {
   void* (*create)() = nullptr;
   void* (*create_ex)(Callback, void*) = nullptr;
   void (*destroy)(void*) = nullptr;
+  void (*set_connection_extras)(const char*, const char*) = nullptr;
   int (*connect)(void*, const char*, const char*, const char*, bool) = nullptr;
+  int (*screencap)(void*, bool) = nullptr;
   int (*append)(void*, const char*, const char*) = nullptr;
   bool (*start)(void*) = nullptr;
   bool (*stop)(void*) = nullptr;
@@ -90,7 +92,7 @@ struct Api final {
 #ifdef _WIN32
   void* directory_cookie_ = nullptr;
 #endif
-  void* symbol(const char* name);
+  void* symbol(const char* name, bool required = true);
   void unload() noexcept;
 };
 
@@ -107,7 +109,9 @@ class Core final {
  private:
   static void callback(int message, const char* details, void* context) noexcept;
   void pump();
+  void drain_events();
   void close() noexcept;
+  void capture_failed(const std::string& error);
   Json config_;
   Protocol& protocol_;
   Api api_;
@@ -116,6 +120,13 @@ class Core final {
   std::mutex event_mutex_;
   std::queue<Json> events_;
   std::map<int, std::chrono::steady_clock::time_point> pending_;
+  std::string connection_config_ = "General";
+  std::string expected_capture_method_;
+  std::string observed_capture_method_;
+  std::string capture_error_;
+  Json connection_extras_;
+  bool capture_verified_ = false;
+  bool connected_ = false;
   std::condition_variable stop_condition_;
   bool stopping_ = false;
   std::thread pump_;

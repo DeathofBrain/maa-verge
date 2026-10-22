@@ -26,7 +26,8 @@ stdin/stdout 使用 UTF-8 NDJSON，每条消息最多 4 MiB。所有输出包含
 
 - 默认或 `--worker`：首行配置包含 `core`、`resource`、`userDir`、`adb`、`address`、
   `lockPath`。取得设备锁、加载资源和创建实例后输出 `{type:"ready",protocolVersion:1}`。
-  后续命令为 `{id,operation:"connect"}`、`{id,operation:"task",task:{type,params}}` 或
+  后续命令为 `{id,operation:"connect"}`、`{id,operation:"task",task:{type,params}}`、
+  `{id,operation:"screencap"}` 或
   `{id,operation:"stop"}`。返回现有 `response`、`callback` 与 `status` 消息；异步调用的
   ID、task ID、`pendingAsync` 和 `running` 与 Python 实现相同。参数、授权和预算仍由
   确定性业务服务校验。AsstStop 清空原生队列，不提供暂停恢复。
@@ -42,6 +43,19 @@ Python filelock。调用者计算现有规范化 ADB server/设备标识的哈�
 工作进程只持有传入的锁文件。无 soft-lock 回退，Unix 不删除锁文件。锁一直持有至
 AsstDestroy 和动态库卸载完成。EOF 先停止、销毁再退出；回调 context 在 Destroy
 返回前保持有效，借用字符串会立即复制到队列。
+
+`--worker` 的可选 `capture` 配置默认为 `{method:"adb"}`；增强截图使用
+`{method:"mumu"|"ldplayer",emulatorPath,instanceIndex,pid?}`。`emulatorPath` 是模拟器
+安装根目录，`instanceIndex` 是实际多开索引；雷电可额外传入正整数 `pid`。worker 在
+连接前调用 `AsstSetConnectionExtras`，MuMu 使用 `MuMuEmulator12` 配置并关闭额外触控，
+雷电使用 `LDPlayer` 配置。增强截图必须由 `FastestWayToScreencap` 回调证实方法为
+`MumuExtras` / `LDExtras`，否则 Connect 结果改为失败并附带 `error`、`expectedMethod`
+和 `actualMethod`；未验证的连接不能执行任务。连接成功后如重探测选择 ADB 截图或
+截图失败，worker 停止原生队列并发出 `Disconnect`，不会静默降级。
+
+`screencap` 只在连接完成且核心和异步调用均空闲时接受，返回 `asyncId`，随后通过
+`AsyncCallInfo` 的 `what:"Screencap"` 和 `details.ret` 确认新帧结果，不返回图像数据。
+增强模式须先通过截图协议验证。新 API 符号为按需要求，旧核心的默认 ADB 路径保持兼容。
 
 可选超时（毫秒）：`lockTimeoutMs` 默认 10000、最大 60000，允许 0 表示立即尝试；
 `startupTimeoutMs` 默认 45000；`nativeCallTimeoutMs` 默认 20000（validate 为 90000）；
@@ -62,7 +76,8 @@ ctest --test-dir build/native -C Release --output-on-failure
 可用 `-DPython3_EXECUTABLE=/path/to/python` 指定开发解释器。测试现场编译两份
 `vsynthetic` 动态库，完全不连接 ADB、模拟器或游戏，不使用 MaaCore 下载与模型。
 四组 CTest 覆盖版本/符号/资源错误、协议隔离、Unicode 路径、回调复制、异步与原生
-调用超时、停止清队列、销毁回调寿命、Python/C++ 锁互斥及异常退出释放。
+调用超时、停止清队列、销毁回调寿命、Python/C++ 锁互斥及异常退出释放；另验证两类
+增强截图的参数及调用顺序、禁止降级、截图失败停止和未验证任务拦截。
 
 Windows x64 已运行上述 Release 构建和合成测试；其他平台的代码和 CI 配置不代表
 对应平台原生加载或设备行为已经验收。

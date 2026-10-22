@@ -170,8 +170,8 @@ class Validation(Base):
 
 
 class Worker(Base):
-    def connected(self, scenario=""):
-        session = self.session(scenario=scenario)
+    def connected(self, scenario="", config=None):
+        session = self.session(config, scenario=scenario)
         session.wait(lambda value: value.get("type") == "ready")
         session.send({"id": "connect", "operation": "connect"})
         self.assertEqual(session.response("connect")["result"], {"asyncId": 7})
@@ -179,6 +179,134 @@ class Worker(Base):
         self.assertTrue(callback["details"]["details"]["ret"])
         session.wait(lambda value: value.get("type") == "status" and not value["pendingAsync"])
         return session
+
+    def capture_config(self, method="mumu", **extras):
+        emulator = self.root / "模拟器"
+        emulator.mkdir(exist_ok=True)
+        return {**self.config, "capture": {
+            "method": method, "emulatorPath": str(emulator), "instanceIndex": 3, **extras,
+        }}
+
+    def test_enhanced_extras_precede_connection_and_new_screencap(self):
+        for method, name, expected, extras in [
+            ("mumu", "MuMuEmulator12", "MumuExtras", {}),
+            ("ldplayer", "LDPlayer", "LDExtras", {"pid": 4242}),
+        ]:
+            with self.subTest(method=method):
+                config = self.capture_config(method, **extras)
+                session = self.connected(config=config)
+                evidence = next(
+                    value for value in session.seen
+                    if value.get("details", {}).get("what") == "FastestWayToScreencap"
+                )
+                self.assertEqual(evidence["details"]["details"]["method"], expected)
+                session.send({"id": "frame", "operation": "screencap"})
+                self.assertEqual(session.response("frame")["result"], {"asyncId": 17})
+                frame = session.wait(
+                    lambda value: value.get("details", {}).get("what") == "Screencap"
+                )
+                self.assertTrue(frame["details"]["details"]["ret"])
+                session.wait(
+                    lambda value: value.get("type") == "status" and not value["pendingAsync"]
+                )
+                session.send({
+                    "id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}
+                })
+                self.assertEqual(session.response("task")["result"], {"taskId": 11})
+                session.wait(lambda value: value.get("message") == 10002)
+                self.assertEqual(session.close()[0], 0)
+                trace = Path(config["trace"]).read_text(encoding="utf-8").splitlines()
+                extra_line = next(line for line in trace if line.startswith("extras:" + name + ":"))
+                applied = json.loads(extra_line.split(":", 2)[2])
+                self.assertTrue(Path(applied["path"]).samefile(config["capture"]["emulatorPath"]))
+                self.assertEqual(applied["index"], 3)
+                if method == "mumu":
+                    self.assertIs(applied["touch"], False)
+                else:
+                    self.assertEqual(applied["pid"], 4242)
+                self.assertLess(trace.index(extra_line), trace.index("connect:" + name))
+                self.assertIn("screencap", trace)
+
+    def test_enhanced_task_requires_verified_connection(self):
+        session = self.session(self.capture_config())
+        session.wait(lambda value: value.get("type") == "ready")
+        session.send({"id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}})
+        self.assertIn("protocol has not been verified", session.response("task")["error"])
+        session.send({"id": "frame", "operation": "screencap"})
+        self.assertIn("must be connected", session.response("frame")["error"])
+        self.assertEqual(session.close()[0], 0)
+        self.assertNotIn("append-task", Path(self.config["trace"]).read_text())
+
+    def test_enhanced_fallback_missing_evidence_and_connect_failure_block_tasks(self):
+        for scenario in ["capture-fallback", "capture-no-evidence", "capture-connect-failure"]:
+            with self.subTest(scenario=scenario):
+                session = self.session(self.capture_config(), scenario=scenario)
+                session.wait(lambda value: value.get("type") == "ready")
+                session.send({"id": "connect", "operation": "connect"})
+                session.response("connect")
+                result = session.wait(
+                    lambda value: value.get("message") == 4
+                    and value.get("details", {}).get("what") == "Connect"
+                )
+                details = result["details"]["details"]
+                self.assertIs(details["ret"], False)
+                self.assertEqual(details["expectedMethod"], "MumuExtras")
+                self.assertTrue(details["error"])
+                session.wait(
+                    lambda value: value.get("type") == "status" and not value["pendingAsync"]
+                )
+                session.send({
+                    "id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}
+                })
+                self.assertIn("protocol has not been verified", session.response("task")["error"])
+                self.assertEqual(session.close()[0], 0)
+                self.assertNotIn(
+                    "append-task", Path(self.config["trace"]).read_text(encoding="utf-8")
+                )
+
+    def test_enhanced_reprobe_fallback_and_screencap_failure_stop_and_disconnect(self):
+        for scenario in ["capture-late-fallback", "screencap-failure"]:
+            with self.subTest(scenario=scenario):
+                session = self.connected(scenario, config=self.capture_config())
+                session.send({"id": "frame", "operation": "screencap"})
+                session.response("frame")
+                failure = session.wait(
+                    lambda value: value.get("message") == 2
+                    and value.get("details", {}).get("what") == "Disconnect"
+                )
+                self.assertEqual(failure["details"]["why"], "RequiredCaptureProtocolUnavailable")
+                self.assertTrue(failure["details"]["details"]["error"])
+                frame = session.wait(
+                    lambda value: value.get("details", {}).get("what") == "Screencap"
+                )
+                self.assertIs(frame["details"]["details"]["ret"], False)
+                self.assertTrue(frame["details"]["details"]["error"])
+                session.wait(
+                    lambda value: value.get("type") == "status" and not value["pendingAsync"]
+                )
+                session.send({
+                    "id": "task", "operation": "task", "task": {"type": "Fight", "params": {}}
+                })
+                self.assertIn("protocol has not been verified", session.response("task")["error"])
+                self.assertEqual(session.close()[0], 0)
+                trace = Path(self.config["trace"]).read_text(encoding="utf-8")
+                self.assertIn("stop-cleared-queue", trace)
+                self.assertNotIn("append-task", trace)
+
+    def test_invalid_capture_configuration_is_rejected(self):
+        configs = [
+            self.capture_config(instanceIndex=-1), self.capture_config(instanceIndex=True),
+            self.capture_config(instanceIndex=1.5), self.capture_config(pid=22),
+            self.capture_config("ldplayer", pid=0), self.capture_config("ldplayer", pid=2147483648),
+            self.capture_config("unsupported"),
+            self.capture_config(emulatorPath=str(self.root / "missing")),
+        ]
+        for config in configs:
+            with self.subTest(capture=config["capture"]):
+                session = self.session(config)
+                code, errors = session.close()
+                self.assertNotEqual(code, 0)
+                self.assertTrue(errors)
 
     def test_connect_task_callbacks_and_eof_destroy(self):
         session = self.connected()

@@ -240,17 +240,20 @@ Api::Api(const fs::path& core) {
     LOAD(start, "AsstStart");
     LOAD(stop, "AsstStop");
     LOAD(running, "AsstRunning");
+    // Older reference and synthetic cores can still use the default ADB path.
+    set_connection_extras = reinterpret_cast<decltype(set_connection_extras)>(symbol("AsstSetConnectionExtras", false));
+    screencap = reinterpret_cast<decltype(screencap)>(symbol("AsstAsyncScreencap", false));
 #undef LOAD
   } catch (...) { unload(); throw; }
 }
 
-void* Api::symbol(const char* name) {
+void* Api::symbol(const char* name, bool required) {
 #ifdef _WIN32
   auto address = reinterpret_cast<void*>(GetProcAddress(static_cast<HMODULE>(library_), name));
 #else
   auto address = dlsym(library_, name);
 #endif
-  if (!address) throw std::runtime_error(std::string("missing MaaCore C API symbol: ") + name);
+  if (!address && required) throw std::runtime_error(std::string("missing MaaCore C API symbol: ") + name);
   return address;
 }
 
