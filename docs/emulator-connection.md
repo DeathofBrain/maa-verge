@@ -4,6 +4,8 @@
 
 服务在启动并具备已启用 MaaCore 后自动发现模拟器，每 30 秒在空闲时重试。设置 `autoConnect` 默认开启；关闭后仅保留用户主动触发的连接。手动断开设备后，该设备不会立即被后台重连；重新开启自动连接、主动点击自动连接或重启应用可以解除抑制。后台发现期间关闭自动连接或手动断开设备，会阻止该轮随后建立新的核心连接。真实数据继续位于 `<data-root>/native`；旧 `mock` 目录保留，产品不读取、迁移或删除它。
 
+保存独立实例清单后，自动连接只逐项尝试清单中的地址和配置，单项失败不阻止其他实例；没有清单时沿用下述自动发现。手动“发现设备”仍可扫描本机候选。共享/逐实例设置见 [连接设置](connection-settings.md)，同表并行、分别停止与客户端资源隔离见 [多开说明](multi-instance.md)。
+
 `device.auto_connect` 返回：
 
 ```ts
@@ -34,15 +36,15 @@ ADB 优先使用 `MAAVERGE_ADB_PATH`，其次 PATH、Android SDK 与常见模拟
 - [macOS 设备说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/device/macos.md)：NoxAppPlayer 内置 ADB 路径，其他未命中路径可配置。
 - [Python 模拟器辅助](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/Python/asst/emulator.py)：BlueStacks `bst.instance.<实例>.status.adb_port`。
 
-自动发现回归使用测试中注入的替代 ADB、监听探测和合成核心工作进程；安装包及桌面 smoke 在全新隔离的 native 数据库中预先关闭自动连接与更新，不使用产品 mock 开关。本机 Windows MuMu 的历史实际验证见下节。Windows/macOS/Linux 的路径分支与默认端口是实现范围，不能据此声称三个平台的真实模拟器均已验收。增强触控、自动启动模拟器、PlayCover、Windows 原生窗口及非标准安装进程探测仍需单独接入或配置。
+自动发现回归使用测试中注入的替代 ADB、监听探测和合成核心工作进程；安装包及桌面 smoke 在全新隔离的 native 数据库中预先关闭自动连接与更新，不使用产品 mock 开关。本机 Windows MuMu 的历史实际验证见下节。Windows/macOS/Linux 的路径分支与默认端口是实现范围，不能据此声称三个平台的真实模拟器均已验收。MuMu 增强触控已有实验设置入口但尚未真实验收；自动启动模拟器、PlayCover、Windows 原生窗口及非标准安装进程探测仍需单独接入或配置。
 
 ## 可选的模拟器增强截图
 
-设备页的「截图方式」可以保存 **ADB 默认截图、MuMu 增强截图、雷电增强截图**。增强模式需填写模拟器安装根目录与多开实例索引；配置全局保存，供下次连接使用，已连接设备继续使用原截图方式。切换后先断开，再重新连接。旧设置未包含 `capture` 时保持 ADB 行为。当前仅 Windows 支持这两种增强模式。
+设备页的「截图方式」可以保存 **ADB 默认截图、MuMu 增强截图、雷电增强截图**。增强模式需填写模拟器安装根目录与多开实例索引；没有关联实例时保存全局默认，关联实例使用其独立配置，供下次连接使用，已连接设备继续使用原截图方式。切换后先断开，再重新连接。旧设置未包含 `capture` 时保持 ADB 行为。当前仅 Windows 支持这两种增强模式。
 
-- MuMu 支持上游 MaaCore v6.20.1 的 MuMu 12 / MuMuNx Android 15 SDK 布局。传入安装根目录，worker 使用 `MuMuEmulator12` 和 `{path,index,touch:false}`；只启用增强截图，触控保持原驱动。自动定位此根目录中的内置 ADB。
+- MuMu 支持上游 MaaCore v6.20.1 的 MuMu 12 / MuMuNx Android 15 SDK 布局。传入安装根目录，worker 使用 `MuMuEmulator12` 和 `{path,index,touch}`；默认 `touch:false`，可显式启用实验性增强触控，接口限制见 [共享设置](connection-settings.md)。自动定位此根目录中的内置 ADB。
 - 雷电使用 `LDPlayer` 和 `{path,index,pid}`；连接时执行固定的 `ldconsole.exe list2`，取得所选已启动实例的 PID，不持久保存 PID。需安装根目录中存在 `ldopengl64.dll`。本轮尚未进行雷电实机验收。
-- 对标准 MuMu TCP 地址 `16384 + 32 × index`、`emulator-(5554 + 2 × index)` 和雷电 `5555 + 2 × index` 检查实例匹配，避免截图 SDK 与 ADB 控制不同实例；自定义端口尚未接入映射配置。
+- 对标准 MuMu TCP 地址 `16384 + 32 × index`、`emulator-(5554 + 2 × index)` 和雷电 `5555 + 2 × index` 检查实例匹配，避免截图 SDK 与 ADB 控制不同实例；MuMu 自定义网络地址须显式启用桥接模式并指定 SDK 实例号，其他自定义端口尚未接入映射配置。
 - MuMu TCP 默认地址与 `emulator-*` 别名在 TypeScript/Python 中使用相同设备锁身份，与截图选项无关。同一 ADB server 下的别名不会创建第二个控制者；更新此锁规则前须退出旧版本实例。
 
 增强模式在连接前通过 `AsstSetConnectionExtras` 配置，随后核验 MaaCore 的 `FastestWayToScreencap` 回调，实际方法必须为 `MumuExtras` / `LDExtras`。初始化失败、缺少方法证据或选中 ADB 时，连接失败并禁止提交任务；已连接后收到增强截图失败或方法变化时，停止队列、将设备标记离线并报告原因。设备页的「实际截图方式」来自核心回调，离线或尚未确认方法时不显示已确认驱动。

@@ -122,9 +122,9 @@ python tools/clean-codex-worktrees.py --force           # 允许删除脏 worktr
 
 ## 模拟器连接与任务覆盖
 
-原生模式默认自动发现并连接已启动的本机模拟器，设置中可以关闭或手动触发。SDK/模拟器内置 ADB、默认多开端口和非标准路径配置见 [emulator-connection.md](emulator-connection.md)。此流程不会自动运行任务。
+原生模式默认自动连接已启动的本机模拟器，设置中可以关闭或手动触发；已保存实例清单时只逐项连接清单，没有清单时进行自动发现。SDK/模拟器内置 ADB、默认端口和非标准路径见 [emulator-connection.md](emulator-connection.md)，共享/逐实例连接设置见 [connection-settings.md](connection-settings.md)，并行执行与隔离边界见 [multi-instance.md](multi-instance.md)。此流程不会自动启动游戏或运行任务。
 
-侧边栏的「日常」与「专项任务」管理任务表，页内通过「任务编排」「任务表设置」「定时计划」组织配置。各步骤可以重复添加、排序、复制、启停并单独配置；常用字段之外的参数可通过高级 JSON 保留和编辑。上游任务边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
+侧边栏的「任务表」与「专项任务」管理任务表，页内通过「任务编排」「任务表设置」「定时计划」组织配置。新建日常表采用原版九项默认队列与参数，名称自动选择未占用的“日常表1”等；各步骤可重复添加、排序、复制、启停并单独配置，高级 JSON 保留常用字段之外的参数。逐项默认及执行映射见 [maa-task-settings.md](maa-task-settings.md)。官方活动日历、关卡目录和主页游戏提醒共用缓存，基建估算按设备手工校准，见 [game-reminders.md](game-reminders.md)。上游边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
 
 ## 构建与持续集成
 
