@@ -6,6 +6,8 @@ import { captureAdbPath, connectionCapture, ldPlayerPid } from '../src/capture';
 import { deviceLockAddress } from '../src/adb';
 import { parseSettings } from '../src/models';
 import { Runtime } from '../src/runtime';
+import { validateWorkerConfiguration } from '../../../packages/contracts/src/validators.js';
+import { configuredAdbPath } from '../src/adb';
 
 const roots: string[] = [];
 const temporary = () => { const root = mkdtempSync(path.join(tmpdir(), 'maaverge-capture-')); roots.push(root); return root; };
@@ -17,6 +19,75 @@ test('legacy settings keep ADB and capture settings validate without accepting a
   for (const capture of [null, { method: 'shell' }, { method: 'mumu', instanceIndex: -1 }, { instanceIndex: 1.5 }, { pid: 12 }]) {
     expect(() => parseSettings({ capture })).toThrow();
   }
+});
+
+test('connection settings reject unsupported native options and normalize legacy settings without adding defaults', () => {
+  expect(parseSettings().connection).toBeUndefined();
+  expect(parseSettings({ connection: {} }).connection?.touchMode).toBe('minitouch');
+  for (const connection of [null, { config: 'arbitrary' }, { touchMode: 'shell' }, { adbLite: 'yes' }, { command: 'unsafe' }]) expect(() => parseSettings({ connection })).toThrow();
+  expect(() => parseSettings({ capture: { method: 'adb', mumuTouch: true } })).toThrow('MuMu');
+  expect(() => parseSettings({ capture: { method: 'ldplayer', mumuBridge: true } })).toThrow('MuMu');
+});
+
+test('configured ADB supports explicit existing files or PATH discovery without executing them', () => {
+  const root = temporary(), adb = path.join(root, process.platform === 'win32' ? 'adb.exe' : 'adb');
+  writeFileSync(adb, 'synthetic, never executed');
+  expect(configuredAdbPath(adb)).toBe(realpathSync(adb));
+  expect(configuredAdbPath('adb', { PATH: root, MAAVERGE_ADB_PATH: 'missing' })).toBe(realpathSync(adb));
+  expect(() => configuredAdbPath('./adb')).toThrow('绝对路径');
+});
+
+test('explicit connection profile and touch preferences reach the worker without changing active connections', async () => {
+  const root = temporary(), configs: any[] = [];
+  const worker = { events: [] as any[], connected: false, safeIdle: true, async connect() {}, async close() {}, async task() {}, async stop() {}, async waitConnected() { return false; } };
+  const runtime = new Runtime(root, { workerFactory: async config => { configs.push(config); return worker; }, adbExecutable: () => 'synthetic-adb' });
+  try {
+    runtime.store.put('active', 'combo', { core: { path: 'synthetic-core', version: 'v1' }, resource: { path: 'synthetic-resource', version: 'r1' } });
+    const settings = parseSettings({ connection: { config: 'BlueStacks', touchMode: 'maatouch', adbLite: true, clientType: 'Bilibili' } });
+    await runtime.handle('settings.save', { settings });
+    const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
+    expect(configs[0].connection).toEqual({ config: 'BlueStacks', touchMode: 'maatouch', adbLite: true, clientType: 'Bilibili' });
+    expect(validateWorkerConfiguration({ ...configs[0], protocolVersion: 1 })).toBe(true);
+    await runtime.handle('settings.save', { settings: parseSettings({ connection: { config: 'AVD', touchMode: 'MaaFwAdb' } }) });
+    expect((await runtime.connectDevice({ address: device.address })).id).toBe(device.id);
+    expect(configs).toHaveLength(1);
+    await runtime.disconnectDevice(device.id);
+    await runtime.connectDevice({ address: device.address });
+    expect(configs[1].connection.touchMode).toBe('MaaFwAdb');
+  } finally { await runtime.close(); }
+});
+
+test('MuMu bridge requires explicit selection and preserves the selected local SDK instance', async () => {
+  const root = temporary(), sdk = path.join(root, 'shell/sdk'); mkdirSync(sdk, { recursive: true });
+  writeFileSync(path.join(sdk, 'external_renderer_ipc.dll'), 'synthetic, never loaded');
+  const capture = { method: 'mumu' as const, emulatorPath: root, instanceIndex: 2, mumuBridge: true, mumuTouch: true };
+  const result = await connectionCapture(capture, '192.168.1.22:5555', 'win32');
+  expect(result.mumuTouch).toBe(true);
+  expect(result.instanceIndex).toBe(2);
+  await expect(connectionCapture({ ...capture, mumuBridge: false }, '192.168.1.22:5555', 'win32')).rejects.toThrow('本机');
+});
+
+test.skipIf(process.platform !== 'win32')('MuMu bridge and standard serial use one worker and shared lease even after settings edits', async () => {
+  const root = temporary(), sdk = path.join(root, 'shell/sdk'), configs: any[] = [];
+  mkdirSync(sdk, { recursive: true }); writeFileSync(path.join(sdk, 'external_renderer_ipc.dll'), 'synthetic, never loaded');
+  const worker = { events: [] as any[], connected: false, safeIdle: true, async connect() {}, async close() {}, async task() {}, async stop() {}, async waitConnected() { return false; } };
+  const runtime = new Runtime(root, { workerFactory: async config => { configs.push(config); return worker; }, adbExecutable: () => 'synthetic-adb' });
+  try {
+    runtime.store.put('active', 'combo', { core: { path: 'synthetic-core', version: 'v1' }, resource: { path: 'synthetic-resource', version: 'r1' } });
+    await runtime.handle('settings.save', { settings: parseSettings({ capture: { method: 'mumu', emulatorPath: root, instanceIndex: 2, mumuBridge: true } }) });
+    const bridge = await runtime.connectDevice({ address: '192.168.1.22:5555' });
+    expect((await runtime.connectDevice({ address: 'emulator-5558' })).id).toBe(bridge.id);
+    expect(configs).toHaveLength(1);
+    expect(validateWorkerConfiguration({ ...configs[0], protocolVersion: 1 })).toBe(true);
+    await runtime.handle('settings.save', { settings: parseSettings({ capture: { method: 'mumu', emulatorPath: root, instanceIndex: 3, mumuBridge: true } }) });
+    expect((await runtime.connectDevice({ address: bridge.address })).id).toBe(bridge.id);
+    expect(configs).toHaveLength(1);
+    await runtime.disconnectDevice(bridge.id);
+    await runtime.handle('settings.save', { settings: parseSettings({ capture: { method: 'mumu', emulatorPath: root, instanceIndex: 2, mumuBridge: true } }) });
+    const serial = await runtime.connectDevice({ address: 'emulator-5558' });
+    expect(serial.id).toBe(bridge.id);
+    expect(configs[1].lockPath).toBe(configs[0].lockPath);
+  } finally { await runtime.close(); }
 });
 
 test('MuMu 15 SDK uses the root and rejects wrong instance or remote devices before connection', async () => {

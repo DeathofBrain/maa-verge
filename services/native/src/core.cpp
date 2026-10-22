@@ -120,6 +120,23 @@ Core::Core(const Json& config, Protocol& protocol)
   if (!api_.load_resource(resource.c_str())) throw std::runtime_error("cannot load resource snapshot");
   required_string(config, "adb");
   required_string(config, "address");
+  std::string touch_mode = "minitouch";
+  bool adb_lite = false;
+  std::string client_type = "Official";
+  bool explicit_options = config.contains("connection");
+  if (explicit_options) {
+    const auto& connection = config["connection"];
+    connection_config_ = required_string(connection, "config");
+    const std::vector<std::string> profiles = {"General", "BlueStacks", "MuMuEmulator12", "MuMuArm", "LDPlayer", "Nox", "XYAZ", "Compatible", "SecondResolution", "CompatMac", "CompatPOSIXShell", "Waydroid", "AVD", "Androws", "WSA"};
+    if (std::find(profiles.begin(), profiles.end(), connection_config_) == profiles.end()) throw std::runtime_error("unsupported connection profile");
+    touch_mode = required_string(connection, "touchMode");
+    if (touch_mode != "minitouch" && touch_mode != "maatouch" && touch_mode != "adb" && touch_mode != "MaaFwAdb") throw std::runtime_error("unsupported touch mode");
+    if (!connection.contains("adbLite") || !connection["adbLite"].is_boolean()) throw std::runtime_error("adbLite must be boolean");
+    adb_lite = connection["adbLite"].get<bool>();
+    client_type = required_string(connection, "clientType");
+    const std::vector<std::string> clients = {"Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"};
+    if (std::find(clients.begin(), clients.end(), client_type) == clients.end()) throw std::runtime_error("unsupported connection client type");
+  }
   if (config.contains("capture")) {
     const auto& capture = config["capture"];
     const auto method = required_string(capture, "method");
@@ -134,7 +151,9 @@ Core::Core(const Json& config, Protocol& protocol)
           capture["instanceIndex"] < 0 || capture["instanceIndex"] > 2147483647) {
         throw std::runtime_error("capture instanceIndex must be a nonnegative 32-bit integer");
       }
-      connection_config_ = method == "mumu" ? "MuMuEmulator12" : "LDPlayer";
+      const std::string enhanced_config = method == "mumu" ? "MuMuEmulator12" : "LDPlayer";
+      if (connection_config_ != "General" && connection_config_ != enhanced_config) throw std::runtime_error("enhanced capture and connection profile do not match");
+      connection_config_ = enhanced_config;
       expected_capture_method_ = method == "mumu" ? "MumuExtras" : "LDExtras";
       // Emulator SDKs parse this path themselves and reject Win32 extended-path
       // prefixes even though LoadLibraryW accepts them. Keep native file checks
@@ -145,7 +164,11 @@ Core::Core(const Json& config, Protocol& protocol)
       else if (sdk_path.starts_with("\\\\?\\")) sdk_path.erase(0, 4);
 #endif
       connection_extras_ = {{"path", sdk_path}, {"index", capture["instanceIndex"]}};
-      if (method == "mumu") connection_extras_["touch"] = false;
+      if (method == "mumu") {
+        if (capture.contains("mumuTouch") && !capture["mumuTouch"].is_boolean()) throw std::runtime_error("mumuTouch must be boolean");
+        connection_extras_["touch"] = capture.value("mumuTouch", false);
+        if (capture.value("mumuTouch", false)) { touch_mode = "MumuExtras"; explicit_options = true; }
+      }
       if (capture.contains("pid")) {
         if (method != "ldplayer" || !capture["pid"].is_number_integer() ||
             capture["pid"] <= 0 || capture["pid"] > 2147483647) {
@@ -157,6 +180,17 @@ Core::Core(const Json& config, Protocol& protocol)
   }
   handle_ = api_.create_ex(&Core::callback, this);
   if (!handle_) throw std::runtime_error("cannot create MaaCore instance");
+  try {
+    if (explicit_options && !api_.set_instance_option) throw std::runtime_error("missing MaaCore C API symbol: AsstSetInstanceOption");
+    if (api_.set_instance_option) {
+      // AsstTypes.h: TouchMode=2, AdbLiteEnabled=4, KillAdbOnExit=5, ClientType=6.
+      // Each worker shares the ADB server with other controllers and applications.
+      if (!api_.set_instance_option(handle_, 5, "0")) throw std::runtime_error("MaaCore rejected KillAdbOnExit=0");
+      if (explicit_options && (!api_.set_instance_option(handle_, 2, touch_mode.c_str()) ||
+          !api_.set_instance_option(handle_, 4, adb_lite ? "1" : "0") ||
+          !api_.set_instance_option(handle_, 6, client_type.c_str()))) throw std::runtime_error("MaaCore rejected connection instance options");
+    }
+  } catch (...) { api_.destroy(handle_); handle_ = nullptr; throw; }
 }
 
 Core::~Core() { close(); }

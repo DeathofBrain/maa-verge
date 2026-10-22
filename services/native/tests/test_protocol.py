@@ -390,6 +390,41 @@ class Worker(Base):
                 self.assertLess(trace.index(extra_line), trace.index("connect:" + name))
                 self.assertIn("screencap", trace)
 
+    def test_connection_profile_and_touch_options_precede_async_connect(self):
+        config = {**self.config, "connection": {
+            "config": "BlueStacks", "touchMode": "maatouch", "adbLite": True,
+            "clientType": "Bilibili",
+        }}
+        session = self.connected(config=config)
+        self.assertEqual(session.close()[0], 0)
+        trace = Path(config["trace"]).read_text(encoding="utf-8").splitlines()
+        for option in ["option:2:maatouch", "option:4:1", "option:5:0", "option:6:Bilibili"]:
+            self.assertIn(option, trace)
+            self.assertLess(trace.index(option), trace.index("connect:BlueStacks"))
+
+    def test_mumu_touch_enhancement_reaches_both_instance_and_connection_options(self):
+        config = self.capture_config(mumuTouch=True, mumuBridge=True)
+        session = self.connected(config=config)
+        self.assertEqual(session.close()[0], 0)
+        trace = Path(config["trace"]).read_text(encoding="utf-8").splitlines()
+        self.assertIn("option:2:MumuExtras", trace)
+        applied = json.loads(next(line for line in trace if line.startswith("extras:MuMuEmulator12:")).split(":", 2)[2])
+        self.assertIs(applied["touch"], True)
+        self.assertEqual(applied["index"], 3)
+
+    def test_rejected_instance_option_destroys_the_instance_before_startup_fails(self):
+        config = {**self.config, "connection": {
+            "config": "General", "touchMode": "minitouch", "adbLite": False,
+            "clientType": "Official",
+        }}
+        session = self.session(config, scenario="option-reject")
+        code, errors = session.close()
+        self.assertNotEqual(code, 0)
+        self.assertIn("rejected", errors)
+        trace = Path(config["trace"]).read_text(encoding="utf-8")
+        self.assertIn("destroy-done", trace)
+        self.assertNotIn("connect:", trace)
+
     def test_enhanced_task_requires_verified_connection(self):
         session = self.session(self.capture_config())
         session.wait(lambda value: value.get("type") == "ready")

@@ -95,6 +95,14 @@ export function adbPath(env: Environment = process.env): string {
   for (const candidate of adbCandidates(env)) if (isFile(candidate)) return realpathSync(candidate);
   throw new Error("未找到 ADB；请安装 Android platform-tools，或配置 MAAVERGE_ADB_PATH / MAAVERGE_EMULATOR_DIRS");
 }
+/** UI paths are rooted explicitly; `adb` selects the normal PATH/SDK discovery. */
+export function configuredAdbPath(value: string, env: Environment = process.env): string {
+  const selected = value.trim();
+  if (selected === 'adb') return adbPath({ ...env, MAAVERGE_ADB_PATH: undefined });
+  const expanded = expandUser(selected);
+  if (!path.isAbsolute(expanded)) throw new Error('ADB 路径必须是可执行文件的绝对路径，或填写 adb 使用系统环境');
+  return adbPath({ ...env, MAAVERGE_ADB_PATH: expanded });
+}
 function run(executable: string, args: string[], timeout = 15_000): Promise<string> {
   return new Promise((resolve, reject) => execFile(executable, args, {
     timeout, killSignal: "SIGKILL", windowsHide: true, encoding: "utf8", maxBuffer: 4 * 1024 * 1024,

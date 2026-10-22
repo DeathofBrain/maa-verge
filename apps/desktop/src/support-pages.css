@@ -518,10 +518,26 @@
   margin: 0;
 }
 
-.sp-capture-form {
+.sp-capture-form,.sp-connection-form {
   display: grid;
   gap: 18px;
   max-width: 760px;
+}
+
+.task-connection-settings {
+  min-width: 0;
+}
+
+.task-connection-settings .check-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.task-connection-settings>.sp-help {
+  margin: 12px 28px;
 }
 
 .sp-capture-fields {
@@ -530,15 +546,15 @@
   gap: 20px;
 }
 
-.sp-capture-form .sp-field {
+.sp-capture-form .sp-field,.sp-connection-form .sp-field {
   min-width: 0;
 }
 
-.sp-capture-form .sp-help,.sp-capture-form .sp-notice {
+.sp-capture-form .sp-help,.sp-capture-form .sp-notice,.sp-connection-form .sp-help {
   margin: 0;
 }
 
-.sp-capture-form .sp-form-actions {
+.sp-capture-form .sp-form-actions,.sp-connection-form .sp-form-actions {
   padding-top: 0;
 }
 

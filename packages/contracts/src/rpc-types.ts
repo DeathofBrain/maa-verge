@@ -225,6 +225,7 @@ export interface ChannelParams {
  */
 export interface Settings {
   capture?: CaptureSettings;
+  connection?: ConnectionSettings;
   autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
@@ -241,6 +242,35 @@ export interface CaptureSettings {
   method: 'adb' | 'mumu' | 'ldplayer';
   emulatorPath: string;
   instanceIndex: number;
+  mumuTouch?: boolean;
+  mumuBridge?: boolean;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "ConnectionSettings".
+ */
+export interface ConnectionSettings {
+  adbPath: string;
+  address: string;
+  config:
+    | 'General'
+    | 'BlueStacks'
+    | 'MuMuEmulator12'
+    | 'MuMuArm'
+    | 'LDPlayer'
+    | 'Nox'
+    | 'XYAZ'
+    | 'Compatible'
+    | 'SecondResolution'
+    | 'CompatMac'
+    | 'CompatPOSIXShell'
+    | 'Waydroid'
+    | 'AVD'
+    | 'Androws'
+    | 'WSA';
+  touchMode: 'minitouch' | 'maatouch' | 'adb' | 'MaaFwAdb';
+  adbLite: boolean;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema

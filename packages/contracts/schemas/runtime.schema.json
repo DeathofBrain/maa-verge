@@ -42,9 +42,23 @@
       "properties": {
         "method": { "type": "string", "enum": ["adb", "mumu", "ldplayer"], "default": "adb" },
         "emulatorPath": { "type": "string", "maxLength": 4096, "default": "" },
-        "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 }
+        "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 },
+        "mumuTouch": { "type": "boolean", "default": false },
+        "mumuBridge": { "type": "boolean", "default": false }
       },
       "required": ["method", "emulatorPath", "instanceIndex"]
+    },
+    "ConnectionSettings": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "adbPath": { "type": "string", "maxLength": 4096, "default": "" },
+        "address": { "type": "string", "maxLength": 128, "default": "" },
+        "config": { "type": "string", "enum": ["General", "BlueStacks", "MuMuEmulator12", "MuMuArm", "LDPlayer", "Nox", "XYAZ", "Compatible", "SecondResolution", "CompatMac", "CompatPOSIXShell", "Waydroid", "AVD", "Androws", "WSA"], "default": "General" },
+        "touchMode": { "type": "string", "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"], "default": "minitouch" },
+        "adbLite": { "type": "boolean", "default": false },
+        "clientType": { "type": "string", "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"], "default": "Official" }
+      },
+      "required": ["adbPath", "address", "config", "touchMode", "adbLite", "clientType"]
     },
     "Device": {
       "additionalProperties": false,
@@ -334,6 +348,7 @@
       "additionalProperties": false,
       "properties": {
         "capture": { "$ref": "#/$defs/CaptureSettings" },
+        "connection": { "$ref": "#/$defs/ConnectionSettings" },
         "autoConnect": {
           "default": true,
           "title": "Autoconnect",

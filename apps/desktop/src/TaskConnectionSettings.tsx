@@ -1,0 +1,57 @@
+import { useState } from 'react';
+import { rpc, type Settings, type ScreenFrame } from '@maaverge/contracts';
+import { CaptureForm } from './CaptureSettingsForm';
+import { useSettingsDraft } from './settings-draft';
+import './support-pages.css';
+
+const defaults: NonNullable<Settings['connection']> = { adbPath: '', address: '', config: 'General', touchMode: 'minitouch', adbLite: false, clientType: 'Official' };
+const profiles = { General: '通用模式', BlueStacks: '蓝叠模拟器', MuMuEmulator12: 'MuMu 模拟器', MuMuArm: 'MuMu ARM', LDPlayer: '雷电模拟器', Nox: '夜神模拟器', XYAZ: '逍遥模拟器', Compatible: '兼容模式', SecondResolution: '第二分辨率', CompatMac: 'macOS 兼容模式', CompatPOSIXShell: 'POSIX Shell 兼容模式', Waydroid: 'Waydroid', AVD: 'Android 虚拟设备（AVD）', Androws: '腾讯应用宝', WSA: 'Windows 安卓子系统（WSA）' } as const;
+
+/** Global connection preferences, shared by the device page and StartUp task. */
+export function TaskConnectionSettings({ settings, onSaveSettings, busy = false, showAutomatic = true, selectedDeviceId }: {
+  settings: Settings;
+  onSaveSettings?: (settings: Settings) => Promise<boolean>;
+  busy?: boolean;
+  showAutomatic?: boolean;
+  selectedDeviceId?: string;
+}) {
+  const saved = settings.connection ?? defaults;
+  const [draft, setDraft, reset] = useSettingsDraft('connection', saved);
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState('');
+  const [frame, setFrame] = useState<ScreenFrame>();
+  const disabled = busy || pending || !onSaveSettings;
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const patch = (value: Partial<typeof draft>) => setDraft(previous => ({ ...previous, ...value }));
+  const save = async () => {
+    if (!onSaveSettings) return false;
+    const connection = { ...draft, adbPath: draft.adbPath.trim(), address: draft.address.trim() };
+    const ok = await onSaveSettings({ ...settings, connection });
+    if (ok) setDraft(connection);
+    return ok;
+  };
+  const operate = async (action: () => Promise<void>) => {
+    setPending(true); setResult('');
+    try { await action(); } catch (error) { setResult(error instanceof Error ? error.message : String(error)); }
+    finally { setPending(false); }
+  };
+  return <div className="task-connection-settings">
+    <section className="sp-section"><div className="sp-section-title"><h2>连接与触控设置</h2><p>以下设置由所有任务表共享，保存后用于下一次连接。</p></div>
+      {showAutomatic && <label className="check-field"><input type="checkbox" checked={settings.autoConnect} disabled={disabled} onChange={event => void onSaveSettings?.({ ...settings, autoConnect: event.target.checked })} />自动检测连接</label>}
+      <form className="sp-connection-form" onSubmit={event => { event.preventDefault(); void save(); }}>
+        <label className="sp-field">连接配置<select className="text-input" aria-label="连接配置" value={draft.config} disabled={disabled} onChange={event => patch({ config: event.target.value as typeof draft.config })}>{Object.entries(profiles).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="sp-field">ADB 路径<input className="text-input" aria-label="ADB 路径" value={draft.adbPath} maxLength={4096} disabled={disabled} placeholder="留空自动查找，或填写 ADB 可执行文件的绝对路径" onChange={event => patch({ adbPath: event.target.value })} /><span className="sp-help">选择模拟器自带的 adb.exe、HD-Adb.exe 或系统 platform-tools；留空时也会使用已配置的环境变量。</span></label>
+        <label className="sp-field">连接地址<input className="text-input" aria-label="连接地址" value={draft.address} maxLength={128} disabled={disabled} placeholder="127.0.0.1:16384 或 emulator-5554" onChange={event => patch({ address: event.target.value })} /><span className="sp-help">保存常用地址后可在这里连接；自动检测仍会发现本地模拟器。</span></label>
+        <label className="sp-field">触控模式<select className="text-input" aria-label="触控模式" value={draft.touchMode} disabled={disabled} onChange={event => patch({ touchMode: event.target.value as typeof draft.touchMode })}><option value="minitouch">Minitouch（默认）</option><option value="maatouch">MaaTouch（实验性）</option><option value="adb">ADB Input（兼容模式）</option><option value="MaaFwAdb">MaaFwAdb（实验性）</option></select><span className="sp-help">ADB Input 滑动较慢；MaaFwAdb 不支持额外刹车滑动，配合 AVD 连接配置可使用 AVD 增强截图。</span></label>
+        {(draft.config === 'Androws' || draft.config === 'WSA') && <label className="sp-field">连接时的客户端<select className="text-input" aria-label="连接时的客户端" value={draft.clientType} disabled={disabled} onChange={event => patch({ clientType: event.target.value as typeof draft.clientType })}><option value="Official">官服</option><option value="Bilibili">Bilibili 服</option><option value="YoStarEN">国际服</option><option value="YoStarJP">日服</option><option value="YoStarKR">韩服</option><option value="txwy">繁中服</option></select><span className="sp-help">应用宝与 WSA 在连接时用游戏包名确定显示器，应与开始唤醒任务的客户端一致。</span></label>}
+        <label className="check-field"><input type="checkbox" checked={draft.adbLite} disabled={disabled} onChange={event => patch({ adbLite: event.target.checked })} />启用 ADB Lite</label>
+        <div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button secondary" type="button" disabled={disabled || !dirty} onClick={reset}>放弃修改</button><button className="button primary" type="submit" disabled={disabled}>保存连接配置</button></div>
+      </form>
+      <div className="sp-form-actions"><button className="button secondary" type="button" disabled={disabled || !draft.address.trim()} onClick={() => void operate(async () => { if (!await save()) return; const device = await rpc('device.connect', { address: draft.address.trim() }); setResult(`已提交连接：${device.address}，连接完成后可进行截图测试。`); })}>连接此地址</button><button className="button secondary" type="button" disabled={busy || pending || dirty} onClick={() => void operate(async () => { const snapshot = await rpc('app.snapshot', {}); const device = snapshot.devices.find(item => item.state !== 'offline' && (selectedDeviceId ? item.id === selectedDeviceId : !saved.address || item.address === saved.address)); if (!device) throw new Error('请先连接需要测试的设备'); const image = await rpc('device.frame', { deviceId: device.id }); setFrame(image); setResult(`截图成功（${device.address}）：${image.width} × ${image.height}，耗时 ${image.latencyMs} ms（${device.captureMethod || '等待核心确认截图方式'}）`); })}>截图测试</button></div>
+      {result && <p className="sp-help" role="status">{result}</p>}
+      {frame && <img src={`data:${frame.mimeType};base64,${frame.data}`} alt="连接截图测试结果" style={{ maxWidth: '100%', height: 'auto', marginTop: 12 }} />}
+    </section>
+    <CaptureForm settings={settings} busy={disabled} onSave={capture => onSaveSettings ? onSaveSettings({ ...settings, capture }) : Promise.resolve(false)} />
+    <p className="sp-help"><a href="https://docs.maa.plus/zh-cn/manual/connection.html" target="_blank" rel="noreferrer">原版 MAA 连接设置说明</a></p>
+  </div>;
+}

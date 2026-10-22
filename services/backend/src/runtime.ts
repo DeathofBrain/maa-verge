@@ -10,7 +10,7 @@ import { CoreWorker } from './worker';
 import { captureAdbPath, connectionCapture } from './capture';
 import { Preview } from './preview';
 import { UpdateService } from './updates';
-import { adbPath, adbServerIdentity, autoDiscover, deviceLockAddress, discover, isLocalEmulator, validateAddress } from './adb';
+import { adbPath, configuredAdbPath, adbServerIdentity, autoDiscover, deviceLockAddress, discover, isLocalEmulator, validateAddress } from './adb';
 import { syncDue, userDataSteps, type SyncStep } from './user-data-sync';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
@@ -24,6 +24,7 @@ export class Runtime {
   readonly workers = new Map<string, Worker>();
   private starts = new Map<string, { planId: string; deviceId: string; promise: Promise<any> }>();
   private connecting = new Set<string>();
+  private connectingAddresses = new Set<string>();
   private suppressed = new Set<string>();
   private reconnect: any[] = [];
   private switching = false;
@@ -154,19 +155,31 @@ export class Runtime {
     if (!parseSettings(this.store.get('settings', 'main')).autoConnect) throw new RpcError(-32011, '自动连接已关闭');
     if (this.suppressed.has(this.lockAddress(address))) throw new RpcError(-32011, '该设备已手动断开，自动连接已跳过');
   }
-  private lockAddress(address: string) { return deviceLockAddress(address); }
+  private lockAddress(address: string) { return this.store.get('device-alias', address, deviceLockAddress(address)); }
   private adbExecutable(): string {
     if (this.options.adbExecutable) return this.options.adbExecutable();
+    const { capture, connection } = parseSettings(this.store.get('settings', 'main'));
+    if (connection?.adbPath.trim()) return configuredAdbPath(connection.adbPath);
     if (process.env.MAAVERGE_ADB_PATH) return adbPath();
-    const capture = parseSettings(this.store.get('settings', 'main')).capture;
     return captureAdbPath(capture) || adbPath();
   }
   async connectDevice(params: any, internal = false, automatic = false): Promise<any> {
-    let id: string | undefined, reserved = false, worker: Worker | undefined;
+    let id: string | undefined, reservedAddress: string | undefined, reserved = false, worker: Worker | undefined;
     try {
       if (this.switching && !internal) throw new RpcError(-32011, '正在切换核心与资源，暂不能连接设备');
       if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
       const address = validateAddress(params.address);
+      if (automatic) this.validateAutomatic(address);
+      const active = this.store.all('device').find(device => device.address === address && this.workers.has(device.id));
+      if (active) return active;
+      if (this.connectingAddresses.has(address)) throw new RpcError(-32011, '该设备正在建立连接');
+      this.connectingAddresses.add(address); reservedAddress = address;
+      const settings = parseSettings(this.store.get('settings', 'main'));
+      const capture = await connectionCapture(settings.capture, address);
+      // A bridged ADB address still controls the selected local MuMu SDK instance.
+      // Keep its alias after settings changes so reconnect/disconnect uses the same lease.
+      if (capture.method === 'mumu' && capture.mumuBridge) this.store.put('device-alias', address, deviceLockAddress(`emulator-${5554 + capture.instanceIndex * 2}`));
+      else this.store.delete('device-alias', address);
       if (automatic) this.validateAutomatic(address); else if (!internal) this.suppressed.delete(this.lockAddress(address));
       const combo = this.store.get('active', 'combo', {}); if (!combo.core) throw new Error('请先在更新中心安装并启用核心');
       const canonical = this.lockAddress(address), aliases = this.store.all('device').filter(d => this.lockAddress(d.address) === canonical);
@@ -175,9 +188,11 @@ export class Runtime {
       if (this.connecting.has(id!)) throw new RpcError(-32011, '该设备正在建立连接');
       if (this.workers.has(id!)) return this.store.get('device', id!);
       this.connecting.add(id!); reserved = true;
-      const capture = await connectionCapture(parseSettings(this.store.get('settings', 'main')).capture, address);
       const adb = this.adbExecutable();
-      const config = { core: combo.core.path, resource: combo.resource.path, adb, address, capture, userDir: path.join(this.root, 'workers', id!), lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical) };
+      const connection = settings.connection ? (({ config, touchMode, adbLite, clientType }) => ({ config, touchMode, adbLite, clientType }))(settings.connection) : undefined;
+      const { mumuTouch: _touch, mumuBridge: _bridge, ...plainCapture } = capture;
+      const workerCapture = capture.method === 'adb' ? { method: 'adb' } : capture.method === 'mumu' ? capture : plainCapture;
+      const config = { core: combo.core.path, resource: combo.resource.path, adb, address, capture: workerCapture, ...(connection ? { connection } : {}), userDir: path.join(this.root, 'workers', id!), lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical) };
       worker = await (this.options.workerFactory || (c => CoreWorker.start(c)))(config); await worker.connect();
       if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
       if (automatic) this.validateAutomatic(address);
@@ -185,7 +200,7 @@ export class Runtime {
       const device = { id, name: String(params.name || address).slice(0, 80), address, state: 'offline', coreVersion: combo.core.version, resourceVersion: combo.resource.version };
       this.store.put('device', id!, device); this.emit('device.connecting', '正在异步连接设备', { device }); return device;
     } catch (error) { if (worker && !this.workers.has(id!)) await worker.close(); if (error instanceof RpcError) throw error; throw new RpcError(-32040, '设备连接失败', String(error)); }
-    finally { if (reserved) this.connecting.delete(id!); }
+    finally { if (reserved) this.connecting.delete(id!); if (reservedAddress) this.connectingAddresses.delete(reservedAddress); }
   }
   async autoConnectDevices(automatic = false): Promise<any> {
     if (this.autoConnecting) throw new RpcError(-32011, '模拟器自动连接正在进行');
