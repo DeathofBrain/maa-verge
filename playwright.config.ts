@@ -9,7 +9,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'node tools/dev.mjs --mock',
+    command: 'node tools/dev.mjs --ui-only',
     env: { MAAVERGE_DEV_PORT: '1420' },
     url: 'http://127.0.0.1:1420',
     reuseExistingServer: !process.env.CI,

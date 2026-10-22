@@ -1,10 +1,11 @@
-import type { Device, Event, Plan, Run, Settings, Snapshot, UpdateChannel } from './types';
-import { taskEnabled, validatePlan } from './task-policy';
-import { mockPreviewImage } from './preview-mock';
-import { validateDeviceClickParams, validateDeviceFrameParams } from './validators.js';
+// Deterministic runtime fixture. Loaded only by the Playwright Tauri bridge.
+import type { Device, Event, Plan, Run, Settings, Snapshot, UpdateChannel } from '../../../packages/contracts/src/types';
+import { taskEnabled, validatePlan } from '../../../packages/contracts/src/task-policy';
+import { mockPreviewImage } from '../../fixtures/preview-image';
+import { validateDeviceClickParams, validateDeviceFrameParams } from '../../../packages/contracts/src/validators.js';
 
 const workspace = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID || 'browser';
-const key = 'maaverge:mock:v1:' + workspace;
+const key = 'maaverge:test-runtime:v1:' + workspace;
 const listeners = new Set<(event: Event) => void>();
 const executionTasks = new Map<string, Plan['tasks']>();
 const requestRuns = new Map<string, string>();
@@ -16,7 +17,7 @@ function invalidatePreview(deviceId: string) {
 const now = () => new Date().toISOString();
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const defaults = (): Snapshot => ({
-  mode: 'mock',
+  mode: 'native',
   devices: [{ id: 'mock-device-1', name: '本地模拟设备', address: '127.0.0.1:5555', state: 'idle', coreVersion: 'v6.19.0', resourceVersion: '2026-10-18' }],
   plans: [
     { id: 'daily', name: '每日长草计划', description: '', deviceId: null, group: 'daily', budgets: null, enabled: true, schedule: null, tasks: [
@@ -58,7 +59,7 @@ function restore(): Snapshot {
     const raw = localStorage.getItem(key);
     if (!raw) return defaults();
     const state = JSON.parse(raw) as Snapshot;
-    if (state.mode !== 'mock' || !state.settings?.budgets || !Array.isArray(state.updates)) return defaults();
+    if (state.mode !== 'native' || !state.settings?.budgets || !Array.isArray(state.updates)) return defaults();
     state.settings = { ...defaults().settings, ...state.settings };
     state.plans.forEach(normalizePlan);
     for (const run of state.runs) {
@@ -126,7 +127,7 @@ const timer = globalThis.setInterval(() => {
 // Browser timers are intentionally owned for the lifetime of this page.
 void timer;
 
-export function onMockEvent(callback: (event: Event) => void): () => void {
+export function onFixtureEvent(callback: (event: Event) => void): () => void {
   listeners.add(callback);
   return () => listeners.delete(callback);
 }
@@ -143,7 +144,7 @@ function mockAddress(value: unknown): string {
   return value;
 }
 
-export async function mockRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
+export async function fixtureRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
     case 'app.snapshot': return clone(state);
     case 'device.frame': {

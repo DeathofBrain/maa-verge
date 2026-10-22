@@ -1,6 +1,5 @@
 import type { Event } from './types';
 import type { RpcContract } from './rpc-types';
-import { mockRpc, onMockEvent } from './mock';
 
 function isDesktop(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -16,13 +15,15 @@ export async function rpc<M extends RpcMethod>(
   ...arguments_: keyof RpcContract['params'][M] extends never ? [params?: RpcParams<M>] : [params: RpcParams<M>]
 ): Promise<RpcResult<M>> {
   const params = arguments_[0] ?? {};
-  if (!isDesktop()) return mockRpc(method, params) as Promise<RpcResult<M>>;
+  if (!isDesktop()) throw new Error('未连接桌面运行时，请使用 pnpm dev 启动 Maa Verge 桌面应用。');
   const { invoke } = await import('@tauri-apps/api/core');
   return invoke<RpcResult<M>>('runtime_request', { method, params });
 }
 
 export function subscribe(callback: (event: Event) => void): () => void {
-  if (!isDesktop()) return onMockEvent(callback);
+  // The snapshot request reports the missing desktop bridge. There is no local
+  // event source to subscribe to when this page is opened in a plain browser.
+  if (!isDesktop()) return () => {};
   let disposed = false;
   let unlisten: (() => void) | undefined;
   // The desktop host maps the stdio method runtime.event to a legal Tauri name.

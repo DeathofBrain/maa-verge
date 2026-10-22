@@ -20,7 +20,7 @@ const maxFrameAgeMs = 2000;
 const pendingFrames = new Map<string, Promise<Frame>>();
 const messageOf = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
 
-export default function DevicePreview({ device, mode }: { device?: Device; mode: 'mock' | 'native' }) {
+export default function DevicePreview({ device }: { device?: Device }) {
   const [displayed, setDisplayed] = useState<DisplayedFrame | null>(null);
   const [refreshHz, setRefreshHz] = useState<RefreshRate>(readRefreshRate);
   const [paused, setPaused] = useState(false);
@@ -150,7 +150,7 @@ export default function DevicePreview({ device, mode }: { device?: Device; mode:
 
   return <section className="device-preview" aria-label="设备画面预览">
     <div className="device-preview-toolbar">
-      <div className="device-preview-device"><Monitor size={16} /><strong>{device?.name || '未选择设备'}</strong>{mode === 'mock' && <span className="pill">模拟画面</span>}</div>
+      <div className="device-preview-device"><Monitor size={16} /><strong>{device?.name || '未选择设备'}</strong></div>
       <div className="device-preview-controls"><span className="device-preview-metrics" aria-label="画面性能" title="延迟包含截图请求、传输和解码；显示帧率按实际显示的新帧计算">{displayed ? `往返延迟 ${Math.round(displayed.latency)} ms · 显示帧率 ${paused || error || !visible ? '0.0' : fps.toFixed(1)} FPS` : '等待画面'}</span><label className="device-preview-frequency" title="目标刷新频率；显示帧率取决于截图、传输和解码速度">刷新频率<select aria-label="刷新频率" value={refreshHz} onChange={(event) => setRefreshHz(refreshRates.find((rate) => rate === Number(event.target.value)) ?? 60)}>{refreshRates.map((rate) => <option key={rate} value={rate}>{rate} Hz</option>)}</select></label><button className="button secondary" disabled={!online || !!error} onClick={() => setPaused((value) => !value)}>{paused ? <Play size={13} /> : <Pause size={13} />}{paused ? '恢复刷新' : '暂停刷新'}</button><label className="device-preview-toggle"><input type="checkbox" checked={allowClicks} disabled={!online || device?.state !== 'idle' || !displayed?.frame.canControl || clickPending} onChange={(event) => { setAllowClicks(event.target.checked); setActionError(''); setActionMessage(''); }} /><MousePointer2 size={13} />允许点击操作</label></div>
     </div>
     {error && <div className="device-preview-error" role="alert"><AlertCircle size={15} /><span>画面更新失败：{error}</span><button className="text-button" onClick={retryFrame}><RefreshCw size={13} />重试画面</button></div>}

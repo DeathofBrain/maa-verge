@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures/desktop';
 
 const wb = (page: Page) => page.getByRole('region', { name: '任务表工作台', exact: true });
 const dock = (page: Page) => page.getByRole('contentinfo', { name: '执行状态栏', exact: true });
@@ -7,7 +8,7 @@ const metric = (page: Page, name: string) => home(page).getByLabel(name, { exact
 async function openHome(page: Page) {
   await page.goto('/');
   await expect(home(page)).toBeVisible();
-  await expect(page.locator('.environment-badge')).toHaveText('模拟工作空间');
+  await expect(page.locator('.environment-badge')).toHaveText('本地运行');
 }
 async function openTaskTables(page: Page, group: 'daily' | 'specialized' = 'daily') {
   const menu = page.getByRole('button', { name: '打开导航', exact: true });
@@ -301,7 +302,7 @@ test('advanced JSON preserves invalid drafts and updates list fields and switche
   await savePlan(page);
 });
 
-test('automatic connection is safe in mock mode and its preference persists', async ({ page }) => {
+test('automatic connection is deterministic with the test runtime and its preference persists', async ({ page }) => {
   await openWorkspace(page);
   await navigate(page, '设备');
   await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).toBeChecked();
@@ -321,7 +322,7 @@ test('capture choices preserve drafts and save independently of the actual conne
   await navigate(page, '设备');
   const form = page.locator('.sp-capture-form');
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('adb');
-  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认（模拟模式）');
+  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认');
   await page.getByLabel('截图协议', { exact: true }).selectOption('mumu');
   await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\MuMu');
   await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
@@ -341,7 +342,7 @@ test('capture choices preserve drafts and save independently of the actual conne
   await form.getByRole('button', { name: '保存截图配置', exact: true }).click();
   await expect(page.locator('.toast')).toContainText('断开设备后重新连接生效');
   await expect(form.getByText('已保存', { exact: true })).toBeVisible();
-  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认（模拟模式）');
+  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认');
   await page.reload();
   await navigate(page, '设备');
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('mumu');
@@ -535,7 +536,7 @@ test('starting with a draft offers saved execution or save-and-start explicitly'
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
 });
 
-test('device connect and disconnect stay deterministic in mock mode', async ({ page }) => {
+test('device connect and disconnect stay deterministic with the test runtime', async ({ page }) => {
   await openWorkspace(page);
   await navigate(page, '设备');
   await page.getByLabel('手动连接 ADB 地址', { exact: true }).fill('localhost:5557');

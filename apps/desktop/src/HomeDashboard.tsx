@@ -87,7 +87,7 @@ export default function HomeDashboard({ snapshot, selectedDevice, stopping, onSt
         <button onClick={() => onNavigate('agent')}><span><Bot size={20} /></span><div><strong>Agent 助手<em>预览</em></strong><small>从描述目标到审阅计划</small></div><ArrowRight size={16} /></button>
         <button onClick={() => onNavigate('settings')}><span><ShieldCheck size={20} /></span><div><strong>执行与消耗设置</strong><small>管理授权、限额与偏好</small></div><ArrowRight size={16} /></button>
       </div>
-      <footer className="home-footnote"><Terminal size={12} />{snapshot.mode === 'mock' ? '当前为模拟工作空间，执行不会操作真实游戏。' : '任务与执行记录保存在本机。'}</footer>
+      <footer className="home-footnote"><Terminal size={12} />任务与执行记录保存在本机。</footer>
     </div>
   </section>;
 }
