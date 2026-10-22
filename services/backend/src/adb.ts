@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import net from "node:net";
 import { deviceAddressIdentity } from '../../../packages/contracts/src/device-profiles';
+import { emptyEmulatorInventory, runningWindowsAdbCandidates, runningWindowsEmulatorInventory, type EmulatorInventory, type EmulatorInstance } from './windows-emulators';
 
 export const EMULATOR_PORTS = [5555, 5556, 5565, 5575, 5585, 5595, 5554,
   16384, 16416, 16448, 16480, 16512, 16544, 16576, 5557, 5559, 5561, 7555, 62001, 59865, 21503, 58526] as const;
@@ -25,6 +26,29 @@ export function isLocalEmulator(address: string): boolean {
 }
 export function deviceLockAddress(address: string): string {
   return deviceAddressIdentity(address);
+}
+export function emulatorInstanceForAddress(address: string, inventory: EmulatorInventory): EmulatorInstance | undefined {
+  const identity = deviceLockAddress(address);
+  const matches = inventory.instances.filter(instance => [instance.address, ...instance.aliases].some(alias => deviceLockAddress(alias) === identity));
+  return matches.length === 1 ? matches[0] : undefined;
+}
+export function emulatorCanonicalAddress(address: string, inventory: EmulatorInventory): string {
+  const proven = Object.entries(inventory.identities ?? {}).find(([alias]) => deviceLockAddress(alias) === deviceLockAddress(address));
+  if (proven) return proven[1];
+  const matches = inventory.instances.filter(instance => [instance.address, ...instance.aliases].some(alias => deviceLockAddress(alias) === deviceLockAddress(address)));
+  // Ambiguous metadata cannot prove an alias; keep separate devices separate.
+  return matches.length === 1 ? deviceLockAddress(matches[0].address) : deviceLockAddress(address);
+}
+export function distinctEmulatorDevices(devices: AdbDevice[], inventory: EmulatorInventory): AdbDevice[] {
+  const selected = new Map<string, AdbDevice>();
+  for (const device of devices) {
+    const key = emulatorCanonicalAddress(device.address, inventory), previous = selected.get(key);
+    const instance = emulatorInstanceForAddress(device.address, inventory);
+    const candidate = { ...device, ...(instance ? { name: `${instance.name}（实例 ${instance.index}）` } : {}) };
+    if (!previous || previous.adbState !== 'device' && candidate.adbState === 'device'
+      || previous.adbState === candidate.adbState && deviceLockAddress(candidate.address) === deviceLockAddress(instance?.address ?? key)) selected.set(key, candidate);
+  }
+  return [...selected.values()];
 }
 export function adbServerIdentity(env: Environment = process.env): string {
   const selected = env.ADB_SERVER_SOCKET || `tcp:${env.ANDROID_ADB_SERVER_ADDRESS || "localhost"}:${env.ANDROID_ADB_SERVER_PORT || "5037"}`;
@@ -57,7 +81,7 @@ export function adbCandidates(env: Environment = process.env, platform: NodeJS.P
   }
   for (const variable of ["ANDROID_HOME", "ANDROID_SDK_ROOT"]) if (env[variable]) candidates.push(path.join(env[variable]!, "platform-tools", executable));
   for (const directory of (env.MAAVERGE_EMULATOR_DIRS ?? "").split(path.delimiter).filter(Boolean)) {
-    for (const relative of ["adb", "adb.exe", "nox_adb.exe", "HD-Adb.exe", "adb/adb.exe", "shell/adb.exe", "vmonitor/bin/adb", "Contents/MacOS/adb"]) {
+    for (const relative of ["adb", "adb.exe", "nox_adb.exe", "HD-Adb.exe", "adb/adb.exe", "nx_main/adb.exe", "shell/adb.exe", "vmonitor/bin/adb", "vmonitor/bin/adb_server.exe", "Contents/MacOS/adb"]) {
       candidates.push(path.join(expandUser(directory), relative));
     }
   }
@@ -72,7 +96,7 @@ export function adbCandidates(env: Environment = process.env, platform: NodeJS.P
     if (env.LOCALAPPDATA) candidates.push(path.join(env.LOCALAPPDATA, "Android/Sdk/platform-tools/adb.exe"));
     for (const variable of ["ProgramFiles", "ProgramFiles(x86)"]) {
       if (!env[variable]) continue;
-      for (const relative of ["BlueStacks_nxt/HD-Adb.exe", "Nox/bin/nox_adb.exe", "Netease/MuMuPlayer-12.0/shell/adb.exe", "Netease/MuMuPlayer/nx_main/adb.exe", "Microvirt/MEmu/adb.exe"]) {
+      for (const relative of ["BlueStacks_nxt/HD-Adb.exe", "Nox/bin/nox_adb.exe", "Netease/MuMuPlayer-12.0/shell/adb.exe", "Netease/MuMuPlayer/nx_main/adb.exe", "Netease/MuMu/nx_main/adb.exe", "Microvirt/MEmu/adb.exe"]) {
         candidates.push(path.join(env[variable]!, relative));
       }
     }
@@ -87,6 +111,18 @@ export function adbPath(env: Environment = process.env): string {
   }
   for (const candidate of adbCandidates(env)) if (isFile(candidate)) return realpathSync(candidate);
   throw new Error("未找到 ADB；请安装 Android platform-tools，或配置 MAAVERGE_ADB_PATH / MAAVERGE_EMULATOR_DIRS");
+}
+/** Resolve a running Windows emulator only when explicit/PATH/SDK candidates miss. */
+export async function resolveAdbPath(env: Environment = process.env, options: { platform?: NodeJS.Platform; runningCandidates?: () => Promise<string[]> } = {}): Promise<string> {
+  if (env.MAAVERGE_ADB_PATH) return adbPath(env);
+  const platform = options.platform ?? process.platform;
+  for (const candidate of adbCandidates(env, platform)) if (isFile(candidate)) return realpathSync(candidate);
+  if (platform === 'win32') {
+    try {
+      for (const candidate of await (options.runningCandidates ?? runningWindowsAdbCandidates)()) if (isFile(candidate)) return realpathSync(candidate);
+    } catch { /* Restricted process inspection still permits a manually selected ADB. */ }
+  }
+  throw new Error('未找到 ADB；请先启动模拟器，或在连接设置选择其内置 ADB。也可配置 MAAVERGE_ADB_PATH / MAAVERGE_EMULATOR_DIRS');
 }
 /** UI paths are rooted explicitly; `adb` selects the normal PATH/SDK discovery. */
 export function configuredAdbPath(value: string, env: Environment = process.env): string {
@@ -111,8 +147,8 @@ export function parseAdbDevices(output: string): AdbDevice[] {
   }
   return devices;
 }
-export async function discover(executable = adbPath()): Promise<AdbDevice[]> {
-  return parseAdbDevices(await run(executable, ["devices", "-l"]));
+export async function discover(executable?: string): Promise<AdbDevice[]> {
+  return parseAdbDevices(await run(executable ?? await resolveAdbPath(), ["devices", "-l"]));
 }
 export function emulatorAddresses(env: Environment = process.env): string[] {
   let addresses: string[] = EMULATOR_PORTS.map((port) => `127.0.0.1:${port}`);
@@ -149,18 +185,22 @@ interface DiscoveryOptions {
   listening?: typeof listening;
   addresses?: () => string[];
   now?: () => number;
+  inventory?: () => Promise<EmulatorInventory>;
 }
-export async function autoDiscover(executable = adbPath(), options: DiscoveryOptions = {}): Promise<{ devices: AdbDevice[]; diagnostics: string[] }> {
+export async function autoDiscover(executable: string | undefined = undefined, options: DiscoveryOptions = {}): Promise<{ devices: AdbDevice[]; diagnostics: string[]; inventory: EmulatorInventory }> {
+  const selectedExecutable = executable ?? await resolveAdbPath();
   const execute = options.run || run, probe = options.listening || listening, now = options.now || (() => performance.now());
   const deadline = now() + 60_000, scanDeadline = deadline - 15_000;
   const remaining = (until: number) => Math.max(0, Math.ceil(until - now()));
   const devicesAtDeadline = async () => {
     const timeout = Math.min(15_000, remaining(deadline));
     if (!timeout) throw new Error("模拟器自动发现超时；请检查 ADB 后重试");
-    return parseAdbDevices(await execute(executable, ["devices", "-l"], timeout));
+    return parseAdbDevices(await execute(selectedExecutable, ["devices", "-l"], timeout));
   };
   const initial = await devicesAtDeadline(), known = new Set(initial.filter((device) => device.adbState === "device").map((device) => device.address));
-  const addresses = (options.addresses || emulatorAddresses)(), messages: (string | undefined)[] = [];
+  // Synthetic ADB adapters never inspect the host; integration tests inject metadata.
+  const inventory = await (options.inventory ?? (options.run ? async () => emptyEmulatorInventory() : runningWindowsEmulatorInventory))();
+  const addresses = [...new Set([...inventory.instances.map(instance => instance.address), ...(options.addresses || emulatorAddresses)()])].slice(0, 560), messages: (string | undefined)[] = [];
   let next = 0, truncated = false;
   // Bound both concurrency and elapsed time; reserve the last 15s for a fresh
   // device list. Diagnostics retain address order even when clients finish out of order.
@@ -172,15 +212,15 @@ export async function autoDiscover(executable = adbPath(), options: DiscoveryOpt
       const timeout = Math.min(3000, remaining(scanDeadline));
       if (!timeout) { truncated = true; return; }
       try {
-        const output = (await execute(executable, ["connect", address], timeout)).trim();
+        const output = (await execute(selectedExecutable, ["connect", address], timeout)).trim();
         if (!output.toLowerCase().includes("connected to")) messages[index] = `${address}：${output.slice(0, 180) || "ADB 未确认连接"}`;
       } catch (error) { messages[index] = `${address}：ADB 连接失败（${(error instanceof Error ? error.message : String(error)).slice(0, 180)}）`; }
     }
   };
   await Promise.all(Array.from({ length: Math.min(4, addresses.length) }, scan));
-  const diagnostics = messages.filter((message): message is string => message !== undefined);
+  const diagnostics = [...inventory.diagnostics, ...messages.filter((message): message is string => message !== undefined)];
   if (truncated) diagnostics.push("自动发现扫描达到时限，部分候选地址尚未检查；请重试或手动填写地址");
   const devices = await devicesAtDeadline();
   for (const device of devices) if (isLocalEmulator(device.address) && device.adbState !== "device") diagnostics.push(`${device.address}：${device.adbState}，请检查模拟器 ADB 授权`);
-  return { devices, diagnostics };
+  return { devices: distinctEmulatorDevices(devices, inventory), diagnostics, inventory };
 }

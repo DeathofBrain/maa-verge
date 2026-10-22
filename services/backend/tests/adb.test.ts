@@ -3,7 +3,7 @@ import { realpathSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { adbCandidates, adbPath, adbServerIdentity, autoDiscover, deviceLockAddress, emulatorAddresses, isLocalEmulator, parseAdbDevices, validateAddress } from "../src/adb.ts";
+import { adbCandidates, adbPath, adbServerIdentity, autoDiscover, deviceLockAddress, emulatorAddresses, emulatorCanonicalAddress, distinctEmulatorDevices, isLocalEmulator, parseAdbDevices, validateAddress } from "../src/adb.ts";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
@@ -142,4 +142,24 @@ test("automatic discovery shortens the last ADB client timeout to the scan budge
     { args: ["connect", "127.0.0.1:6000"], timeout: 1000 },
     { args: ["devices", "-l"], timeout: 15_000 },
   ]);
+});
+
+test('dynamic multi-instance discovery connects all actual ports and collapses only proven aliases', async () => {
+  const inventory = { instances: [
+    { address: '127.0.0.1:16384', name: '主实例', index: 0, emulatorPath: 'D:\\MuMu', aliases: ['127.0.0.1:5555', '127.0.0.1:7555'] },
+    { address: '127.0.0.1:18432', name: '小号', index: 1, emulatorPath: 'D:\\MuMu', aliases: [] },
+    { address: '127.0.0.1:45678', name: '高编号', index: 300, emulatorPath: 'F:\\MuMu', aliases: [] },
+  ], diagnostics: [] };
+  const connected: string[] = [];
+  const result = await autoDiscover('synthetic-adb', { inventory: async () => inventory, addresses: () => ['127.0.0.1:7555'], listening: async () => true,
+    run: async (_exe, args) => {
+      if (args[0] === 'connect') { connected.push(args[1]); return `connected to ${args[1]}`; }
+      return 'List of devices attached\n' + ['127.0.0.1:7555', '127.0.0.1:5555', ...connected].map(address => `${address} device model:SameClonedModel`).join('\n');
+    } });
+  expect(connected).toEqual(inventory.instances.map(instance => instance.address));
+  expect(result.devices.map(device => device.address)).toEqual(inventory.instances.map(instance => instance.address));
+  expect(result.devices.map(device => device.name)).toEqual(['主实例（实例 0）', '小号（实例 1）', '高编号（实例 300）']);
+  expect(emulatorCanonicalAddress('localhost:07555', inventory)).toBe('127.0.0.1:16384');
+  const unrelated = parseAdbDevices('127.0.0.1:16384 device model:Same\n127.0.0.1:5555 device model:Same\n127.0.0.1:7555 device model:Same\n');
+  expect(distinctEmulatorDevices(unrelated, { instances: [], diagnostics: [] })).toHaveLength(3);
 });
