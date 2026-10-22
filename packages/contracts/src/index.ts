@@ -1,5 +1,5 @@
 export * from './types';
-export { deviceAddressIdentity, deviceProfileIdentity, matchingDeviceProfile, deviceProfileListError } from './device-profiles';
+export { deviceAddressIdentity, deviceProfileIdentity, matchingDeviceProfile, deviceProfileListError, mumuDefaultAdbAddress } from './device-profiles';
 export { rpc, subscribe } from './transport';
 export type { RpcMethod, RpcParams, RpcResult } from './transport';
 export type { RpcContract, RpcRequest, RpcEvent, ScreenFrame } from './rpc-types';

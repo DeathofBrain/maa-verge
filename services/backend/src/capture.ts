@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { Settings } from './models';
 import { defaultCapture } from './models';
 import { isLocalEmulator } from './adb';
+import { deviceAddressIdentity, mumuDefaultAdbAddress } from '../../../packages/contracts/src/device-profiles';
 
 export type Capture = NonNullable<Settings['capture']>;
 const file = (name: string) => { try { return statSync(name).isFile(); } catch { return false; } };
@@ -26,7 +27,9 @@ export function ldPlayerPid(output: string, index: number): number {
   throw new Error('未找到所选雷电实例，请检查实例索引');
 }
 
-export async function connectionCapture(selected: Settings['capture'], address: string, platform = process.platform): Promise<Capture & { pid?: number }> {
+export interface KnownMuMuInstance { index: number; emulatorPath: string; address: string; aliases?: string[] }
+
+export async function connectionCapture(selected: Settings['capture'], address: string, platform = process.platform, knownInstance?: KnownMuMuInstance): Promise<Capture & { pid?: number }> {
   const capture = { ...defaultCapture(), ...selected } as Capture;
   if (capture.method === 'adb') return capture;
   if (platform !== 'win32') throw new Error('MuMu／雷电增强截图当前仅支持 Windows');
@@ -39,8 +42,16 @@ export async function connectionCapture(selected: Settings['capture'], address: 
     const sdk = ['nx_device/15.0/shell/sdk', 'nx_device/12.0/shell/sdk', 'shell/sdk'];
     if (!sdk.some(relative => file(path.join(capture.emulatorPath, relative, 'external_renderer_ipc.dll')))) throw new Error('未找到 MuMu 增强截图 SDK，请选择安装根目录');
     // An explicit SDK index must not capture a different instance from ADB.
-    const expected = address.startsWith('emulator-') ? 5555 + capture.instanceIndex * 2 : 16384 + capture.instanceIndex * 32;
-    if (!capture.mumuBridge && port !== expected && !(port === 7555 && capture.instanceIndex === 0)) throw new Error('MuMu 实例索引与 ADB 地址不匹配');
+    if (knownInstance) {
+      const rootMatches = realpathSync(knownInstance.emulatorPath).toLowerCase() === capture.emulatorPath.toLowerCase();
+      const addressMatches = [knownInstance.address, ...knownInstance.aliases ?? []].some(alias => deviceAddressIdentity(alias) === deviceAddressIdentity(address));
+      if (!rootMatches || knownInstance.index !== capture.instanceIndex || !capture.mumuBridge && !addressMatches) throw new Error('MuMu 实例索引、安装目录与 ADB 地址不匹配');
+    } else if (!capture.mumuBridge) {
+      const defaultAddress = mumuDefaultAdbAddress(capture.instanceIndex);
+      if (!defaultAddress) throw new Error('此 MuMu 实例编号需要运行中的多开实例信息，请启动所选实例后重新发现');
+      const expected = address.startsWith('emulator-') ? 5555 + capture.instanceIndex * 2 : Number(defaultAddress.split(':')[1]);
+      if (port !== expected) throw new Error('MuMu 实例索引与 ADB 地址不匹配');
+    }
   } else {
     if (port !== 5555 + capture.instanceIndex * 2) throw new Error('雷电实例索引与 ADB 地址不匹配');
     const executable = path.join(capture.emulatorPath, 'ldconsole.exe');

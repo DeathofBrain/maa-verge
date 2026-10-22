@@ -5,20 +5,45 @@ export function deviceAddressIdentity(address: string): string {
   if (/^emulator-\d{1,5}$/.test(address)) return `127.0.0.1:${Number(address.slice(9)) + 1}`;
   const local = /^(?:127\.0\.0\.1|localhost|\[::1\]):(\d{1,5})$/.exec(address);
   if (!local || Number(local[1]) < 1 || Number(local[1]) > 65535) return address;
-  let port = Number(local[1]);
-  if (port >= 16384 && (port - 16384) % 32 === 0) port = 5555 + (port - 16384) / 16;
-  return `127.0.0.1:${port}`;
+  return `127.0.0.1:${Number(local[1])}`;
+}
+
+/** MuMu's default is an address hint; running-instance metadata can override it. */
+export function mumuDefaultAdbAddress(index: number): string | undefined {
+  // The published formula repeats after this range. A manager-reported address
+  // is required for larger indices rather than treating a collision as identity.
+  if (!Number.isInteger(index) || index < 0 || index >= 256) return;
+  return `127.0.0.1:${16384 + (index % 32) * 32 + Math.floor(index / 32) * 4}`;
+}
+
+function mumuSdkIdentity(profile: DeviceConnectionProfile): string {
+  let root = profile.capture.emulatorPath.replaceAll('\\', '/').replace(/\/+$/, '');
+  if (/^(?:[A-Za-z]:\/|\/\/)/.test(root)) root = root.toLowerCase();
+  return `mumu:${root}:instance:${profile.capture.instanceIndex}`;
 }
 
 export function deviceProfileIdentity(profile: DeviceConnectionProfile): string {
-  return profile.capture.method === 'mumu' && profile.capture.mumuBridge
-    ? deviceAddressIdentity(`emulator-${5554 + profile.capture.instanceIndex * 2}`)
+  return profile.capture.method === 'mumu'
+    ? mumuDefaultAdbAddress(profile.capture.instanceIndex) ?? mumuSdkIdentity(profile)
     : deviceAddressIdentity(profile.address);
 }
 
+function profileAddressIdentities(profile: DeviceConnectionProfile): Set<string> {
+  const identities = new Set([deviceAddressIdentity(profile.address), deviceProfileIdentity(profile)]);
+  // Only an explicitly selected MuMu SDK index supplies a relationship between
+  // its default TCP endpoint and legacy emulator serial. A port alone cannot.
+  if (profile.capture.method === 'mumu' && mumuDefaultAdbAddress(profile.capture.instanceIndex)) {
+    const serialPort = 5554 + profile.capture.instanceIndex * 2;
+    if (serialPort < 65535) identities.add(deviceAddressIdentity(`emulator-${serialPort}`));
+  }
+  return identities;
+}
+
 export function matchingDeviceProfile(settings: Pick<Settings, 'deviceProfiles'>, address: string): DeviceConnectionProfile | undefined {
+  const exact = settings.deviceProfiles?.find(profile => profile.address === address);
+  if (exact) return exact;
   const identity = deviceAddressIdentity(address);
-  return settings.deviceProfiles?.find(profile => profile.address === address || deviceAddressIdentity(profile.address) === identity || deviceProfileIdentity(profile) === identity);
+  return settings.deviceProfiles?.find(profile => profileAddressIdentities(profile).has(identity));
 }
 
 export function deviceProfileListError(profiles: DeviceConnectionProfile[]): string | undefined {
@@ -27,7 +52,7 @@ export function deviceProfileListError(profiles: DeviceConnectionProfile[]): str
     if (!/^[A-Za-z0-9_.:\[\]-]{1,128}$/.test(profile.address) || profile.address.startsWith('-')) return '多开实例连接地址无效';
     if (!profile.name.trim()) return '多开实例名称不能为空';
     if (ids.has(profile.id)) return '多开实例 ID 不能重复';
-    const identities = new Set([deviceAddressIdentity(profile.address), deviceProfileIdentity(profile)]);
+    const identities = profileAddressIdentities(profile);
     if ([...identities].some(identity => addresses.has(identity))) return '多开实例地址或设备别名重复，同一设备只能配置一个控制实例';
     identities.forEach(identity => addresses.add(identity)); ids.add(profile.id);
     if ((profile.capture.mumuTouch || profile.capture.mumuBridge) && profile.capture.method !== 'mumu') return '多开实例的 MuMu 触控增强和网络桥接需要 MuMu 截图增强';
