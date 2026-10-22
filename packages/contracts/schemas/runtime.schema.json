@@ -41,6 +41,7 @@
       "additionalProperties": false,
       "properties": {
         "method": { "type": "string", "enum": ["adb", "mumu", "ldplayer"], "default": "adb" },
+        "autoDetect": { "type": "boolean", "description": "连接时自动识别模拟器并配置增强截图；省略时 adb 为自动，已有增强截图为手动。" },
         "emulatorPath": { "type": "string", "maxLength": 4096, "default": "" },
         "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 },
         "mumuTouch": { "type": "boolean", "default": false },
@@ -65,6 +66,7 @@
       "required": ["id", "name", "address", "connection", "capture"],
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[A-Za-z0-9_-]+$" },
+        "autoDetected": { "type": "boolean", "description": "由运行中的模拟器自动发现创建；用户编辑保存后转为手动管理。" },
         "name": { "type": "string", "minLength": 1, "maxLength": 80 },
         "address": { "type": "string", "minLength": 1, "maxLength": 128 },
         "connection": { "$ref": "#/$defs/ConnectionSettings" },

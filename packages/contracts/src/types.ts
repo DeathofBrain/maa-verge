@@ -411,6 +411,10 @@ export interface InfrastructureLine {
 }
 export interface CaptureSettings {
   method: 'adb' | 'mumu' | 'ldplayer';
+  /**
+   * 连接时自动识别模拟器并配置增强截图；省略时 adb 为自动，已有增强截图为手动。
+   */
+  autoDetect?: boolean;
   emulatorPath: string;
   instanceIndex: number;
   mumuTouch?: boolean;
@@ -441,6 +445,10 @@ export interface ConnectionSettings {
 }
 export interface DeviceConnectionProfile {
   id: string;
+  /**
+   * 由运行中的模拟器自动发现创建；用户编辑保存后转为手动管理。
+   */
+  autoDetected?: boolean;
   name: string;
   address: string;
   connection: ConnectionSettings;

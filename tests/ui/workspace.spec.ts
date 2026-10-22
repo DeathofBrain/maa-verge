@@ -420,7 +420,7 @@ test('capture choices preserve drafts and save independently of the actual conne
   await openHome(page);
   await navigate(page, '设备');
   const form = page.locator('.sp-capture-form');
-  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('adb');
+  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
   await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认');
   await page.getByLabel('截图协议', { exact: true }).selectOption('mumu');
   await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\MuMu');
@@ -434,7 +434,7 @@ test('capture choices preserve drafts and save independently of the actual conne
   await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('2');
   await expect(form).toContainText('有未保存的修改');
   await form.getByRole('button', { name: '放弃修改', exact: true }).click();
-  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('adb');
+  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
   await page.getByLabel('截图协议', { exact: true }).selectOption('mumu');
   await page.getByLabel('模拟器安装目录', { exact: true }).fill('  C:\\synthetic\\MuMu  ');
   await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
@@ -480,7 +480,7 @@ test('enhanced capture requires an installation directory and a nonnegative inte
   await page.getByLabel('模拟器实例索引', { exact: true }).fill('1.5');
   expect(await page.getByLabel('模拟器实例索引', { exact: true }).evaluate((input: HTMLInputElement) => input.validity.stepMismatch)).toBe(true);
   await form.getByRole('button', { name: '放弃修改', exact: true }).click();
-  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('adb');
+  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
 });
 
 test('task budgets and all-disabled execution are checked after saving', async ({ page }) => {

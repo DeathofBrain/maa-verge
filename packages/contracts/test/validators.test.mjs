@@ -62,6 +62,21 @@ test('missing defaults, invalid metadata and unknown model keys are rejected wit
   assert.equal(validateSettings({ ...settings(), budgets: { originium: true, medicine: 0, expedited: 0 } }), false);
 });
 
+test('automatic capture metadata is optional, preserved and strictly boolean', () => {
+  const capture = { method: 'adb', emulatorPath: '', instanceIndex: 0 };
+  const connection = { adbPath: '', address: '127.0.0.1:16384', config: 'General', touchMode: 'minitouch', adbLite: false, clientType: 'Official' };
+  const profile = { id: 'mumu-0', name: 'MuMu 0', address: connection.address, connection, capture };
+  const legacy = { ...settings(), capture, deviceProfiles: [profile] };
+  const original = structuredClone(legacy);
+  assert.equal(validateSettings(legacy), true);
+  assert.deepEqual(legacy, original);
+  for (const automatic of [true, false]) {
+    assert.equal(validateSettings({ ...legacy, capture: { ...capture, autoDetect: automatic }, deviceProfiles: [{ ...profile, autoDetected: automatic }] }), true);
+  }
+  assert.equal(validateSettings({ ...legacy, capture: { ...capture, autoDetect: 'true' } }), false);
+  assert.equal(validateSettings({ ...legacy, deviceProfiles: [{ ...profile, autoDetected: 1 }] }), false);
+});
+
 test('explicit zero budgets and all registered task variants remain supported', () => {
   const schema = JSON.parse(readFileSync(new URL('../schemas/runtime.schema.json', import.meta.url), 'utf8'));
   for (const type of schema.$defs.Task.properties.type.enum) {
