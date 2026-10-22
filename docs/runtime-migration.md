@@ -19,7 +19,7 @@ flowchart LR
 | --- | --- |
 | 页面与 Tauri | 页面只使用 `packages/contracts` 的 transport；Rust 管理服务进程、窗口和系统集成 |
 | 应用服务 | `services/backend/src/entry.ts`；计划、策略、SQLite、设备发现、执行监督、画面令牌与人工点击准入、三条独立更新通道 |
-| Agent | `services/backend/src/agent.ts`；仅 mock 的确定性规则提案，需要审阅、保存后手动执行；真实云模型、持续托管及视觉 Agent 尚未接入 |
+| Agent | `services/backend/src/agent.ts`；原生服务中保留本地确定性 mock 提案，需要审阅、保存后手动执行；真实云模型、持续托管及视觉 Agent 尚未接入 |
 | 原生调用 | `services/native`；C++20 动态加载 MaaCore，复制回调、持有设备锁、处理异步 ID、调用超时和销毁 |
 | 更新任务 | 包内服务 `--update-job`；选择性提取核心或合并固定提交的资源，调用 C++ `--validate`，不打开业务数据库 |
 | 协议来源 | `packages/contracts/schemas`；JSON Schema 生成 TypeScript 类型和独立 Ajv 校验器，生成过程不调用 Python |
@@ -27,11 +27,13 @@ flowchart LR
 
 JSON-RPC 使用 UTF-8 换行 JSON，stdout 仅承载协议，日志进入 stderr。原生输出带 `protocolVersion: 1`。每个设备只有一个控制者；原生调用结果不明时停止并要求核对，不自动重放。`AsstStop` 清空队列，不能作为暂停恢复。
 
+开发桌面与发行服务均仅支持真实 `native` 链路，设备、执行、截图和更新没有产品 mock 分支。`--mode native` / `MAAVERGE_MODE=native` 保留兼容；旧 `--mode mock` / `MAAVERGE_MODE=mock` 明确报错。未安装核心时显示「未安装」，未连接设备时保持空列表或历史离线设备，不生成演示任务表、设备或执行进度。`pnpm dev` 启动真实桌面；`pnpm dev:ui` 只启动前端，普通浏览器没有桌面服务时明确报错，不补造后端结果。
+
 stdio 通知方法保留 `runtime.event`；Tauri 宿主将其映射为合法事件名 `runtime-event`，页面订阅同名事件。宿主断连通知为 `runtime-disconnected`。Tauri 事件名不能包含点号，不能直接复用 JSON-RPC 方法名。
 
 画面预览新增类型化 `device.frame({deviceId})` 与 `device.click({deviceId,frameId,x,y,requestId})`，由当前 TypeScript 服务和 C++ `frame` / `click` 命令承接。`ScreenFrame` 包含 PNG base64、尺寸、`capturedAt`、`frameId`、`canControl` 及服务取帧耗时；空闲时确认新截图，任务中只读取 MaaCore 最近缓存并禁用点击，时间字段不是运行中缓存的原始采集时间。预览 PNG 坐标直接交给同一 MaaCore 缩放代理，不换算为设备物理像素。
 
-页面支持 5 / 10 / 15 / 30 / 60 / 90 / 120 Hz，默认目标 60 Hz，偏好保存在 `localStorage` 的 `maaverge:ui:preview-fps`；实际显示 FPS 与往返延迟单独呈现。前端请求与解码串行，服务合并同设备的未完成取帧；隐藏、收起或切设备时停止后续刷新，避免高频请求排队。目标 60 Hz 不保证真实 60 FPS，本轮新增能力只进行 mock 与合成核心验证。
+页面支持 5 / 10 / 15 / 30 / 60 / 90 / 120 Hz，默认目标 60 Hz，偏好保存在 `localStorage` 的 `maaverge:ui:preview-fps`；实际显示 FPS 与往返延迟单独呈现。前端请求与解码串行，服务合并同设备的未完成取帧；隐藏、收起或切设备时停止后续刷新，避免高频请求排队。目标 60 Hz 不保证真实 60 FPS。预览接入时使用 mock 与合成核心验证；移除产品 mock 不增加真实模拟器持续帧率或点击效果的验收结论。
 
 服务仅在内存中维护每设备最近 32 帧、最长 2 秒的控制记录，核验设备、worker、`canControl` 与空闲状态后接受点击；点击按会话内 `requestId` 缓存成功与失败结果，不持久化去重，也不自动重放未知动作。PNG 不写入业务数据库、事件或截图文件，也不上传；点击事件只携带操作元数据。Python debug 参考尚未实现这两个新接口，选中参考后会明确报错，不自动切换后端。详细接口及限制见 [画面预览与人工点击](emulator-connection.md#画面预览与人工点击)。
 
@@ -51,7 +53,7 @@ stdio 通知方法保留 `runtime.event`；Tauri 宿主将其映射为合法事�
 
 ## 数据交接与回退
 
-数据仍位于 `<MAAVERGE_DATA_DIR>/<mock|native>`，业务数据库仍为 `maaverge.sqlite3`，沿用 migrations、objects、events 的结构及 JSON 字段。计划的未知任务参数、显式零预算、运行记录和持久化 `requestId` 必须保留。`objects` 按隐式 rowid 排序，备份不能用会重编号的 `VACUUM INTO`。
+当前产品继续使用 `<MAAVERGE_DATA_DIR>/native/maaverge.sqlite3`，沿用 migrations、objects、events 的结构及 JSON 字段，不把数据库移到数据根目录。旧 `<MAAVERGE_DATA_DIR>/mock` 目录保留，但产品不再读取、自动迁移或删除；其中的演示运行与更新状态不能当作真实设备记录。计划的未知任务参数、显式零预算、运行记录和持久化 `requestId` 必须保留。`objects` 按隐式 rowid 排序，备份不能用会重编号的 `VACUUM INTO`。
 
 | 锁 | 实现与生命周期 |
 | --- | --- |
@@ -64,7 +66,7 @@ TypeScript 首次打开已有数据库时，先获得数据目录租约，再使
 
 RPC、对象存取和原生任务发送使用数值 token 保留器：严格整数参数继续区分 `1` 与 `1.0` / `1e0`，禁用任务保存并重启后也保留原校验结果；未知扩展中的大整数按原始 JSON 数值文本传递。该实现使用固定 Bun 的 reviver source 与 `JSON.rawJSON`，不把额外标记写进业务对象。
 
-需要比较或恢复时，先退出所有相关服务，保全当前数据库及其 WAL/SHM 文件，再把 `pre-typescript.sqlite3` 复制为一个新隔离数据根对应模式目录中的 `maaverge.sqlite3`，通过 `MAAVERGE_DATA_DIR` 指向该根。先以 mock 比较计划顺序、参数和记录，不直接覆盖仍在使用的数据。预迁移备份不包含迁移后的新增记录，恢复它也不会回滚 MaaCore/资源目录或游戏状态。
+需要比较或恢复时，先退出所有相关服务，保全当前数据库及其 WAL/SHM 文件，再把 `pre-typescript.sqlite3` 复制为一个新隔离数据根的 `native/maaverge.sqlite3`，通过 `MAAVERGE_DATA_DIR` 指向该根。先用隔离测试或只读数据库检查比较计划顺序、参数和记录；若启动服务核对，须预先关闭该副本的自动连接与自动更新。不直接覆盖仍在使用的数据，也不通过旧 mock 模式比较真实记录。预迁移备份不包含迁移后的新增记录，恢复它也不会回滚 MaaCore/资源目录或游戏状态。
 
 Python 参考只在 debug 桌面构建中显式启用：
 
@@ -79,7 +81,7 @@ Remove-Item Env:MAAVERGE_BACKEND
 MAAVERGE_BACKEND=python bash tools/pnpm.sh dev
 ```
 
-selector 选择旧应用服务及其原生适配路径，用于比较。release 忽略该 selector；包内服务缺失或启动失败会报错，不查找系统解释器，不自动降级到 Python。
+selector 选择旧应用服务及其原生适配路径，用于比较；桌面比较也使用 native 数据目录，不恢复产品 mock。Python 参考测试内部仍保留旧 mock fixture，不能把它作为普通产品启动方式。release 忽略该 selector；包内服务缺失或启动失败会报错，不查找系统解释器，不自动降级到 Python。
 
 ## 自包含发行与系统依赖
 
@@ -101,9 +103,11 @@ pnpm build
 
 `dist/runtime/maaverge-runtime` 包含两个可执行文件、`build-info.json` 和 `licenses/`。生产 CMake 使用 `BUILD_TESTING=OFF`，不需要 Python。测试构建使用 Python 3.12/filelock 驱动合成动态库与锁互斥测试；这不构成发行依赖。
 
-打包禁用自动加载 `.env` 与 `bunfig.toml`，启动时清理影响运行方式的 Node/Bun 环境选项。包内更新任务通过 `process.execPath` 重新启动同一服务的 `--update-job`，不依赖源码树或开发目录。最小探针检查空 PATH 下的 SQLite/WAL、保留 rowid 的备份、跨进程独占锁、子进程 NDJSON 与归档读取；包内 smoke 还检查设备租约、持久化、运行去重、空闲更新和退出收尾。
+打包禁用自动加载 `.env` 与 `bunfig.toml`，启动时清理影响运行方式的 Node/Bun 环境选项。包内更新任务通过 `process.execPath` 重新启动同一服务的 `--update-job`，不依赖源码树或开发目录。最小探针检查空 PATH 下的 SQLite/WAL、保留 rowid 的备份、跨进程独占锁、子进程 NDJSON 与归档读取；包内 smoke 检查真实服务的空设备状态、Agent 提案、设置与计划保存、重启持久化、缺失设备拒绝和退出收尾，合成核心可用时继续验证 `--update-job` 的选择性归档提取与 C++ 校验。运行去重、空闲更新和回滚由注入合成适配器的服务测试覆盖。
 
-`tools/smoke-desktop-runtime.mjs` / `pnpm test:desktop-runtime` 还直接执行桌面 `Runtime` 相同的 Rust transport → 包内服务 → C++ mock 租约进程，覆盖事件转发、环境清理、设备锁排他与释放以及重启后的设置和去重记录。该 Rust 集成测试不启动实际窗口或 WebView，不能计作完整桌面交互验收。
+`tools/smoke-desktop-runtime.mjs` / `pnpm test:desktop-runtime` 直接执行与桌面 `Runtime` 相同的 Rust transport → 包内原生服务，覆盖事件转发、环境清理、空设备、Agent 提案、设置和计划持久化及缺失设备拒绝；另以合成设备键启动 C++ 租约进程验证排他与释放。该 Rust 集成测试不启动实际窗口或 WebView，不能计作完整桌面交互验收。
+
+安装包、桌面与干净容器 smoke 在启动前调用 `tools/test-support/seed-native.mjs`，由固定 Bun 执行独立的 `seed-native.ts`，通过 Store/parseSettings 在全新隔离根目录初始化 `native` 数据库，并关闭自动连接与自动更新。初始化工具拒绝已有业务数据库，不写入设备、计划或执行种子，不进入生产目录，也不为产品添加测试开关。`pnpm test:e2e` 使用测试目录内的 IPC 夹具；实际产品 transport 不导入这些替身，服务缺失时不回退。
 
 ## 许可、对应源码与重新构建
 
@@ -139,6 +143,6 @@ Windows 使用 `.tools/bun/bun.exe` 和 `.exe` 输出名。记录自建 Bun/WebK
 
 `.github/workflows/ci.yml` 的 Bun gate 在四个原生宿主分别编译并执行：Windows x64、Ubuntu x64、macOS arm64、macOS x64；全部成功后原生矩阵才构建 C++ 合成测试、运行 TypeScript 测试、Rust 检查和桌面打包。`node tools/probe-bun.mjs --all-targets` 可以交叉生成四种探针，但只有当前宿主会执行，结果中的 `executed: false` 不能计作平台验收。
 
-本轮开发主机是 Windows x64，另使用四平台宿主 CI 和 Ubuntu 22.04 干净容器验证。`pnpm test:desktop-webview` 检查 Windows 实际 release 窗口；`pnpm test:clean-linux` 检查没有 Python/Node/Bun 的 Linux 容器后端。这些结果与干净系统安装、正式签名、公证和真实游戏行为分别记录。确切测试数量、包内 smoke、安装包及平台实况由 [STATUS.md](STATUS.md) 记录。
+此前运行时迁移在 Windows x64 开发主机、四平台宿主 CI 和 Ubuntu 22.04 干净容器记录过验证；历史结果不代表本次移除产品 mock 后已重新通过相同平台验收。`pnpm test:desktop-webview` 检查 Windows 实际 release 窗口；`pnpm test:clean-linux` 检查没有 Python/Node/Bun 的 Linux 容器后端。这些结果与干净系统安装、正式签名、公证和真实游戏行为分别记录。确切测试数量、包内 smoke、安装包及本次平台实况由 [STATUS.md](STATUS.md) 记录。
 
 后续先完成最低系统、正式签名与安装、真实核心的加载和资源组合验证，再安排用户明确选择的设备行为测试。只有这些门槛完成，才评估删除 Python 参考；云模型 harness、视觉工具和持续托管仍按产品计划独立交付。

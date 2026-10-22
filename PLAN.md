@@ -35,7 +35,7 @@
 | 凭据 | 系统密钥环（待接入） | 用户模型密钥；不可用时只在当前会话持有 |
 | 本地通信 | JSON-RPC 2.0 over stdio、Tauri 命令与事件 | 类型化请求、响应和执行事件 |
 
-发行服务由 Bun `--compile` 打包，内嵌 JavaScriptCore；用户无需安装 Python、Node 或 Bun。C++ worker 独立携带，MaaCore 与资源运行期安装。自包含仍依赖系统库与 WebView，不等于全静态机器码。Python 3.12 只保留为显式开发参考和合成测试工具；迁移、备份与发行重建边界见 [运行时迁移交接](docs/runtime-migration.md)。
+发行服务由 Bun `--compile` 打包，内嵌 JavaScriptCore；用户无需安装 Python、Node 或 Bun。C++ worker 独立携带，MaaCore 与资源运行期安装。自包含仍依赖系统库与 WebView，不等于全静态机器码。开发桌面与发行包均使用真实原生链路，设备、执行、画面和更新不再提供产品 mock；Agent 保留本地确定性提案。Python 3.12 只保留为显式开发参考和合成测试工具；迁移、备份与发行重建边界见 [运行时迁移交接](docs/runtime-migration.md)。
 
 ### 1.3 进程与数据边界
 
@@ -54,6 +54,7 @@ flowchart TD
 ~~~
 
 - Tauri 负责进程生命周期；业务逻辑集中在 TypeScript 应用服务，界面不直接调用 MaaCore、ADB 或 Shell。release 仅启动包内服务，不自动回退到 Python。
+- 产品服务仅支持 `native`；旧 `MAAVERGE_MODE=mock` / `--mode mock` 明确报错。真实数据继续使用 `<data-root>/native`；旧 `mock` 数据目录保留，不自动读取、迁移或删除。首次启动不生成演示设备、任务表或执行记录。
 - 每个设备的 MaaCore 在独立进程中加载，隔离原生崩溃和进程级资源状态。
 - 任务、事件、设备控制权和更新状态由应用服务管理，核心工作进程不直接写业务数据库。
 - 以 `packages/contracts/schemas` 的 JSON Schema 为协议来源，生成 TypeScript 参数/结果类型和独立校验器；请求和运行分别有唯一标识，事件带递增序号。C++ worker 输出使用 `protocolVersion: 1`。
@@ -90,6 +91,8 @@ flowchart TD
 - 登录、验证码、支付等敏感页面进入人工接管点。
 
 ### 2.3 Agent 三种模式
+
+当前已实现本地规则生成的 mock 计划提案，在真实原生服务中也可使用；提案需审阅、保存后手动执行，不调用云模型或自动控制设备。下表是后续 Agent 的目标范围。
 
 | 模式 | 行为 |
 | --- | --- |
@@ -229,7 +232,7 @@ maa-verge/
 - IPC、数据库及 MaaCore 适配变更时的契约和文档同步要求。
 - 生成类型与锁文件的更新方式，以及禁止直接修改的产物。
 - 不硬编码机器绝对路径，不提交凭据、运行数据库、真实账号截图和原生下载缓存。
-- 默认使用 mock；真实设备和付费模型的测试边界、设备独占规则及操作记录。
+- 产品默认真实原生链路；自动测试通过独立数据根与测试夹具隔离，真实设备和付费模型需显式选择并记录，保持设备独占。
 - 每项任务独立分支；同机并行任务使用独立 worktree 和数据目录，修改前检查已有改动。
 - 合并前处理冲突并运行相关检查，不覆盖他人未提交工作，不批量改动无关锁文件。
 - 交接记录包含分支/提交、已完成内容、验证结果、待办和阻塞，不依赖聊天历史。
@@ -253,27 +256,30 @@ M0 初始化 Git 仓库并建立公共主分支及功能分支流程；远程仓
 
 | 命令 | 用途 |
 | --- | --- |
-| pnpm dev:mock | 无模拟器、无 MaaCore、无模型 Key 的完整开发模式 |
-| pnpm dev | 启动 React、Tauri、项目固定 Bun 的 TypeScript 服务及 C++ worker |
+| pnpm dev | 启动 React、Tauri、项目固定 Bun 的 TypeScript 服务及 C++ worker，使用真实设备和更新源 |
+| pnpm dev:ui | 仅启动前端开发服务器；普通浏览器未连接桌面服务时明确提示不可用 |
 | pnpm setup:bun | 下载并校验项目固定版本的 Bun |
 | pnpm run doctor | 检查工具链、原生 SDK、数据目录、ADB 和核心加载 |
 | pnpm check | 运行格式检查、lint、类型、契约及必要测试 |
-| pnpm test:e2e:mock | 基于相同 IPC 和事件模型验证产品流程 |
+| pnpm test:e2e | 通过测试目录内的 IPC 夹具验证界面流程 |
 | pnpm test:runtime | TypeScript 服务与可用原生合成库的集成测试 |
 | pnpm test:packaging | 当前宿主的 Bun 独立运行探针 |
-| pnpm test:desktop-runtime | Rust transport 与包内服务、C++ mock 租约的集成 smoke，不启动 WebView |
+| pnpm test:desktop-runtime | Rust transport 与包内原生服务的集成 smoke，另用合成设备键验证 C++ 租约，不启动 WebView |
+| pnpm test:desktop-webview | Windows 独立原生数据根下的实际 release WebView 检查 |
+| pnpm test:clean-linux | 无 Python/Node/Bun 的 Ubuntu 容器后端检查，使用预置的独立原生数据根 |
 | pnpm build | 构建当前 OS/架构的应用、自包含服务和 C++ worker |
 
 doctor 的设备连接和云模型网络检查为显式选项，不在普通检查中操作真实游戏或消耗模型费用。不同 worktree 隔离运行数据、日志和开发端口。
 
 为 Windows、macOS、Linux 分别记录 Tauri 原生 SDK、WebView、Bun/C++ 打包和 ADB 设置。原生开发不以 Docker 为前提。
 
-### 4.5 Mock、测试与 CI
+### 4.5 测试夹具与 CI
 
-- MaaCore、ADB、模型和下载源均定义可替换适配器；mock 模式使用相同接口与事件模型。
+- 测试可注入合成 worker、ADB、下载源与校验器，页面使用测试目录内的 IPC 夹具；这些替身不构成产品运行模式，普通浏览器或后端失败不自动回退到模拟结果。
+- 安装包和桌面 smoke 启动前由 `tools/test-support/seed-native.mjs` 在新建隔离目录预置设置，关闭自动连接和自动更新；产品入口不添加种子或测试开关，仍验证空设备、Agent 提案、保存与重启持久化和缺失设备拒绝。
 - 固定场景覆盖任务进度、失败、掉线、worker 崩溃、首次安装、核心更新、独立资源更新、空闲切换和回滚。
 - 视觉与坐标测试使用合成或脱敏图片；真实账号数据保持本地。
-- PR 检查包含 TypeScript 类型与服务测试、C++ 合成 CTest、Python 参考 lint/类型/测试、Rust fmt/clippy/测试、schema 一致性和 mock 端到端测试。
+- PR 检查包含 TypeScript 类型与服务测试、C++ 合成 CTest、Python 参考 lint/类型/测试、Rust fmt/clippy/测试、schema 一致性和 IPC 夹具端到端测试。
 - Windows x64、Linux x64、macOS arm64/x64 先在各宿主编译并执行 Bun 独立运行探针，再进行原生打包。跨编译成功不替代宿主执行；未签名工件不替代实际安装验收。
 - 真实核心的加载及资源契约测试单独执行，普通 CI 不依赖模拟器、真实账号或付费模型。
 - 发布流水线执行签名、公证和发布元数据生成，凭据使用 CI secret，产物可追溯至提交和锁文件。
@@ -282,7 +288,7 @@ doctor 的设备连接和云模型网络检查为显式选项，不在普通检�
 
 | 阶段 | 主要交付 | 验收 |
 | --- | --- | --- |
-| M0 工程与原生可行性 | AGENTS.md、环境文件、锁文件、引导/doctor、最小三平台安装包、IPC、mock | 新电脑按文档可启动 mock；发行包能加载自行下载的核心并完成一次工作进程切换 |
+| M0 工程与原生可行性 | AGENTS.md、环境文件、锁文件、引导/doctor、最小三平台安装包、IPC、隔离测试夹具 | 新电脑按文档可启动原生桌面及离线测试；发行包能加载自行下载的核心并完成一次工作进程切换 |
 | M1 安装与更新基础 | 自动首装、核心更新、独立资源更新、快照、空闲生效、回滚 | 无需手动安装 MaaCore；核心版本不变时仍能更新资源；任务中仅准备更新，不覆盖活动目录 |
 | M2 桌面日常产品 | 五个主页面、设备、MAA 任务、计划、托盘、记录 | 能完整执行常用日常，正确展示失败与停止，重启后保留计划和记录 |
 | M3 Agent 与视觉操作 | 问答、计划确认、自主托管、有限视觉工具、权限预算与接管 | Agent 与表单行为一致，越界操作被拒绝，断网和异常可控恢复 |
@@ -307,7 +313,7 @@ M0 完成后，战斗研究可与产品阶段并行；M1 的更新和版本管�
 
 ### 原 MAA 完整覆盖门槛
 
-按 [docs/maa-compatibility.md](docs/maa-compatibility.md) 跟踪上游任务、UI 工具、库存保持、数据同步、定时、多配置、通知、远控、作业管理、平台连接及发行更新。每项均须记录配置入口、结果与失败反馈、mock 验证、核心契约和目标平台/设备实测。用户手工配置的执行前后脚本若需要兼容，应通过独立的用户授权系统动作实现，不能向模型暴露任意 Shell。所有缺口关闭前保持开发预览，不宣称完整替代原版。
+按 [docs/maa-compatibility.md](docs/maa-compatibility.md) 跟踪上游任务、UI 工具、库存保持、数据同步、定时、多配置、通知、远控、作业管理、平台连接及发行更新。每项均须记录配置入口、结果与失败反馈、合成夹具验证、核心契约和目标平台/设备实测。用户手工配置的执行前后脚本若需要兼容，应通过独立的用户授权系统动作实现，不能向模型暴露任意 Shell。所有缺口关闭前保持开发预览，不宣称完整替代原版。
 
 ### 官方依据
 
