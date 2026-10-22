@@ -13,6 +13,8 @@ import { UpdateService } from './updates';
 import { adbPath, configuredAdbPath, adbServerIdentity, autoDiscover, deviceLockAddress, discover, isLocalEmulator, validateAddress } from './adb';
 import { syncDue, userDataSteps, type SyncStep } from './user-data-sync';
 import { findDeviceProfile, profileIdentity } from './device-profiles';
+import { stageCatalog } from './stages';
+import { validateStageListParams } from '../../../packages/contracts/src/validators.js';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
@@ -87,6 +89,9 @@ export class Runtime {
     const required = (...keys: string[]) => { if (keys.some(key => !(key in params))) throw new RpcError(-32602, '请求参数无效'); };
     switch (method) {
       case 'app.snapshot': return this.snapshot();
+      case 'stages.list':
+        if (!validateStageListParams(params)) throw new RpcError(-32602, '关卡目录请求参数无效');
+        return stageCatalog(this.store.get('active', 'combo', {}), params.clientType);
       case 'device.discover':
         try { return await discover(this.adbExecutable()); } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
       case 'device.connect': return this.connectDevice(params);
