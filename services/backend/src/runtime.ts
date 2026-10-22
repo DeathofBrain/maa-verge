@@ -321,12 +321,19 @@ export class Runtime {
   }
   private rememberClient(run: any, params: any) {
     const clientType = params.client_type || 'Official', accountName = typeof params.account_name === 'string' ? params.account_name : '';
+    let estimatesInvalidated = false;
     this.store.transaction(() => {
       if (clientType !== this.store.get('device_client', run.deviceId, 'Official') || accountName !== this.store.get('device_account', run.deviceId, '')) {
         this.store.delete('user_data_sync', run.deviceId); this.store.delete('mall_visit', run.deviceId);
+        const settings = this.store.get('settings', 'main');
+        if (settings.infrastructureEstimates?.some((profile: any) => profile.deviceId === run.deviceId)) {
+          this.store.put('settings', 'main', { ...settings, infrastructureEstimates: settings.infrastructureEstimates.filter((profile: any) => profile.deviceId !== run.deviceId) });
+          estimatesInvalidated = true;
+        }
       }
       this.store.put('device_client', run.deviceId, clientType); this.store.put('device_account', run.deviceId, accountName);
     });
+    if (estimatesInvalidated) this.emit('device.infrastructure_estimate_invalidated', '账号或客户端已切换，请重新校准此设备的基建估算', { deviceId: run.deviceId, runId: run.id });
   }
   async submitNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
     const current = this.store.get('run', run.id);

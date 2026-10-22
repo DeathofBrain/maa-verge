@@ -1,4 +1,5 @@
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import type { Snapshot } from '../../packages/contracts/src/types';
 
 test('manual infrastructure estimates persist and stay bound to the selected device', async ({ page }, testInfo) => {
   await page.goto('/');
@@ -54,4 +55,36 @@ test('the homepage distinguishes verified active events from resource markers wi
   await expect(panel).toContainText('未读取游戏内完成状态');
   await page.getByLabel('提醒使用的客户端', { exact: true }).selectOption('YoStarEN');
   await expect(panel).toContainText('国际服 · 游戏日');
+});
+
+test('saved estimate changes reset only the selected device draft and cannot restore an invalidated baseline', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(async () => {
+    const harness = (window as HarnessWindow).runtimeHarness;
+    const snapshot = await harness.call('app.snapshot', {}) as Snapshot;
+    await harness.call('settings.save', { settings: { ...snapshot.settings, infrastructureEstimates: [{ deviceId: snapshot.devices[0].id, lines: [{ id: 'gold', name: '旧账号赤金', unit: '块', hourlyRate: 20, capacity: 100, lastCollectedAt: '2020-01-01T00:00:00Z' }] }] } });
+  });
+  const panel = page.getByRole('region', { name: '基建产出估算', exact: true });
+  await expect(panel).toContainText('旧账号赤金');
+  await panel.getByText('配置此设备的产线估算', { exact: true }).click();
+  await panel.getByLabel('产线 1 名称', { exact: true }).fill('尚未保存的草稿');
+  await page.evaluate(async () => {
+    const harness = (window as HarnessWindow).runtimeHarness;
+    const snapshot = await harness.call('app.snapshot', {}) as Snapshot;
+    await harness.call('settings.save', { settings: { ...snapshot.settings, infrastructureEstimates: [...snapshot.settings.infrastructureEstimates!, { deviceId: 'other-device', lines: [] }] } });
+  });
+  await expect(panel.getByLabel('产线 1 名称', { exact: true })).toHaveValue('尚未保存的草稿');
+  await page.evaluate(async () => {
+    const harness = (window as HarnessWindow).runtimeHarness;
+    const snapshot = await harness.call('app.snapshot', {}) as Snapshot;
+    await harness.call('settings.save', { settings: { ...snapshot.settings, infrastructureEstimates: snapshot.settings.infrastructureEstimates!.filter(profile => profile.deviceId !== snapshot.devices[0].id) } });
+  });
+  await expect(panel).toContainText('尚未配置产线');
+  await expect(panel.getByLabel('产线 1 名称', { exact: true })).toHaveCount(0);
+  await panel.getByText('配置此设备的产线估算', { exact: true }).click();
+  await panel.getByRole('button', { name: '保存估算配置', exact: true }).click();
+  await expect.poll(() => page.evaluate(async () => {
+    const snapshot = await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}) as Snapshot;
+    return snapshot.settings.infrastructureEstimates?.find(profile => profile.deviceId === snapshot.devices[0].id)?.lines;
+  })).toEqual([]);
 });
