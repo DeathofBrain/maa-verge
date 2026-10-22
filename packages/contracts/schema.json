@@ -107,6 +107,9 @@
           "type": "string",
           "maxLength": 128
         },
+        "dataSync": {
+          "$ref": "#/$defs/UserDataSync"
+        },
         "resourceVersion": {
           "anyOf": [
             {
@@ -408,6 +411,30 @@
       "title": "Settings",
       "type": "object"
     },
+    "UserDataSync": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operatorsAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "depotAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "operatorsAt",
+        "depotAt"
+      ]
+    },
     "Task": {
       "additionalProperties": false,
       "properties": {
@@ -431,7 +458,8 @@
             "Custom",
             "SingleStep",
             "VideoRecognition",
-            "OperProgress"
+            "OperProgress",
+            "UserDataUpdate"
           ],
           "title": "Type",
           "type": "string"

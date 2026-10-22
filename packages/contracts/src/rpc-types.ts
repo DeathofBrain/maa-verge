@@ -32,7 +32,8 @@ export type Type =
   | 'Custom'
   | 'SingleStep'
   | 'VideoRecognition'
-  | 'OperProgress';
+  | 'OperProgress'
+  | 'UserDataUpdate';
 export type Enabled = boolean;
 export type Schedule = string | null;
 export type Enabled1 = boolean;
@@ -270,7 +271,16 @@ export interface Device {
   state: State;
   coreVersion: Coreversion;
   captureMethod?: string;
+  dataSync?: UserDataSync;
   resourceVersion: Resourceversion;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "UserDataSync".
+ */
+export interface UserDataSync {
+  operatorsAt: string | null;
+  depotAt: string | null;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema

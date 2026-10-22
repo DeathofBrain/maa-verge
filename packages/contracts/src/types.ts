@@ -40,7 +40,8 @@ export type Type =
   | 'Custom'
   | 'SingleStep'
   | 'VideoRecognition'
-  | 'OperProgress';
+  | 'OperProgress'
+  | 'UserDataUpdate';
 export type Enabled = boolean;
 export type Schedule = string | null;
 export type Enabled1 = boolean;
@@ -92,7 +93,12 @@ export interface Device {
   state: State;
   coreVersion: Coreversion;
   captureMethod?: string;
+  dataSync?: UserDataSync;
   resourceVersion: Resourceversion;
+}
+export interface UserDataSync {
+  operatorsAt: string | null;
+  depotAt: string | null;
 }
 export interface Plan {
   id: Id1;

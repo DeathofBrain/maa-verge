@@ -6,7 +6,7 @@ const CLIENTS = new Set(['', 'Official', 'Bilibili', 'txwy', 'YoStarEN', 'YoStar
 const FACILITIES = new Set(['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Recycle', 'Dorm', 'Processing', 'Training', 'AssistantChange']);
 const DRONES = new Set(['_NotUse', 'Money', 'SyntheticJade', 'CombatRecord', 'PureGold', 'OriginStone', 'Chip']);
 const COMMANDS = new Set(['shell', 'command', 'script', 'adb']);
-const BOOLEANS = new Set('enable start_game_enabled refresh set_time expedite skip_robot report_to_penguin report_to_yituliu DrGrandet replenish dorm_notstationed_enabled dorm_trust_enabled fiammetta_recovery_enabled use_pinus_sylvestris use_perception_information use_worldly_plight use_abyssal_hunter reception_message_board reception_clue_exchange reception_send_clue continue_training visit_friends shopping force_shopping_if_credit_full only_buy_discount reserve_max_credit credit_fight award mail recruit orundum mining specialaccess signinevent formation use_sanity_potion add_trust ignore_requirements clear_store'.split(' '));
+const BOOLEANS = new Set('enable start_game_enabled refresh set_time expedite skip_robot report_to_penguin report_to_yituliu DrGrandet replenish dorm_notstationed_enabled dorm_trust_enabled fiammetta_recovery_enabled use_pinus_sylvestris use_perception_information use_worldly_plight use_abyssal_hunter reception_message_board reception_clue_exchange reception_send_clue continue_training visit_friends visit_friends_once_a_day shopping force_shopping_if_credit_full only_buy_discount reserve_max_credit credit_fight award mail recruit orundum mining specialaccess signinevent formation use_sanity_potion add_trust ignore_requirements clear_store'.split(' '));
 const STRING_LISTS = new Set('first_tags preserve_tags buy_first blacklist fiammetta_targets themes task_names tools_to_craft'.split(' '));
 function reject(message: string): never { throw new RpcError(-32010, message); }
 function integer(value: any, name: string, minimum = 0, maximum = 2147483647): number {
@@ -82,6 +82,10 @@ export function validateTask(task: Task): void {
   if ('server' in p) enumeration(p.server, '服务器参数', new Set(['CN', 'US', 'JP', 'KR']));
   if (!task.enabled || p.enable === false) return;
   switch (task.type) {
+    case 'UserDataUpdate':
+      for (const key of ['operators', 'depot']) if (key in p && typeof p[key] !== 'boolean') reject(`${key} 必须是布尔值`);
+      enumeration(get(p, 'interval', 'always'), '数据同步触发间隔', new Set(['always', 'daily', 'weekly']));
+      break;
     case 'Fight':
       integer(integerInput(p, 'times', 1), '作战次数', 1); string(get(p, 'stage', ''), '关卡'); integer(integerInput(p, 'series', 1), '代理倍率', -1, 10);
       if ('drops' in p) { if (!object(p.drops)) reject('掉落目标必须是物品 ID 到数量的对象'); for (const item of Object.keys(p.drops)) { string(item, '掉落物品 ID', true); integer(integerInput(p.drops, item), '掉落数量', 1); } }
@@ -129,6 +133,7 @@ export function validatePlan(plan: Plan, settings: Settings): void {
   for (const key of ['originium', 'medicine', 'expedited'] as const) if (totals[key] > budgets[key]) throw new RpcError(-32010, '计划消耗超出已授权额度', { budget: key, requested: totals[key] });
 }
 export function nativeTask(task: Task): Task {
+  if (task.type === 'UserDataUpdate') reject('更新数据必须由应用服务拆分后执行');
   const result = parseWireJson(stringifyWireJson(task)), p: any = result.params;
   const defaults = (values: Record<string, any>) => { for (const [key, value] of Object.entries(values)) if (!(key in p)) p[key] = value; };
   if (['StartUp', 'CloseDown'].includes(task.type)) defaults({ client_type: 'Official' });
@@ -138,5 +143,6 @@ export function nativeTask(task: Task): Task {
   if (task.type === 'Recruit') defaults({ expedite: false, expedite_times: 0, select: [3, 4, 5], confirm: [3, 4] });
   if (task.type === 'Infrast') defaults({ facility: ['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Dorm'], drones: '_NotUse', threshold: 0.3 });
   if (task.type === 'Copilot') defaults({ use_sanity_potion: false });
+  if (task.type === 'Mall') delete p.visit_friends_once_a_day;
   return result;
 }

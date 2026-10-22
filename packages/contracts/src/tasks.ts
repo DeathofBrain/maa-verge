@@ -5,7 +5,7 @@ export const taskLabels: Record<string, string> = {
   Roguelike: '集成战略', Reclamation: '生息演算', Copilot: '自动作业',
   SSSCopilot: '保全派驻', ParadoxCopilot: '悖论模拟', Depot: '仓库识别',
   OperBox: '干员识别', OperProgress: '干员养成', Custom: '自定义任务',
-  SingleStep: '单步战斗', VideoRecognition: '视频识别',
+  SingleStep: '单步战斗', VideoRecognition: '视频识别', UserDataUpdate: '更新数据',
 };
 
 export const taskDefaults: Record<string, Record<string, unknown>> = {
@@ -21,5 +21,5 @@ export const taskDefaults: Record<string, Record<string, unknown>> = {
   SSSCopilot: { filename: '', loop_times: 1 }, ParadoxCopilot: { filename: '' },
   Depot: {}, OperBox: {}, OperProgress: { plans: [] }, Custom: { task_names: [] },
   SingleStep: { type: 'copilot', subtype: 'stage', details: { stage_name: '1-7' } },
-  VideoRecognition: { filename: '' },
+  VideoRecognition: { filename: '' }, UserDataUpdate: { operators: true, depot: true, interval: 'always' },
 };

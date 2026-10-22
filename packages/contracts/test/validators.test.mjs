@@ -25,6 +25,10 @@ test('standalone validators preserve normalized data and arbitrary task paramete
   const snapshot = { mode: 'native', devices: [], plans: [value], runs: [], updates: [], settings: settings(), events: [] };
   assert.equal(validateSnapshot(snapshot), true);
   assert.equal(validateSnapshot({ ...snapshot, mode: 'mock' }), false);
+  const device = { id: 'device', name: '设备', address: '127.0.0.1:5555', state: 'idle', coreVersion: null, resourceVersion: null };
+  assert.equal(validateSnapshot({ ...snapshot, devices: [{ ...device, dataSync: { operatorsAt: '2026-10-23T00:00:00.000Z', depotAt: null } }] }), true);
+  assert.equal(validateSnapshot({ ...snapshot, devices: [{ ...device, dataSync: { operatorsAt: true, depotAt: null } }] }), false);
+  assert.equal(validateSnapshot({ ...snapshot, devices: [{ ...device, dataSync: { operatorsAt: null } }] }), false);
 });
 
 test('missing defaults, invalid metadata and unknown model keys are rejected without coercion', () => {
