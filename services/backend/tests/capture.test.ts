@@ -122,7 +122,7 @@ test('MuMu 15 SDK uses the root and rejects wrong instance or remote devices bef
 
 test('LDPlayer PID is selected from the running requested instance and never guessed', () => {
   expect(ldPlayerPid('0,默认,1,2,1,1024,1025\r\n2,多开,3,4,1,2048,2049', 2)).toBe(2048);
-  for (const output of ['2,未启动,0,0,0,0,0', '2,坏进程,0,0,1,NaN,0', '0,其他,0,0,1,100,101']) expect(() => ldPlayerPid(output, 2)).toThrow();
+  for (const output of ['2,未启动,0,0,0,0,0', '2,坏进程,0,0,1,NaN,0', '2,超出原生范围,0,0,1,2147483648,0', '0,其他,0,0,1,100,101']) expect(() => ldPlayerPid(output, 2)).toThrow();
 });
 
 test('ADB port shapes alone do not claim a MuMu SDK identity', () => {

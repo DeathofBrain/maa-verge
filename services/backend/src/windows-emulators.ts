@@ -110,7 +110,7 @@ export function ldPlayerConsoleInstances(output: string, emulatorPath: string): 
     const fields = line.split(',').map(field => field.trim());
     if (fields.length < 7 || !/^\d+$/.test(fields[0]) || !/^\d+$/.test(fields[5]) || fields[4] !== '1') continue;
     const index = Number(fields[0]), pid = Number(fields[5]), port = 5555 + index * 2;
-    if (!Number.isSafeInteger(index) || index < 0 || !positiveInteger(port, 65535) || !positiveInteger(pid, 0xffffffff)) continue;
+    if (!Number.isSafeInteger(index) || index < 0 || !positiveInteger(port, 65535) || !positiveInteger(pid, 0x7fffffff)) continue;
     // Conflicting rows cannot identify one SDK instance reliably.
     if (result.has(index)) { result.delete(index); duplicates.add(index); }
     if (duplicates.has(index)) continue;

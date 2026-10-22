@@ -21,13 +21,13 @@ export function ldPlayerPid(output: string, index: number): number {
     const fields = line.split(',');
     if (fields.length < 7 || fields[0].trim() !== String(index)) continue;
     const pid = Number(fields[5]);
-    if (fields[4].trim() !== '1' || !Number.isSafeInteger(pid) || pid <= 0) throw new Error('所选雷电实例尚未启动');
+    if (fields[4].trim() !== '1' || !Number.isSafeInteger(pid) || pid <= 0 || pid > 0x7fffffff) throw new Error('所选雷电实例尚未启动或进程编号无效');
     return pid;
   }
   throw new Error('未找到所选雷电实例，请检查实例索引');
 }
 
-export interface KnownMuMuInstance { index: number; emulatorPath: string; address: string; aliases?: string[] }
+export interface KnownMuMuInstance { index: number; emulatorPath: string; address: string; aliases?: string[]; kind?: 'mumu' | 'ldplayer'; pid?: number }
 
 export async function connectionCapture(selected: Settings['capture'], address: string, platform = process.platform, knownInstance?: KnownMuMuInstance): Promise<Capture & { pid?: number }> {
   const capture = { ...defaultCapture(), ...selected } as Capture;
@@ -45,7 +45,7 @@ export async function connectionCapture(selected: Settings['capture'], address: 
     if (knownInstance) {
       const rootMatches = realpathSync(knownInstance.emulatorPath).toLowerCase() === capture.emulatorPath.toLowerCase();
       const addressMatches = [knownInstance.address, ...knownInstance.aliases ?? []].some(alias => deviceAddressIdentity(alias) === deviceAddressIdentity(address));
-      if (!rootMatches || knownInstance.index !== capture.instanceIndex || !capture.mumuBridge && !addressMatches) throw new Error('MuMu 实例索引、安装目录与 ADB 地址不匹配');
+      if (knownInstance.kind === 'ldplayer' || !rootMatches || knownInstance.index !== capture.instanceIndex || !capture.mumuBridge && !addressMatches) throw new Error('MuMu 实例索引、安装目录与 ADB 地址不匹配');
     } else if (!capture.mumuBridge) {
       const defaultAddress = mumuDefaultAdbAddress(capture.instanceIndex);
       if (!defaultAddress) throw new Error('此 MuMu 实例编号需要运行中的多开实例信息，请启动所选实例后重新发现');
@@ -53,9 +53,15 @@ export async function connectionCapture(selected: Settings['capture'], address: 
       if (port !== expected) throw new Error('MuMu 实例索引与 ADB 地址不匹配');
     }
   } else {
-    if (port !== 5555 + capture.instanceIndex * 2) throw new Error('雷电实例索引与 ADB 地址不匹配');
     const executable = path.join(capture.emulatorPath, 'ldconsole.exe');
     if (!file(executable) || !file(path.join(capture.emulatorPath, 'ldopengl64.dll'))) throw new Error('未找到雷电控制台或增强截图 DLL，请选择安装根目录');
+    if (knownInstance) {
+      const rootMatches = realpathSync(knownInstance.emulatorPath).toLowerCase() === capture.emulatorPath.toLowerCase();
+      const addressMatches = [knownInstance.address, ...knownInstance.aliases ?? []].some(alias => deviceAddressIdentity(alias) === deviceAddressIdentity(address));
+      if (knownInstance.kind !== 'ldplayer' || !rootMatches || knownInstance.index !== capture.instanceIndex || !addressMatches || !Number.isSafeInteger(knownInstance.pid) || knownInstance.pid! <= 0 || knownInstance.pid! > 0x7fffffff) throw new Error('雷电实例索引、安装目录与 ADB 地址不匹配');
+      return { ...capture, pid: knownInstance.pid };
+    }
+    if (port !== 5555 + capture.instanceIndex * 2) throw new Error('雷电实例索引与 ADB 地址不匹配');
     const output = await new Promise<string>((resolve, reject) => execFile(executable, ['list2'], { windowsHide: true, encoding: 'utf8', timeout: 5000, maxBuffer: 1024 * 1024 }, (error, stdout) => error ? reject(error) : resolve(stdout)));
     return { ...capture, pid: ldPlayerPid(output, capture.instanceIndex) };
   }

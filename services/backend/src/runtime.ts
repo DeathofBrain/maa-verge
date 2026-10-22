@@ -3,7 +3,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { Store, now } from './storage';
 import { RpcError } from './errors';
-import { parsePlan, parseSettings, parseSnapshot, type Plan, type Settings } from './models';
+import { defaultConnection, parsePlan, parseSettings, parseSnapshot, type Plan, type Settings } from './models';
+import { automaticCapture } from './auto-capture';
 import { nativeTask, validatePlan } from './task-policy';
 import { propose } from './agent';
 import { deviceLockPath } from './config';
@@ -36,7 +37,7 @@ function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
   } catch { return false; }
 }
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
-export interface RuntimeOptions { notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
+export interface RuntimeOptions { notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
 export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
@@ -115,7 +116,7 @@ export class Runtime {
         return { ...homeInfo(settings, params.deviceId, clientType, new Date(activityCatalog.generatedAt)), activityCatalog };
       }
       case 'device.discover':
-        try { const result = await autoDiscover(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); this.emulatorInventory = result.inventory; return result.devices; } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
+        try { const result = await (this.options.discoverDevices ?? autoDiscover)(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); this.emulatorInventory = result.inventory; return result.devices; } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
       case 'device.connect': return this.connectDevice(params);
       case 'device.auto_connect': return this.autoConnectDevices();
       case 'device.disconnect': required('id'); return this.disconnectDevice(params.id);
@@ -209,7 +210,8 @@ export class Runtime {
     if (capture?.method !== 'mumu') return;
     try {
       const root = realpathSync(capture.emulatorPath).toLowerCase();
-      return this.emulatorInventory.instances.find(instance => instance.index === capture.instanceIndex && realpathSync(instance.emulatorPath).toLowerCase() === root);
+      const matches = this.emulatorInventory.instances.filter(instance => instance.kind !== 'ldplayer' && instance.index === capture.instanceIndex && realpathSync(instance.emulatorPath).toLowerCase() === root);
+      return matches.length === 1 ? matches[0] : undefined;
     } catch { return; }
   }
   private profileLockAddress(profile: NonNullable<Settings['deviceProfiles']>[number]) {
@@ -242,10 +244,31 @@ export class Runtime {
       this.emulatorInventory = inventory ?? await this.readEmulatorInventory();
       if (!this.running || this.switching && !internal) throw new RpcError(-32011, '正在退出或切换核心，连接已取消');
       const settings = parseSettings(this.store.get('settings', 'main'));
-      const profile = findDeviceProfile(settings, address) ?? settings.deviceProfiles?.find(profile => this.profileLockAddress(profile) === this.lockAddress(address)); profileId = profile?.id;
-      const selected = profile ? { capture: profile.capture, connection: profile.connection } : settings;
+      let profile = findDeviceProfile(settings, address) ?? settings.deviceProfiles?.find(profile => this.profileLockAddress(profile) === this.lockAddress(address)); profileId = profile?.id;
+      let selected = profile ? { capture: profile.capture, connection: profile.connection } : settings;
+      const detected = automaticCapture(selected.capture, address, this.emulatorInventory);
+      if (detected) selected = { ...selected, capture: detected.capture, ...(detected.config ? { connection: { ...defaultConnection(), ...selected.connection, config: detected.config } } : {}) };
       const knownInstance = emulatorInstanceForAddress(address, this.emulatorInventory) ?? (selected.capture?.mumuBridge ? this.sdkInstance(selected.capture) : undefined);
       const capture = await connectionCapture(selected.capture, address, process.platform, knownInstance);
+      if (!this.running || this.switching && !internal) throw new RpcError(-32011, '正在退出或切换核心，连接已取消');
+      if (detected?.instance && detected.capture.method !== 'adb') {
+        const current = parseSettings(this.store.get('settings', 'main'));
+        const profiles = current.deviceProfiles ?? [];
+        const profileKey = profile?.id ?? `detected-${createHash('sha256').update(`${detected.capture.method}|${capture.emulatorPath.toLowerCase()}|${capture.instanceIndex}`).digest('hex').slice(0, 16)}`;
+        const existing = profiles.find(item => item.id === profileKey);
+        const unchangedDefaults = JSON.stringify([current.capture, current.connection]) === JSON.stringify([settings.capture, settings.connection]);
+        const currentProfile = profiles.find(item => this.profileLockAddress(item) === this.lockAddress(address));
+        if (profile ? existing && JSON.stringify(existing) === JSON.stringify(profile) : !existing && !currentProfile && unchangedDefaults) {
+          const automaticProfile = { ...existing, id: profileKey, name: existing?.name ?? `${detected.instance.name}（实例 ${detected.instance.index}）`.slice(0, 80),
+            address: existing && !existing.autoDetected ? existing.address : address,
+            connection: { ...defaultConnection(), ...selected.connection, address: existing && !existing.autoDetected ? existing.address : address },
+            capture: { method: capture.method, emulatorPath: capture.emulatorPath, instanceIndex: capture.instanceIndex, autoDetect: true }, ...(!existing ? { autoDetected: true } : {}) };
+          if (!existing && profiles.length >= 32) throw new Error('自动截图配置最多保存 32 个实例，请清理不用的实例配置');
+          const next = parseSettings({ ...current, deviceProfiles: existing ? profiles.map(item => item.id === profileKey ? automaticProfile : item) : [...profiles, automaticProfile] });
+          this.store.put('settings', 'main', next); profile = next.deviceProfiles!.find(item => item.id === profileKey); profileId = profileKey;
+          if (!existing || JSON.stringify(existing) !== JSON.stringify(profile)) this.emit('settings.changed', '已自动配置实例增强截图', { profileId: profileKey, method: capture.method, instanceIndex: capture.instanceIndex });
+        }
+      }
       // A bridged ADB address still controls the selected local MuMu SDK instance.
       // Keep its alias after settings changes so reconnect/disconnect uses the same lease.
       const sdkInstance = this.sdkInstance(capture);
@@ -264,8 +287,8 @@ export class Runtime {
       if (!this.running || this.switching && !internal) throw new RpcError(-32011, '正在退出或切换核心，连接已取消');
       if (automatic) this.validateAutomatic(address);
       const connection = selected.connection ? (({ config, touchMode, adbLite, clientType }) => ({ config, touchMode, adbLite, clientType }))(selected.connection) : undefined;
-      const { mumuTouch: _touch, mumuBridge: _bridge, ...plainCapture } = capture;
-      const workerCapture = capture.method === 'adb' ? { method: 'adb' } : capture.method === 'mumu' ? capture : plainCapture;
+      const { mumuTouch, mumuBridge, autoDetect: _autoDetect, ...plainCapture } = capture;
+      const workerCapture = capture.method === 'adb' ? { method: 'adb' } : capture.method === 'mumu' ? { ...plainCapture, ...(mumuTouch !== undefined ? { mumuTouch } : {}), ...(mumuBridge !== undefined ? { mumuBridge } : {}) } : plainCapture;
       const config = { core: combo.core.path, resource: combo.resource.path, adb, address, capture: workerCapture, ...(connection ? { connection } : {}), userDir: path.join(this.root, 'workers', id!), lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical) };
       worker = await this.startWorker(config); await worker.connect();
       if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
@@ -285,16 +308,17 @@ export class Runtime {
       if (!automatic) this.suppressed.clear();
       if (!this.store.get('active', 'combo', {}).core) throw new RpcError(-32040, '请先在更新中心安装并启用核心，再自动连接模拟器');
       const profiles = parseSettings(this.store.get('settings', 'main')).deviceProfiles ?? [];
+      const configuredOnly = profiles.some(profile => !profile.autoDetected);
       let discovered: { address: string; name: string; adbState: string }[] = [], diagnostics: string[] = [];
       let inventory: EmulatorInventory;
-      if (!profiles.length) {
-        try { const result = await autoDiscover(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); discovered = result.devices; diagnostics = result.diagnostics; inventory = result.inventory; }
+      if (!configuredOnly) {
+        try { const result = await (this.options.discoverDevices ?? autoDiscover)(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); discovered = result.devices; diagnostics = result.diagnostics; inventory = result.inventory; }
         catch (error) { throw new RpcError(-32040, '模拟器自动发现失败', String(error)); }
       } else inventory = await this.readEmulatorInventory();
       this.emulatorInventory = inventory;
       // Explicit multi-instance profiles use their own ADB executables and SDK
       // indices. A global enhanced-capture index must never be applied to all.
-      const candidates = profiles.length ? profiles.map(profile => ({ address: profile.address, name: profile.name, adbState: 'configured' })) : discovered;
+      const candidates = configuredOnly ? profiles.map(profile => ({ address: profile.address, name: profile.name, adbState: 'configured' })) : discovered;
       const devices: any[] = [], seen = new Set<string>();
       for (const candidate of candidates) {
         const configured = findDeviceProfile({ deviceProfiles: profiles }, candidate.address);

@@ -16,7 +16,7 @@ test('LDPlayer list2 retains all running indices and uses the upstream screensho
 
 test('LDPlayer list2 excludes stopped, invalid and conflicting rows and bounds the parsed list', () => {
   const output = [row(0, 1001, 2001, 0), row(1, 0, 2002), row(29991, 1003, 2003), '-1,坏编号,0,0,1,1004,2004',
-    '2,坏PID,0,0,1,1e3,2005', '3,缺少列,0,0,1,1006', row(4, 1007, 2007), row(4, 1008, 2008),
+    '2,坏PID,0,0,1,1e3,2005', row(6, 0x80000000, 2010), '3,缺少列,0,0,1,1006', row(4, 1007, 2007), row(4, 1008, 2008),
     row(5, 1009, 0, 1, '   '), 'diagnostic text'].join('\n');
   const instances = ldPlayerConsoleInstances(output, 'D:\\雷电');
   expect(instances).toHaveLength(1); expect(instances[0]).toMatchObject({ index: 5, name: '雷电实例 5', pid: 1009, vmPid: 0 });
