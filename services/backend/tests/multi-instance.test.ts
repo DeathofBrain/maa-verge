@@ -6,6 +6,7 @@ import { Runtime } from '../src/runtime';
 import { CoreWorker } from '../src/worker';
 import { defaultConnection, parseSettings, type DeviceConnectionProfile } from '../src/models';
 import { validateWorkerConfiguration } from '../../../packages/contracts/src/validators.js';
+import { mumuDefaultAdbAddress } from '../../../packages/contracts/src/device-profiles';
 
 const roots: string[] = [], runtimes: Runtime[] = [];
 const temporary = () => { const root = mkdtempSync(path.join(tmpdir(), 'maaverge-multi-instance-')); roots.push(root); return root; };
@@ -22,7 +23,7 @@ function instance(options: ConstructorParameters<typeof Runtime>[1] = {}) {
 function profile(index: number, enhanced = false): DeviceConnectionProfile {
   const root = temporary(), adb = path.join(root, process.platform === 'win32' ? 'adb.exe' : 'adb'); writeFileSync(adb, 'synthetic, never executed');
   if (enhanced) { mkdirSync(path.join(root, 'shell/sdk'), { recursive: true }); writeFileSync(path.join(root, 'shell/sdk/external_renderer_ipc.dll'), 'synthetic, never loaded'); }
-  const address = `127.0.0.1:${enhanced ? 16384 + index * 32 : 5555 + index * 2}`;
+  const address = enhanced ? mumuDefaultAdbAddress(index)! : `127.0.0.1:${5555 + index * 2}`;
   return { id: `instance-${index}`, name: `实例 ${index}`, address,
     connection: { ...defaultConnection(), address, adbPath: adb, config: enhanced ? 'MuMuEmulator12' : 'General', touchMode: index ? 'maatouch' : 'minitouch' },
     capture: { method: enhanced ? 'mumu' : 'adb', emulatorPath: enhanced ? root : '', instanceIndex: index },
@@ -36,9 +37,9 @@ test('multi-instance settings reject duplicate serial/TCP/bridge aliases and kee
   for (const duplicate of [
     { ...second, address: first.address }, { ...second, address: 'emulator-5554' },
     { ...second, address: 'localhost:05555' }, { ...second, id: first.id },
-    { ...second, address: '127.0.0.1:16384' },
     { ...second, address: '192.168.1.2:5555', capture: { ...second.capture, method: 'mumu', mumuBridge: true, instanceIndex: 0 } },
   ]) expect(() => parseSettings({ deviceProfiles: [first, duplicate] })).toThrow('重复');
+  expect(parseSettings({ deviceProfiles: [first, { ...second, address: '127.0.0.1:16384' }] }).deviceProfiles).toHaveLength(2);
   expect(() => parseSettings({ deviceProfiles: [{ ...first, address: '-unsafe' }] })).toThrow('地址');
   expect(() => parseSettings({ deviceProfiles: [{ ...first, capture: { ...first.capture, mumuTouch: true } }] })).toThrow('MuMu');
 });

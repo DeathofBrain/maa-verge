@@ -108,10 +108,27 @@ test('LDPlayer PID is selected from the running requested instance and never gue
   for (const output of ['2,未启动,0,0,0,0,0', '2,坏进程,0,0,1,NaN,0', '0,其他,0,0,1,100,101']) expect(() => ldPlayerPid(output, 2)).toThrow();
 });
 
-test('MuMu SDK selection unifies the actual emulator serial and TCP aliases', () => {
-  expect(deviceLockAddress('emulator-5554')).toBe(deviceLockAddress('127.0.0.1:16384'));
-  expect(deviceLockAddress('emulator-5558')).toBe(deviceLockAddress('localhost:16448'));
+test('ADB port shapes alone do not claim a MuMu SDK identity', () => {
+  expect(deviceLockAddress('emulator-5554')).not.toBe(deviceLockAddress('127.0.0.1:16384'));
+  expect(deviceLockAddress('emulator-5558')).not.toBe(deviceLockAddress('localhost:16448'));
   expect(deviceLockAddress('emulator-5554')).toBe('127.0.0.1:5555');
+});
+
+test('MuMu capture uses high-index defaults and verified metadata before any connection', async () => {
+  const root = temporary(), sdk = path.join(root, 'shell/sdk'); mkdirSync(sdk, { recursive: true });
+  writeFileSync(path.join(sdk, 'external_renderer_ipc.dll'), 'synthetic, never loaded');
+  const capture = { method: 'mumu' as const, emulatorPath: root, instanceIndex: 32 };
+  expect((await connectionCapture(capture, 'localhost:16388', 'win32')).instanceIndex).toBe(32);
+  await expect(connectionCapture(capture, '127.0.0.1:17408', 'win32')).rejects.toThrow('不匹配');
+  await expect(connectionCapture({ ...capture, instanceIndex: 0 }, '127.0.0.1:7555', 'win32')).rejects.toThrow('不匹配');
+  await expect(connectionCapture({ ...capture, instanceIndex: 256 }, '127.0.0.1:16416', 'win32')).rejects.toThrow('多开实例信息');
+  const metadata = { index: 256, emulatorPath: root, address: '127.0.0.1:28001', aliases: ['emulator-6100'] };
+  expect((await connectionCapture({ ...capture, instanceIndex: 256 }, '[::1]:28001', 'win32', metadata)).instanceIndex).toBe(256);
+  expect((await connectionCapture({ ...capture, instanceIndex: 256 }, 'emulator-6100', 'win32', metadata)).instanceIndex).toBe(256);
+  await expect(connectionCapture(capture, metadata.address, 'win32', metadata)).rejects.toThrow('不匹配');
+  await expect(connectionCapture({ ...capture, instanceIndex: 256 }, '127.0.0.1:28002', 'win32', metadata)).rejects.toThrow('不匹配');
+  await expect(connectionCapture({ ...capture, instanceIndex: 256 }, metadata.address, 'win32', { ...metadata, emulatorPath: temporary() })).rejects.toThrow('不匹配');
+  expect((await connectionCapture({ ...capture, instanceIndex: 256, mumuBridge: true }, '192.168.1.22:5555', 'win32', metadata)).instanceIndex).toBe(256);
 });
 
 test('native connection records core capture evidence and preserves preferences across restart', async () => {
