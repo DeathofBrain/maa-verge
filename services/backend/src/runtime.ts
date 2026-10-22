@@ -104,8 +104,9 @@ export class Runtime {
         const settings = parseSettings(this.store.get('settings', 'main'));
         const device = params.deviceId ? this.store.get('device', params.deviceId) : undefined;
         const profile = device && (settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address));
-        const info = homeInfo(settings, params.deviceId, params.clientType ?? (params.deviceId ? this.store.get('device_client', params.deviceId) : null) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official');
-        return { ...info, activityCatalog: await this.stages(info.clientType, params.refresh === true) };
+        const clientType = params.clientType ?? (params.deviceId ? this.store.get('device_client', params.deviceId) : null) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';
+        const activityCatalog = await this.stages(clientType, params.refresh === true);
+        return { ...homeInfo(settings, params.deviceId, clientType, new Date(activityCatalog.generatedAt)), activityCatalog };
       }
       case 'device.discover':
         try { return await discover(this.adbExecutable()); } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }

@@ -67,15 +67,20 @@ test('home.info follows the selected instance client until a successful startup 
 test('home.info and stage selectors share the official calendar cache and explicit refresh', async () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'maaverge-home-calendar-')); roots.push(root);
   let requests = 0;
+  let calendarAt = new Date('2026-10-25T19:59:59.999Z');
   const fetcher = (async () => {
     requests++;
+    calendarAt = new Date('2026-10-25T20:00:00.000Z');
     return new Response(JSON.stringify({ Official: { sideStoryStage: { sample: {
       Activity: { StageName: '合成官方活动', UtcStartTime: '2020/01/01 12:00:00', UtcExpireTime: '2099/01/01 12:00:00', TimeZone: 8 },
       Stages: [{ Display: '合成活动关卡 AA-8', Value: 'AA-8' }],
     } } } }), { headers: { ETag: '"synthetic-calendar"' } });
   }) as unknown as typeof fetch;
-  const runtime = new Runtime(root, { calendar: { fetcher } }); runtimes.push(runtime);
+  const runtime = new Runtime(root, { calendar: { fetcher, now: () => calendarAt } }); runtimes.push(runtime);
   const home = await runtime.handle('home.info', {});
+  expect(home.gameDate).toBe('2026-10-26');
+  expect(home.annihilation.kind).toBe('weekly-reset');
+  expect(home.generatedAt).toBe(home.activityCatalog.generatedAt);
   expect(home.activityCatalog.activities[0]).toMatchObject({ name: '合成官方活动', status: 'active' });
   expect(home.activityCatalog.calendar.source).toBe('official-cache');
   const stages = await runtime.handle('stages.list', { clientType: 'Bilibili' });
