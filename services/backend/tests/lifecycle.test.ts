@@ -141,6 +141,46 @@ describe('stdio service lifecycle', () => {
     finally { reopened.close(); }
   }, 15000);
 
+  test('EOF cancels a client replacement that has not entered the worker map', async () => {
+    const root = temp(), ready = path.join(root, 'client-starting.txt'), cancelled = path.join(root, 'client-cancelled.txt');
+    const wrapper = path.join(root, 'client-switch-service.mjs');
+    writeFileSync(wrapper, `
+import { writeFileSync } from 'node:fs';
+import { Runtime } from ${JSON.stringify(runtimeModule)};
+import { main } from ${JSON.stringify(pathToFileURL(entry).href)};
+const original = Runtime.prototype.handle;
+Runtime.prototype.handle = async function(method, params) {
+  if (method !== 'synthetic.client-switch') return original.call(this, method, params);
+  let first = true;
+  this.options.adbExecutable = () => 'synthetic-never-executed';
+  this.options.workerFactory = async (_config, options) => {
+    if (first) { first = false; return { events: [], connected: true, safeIdle: true, async connect() {}, async close() {}, async stop() {}, async task() { throw new Error('must not submit'); }, async waitConnected() { return true; } }; }
+    return new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => { writeFileSync(${JSON.stringify(cancelled)}, 'cancelled'); reject(new Error('cancelled synthetic startup')); }, { once: true });
+      writeFileSync(${JSON.stringify(ready)}, 'waiting for replacement');
+    });
+  };
+  this.store.put('active', 'combo', { core: { path: 'synthetic-core', version: 'v1' }, resource: { path: 'synthetic-resource', version: 'r1' } });
+  const device = await this.connectDevice({ address: '127.0.0.1:5555' }); device.state = 'idle'; this.store.put('device', device.id, device);
+  await original.call(this, 'plan.save', { plan: { id: 'client', name: 'EOF切服', tasks: [{ type: 'StartUp', params: { client_type: 'YoStarJP' } }] } });
+  return this.startRun({ planId: 'client', deviceId: device.id, requestId: 'client-switch' });
+};
+await main();
+`);
+    initializeServiceData(root);
+    const child = new ManagedChild([process.execPath, wrapper, '--mode', 'native', '--data-dir', root], root);
+    child.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 'client-switch', method: 'synthetic.client-switch' }) + '\n');
+    await child.waitFor(() => existsSync(ready));
+    const started = Date.now(); child.child.stdin.end();
+    expect(await child.exit(), child.stderr).toEqual({ code: 0, signal: null });
+    expect(Date.now() - started).toBeLessThan(3000); expect(existsSync(cancelled)).toBe(true); expect(child.stderr).not.toContain('退出超时');
+    const response = child.stdout.split('\n').filter(Boolean).map(line => JSON.parse(line)).find(value => value.id === 'client-switch');
+    expect(response.result.status).toBe('stopped'); assertLeaseReleased(root);
+    const reopened = new Store(path.join(root, 'native'));
+    try { expect(reopened.all('run')[0].status).toBe('stopped'); expect(reopened.get('request', 'client-switch').runId).toBe(response.result.id); }
+    finally { reopened.close(); }
+  }, 15000);
+
   test.skipIf(!process.env.MAAVERGE_TEST_NATIVE_WORKER || !process.env.MAAVERGE_TEST_CORE_LIBRARY)(
     'EOF interrupts a stalled synthetic frame and releases its native device lease', async () => {
       const root = temp(), executable = process.env.MAAVERGE_TEST_NATIVE_WORKER!;

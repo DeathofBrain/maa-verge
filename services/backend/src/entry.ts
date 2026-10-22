@@ -49,7 +49,7 @@ export async function main() {
     track(processRequest(runtime, request).then(send).finally(() => { if (background) backgroundSlots--; }));
   };
   const finish = async () => {
-    if (stopped) return; stopped = true; timers.forEach(clearInterval); runtime.running = false;
+    if (stopped) return; stopped = true; timers.forEach(clearInterval); runtime.running = false; runtime.cancelPendingClientSwitches();
     const deadline = setTimeout(() => { console.error('本地服务退出超时；进行中的操作结果未知'); process.exit(1); }, 4500);
     deadline.unref();
     try {

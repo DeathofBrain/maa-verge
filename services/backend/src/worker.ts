@@ -15,16 +15,18 @@ export class CoreWorker {
   pending = 0;
   closed = false;
   private exited = false;
+  private connectionFailed = false;
   private requests = new Map<string, { resolve: (value: any) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private child!: ChildProcessWithoutNullStreams;
   private finished!: Promise<void>;
   private log?: number;
   get safeIdle() { return !this.running && !this.pending && !this.exited && !this.closed; }
-  static async start(config: any, options: { leaseOnly?: boolean; command?: string[] } = {}): Promise<CoreWorker> {
+  static async start(config: any, options: { leaseOnly?: boolean; command?: string[]; signal?: AbortSignal } = {}): Promise<CoreWorker> {
     const worker = new CoreWorker();
     await worker.launch(config, options); return worker;
   }
-  private async launch(config: any, options: { leaseOnly?: boolean; command?: string[] }) {
+  private async launch(config: any, options: { leaseOnly?: boolean; command?: string[]; signal?: AbortSignal }) {
+    options.signal?.throwIfAborted();
     const directory = config.userDir || path.dirname(config.lockPath);
     mkdirSync(directory, { recursive: true });
     this.log = openSync(path.join(directory, 'worker.stderr.log'), 'a');
@@ -56,17 +58,20 @@ export class CoreWorker {
           if (item) { clearTimeout(item.timer); this.requests.delete(event.id); event.error ? item.reject(new Error(event.error)) : item.resolve(event.result); }
         } else {
           if (event.type === 'status') { this.running = !!event.running; this.pending = event.pendingAsync.length; }
-          if (event.type === 'callback' && event.message === 4 && event.details?.what === 'Connect') this.connected = !!event.details.details?.ret;
+          if (event.type === 'callback' && event.message === 4 && event.details?.what === 'Connect') { this.connected = !!event.details.details?.ret; this.connectionFailed = !this.connected; }
           if (event.type === 'callback' && event.message === 2 && ['Disconnect', 'ResolutionChanged'].includes(event.details?.what)) this.connected = false;
           this.events.push(event);
           if (event.type === 'error') rejectReady(new Error(event.error || event.message || '核心工作进程启动失败'));
         }
       } catch (error) { this.events.push({ type: 'protocol_error' }); rejectReady(error as Error); void this.close(); }
     });
-    this.child.stdin.write(stringifyWireJson({ ...config, protocolVersion: 1 }) + '\n');
+    const abort = () => { rejectReady(new Error('核心工作进程启动已取消')); void this.close().catch(() => {}); };
+    options.signal?.addEventListener('abort', abort, { once: true });
+    if (options.signal?.aborted) abort();
+    if (!options.signal?.aborted) this.child.stdin.write(stringifyWireJson({ ...config, protocolVersion: 1 }) + '\n');
     try { await ready; if (this.exited) throw new Error('核心工作进程启动失败'); }
     catch (error) { await this.close(); throw error; }
-    finally { clearTimeout(timer); }
+    finally { clearTimeout(timer); options.signal?.removeEventListener('abort', abort); }
   }
   request(operation: string, params: any = {}): Promise<any> {
     if (this.closed || this.exited) return Promise.reject(new Error('核心工作进程已关闭'));
@@ -79,14 +84,14 @@ export class CoreWorker {
       });
     });
   }
-  connect() { this.connected = false; this.pending = 1; return this.request('connect'); }
+  connect() { this.connected = false; this.connectionFailed = false; this.pending = 1; return this.request('connect'); }
   task(task: any) { this.running = true; return this.request('task', { task }); }
   stop() { return this.request('stop'); }
   frame() { return this.request('frame'); }
   click(x: number, y: number) { return this.request('click', { x, y }); }
-  async waitConnected(timeout = 30_000) {
+  async waitConnected(timeout = 30_000, cancelled?: () => boolean) {
     const deadline = Date.now() + timeout;
-    while (!this.exited && !this.closed && Date.now() < deadline) { if (this.connected && this.safeIdle) return true; await delay(20); }
+    while (!this.exited && !this.closed && !this.connectionFailed && !cancelled?.() && Date.now() < deadline) { if (this.connected && this.safeIdle) return true; await delay(20); }
     return false;
   }
   async close() {
