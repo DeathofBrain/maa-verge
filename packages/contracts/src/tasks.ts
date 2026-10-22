@@ -10,11 +10,11 @@ export const taskLabels: Record<string, string> = {
 
 export const taskDefaults: Record<string, Record<string, unknown>> = {
   StartUp: { client_type: 'Official', start_game_enabled: true },
-  Fight: { stage: '1-7', times: 6, medicine: 0, stone: 0 },
-  Recruit: { refresh: true, select: [4], confirm: [3, 4], times: 4, expedite: false, expedite_times: 0 },
-  Infrast: { facility: ['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Dorm'], drones: '_NotUse', threshold: 0.3 },
-  Mall: { shopping: true, buy_first: [], blacklist: [], force_shopping_if_credit_full: false },
-  Award: { award: true, mail: false, recruit: false }, CloseDown: { client_type: 'Official' },
+  Fight: { stage: '1-7', times: 6, medicine: 0, stone: 0, series: 0 },
+  Recruit: { refresh: true, select: [4], confirm: [3, 4], times: 4, expedite: false, expedite_times: 0, set_time: true, recruitment_time: { '3': 540, '4': 540, '5': 540, '6': 540 } },
+  Infrast: { mode: 0, facility: ['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Dorm', 'Processing', 'Training', 'AssistantChange'], drones: '_NotUse', threshold: 0.3, reception_message_board: true, reception_clue_exchange: true, reception_send_clue: true },
+  Mall: { visit_friends: true, visit_friends_once_a_day: false, credit_fight: false, shopping: true, buy_first: [], blacklist: [], force_shopping_if_credit_full: false },
+  Award: { award: true, mail: false, recruit: false, orundum: false, mining: false, specialaccess: false, signinevent: false }, CloseDown: { client_type: 'Official' },
   SwitchTheme: { themes: [] }, Roguelike: { theme: 'Mizuki', mode: 0, starts_count: 1 },
   Reclamation: { theme: 'Tales', mode: 0 },
   Copilot: { filename: '', formation: false, loop_times: 1, use_sanity_potion: false },
