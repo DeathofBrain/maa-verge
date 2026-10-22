@@ -24,6 +24,22 @@ test.describe('macOS desktop', () => {
 test.describe('Windows desktop loading', () => {
   test.use({ runtimeHoldSnapshot: true });
 
+  test('a failed desktop module can recover by reloading the interface', async ({ page }) => {
+    let failOnce = true;
+    await page.route('**/*@tauri-apps_api_core.js*', async route => {
+      if (failOnce) { failOnce = false; await route.abort('failed'); }
+      else await route.continue();
+    });
+    await page.goto('/');
+    await expect(page.getByRole('alert')).toHaveText('界面组件加载失败，请重新加载界面后重试。');
+    await Promise.all([
+      page.waitForEvent('domcontentloaded'),
+      page.getByRole('button', { name: '重新加载界面', exact: true }).click(),
+    ]);
+    await page.evaluate(() => (window as HarnessWindow).runtimeHarness.releaseSnapshot());
+    await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
+  });
+
   test('desktop window controls work during loading and track native resize after loading', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));

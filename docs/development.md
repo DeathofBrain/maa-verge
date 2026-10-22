@@ -7,18 +7,21 @@
 每台机器从相同 Git 提交重新执行引导脚本。不要复制其他电脑的 `node_modules`、`.venv`、`.tools`、Rust target 或产品数据库。
 
 ```powershell
-# Windows：前端及 Python 参考/合成测试；-Native 额外验证原生依赖
+# Windows：工作区依赖、固定 Bun 及 Python 参考/合成测试
 powershell -ExecutionPolicy Bypass -File tools/bootstrap.ps1
-powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 setup:bun
+# 已安装下文的系统依赖时，添加 -Native 验证桌面编译环境
+powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 run doctor --native
 ```
 
 ```bash
 # macOS / Linux
 bash tools/bootstrap.sh
-bash tools/pnpm.sh setup:bun
+bash tools/pnpm.sh run doctor --native
 ```
 
-引导脚本在仓库 `.tools` 安装缺少的 Node/pnpm/uv，并使用 uv 管理参考测试所需的 Python；`-SkipReference` / `--skip-reference` 跳过 Python。`pnpm setup:bun` 下载官方固定版本归档，按仓库保存的 SHA-256 校验后安装 `.tools/bun`，不会采用 PATH 中的全局 Bun。Node 下载通过官方 SHA256 清单验证。Rust、CMake、C++ 编译器和系统 SDK 需要单独安装。脚本不修改用户 PATH；没有全局 Node/pnpm 时，使用 `powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 <command>` 或 `bash tools/pnpm.sh <command>`，包装脚本会选择本地工具。
+引导脚本在仓库 `.tools` 安装或修复与项目固定版本不符的 Node/pnpm，冻结同步所有工作区依赖，安装并验证固定 Bun，并使用 uv 管理参考测试所需的 Python。`-SkipReference` / `--skip-reference` 跳过 Python 参考环境；`-Native` / `--native` 额外验证原生依赖。更新代码后应重新运行引导，或执行 `pnpm install --frozen-lockfile` 同步新增工作区。
+
+`pnpm setup:bun` 也可单独运行：下载官方固定版本归档，按仓库保存的 SHA-256 校验后安装 `.tools/bun`，不会采用 PATH 中的全局 Bun。Node 下载通过官方 SHA256 清单验证，下载或校验失败保留旧工具。Rust、CMake、C++ 编译器和系统 SDK 需要单独安装。脚本只调整当前进程的 PATH；没有全局 Node/pnpm 时，使用 `powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 <command>` 或 `bash tools/pnpm.sh <command>`，包装脚本会选择本地工具，版本不符时提示重新引导。
 
 已有工具链的机器可直接运行：
 
@@ -42,12 +45,21 @@ pnpm dev
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential cmake curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
+sudo apt-get install -y build-essential pkg-config curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf
+# Ubuntu 22.04 使用 libfuse2；24.04 使用 libfuse2t64（AppImage 运行依赖）
+sudo apt-get install -y libfuse2       # 22.04
+# sudo apt-get install -y libfuse2t64  # 24.04
 ```
 
-Rust 使用 [rustup](https://rustup.rs/) 安装；在仓库运行 cargo 会按 `rust-toolchain.toml` 选择版本。Windows 从 Developer PowerShell for VS 2022 启动可帮助诊断链接器。若选择本地 `.tools/cargo` 与 `.tools/rustup`，工具脚本会自动识别；不要提交这些目录。
+Windows 安装 Visual Studio 时务必勾选 CMake 工具；脚本可通过 `vswhere` 找到它，无需把 Visual Studio 的安装目录手动写入 PATH。Windows 构建目标为 x64/MSVC，不能用 MinGW 替代 Rust MSVC 链接器。
 
-确认 `cmake --version` 至少为 3.25；系统仓库版本过旧时从 [CMake 官方下载](https://cmake.org/download/) 安装相应版本。C++20 worker 的独立构建、协议和合成测试见 [services/native/README.md](../services/native/README.md)。
+macOS 先运行 `xcode-select --install`，安装后确认 `xcode-select -p` 可用；使用 Homebrew 时可通过 `brew install cmake` 安装 CMake。Apple Silicon 使用 arm64 的 Node/Bun/Rust，Intel Mac 使用 x64，避免混用 Rosetta 工具和其他架构的缓存。
+
+Rust 使用 [rustup](https://rustup.rs/) 安装；在仓库运行 `rustup show` 会按 `rust-toolchain.toml` 安装并选择版本，包含 rustfmt/clippy。Windows 从 Developer PowerShell for VS 2022 启动可帮助诊断链接器。若选择本地 `.tools/cargo` 与 `.tools/rustup`，工具脚本会自动识别；不要提交这些目录。
+
+Ubuntu 22.04 默认 apt CMake 为 3.22，低于项目要求；请从 [CMake 官方下载](https://cmake.org/download/) 取得 Linux x86_64 的 3.25+ 归档，校验官方 SHA-256 后，将归档内顶层目录放到 `.tools/cmake`，使 `.tools/cmake/bin/cmake` 存在。脚本会优先使用这份本地工具；Ubuntu 24.04 也可安装系统 `cmake`。macOS/Windows 同样支持 `.tools/cmake/bin`。不要复制其他 OS 或 CPU 架构的工具目录。
+
+`doctor --native` 与 C++ 构建使用相同的 CMake 查找规则，要求 3.25+；诊断会在临时目录实际编译、链接一个 C++20 程序，检查编译器和 SDK，并在结束后清理。系统依赖缺失时按当前平台给出安装方向，脚本不自动调用 sudo 或修改系统 SDK。C++20 worker 的独立构建、协议和合成测试见 [services/native/README.md](../services/native/README.md)。
 
 ```bash
 node tools/doctor.mjs --native
@@ -71,6 +83,8 @@ powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 dev
 bash tools/pnpm.sh dev
 ```
 
+Playwright 在受管理的同一进程中运行前端服务器，并由测试目录注入 IPC 夹具，避免测试退出后遗留开发进程；`MAAVERGE_TEST_PORT` 可设置独立测试端口。
+
 窗口关闭默认进入托盘；关闭设置中的“关闭窗口时最小化到托盘”后，关闭窗口会完全退出。托盘的“退出”始终完全退出。无系统托盘的 Linux 桌面不属于已验证交互环境，需后续实机确认。
 
 ## 多 checkout 与配置
@@ -85,7 +99,11 @@ bash tools/pnpm.sh dev
 
 `MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各自的 worktree。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
 
-`pnpm run doctor` 只检查环境，不连接设备、不发模型请求、不输出密钥；显式写 `run` 可避免调用 pnpm 自带的同名命令。`pnpm run doctor --native` 将原生依赖设为必需。设备发现也会查找模拟器内置 ADB，非标准安装需配置路径。真实设备测试由用户明确选择，且必须记录核心、资源、平台及设备标识的脱敏值。
+同一 checkout 同时启动界面测试与桌面时，应分别设置不同的 `MAAVERGE_DEV_PORT`。Vite 的预构建缓存按实际端口存放在 `apps/desktop/node_modules/.vite/port-<port>`，避免多个实例覆盖彼此的 Tauri 模块。若旧窗口出现 `Importing a module script failed` 等组件加载错误，点击「重新加载界面」；更新脚本后应先完全退出旧开发窗口与命令，再重新运行 `pnpm dev`。普通服务连接失败仍使用「重新连接」。
+
+开发启动器在 macOS/Linux 为 Vite 和 Tauri 创建独立进程组，终端按 Ctrl+C 时一并结束其后代进程；Windows 继续使用定向 `taskkill /t` 清理。不会按应用名终止其他 checkout 的进程。桌面窗口完全退出时仍由 Rust 负责关闭本地服务与释放租约。
+
+`pnpm run doctor` 检查固定工具版本、所有工作区的直接依赖和本地环境，不连接设备、不发模型请求、不输出密钥；显式写 `run` 可避免调用 pnpm 自带的同名命令。`pnpm run doctor --native` 将原生依赖设为必需。`pnpm build` 与默认 TypeScript 桌面 `pnpm dev` 在编译前执行原生诊断；构建、检查和运行入口若发现工作区依赖缺失，会直接提示冻结同步命令，避免到 Bun 打包时才出现 `Could not resolve tar/yauzl` 或缺少 Bun 类型。设备发现也会查找模拟器内置 ADB，非标准安装需配置路径。可选 ADB 的缺失不阻断界面测试。真实设备测试由用户明确选择，且必须记录核心、资源、平台及设备标识的脱敏值。
 
 ## 模拟器连接与任务覆盖
 

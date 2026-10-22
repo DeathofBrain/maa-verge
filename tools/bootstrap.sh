@@ -13,9 +13,12 @@ for argument in "$@"; do
     *) printf 'Unknown option: %s\n' "$argument" >&2; exit 1 ;;
   esac
 done
-if [[ -x "$tool_root/node/bin/node" ]]; then
-  export PATH="$tool_root/node/bin:$PATH"
-elif ! command -v node >/dev/null || [[ "$(node --version)" != "v$node_version" ]]; then
+node_executable="$tool_root/node/bin/node"
+if [[ -x "$node_executable" && "$("$node_executable" --version 2>/dev/null)" == "v$node_version" ]]; then
+  :
+elif [[ ! -e "$tool_root/node" ]] && command -v node >/dev/null && [[ "$(node --version)" == "v$node_version" ]]; then
+  node_executable="$(command -v node)"
+else
   case "$(uname -s)" in
     Darwin) node_os=darwin ;;
     Linux) node_os=linux ;;
@@ -26,30 +29,36 @@ elif ! command -v node >/dev/null || [[ "$(node --version)" != "v$node_version" 
     arm64|aarch64) node_arch=arm64 ;;
     *) printf 'Unsupported Node architecture\n' >&2; exit 1 ;;
   esac
+  node_staging="$(mktemp -d "$tool_root/node-install.XXXXXX")"
+  trap 'rm -rf -- "$node_staging"' EXIT
   archive="node-v$node_version-$node_os-$node_arch.tar.gz"
   source_url="https://nodejs.org/dist/v$node_version"
-  curl --fail --location "$source_url/$archive" --output "$tool_root/$archive"
-  curl --fail --location "$source_url/SHASUMS256.txt" --output "$tool_root/node-shasums.txt"
-  expected="$(awk -v file="$archive" '$2 == file { print $1 }' "$tool_root/node-shasums.txt")"
+  curl --fail --location "$source_url/$archive" --output "$node_staging/$archive"
+  curl --fail --location "$source_url/SHASUMS256.txt" --output "$node_staging/node-shasums.txt"
+  expected="$(awk -v file="$archive" '$2 == file { print $1 }' "$node_staging/node-shasums.txt")"
   if command -v sha256sum >/dev/null; then
-    actual="$(sha256sum "$tool_root/$archive" | awk '{ print $1 }')"
+    actual="$(sha256sum "$node_staging/$archive" | awk '{ print $1 }')"
   else
-    actual="$(shasum -a 256 "$tool_root/$archive" | awk '{ print $1 }')"
+    actual="$(shasum -a 256 "$node_staging/$archive" | awk '{ print $1 }')"
   fi
   [[ -n "$expected" && "$actual" == "$expected" ]] || { printf 'Node checksum mismatch\n' >&2; exit 1; }
-  tar -xzf "$tool_root/$archive" -C "$tool_root"
-  mv "$tool_root/node-v$node_version-$node_os-$node_arch" "$tool_root/node"
-  rm -- "$tool_root/$archive"
-  export PATH="$tool_root/node/bin:$PATH"
+  tar -xzf "$node_staging/$archive" -C "$node_staging"
+  [[ "$("$node_staging/node-v$node_version-$node_os-$node_arch/bin/node" --version)" == "v$node_version" ]] || { printf 'Node version validation failed\n' >&2; exit 1; }
+  rm -rf -- "$tool_root/node"
+  mv "$node_staging/node-v$node_version-$node_os-$node_arch" "$tool_root/node"
 fi
+export PATH="$(dirname -- "$node_executable"):$PATH"
+package_manager="$("$node_executable" -p "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).packageManager" "$project_root/package.json")"
+[[ "$package_manager" =~ ^pnpm@10\.[0-9]+\.[0-9]+$ ]] || { printf 'Pin packageManager to pnpm 10\n' >&2; exit 1; }
+pnpm_version="${package_manager#pnpm@}"
 pnpm_entry="$tool_root/pnpm/node_modules/pnpm/bin/pnpm.cjs"
-if [[ ! -f "$pnpm_entry" ]]; then
-  package_manager="$(node -p "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).packageManager" "$project_root/package.json")"
-  [[ "$package_manager" =~ ^pnpm@10\.[0-9]+\.[0-9]+$ ]] || { printf 'Pin packageManager to pnpm 10\n' >&2; exit 1; }
+if [[ ! -f "$pnpm_entry" ]] || [[ "$("$node_executable" "$pnpm_entry" --version 2>/dev/null)" != "$pnpm_version" ]]; then
   npm install --prefix "$tool_root/pnpm" "$package_manager" --no-audit --no-fund
 fi
+[[ "$("$node_executable" "$pnpm_entry" --version)" == "$pnpm_version" ]] || { printf 'pnpm version validation failed\n' >&2; exit 1; }
 cd "$project_root"
-node "$pnpm_entry" install --frozen-lockfile
+"$node_executable" "$pnpm_entry" install --frozen-lockfile
+"$node_executable" tools/setup-bun.mjs
 if ! "$skip_reference"; then
   if [[ -x "$tool_root/uv/uv" ]]; then export PATH="$tool_root/uv:$PATH"; fi
   if ! command -v uv >/dev/null; then
@@ -60,5 +69,5 @@ if ! "$skip_reference"; then
   uv python install 3.12
   uv sync --frozen
 fi
-if "$native"; then node tools/doctor.mjs --native; fi
+if "$native"; then "$node_executable" tools/doctor.mjs --native; fi
 printf 'Ready. Run: bash tools/pnpm.sh dev\n'

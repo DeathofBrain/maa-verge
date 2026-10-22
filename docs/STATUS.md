@@ -28,6 +28,13 @@
 
 ## 平台验证
 
+### 本次本地与远端主分支同步（Windows x64，2026-10-22）
+
+- 集成本地移除产品模拟运行与远端编译环境、开发进程清理、模块加载恢复、设备连接反馈及圆形图标改动。产品继续只接受 native；界面测试通过测试目录注入 IPC 夹具，不恢复产品模拟入口。
+- 适配新增设备发现测试的 Runtime 构造参数与测试桥，确保替代 ADB 配置生效；开发入口测试改为验证旧 mock 参数被拒绝。修复环境检查测试的 Windows 路径分隔符断言；引导保留 SkipReference 参数并安装固定 Bun，Playwright 使用同进程 Vite 和独立测试端口。
+- `pnpm check` 完整通过：10 项工程回归（2 项 Unix 进程组测试在 Windows 明确跳过）、契约同步与 8 项契约测试、三个工作区类型检查、4/4 CTest、644 项 Bun 测试（Windows SIGTERM 另跳过 1 项）、Python ruff/mypy 与 274 项 pytest、Rust fmt/clippy/test。需包内服务的 Rust transport 测试保持默认忽略，本轮未另行执行。
+- 42 项 Edge 界面测试与 `pnpm -r build` 通过，包含设备发现/异步连接反馈、模块失败重载恢复及无桌面桥时的明确错误；PowerShell 引导解析与 Bash 脚本语法检查通过。本轮未启动真实设备或桌面服务、调用模型、重新构建安装包或验收 macOS/Linux。
+
 ### 本次移除产品模拟运行（2026-10-22）
 
 - `pnpm dev`、Tauri 和 Bun 服务入口统一真实 native，移除模拟设备、示例任务、模拟执行进度、假截图/点击和模拟更新源。普通浏览器无桌面桥时明确提示通过 `pnpm dev` 启动桌面应用，不再生成演示数据；`pnpm dev:ui` 只提供前端服务器。
@@ -36,6 +43,45 @@
 - Windows x64 本轮 `pnpm check` 通过：契约同步、三个工作区 TypeScript、8 项契约测试、4/4 CTest、638 项 Bun 测试（Windows 不支持可移植 SIGTERM，另跳过 1 项）、Python ruff/mypy 与 274 项 pytest、Rust fmt/clippy/test。Bun 合成验证器的中间 PE 改在独立测试目录创建，完整检查复测通过；编译失败时保留具体 stderr，不添加重试或跳过。
 - 37 项 Edge 界面测试、前端生产构建、Bun/C++ 自包含打包、空 PATH 包内 smoke、Rust transport 集成 smoke 及 Windows release 构建（无安装包）通过。真实 WebView2 验证 native 空设备、无虚拟 worker、Agent 提案保存、关窗进程清理和重启持久化；生产前端包不包含测试运行时或 PNG 夹具。
 - 本轮没有连接 MuMu、执行游戏任务、调用付费模型或发布安装包；Linux 容器和 macOS/Linux 运行未复测。此前各轮实测和 mock 验证记录保留下文，不能视为本轮复测结果。
+
+### 本次真实开发模式与设备操作反馈（macOS arm64，2026-10-22）
+
+- `pnpm dev` 与桌面宿主默认 native，启动器将所选模式传给 Vite/Tauri；保留显式 `MAAVERGE_MODE=mock` 和浏览器 `dev:mock`。已有 mock 数据仍与 native 数据隔离。旧终端若设置过 mock，需移除或修改变量后完全退出并重启。
+- 设备发现、自动/手动连接和断开在页首显示进度、数量、空结果与错误，操作期间防止重复提交；重试清除旧诊断。连接按实际设备快照确认就绪，观察 35 秒以覆盖核心默认 30 秒异步期限，未就绪显示待确认，不误报成功。
+- 自动连接保留 ADB 错误详情；本机候选端口改为最多 4 并发、总计 60 秒发现预算并预留最终列表查询，诊断按候选顺序呈现。超时只终止对应 ADB 客户端；不终止共享 ADB 服务。
+- Playwright 在受管理的同一进程中直接运行 Vite，避免开发启动器的独立进程组在测试退出后残留；全套测试使用新建的独立端口，结束后确认端口可重新绑定。
+- 完整 `pnpm check` 通过：12 项工程回归、契约同步与 8 项契约测试、三个工作区类型检查、643 项 Bun 测试、4/4 CTest、Python ruff/mypy 与 274 项 pytest、Rust fmt/clippy/test。41 项 Chromium mock E2E 通过，包含异步未就绪、重复点击、空结果、错误重试及 390px 窄窗。
+- 完整 `pnpm build` 通过，包含自包含服务、包内空 PATH smoke、Rust transport smoke、release `.app` 与 arm64 `.dmg`。本轮未操作真实模拟器或游戏、请求模型或发布；真实连接与 Windows/Linux 的本次变更仍待对应环境验收。
+
+### 本次 macOS 品牌行避让（2026-10-22）
+
+- macOS 桌面侧栏顶部预留 32px 原生红黄绿按钮区域，Logo 与 Maa Verge 标题在其下方左对齐；恢复通用 32px Logo 和响应式字号，品牌区域仍可拖动窗口。Windows、Linux 和浏览器使用原有布局。
+- 桌面前端类型检查与生产构建、41 项 Chromium mock E2E 通过。浏览器中对 900/1280/1440px 宽度、640/900px 高度与浅深主题进行 48 组修改前后检查：12 组 macOS 样式无图文重叠或横向溢出，36 组其他平台/浏览器布局测量一致；深色侧栏截图已检查。
+- 本轮仅验证浏览器 mock 与平台样式，未重新构建安装包或验收原生红黄绿按钮；Windows/Linux 原生窗口仍待对应宿主验证。E2E 结束时遗留的本轮 Vite 进程组已手动清理。
+
+### 本次圆形 Logo 与 macOS 显示修复（macOS arm64，2026-10-22）
+
+- 修复 macOS 专用样式主动隐藏品牌图标的问题；品牌行保留原生窗口按钮空间，使用 24px Logo 与紧凑文字，900px 窄桌面不溢出。启动页、侧栏和浏览器共用圆形透明 PNG。
+- 按用户明确要求，以现有 Logo 为编辑输入，通过 imagegen CLI、`gpt-image-2.5-flare` 和本机 Codex 当前接口配置生成圆形帕拉斯图标；保留双角、发型、玫瑰和蓝色渐变。凭据未输出或写入仓库，完整提示词见 [branding.md](branding.md)。
+- 重新生成 PNG/ICO/ICNS；macOS ICNS 在 1024px 透明画布上使用 824px 图案（每边 100px 留白），避免原满幅素材在 Dock 中偏大。脚本使用内嵌 PNG 的临时 SVG，无新增依赖；两个连续生成结果的五个文件哈希一致，ICO 六种尺寸与 ICNS 八个 PNG 条目均已解码检查，留白随分辨率缩放。
+- 桌面前端类型检查与生产构建、37 项 Chromium mock E2E 通过。另检查 macOS 样式在 900/1280/1440px、浅深主题下图片已解码且可见、图文边界及页面无横向溢出；24–64px 图片浅深底已检查。`tauri build --bundles app -- --locked` 成功，使用独立数据根和 mock 模式启动新版 `.app`，原生 WebView 中圆形 Logo 正常显示；包内 ICNS 与源文件哈希一致。
+- Dock 已验证图标文件尺寸、透明边界及包内资源；实际 Dock 与相邻应用的视觉对比因系统锁定未完成。未重新制作 DMG、交互安装或验证 Windows/Linux 原生图标，本轮未连接真实游戏设备或发布。
+
+### 本次开发启动模块加载修复（macOS arm64，2026-10-22）
+
+- 用户确认截图中的 `Importing a module script failed` 来自终端 `pnpm dev`。同一 checkout 的旧 Vite 实例共用 `.vite/deps`；不同依赖图覆盖预构建文件后，旧 Tauri 模块 URL 返回 `504 Outdated Optimize Dep`。现按实际开发端口隔离缓存，并提前包含 contracts 内动态导入的四个 Tauri API 模块。
+- 启动页识别三类浏览器的动态模块加载失败，显示「重新加载界面」并完整重载页面，清除 WebKit 缓存的失败导入；普通服务错误继续使用重新连接。开发启动器在 macOS/Linux 清理自己创建的整个进程组，Windows 保持 `taskkill /t`，避免退出后残留桌面/Bun 进程。
+- 最终 `pnpm check` 完整通过：9 项工程回归（环境 6、进程清理 2、实际 Vite 缓存隔离 1）、契约同步与 8 项契约测试、三个工作区类型检查、637 项 Bun 测试、4/4 CTest、Python ruff/mypy 与 274 项 pytest、Rust fmt/clippy/test。37 项 Chromium mock E2E 通过，包含人为中断 Tauri 模块请求后重载恢复。完整 `pnpm build` 再次通过，包含包内空 PATH smoke、Rust transport smoke、release `.app` 与 arm64 `.dmg`。
+- 实际 `pnpm dev` 编译 Debug 二进制后，将同一可执行文件复制到隔离的临时 `.app`，连接本轮 Vite；在 macOS WKWebView 中实测主页与任务表正常显示，确认 WebView → Rust → TypeScript/Bun 的 mock 数据通信。另一次直接 `pnpm dev` 启动后发送 SIGINT，启动命令退出 0，Vite、Tauri、桌面与 Bun 后代均结束，已有其他 mock 实例保留。
+- 本次验证使用独立 mock 数据与端口；未连接真实设备、请求模型、交互安装或发布。临时 Debug bundle 的开发 WebView 检查不代替发行包安装/退出验收。Windows/Linux 的本次变更仍待对应宿主执行。
+
+### 本次编译恢复与跨平台环境处理（macOS arm64，2026-10-22）
+
+- 在 macOS 26.6.2 / Apple Silicon 复现 `pnpm build` 无法解析 `tar` / `yauzl`，以及后端类型检查缺少 Bun 类型；原因是本地依赖未随 TypeScript 后端新增工作区同步。执行 `pnpm install --frozen-lockfile` 后恢复，依赖锁文件未修改。
+- 构建、开发、检查与后端入口现在提前检查各工作区的直接依赖，缺失时提示冻结同步。引导脚本校验并修复固定 Node/pnpm，默认安装固定 Bun；浏览器 MockOnly 跳过 Bun/Python，同时指定 Native 时仍安装 Bun。包装脚本拒绝缓存中的错误版本，Node 下载/校验失败保留旧工具。
+- 桌面编译前执行 `doctor --native`：校验固定 Node/pnpm/Bun/Rust、支持的宿主目标、CMake 3.25+ 与实际 C++20 编译/链接；Windows 复用 Visual Studio 内置 CMake，支持 `.tools/cmake/bin`，过期本地 CMake 可回退到合格系统工具。Linux 检查 pkg-config 系统库，文档明确 Ubuntu 22.04 的 CMake 升级路径与 24.04 的 FUSE 包差异。浏览器环境可用 `doctor --mock`。原生 CI 增加同一环境门禁。
+- macOS 本机 `pnpm check` 通过：契约同步、三个工作区类型检查、637 项 Bun 测试、8 项契约测试、4/4 CTest、Python ruff/mypy 与 274 项 pytest、Rust fmt/clippy/test；默认跳过的包内 Rust transport 测试已在构建阶段单独执行通过。6 项环境回归覆盖缺少后端依赖、旧 CMake、系统回退、Windows VS CMake 和平台提示；另有 9 项隔离 Bash fixture 验证引导选项、版本恢复、失败保留及参数传递。
+- 完整 `pnpm build` 通过，包含 Bun/C++ 自包含打包、空 PATH 包内 smoke、Rust transport smoke、release 桌面编译和 `.app` / arm64 `.dmg`。本轮未进行交互安装、WebView/界面重验、真实设备操作或发布；Windows/PowerShell、Linux 与 Intel macOS 的本次修改尚未在对应宿主执行，新增 CI 配置不作为已通过结果。
 
 ### 本次画面预览与人工点击（2026-10-22）
 
@@ -191,7 +237,7 @@
 
 ## 后续交接
 
-1. 完成 macOS 13.5 最低系统、正式签名/公证和三平台干净系统交互安装验收，补 Linux/macOS 实际 WebView 路径及真实下载核心的加载验证；随后由用户明确选择模拟器测试首次安装、任务回调、停止、断线与更新切换，记录版本及脱敏设备信息。
+1. 完成 macOS 13.5 最低系统、正式签名/公证和三平台干净系统交互安装验收，补 Linux 实际 WebView、macOS 发行包生命周期及真实下载核心的加载验证；随后由用户明确选择模拟器测试首次安装、任务回调、停止、断线与更新切换，记录版本及脱敏设备信息。
 2. 以 [原 MAA 功能矩阵](maa-compatibility.md) 为发布门槛，补齐全参数专用表单、受限消耗控制、识别/库存工具、定时多配置、作业管理和失败恢复；继续连接诊断、平台专用驱动及六种客户端资源验证。
 3. 接入用户自备模型 API、系统钥匙串、工具权限和费用预算，再逐步开放 Agent 的真实执行。
 4. 完成三平台签名发行与应用更新，再推进独立战斗研究及评测。

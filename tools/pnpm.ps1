@@ -2,12 +2,18 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $localNode = Join-Path $projectRoot '.tools/node/node.exe'
-$nodeExecutable = if (Test-Path -LiteralPath $localNode) { $localNode } else { (Get-Command node -ErrorAction Stop).Source }
+$nodeCommand = Get-Command node -ErrorAction SilentlyContinue
+$nodeExecutable = if (Test-Path -LiteralPath $localNode) { $localNode } elseif ($nodeCommand) { $nodeCommand.Source } else { $null }
+$nodeVersion = (Get-Content (Join-Path $projectRoot '.node-version') -Raw).Trim()
+$installedNode = if ($nodeExecutable) { try { & $nodeExecutable --version 2>$null } catch { '' } } else { '' }
+if ($installedNode -ne "v$nodeVersion") { throw "Node $nodeVersion is required. Run tools/bootstrap.ps1 to repair the checkout tools." }
 $env:PATH = "$(Split-Path -Parent $nodeExecutable);$env:PATH"
 $localUvDirectory = Join-Path $projectRoot '.tools/uv'
 if (Test-Path -LiteralPath (Join-Path $localUvDirectory 'uv.exe')) { $env:PATH = "$localUvDirectory;$env:PATH" }
 $pnpmEntry = Join-Path $projectRoot '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs'
-if (!(Test-Path -LiteralPath $pnpmEntry)) { throw 'Run tools/bootstrap.ps1 first, or use your installed pinned pnpm.' }
+$manager = (Get-Content (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json).packageManager
+$installedPnpm = if (Test-Path -LiteralPath $pnpmEntry) { try { & $nodeExecutable $pnpmEntry --version 2>$null } catch { '' } } else { '' }
+if ($installedPnpm -ne $manager.Substring(5)) { throw "$manager is required. Run tools/bootstrap.ps1 to repair the checkout tools." }
 Push-Location $projectRoot
 try {
     & $nodeExecutable $pnpmEntry @args

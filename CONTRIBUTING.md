@@ -16,7 +16,7 @@ pnpm dev:mock
 - React 只使用 `packages/contracts` 的 transport；新增接口时同步 Pydantic 源、生成类型、mock 适配器、测试和文档。
 - stdout 专用于换行 JSON-RPC；服务诊断写 stderr，日志不记录 API Key 或真实账号数据。
 - 不覆盖运行中核心或资源；更新候选、验证和激活必须是不同状态。
-- 默认 mock；真实设备、付费模型和发布操作由明确授权另行测试并记录。
+- `pnpm dev` 默认真实设备模式；浏览器开发使用 `pnpm dev:mock`，自动测试与 CI 显式使用 mock。真实设备、付费模型和发布操作由明确授权另行测试并记录。
 - 消耗预算默认 0，模型参数由确定性规则校验；不能向模型暴露任意命令执行。
 
 先运行与修改相关的检查，再执行 `pnpm check` 和相关端到端场景。原生修改运行 `node tools/check-native.mjs --required`。`pnpm check` 仅在 cargo 缺失时明确跳过原生检查；存在工具链但检查失败时必须修复，CI 始终要求原生检查通过。

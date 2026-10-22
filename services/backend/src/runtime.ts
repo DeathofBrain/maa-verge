@@ -193,7 +193,9 @@ export class Runtime {
       if (!this.running || this.switching) throw new RpcError(-32011, '正在退出或切换核心，请稍后重试');
       if (!automatic) this.suppressed.clear();
       if (!this.store.get('active', 'combo', {}).core) throw new RpcError(-32040, '请先在更新中心安装并启用核心，再自动连接模拟器');
-      const result = await autoDiscover(this.adbExecutable());
+      let result;
+      try { result = await autoDiscover(this.adbExecutable()); }
+      catch (error) { throw new RpcError(-32040, '模拟器自动发现失败', String(error)); }
       const { devices: discovered, diagnostics } = result;
       const devices: any[] = [], seen = new Set<string>();
       for (const candidate of discovered) {

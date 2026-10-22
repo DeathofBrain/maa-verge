@@ -28,14 +28,20 @@ async function main() {
   const scratch = mkdtempSync(path.join(temporaryRoot, 'maa-verge-icons-'));
   try {
     await run('pnpm', ['exec', 'tauri', 'icon', source, '--output', scratch]);
-    normalizeIcns(path.join(scratch, 'icon.icns'));
+    // Dock icons need optical padding; keep the UI and Windows/Linux artwork
+    // full-sized. Embed the PNG so this stays portable and needs no image tools.
+    const macosSource = path.join(scratch, 'macos.svg');
+    const macosDirectory = path.join(scratch, 'macos');
+    writeFileSync(macosSource, `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><image x="100" y="100" width="824" height="824" href="data:image/png;base64,${readFileSync(source).toString('base64')}" /></svg>`);
+    await run('pnpm', ['exec', 'tauri', 'icon', macosSource, '--output', macosDirectory]);
+    normalizeIcns(path.join(macosDirectory, 'icon.icns'));
     mkdirSync(directory, { recursive: true });
     for (const [generated, target] of [
       ['32x32.png', '32x32.png'],
       ['128x128.png', '128x128.png'],
       ['128x128@2x.png', '256x256.png'],
       ['icon.ico', 'icon.ico'],
-      ['icon.icns', 'icon.icns'],
+      ['macos/icon.icns', 'icon.icns'],
     ]) {
       copyFileSync(path.join(scratch, generated), path.join(directory, target));
     }

@@ -1,7 +1,8 @@
-import { existsSync, accessSync, constants } from 'node:fs';
+import { existsSync, accessSync, constants, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { root, pinnedNode, probe, devEnvironment } from './project.mjs';
 import { bunVersion, ensureBun } from './setup-bun.mjs';
+import { bootstrapHint, nativeHint, missingWorkspaceDependencies, resolveCmake, probeCppToolchain } from './environment.mjs';
 
 let failures = 0;
 function report(ok, label, detail, required = true) {
@@ -9,14 +10,17 @@ function report(ok, label, detail, required = true) {
   if (!ok && required) failures++;
 }
 const native = process.argv.includes('--native');
+const pinnedPnpm = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).packageManager.split('@')[1];
 const checks = [
-  ['Node.js', 'node', /^v24\./u, `Node ${pinnedNode}`],
-  ['pnpm', 'pnpm', /^10\./u, 'pnpm 10'],
+  ['Node.js', 'node', `v${pinnedNode}`],
+  ['pnpm', 'pnpm', pinnedPnpm],
 ];
-for (const [label, executable, pattern, expected] of checks) {
+for (const [label, executable, expected] of checks) {
   const result = probe(executable);
-  report(result.ok && pattern.test(result.output), label, result.output.split('\n')[0] || `Install ${expected}`);
+  report(result.ok && result.output === expected, label, `${result.output.split('\n')[0] || 'missing'} (expected ${expected}; repair: ${bootstrapHint()})`);
 }
+const missingDependencies = missingWorkspaceDependencies();
+report(!missingDependencies.length, 'Workspace dependencies', missingDependencies.length ? `${missingDependencies.join(', ')}; run pnpm install --frozen-lockfile` : 'all direct workspace dependencies present');
 try { report(true, 'Bun', `${bunVersion}: ${await ensureBun({ download: false })}`); }
 catch (error) { report(false, 'Bun', `${error.message}; run pnpm setup:bun`); }
 const python = probe('uv', ['run', '--frozen', '--no-sync', 'python', '--version']);
@@ -24,9 +28,19 @@ report(python.ok && /^Python 3\.12\./u.test(python.output), 'Python reference te
 for (const file of ['pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock']) {
   report(existsSync(path.join(root, file)), file, existsSync(path.join(root, file)) ? 'present' : 'missing');
 }
+const pinnedRust = readFileSync(path.join(root, 'rust-toolchain.toml'), 'utf8').match(/channel\s*=\s*"([^"]+)"/u)[1];
 for (const [label, name] of [['Rust', 'rustc'], ['Cargo', 'cargo']]) {
   const result = probe(name);
-  report(result.ok, label, result.ok ? result.output : 'Native development requires rustup and the pinned toolchain', native);
+  report(result.ok && result.output.startsWith(`${name} ${pinnedRust} `), label, result.ok ? result.output : `Install Rust ${pinnedRust}. ${nativeHint()}`, native);
+}
+if (native) {
+  report(['win32/x64', 'linux/x64', 'darwin/arm64', 'darwin/x64'].includes(`${process.platform}/${process.arch}`), 'Native target', `${process.platform}/${process.arch}`);
+  try {
+    const cmake = resolveCmake();
+    report(true, 'CMake', `${cmake.version}: ${cmake.executable}`);
+    const compiler = probeCppToolchain(cmake.executable);
+    report(compiler.ok, 'C++ toolchain', compiler.ok ? compiler.output : `${compiler.output}\n${nativeHint()}`);
+  } catch (error) { report(false, 'CMake / C++ toolchain', error.message); }
 }
 const environment = devEnvironment();
 let ancestor = environment.MAAVERGE_DATA_DIR;
@@ -37,7 +51,7 @@ report(writable, 'Data root', environment.MAAVERGE_DATA_DIR);
 const adb = probe(process.env.MAAVERGE_ADB_PATH || 'adb', ['version']);
 report(adb.ok, 'ADB', adb.ok ? adb.output.split('\n')[0] : 'Configure MAAVERGE_ADB_PATH or discover the emulator bundled ADB', false);
 if (process.platform === 'linux') {
-  for (const pkg of ['webkit2gtk-4.1', 'gtk+-3.0', 'ayatana-appindicator3-0.1']) {
+  for (const pkg of ['webkit2gtk-4.1', 'gtk+-3.0', 'ayatana-appindicator3-0.1', 'openssl', 'librsvg-2.0']) {
     const result = probe('pkg-config', ['--modversion', pkg]);
     report(result.ok, pkg, result.ok ? result.output : 'See docs/development.md Linux prerequisites', native);
   }

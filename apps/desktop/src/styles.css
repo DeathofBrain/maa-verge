@@ -637,14 +637,10 @@ textarea.text-input {
 }
 
 [data-desktop-platform="macos"] .sidebar>.brand {
-  padding-left: 82px;
-  padding-right: 8px;
-  font-size: 17px;
+  /* Reserve the native traffic-light row above the logo and title. */
+  height: 89px;
+  padding-top: 32px;
   white-space: nowrap;
-}
-
-[data-desktop-platform="macos"] .sidebar>.brand .brand-mark {
-  display: none;
 }
 
 [data-desktop-platform] .topbar-actions {
