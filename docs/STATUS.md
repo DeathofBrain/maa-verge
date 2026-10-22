@@ -37,6 +37,20 @@
 - 完整 `pnpm check` 通过：12 项工程回归、契约同步与 8 项契约测试、三个工作区类型检查、643 项 Bun 测试、4/4 CTest、Python ruff/mypy 与 274 项 pytest、Rust fmt/clippy/test。41 项 Chromium mock E2E 通过，包含异步未就绪、重复点击、空结果、错误重试及 390px 窄窗。
 - 完整 `pnpm build` 通过，包含自包含服务、包内空 PATH smoke、Rust transport smoke、release `.app` 与 arm64 `.dmg`。本轮未操作真实模拟器或游戏、请求模型或发布；真实连接与 Windows/Linux 的本次变更仍待对应环境验收。
 
+### 本次 macOS 品牌行避让（2026-10-22）
+
+- macOS 桌面侧栏顶部预留 32px 原生红黄绿按钮区域，Logo 与 Maa Verge 标题在其下方左对齐；恢复通用 32px Logo 和响应式字号，品牌区域仍可拖动窗口。Windows、Linux 和浏览器使用原有布局。
+- 桌面前端类型检查与生产构建、41 项 Chromium mock E2E 通过。浏览器中对 900/1280/1440px 宽度、640/900px 高度与浅深主题进行 48 组修改前后检查：12 组 macOS 样式无图文重叠或横向溢出，36 组其他平台/浏览器布局测量一致；深色侧栏截图已检查。
+- 本轮仅验证浏览器 mock 与平台样式，未重新构建安装包或验收原生红黄绿按钮；Windows/Linux 原生窗口仍待对应宿主验证。E2E 结束时遗留的本轮 Vite 进程组已手动清理。
+
+### 本次圆形 Logo 与 macOS 显示修复（macOS arm64，2026-10-22）
+
+- 修复 macOS 专用样式主动隐藏品牌图标的问题；品牌行保留原生窗口按钮空间，使用 24px Logo 与紧凑文字，900px 窄桌面不溢出。启动页、侧栏和浏览器共用圆形透明 PNG。
+- 按用户明确要求，以现有 Logo 为编辑输入，通过 imagegen CLI、`gpt-image-2.5-flare` 和本机 Codex 当前接口配置生成圆形帕拉斯图标；保留双角、发型、玫瑰和蓝色渐变。凭据未输出或写入仓库，完整提示词见 [branding.md](branding.md)。
+- 重新生成 PNG/ICO/ICNS；macOS ICNS 在 1024px 透明画布上使用 824px 图案（每边 100px 留白），避免原满幅素材在 Dock 中偏大。脚本使用内嵌 PNG 的临时 SVG，无新增依赖；两个连续生成结果的五个文件哈希一致，ICO 六种尺寸与 ICNS 八个 PNG 条目均已解码检查，留白随分辨率缩放。
+- 桌面前端类型检查与生产构建、37 项 Chromium mock E2E 通过。另检查 macOS 样式在 900/1280/1440px、浅深主题下图片已解码且可见、图文边界及页面无横向溢出；24–64px 图片浅深底已检查。`tauri build --bundles app -- --locked` 成功，使用独立数据根和 mock 模式启动新版 `.app`，原生 WebView 中圆形 Logo 正常显示；包内 ICNS 与源文件哈希一致。
+- Dock 已验证图标文件尺寸、透明边界及包内资源；实际 Dock 与相邻应用的视觉对比因系统锁定未完成。未重新制作 DMG、交互安装或验证 Windows/Linux 原生图标，本轮未连接真实游戏设备或发布。
+
 ### 本次开发启动模块加载修复（macOS arm64，2026-10-22）
 
 - 用户确认截图中的 `Importing a module script failed` 来自终端 `pnpm dev`。同一 checkout 的旧 Vite 实例共用 `.vite/deps`；不同依赖图覆盖预构建文件后，旧 Tauri 模块 URL 返回 `504 Outdated Optimize Dep`。现按实际开发端口隔离缓存，并提前包含 contracts 内动态导入的四个 Tauri API 模块。
