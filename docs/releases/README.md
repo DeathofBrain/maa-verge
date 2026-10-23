@@ -13,7 +13,8 @@
 5. **已知问题与限制**：列出影响使用的缺口、平台范围和反馈入口，保持直接可见。
 6. **详细更新**：当前版本放入 `<details open>`，按“新增 | New”“改进 | Improved”“修复 | Fix”“文档 | Docs”“其他 | Other”分类。没有内容的分类省略。
 7. **构建与许可**：验证记录、构建来源、许可和对应源码使用独立的折叠块，保留可追溯链接。
-8. **完整变更**：末尾提供上一发布标签到本版的 compare 链接；首个版本提供源码标签链接。
+8. **完整变更**：提供上一发布标签到本版的 compare 链接；首个版本提供源码标签链接。
+9. **上游引用与版权**：放在全文最底部、保持展开，列出 MAA / MaaCore 与 MaaResource 的上游地址、实际引用范围和版权归属，链接对应上游许可。第三方内容保留各自声明。
 
 ## 写作与核对
 
@@ -26,6 +27,7 @@
 * Release 正文中的源码、文档和图片使用完整 URL，文档链接固定到本版标签或提交。下载链接必须使用实际上传的文件名，检查大小写、架构和格式。
 * 首屏保留用户需要的提示与下载入口；测试数量、进程实现和重建细节放入折叠块或对应文档。构建、合成回归、交互安装和真实设备验收分别标明实际范围。
 * 保留 AGPL 对应源码、依赖许可及嵌入运行时源码 / 重建入口。根据本版实际依赖填写，不能沿用已失效的源码提交或引擎版本。
+* 底部署名分别说明上游与本项目自有代码的版权，注明参考文档 / Release 结构及复用核心 / 资源的范围；游戏资源与其他第三方内容按各自声明标注，不统一归入应用许可。
 
 ## 可复制骨架
 
@@ -92,6 +94,14 @@
 </details>
 
 **完整变更**：[<previous-tag> → <tag>](https://github.com/DeathofBrain/maa-verge/compare/<previous-tag>...<tag>)
+
+### 上游引用与版权
+
+* 上游项目：[MAA / MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights)。本项目复用 MaaCore 自动化核心，参考上游任务协议、连接配置与 Release 说明结构；按本版实际情况核对引用范围。
+* 游戏资源来源：[MaaResource](https://github.com/MaaAssistantArknights/MaaResource)，仓库许可见其 [LICENSE](https://github.com/MaaAssistantArknights/MaaResource/blob/main/LICENSE)。游戏素材及第三方内容保留各自的版权与授权声明。
+* MAA / MaaCore 开源代码的版权归上游原作者及贡献者所有，依据 [AGPL-3.0-only](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/<maacore-tag>/LICENSE) 使用；Maa Verge 自有代码的版权归本项目贡献者所有，同样采用 AGPL-3.0-only。
+
+Maa Verge 为独立项目，不代表游戏官方或 MaaAssistantArknights 官方客户端。
 ```
 
 ## 发布正文的使用
