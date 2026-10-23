@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { assertPackageTagAbsent, installerKind, parseChecksums, prepareReleasePackage, releaseVersion, validateRelease, verifyExtractedPackage, verifyPackageFiles } from "../github-package.mjs";
+import { assertPackageTagAbsent, installerKind, parseChecksums, prepareReleasePackage, releaseVersion, updaterAssetKind, validateRelease, verifyExtractedPackage, verifyPackageFiles } from "../github-package.mjs";
 
 const names = [
   "Maa-Verge_0.1.0_x64-setup.exe",
@@ -22,12 +22,30 @@ const release = { tag_name: "v0.1.0", draft: false, published_at: "2026-10-23T00
 const digest = createHash("sha256").update("test").digest("hex");
 const manifest = names.map((name) => `${digest}  ${name}`).join("\n") + "\n";
 
-test("release tags are stable versions and cannot inject refs, paths or output lines", () => {
+test("release tags accept stable and prerelease versions without refs, paths or output injection", () => {
   assert.equal(releaseVersion("v0.1.0"), "0.1.0");
   assert.equal(releaseVersion("v12.34.56"), "12.34.56");
-  for (const tag of [undefined, "0.1.0", "v01.1.0", "v0.1.0/latest", "v0.1.0\nimage=evil", "v0.1.0;echo hello", "v0.1.0+build", "v0.1.0-rc.1"]) {
+  assert.equal(releaseVersion('v0.2.0-rc.1'), '0.2.0-rc.1');
+  for (const tag of [undefined, "0.1.0", "v01.1.0", "v0.1.0/latest", "v0.1.0\nimage=evil", "v0.1.0\n", "v0.1.0;echo hello", "v0.1.0+build", "v0.1.0-rc.01", "v0.1.0-01", "v0.1.0-", "v0.1.0-a..b"]) {
     assert.throws(() => releaseVersion(tag), /Release tag/);
   }
+});
+
+const updaterNames = [
+  'latest.json', ...names.filter(name => !name.endsWith('.dmg')).map(name => `${name}.sig`),
+  'Maa-Verge_0.1.0_aarch64.app.tar.gz', 'Maa-Verge_0.1.0_x64.app.tar.gz',
+  'Maa-Verge_0.1.0_aarch64.app.tar.gz.sig', 'Maa-Verge_0.1.0_x64.app.tar.gz.sig',
+];
+const extendedAssets = [...release.assets, ...updaterNames.map((name, index) => ({ name, id: index + 9, size: 4, state: 'uploaded' }))];
+
+test('signed updater releases retain seven installers and require the complete recognized updater extension', () => {
+  assert.equal(validateRelease({ ...release, assets: extendedAssets }, 'v0.1.0').length, 18);
+  assert.equal(new Set(updaterNames.map(name => updaterAssetKind(name, '0.1.0'))).size, 10);
+  for (const name of ['preview.json', 'Maa-Verge_0.1.0_aarch64.dmg.sig', 'Maa-Verge_0.1.1_x64.app.tar.gz', 'Maa Verge.app.tar.gz', '../latest.json']) assert.equal(updaterAssetKind(name, '0.1.0'), undefined);
+  for (const assets of [extendedAssets.slice(1), [...release.assets, extendedAssets[8]], extendedAssets.map(asset => asset.name === 'latest.json' ? { ...asset, name: 'unknown.json' } : asset), extendedAssets.map(asset => asset.name.endsWith('_x64.app.tar.gz.sig') ? { ...asset, name: 'Maa-Verge_0.1.0_aarch64.app.tar.gz.sig' } : asset)]) {
+    assert.throws(() => validateRelease({ ...release, assets }, 'v0.1.0'));
+  }
+  assert.equal(installerKind('Maa-Verge_0.2.0-rc.1_x64-setup.exe', '0.2.0-rc.1'), 'windows-exe-x64');
 });
 
 test("published release accepts one installer for each supported OS, format and architecture", () => {
@@ -143,4 +161,20 @@ test("invalid checksum manifest stops preparation before installer downloads", a
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('signed updater assets are distributed and verified with the same checksum guarantees as installers', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'maa-verge-package-updater-'));
+  const allNames = extendedAssets.filter(asset => asset.name !== 'SHA256SUMS.txt').map(asset => asset.name);
+  const allManifest = allNames.map(name => `${digest}  ${name}`).join('\n') + '\n';
+  const assets = extendedAssets.map(asset => asset.name === 'SHA256SUMS.txt' ? { ...asset, size: Buffer.byteLength(allManifest) } : asset);
+  const requested = [];
+  try {
+    const context = path.join(directory, 'context');
+    await prepareReleasePackage({ ...release, assets }, 'v0.1.0', context, async id => { requested.push(id); return new Response(id === 8 ? allManifest : 'test'); });
+    assert.equal(requested.length, 18);
+    await verifyExtractedPackage(path.join(context, 'packages'), context, 'v0.1.0');
+    await writeFile(path.join(context, 'packages', 'latest.json'), 'evil');
+    await assert.rejects(verifyExtractedPackage(path.join(context, 'packages'), context, 'v0.1.0'), /SHA-256 mismatch/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });
