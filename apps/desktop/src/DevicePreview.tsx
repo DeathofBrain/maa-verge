@@ -4,7 +4,7 @@ import { rpc, type Device, type RpcResult } from '@maaverge/contracts';
 import './device-preview.css';
 
 type Frame = RpcResult<'device.frame'>;
-type DisplayedFrame = { frame: Frame; src: string; latency: number };
+type DisplayedFrame = { frame: Omit<Frame, 'data'>; src: string; latency: number };
 type Point = { left: number; top: number };
 const refreshRates = [5, 10, 15, 30, 60, 90, 120] as const;
 type RefreshRate = typeof refreshRates[number];
@@ -17,8 +17,14 @@ const readRefreshRate = (): RefreshRate => {
 };
 const maxFrameAgeMs = 2000;
 // A quick drawer reopen must wait for its previous, non-cancellable RPC to finish.
-const pendingFrames = new Map<string, Promise<Frame>>();
+const pendingFrames = new Map<string, Promise<void>>();
 const messageOf = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
+function frameUrl(frame: Frame): string {
+  const binary = atob(frame.data);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+  return URL.createObjectURL(new Blob([bytes], { type: frame.mimeType }));
+}
 
 export default function DevicePreview({ device, readOnly = false }: { device?: Device; readOnly?: boolean }) {
   const [displayed, setDisplayed] = useState<DisplayedFrame | null>(null);
@@ -35,13 +41,20 @@ export default function DevicePreview({ device, readOnly = false }: { device?: D
   const [clock, setClock] = useState(Date.now);
   const [point, setPoint] = useState<Point | null>(null);
   const clickPendingRef = useRef(false);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const displayedRef = useRef<DisplayedFrame | null>(null);
   const alive = useRef(true);
   const samples = useRef<number[]>([]);
   const online = !!device && device.state !== 'offline';
 
   useEffect(() => {
     alive.current = true;
-    return () => { alive.current = false; };
+    return () => {
+      alive.current = false;
+      imageRef.current?.removeAttribute('src');
+      if (displayedRef.current) URL.revokeObjectURL(displayedRef.current.src);
+      displayedRef.current = null;
+    };
   }, []);
   useEffect(() => {
     try { localStorage.setItem(refreshRateKey, String(refreshHz)); } catch { /* Refresh still works when preference storage is unavailable. */ }
@@ -52,18 +65,31 @@ export default function DevicePreview({ device, readOnly = false }: { device?: D
     return () => document.removeEventListener('visibilitychange', visibility);
   }, []);
   useEffect(() => {
-    if (!displayed) return;
-    const timer = window.setInterval(() => setClock(Date.now()), 250);
+    if (!displayed || !visible) return;
+    // Frame pixels stay outside React. Only refresh controls and metrics four
+    // times a second, even when the device can deliver 120 frames per second.
+    const timer = window.setInterval(() => {
+      setDisplayed(displayedRef.current);
+      setClock(Date.now());
+      const times = samples.current;
+      const now = performance.now();
+      setFps(times.length < 2 || now - times[times.length - 1] > 1000 ? 0 : (times.length - 1) * 1000 / (times[times.length - 1] - times[0]));
+    }, 250);
     return () => window.clearInterval(timer);
-  }, [!!displayed]);
+  }, [!!displayed, visible]);
   useEffect(() => {
     if (!point) return;
     const timer = window.setTimeout(() => setPoint(null), 600);
     return () => window.clearTimeout(timer);
   }, [point]);
   useEffect(() => {
-    if (!online) { setDisplayed(null); setPaused(false); setAllowClicks(false); setError(''); }
-  }, [online]);
+    imageRef.current?.removeAttribute('src');
+    imageRef.current?.removeAttribute('data-frame-id');
+    if (displayedRef.current) URL.revokeObjectURL(displayedRef.current.src);
+    displayedRef.current = null;
+    setDisplayed(null); setAllowClicks(false); setError('');
+    if (!online) setPaused(false);
+  }, [device?.id, online]);
 
   useEffect(() => {
     if (!device || !online || paused || !visible || error || clickPending) return;
@@ -71,6 +97,10 @@ export default function DevicePreview({ device, readOnly = false }: { device?: D
     const intervalMs = 1000 / refreshHz;
     let cancelled = false;
     let timer: number | undefined;
+    let animation: number | undefined;
+    const decoding = new Image();
+    let cancelDecode: (() => void) | undefined;
+    let pendingSrc: string | undefined;
     samples.current = [];
     setFps(0);
     const poll = async () => {
@@ -78,35 +108,63 @@ export default function DevicePreview({ device, readOnly = false }: { device?: D
       if (previous) await previous.catch(() => undefined);
       if (cancelled || document.hidden || clickPendingRef.current) return;
       const started = performance.now();
-      const request = rpc('device.frame', { deviceId });
+      const request = (async () => {
+        const result = await rpc('device.frame', { deviceId });
+        if (cancelled || document.hidden) return;
+        const { data: _data, ...frame } = result;
+        const src = frameUrl(result);
+        pendingSrc = src;
+        decoding.src = src;
+        // Some WebViews leave decode() pending when src is removed. Explicitly
+        // release that wait on cleanup; an unfinished RPC still keeps its lease.
+        await new Promise<void>((resolve, reject) => {
+          cancelDecode = resolve;
+          void decoding.decode().then(resolve, reject);
+        });
+        cancelDecode = undefined;
+        if (cancelled || document.hidden || !imageRef.current) return;
+        if (decoding.naturalWidth !== frame.width || decoding.naturalHeight !== frame.height) throw new Error('画面尺寸不匹配，请重试');
+        const now = performance.now();
+        samples.current.push(now);
+        if (samples.current.length > 30) samples.current.shift();
+        const previousFrame = displayedRef.current;
+        const next = { frame, src, latency: Math.max(frame.latencyMs, now - started) };
+        const target = imageRef.current;
+        target.src = src;
+        target.width = frame.width; target.height = frame.height;
+        target.dataset.frameId = frame.frameId;
+        displayedRef.current = next;
+        pendingSrc = undefined;
+        if (previousFrame) URL.revokeObjectURL(previousFrame.src);
+        else { setDisplayed(next); setClock(Date.now()); }
+      })();
+      // Include decoding in the per-device lease, including after a quick
+      // pause, frequency change or drawer reopen.
       pendingFrames.set(deviceId, request);
       try {
-        const frame = await request;
-        if (cancelled || document.hidden) return;
-        const src = `data:${frame.mimeType};base64,${frame.data}`;
-        const image = new Image();
-        image.src = src;
-        // Decode before swapping the visible image. One sequential loop also prevents
-        // fast responses from replacing src before its previous onLoad can fire.
-        await image.decode();
-        if (cancelled || document.hidden) return;
-        if (image.naturalWidth !== frame.width || image.naturalHeight !== frame.height) throw new Error('画面尺寸不匹配，请重试');
-        const now = performance.now();
-        samples.current = [...samples.current.slice(-19), now];
-        const times = samples.current;
-        setFps(times.length < 2 ? 0 : (times.length - 1) * 1000 / (now - times[0]));
-        setDisplayed({ frame, src, latency: Math.max(frame.latencyMs, now - started) });
-        setClock(Date.now());
+        await request;
       } catch (cause) {
         if (!cancelled) { setError(messageOf(cause)); setFps(0); }
         return;
       } finally {
+        cancelDecode = undefined;
+        decoding.removeAttribute('src');
+        if (pendingSrc) { URL.revokeObjectURL(pendingSrc); pendingSrc = undefined; }
         if (pendingFrames.get(deviceId) === request) pendingFrames.delete(deviceId);
       }
-      if (!cancelled) timer = window.setTimeout(() => { void poll(); }, Math.max(0, intervalMs - (performance.now() - started)));
+      // Capture at most once per browser paint. A high target cannot monopolize
+      // the WebView when the screen, transport or decoder is slower.
+      if (!cancelled) timer = window.setTimeout(() => { animation = window.requestAnimationFrame(() => { void poll(); }); }, Math.max(0, intervalMs - (performance.now() - started)));
     };
-    void poll();
-    return () => { cancelled = true; if (timer !== undefined) window.clearTimeout(timer); };
+    animation = window.requestAnimationFrame(() => { void poll(); });
+    return () => {
+      cancelled = true;
+      cancelDecode?.();
+      if (timer !== undefined) window.clearTimeout(timer);
+      if (animation !== undefined) window.cancelAnimationFrame(animation);
+      decoding.removeAttribute('src');
+      if (pendingSrc) { URL.revokeObjectURL(pendingSrc); pendingSrc = undefined; }
+    };
   }, [device?.id, online, paused, visible, error, retry, clickPending, refreshHz]);
 
   const age = displayed ? Math.max(0, clock - Date.parse(displayed.frame.capturedAt)) : Infinity;
@@ -114,8 +172,9 @@ export default function DevicePreview({ device, readOnly = false }: { device?: D
   const canClick = !!(!readOnly && online && device?.state === 'idle' && displayed?.frame.canControl && allowClicks && fresh && !clickPending && !error && visible);
   const retryFrame = () => { setError(''); setPaused(false); setRetry((value) => value + 1); };
   const click = async (event: MouseEvent<HTMLDivElement>) => {
-    if (!canClick || !displayed || !device || document.hidden || clickPendingRef.current || event.button !== 0) return;
-    const frame = displayed.frame;
+    const current = displayedRef.current;
+    if (!canClick || !current?.frame.canControl || !device || document.hidden || clickPendingRef.current || event.button !== 0) return;
+    const frame = current.frame;
     // Recheck at dispatch time, including when a paused frame ages between renders.
     if (Date.now() - Date.parse(frame.capturedAt) > maxFrameAgeMs) return;
     const rect = event.currentTarget.getBoundingClientRect();
@@ -156,7 +215,8 @@ export default function DevicePreview({ device, readOnly = false }: { device?: D
     {error && <div className="device-preview-error" role="alert"><AlertCircle size={15} /><span>画面更新失败：{error}</span><button className="text-button" onClick={retryFrame}><RefreshCw size={13} />重试画面</button></div>}
     {actionError && <div className="device-preview-error" role="alert"><AlertCircle size={15} /><span>{actionError}</span></div>}
     <div className={`device-preview-stage ${canClick ? 'can-click' : ''} ${error ? 'has-error' : ''}`} aria-label="设备画面区域" onClick={(event) => { void click(event); }}>
-      {online && displayed ? <><img src={displayed.src} width={displayed.frame.width} height={displayed.frame.height} alt={`${device?.name}实时画面`} draggable={false} data-frame-id={displayed.frame.frameId} /><span className="device-preview-frame-size">{displayed.frame.width} × {displayed.frame.height}</span>{point && <i className="device-preview-point" style={{ left: `${point.left}%`, top: `${point.top}%` }} aria-hidden="true" />}</> : <div className="device-preview-empty">{!online ? <Monitor size={28} /> : error ? <AlertCircle size={28} /> : <LoaderCircle className="spin" size={28} />}<strong>{!device ? '请选择设备' : !online ? '设备已离线' : error ? '暂时无法获取画面' : '正在获取设备画面…'}</strong><span>{!online ? '在设备页连接后，选择顶部的设备。' : error ? '请检查设备连接，然后重试画面。' : '首帧就绪后将自动刷新。'}</span></div>}
+      <img ref={imageRef} alt={`${device?.name}实时画面`} draggable={false} style={{ display: online && displayed ? undefined : 'none' }} />
+      {online && displayed ? <><span className="device-preview-frame-size">{displayed.frame.width} × {displayed.frame.height}</span>{point && <i className="device-preview-point" style={{ left: `${point.left}%`, top: `${point.top}%` }} aria-hidden="true" />}</> : <div className="device-preview-empty">{!online ? <Monitor size={28} /> : error ? <AlertCircle size={28} /> : <LoaderCircle className="spin" size={28} />}<strong>{!device ? '请选择设备' : !online ? '设备已离线' : error ? '暂时无法获取画面' : '正在获取设备画面…'}</strong><span>{!online ? '在设备页连接后，选择顶部的设备。' : error ? '请检查设备连接，然后重试画面。' : '首帧就绪后将自动刷新。'}</span></div>}
       {online && displayed && paused && <span className="device-preview-paused">已暂停刷新</span>}
     </div>
     <div className="device-preview-footer"><span>{hint}</span><span role="status">{actionMessage}</span></div>

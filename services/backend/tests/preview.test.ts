@@ -162,6 +162,54 @@ describe('transient screen frames', () => {
     await expect(getFrame(runtime, device.id)).rejects.toMatchObject({ code: -32040 });
     expect(worker.clicks).toHaveLength(0);
   });
+
+  test('PNG encoding checks reject noncanonical base64 without accepting decoder aliases', async () => {
+    const { runtime, worker, device } = await nativeRuntime();
+    const png = Buffer.from(image().data, 'base64'), alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    for (let extra = 0; extra < 3; extra++) {
+      const data = Buffer.concat([png, Buffer.alloc(extra)]).toString('base64');
+      worker.frameResult = async () => ({ ...image(), data });
+      expect((await getFrame(runtime, device.id)).data).toBe(data);
+      const malformed = [data + '\n', data + ' ', data.slice(0, 32) + '=' + data.slice(33), data + '=', data.slice(0, -1)];
+      if (data.includes('/')) malformed.push(data.replace('/', '_'));
+      if (data.includes('+')) malformed.push(data.replace('+', '-'));
+      const padding = data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0;
+      if (padding) {
+        const index = data.length - padding - 1;
+        // The forgiving decoder yields identical bytes despite nonzero unused bits.
+        const alias = data.slice(0, index) + alphabet[alphabet.indexOf(data[index]!) + 1] + data.slice(index + 1);
+        expect(Buffer.from(alias, 'base64')).toEqual(Buffer.from(data, 'base64'));
+        malformed.push(alias, data.slice(0, -padding));
+      }
+      for (const invalid of malformed) {
+        worker.frameResult = async () => ({ ...image(), data: invalid });
+        await expect(getFrame(runtime, device.id)).rejects.toMatchObject({ code: -32040 });
+      }
+    }
+    const badHeader = Buffer.from(png); badHeader.writeUInt32BE(12, 8);
+    worker.frameResult = async () => ({ ...image(), data: badHeader.toString('base64') });
+    await expect(getFrame(runtime, device.id)).rejects.toMatchObject({ code: -32040 });
+  });
+
+  test('maximum-size preview validates only a fixed-size decoded header', async () => {
+    const { runtime, worker, device } = await nativeRuntime();
+    const png = Buffer.alloc(3 * 1024 * 1024 - 8192);
+    Buffer.from(image().data, 'base64').copy(png);
+    const data = png.toString('base64');
+    worker.frameResult = async () => ({ ...image(), data });
+    const decode = spyOn(Buffer, 'from');
+    try {
+      for (let index = 0; index < 24; index++) expect((await getFrame(runtime, device.id)).data).toBe(data);
+      const inputs = (decode.mock.calls as unknown[][]).filter(args => args[1] === 'base64').map(args => args[0]);
+      expect(inputs).toHaveLength(24);
+      expect(inputs.every(value => typeof value === 'string' && value.length === 32)).toBe(true);
+    } finally { decode.mockRestore(); }
+    const oversized = Buffer.concat([png, Buffer.alloc(1)]).toString('base64');
+    // The next byte fits the same base64 string length but exceeds the PNG cap.
+    expect(oversized.length).toBe(data.length);
+    worker.frameResult = async () => ({ ...image(), data: oversized });
+    await expect(getFrame(runtime, device.id)).rejects.toMatchObject({ code: -32040 });
+  });
 });
 
 describe('screen input ownership and acknowledgements', () => {
