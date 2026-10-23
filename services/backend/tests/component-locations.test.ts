@@ -43,7 +43,7 @@ test('UI resource versions show client activity and keep exact source version as
   expect(resourceVersionLabel(resource)).toBe('合成活动');
   expect(resourceVersionLabel(resource, 'YoStarEN')).toBe('Synthetic event');
   expect(resourceVersionLabel(resource, 'YoStarJP')).toBe('活动信息未提供');
-  expect(resourceVersionDetail(resource)).toBe('官服 · 更新于 2026-10-23 · aaaaaaaaaa');
+  expect(resourceVersionDetail(resource)).toBe('国服（官服 / B服） · 更新于 2026-10-23 · aaaaaaaaaa');
 });
 
 test('ordinary settings save immediately while a component download is pending', async () => {
