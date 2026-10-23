@@ -5,7 +5,7 @@ import {
   Info, ListChecks, LoaderCircle, Monitor, Plus, RefreshCw, RotateCcw,
   Search, Settings2, SlidersHorizontal, Unplug, Wifi,
 } from 'lucide-react';
-import { rpc, taskLabels, type Device, type Event, type Plan, type Settings, type Snapshot, type Task, type UpdateChannel } from '@maaverge/contracts';
+import { rpc, taskLabels, type ComponentDownload, type Device, type Event, type Plan, type Settings, type Snapshot, type Task, type UpdateChannel } from '@maaverge/contracts';
 import './support-pages.css';
 import { useSettingsDraft } from './settings-draft';
 import { TaskConnectionSettings } from './TaskConnectionSettings';
@@ -18,6 +18,8 @@ export interface SupportPageProps {
   onSelectDevice: (id: string) => void;
   busy: boolean;
   onAction: (key: string, call: () => Promise<unknown>, success?: string) => Promise<boolean>;
+  onPrepareUpdate: (channel: UpdateChannel) => Promise<void>;
+  preparingUpdates: ReadonlySet<UpdateChannel['id']>;
   onOpenPlan: (plan: Plan, taskType?: Task['type'], taskIndex?: number) => void;
   onCreateTaskPlan: (type: Task['type'], params?: Task['params']) => void;
   searchQuery?: string;
@@ -181,13 +183,13 @@ const categories = [
   { id: 'model', label: '模型与 Agent', icon: Cpu, keywords: '模型 API 接口 提供商 地址 问答 智能 托管' },
   { id: 'notifications', label: '通知与远控', icon: Bell, keywords: '推送 通知 远程 控制 消息' },
   { id: 'services', label: '外部服务', icon: ArrowUpRight, keywords: 'MirrorChyan 社区 作业站 企鹅 数据 汇报' },
-  { id: 'updates', label: '更新', icon: RefreshCw, keywords: '更新 核心 MaaCore 游戏资源 资源更新 下载 版本 活动 目录 路径 检查 回滚' },
+  { id: 'updates', label: '更新', icon: RefreshCw, keywords: '更新 核心 MaaCore 游戏资源 资源更新 下载 版本 活动 目录 路径 检查 回滚 aria2 断点续传 下载器' },
   { id: 'data', label: '数据与诊断', icon: HardDrive, keywords: '数据 日志 诊断 事件 导出 存储 本地' },
   { id: 'about', label: '关于', icon: Info, keywords: '版本 AGPL 许可证 开源 系统 模式' },
 ] as const;
 type Category = typeof categories[number]['id'];
 
-export function SettingsPage({ snapshot, busy, onAction, searchQuery }: SupportPageProps) {
+export function SettingsPage({ snapshot, busy, onAction, onPrepareUpdate, preparingUpdates, searchQuery }: SupportPageProps) {
   const [category, setCategory] = useState<Category>('general');
   const [query, setQuery] = useState(searchQuery || '');
   useEffect(() => { if (searchQuery !== undefined) setQuery(searchQuery); }, [searchQuery]);
@@ -204,7 +206,7 @@ export function SettingsPage({ snapshot, busy, onAction, searchQuery }: SupportP
       {selected.id === 'model' && <ModelForm settings={snapshot.settings} busy={busy} onSave={(model) => saveSettings({ model }, '模型配置已保存')} />}
       {selected.id === 'notifications' && <Section title="通知与远控"><Notice icon={<Bell size={17} />}>系统推送、第三方通知与远程控制尚未接入。</Notice><p className="sp-help">当前运行进度、失败原因与完成结果保留在底部运行栏和执行记录中。</p></Section>}
       {selected.id === 'services' && <Section title="外部服务"><dl className="sp-description-list"><div><dt>社区作业服务</dt><dd>尚未接入，当前使用本机作业文件</dd></div><div><dt>MirrorChyan 加速</dt><dd>尚未接入</dd></div><div><dt>数据汇报</dt><dd>默认关闭；按任务参数显式配置</dd></div></dl><p className="sp-help">核心与资源更新可使用官方来源，无需配置付费加速服务。</p></Section>}
-      {selected.id === 'updates' && <><div className="sp-content-heading"><div><h2>更新</h2><p>后台准备，空闲生效；三个通道独立检查。</p></div><button className="button secondary" disabled={busy} onClick={() => void checkAll()}><RefreshCw size={15} />检查全部更新</button></div>{snapshot.updates.map((channel) => <UpdateSection key={channel.id} channel={channel} settings={snapshot.settings} hasActiveRun={snapshot.runs.some((run) => run.status === 'running')} busy={busy} onAction={onAction} onSave={saveSettings} />)}<Notice>下载完成、验证通过与已生效是不同状态。任务执行期间继续使用原版本，失败时保留旧组合。</Notice></>}
+      {selected.id === 'updates' && <><div className="sp-content-heading"><div><h2>更新</h2><p>后台准备，空闲生效；三个通道独立检查。</p></div><button className="button secondary" disabled={busy} onClick={() => void checkAll()}><RefreshCw size={15} />检查全部更新</button></div><ComponentDownloadForm settings={snapshot.settings} busy={busy} onSave={saveSettings} />{snapshot.updates.map((channel) => <UpdateSection key={channel.id} channel={channel} settings={snapshot.settings} hasActiveRun={snapshot.runs.some((run) => run.status === 'running')} busy={busy} preparing={preparingUpdates.has(channel.id)} onPrepare={onPrepareUpdate} onAction={onAction} onSave={saveSettings} />)}<Notice>下载完成、验证通过与已生效是不同状态。任务执行期间继续使用原版本，失败时保留旧组合。</Notice></>}
       {selected.id === 'data' && <Section title="数据与诊断"><dl className="sp-description-list"><div><dt>数据归属</dt><dd>保存在本机</dd></div><div><dt>任务表</dt><dd>{snapshot.plans.length} 张</dd></div><div><dt>执行记录</dt><dd>{snapshot.runs.length} 条</dd></div><div><dt>当前事件</dt><dd>{snapshot.events.length} 条</dd></div></dl><div className="sp-form-actions"><button className="button secondary" onClick={() => downloadJson('maaverge-events.json', snapshot.events)}><Download size={15} />导出当前事件</button></div><p className="sp-help">导出到本机文件，不上传数据。事件中可能包含你配置的文件路径，分享前请自行检查。</p></Section>}
       {selected.id === 'about' && <Section title="关于 Maa Verge"><p className="sp-about-intro">以任务为中心的本地桌面助手。</p><dl className="sp-description-list"><div><dt>应用版本</dt><dd>0.1.0 开发预览</dd></div><div><dt>运行模式</dt><dd>本地原生运行时</dd></div><div><dt>开源许可证</dt><dd>AGPL-3.0-only</dd></div><div><dt>界面语言</dt><dd>简体中文</dd></div></dl><Notice>完整原 MAA 兼容仍在推进中。各项能力以实际接入与验证状态为准。</Notice></Section>}
     </>}</div></div>
@@ -231,14 +233,26 @@ function ComponentPathForm({ channel, settings, busy, onSave }: { channel: Updat
   </form>;
 }
 
-function UpdateSection({ channel, settings, busy, hasActiveRun, onAction, onSave }: { channel: UpdateChannel; settings: Settings; busy: boolean; hasActiveRun: boolean; onAction: SupportPageProps['onAction']; onSave: (patch: Partial<Settings>) => Promise<boolean> }) {
+function ComponentDownloadForm({ settings, busy, onSave }: { settings: Settings; busy: boolean; onSave: (patch: Partial<Settings>) => Promise<boolean> }) {
+  const saved = settings.componentDownload || { engine: 'builtin', aria2Path: '' };
+  const [draft, setDraft, reset] = useSettingsDraft<ComponentDownload>('component-download', saved);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const save = () => onSave({ componentDownload: draft });
+  return <Section title="组件下载器" description="MaaCore 与 MaaResource 共用；保存后用于后续下载。"><form className="sp-model-form" onSubmit={(event) => { event.preventDefault(); void save(); }}>
+    <label className="sp-field">下载器<select className="text-input" aria-label="组件下载器" value={draft.engine} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, engine: event.target.value as ComponentDownload['engine'] }))}><option value="builtin">内置下载器</option><option value="aria2">aria2（断点续传）</option></select></label>
+    {draft.engine === 'aria2' && <><label className="sp-field">aria2c 路径<input className="text-input" aria-label="aria2c 路径" value={draft.aria2Path} disabled={busy} placeholder="留空则从 PATH 查找 aria2c" onChange={(event) => setDraft((previous) => ({ ...previous, aria2Path: event.target.value }))} /></label><p className="sp-help">请先安装 aria2，填写 aria2c 可执行文件路径，或将其加入 PATH。中断后可重试续传。</p></>}
+    <div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button secondary" type="button" disabled={busy || !dirty} onClick={reset}>放弃修改</button><button className="button primary" type="submit" disabled={busy || !dirty}>保存下载器</button></div>
+  </form></Section>;
+}
+
+function UpdateSection({ channel, settings, busy, preparing, hasActiveRun, onAction, onPrepare, onSave }: { channel: UpdateChannel; settings: Settings; busy: boolean; preparing: boolean; hasActiveRun: boolean; onAction: SupportPageProps['onAction']; onPrepare: SupportPageProps['onPrepareUpdate']; onSave: (patch: Partial<Settings>) => Promise<boolean> }) {
   const [resourceClient, setResourceClient] = useState<ResourceClient>(resourceClientFor(settings.connection?.clientType ?? 'Official'));
   const Icon = channel.id === 'app' ? HardDrive : channel.id === 'core' ? Cpu : Database;
-  const working = ['checking', 'downloading'].includes(channel.status);
+  const working = preparing || ['checking', 'downloading'].includes(channel.status);
   const status = channel.status === 'idle' ? channel.id === 'app' ? '开发预览' : channel.latestVersion === channel.currentVersion ? '已是最新版本' : '等待检查' : updateLabels[channel.status];
   return <section className="sp-update-channel update-channel"><div className="sp-update-main"><div className="sp-update-title"><Icon size={19} /><h3>{channelLabels[channel.id]}</h3><span className={`pill sp-update-state ${channel.status === 'failed' ? 'is-error' : ''}`}>{status}</span></div><div className="channel-version sp-channel-version">{resourceVersionLabel(channel, resourceClient)}{channel.latestVersion && channel.latestVersion !== channel.currentVersion && <><ArrowRight size={13} /><span>{channel.id === 'resource' ? channel.latestVersion.slice(0, 10) : channel.latestVersion}</span></>}</div><p className="sp-help">{channel.id === 'resource' && resourceVersionDetail(channel, resourceClient)}</p><p className="sp-help">{channel.id === 'app' ? '桌面应用与本地服务' : channel.id === 'core' ? '来源：官方 MaaCore 发布' : '关卡、活动与公招数据；版本独立于核心'}</p>{channel.message && <p className="sp-channel-message">{channel.message}</p>}{working && <div className="sp-update-progress" aria-label={`${channelLabels[channel.id]}更新进度`}><span style={{ width: `${Math.max(0, Math.min(100, channel.progress))}%` }} /></div>}</div><div className="sp-channel-actions">
     {['idle', 'active', 'failed'].includes(channel.status) && <button className="button secondary" disabled={busy} onClick={() => void onAction(`check-${channel.id}`, () => rpc('updates.check', { channel: channel.id }))}><RefreshCw size={14} />检查更新</button>}
-    {channel.status === 'available' && <button className="button primary" disabled={busy} onClick={() => void onAction(`prepare-${channel.id}`, () => rpc('updates.prepare', { channel: channel.id }), '候选版本已准备')}><Download size={14} />{channel.currentVersion ? '准备更新' : '下载安装'}</button>}
+    {(channel.status === 'available' || (channel.status === 'failed' && channel.latestVersion && channel.latestVersion !== channel.currentVersion)) && channel.id !== 'app' && <button className="button primary" disabled={busy || preparing} onClick={() => void onPrepare(channel)}><Download size={14} />{channel.status === 'failed' ? '重试下载' : channel.currentVersion ? '准备更新' : '下载安装'}</button>}
     {['staged', 'waiting_idle'].includes(channel.status) && <button className="button primary" disabled={busy || channel.status === 'waiting_idle'} onClick={() => void onAction(`activate-${channel.id}`, () => rpc('updates.activate', { channel: channel.id }), '更新将在安全空闲边界生效')}><Check size={14} />{channel.status === 'waiting_idle' ? '等待空闲生效' : '应用更新'}</button>}
     {working && <span className="sp-working"><LoaderCircle className="spin" size={15} />{channel.progress}%</span>}
     {channel.id !== 'app' && ['active', 'staged', 'waiting_idle'].includes(channel.status) && <button className="button secondary" disabled={busy || hasActiveRun} onClick={() => void onAction(`rollback-${channel.id}`, () => rpc('updates.rollback', { channel: channel.id }), '回滚请求已处理')}><RotateCcw size={14} />回滚上一版本</button>}

@@ -8,6 +8,7 @@ import WindowControls from './WindowControls';
 import DevicePreview from './DevicePreview';
 import MultiRunPanel from './MultiRunPanel';
 import ExecutionPage from './ExecutionPage';
+import UpdateNotifications, { useComponentDownloads } from './UpdateNotifications';
 
 type Page = 'home' | 'daily' | 'specialized' | 'execution' | 'copilot' | 'tools' | 'agent' | 'history' | 'devices' | 'settings';
 type Group = 'daily' | 'specialized';
@@ -64,6 +65,7 @@ export default function App() {
       setError('');
     } catch (cause) { if (sequence === refreshSequence.current) setError(cause instanceof Error ? cause.message : String(cause)); }
   }, []);
+  const downloads = useComponentDownloads(snapshot?.updates, refresh);
   useEffect(() => {
     void refresh();
     if (!desktopPlatform()) return;
@@ -188,7 +190,7 @@ export default function App() {
   const platform = desktopPlatform();
   const moduleLoadFailed = /importing a module script failed|failed to fetch dynamically imported module|error loading dynamically imported module/iu.test(error);
   if (!snapshot) return <div className="boot-screen" data-desktop-platform={platform || undefined}>{platform && <header className="boot-titlebar" data-tauri-drag-region="deep"><WindowControls /></header>}<Brand />{error ? <AlertCircle size={24} /> : <LoaderCircle className="spin" size={24} />}<p role={error ? 'alert' : 'status'}>{moduleLoadFailed ? '界面组件加载失败，请重新加载界面后重试。' : error || '正在连接本地应用服务…'}</p>{error && <button className="button primary" onClick={() => moduleLoadFailed ? window.location.reload() : void refresh()}>{moduleLoadFailed ? '重新加载界面' : '重新连接'}</button>}</div>;
-  const supportProps = { snapshot, selectedDevice, onSelectDevice: selectDevice, busy: pending.size > 0, onAction: action, onOpenPlan: choosePlan, onCreateTaskPlan: (type: Task['type'], params?: Task['params']) => createPlan(groupFor(type), type, params), searchQuery: pageSearch };
+  const supportProps = { snapshot, selectedDevice, onSelectDevice: selectDevice, busy: pending.size > 0, onAction: action, onPrepareUpdate: downloads.prepare, preparingUpdates: downloads.preparing, onOpenPlan: choosePlan, onCreateTaskPlan: (type: Task['type'], params?: Task['params']) => createPlan(groupFor(type), type, params), searchQuery: pageSearch };
   const history = snapshot.runs.filter((run) => (historyFilter === 'all' || run.status === historyFilter) && `${snapshot.plans.find((item) => item.id === run.planId)?.name || ''} ${localizeExecutionMessage(run.message)} ${snapshot.devices.find((device) => device.id === run.deviceId)?.name || run.deviceId}`.includes(historyQuery));
   return <div className={`app-root ${sidebarOpen ? 'nav-open' : ''}`} data-desktop-platform={platform || undefined}>
     {sidebarOpen && <button className="nav-scrim" aria-label="关闭导航" onClick={() => setSidebarOpen(false)} />}
@@ -213,6 +215,7 @@ export default function App() {
     </div></section>}
     <footer className={`run-dock ${dockRun ? 'is-running' : ''}`} aria-label="执行状态栏"><button className="dock-status" onClick={() => toggleRunPanel('progress')}>{dockRun ? <LoaderCircle size={17} className="spin" /> : <span className={`status-dot ${!device || device.state === 'offline' ? 'offline' : ''}`} />}<strong>{dockRun ? '执行中' : device && device.state !== 'offline' ? '就绪' : '等待连接'}</strong>{(dockRun || page !== 'home') && <><span className="dock-divider" /><span className="dock-message">{dockRun ? localizeExecutionMessage(dockRun.message) : selectedPlan?.name || pageNames[page]}<small>{dockRun ? `${snapshot.devices.find((item) => item.id === dockRun.deviceId)?.name || dockRun.deviceId} · 任务进度 ${dockRun.progress}%` : device?.name || '请连接模拟器或设备'}</small></span></>}</button><div className="dock-actions"><button aria-label="多开执行" className={runPanel === 'instances' ? 'selected' : ''} onClick={() => toggleRunPanel('instances')}><Layers size={16} /><span>多开执行{activeRuns.length > 1 ? ` · ${activeRuns.length}` : ''}</span></button>{dockRun && <button className="button danger dock-stop" disabled={pending.has(`stop-${dockRun.id}`)} onClick={() => void stopRun(dockRun)}><Square size={12} />停止执行</button>}<button aria-label="运行详情" className={runPanel === 'progress' ? 'selected' : ''} onClick={() => toggleRunPanel('progress')}><ListChecks size={16} /><span>运行详情</span></button><button aria-label="日志" className={runPanel === 'logs' ? 'selected' : ''} onClick={() => toggleRunPanel('logs')}><Terminal size={16} /><span>日志</span></button><button aria-label="画面" className={runPanel === 'preview' ? 'selected' : ''} onClick={() => toggleRunPanel('preview')}><Monitor size={16} /><span>画面</span></button><button className="icon-button" aria-label={runPanel ? '收起运行面板' : '展开运行面板'} onClick={() => { if (dockRun) setSelectedRunId(dockRun.id); setRunPanel(runPanel ? null : 'progress'); }}>{runPanel ? <ChevronDown size={17} /> : <ChevronUp size={17} />}</button></div></footer>
     {deleting && <ConfirmDialog title="删除任务表" onClose={() => setDeleting(null)}><p>确定删除“{deleting.name}”？执行记录会保留。</p><div className="modal-actions"><button className="button secondary" onClick={() => setDeleting(null)}>取消</button><button className="button danger" disabled={pending.has('delete-plan')} onClick={async () => { if (await action('delete-plan', () => rpc('plan.delete', { id: deleting.id }), '任务表已删除')) { setDeleting(null); setSelectedPlanId(''); } }}><Trash2 size={15} />删除任务表</button></div></ConfirmDialog>}
+    <UpdateNotifications notices={downloads.notices} onDismiss={downloads.dismiss} />
     {toast && <div role={toast.error ? 'alert' : 'status'} className={`toast ${toast.error ? 'error' : ''}`}>{toast.error ? <AlertCircle size={17} /> : <Check size={17} />}<span>{toast.text}</span><button className="icon-button" aria-label="关闭提示" onClick={() => setToast(null)}><X size={15} /></button></div>}
   </div>;
 }
