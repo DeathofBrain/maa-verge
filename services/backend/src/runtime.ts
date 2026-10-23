@@ -7,7 +7,7 @@ import { defaultConnection, parsePlan, parseSettings, parseSnapshot, type Plan, 
 import { automaticCapture } from './auto-capture';
 import { nativeTask, validatePlan } from './task-policy';
 import { propose } from './agent';
-import { deviceLockPath } from './config';
+import { defaultComponentPaths, deviceLockPath } from './config';
 import { CoreWorker } from './worker';
 import { captureAdbPath, connectionCapture } from './capture';
 import { Preview } from './preview';
@@ -37,7 +37,7 @@ function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
   } catch { return false; }
 }
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
-export interface RuntimeOptions { notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
+export interface RuntimeOptions { applicationDirectory?: string; notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
 export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
@@ -70,12 +70,15 @@ export class Runtime {
       this.store.put('settings', 'main', parseSettings());
       this.store.put('meta', 'initialized', true);
     }
+    const defaults = defaultComponentPaths(root, options.applicationDirectory);
+    const settings = parseSettings(this.store.get('settings', 'main'));
+    if (!settings.componentPaths) this.store.put('settings', 'main', { ...settings, componentPaths: defaults });
     for (const device of this.store.all('device')) { device.state = 'offline'; this.store.put('device', device.id, device); }
     for (const run of this.store.all('run')) if (run.status === 'running') {
       Object.assign(run, { status: 'failed', finishedAt: now(), message: '上次运行被中断；请核对设备后重新执行' }); this.store.put('run', run.id, run); this.emit('run.interrupted', run.message, { runId: run.id });
     }
     this.updates = new UpdateService(path.join(root, 'components'), this.store, this.emit.bind(this), this.busy.bind(this), {
-      source: options.source, validator: options.validator,
+      source: options.source, validator: options.validator, directories: defaults,
       beforeActivate: () => this.beforeSwitch(), afterActivate: () => this.afterSwitch(), finishActivate: (error?: string) => this.finishSwitch(error),
     });
     this.preview = new Preview({
@@ -133,8 +136,11 @@ export class Runtime {
       case 'run.stop': required('id'); return this.stopRun(params.id);
       case 'settings.save': {
         required('settings'); const settings = parseSettings(params.settings), previous = parseSettings(this.store.get('settings', 'main'));
+        await this.updates.saveDirectories(settings.componentPaths ?? previous.componentPaths!, (componentPaths) => {
+          settings.componentPaths = componentPaths; this.store.put('settings', 'main', settings);
+        });
         if (settings.autoConnect && !previous.autoConnect) { this.suppressed.clear(); this.nextAutoConnect = 0; }
-        this.store.put('settings', 'main', settings); this.emit('settings.saved', '设置已保存'); return settings;
+        this.emit('settings.saved', '设置已保存'); return settings;
       }
       case 'agent.message': { required('message'); const result = propose(params.message, p => this.validatePolicy(p)); this.emit('agent.plan_proposed', '本地演示已生成待确认计划，尚未执行'); return result; }
       case 'updates.check': case 'updates.prepare': case 'updates.activate': case 'updates.rollback': {

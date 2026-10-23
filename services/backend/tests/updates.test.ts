@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { OfficialSource, platformAsset, runUpdateJob, treeHash, UpdateService, type UpdateSource, type UpdateStore } from "../src/updates.ts";
 import { zipBytes } from "./archive-fixture.ts";
+import { resourceActivityVersions } from '../src/resource-version';
 
 class MemoryStore implements UpdateStore {
   rows = new Map<string, any>();
@@ -99,6 +100,71 @@ function fixtureUpdates(root: string, store: MemoryStore, busy: () => boolean, s
   return new UpdateService(root, store, () => {}, busy, { source, validator, jobRunner: config => runUpdateJob(config, validator), ...hooks });
 }
 
+test('component roots keep active/staged generations and rollback intact when future downloads move', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const activeCore = store.get('active', 'combo').core.path, hash = await treeHash(activeCore);
+  await updates.check('resource'); await updates.prepare('resource');
+  const stagedPath = store.get('staged', 'resource').path;
+  const paths = { core: path.join(root, 'new-core'), resource: path.join(root, 'new-resource') };
+  await updates.saveDirectories(paths, componentPaths => store.put('settings', 'main', { componentPaths }));
+  expect(updates.channel('core').installDirectory).toBe(paths.core);
+  expect(store.get('active', 'combo').core.path).toBe(activeCore);
+  expect(store.get('staged', 'resource').path).toBe(stagedPath);
+  await updates.activate('resource');
+  source.resourceVersion = 'b'.repeat(40);
+  await updates.check('resource'); await updates.prepare('resource'); await updates.activate('resource');
+  expect(store.get('active', 'combo').resource.path.startsWith(path.join(paths.resource, 'generations'))).toBe(true);
+  expect(store.get('active', 'combo').core.path).toBe(activeCore);
+  expect(await treeHash(activeCore)).toBe(hash);
+  await updates.rollback('resource');
+  expect(store.get('active', 'combo').resource.path).toBe(stagedPath);
+  expect(await readdir(paths.core)).toEqual([]);
+  expect(await readdir(path.join(paths.resource, 'downloads'))).toEqual([]);
+});
+
+test('unwritable component root fails without replacing settings or active generation', async () => {
+  const root = await temp(), store = new MemoryStore(), updates = fixtureUpdates(root, store, () => false);
+  const file = path.join(root, 'occupied-file'); await writeFile(file, 'keep');
+  const before = [...store.rows];
+  await expect(updates.saveDirectories({ core: file, resource: root }, componentPaths => store.put('settings', 'main', { componentPaths }))).rejects.toThrow('目录无法写入');
+  expect([...store.rows]).toEqual(before);
+  expect(await readFile(file, 'utf8')).toBe('keep');
+});
+
+test('download root creation errors enter a retryable failed state', async () => {
+  const root = await temp(), store = new MemoryStore(), file = path.join(root, 'occupied-file'); await writeFile(file, 'keep');
+  store.put('settings', 'main', { componentPaths: { core: file, resource: root } });
+  const updates = fixtureUpdates(root, store, () => false);
+  await updates.check('core');
+  await expect(updates.prepare('core')).rejects.toThrow('活动版本保持可用');
+  expect(updates.channel('core').status).toBe('failed');
+  expect(store.get('active', 'combo')).toBeUndefined();
+});
+
+test('resource version labels read installed activity names per client and refresh after rollback', async () => {
+  const root = await temp(), store = new MemoryStore(), updates = fixtureUpdates(root, store, () => false);
+  const first = path.join(root, 'first'), second = path.join(root, 'second');
+  for (const [generation, name] of [[first, '第一活动'], [second, '第二活动']]) {
+    await mkdir(path.join(generation, 'resource', 'global', 'YoStarEN', 'resource'), { recursive: true });
+    await writeFile(path.join(generation, 'resource', 'version.json'), JSON.stringify({ activity: { name, time: 1 }, last_updated: '2026-10-23 12:00:00' }));
+    await writeFile(path.join(generation, 'resource', 'global', 'YoStarEN', 'resource', 'version.json'), JSON.stringify({ activity: { name: `EN ${name}`, time: 1 }, last_updated: '2026-10-22' }));
+  }
+  const combo = (generation: string) => ({ core: { path: generation, version: 'v6.20.0' }, resource: { path: generation, version: generation } });
+  store.put('active', 'combo', combo(second)); store.put('previous', 'combo', combo(first));
+  const activities = updates.channel('resource').resourceActivities;
+  expect(activities.find((item: any) => item.clientType === 'Official')).toMatchObject({ name: '第二活动', lastUpdated: '2026-10-23 12:00:00' });
+  expect(activities.find((item: any) => item.clientType === 'Bilibili').name).toBe('第二活动');
+  expect(activities.find((item: any) => item.clientType === 'YoStarEN').name).toBe('EN 第二活动');
+  expect(activities.some((item: any) => item.clientType === 'YoStarJP')).toBe(false);
+  await updates.rollback('resource');
+  expect(updates.channel('resource').resourceActivities[0].name).toBe('第一活动');
+  const corrupt = path.join(root, 'corrupt'); await mkdir(path.join(corrupt, 'resource'), { recursive: true });
+  await writeFile(path.join(corrupt, 'resource', 'version.json'), 'x'.repeat(256 * 1024 + 1));
+  expect(resourceActivityVersions(corrupt)).toEqual([]);
+});
+
 test("native install/update use selective extraction; resource overlays rebase on immutable core", async () => {
   const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
   const validator = async (core: string, resource: string, version: string) => {
@@ -172,7 +238,7 @@ test("close terminates an owned update job before returning", async () => {
   const preparation = updates.prepare("core"); const failure = preparation.catch(() => {});
   let started = false;
   for (let index = 0; index < 100; index++) {
-    const entries = await readdir(path.join(root, "generations"));
+    const entries = await readdir(path.join(root, "generations")).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
     started = entries.length > 0 && await Bun.file(path.join(root, "generations", entries[0], "started")).exists();
     if (started) break;
     await Bun.sleep(20);

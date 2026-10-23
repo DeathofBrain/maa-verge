@@ -2,6 +2,19 @@ import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+export type ComponentPaths = { core: string; resource: string };
+export function defaultComponentPaths(root: string, applicationDirectory?: string): ComponentPaths {
+  return applicationDirectory ? { core: path.resolve(applicationDirectory, 'MaaCore'), resource: path.resolve(applicationDirectory, 'MaaResource') }
+    : { core: path.resolve(root, 'components', 'core'), resource: path.resolve(root, 'components', 'resource') };
+}
+export function normalizeComponentPath(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const absolute = path.isAbsolute(trimmed) && (process.platform !== 'win32' || /^(?:[a-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)/i.test(trimmed));
+  if (!absolute || /[\x00-\x1f]/.test(trimmed)) throw new Error('组件目录必须使用完整的绝对路径');
+  return path.resolve(trimmed);
+}
+
 export function dataRoot(): string {
   if (process.env.MAAVERGE_DATA_DIR) return path.resolve(process.env.MAAVERGE_DATA_DIR.replace(/^~(?=$|[\\/])/, homedir()));
   return process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || path.join(homedir(), 'AppData', 'Local'), 'MAAVerge')

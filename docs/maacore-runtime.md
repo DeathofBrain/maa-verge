@@ -4,6 +4,14 @@ Maa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完�
 
 核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/updates.ts)。Python 原实现仍用于回归比较；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。
 
+## 下载与安装目录
+
+“设置 → 更新”分别提供 MaaCore 与游戏资源的下载/安装根目录。安装版默认使用主程序同级的 `MaaCore/`、`MaaResource/`，由 Tauri 传入主程序目录，不能使用包内 `runtime/` 侧进程位置推导。macOS 以 `.app` 整体为程序，Linux AppImage 以 AppImage 文件为程序。源码开发使用各 checkout 独立数据根中的 `native/components/core/`、`native/components/resource/`，避免不同开发工作树共用下载。
+
+每个根目录下有临时下载的 `downloads/` 与不可变的 `generations/`。保存目录要求完整绝对路径，并检测实际写入能力；安装在系统只读目录时可选择用户可写目录，错误会保留当前设置和活动版本。恢复默认只改变后续下载位置。变更目录不移动或覆盖现有活动、候选、上一组回滚文件，运行中的 worker 继续使用其固定路径，已经安装在旧用户数据目录的版本继续可用。
+
+契约新增可选 `Settings.componentPaths`（`core`、`resource`；保存空字符串恢复对应默认目录）与 `UpdateChannel.installDirectory`。服务初始化补全旧设置，旧客户端保存其他设置时保留目录。`UpdateChannel.resourceActivities` 按客户端提供已安装资源的活动名与 `last_updated`；官服和 B 服共享基础 `resource/version.json`，其他客户端读取各自 `global/<client>/resource/version.json`，缺失时明确显示“活动信息未提供”。主页和更新页以活动名显示游戏资源版本，保留提交号、基础资源版本和更新时间用于核对。这是资源包标记，不替代官方活动日历的开放时间。
+
 ## 与 maa-cli 的关系
 
 参考 [maa-cli v0.7.7 的 `extract_mapper`](https://github.com/MaaAssistantArknights/maa-cli/blob/v0.7.7/crates/maa-cli/src/installer/maa_core.rs#L127)：完整下载后，分别提取动态库和资源。该逻辑不减少下载流量。

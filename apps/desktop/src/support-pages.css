@@ -671,6 +671,22 @@
   grid-column: 1/-1;
 }
 
+.sp-resource-client {
+  grid-column: 1/-1;
+  max-width: 240px;
+}
+
+.sp-component-path {
+  border-top: 1px solid var(--border,#dde3ec);
+  margin-top: 14px;
+  padding-top: 16px;
+  min-width: 0;
+}
+
+.sp-component-path .sp-form-actions {
+  flex-wrap: wrap;
+}
+
 .sp-update-preference .sp-setting-row {
   padding: 8px 0 0;
 }

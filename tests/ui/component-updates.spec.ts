@@ -1,0 +1,41 @@
+import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import type { Snapshot } from '../../packages/contracts/src/types';
+
+test('component roots save independently and installed resource versions use each client activity', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await page.evaluate(async () => {
+    const harness = (window as HarnessWindow).runtimeHarness;
+    const snapshot = await harness.call('app.snapshot', {}) as Snapshot;
+    snapshot.settings.componentPaths = { core: 'C:\\Maa Verge\\MaaCore', resource: 'D:\\Game Data\\MaaResource' };
+    await harness.call('settings.save', { settings: snapshot.settings });
+    const resource = snapshot.updates.find(channel => channel.id === 'resource')!;
+    resource.currentVersion = 'a'.repeat(40);
+    resource.resourceActivities = [{ clientType: 'Official', name: '合成活动 · 新篇章', lastUpdated: '2026-10-23 12:00:00' }, { clientType: 'YoStarEN', name: 'Synthetic EN event', lastUpdated: '2026-10-20' }];
+    const key = Object.keys(localStorage).find(value => value.startsWith('maaverge:test-runtime:v1:'))!;
+    localStorage.setItem(key, JSON.stringify(snapshot));
+  });
+  await page.reload();
+  await expect(page.locator('.home-version-list')).toContainText('合成活动 · 新篇章');
+  await page.getByRole('button', { name: '打开更新设置', exact: true }).click();
+  const core = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+  const resource = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: '游戏资源', exact: true }) });
+  await expect(core.getByLabel('MaaCore 核心下载目录', { exact: true })).toHaveValue('C:\\Maa Verge\\MaaCore');
+  await expect(resource.getByLabel('游戏资源下载目录', { exact: true })).toHaveValue('D:\\Game Data\\MaaResource');
+  await core.getByLabel('MaaCore 核心下载目录', { exact: true }).fill('E:\\Custom Components\\Core');
+  await core.getByRole('button', { name: '保存目录', exact: true }).click();
+  await expect(core.getByRole('button', { name: '保存目录', exact: true })).toBeDisabled();
+  const paths = await page.evaluate(async () => ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot).settings.componentPaths);
+  expect(paths).toEqual({ core: 'E:\\Custom Components\\Core', resource: 'D:\\Game Data\\MaaResource' });
+  await expect(resource.locator('.channel-version')).toHaveText('合成活动 · 新篇章');
+  await expect(resource).toContainText('2026-10-23 12:00:00');
+  await resource.getByLabel('资源版本客户端', { exact: true }).selectOption('YoStarEN');
+  await expect(resource.locator('.channel-version')).toHaveText('Synthetic EN event');
+  await resource.getByLabel('资源版本客户端', { exact: true }).selectOption('YoStarJP');
+  await expect(resource.locator('.channel-version')).toHaveText('活动信息未提供');
+  await resource.getByLabel('资源版本客户端', { exact: true }).selectOption('Official');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await resource.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('component-updates.png'), fullPage: true });
+});

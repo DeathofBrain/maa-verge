@@ -245,6 +245,7 @@ export interface ChannelParams {
  * via the `definition` "Settings".
  */
 export interface Settings {
+  componentPaths?: ComponentPaths;
   /**
    * @maxItems 100
    */
@@ -262,6 +263,16 @@ export interface Settings {
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;
+}
+/**
+ * Absolute installation/download roots. An empty string restores the application default on settings.save.
+ *
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "ComponentPaths".
+ */
+export interface ComponentPaths {
+  core: string;
+  resource: string;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -635,12 +646,46 @@ export interface Run {
  * via the `definition` "UpdateChannel".
  */
 export interface UpdateChannel {
+  installDirectory?: string;
+  /**
+   * @maxItems 6
+   */
+  resourceActivities?:
+    | []
+    | [ResourceActivityVersion]
+    | [ResourceActivityVersion, ResourceActivityVersion]
+    | [ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion]
+    | [ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion]
+    | [
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion
+      ]
+    | [
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion
+      ];
   id: Id3;
   currentVersion: Currentversion;
   latestVersion: Latestversion;
   status: Status1;
   progress: Progress1;
   message: Message1;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "ResourceActivityVersion".
+ */
+export interface ResourceActivityVersion {
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  name: string | null;
+  lastUpdated: string | null;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema

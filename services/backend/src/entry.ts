@@ -30,7 +30,9 @@ export async function main() {
   let transportBroken = false, signalled = false;
   const send = (message: any) => { if (!transportBroken && message !== undefined && !process.stdout.destroyed) process.stdout.write(stringifyWireJson(message) + '\n'); };
   process.stdout.on('error', () => { transportBroken = true; process.stdin.destroy(); });
-  const runtime = new Runtime(path.join(path.resolve(option('--data-dir') || dataRoot()), 'native'), { notify: send });
+  const applicationDirectory = typeof Bun !== 'undefined' && Bun.isStandaloneExecutable
+    ? path.resolve(process.env.MAAVERGE_APP_DIR || path.dirname(process.execPath)) : undefined;
+  const runtime = new Runtime(path.join(path.resolve(option('--data-dir') || dataRoot()), 'native'), { notify: send, applicationDirectory });
   const inflight = new Set<Promise<unknown>>();
   let stopped = false, updateBusy = false, connectionBusy = false, backgroundSlots = 0;
   const track = (promise: Promise<unknown>) => { inflight.add(promise); void promise.catch(error => console.error(error)).finally(() => inflight.delete(promise)); };

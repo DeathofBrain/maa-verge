@@ -10,6 +10,7 @@ import './support-pages.css';
 import { useSettingsDraft } from './settings-draft';
 import { TaskConnectionSettings } from './TaskConnectionSettings';
 import { MultiInstanceSettings } from './MultiInstanceSettings';
+import { resourceClientLabels, resourceVersionDetail, resourceVersionLabel, type ResourceClient } from './update-display';
 
 export interface SupportPageProps {
   snapshot: Snapshot;
@@ -180,7 +181,7 @@ const categories = [
   { id: 'model', label: '模型与 Agent', icon: Cpu, keywords: '模型 API 接口 提供商 地址 问答 智能 托管' },
   { id: 'notifications', label: '通知与远控', icon: Bell, keywords: '推送 通知 远程 控制 消息' },
   { id: 'services', label: '外部服务', icon: ArrowUpRight, keywords: 'MirrorChyan 社区 作业站 企鹅 数据 汇报' },
-  { id: 'updates', label: '更新', icon: RefreshCw, keywords: '更新 核心 MaaCore 游戏资源 资源更新 下载 版本 检查 回滚' },
+  { id: 'updates', label: '更新', icon: RefreshCw, keywords: '更新 核心 MaaCore 游戏资源 资源更新 下载 版本 活动 目录 路径 检查 回滚' },
   { id: 'data', label: '数据与诊断', icon: HardDrive, keywords: '数据 日志 诊断 事件 导出 存储 本地' },
   { id: 'about', label: '关于', icon: Info, keywords: '版本 AGPL 许可证 开源 系统 模式' },
 ] as const;
@@ -217,17 +218,31 @@ function ModelForm({ settings, busy, onSave }: { settings: Settings; busy: boole
   return <Section title="模型与 Agent" description="保存模型提供商信息；不会在保存时发起模型请求。"><Notice>当前 Agent 提供可审阅的规则提案，真实云模型与自主托管尚未接入。</Notice><form className="sp-model-form" onSubmit={(event) => { event.preventDefault(); void onSave(draft); }}><label className="sp-field">模型提供商<input className="text-input" aria-label="模型提供商" placeholder="例如：openai-compatible" value={draft.provider} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, provider: event.target.value }))} /></label><label className="sp-field">API 地址<input className="text-input" type="url" aria-label="模型 API 地址" placeholder="https://example.com/v1" value={draft.baseUrl} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, baseUrl: event.target.value }))} /></label><label className="sp-field">模型名称<input className="text-input" aria-label="模型名称" value={draft.model} disabled={busy} placeholder="填写提供商支持的模型名称" onChange={(event) => setDraft((previous) => ({ ...previous, model: event.target.value }))} /></label><p className="sp-help">密钥管理将在系统钥匙串接入后提供，此处不存放 API 密钥。</p><div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button secondary" type="button" disabled={busy || !dirty} onClick={resetDraft}>放弃修改</button><button className="button primary" type="submit" disabled={busy}>保存模型配置</button></div></form></Section>;
 }
 
+function ComponentPathForm({ channel, settings, busy, onSave }: { channel: UpdateChannel; settings: Settings; busy: boolean; onSave: (patch: Partial<Settings>) => Promise<boolean> }) {
+  const key = channel.id === 'core' ? 'core' : 'resource';
+  const saved = settings.componentPaths?.[key] || channel.installDirectory || '';
+  const [draft, setDraft, reset] = useSettingsDraft(`component-path-${key}`, { path: saved });
+  const dirty = draft.path !== saved;
+  const save = (value: string) => onSave({ componentPaths: { core: settings.componentPaths?.core || '', resource: settings.componentPaths?.resource || '', [key]: value } });
+  return <form className="sp-component-path" onSubmit={(event) => { event.preventDefault(); void save(draft.path); }}>
+    <label className="sp-field">下载与安装目录<input className="text-input" aria-label={`${channelLabels[channel.id]}下载目录`} value={draft.path} placeholder="输入完整的绝对路径" required disabled={busy} onChange={(event) => setDraft({ path: event.target.value })} /></label>
+    <div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '用于后续下载与安装'}</span><button className="button secondary" type="button" disabled={busy} onClick={() => void save('')}>恢复默认目录</button>{dirty && <button className="button secondary" type="button" disabled={busy} onClick={reset}>放弃修改</button>}<button className="button primary" type="submit" disabled={busy || !dirty}>保存目录</button></div>
+    <p className="sp-help">安装版默认保存在程序同级的 {key === 'core' ? 'MaaCore' : 'MaaResource'} 目录。更改后保留当前安装与回滚版本，新下载使用此目录。</p>
+  </form>;
+}
+
 function UpdateSection({ channel, settings, busy, hasActiveRun, onAction, onSave }: { channel: UpdateChannel; settings: Settings; busy: boolean; hasActiveRun: boolean; onAction: SupportPageProps['onAction']; onSave: (patch: Partial<Settings>) => Promise<boolean> }) {
+  const [resourceClient, setResourceClient] = useState<ResourceClient>(settings.connection?.clientType ?? 'Official');
   const Icon = channel.id === 'app' ? HardDrive : channel.id === 'core' ? Cpu : Database;
   const working = ['checking', 'downloading'].includes(channel.status);
   const status = channel.status === 'idle' ? channel.id === 'app' ? '开发预览' : channel.latestVersion === channel.currentVersion ? '已是最新版本' : '等待检查' : updateLabels[channel.status];
-  return <section className="sp-update-channel update-channel"><div className="sp-update-main"><div className="sp-update-title"><Icon size={19} /><h3>{channelLabels[channel.id]}</h3><span className={`pill sp-update-state ${channel.status === 'failed' ? 'is-error' : ''}`}>{status}</span></div><div className="channel-version sp-channel-version">{channel.currentVersion || '尚未安装'}{channel.latestVersion && channel.latestVersion !== channel.currentVersion && <><ArrowRight size={13} /><span>{channel.latestVersion}</span></>}</div><p className="sp-help">{channel.id === 'app' ? '桌面应用与本地服务' : channel.id === 'core' ? '来源：官方 MaaCore 发布' : '关卡、活动与公招数据；版本独立于核心'}</p>{channel.message && <p className="sp-channel-message">{channel.message}</p>}{working && <div className="sp-update-progress" aria-label={`${channelLabels[channel.id]}更新进度`}><span style={{ width: `${Math.max(0, Math.min(100, channel.progress))}%` }} /></div>}</div><div className="sp-channel-actions">
+  return <section className="sp-update-channel update-channel"><div className="sp-update-main"><div className="sp-update-title"><Icon size={19} /><h3>{channelLabels[channel.id]}</h3><span className={`pill sp-update-state ${channel.status === 'failed' ? 'is-error' : ''}`}>{status}</span></div><div className="channel-version sp-channel-version">{resourceVersionLabel(channel, resourceClient)}{channel.latestVersion && channel.latestVersion !== channel.currentVersion && <><ArrowRight size={13} /><span>{channel.id === 'resource' ? channel.latestVersion.slice(0, 10) : channel.latestVersion}</span></>}</div><p className="sp-help">{channel.id === 'resource' && resourceVersionDetail(channel, resourceClient)}</p><p className="sp-help">{channel.id === 'app' ? '桌面应用与本地服务' : channel.id === 'core' ? '来源：官方 MaaCore 发布' : '关卡、活动与公招数据；版本独立于核心'}</p>{channel.message && <p className="sp-channel-message">{channel.message}</p>}{working && <div className="sp-update-progress" aria-label={`${channelLabels[channel.id]}更新进度`}><span style={{ width: `${Math.max(0, Math.min(100, channel.progress))}%` }} /></div>}</div><div className="sp-channel-actions">
     {['idle', 'active', 'failed'].includes(channel.status) && <button className="button secondary" disabled={busy} onClick={() => void onAction(`check-${channel.id}`, () => rpc('updates.check', { channel: channel.id }))}><RefreshCw size={14} />检查更新</button>}
     {channel.status === 'available' && <button className="button primary" disabled={busy} onClick={() => void onAction(`prepare-${channel.id}`, () => rpc('updates.prepare', { channel: channel.id }), '候选版本已准备')}><Download size={14} />{channel.currentVersion ? '准备更新' : '下载安装'}</button>}
     {['staged', 'waiting_idle'].includes(channel.status) && <button className="button primary" disabled={busy || channel.status === 'waiting_idle'} onClick={() => void onAction(`activate-${channel.id}`, () => rpc('updates.activate', { channel: channel.id }), '更新将在安全空闲边界生效')}><Check size={14} />{channel.status === 'waiting_idle' ? '等待空闲生效' : '应用更新'}</button>}
     {working && <span className="sp-working"><LoaderCircle className="spin" size={15} />{channel.progress}%</span>}
     {channel.id !== 'app' && ['active', 'staged', 'waiting_idle'].includes(channel.status) && <button className="button secondary" disabled={busy || hasActiveRun} onClick={() => void onAction(`rollback-${channel.id}`, () => rpc('updates.rollback', { channel: channel.id }), '回滚请求已处理')}><RotateCcw size={14} />回滚上一版本</button>}
-  </div>{channel.id !== 'app' && <div className="sp-update-preference"><Toggle label={channel.id === 'core' ? '自动检查核心更新' : '独立检查游戏资源'} description={channel.id === 'core' ? '启动时与每 24 小时检查' : '每 6 小时独立检查资源更新'} checked={channel.id === 'core' ? settings.autoUpdateCore : settings.autoUpdateResource} disabled={busy} onChange={(value) => void onSave(channel.id === 'core' ? { autoUpdateCore: value } : { autoUpdateResource: value })} /></div>}</section>;
+  </div>{channel.id === 'resource' && <label className="sp-resource-client sp-field">资源客户端<select className="text-input" aria-label="资源版本客户端" value={resourceClient} onChange={(event) => setResourceClient(event.target.value as ResourceClient)}>{Object.entries(resourceClientLabels).map(([client, label]) => <option key={client} value={client}>{label}</option>)}</select></label>}{channel.id !== 'app' && <div className="sp-update-preference"><Toggle label={channel.id === 'core' ? '自动检查核心更新' : '独立检查游戏资源'} description={channel.id === 'core' ? '启动时与每 24 小时检查' : '每 6 小时独立检查资源更新'} checked={channel.id === 'core' ? settings.autoUpdateCore : settings.autoUpdateResource} disabled={busy} onChange={(value) => void onSave(channel.id === 'core' ? { autoUpdateCore: value } : { autoUpdateResource: value })} /><ComponentPathForm channel={channel} settings={settings} busy={busy || working} onSave={onSave} /></div>}</section>;
 }
 
 const copilotTypes: Task['type'][] = ['Copilot', 'SSSCopilot', 'ParadoxCopilot', 'VideoRecognition'];

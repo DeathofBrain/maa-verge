@@ -2,6 +2,7 @@ import { Activity, ArrowRight, BookOpen, Bot, CalendarDays, Check, CircleCheck, 
 import { type Run, type Snapshot, type UpdateChannel } from '@maaverge/contracts';
 import './home-dashboard.css';
 import GameInfoPanel from './GameInfoPanel';
+import { resourceVersionDetail, resourceVersionLabel } from './update-display';
 
 type Destination = 'daily' | 'devices' | 'settings' | 'history' | 'copilot' | 'agent';
 type Props = {
@@ -24,6 +25,7 @@ export default function HomeDashboard({ snapshot, selectedDevice, stopping, onSt
   const recentRuns = [...snapshot.runs].sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt)).slice(0, 4);
   const currentRun = activeRuns.find((run) => run.deviceId === selectedDevice) || activeRuns[0];
   const device = snapshot.devices.find((item) => item.id === selectedDevice);
+  const resourceClient = snapshot.settings.deviceProfiles?.find(profile => profile.address === device?.address)?.connection.clientType ?? snapshot.settings.connection?.clientType ?? 'Official';
   const connected = snapshot.devices.filter((item) => item.state !== 'offline');
   const metrics = [
     { label: '今日执行', aria: '今日执行统计', value: today.length, detail: '按本地日期统计运行次数', icon: Clock3, tone: 'blue' },
@@ -79,7 +81,7 @@ export default function HomeDashboard({ snapshot, selectedDevice, stopping, onSt
           </section>
           <section className="home-panel home-updates" aria-label="组件版本">
             <div className="home-panel-heading"><h2>组件版本</h2><button className="icon-button" aria-label="打开更新设置" title="打开更新设置" onClick={onUpdates}><Settings2 size={15} /></button></div>
-            <div className="home-version-list">{snapshot.updates.map((channel) => <button key={channel.id} onClick={onUpdates} title={channel.message}><span>{channel.id === 'app' ? 'Maa Verge' : channel.id === 'core' ? 'MaaCore' : '游戏资源'}<strong>{channel.currentVersion || '未安装'}</strong></span><small className={['available', 'staged', 'waiting_idle', 'failed'].includes(channel.status) ? 'attention' : ''}>{channel.id === 'app' && channel.status === 'idle' ? '开发预览' : updateLabels[channel.status]}</small></button>)}</div>
+            <div className="home-version-list">{snapshot.updates.map((channel) => <button key={channel.id} onClick={onUpdates} title={channel.id === 'resource' ? `${resourceVersionDetail(channel, resourceClient)} · ${channel.message}` : channel.message}><span>{channel.id === 'app' ? 'Maa Verge' : channel.id === 'core' ? 'MaaCore' : '游戏资源'}<strong>{resourceVersionLabel(channel, resourceClient)}</strong></span><small className={['available', 'staged', 'waiting_idle', 'failed'].includes(channel.status) ? 'attention' : ''}>{channel.id === 'app' && channel.status === 'idle' ? '开发预览' : updateLabels[channel.status]}</small></button>)}</div>
           </section>
         </aside>
       </div>

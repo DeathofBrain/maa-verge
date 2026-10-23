@@ -378,9 +378,26 @@
         "lines": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/InfrastructureLine" } }
       }
     },
+    "ComponentPaths": {
+      "description": "Absolute installation/download roots. An empty string restores the application default on settings.save.",
+      "type": "object", "additionalProperties": false, "required": ["core", "resource"],
+      "properties": {
+        "core": { "type": "string", "maxLength": 4096 },
+        "resource": { "type": "string", "maxLength": 4096 }
+      }
+    },
+    "ResourceActivityVersion": {
+      "type": "object", "additionalProperties": false, "required": ["clientType", "name", "lastUpdated"],
+      "properties": {
+        "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
+        "name": { "type": ["string", "null"], "maxLength": 300 },
+        "lastUpdated": { "type": ["string", "null"], "maxLength": 200 }
+      }
+    },
     "Settings": {
       "additionalProperties": false,
       "properties": {
+        "componentPaths": { "$ref": "#/$defs/ComponentPaths" },
         "infrastructureEstimates": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/InfrastructureEstimateProfile" } },
         "capture": { "$ref": "#/$defs/CaptureSettings" },
         "connection": { "$ref": "#/$defs/ConnectionSettings" },
@@ -494,6 +511,8 @@
     "UpdateChannel": {
       "additionalProperties": false,
       "properties": {
+        "installDirectory": { "type": "string", "maxLength": 4096 },
+        "resourceActivities": { "type": "array", "maxItems": 6, "items": { "$ref": "#/$defs/ResourceActivityVersion" } },
         "id": {
           "enum": [
             "app",

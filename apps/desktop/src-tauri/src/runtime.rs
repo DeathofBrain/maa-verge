@@ -76,6 +76,33 @@ fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
     }
 }
 
+fn application_directory() -> Result<PathBuf, String> {
+    let executable = if cfg!(target_os = "linux") {
+        std::env::var_os("APPIMAGE")
+            .map(PathBuf::from)
+            .filter(|path| path.is_absolute())
+            .unwrap_or(std::env::current_exe().map_err(|error| error.to_string())?)
+    } else {
+        std::env::current_exe().map_err(|error| error.to_string())?
+    };
+    let directory = executable.parent().ok_or("无法定位应用程序目录")?;
+    // A macOS bundle is the program; keep downloaded components alongside .app.
+    if cfg!(target_os = "macos") && directory.file_name().is_some_and(|name| name == "MacOS") {
+        if let Some(bundle) = directory.parent().and_then(|contents| contents.parent()) {
+            if bundle
+                .extension()
+                .is_some_and(|extension| extension == "app")
+            {
+                return bundle
+                    .parent()
+                    .map(PathBuf::from)
+                    .ok_or("无法定位应用程序目录".into());
+            }
+        }
+    }
+    Ok(directory.to_path_buf())
+}
+
 impl Runtime {
     pub async fn start(app: AppHandle) -> Result<Self, String> {
         if std::env::var_os("MAAVERGE_MODE").is_some_and(|mode| mode != "native") {
@@ -84,6 +111,10 @@ impl Runtime {
         let (executable, arguments) = program(&app)?;
         let mut command = Command::new(executable);
         command.args(arguments);
+        if !cfg!(debug_assertions) {
+            // The service lives in resource_dir/runtime, not beside the main executable.
+            command.env("MAAVERGE_APP_DIR", application_directory()?);
+        }
         let emit: Emit = Arc::new(move |event, payload| {
             let _ = app.emit(event, payload);
         });

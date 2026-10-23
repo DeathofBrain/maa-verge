@@ -3,6 +3,7 @@ import { validatePlan, validateSettings, validateSnapshot } from '../../../packa
 import { RpcError } from './errors';
 import { validateDeviceProfiles } from './device-profiles';
 import { validateInfrastructureProfiles } from './home-info';
+import { normalizeComponentPath } from './config';
 export type { Plan, Settings, Task, Snapshot };
 export type { DeviceConnectionProfile } from '../../../packages/contracts/src/types';
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
@@ -61,6 +62,10 @@ export function parseSettings(input: any = {}): Settings {
     model: Object.hasOwn(input, 'model') ? record(input.model) ? { provider: 'none', baseUrl: '', model: '', ...input.model } : input.model : { provider: 'none', baseUrl: '', model: '' } };
   for (const key of ['autoConnect', 'autoUpdateCore', 'autoUpdateResource', 'minimizeToTray'] as const) value[key] = boolean(value[key]);
   if (!validateSettings(value)) throw new RpcError(-32602, '请求参数无效', validateSettings.errors);
+  if (value.componentPaths) {
+    try { value.componentPaths = { core: normalizeComponentPath(value.componentPaths.core), resource: normalizeComponentPath(value.componentPaths.resource) }; }
+    catch (error) { throw new RpcError(-32602, error instanceof Error ? error.message : String(error)); }
+  }
   validateInfrastructureProfiles(value.infrastructureEstimates);
   if ((value.capture?.mumuTouch || value.capture?.mumuBridge) && value.capture.method !== 'mumu') throw new RpcError(-32602, 'MuMu 触控增强和网络桥接需要启用 MuMu 截图增强');
   validateDeviceProfiles(value.deviceProfiles);

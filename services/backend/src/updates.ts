@@ -1,14 +1,15 @@
 /** Independent immutable MaaCore / MaaResource generations. Jobs never open the business DB. */
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { createReadStream, mkdirSync } from "node:fs";
+import { createReadStream } from "node:fs";
 import { cp, mkdir, open, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractArchive, extractCoreArchive, normalizeRuntimeRoot } from "./archives.ts";
 import { RpcError } from "./errors.ts";
 import { nativeWorkerPath } from "./native-path.ts";
-import { childEnvironment, nativeEnvironment } from "./config.ts";
+import { childEnvironment, nativeEnvironment, normalizeComponentPath, type ComponentPaths } from "./config.ts";
+import { resourceActivityVersions } from "./resource-version.ts";
 
 const GITHUB = "https://api.github.com/repos/MaaAssistantArknights";
 export const MAX_DOWNLOAD_BYTES = 2 * 1024 ** 3;
@@ -28,6 +29,7 @@ export interface UpdateSource {
 type Validator = (core: string, resource: string, version: string) => Promise<void> | void;
 type Hook = () => Promise<void> | void;
 export interface UpdateOptions {
+  directories?: ComponentPaths;
   source?: UpdateSource; validator?: Validator;
   beforeActivate?: Hook; afterActivate?: Hook; finishActivate?: (error?: string) => Promise<void> | void;
   jobCommand?: string[];
@@ -251,6 +253,7 @@ function defaultJobCommand(): string[] {
 }
 
 export class UpdateService {
+  private readonly defaults: ComponentPaths;
   private readonly source: UpdateSource;
   private readonly validator: Validator;
   private readonly beforeActivate: Hook;
@@ -263,6 +266,7 @@ export class UpdateService {
   constructor(readonly root: string, private readonly store: UpdateStore,
     private readonly emit: (kind: string, text: string, data: any) => void,
     private readonly busy: () => boolean, options: UpdateOptions = {}) {
+    this.defaults = options.directories ?? { core: root, resource: root };
     this.source = options.source ?? new OfficialSource();
     this.validator = options.validator ?? ((core, resource, version) => {
       if (this.closing) throw new Error("更新服务正在关闭");
@@ -274,7 +278,6 @@ export class UpdateService {
       if (this.closing) throw new Error("更新服务正在关闭");
       return executeJson(options.jobCommand ?? defaultJobCommand(), config, 180_000, this.children);
     });
-    mkdirSync(path.join(root, "generations"), { recursive: true }); mkdirSync(path.join(root, "downloads"), { recursive: true });
     if (!store.get("update", "core")) {
       const versions = { app: "0.1.0", core: "未安装", resource: "未安装" };
       for (const [channel, version] of Object.entries(versions)) this.save({ id: channel, currentVersion: version, status: "idle", progress: 0, message: "尚未检查" });
@@ -298,12 +301,50 @@ export class UpdateService {
     await Promise.all([...this.children].map(terminateChild));
     await this.queue;
   }
-  channels(): any[] { return this.store.all("update").map((value) => ({ latestVersion: null, ...value })); }
+  directories(): ComponentPaths {
+    const configured = this.store.get("settings", "main", {}).componentPaths;
+    return { core: configured?.core || this.defaults.core, resource: configured?.resource || this.defaults.resource };
+  }
+  resolveDirectories(configured?: ComponentPaths): ComponentPaths {
+    return { core: normalizeComponentPath(configured?.core || this.defaults.core), resource: normalizeComponentPath(configured?.resource || this.defaults.resource) };
+  }
+  saveDirectories(configured: ComponentPaths, persist: (paths: ComponentPaths) => void): Promise<void> {
+    const next = this.resolveDirectories(configured), current = this.directories();
+    // Ordinary settings changes must not wait for an unrelated long download/job.
+    if (next.core === current.core && next.resource === current.resource) { persist(next); return Promise.resolve(); }
+    return this.serial(async () => {
+      const previous = this.directories();
+      for (const channel of ['core', 'resource'] as const) {
+        if (next[channel] === previous[channel]) continue;
+        let probe: string | undefined;
+        let created = false;
+        try {
+          await mkdir(next[channel], { recursive: true });
+          probe = path.join(next[channel], `.maaverge-write-${randomUUID()}`);
+          const file = await open(probe, 'wx');
+          created = true;
+          try { await file.writeFile(''); await file.sync(); } finally { await file.close(); }
+        } catch (error) { throw new RpcError(-32602, `${channel === 'core' ? 'MaaCore' : '游戏资源'}目录无法写入，请选择可写的绝对路径`, message(error)); }
+        finally { if (created && probe) await rm(probe, { force: true }).catch(() => {}); }
+      }
+      persist(next);
+    });
+  }
+  private decorate(value: any): any {
+    return { latestVersion: null, ...value,
+      ...(value.id !== 'app' ? { installDirectory: this.directories()[value.id as 'core' | 'resource'] } : {}),
+      ...(value.id === 'resource' ? { resourceActivities: resourceActivityVersions(this.store.get('active', 'combo', {}).resource?.path) } : {}),
+    };
+  }
+  channels(): any[] { return this.store.all("update").map((value) => this.decorate(value)); }
   channel(channel: string): any {
     if (!["app", "core", "resource"].includes(channel)) throw new RpcError(-32602, "未知更新通道");
-    return { latestVersion: null, ...this.store.get("update", channel) };
+    return this.decorate(this.store.get("update", channel));
   }
-  private save(value: any): any { value = { latestVersion: null, ...value }; this.store.put("update", value.id, value); return value; }
+  private save(value: any): any {
+    const { installDirectory: _directory, resourceActivities: _activities, ...state } = value;
+    value = { latestVersion: null, ...state }; this.store.put("update", value.id, value); return this.decorate(value);
+  }
   private change(channel: string, changes: any): any {
     const value = this.save({ ...this.channel(channel), ...changes });
     this.emit("update.changed", value.message, { channel, update: value }); return value;
@@ -339,13 +380,15 @@ export class UpdateService {
     let metadata: UpdateMetadata = this.store.get("update_metadata", channel);
     if (!metadata) { await this.checkCurrent(channel); metadata = this.store.get("update_metadata", channel); }
     if (metadata.version === current.currentVersion) return current;
-    const generation = path.join(this.root, "generations", `${channel}-${randomUUID().replaceAll("-", "")}`);
-    await mkdir(generation);
+    const directory = this.directories()[channel as 'core' | 'resource'];
+    const generation = path.join(directory, "generations", `${channel}-${randomUUID().replaceAll("-", "")}`);
     this.change(channel, { status: "downloading", progress: 0, message: "正在准备独立更新快照" });
     try {
+      await mkdir(generation, { recursive: true });
+      await mkdir(path.join(directory, 'downloads'), { recursive: true });
       let digest: string;
       if (typeof metadata.name !== "string" || path.basename(metadata.name) !== metadata.name || metadata.name.includes("\\")) throw new Error("更新包文件名无效");
-      const archive = path.join(this.root, "downloads", randomUUID() + "-" + metadata.name);
+      const archive = path.join(directory, "downloads", randomUUID() + "-" + metadata.name);
       try {
         digest = await this.source.download(metadata, archive, (progress) => this.change(channel, { progress, message: "正在下载官方组件" }));
         const core = this.store.get("active", "combo", {}).core;

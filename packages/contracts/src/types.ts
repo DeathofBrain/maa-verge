@@ -137,6 +137,31 @@ export interface Run {
   finishedAt: Finishedat;
 }
 export interface UpdateChannel {
+  installDirectory?: string;
+  /**
+   * @maxItems 6
+   */
+  resourceActivities?:
+    | []
+    | [ResourceActivityVersion]
+    | [ResourceActivityVersion, ResourceActivityVersion]
+    | [ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion]
+    | [ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion]
+    | [
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion
+      ]
+    | [
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion,
+        ResourceActivityVersion
+      ];
   id: Id3;
   currentVersion: Currentversion;
   latestVersion: Latestversion;
@@ -144,7 +169,13 @@ export interface UpdateChannel {
   progress: Progress1;
   message: Message1;
 }
+export interface ResourceActivityVersion {
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  name: string | null;
+  lastUpdated: string | null;
+}
 export interface Settings {
+  componentPaths?: ComponentPaths;
   /**
    * @maxItems 100
    */
@@ -162,6 +193,13 @@ export interface Settings {
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;
+}
+/**
+ * Absolute installation/download roots. An empty string restores the application default on settings.save.
+ */
+export interface ComponentPaths {
+  core: string;
+  resource: string;
 }
 export interface InfrastructureEstimateProfile {
   deviceId: string;
