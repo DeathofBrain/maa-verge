@@ -66,7 +66,7 @@
 
 从 [GitHub Releases](https://github.com/DeathofBrain/maa-verge/releases) 下载对应系统与架构的安装包：Windows x64 提供 EXE / MSI，macOS 提供 Apple Silicon / Intel DMG，Linux x64 提供 AppImage / DEB / RPM。macOS 最低目标为 13.5。当前开发预览包未完成正式签名和 macOS 公证。
 
-用户无需安装 Python、Node 或 Bun；Windows 使用 WebView2，Linux 仍需系统 WebView 和桌面库。启动后按需下载 MaaCore 与资源，连接已启动的模拟器，再由用户手动开始任务。发行包的验证范围和已知限制见 [v0.1.0 版本说明](docs/releases/v0.1.0.md)。
+用户无需安装 Python、Node 或 Bun；Windows 使用 WebView2，Linux 仍需系统 WebView 和桌面库。启动后按需下载 MaaCore 与资源；默认组件目录不可写时，在「设置 → 更新」选择可写目录后重试。连接已启动的模拟器，再由用户手动开始任务。发行包的验证范围和已知限制见 [v0.1.0 版本说明](docs/releases/v0.1.0.md)。
 
 ## 开始开发
 
