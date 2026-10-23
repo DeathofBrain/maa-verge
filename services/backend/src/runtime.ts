@@ -26,21 +26,10 @@ import type { RunTask } from '../../../packages/contracts/src/types';
 import { recordDrops, recordInfrastructure, RunArtifacts } from './execution-evidence';
 import { validateRunArtifactParams } from '../../../packages/contracts/src/validators.js';
 import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
+import { validateRecognitionParams } from '../../../packages/contracts/src/validators.js';
+import { clearDeviceRecognition, parseRecognition, recognitionKey, recognitionSnapshot } from './recognition';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
-function recognitionResult(type: 'OperBox' | 'Depot', details: any): boolean {
-  const result = details.details;
-  if (details.taskchain !== type || details.what !== (type === 'OperBox' ? 'OperBoxInfo' : 'DepotInfo') || result?.done !== true) return false;
-  const object = (value: any) => value !== null && typeof value === 'object' && !Array.isArray(value);
-  if (type === 'OperBox') return Array.isArray(result.own_opers) && result.own_opers.length > 0 && result.own_opers.every((oper: any) => object(oper)
-    && typeof oper.id === 'string' && oper.id.length > 0 && typeof oper.name === 'string' && oper.name.length > 0 && typeof oper.own === 'boolean'
-    && ['elite', 'level', 'potential', 'rarity'].every(key => Number.isInteger(oper[key]) && oper[key] >= -2_147_483_648 && oper[key] <= 2_147_483_647));
-  if (typeof result.data !== 'string') return false;
-  try {
-    const items = JSON.parse(result.data);
-    return object(items) && Object.keys(items).length > 0 && Object.entries(items).every(([id, quantity]) => id.length > 0 && Number.isInteger(quantity) && Number(quantity) > 0 && Number(quantity) <= 2_147_483_647);
-  } catch { return false; }
-}
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
 export interface RuntimeOptions { applicationDirectory?: string; notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
 export class Runtime {
@@ -127,6 +116,15 @@ export class Runtime {
       case 'stages.list':
         if (!validateStageListParams(params)) throw new RpcError(-32602, '关卡目录请求参数无效');
         return this.stages(params.clientType, params.refresh);
+      case 'recognition.get': {
+        if (!validateRecognitionParams(params)) throw new RpcError(-32602, '识别结果请求参数无效');
+        const device = this.store.get('device', params.deviceId);
+        if (!device) throw new RpcError(-32004, '设备不存在');
+        const settings = parseSettings(this.store.get('settings', 'main'));
+        const profile = settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address);
+        const clientType = params.clientType ?? this.store.get('device_client', device.id) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';
+        return recognitionSnapshot(this.store, device.id, params.kind, clientType);
+      }
       case 'home.info': {
         if (Object.keys(params).some(key => !['deviceId', 'clientType', 'refresh'].includes(key)) || (params.deviceId !== undefined && (typeof params.deviceId !== 'string' || !params.deviceId || params.deviceId.length > 200)) || (params.refresh !== undefined && typeof params.refresh !== 'boolean')) throw new RpcError(-32602, '主页信息请求参数无效');
         if (params.clientType !== undefined && !['Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'].includes(params.clientType)) throw new RpcError(-32602, '游戏客户端无效');
@@ -431,6 +429,7 @@ export class Runtime {
     this.store.transaction(() => {
       if (clientType !== this.store.get('device_client', run.deviceId, 'Official') || accountName !== this.store.get('device_account', run.deviceId, '')) {
         this.store.delete('user_data_sync', run.deviceId); this.store.delete('mall_visit', run.deviceId);
+        clearDeviceRecognition(this.store, run.deviceId);
         const settings = this.store.get('settings', 'main');
         if (settings.infrastructureEstimates?.some((profile: any) => profile.deviceId === run.deviceId)) {
           this.store.put('settings', 'main', { ...settings, infrastructureEstimates: settings.infrastructureEstimates.filter((profile: any) => profile.deviceId !== run.deviceId) });
@@ -647,7 +646,10 @@ export class Runtime {
             if ([0, 1].includes(message) || (message === 10000 && matches) || (message === 10004 && matches)) state.failed = true;
             if (message === 10002 && matches) state.completed = true;
             if (message === 3 && (matches || (!('taskid' in details) && (!Array.isArray(details.finished_tasks) || details.finished_tasks.includes(state.taskId))))) state.queueEnded = true;
-            if (message === 20003 && matches && state.recognitionType && !state.completed && !state.failed && !state.queueEnded && !state.stopRequested && recognitionResult(state.recognitionType, details)) state.recognitionResultAt = now();
+            if (message === 20003 && matches && state.recognitionType && !state.completed && !state.failed && !state.queueEnded && !state.stopRequested) {
+              const recognized = parseRecognition(state.recognitionType, details);
+              if (recognized) { state.recognitionResult = recognized; state.recognitionResultAt = now(); }
+            }
             if (message === 20002 && matches && state.mallVisitEnabled && details.subtask === 'ProcessTask' && details.taskchain === 'Mall' && ['VisitLimited', 'VisitNextBlack'].includes(details.details?.task)) state.mallVisitedAt = now();
             if (matches && !state.stopRequested && !state.failed && !state.queueEnded) {
               if ([10001, 10002, 20001, 20002].includes(message)) {
@@ -697,7 +699,12 @@ export class Runtime {
           const step: SyncStep | undefined = state.syncSteps?.[state.syncIndex] ?? (configured.type === 'OperBox' ? { type: 'OperBox', key: 'operatorsAt' } : configured.type === 'Depot' ? { type: 'Depot', key: 'depotAt' } : undefined);
           if (step) {
             const synced = { operatorsAt: null, depotAt: null, ...this.syncHistory(run.deviceId, state.clientType), clientType: state.clientType }; synced[step.key] = state.recognitionResultAt;
-            this.store.put('user_data_sync', run.deviceId, synced);
+            const kind = step.type === 'OperBox' ? 'operators' : 'depot';
+            const result = { deviceId: run.deviceId, kind, clientType: state.clientType, collectedAt: state.recognitionResultAt, runId: run.id, ...state.recognitionResult };
+            this.store.transaction(() => {
+              this.store.put('recognition', recognitionKey(run.deviceId, state.clientType, kind), result);
+              this.store.put('user_data_sync', run.deviceId, synced);
+            });
             this.emit('device.data_synced', step.type === 'OperBox' ? '干员识别已成功同步' : '仓库识别已成功同步', { deviceId: run.deviceId, runId: run.id, type: step.type, syncedAt: synced[step.key] });
             if (state.syncSteps && state.syncIndex + 1 < state.syncSteps.length) { await this.advanceNativeTask(run, state.index, state.syncSteps, state.syncIndex + 1); continue; }
           }
