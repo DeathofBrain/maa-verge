@@ -94,8 +94,8 @@ test('home reports an editor-started run without changing its unsaved draft', as
   await expect(current).toContainText('固源岩补给');
   await expect(current.getByRole('progressbar', { name: '当前执行进度', exact: true })).toBeVisible();
   await current.getByRole('button', { name: '查看运行详情', exact: true }).click();
-  await expect(page.getByRole('region', { name: '运行详情', exact: true })).toContainText('固源岩补给');
-  await page.getByRole('button', { name: '收起运行详情', exact: true }).click();
+  await expect(page.getByRole('region', { name: '任务表执行页面', exact: true })).toContainText('固源岩补给');
+  await navigate(page, '主页');
   await current.getByRole('button', { name: '停止执行', exact: true }).click();
   await expect(metric(page, '运行统计')).toHaveText('0');
   await expect(metric(page, '今日执行统计')).toHaveText('1');
@@ -233,6 +233,7 @@ test('a prepared update waits for the running device before activating', async (
 test('the runtime rejects deleting an executing task table and displays the error', async ({ page }) => {
   await openWorkspace(page);
   await wb(page).getByRole('button', { name: '开始日常', exact: true }).click();
+  await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
   await tab(page, '任务表设置');
   await wb(page).getByRole('button', { name: '删除任务表', exact: true }).click();
   const confirmation = page.getByRole('dialog', { name: '删除任务表', exact: true });
@@ -620,11 +621,13 @@ test('starting with a draft offers saved execution or save-and-start explicitly'
   await expect(wb(page).getByText('任务表有未保存的改动')).toBeVisible();
   await wb(page).getByRole('button', { name: '使用已保存配置', exact: true }).click();
   await expect(dock(page)).toContainText('执行中');
+  await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
   await expect(wb(page).locator('.wb-save-state')).toHaveText('未保存');
   await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await wb(page).getByRole('button', { name: '开始日常', exact: true }).click();
   await wb(page).getByRole('button', { name: '保存并开始', exact: true }).click();
+  await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
   await expect(dock(page)).toContainText('执行中');
   await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
