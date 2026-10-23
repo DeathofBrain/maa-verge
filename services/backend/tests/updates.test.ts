@@ -63,11 +63,12 @@ test("download validates SHA-256/size and removes partial files", async () => {
 });
 
 test('retry and service restart keep a source-bound download cache while versions and data roots stay isolated', async () => {
-  const root = await temp(), store = new MemoryStore(), destinations: string[] = [];
+  const root = await temp(), store = new MemoryStore(), destinations: string[] = [], resumed: string[] = [];
   let version = 'v1.0.0';
   const source: UpdateSource = {
     check: () => ({ version, url: `https://example.test/${version}/core.zip`, name: 'core.zip' }),
     download: async (_metadata, destination) => {
+      if (destinations.includes(destination)) resumed.push(await readFile(destination + '.partial', 'utf8'));
       destinations.push(destination);
       await writeFile(destination + '.partial', 'retained bytes');
       throw new Error('synthetic network interruption');
@@ -81,6 +82,8 @@ test('retry and service restart keep a source-bound download cache while version
   const restarted = new UpdateService(root, store, () => {}, () => false, { source });
   await expect(restarted.prepare('core')).rejects.toThrow('准备更新失败');
   expect(destinations[1]).toBe(destinations[0]);
+  expect(resumed).toEqual(['retained bytes']);
+  expect(await readdir(path.dirname(destinations[1]))).not.toContain('downloads');
   version = 'v1.0.1'; await restarted.check('core');
   await expect(restarted.prepare('core')).rejects.toThrow('准备更新失败');
   expect(destinations[2]).not.toBe(destinations[0]);
@@ -104,7 +107,13 @@ test('download preferences are captured per preparation and repeated progress em
     },
   };
   store.put('settings', 'main', { componentDownload: { engine: 'aria2', aria2Path: '' } });
-  const updates = new UpdateService(root, store, (_type, _message, data) => events.push(data.update), () => false, { source, jobRunner: async () => ({}) });
+  const updates = new UpdateService(root, store, (_type, _message, data) => events.push(data.update), () => false, { source, jobRunner: async config => {
+    const coreName = process.platform === 'win32' ? 'MaaCore.dll' : process.platform === 'darwin' ? 'libMaaCore.dylib' : 'libMaaCore.so';
+    await mkdir(path.join(config.target, 'resource'), { recursive: true });
+    await writeFile(path.join(config.target, coreName), 'synthetic core');
+    await writeFile(path.join(config.target, 'resource/version.json'), '{}');
+    return {};
+  } });
   await updates.check('core'); await updates.prepare('core');
   expect(options).toEqual([{ engine: 'aria2', aria2Path: '' }]);
   expect(events.filter(event => event.message === '正在下载官方组件').length).toBeLessThanOrEqual(2);

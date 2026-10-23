@@ -1,5 +1,37 @@
 # 工作树与分支整合记录
 
+## dev 工作树整合（2026-10-23）
+
+基线为 `dev@4fcd939`，核对主工作区与 15 个附加 worktree。五组最终实现已合入 `dev`，并核实所有登记 worktree 分支均为合并结果的祖先。另合入未绑定 worktree 的 `codex/preview-performance`，避免只合预览后端而遗漏已完成的前端优化。保留全部原工作区和分支；合并前基线保存在 `codex/dev-before-worktree-merge-20261023`。
+
+| 功能 | 最终来源 | 合并提交 |
+| --- | --- | --- |
+| 完整性、同版本修复、卸载、实例诊断 | `codex/fix-legacy-component-repair` | `079816e` |
+| 下载器与跨页通知 | `codex/component-downloads` | `61ce0c0` |
+| 仓库、干员与材料图片 | `codex/warehouse-tools` | `6651d96` |
+| 日志导出与清理 | `codex/export-logs` | `5a0ef03` |
+| 实时预览与任务结果截图 | `codex/preview-performance` | `be3755d` |
+
+等价分支标记提交 `8bc6288` 与其第一父 `be3755d` 的文件树完全相同。标记前对以下 11 个辅助分支执行 `git cherry -v be3755d <分支>`，共 12 个独有提交全部显示 `-`，没有遗漏的 `+`。`codex/fix-component-recovery` 则已直接位于 legacy 修复分支的祖先链。
+
+| 辅助分支（均为 `codex/` 前缀） | 原提交 → 实质来源提交 |
+| --- | --- |
+| `component-download-ui` | `0aa4c0c` → `3df950d` |
+| `resumable-downloader` | `3ecd867` → `9212f9c` |
+| `component-integrity` | `2cd3815` → `ec1d82b` |
+| `fix-component-retention` | `134b234` → `4fcd939` |
+| `fix-component-uninstall` | `9ec9386` → `e5c1eb9` |
+| `export-logs-ui` | `4d4a681` → `686d530`；`0823441` → `d8fe4e0` |
+| `warehouse-item-resources` | `e32eac9` → `fa75390` |
+| `warehouse-recognition` | `d02ac22` → `6135ba5` |
+| `warehouse-ui-tests` | `83391f6` → `f1d0968` |
+| `preview-backend-performance` | `9554559` → `3875332` |
+| `fix-instance-probe-diagnostics` | `cc32e12` → `7defb04` |
+
+下载与修复分支的路径冲突统一为组件根目录的 `.download-<稳定身份哈希>-<包名>`：完整归档用完即删，中断分片保留并校验后续传，不再创建 `downloads/`。完整性校验、资源基础目录复核、有效回滚、活动 worker 保护和三版保留均保留。合并协议源后重新生成全部类型与独立校验器；执行页只显示结果截图，同时保留材料资源图片。
+
+主工作区原有字体与组件未就绪防闪烁改动已暂存保护并恢复，继续保持未提交状态。`component-download-ui` 工作区原有生成类型的未提交补丁未修改，其 `componentDownload` 内容已由最终下载分支覆盖。新增恢复测试断言确认跨服务重启保留分片且不生成旧下载子目录，下载偏好夹具补齐满足完整性校验的合成文件。最终组合验证及平台边界见 [STATUS.md](STATUS.md)。
+
 ## 模拟器发现与增强截图整合（2026-10-23）
 
 本次基线为 `main` / `origin/main` 的 `7a50395`，主工作区位于 `codex/mumu-adb-discovery`。再次核对全部 6 个登记 worktree（含主目录），附加工作区提交后均干净；未发现其他未提交成果。下表来源提交通过 stable patch-id、`git cherry` 及提交差异核对后集成，随后记录全部来源分支的合并关系，保留已验证的最终文件内容。没有删除本机 worktree 或分支。
