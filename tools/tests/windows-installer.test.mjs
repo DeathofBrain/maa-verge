@@ -65,6 +65,7 @@ test('compiled NSIS cleanup removes default component trees, preserves custom da
 
   const core = path.join(application, 'MaaCore'), resource = path.join(application, 'MaaResource');
   const retained = [path.join(application, '用户保留.txt'), path.join(root, 'custom-components/MaaCore.dll'),
+    path.join(application, 'config/native/maaverge.sqlite3'), path.join(application, 'config/native/.runtime-lock.sqlite3'),
     path.join(root, 'business/native/maaverge.sqlite3'), path.join(root, 'business/native/.data-root.lock')];
   const components = [path.join(core, 'MaaCore.dll'), path.join(core, 'resource/version.json'),
     path.join(core, 'downloads/interrupted.zip'), path.join(core, 'generations/core-old/manifest.json'),
@@ -80,6 +81,7 @@ test('compiled NSIS cleanup removes default component trees, preserves custom da
   for (const file of retained) assert.equal(readFileSync(file, 'utf8'), 'synthetic fixture', file);
 
   rmSync(retained[0]);
+  rmSync(path.join(application, 'config'), { recursive: true });
   execFileSync(executable, ['/S'], { windowsHide: true, timeout: 30_000 });
   assert.equal(existsSync(application), false, 'empty installation directory is removed');
 });

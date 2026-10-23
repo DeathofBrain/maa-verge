@@ -58,7 +58,11 @@ async function main() {
     mkdirSync(configDirectory, { recursive: true });
     const config = path.join(configDirectory, 'tauri-dev.json');
     writeFileSync(config, JSON.stringify({ identifier: `io.maaverge.dev.w${environment.VITE_WORKSPACE_ID}`, build: { devUrl: url } }));
-    tauri = start('pnpm', ['exec', 'tauri', 'dev', '--config', config], { cwd: desktop, env: environment });
+    const desktopEnvironment = { ...environment };
+    // Let the service resolve its default and import the old checkout data.
+    // An explicitly selected root must never import another user's data.
+    if (!process.env.MAAVERGE_DATA_DIR) delete desktopEnvironment.MAAVERGE_DATA_DIR;
+    tauri = start('pnpm', ['exec', 'tauri', 'dev', '--config', config], { cwd: desktop, env: desktopEnvironment });
     await new Promise((resolve, reject) => {
       tauri.once('error', reject);
       tauri.once('exit', (code) => code === 0 || code === null ? resolve() : reject(new Error(`Tauri exited ${code}`)));

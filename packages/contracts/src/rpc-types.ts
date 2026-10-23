@@ -327,6 +327,10 @@ export interface Settings {
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
   minimizeToTray: Minimizetotray;
+  /**
+   * 记住 minimizeToTray 指定的关闭方式；缺失或 false 时每次关闭窗口均询问。
+   */
+  rememberCloseAction?: boolean;
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;

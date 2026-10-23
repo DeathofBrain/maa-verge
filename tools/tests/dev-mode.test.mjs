@@ -15,7 +15,7 @@ async function availablePort() {
   return port;
 }
 
-async function launch(t, { browserMock = false, mode, expectedCode = 0 } = {}) {
+async function launch(t, { browserMock = false, mode, expectedCode = 0, overrideData = true } = {}) {
   const directory = mkdtempSync(path.join(tmpdir(), 'maa verge dev mode-'));
   const entry = path.join(directory, '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs');
   const log = path.join(directory, 'children.jsonl');
@@ -51,6 +51,7 @@ async function launch(t, { browserMock = false, mode, expectedCode = 0 } = {}) {
     npm_execpath: entry, MAAVERGE_BACKEND: 'typescript', MAAVERGE_DEV_PORT: String(await availablePort()),
     MAAVERGE_DATA_DIR: path.join(directory, 'data'), MAAVERGE_TEST_DEV_LOG: log,
   };
+  if (!overrideData) delete environment.MAAVERGE_DATA_DIR;
   if (mode === undefined) delete environment.MAAVERGE_MODE;
   else environment.MAAVERGE_MODE = mode;
   const child = spawn(process.execPath, [path.join(directory, 'tools/dev.mjs'), ...(browserMock ? ['--mock'] : [])], {
@@ -70,8 +71,14 @@ async function launch(t, { browserMock = false, mode, expectedCode = 0 } = {}) {
   });
   const result = await finished;
   assert.equal(result.code, expectedCode, output);
-  return { calls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line)) : [], data: environment.MAAVERGE_DATA_DIR, port: environment.MAAVERGE_DEV_PORT, output };
+  return { calls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line)) : [], data: overrideData ? environment.MAAVERGE_DATA_DIR : path.join(directory, 'config'), port: environment.MAAVERGE_DEV_PORT, output };
 }
+
+test('default development root stays in the checkout and lets the service import legacy configuration', { timeout: 10000 }, async t => {
+  const { calls, data } = await launch(t, { overrideData: false });
+  assert.equal(calls[0].data, data);
+  assert.equal(calls[1].data, undefined, 'the desktop service must resolve its default without an explicit override');
+});
 
 test('desktop dev passes native mode to both Vite and Tauri without running real tools', { timeout: 10000 }, async t => {
   const { calls, data, port } = await launch(t);

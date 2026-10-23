@@ -50,6 +50,24 @@ async function stopAtIdle(runtime: Runtime, worker: FakeWorker, runId: string) {
 afterEach(async () => { for (const r of runtimes.splice(0)) await r.close(); for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
 describe('business parity', () => {
+  test('legacy close settings ask by default and remembered tray/exit choices survive restart', async () => {
+    const root = temp();
+    let runtime = fresh(root);
+    const legacy = parseSettings({ autoConnect: false, autoUpdateCore: false, autoUpdateResource: false, theme: 'dark' });
+    delete legacy.rememberCloseAction;
+    runtime.store.put('settings', 'main', legacy);
+    expect(runtime.snapshot().settings.rememberCloseAction).toBe(false);
+    for (const minimizeToTray of [true, false]) {
+      await runtime.handle('settings.save', { settings: { ...runtime.snapshot().settings, rememberCloseAction: true, minimizeToTray } });
+      await runtime.close(); runtimes.splice(runtimes.indexOf(runtime), 1);
+      runtime = fresh(root);
+      expect(runtime.snapshot().settings).toMatchObject({ rememberCloseAction: true, minimizeToTray, theme: 'dark', autoConnect: false });
+    }
+    await runtime.handle('settings.save', { settings: { ...runtime.snapshot().settings, rememberCloseAction: false } });
+    await runtime.close(); runtimes.splice(runtimes.indexOf(runtime), 1);
+    expect(fresh(root).snapshot().settings.rememberCloseAction).toBe(false);
+    expect(() => parseSettings({ rememberCloseAction: 'unknown' })).toThrow();
+  });
   test('empty native snapshot, local Agent proposal and explicit manual execution', async () => {
     const worker = new FakeWorker(), r = fresh(undefined, worker), snapshot = r.snapshot();
     expect(snapshot.mode).toBe('native');

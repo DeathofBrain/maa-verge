@@ -34,7 +34,7 @@ import { Logs } from './logs';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
-export interface RuntimeOptions { applicationDirectory?: string; logExportDirectory?: string; notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
+export interface RuntimeOptions { importFrom?: string; applicationDirectory?: string; logExportDirectory?: string; notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
 export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
@@ -66,7 +66,7 @@ export class Runtime {
   private closing?: Promise<void>;
   running = true;
   constructor(readonly root: string, private options: RuntimeOptions = {}) {
-    this.store = new Store(root);
+    this.store = new Store(root, options.importFrom);
     this.logs = new Logs(root, {
       applicationDirectory: options.applicationDirectory, exportDirectory: options.logExportDirectory,
       activeWorkers: () => new Set([...this.protectedWorkerLogs, ...this.workers.keys(), ...this.connecting]),

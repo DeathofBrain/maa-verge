@@ -1,28 +1,72 @@
 import { Database } from 'bun:sqlite';
-import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, cpSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { parseWireJson, stringifyWireJson } from './wire-json';
 
 export const now = () => new Date().toISOString();
 
+function acquireLease(root: string): Database {
+  const lease = new Database(path.join(root, '.runtime-lock.sqlite3'), { create: true });
+  try {
+    lease.exec('PRAGMA busy_timeout=0');
+    const mode = lease.query('PRAGMA journal_mode=DELETE').get() as { journal_mode: string };
+    if (mode.journal_mode !== 'delete') throw new Error('无法建立数据目录独占锁');
+    lease.exec('BEGIN EXCLUSIVE');
+    return lease;
+  } catch (error) { lease.close(); throw new Error(`其他本地服务正在使用此数据目录：${root}`, { cause: error }); }
+}
+
+/** Preserve rowids and committed WAL data; publish only a validated, durable image. */
+function snapshotDatabase(db: Database, destination: string) {
+  const root = path.dirname(destination), temporary = path.join(root, `.backup-${randomUUID()}.sqlite3`);
+  try {
+    writeFileSync(temporary, db.serialize(), { flag: 'wx', mode: 0o600 });
+    const fd = openSync(temporary, 'r+');
+    try { fsyncSync(fd); } finally { closeSync(fd); }
+    const check = new Database(temporary);
+    try {
+      const mode = check.query('PRAGMA journal_mode=DELETE').get() as { journal_mode: string };
+      if (mode.journal_mode !== 'delete') throw new Error('旧数据库备份无法转换为独立文件');
+      const result = check.query('PRAGMA integrity_check').get() as { integrity_check: string };
+      if (result.integrity_check !== 'ok') throw new Error('旧数据库备份完整性检查失败');
+    } finally { check.close(); }
+    const finalized = openSync(temporary, 'r+');
+    try { fsyncSync(finalized); } finally { closeSync(finalized); }
+    renameSync(temporary, destination);
+    if (process.platform !== 'win32') {
+      const directory = openSync(root, 'r');
+      try { fsyncSync(directory); } finally { closeSync(directory); }
+    }
+  } catch (error) { if (existsSync(temporary)) unlinkSync(temporary); throw error; }
+}
+
 /** Schema v1 preserves the Python reference's database layout and row order. */
 export class Store {
   readonly db!: Database;
   private readonly lease: Database;
   private closed = false;
-  constructor(readonly root: string) {
-    mkdirSync(root, { recursive: true });
-    this.lease = new Database(path.join(root, '.runtime-lock.sqlite3'), { create: true });
+  constructor(readonly root: string, importFrom?: string) {
     try {
-      this.lease.exec('PRAGMA busy_timeout=0');
-      const mode = this.lease.query('PRAGMA journal_mode=DELETE').get() as { journal_mode: string };
-      if (mode.journal_mode !== 'delete') throw new Error('无法建立数据目录独占锁');
-      this.lease.exec('BEGIN EXCLUSIVE');
-    } catch (error) { this.lease.close(); throw new Error('其他本地服务正在使用此数据目录', { cause: error }); }
+      mkdirSync(root, { recursive: true });
+      this.lease = acquireLease(root);
+    } catch (error) { throw new Error(`配置目录无法打开或正在使用：${root}；请确认目录可写并完全退出其他本地服务`, { cause: error }); }
     const file = path.join(root, 'maaverge.sqlite3');
-    const existing = existsSync(file);
     try {
+      if (!existsSync(file) && importFrom && existsSync(path.join(importFrom, 'maaverge.sqlite3'))) {
+        const sourceLease = acquireLease(importFrom);
+        try {
+          const source = new Database(path.join(importFrom, 'maaverge.sqlite3'), { readonly: true });
+          try {
+            // IDs in the database refer to these relative screenshot paths.
+            // No destination database exists yet; retry overwrites partial files.
+            const artifacts = path.join(importFrom, 'run-artifacts');
+            if (existsSync(artifacts)) cpSync(artifacts, path.join(root, 'run-artifacts'), { recursive: true });
+            snapshotDatabase(source, file);
+          } finally { source.close(); }
+        } finally { sourceLease.close(); }
+      }
+      const existing = existsSync(file);
       this.db = new Database(file, { create: true });
       if (existing && !existsSync(path.join(root, 'pre-typescript.sqlite3'))) this.backupBeforeTakeover();
       this.db.exec(`PRAGMA journal_mode=WAL;
@@ -36,32 +80,7 @@ export class Store {
   }
   private backupBeforeTakeover() {
     // VACUUM INTO can renumber implicit rowids used by objects' display order.
-    const temporary = path.join(this.root, `.backup-${randomUUID()}.sqlite3`);
-    try {
-      const image = this.db.serialize();
-      writeFileSync(temporary, image, { flag: 'wx', mode: 0o600 });
-      const fd = openSync(temporary, 'r+');
-      try { fsyncSync(fd); } finally { closeSync(fd); }
-      // serialize() retains the WAL header. System SQLite on macOS cannot
-      // read it without a writable connection to initialize its sidecars.
-      // Convert only this private snapshot to a portable, standalone file.
-      const check = new Database(temporary);
-      try {
-        const mode = check.query('PRAGMA journal_mode=DELETE').get() as { journal_mode: string };
-        if (mode.journal_mode !== 'delete') throw new Error('旧数据库备份无法转换为独立文件');
-        const result = check.query('PRAGMA integrity_check').get() as { integrity_check: string };
-        if (result.integrity_check !== 'ok') throw new Error('旧数据库备份完整性检查失败');
-      } finally { check.close(); }
-      const finalized = openSync(temporary, 'r+');
-      try { fsyncSync(finalized); } finally { closeSync(finalized); }
-      renameSync(temporary, path.join(this.root, 'pre-typescript.sqlite3'));
-      // Persist the directory entry before permitting any business writes.
-      // Windows does not expose directory handles through fs.openSync.
-      if (process.platform !== 'win32') {
-        const directory = openSync(this.root, 'r');
-        try { fsyncSync(directory); } finally { closeSync(directory); }
-      }
-    } catch (error) { if (existsSync(temporary)) unlinkSync(temporary); throw error; }
+    snapshotDatabase(this.db, path.join(this.root, 'pre-typescript.sqlite3'));
   }
   private check() {
     if (this.closed || !this.lease.inTransaction) throw new Error('数据目录锁已失效，停止业务读写');

@@ -91,13 +91,9 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 
 ## 多 checkout 与配置
 
-开发脚本对 checkout 绝对路径计算哈希，隔离开发端口、用户数据目录和单实例 ID。默认数据目录：
+开发数据默认保存在各 checkout 的 `config/`（已加入 Git 忽略），实际数据库为 `config/native/maaverge.sqlite3`，不同工作树自然隔离。开发端口和单实例 ID 仍对 checkout 绝对路径计算哈希。
 
-| 系统 | 开发数据目录 |
-| --- | --- |
-| Windows | `%LOCALAPPDATA%/MAAVerge-dev/<checkout-hash>` |
-| macOS | `~/Library/Application Support/MAAVerge-dev/<checkout-hash>` |
-| Linux | `${XDG_DATA_HOME:-~/.local/share}/MAAVerge-dev/<checkout-hash>` |
+安装版默认使用程序目录下的 `config/`；macOS 指 `.app` 所在目录，Linux AppImage 指 AppImage 所在目录。默认 TypeScript 后端首次启动且新库不存在时，从原标准用户目录 `MAAVerge/native` 导入；开发版导入原 `MAAVerge-dev/<checkout-hash>/native`。迁移保留旧文件，需先退出旧服务；已有新库或显式覆盖数据根时不导入。Python debug 参考遇到待迁移旧库会提示先启动默认后端，避免创建空库阻断迁移。具体范围见 [运行时说明](runtime-migration.md#数据交接与回退)。
 
 `MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各自的 worktree。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
 
@@ -134,7 +130,7 @@ python tools/clean-codex-worktrees.py --force           # 允许删除脏 worktr
 
 MaaCore 首装和更新从官方归档中选择性提取原生依赖与完整资源，跳过原 GUI 和 .NET/WPF；提取规则、上游参考和验证边界见 [maacore-runtime.md](maacore-runtime.md)。
 
-Windows NSIS 和 MSI 卸载会一并清理程序同级默认的 `MaaCore`、`MaaResource` 目录，包含旧版 `downloads`、`generations` 及其内容；Tauri `/UPDATE` 更新和 MSI 版本升级保留这些组件。用户另选的组件目录和业务数据根保留，卸载器不读取数据库或追踪自定义路径。其他平台的移除方式仍需用户自行清理程序外下载的组件。
+Windows NSIS 和 MSI 卸载会一并清理程序同级默认的 `MaaCore`、`MaaResource` 目录，包含旧版 `downloads`、`generations` 及其内容；Tauri `/UPDATE` 更新和 MSI 版本升级保留这些组件。程序同级 `config`、用户另选的组件目录和业务数据根保留，卸载器不读取数据库或追踪自定义路径。其他平台的移除方式仍需用户自行清理程序外下载的组件。
 
 ```bash
 node tools/package-runtime.mjs

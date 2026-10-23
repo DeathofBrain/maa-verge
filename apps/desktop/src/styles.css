@@ -1624,6 +1624,34 @@ textarea.text-input {
   margin-top: 25px;
 }
 
+.lifecycle-dialog {
+  margin: auto;
+  color: var(--text);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+}
+
+.lifecycle-dialog::backdrop {
+  background: #11182759;
+}
+
+.remember-close {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+.remember-close input { accent-color: var(--accent); }
+.remember-close span { color: var(--muted); font-size: 12px; }
+.lifecycle-dialog .modal-actions { flex-wrap: wrap; }
+.lifecycle-dialog .lifecycle-error { color: var(--danger); overflow-wrap: anywhere; }
+.exit-progress { text-align: center; padding: 15px 0 4px; }
+.exit-progress>svg { color: var(--accent); margin-bottom: 12px; }
+.exit-progress h2 { font-size: 18px; margin: 0; }
+
 .toast {
   position: fixed;
   bottom: calc(var(--dock-height) + 17px);

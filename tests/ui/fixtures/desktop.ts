@@ -8,6 +8,9 @@ export type RuntimeHarness = {
   emitResize: (maximized: boolean) => void;
   emitEvent: (type: string, data?: Record<string, unknown>) => void;
   resizeListeners: () => number;
+  emitDesktopEvent: (event: 'window-close-requested' | 'app-exit-started' | 'runtime-disconnected') => void;
+  failSettings: boolean;
+  settingsWrites: number;
   frames: string[];
   clicks: ClickRequest[];
   activeFrames: number;
@@ -43,6 +46,7 @@ export async function installRuntimeBridge(page: Page, options: Omit<RuntimeOpti
     let sequence = 0;
     let subscribed = false;
     let maximized = false;
+    let lifecycle: 'running' | 'close-requested' | 'exiting' = 'running';
     let releaseSnapshot!: () => void;
     const snapshotReady = new Promise<void>((resolve) => { releaseSnapshot = resolve; });
     if (!runtimeHoldSnapshot) releaseSnapshot();
@@ -59,6 +63,7 @@ export async function installRuntimeBridge(page: Page, options: Omit<RuntimeOpti
     };
     const harness: RuntimeHarness = {
       commands: [], backgrounds: [], releaseSnapshot,
+      failSettings: false, settingsWrites: 0,
       frames: [], clicks: [], activeFrames: 0, maxPerDevice: 0,
       failFrames: false, failClicks: false, holdFrames: false,
       emitResize: (next) => {
@@ -70,6 +75,11 @@ export async function installRuntimeBridge(page: Page, options: Omit<RuntimeOpti
         for (const [id, listener] of listeners) if (listener.event === 'runtime-event') callbacks.get(listener.handler)?.({ event: listener.event, id, payload });
       },
       resizeListeners: () => [...listeners.values()].filter((listener) => listener.event === 'tauri://resize').length,
+      emitDesktopEvent: (event) => {
+        if (event === 'app-exit-started') lifecycle = 'exiting';
+        else if (event === 'window-close-requested' && lifecycle !== 'exiting') lifecycle = 'close-requested';
+        for (const [id, listener] of listeners) if (listener.event === event) callbacks.get(listener.handler)?.({ event, id, payload: null });
+      },
       releaseFrames: () => { harness.holdFrames = false; heldFrames.splice(0).forEach((release) => release()); },
       visibility: (hidden) => {
         Object.defineProperty(document, 'hidden', { configurable: true, value: hidden });
@@ -85,6 +95,10 @@ export async function installRuntimeBridge(page: Page, options: Omit<RuntimeOpti
       invoke: async (command: string, args: Record<string, unknown> = {}) => {
         if (command === 'runtime_request') {
           const params = args.params as Record<string, unknown>;
+          if (args.method === 'settings.save') {
+            harness.settingsWrites++;
+            if (harness.failSettings) throw new Error('合成设置保存失败');
+          }
           if (args.method === 'app.snapshot') await snapshotReady;
           if (args.method === 'device.frame') {
             const id = String(params.deviceId);
@@ -108,8 +122,24 @@ export async function installRuntimeBridge(page: Page, options: Omit<RuntimeOpti
         }
         if (command === 'plugin:event|unlisten') { listeners.delete(args.eventId as number); return; }
         if (command === 'plugin:window|is_maximized') return maximized;
+        if (command === 'get_desktop_lifecycle') return lifecycle;
+        if (command === 'exit_ui_ready') { harness.commands.push(command); return; }
+        if (command === 'resolve_window_close') {
+          harness.commands.push(`${command}:${args.action}`);
+          if (args.action === 'exit') harness.emitDesktopEvent('app-exit-started');
+          else if (lifecycle !== 'exiting') lifecycle = 'running';
+          return;
+        }
         if (['plugin:window|set_background_color', 'plugin:webview|set_webview_background_color'].includes(command)) { harness.backgrounds.push({ command, value: args.value }); return; }
-        if (['plugin:window|minimize', 'plugin:window|toggle_maximize', 'plugin:window|close'].includes(command)) { harness.commands.push(command); return; }
+        if (['plugin:window|minimize', 'plugin:window|toggle_maximize', 'plugin:window|close'].includes(command)) {
+          harness.commands.push(command);
+          if (command === 'plugin:window|close' && lifecycle !== 'exiting') {
+            const { settings } = await harness.call('app.snapshot', {}) as { settings: { rememberCloseAction?: boolean; minimizeToTray: boolean } };
+            if (!settings.rememberCloseAction) harness.emitDesktopEvent('window-close-requested');
+            else if (!settings.minimizeToTray) harness.emitDesktopEvent('app-exit-started');
+          }
+          return;
+        }
         throw new Error(`Unexpected desktop command: ${command}`);
       },
     };

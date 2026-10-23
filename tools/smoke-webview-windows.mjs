@@ -120,15 +120,31 @@ async function start() {
 async function closeThroughUI() {
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '通用与外观', exact: true }).click();
-  const tray = page.getByRole('switch', { name: '关闭窗口后驻留托盘', exact: true });
-  if (await tray.getAttribute('aria-checked') === 'true') await tray.click();
-  await expect(tray).toHaveAttribute('aria-checked', 'false');
+  const behavior = page.getByLabel('关闭窗口时', { exact: true });
+  await behavior.selectOption('ask');
+  await expect(behavior).toHaveValue('ask');
+  let exitDialogPainted = false;
+  await page.exposeFunction('recordNativeExitDialog', () => { exitDialogPainted = true; });
+  await page.evaluate(() => {
+    const observer = new MutationObserver(() => {
+      const dialog = document.querySelector('dialog[open]');
+      if (dialog?.textContent.includes('正在退出') && dialog.querySelector('.spin')) {
+        observer.disconnect();
+        requestAnimationFrame(() => { void window.recordNativeExitDialog(); });
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+  });
   ownTree();
   await page.getByRole('button', { name: '关闭窗口', exact: true }).click();
+  const choice = page.getByRole('dialog', { name: '关闭 Maa Verge', exact: true });
+  await expect(choice).toBeVisible();
+  await choice.getByRole('button', { name: '退出应用', exact: true }).click();
   await waitUntil(() => child.exitCode !== null, 12_000);
   await waitUntil(() => aliveTracked().length === 0, 12_000);
   assert.equal(child.exitCode, 0);
-  report.phases.push({ phase: 'native-window-close-cleanup', exitCode: child.exitCode, remainingTrackedProcesses: aliveTracked() });
+  assert.equal(exitDialogPainted, true, 'The native WebView must paint its exit dialog before cleanup');
+  report.phases.push({ phase: 'native-window-close-cleanup', exitDialogPainted, exitCode: child.exitCode, remainingTrackedProcesses: aliveTracked() });
 }
 function removeOwnedDirectory(directory) {
   const relative = path.relative(path.resolve(runRoot), path.resolve(directory));

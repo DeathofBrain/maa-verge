@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
@@ -23,11 +22,6 @@ export function executable(name) {
 }
 
 export function devEnvironment() {
-  const base = process.platform === 'win32'
-    ? process.env.LOCALAPPDATA || path.join(homedir(), 'AppData', 'Local')
-    : process.platform === 'darwin'
-      ? path.join(homedir(), 'Library', 'Application Support')
-      : process.env.XDG_DATA_HOME || path.join(homedir(), '.local', 'share');
   const localPaths = [path.dirname(executable('node')), path.join(root, '.tools', 'cmake', 'bin'), path.join(root, '.tools', 'uv'), path.join(root, '.tools', 'cargo', 'bin')]
     .filter((entry) => entry !== '.');
   return {
@@ -38,7 +32,7 @@ export function devEnvironment() {
     } : {}),
     ...(existsSync(path.join(root, '.tools', 'python')) ? { UV_PYTHON_INSTALL_DIR: path.join(root, '.tools', 'python') } : {}),
     MAAVERGE_MODE: process.env.MAAVERGE_MODE || 'native',
-    MAAVERGE_DATA_DIR: process.env.MAAVERGE_DATA_DIR || path.join(base, 'MAAVerge-dev', workspaceId),
+    MAAVERGE_DATA_DIR: process.env.MAAVERGE_DATA_DIR || path.join(root, 'config'),
     VITE_WORKSPACE_ID: workspaceId,
   };
 }

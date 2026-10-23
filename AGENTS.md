@@ -20,7 +20,7 @@ Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, l
 
 - Inspect existing changes before editing. Own a narrow subsystem; do not overwrite another contributor's work.
 - Use feature branches/worktrees for parallel work. Local data and ports must be isolated per checkout; device locks are shared across local instances.
-- Use standard user-data paths and configurable roots; never hardcode a developer's drive, username or ADB location.
+- Default saved configuration and business data to the program directory's config folder (checkout/config in development), with configurable roots. Keep device leases in the shared standard user-data path; never hardcode a developer's drive, username or ADB location.
 - Do not commit credentials, local databases, screenshots of real accounts, native downloads, virtual environments or build output.
 - Commit dependency lockfiles. Update contracts and documentation with interface changes. Generated files must be regenerated from their source.
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, etc.); write the description after the colon in Simplified Chinese, for example `feat: 添加主页仪表盘` or `fix(ui): 修复窗口缩放闪烁`.

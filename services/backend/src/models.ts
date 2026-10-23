@@ -49,7 +49,7 @@ export function parsePlan(input: any): Plan {
 }
 export function parseSettings(input: any = {}): Settings {
   if (!record(input)) throw new RpcError(-32602, '请求参数无效');
-  const value = { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', logRetentionDays: 7, ...input,
+  const value = { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, rememberCloseAction: false, theme: 'system', logRetentionDays: 7, ...input,
     ...(Object.hasOwn(input, 'capture') ? { capture: record(input.capture) ? { ...defaultCapture(), ...input.capture } : input.capture } : {}),
     ...(Object.hasOwn(input, 'connection') ? { connection: record(input.connection) ? { ...defaultConnection(), ...input.connection } : input.connection } : {}),
     ...(Object.hasOwn(input, 'deviceProfiles') ? { deviceProfiles: Array.isArray(input.deviceProfiles) ? input.deviceProfiles.map((profile: any) => record(profile) ? {
@@ -60,7 +60,7 @@ export function parseSettings(input: any = {}): Settings {
     } : profile) : input.deviceProfiles } : {}),
     budgets: Object.hasOwn(input, 'budgets') ? budgets(input.budgets) : defaultBudgets(),
     model: Object.hasOwn(input, 'model') ? record(input.model) ? { provider: 'none', baseUrl: '', model: '', ...input.model } : input.model : { provider: 'none', baseUrl: '', model: '' } };
-  for (const key of ['autoConnect', 'autoUpdateCore', 'autoUpdateResource', 'minimizeToTray'] as const) value[key] = boolean(value[key]);
+  for (const key of ['autoConnect', 'autoUpdateCore', 'autoUpdateResource', 'minimizeToTray', 'rememberCloseAction'] as const) value[key] = boolean(value[key]);
   if (!validateSettings(value)) throw new RpcError(-32602, '请求参数无效', validateSettings.errors);
   if (value.componentPaths) {
     try { value.componentPaths = { core: normalizeComponentPath(value.componentPaths.core), resource: normalizeComponentPath(value.componentPaths.resource) }; }

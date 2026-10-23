@@ -15,18 +15,30 @@ export function normalizeComponentPath(value: string): string {
   return path.resolve(trimmed);
 }
 
-export function dataRoot(): string {
-  if (process.env.MAAVERGE_DATA_DIR) return path.resolve(process.env.MAAVERGE_DATA_DIR.replace(/^~(?=$|[\\/])/, homedir()));
+export function standardDataRoot(): string {
+  // Device leases and the one-time import keep using the shared legacy root.
   return process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || path.join(homedir(), 'AppData', 'Local'), 'MAAVerge')
     : process.platform === 'darwin' ? path.join(homedir(), 'Library', 'Application Support', 'MAAVerge')
       : path.join(process.env.XDG_DATA_HOME || path.join(homedir(), '.local', 'share'), 'MAAVerge');
 }
+function programDirectory(applicationDirectory?: string): string {
+  return applicationDirectory || process.env.MAAVERGE_APP_DIR || (Bun.isStandaloneExecutable ? path.dirname(process.execPath) : path.resolve(import.meta.dir, '../../..'));
+}
+export function dataRoot(applicationDirectory?: string): string {
+  if (process.env.MAAVERGE_DATA_DIR) return path.resolve(process.env.MAAVERGE_DATA_DIR.replace(/^~(?=$|[\\/])/, homedir()));
+  return path.resolve(programDirectory(applicationDirectory), 'config');
+}
+export function legacyDataRoot(root: string, applicationDirectory?: string): string | undefined {
+  // Explicit custom roots and routine tests must never import real user data.
+  if (process.env.MAAVERGE_DATA_DIR) return undefined;
+  const directory = path.resolve(programDirectory(applicationDirectory));
+  if (path.resolve(root) !== path.join(directory, 'config')) return undefined;
+  return Bun.isStandaloneExecutable ? standardDataRoot()
+    : path.join(path.dirname(standardDataRoot()), 'MAAVerge-dev', createHash('sha256').update(directory).digest('hex').slice(0, 8));
+}
 export function deviceLockPath(key: string): string {
   // Shared across checkouts and data roots, including the Python reference.
-  const standard = process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || path.join(homedir(), 'AppData', 'Local'), 'MAAVerge')
-    : process.platform === 'darwin' ? path.join(homedir(), 'Library', 'Application Support', 'MAAVerge')
-      : path.join(process.env.XDG_DATA_HOME || path.join(homedir(), '.local', 'share'), 'MAAVerge');
-  return path.join(process.env.MAAVERGE_DEVICE_LOCK_DIR || path.join(standard, 'device-locks'), createHash('sha256').update(key).digest('hex') + '.lock');
+  return path.join(process.env.MAAVERGE_DEVICE_LOCK_DIR || path.join(standardDataRoot(), 'device-locks'), createHash('sha256').update(key).digest('hex') + '.lock');
 }
 export function childEnvironment(source = process.env): NodeJS.ProcessEnv {
   const env = { ...source };

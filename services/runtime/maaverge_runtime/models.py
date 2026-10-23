@@ -68,6 +68,7 @@ class Settings(StrictModel):
     autoUpdateCore: bool = True
     autoUpdateResource: bool = True
     minimizeToTray: bool = True
+    rememberCloseAction: bool = False
     # Retained for settings/database parity; log maintenance belongs to the Bun service.
     logRetentionDays: Literal[0, 7, 14, 30] = 7
     theme: Literal["dark", "light", "system"] = "system"

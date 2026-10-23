@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { Runtime } from './runtime';
 import { RpcError } from './errors';
-import { dataRoot } from './config';
+import { dataRoot, legacyDataRoot } from './config';
 import { runUpdateJobStdio } from './updates';
 import { isWireFloat, parseWireJson, stringifyWireJson } from './wire-json';
 
@@ -35,7 +35,9 @@ export async function main() {
   process.stdout.on('error', () => { transportBroken = true; process.stdin.destroy(); });
   const applicationDirectory = typeof Bun !== 'undefined' && Bun.isStandaloneExecutable
     ? path.resolve(process.env.MAAVERGE_APP_DIR || path.dirname(process.execPath)) : undefined;
-  const runtime = new Runtime(path.join(path.resolve(option('--data-dir') || dataRoot()), 'native'), { notify: send, applicationDirectory });
+  const root = path.resolve(option('--data-dir') || dataRoot(applicationDirectory));
+  const previous = args.includes('--data-dir') ? undefined : legacyDataRoot(root, applicationDirectory);
+  const runtime = new Runtime(path.join(root, 'native'), { notify: send, applicationDirectory, importFrom: previous ? path.join(previous, 'native') : undefined });
   // Preserve unexpected service diagnostics as well as forwarding them to stderr.
   const originalError = console.error;
   console.error = (...values: unknown[]) => { runtime.logs.diagnostics.write('error', 'runtime.stderr', values.map(value => value instanceof Error ? value.stack : String(value))); originalError(...values); };
