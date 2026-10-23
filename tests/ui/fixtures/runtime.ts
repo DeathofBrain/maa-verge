@@ -1,5 +1,6 @@
 // Deterministic runtime fixture. Loaded only by the Playwright Tauri bridge.
 import type { Device, Event, Plan, Run, Settings, Snapshot, UpdateChannel } from '../../../packages/contracts/src/types';
+import { taskLabels } from '../../../packages/contracts/src/tasks';
 import { taskEnabled, validatePlan } from '../../../packages/contracts/src/task-policy';
 import { mockPreviewImage } from '../../fixtures/preview-image';
 import { stagePresets } from '../../../packages/contracts/src/stages';
@@ -112,7 +113,23 @@ const timer = globalThis.setInterval(() => {
     if (run.status !== 'running') continue;
     run.progress = Math.min(100, run.progress + 6);
     const tasks = executionTasks.get(run.id) || state.plans.find((item) => item.id === run.planId)?.tasks.filter(taskEnabled) || [];
-    run.message = '模拟执行 · ' + (tasks[Math.min(tasks.length - 1, Math.floor(run.progress / 100 * tasks.length))]?.type || '任务收尾');
+    const currentIndex = Math.min(tasks.length - 1, Math.floor(run.progress / 100 * tasks.length));
+    run.message = '模拟执行 · ' + (taskLabels[tasks[currentIndex]?.type] || '任务收尾');
+    for (const [index, task] of (run.tasks || []).entries()) {
+      if (index < currentIndex || run.progress === 100) {
+        if (task.status !== 'completed') {
+          task.status = 'completed'; task.startedAt ||= now(); task.finishedAt = now(); task.message = `${taskLabels[task.type]}已完成`;
+          if (task.type === 'Fight') {
+            task.drops.push({ itemId: '30012', name: '固源岩', quantity: 2, stage: String(tasks[index].params.stage || '1-7'), at: now() });
+            task.artifacts.push({ id: `fixture-${run.id}-${index}`, kind: 'screenshot', label: '自动作战反馈画面', capturedAt: now(), width: mockPreviewImage.width, height: mockPreviewImage.height });
+          }
+          if (task.type === 'Infrast') {
+            task.infrastructure.push({ facility: '制造站', room: 1, operators: ['合成干员甲', '合成干员乙'], product: '赤金', message: '已完成换班', at: now() });
+            task.artifacts.push({ id: `fixture-${run.id}-${index}`, kind: 'screenshot', label: '基建反馈画面', capturedAt: now(), width: mockPreviewImage.width, height: mockPreviewImage.height });
+          }
+        }
+      } else if (index === currentIndex) { task.status = 'running'; task.startedAt ||= now(); task.message = `正在执行${taskLabels[task.type]}`; }
+    }
     if (run.progress === 100) {
       executionTasks.delete(run.id);
       run.status = 'completed'; run.finishedAt = now(); run.message = '模拟任务完成，未操作真实游戏';
@@ -258,7 +275,7 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       if (plan.deviceId !== null && plan.deviceId !== params.deviceId) throw new Error('任务表已绑定其他设备，请使用绑定设备执行');
       if (!plan.tasks.some(taskEnabled)) throw new Error('任务表至少需要启用一条任务才能执行');
       if (!device || device.state !== 'idle') throw new Error('设备不可用或正在执行任务');
-      const run: Run = { id: crypto.randomUUID(), planId: plan.id, deviceId: device.id, status: 'running', progress: 0, message: '模拟执行开始', startedAt: now(), finishedAt: null };
+      const run: Run = { id: crypto.randomUUID(), planId: plan.id, planName: plan.name, tasks: plan.tasks.filter(taskEnabled).map((task, index) => ({ index, type: task.type, status: index === 0 ? 'running' : 'waiting', message: index === 0 ? `正在执行${taskLabels[task.type]}` : '等待执行', startedAt: index === 0 ? now() : null, finishedAt: null, drops: [], infrastructure: [], artifacts: [] })), deviceId: device.id, status: 'running', progress: 0, message: '模拟执行开始', startedAt: now(), finishedAt: null };
       invalidatePreview(device.id);
       executionTasks.set(run.id, clone(plan.tasks.filter(taskEnabled)) as Plan['tasks']);
       device.state = 'running'; state.runs.unshift(run);
@@ -266,10 +283,16 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       emit('run.started', '模拟执行：' + plan.name, { run: clone(run) });
       return clone(run);
     }
+    case 'run.artifact': {
+      const run = state.runs.find(item => item.id === params.runId);
+      if (!run?.tasks?.some(task => task.artifacts.some(item => item.id === params.artifactId))) throw new Error('结果截图不存在');
+      return { mimeType: 'image/png', data: mockPreviewImage.data };
+    }
     case 'run.stop': {
       const run = state.runs.find((item) => item.id === params.id);
       if (!run || run.status !== 'running') throw new Error('任务当前未运行');
       executionTasks.delete(run.id);
+      for (const task of run.tasks || []) if (task.status === 'running') { task.status = 'stopped'; task.finishedAt = now(); task.message = '执行已停止'; }
       run.status = 'stopped'; run.message = '模拟执行已停止'; run.finishedAt = now();
       const device = state.devices.find((item) => item.id === run.deviceId);
       if (device) device.state = 'idle';

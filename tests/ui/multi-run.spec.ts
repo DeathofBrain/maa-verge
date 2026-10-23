@@ -33,6 +33,7 @@ test('switching the target device allows the same unbound editor plan to start i
   await page.locator('.sidebar').getByRole('button', { name: '配置任务表固源岩补给', exact: true }).click();
   const wb = page.getByRole('region', { name: '任务表工作台', exact: true });
   await wb.getByRole('button', { name: '开始日常', exact: true }).click();
+  await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
   await expect(wb.getByRole('button', { name: '开始日常', exact: true })).toBeDisabled();
   await page.getByLabel('选择设备', { exact: true }).selectOption(second.id);
   await expect(wb.getByRole('button', { name: '开始日常', exact: true })).toBeEnabled();
@@ -73,5 +74,6 @@ test('a busy draft binding leaves the saved idle-device start available', async 
   const state = await page.evaluate(async () => (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as { runs: { planId: string; deviceId: string; status: string }[]; plans: { id: string; deviceId: string | null }[] };
   expect(state.runs).toContainEqual(expect.objectContaining({ planId: 'farm-1-7', deviceId: 'mock-device-1', status: 'running' }));
   expect(state.plans.find((item) => item.id === 'farm-1-7')?.deviceId).toBe('mock-device-1');
+  await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
   await expect(wb.getByLabel('绑定设备', { exact: true })).toHaveValue(second.id);
 });

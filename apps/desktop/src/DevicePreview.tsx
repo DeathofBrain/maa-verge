@@ -20,7 +20,7 @@ const maxFrameAgeMs = 2000;
 const pendingFrames = new Map<string, Promise<Frame>>();
 const messageOf = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
 
-export default function DevicePreview({ device }: { device?: Device }) {
+export default function DevicePreview({ device, readOnly = false }: { device?: Device; readOnly?: boolean }) {
   const [displayed, setDisplayed] = useState<DisplayedFrame | null>(null);
   const [refreshHz, setRefreshHz] = useState<RefreshRate>(readRefreshRate);
   const [paused, setPaused] = useState(false);
@@ -111,7 +111,7 @@ export default function DevicePreview({ device }: { device?: Device }) {
 
   const age = displayed ? Math.max(0, clock - Date.parse(displayed.frame.capturedAt)) : Infinity;
   const fresh = Number.isFinite(age) && age <= maxFrameAgeMs;
-  const canClick = !!(online && device?.state === 'idle' && displayed?.frame.canControl && allowClicks && fresh && !clickPending && !error && visible);
+  const canClick = !!(!readOnly && online && device?.state === 'idle' && displayed?.frame.canControl && allowClicks && fresh && !clickPending && !error && visible);
   const retryFrame = () => { setError(''); setPaused(false); setRetry((value) => value + 1); };
   const click = async (event: MouseEvent<HTMLDivElement>) => {
     if (!canClick || !displayed || !device || document.hidden || clickPendingRef.current || event.button !== 0) return;
@@ -146,12 +146,12 @@ export default function DevicePreview({ device }: { device?: Device }) {
     }
   };
 
-  const hint = !online ? '连接设备后即可查看画面' : device?.state === 'running' ? '任务执行中，显示核心最近画面，仅查看' : !displayed?.frame.canControl && displayed ? '设备控制权不可用，仅查看画面' : !allowClicks ? '开启「允许点击操作」后，可点击画面操作设备' : !fresh && displayed ? '画面已过期，请恢复刷新后再点击' : clickPending ? '点击发送中…' : '点击画面对应位置即可操作设备';
+  const hint = !online ? '连接设备后即可查看画面' : readOnly ? '执行页面仅查看画面' : device?.state === 'running' ? '任务执行中，显示核心最近画面，仅查看' : !displayed?.frame.canControl && displayed ? '设备控制权不可用，仅查看画面' : !allowClicks ? '开启「允许点击操作」后，可点击画面操作设备' : !fresh && displayed ? '画面已过期，请恢复刷新后再点击' : clickPending ? '点击发送中…' : '点击画面对应位置即可操作设备';
 
   return <section className="device-preview" aria-label="设备画面预览">
     <div className="device-preview-toolbar">
       <div className="device-preview-device"><Monitor size={16} /><strong>{device?.name || '未选择设备'}</strong></div>
-      <div className="device-preview-controls"><span className="device-preview-metrics" aria-label="画面性能" title="延迟包含截图请求、传输和解码；显示帧率按实际显示的新帧计算">{displayed ? `往返延迟 ${Math.round(displayed.latency)} ms · 显示帧率 ${paused || error || !visible ? '0.0' : fps.toFixed(1)} FPS` : '等待画面'}</span><label className="device-preview-frequency" title="目标刷新频率；显示帧率取决于截图、传输和解码速度">刷新频率<select aria-label="刷新频率" value={refreshHz} onChange={(event) => setRefreshHz(refreshRates.find((rate) => rate === Number(event.target.value)) ?? 60)}>{refreshRates.map((rate) => <option key={rate} value={rate}>{rate} Hz</option>)}</select></label><button className="button secondary" disabled={!online || !!error} onClick={() => setPaused((value) => !value)}>{paused ? <Play size={13} /> : <Pause size={13} />}{paused ? '恢复刷新' : '暂停刷新'}</button><label className="device-preview-toggle"><input type="checkbox" checked={allowClicks} disabled={!online || device?.state !== 'idle' || !displayed?.frame.canControl || clickPending} onChange={(event) => { setAllowClicks(event.target.checked); setActionError(''); setActionMessage(''); }} /><MousePointer2 size={13} />允许点击操作</label></div>
+      <div className="device-preview-controls"><span className="device-preview-metrics" aria-label="画面性能" title="延迟包含截图请求、传输和解码；显示帧率按实际显示的新帧计算">{displayed ? `往返延迟 ${Math.round(displayed.latency)} ms · 显示帧率 ${paused || error || !visible ? '0.0' : fps.toFixed(1)} FPS` : '等待画面'}</span><label className="device-preview-frequency" title="目标刷新频率；显示帧率取决于截图、传输和解码速度">刷新频率<select aria-label="刷新频率" value={refreshHz} onChange={(event) => setRefreshHz(refreshRates.find((rate) => rate === Number(event.target.value)) ?? 60)}>{refreshRates.map((rate) => <option key={rate} value={rate}>{rate} Hz</option>)}</select></label><button className="button secondary" disabled={!online || !!error} onClick={() => setPaused((value) => !value)}>{paused ? <Play size={13} /> : <Pause size={13} />}{paused ? '恢复刷新' : '暂停刷新'}</button>{!readOnly && <label className="device-preview-toggle"><input type="checkbox" checked={allowClicks} disabled={!online || device?.state !== 'idle' || !displayed?.frame.canControl || clickPending} onChange={(event) => { setAllowClicks(event.target.checked); setActionError(''); setActionMessage(''); }} /><MousePointer2 size={13} />允许点击操作</label>}</div>
     </div>
     {error && <div className="device-preview-error" role="alert"><AlertCircle size={15} /><span>画面更新失败：{error}</span><button className="text-button" onClick={retryFrame}><RefreshCw size={13} />重试画面</button></div>}
     {actionError && <div className="device-preview-error" role="alert"><AlertCircle size={15} /><span>{actionError}</span></div>}
