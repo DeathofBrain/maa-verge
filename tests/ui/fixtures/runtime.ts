@@ -1,5 +1,5 @@
 // Deterministic runtime fixture. Loaded only by the Playwright Tauri bridge.
-import type { Device, Event, Plan, Run, Settings, Snapshot, UpdateChannel } from '../../../packages/contracts/src/types';
+import type { Device, Event, Plan, Run, RunArtifact, Settings, Snapshot, UpdateChannel } from '../../../packages/contracts/src/types';
 import { taskLabels } from '../../../packages/contracts/src/tasks';
 import { taskEnabled, validatePlan } from '../../../packages/contracts/src/task-policy';
 import { mockPreviewImage } from '../../fixtures/preview-image';
@@ -121,11 +121,11 @@ const timer = globalThis.setInterval(() => {
           task.status = 'completed'; task.startedAt ||= now(); task.finishedAt = now(); task.message = `${taskLabels[task.type]}已完成`;
           if (task.type === 'Fight') {
             task.drops.push({ itemId: '30012', name: '固源岩', quantity: 2, stage: String(tasks[index].params.stage || '1-7'), at: now() });
-            task.artifacts.push({ id: `fixture-${run.id}-${index}`, kind: 'screenshot', label: '自动作战反馈画面', capturedAt: now(), width: mockPreviewImage.width, height: mockPreviewImage.height });
+            (task.artifacts as RunArtifact[]).push({ id: `fixture-${run.id}-${index}`, kind: 'screenshot', label: '自动作战反馈画面', capturedAt: now(), width: mockPreviewImage.width, height: mockPreviewImage.height });
           }
           if (task.type === 'Infrast') {
             task.infrastructure.push({ facility: '制造站', room: 1, operators: ['合成干员甲', '合成干员乙'], product: '赤金', message: '已完成换班', at: now() });
-            task.artifacts.push({ id: `fixture-${run.id}-${index}`, kind: 'screenshot', label: '基建反馈画面', capturedAt: now(), width: mockPreviewImage.width, height: mockPreviewImage.height });
+            (task.artifacts as RunArtifact[]).push({ id: `fixture-${run.id}-${index}`, kind: 'screenshot', label: '基建反馈画面', capturedAt: now(), width: mockPreviewImage.width, height: mockPreviewImage.height });
           }
         }
       } else if (index === currentIndex) { task.status = 'running'; task.startedAt ||= now(); task.message = `正在执行${taskLabels[task.type]}`; }
@@ -281,6 +281,11 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       device.state = 'running'; state.runs.unshift(run);
       requestRuns.set(String(params.requestId), run.id);
       emit('run.started', '模拟执行：' + plan.name, { run: clone(run) });
+      return clone(run);
+    }
+    case 'run.detail': {
+      const run = state.runs.find(item => item.id === params.id);
+      if (!run) throw new Error('执行记录不存在');
       return clone(run);
     }
     case 'run.artifact': {
