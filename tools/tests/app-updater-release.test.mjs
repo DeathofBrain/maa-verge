@@ -94,6 +94,77 @@ test('macOS collection renames the same Tauri archive basename by architecture w
   }
 }));
 
+test('real Tauri productName filenames normalize across all platforms without changing signed bytes or comments', async () => temporary(async directory => {
+  const key = signingKey(), combined = path.join(directory, 'combined');
+  await mkdir(combined);
+  const platforms = [
+    ['windows-x86_64', [
+      ['nsis', 'Maa Verge_0.1.0_x64-setup.exe', 'Maa-Verge_0.1.0_x64-setup.exe', true],
+      ['msi', 'Maa Verge_0.1.0_x64_zh-CN.msi', 'Maa-Verge_0.1.0_x64_zh-CN.msi', true],
+    ]],
+    ['darwin-aarch64', [
+      ['dmg', 'Maa Verge_0.1.0_aarch64.dmg', 'Maa-Verge_0.1.0_aarch64.dmg', false],
+      ['macos', 'Maa Verge.app.tar.gz', 'Maa-Verge_0.1.0_aarch64.app.tar.gz', true],
+    ]],
+    ['darwin-x86_64', [
+      ['dmg', 'Maa Verge_0.1.0_x64.dmg', 'Maa-Verge_0.1.0_x64.dmg', false],
+      ['macos', 'Maa Verge.app.tar.gz', 'Maa-Verge_0.1.0_x64.app.tar.gz', true],
+    ]],
+    ['linux-x86_64', [
+      ['appimage', 'Maa Verge_0.1.0_amd64.AppImage', 'Maa-Verge_0.1.0_amd64.AppImage', true],
+      ['deb', 'Maa Verge_0.1.0_amd64.deb', 'Maa-Verge_0.1.0_amd64.deb', true],
+      ['rpm', 'Maa Verge-0.1.0-1.x86_64.rpm', 'Maa-Verge-0.1.0-1.x86_64.rpm', true],
+    ]],
+  ];
+  for (const [target, originals] of platforms) {
+    const input = path.join(directory, target, 'input'), output = path.join(directory, target, 'output');
+    for (const [format, original, , signed] of originals) await artifact(path.join(input, format), original, key, signed);
+    const names = await collectUpdaterArtifacts({ input, output, target, version, productName: 'Maa Verge', publicKey: key.publicKey });
+    assert.deepEqual(names, originals.flatMap(([, , canonical, signed]) => signed ? [canonical, `${canonical}.sig`] : [canonical]).sort());
+    for (const [format, original, canonical, signed] of originals) {
+      const originalFile = path.join(input, format, original), collected = path.join(output, canonical);
+      assert.deepEqual(await readFile(collected), await readFile(originalFile));
+      if (signed) {
+        const sig = await readFile(`${collected}.sig`, 'utf8');
+        assert.equal(sig, await readFile(`${originalFile}.sig`, 'utf8'));
+        assert.ok(Buffer.from(sig, 'base64').toString().includes(`\tfile:${original}\tversion:${version}`));
+        await verifyUpdaterSignature(collected, sig, key.publicKey, version);
+      }
+    }
+    for (const name of names) await writeFile(path.join(combined, name), await readFile(path.join(output, name)), { flag: 'wx' });
+  }
+  const manifest = await createUpdaterManifest({ input: combined, tag: 'v0.1.0', publicKey: key.publicKey });
+  assert.equal((await readdir(combined)).length, 18);
+  for (const platform of Object.values(manifest.platforms)) assert.ok(!platform.url.includes('%20'));
+  assert.match(manifest.platforms['windows-x86_64-msi'].url, /\/Maa-Verge_0\.1\.0_x64_zh-CN\.msi$/);
+}));
+
+test('collection rejects raw plus normalized duplicates and matches the configured productName literally', async () => temporary(async directory => {
+  const key = signingKey(), input = path.join(directory, 'input');
+  await artifact(input, 'Maa Verge_0.1.0_x64-setup.exe', key);
+  await artifact(input, 'Maa Verge_0.1.0_x64_zh-CN.msi', key);
+  await artifact(input, 'Maa-Verge_0.1.0_x64-setup.exe', key);
+  const options = { input, output: path.join(directory, 'output'), target: 'windows-x86_64', version, publicKey: key.publicKey };
+  await assert.rejects(collectUpdaterArtifacts(options), /唯一/);
+  assert.ok(!(await readdir(directory)).includes('output'));
+  const mac = path.join(directory, 'mac');
+  await artifact(mac, 'Maa Verge_0.1.0_aarch64.dmg', key, false);
+  await artifact(mac, 'Maa Verge.app.tar.gz', key);
+  await artifact(mac, 'Maa-Verge.app.tar.gz', key);
+  await assert.rejects(collectUpdaterArtifacts({ ...options, input: mac, target: 'darwin-aarch64' }), /唯一/);
+  for (const [index, fake] of ['Maa Verge Extra', 'Maa_Verge', 'maa-verge', 'MaaXVerge+Test'].entries()) {
+    const wrong = path.join(directory, `wrong-${index}`);
+    await artifact(wrong, `${fake}_0.1.0_x64-setup.exe`, key);
+    await artifact(wrong, 'Maa.Verge+Test_0.1.0_x64_zh-CN.msi', key);
+    await assert.rejects(collectUpdaterArtifacts({ ...options, input: wrong, productName: 'Maa.Verge+Test' }), /唯一/);
+  }
+  const custom = path.join(directory, 'custom');
+  await artifact(custom, 'Maa.Verge+Test_0.1.0_x64-setup.exe', key);
+  await artifact(custom, 'Maa.Verge+Test_0.1.0_x64_zh-CN.msi', key);
+  assert.equal((await collectUpdaterArtifacts({ ...options, input: custom, productName: 'Maa.Verge+Test' })).length, 4);
+  for (const productName of ['../Maa Verge', 'Maa Verge\\other', 'Maa Verge\n', '', ' Maa Verge']) await assert.rejects(collectUpdaterArtifacts({ ...options, productName }), /产品名称/);
+}));
+
 test('collection refuses duplicate installers, missing signatures and altered downloads', async () => temporary(async directory => {
   const key = signingKey(), input = path.join(directory, 'input');
   const file = await artifact(input, 'Maa-Verge_0.1.0_x64-setup.exe', key);
