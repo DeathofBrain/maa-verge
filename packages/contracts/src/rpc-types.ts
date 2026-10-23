@@ -110,6 +110,8 @@ export interface RpcContract {
       requestId: string;
     };
     'run.stop': IdParams;
+    'run.detail': IdParams;
+    'run.artifact': RunArtifactParams;
     'updates.check': ChannelParams;
     'updates.prepare': ChannelParams;
     'updates.activate': ChannelParams;
@@ -146,6 +148,8 @@ export interface RpcContract {
     };
     'run.start': Run;
     'run.stop': Run;
+    'run.detail': Run;
+    'run.artifact': RunArtifactImage;
     'updates.check': UpdateChannel;
     'updates.prepare': UpdateChannel;
     'updates.activate': UpdateChannel;
@@ -232,6 +236,14 @@ export interface DeviceClickParams {
   x: number;
   y: number;
   requestId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "RunArtifactParams".
+ */
+export interface RunArtifactParams {
+  runId: string;
+  artifactId: string;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -632,6 +644,11 @@ export interface UserDataSync {
  * via the `definition` "Run".
  */
 export interface Run {
+  planName?: string;
+  /**
+   * @maxItems 30
+   */
+  tasks?: RunTask[];
   id: Id2;
   planId: Planid;
   deviceId: Deviceid1;
@@ -640,6 +657,202 @@ export interface Run {
   message: Message;
   startedAt: Startedat;
   finishedAt: Finishedat;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "RunTask".
+ */
+export interface RunTask {
+  index: number;
+  type: string;
+  status: 'waiting' | 'running' | 'completed' | 'failed' | 'stopped' | 'skipped';
+  message: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  /**
+   * @maxItems 200
+   */
+  drops: RunDrop[];
+  /**
+   * @maxItems 100
+   */
+  infrastructure: RunInfrastructure[];
+  /**
+   * @maxItems 3
+   */
+  artifacts: [] | [RunArtifact] | [RunArtifact, RunArtifact] | [RunArtifact, RunArtifact, RunArtifact];
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "RunDrop".
+ */
+export interface RunDrop {
+  itemId: string;
+  name: string;
+  quantity: number;
+  stage: string;
+  at: string;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "RunInfrastructure".
+ */
+export interface RunInfrastructure {
+  facility: string;
+  room: number;
+  /**
+   * @maxItems 20
+   */
+  operators:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  product: string;
+  message: string;
+  at: string;
+}
+/**
+ * Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.
+ *
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "RunArtifact".
+ */
+export interface RunArtifact {
+  id: string;
+  kind: 'screenshot';
+  label: string;
+  capturedAt: string;
+  width: number;
+  height: number;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -824,6 +1037,14 @@ export interface ScreenFrame {
   data: string;
   canControl: boolean;
   latencyMs: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "RunArtifactImage".
+ */
+export interface RunArtifactImage {
+  mimeType: 'image/png';
+  data: string;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

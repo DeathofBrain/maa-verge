@@ -127,6 +127,11 @@ export interface Params {
   [k: string]: unknown;
 }
 export interface Run {
+  planName?: string;
+  /**
+   * @maxItems 30
+   */
+  tasks?: RunTask[];
   id: Id2;
   planId: Planid;
   deviceId: Deviceid1;
@@ -135,6 +140,187 @@ export interface Run {
   message: Message;
   startedAt: Startedat;
   finishedAt: Finishedat;
+}
+export interface RunTask {
+  index: number;
+  type: string;
+  status: 'waiting' | 'running' | 'completed' | 'failed' | 'stopped' | 'skipped';
+  message: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  /**
+   * @maxItems 200
+   */
+  drops: RunDrop[];
+  /**
+   * @maxItems 100
+   */
+  infrastructure: RunInfrastructure[];
+  /**
+   * @maxItems 3
+   */
+  artifacts: [] | [RunArtifact] | [RunArtifact, RunArtifact] | [RunArtifact, RunArtifact, RunArtifact];
+}
+export interface RunDrop {
+  itemId: string;
+  name: string;
+  quantity: number;
+  stage: string;
+  at: string;
+}
+export interface RunInfrastructure {
+  facility: string;
+  room: number;
+  /**
+   * @maxItems 20
+   */
+  operators:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  product: string;
+  message: string;
+  at: string;
+}
+/**
+ * Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.
+ */
+export interface RunArtifact {
+  id: string;
+  kind: 'screenshot';
+  label: string;
+  capturedAt: string;
+  width: number;
+  height: number;
 }
 export interface UpdateChannel {
   installDirectory?: string;

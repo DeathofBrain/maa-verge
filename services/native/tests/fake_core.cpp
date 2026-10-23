@@ -207,6 +207,17 @@ EXPORT bool AsstStart(void* handle) {
   instance->running = true;
   instance->stopped = false;
   instance->threads.emplace_back([instance] {
+    if (scenario() == "execution-results") {
+      if (instance->type == "Fight") {
+        instance->send(20003, {{"taskid", 11}, {"taskchain", "Fight"}, {"what", "StageDrops"},
+          {"details", {{"stage", {{"stageCode", "1-7"}}},
+            {"drops", {{{"itemId", "30012"}, {"itemName", "synthetic-rock"}, {"quantity", 1}}}},
+            {"stats", {{{"itemId", "30012"}, {"itemName", "synthetic-rock"}, {"quantity", 2}}}}}}});
+      } else if (instance->type == "Infrast") {
+        instance->send(20003, {{"taskid", 11}, {"taskchain", "Infrast"}, {"what", "ProductOfFacility"},
+          {"details", {{"facility", "Mfg"}, {"index", 0}, {"product", "Gold"}}}});
+      }
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(scenario() == "task-hold" ? 800 : 150));
     if (instance->stopped) return;
     if (scenario() == "malformed-callback") instance->callback(9001, "{not json", instance->context);

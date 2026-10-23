@@ -20,6 +20,11 @@ import { stageCatalog } from './stages';
 import { validateStageListParams } from '../../../packages/contracts/src/validators.js';
 import { homeInfo } from './home-info';
 import { ActivityCalendar, type ActivityCalendarOptions } from './activity-calendar';
+import { localizeExecutionMessage } from '../../../packages/contracts/src/execution';
+import { taskLabels } from '../../../packages/contracts/src/tasks';
+import type { RunTask } from '../../../packages/contracts/src/types';
+import { recordDrops, recordInfrastructure, RunArtifacts } from './execution-evidence';
+import { validateRunArtifactParams } from '../../../packages/contracts/src/validators.js';
 import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
@@ -44,10 +49,12 @@ export class Runtime {
   readonly updates: UpdateService;
   readonly preview: Preview;
   readonly calendar: ActivityCalendar;
+  readonly artifacts: RunArtifacts;
   readonly workers = new Map<string, Worker>();
   private workerConfigurations = new Map<string, any>();
   private clientSwitches = new Map<string, AbortController>();
   private submissions = new Set<Promise<void>>();
+  private artifactCaptures = new Map<string, Promise<void>>();
   private starts = new Map<string, { planId: string; deviceId: string; promise: Promise<any> }>();
   private connecting = new Set<string>();
   private connectingAddresses = new Set<string>();
@@ -65,6 +72,7 @@ export class Runtime {
   running = true;
   constructor(readonly root: string, private options: RuntimeOptions = {}) {
     this.store = new Store(root);
+    this.artifacts = new RunArtifacts(root);
     this.calendar = new ActivityCalendar(path.join(root, 'cache'), { ...options.calendar, changed: () => { if (this.running) this.emit('calendar.changed', '活动日历缓存已更新'); } });
     if (!this.store.get('meta', 'initialized')) {
       this.store.put('settings', 'main', parseSettings());
@@ -75,6 +83,7 @@ export class Runtime {
     if (!settings.componentPaths) this.store.put('settings', 'main', { ...settings, componentPaths: defaults });
     for (const device of this.store.all('device')) { device.state = 'offline'; this.store.put('device', device.id, device); }
     for (const run of this.store.all('run')) if (run.status === 'running') {
+      for (const task of run.tasks ?? []) if (task.status === 'running') Object.assign(task, { status: 'failed', finishedAt: now(), message: '上次运行被中断，结果未知' });
       Object.assign(run, { status: 'failed', finishedAt: now(), message: '上次运行被中断；请核对设备后重新执行' }); this.store.put('run', run.id, run); this.emit('run.interrupted', run.message, { runId: run.id });
     }
     this.updates = new UpdateService(path.join(root, 'components'), this.store, this.emit.bind(this), this.busy.bind(this), {
@@ -88,7 +97,12 @@ export class Runtime {
       clicked: data => { this.emit('device.clicked', '点击指令已获核心确认', data); },
     });
   }
-  emit(type: string, message: string, data: any = {}) { const event = this.store.event(type, message, data); this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event }); return event; }
+  emit(type: string, message: string, data: any = {}) {
+    // Execution details are fetched explicitly; repeated events must not copy
+    // every material, facility and image reference into transport or history.
+    if (data.run?.tasks) { const { tasks: _tasks, ...run } = data.run; data = { ...data, run }; }
+    const event = this.store.event(type, message, data); this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event }); return event;
+  }
   busy() { return !!this.preview?.busy || this.connecting.size > 0 || this.store.all('run').some(run => run.status === 'running' && !this.store.get('execution', run.id, {}).boundaryWaiting) || [...this.workers.values()].some(worker => !worker.safeIdle); }
   devices(): any[] {
     return this.store.all('device').map(device => {
@@ -96,7 +110,13 @@ export class Runtime {
       return { ...device, dataSync: { operatorsAt: synced.operatorsAt ?? null, depotAt: synced.depotAt ?? null } };
     });
   }
-  snapshot() { return parseSnapshot({ mode: this.mode, devices: this.devices(), plans: this.store.all('plan').map(parsePlan), runs: this.store.all('run').reverse().slice(0, 100).map(run => ({ finishedAt: null, ...run })), updates: this.updates.channels(), settings: parseSettings(this.store.get('settings', 'main')), events: this.store.events() }); }
+  snapshot() { return parseSnapshot({ mode: this.mode, devices: this.devices(), plans: this.store.all('plan').map(parsePlan), runs: this.store.all('run').reverse().slice(0, 100).map(run => {
+    const { tasks, ...summary } = run;
+    return { finishedAt: null, ...summary };
+  }), updates: this.updates.channels(), settings: parseSettings(this.store.get('settings', 'main')), events: this.store.events().map(event => {
+    if (!event.data.run?.tasks) return event;
+    const { tasks: _tasks, ...run } = event.data.run; return { ...event, data: { ...event.data, run } };
+  }) }); }
   async handle(method: string, params: any = {}) {
     if (params === null) params = {};
     if (typeof params !== 'object' || Array.isArray(params)) throw new RpcError(-32602, 'params 必须是对象');
@@ -134,6 +154,17 @@ export class Runtime {
         this.store.delete('plan', params.id); this.emit('plan.deleted', '计划已删除', { planId: params.id }); return { deleted: true };
       case 'run.start': required('requestId', 'planId', 'deviceId'); return this.startRun(params);
       case 'run.stop': required('id'); return this.stopRun(params.id);
+      case 'run.detail': {
+        if (Object.keys(params).some(key => key !== 'id') || typeof params.id !== 'string' || !params.id || params.id.length > 200) throw new RpcError(-32602, '执行详情请求参数无效');
+        const run = this.store.get('run', params.id); if (!run) throw new RpcError(-32004, '执行记录不存在');
+        return { finishedAt: null, ...run };
+      }
+      case 'run.artifact': {
+        if (!validateRunArtifactParams(params)) throw new RpcError(-32602, '执行截图请求参数无效');
+        const run = this.store.get('run', params.runId);
+        if (!run?.tasks?.some((task: RunTask) => task.artifacts.some(artifact => artifact.id === params.artifactId))) throw new RpcError(-32004, '执行截图不存在');
+        return this.artifacts.read(params.runId, params.artifactId);
+      }
       case 'settings.save': {
         required('settings'); const settings = parseSettings(params.settings), previous = parseSettings(this.store.get('settings', 'main'));
         await this.updates.saveDirectories(settings.componentPaths ?? previous.componentPaths!, (componentPaths) => {
@@ -186,7 +217,8 @@ export class Runtime {
     const worker = this.workers.get(device.id);
     if (!worker?.connected || !worker.safeIdle) throw new RpcError(-32011, '核心尚未连接或异步操作未结束');
     if (!this.running || this.switching) throw new RpcError(-32011, '应用运行时正在退出或切换');
-    const id = ident('run'), run = { id, planId: params.planId, deviceId: device.id, status: 'running', progress: 0, message: '正在提交首个任务', startedAt: now(), finishedAt: null };
+    const id = ident('run'), run = { id, planId: params.planId, planName: plan.name, deviceId: device.id, status: 'running', progress: 0, message: '正在提交首个任务', startedAt: now(), finishedAt: null,
+      tasks: plan.tasks.map((task, index) => ({ index, type: task.type, status: 'waiting', message: '等待执行', startedAt: null, finishedAt: null, drops: [], infrastructure: [], artifacts: [] })) };
     // Persist deduplication and the execution snapshot before any native effect.
     this.store.transaction(() => { this.store.put('run', id, run); this.store.put('run_plan', id, plan); this.store.put('request', token, { runId: id, planId: params.planId, deviceId: device.id }); });
     this.emit('run.started', run.message, { run });
@@ -415,6 +447,57 @@ export class Runtime {
   private canSubmit(runId: string) {
     return this.running && !this.switching && this.store.get('run', runId)?.status === 'running' && !this.store.get('execution', runId, {}).stopRequested;
   }
+  private updateRunTask(run: any, index: number, change: (task: RunTask) => void, limitResults = false) {
+    const current = this.store.get('run', run.id), task = current?.tasks?.[index];
+    if (!task) return false;
+    change(task);
+    // Reserve 128 KiB for later status/diagnostic strings and bounded artifact
+    // metadata. A single run's task metadata must remain below 1 MiB, well
+    // within the host's 4 MiB NDJSON limit even for multi-byte Chinese text.
+    if (limitResults && Buffer.byteLength(JSON.stringify(current.tasks)) > 1024 * 1024 - 128 * 1024) {
+      if (!this.store.get('run_result_limit', run.id)) {
+        this.store.put('run_result_limit', run.id, true);
+        this.emit('run.results_limited', '本次执行已达到结果记录上限，后续新结果不再保存；任务状态继续更新', { runId: run.id });
+      }
+      return false;
+    }
+    this.store.put('run', run.id, current); Object.assign(run, current); return true;
+  }
+  private captureRunArtifact(run: any, state: any, worker: Worker, label: string) {
+    const key = run.id + ':' + state.index;
+    const current = this.store.get('run', run.id), task = current?.tasks?.[state.index];
+    if (!worker.frame || !task || task.artifacts.length >= 3 || current.tasks.reduce((total: number, task: RunTask) => total + task.artifacts.length, 0) >= 12 || this.artifactCaptures.has(key)) return;
+    let capture!: Promise<void>;
+    capture = (async () => {
+      try {
+        // Preview validates protocol, PNG dimensions, size and worker identity.
+        // Running workers return their latest cached image without a new ADB action.
+        const frame = await this.preview.frame({ deviceId: run.deviceId });
+        const execution = this.running ? this.store.get('execution', run.id) : undefined;
+        if (!this.running || this.artifactCaptures.get(key) !== capture || this.workers.get(run.deviceId) !== worker || execution?.taskId !== state.taskId || execution?.index !== state.index || this.store.get('run', run.id)?.status !== 'running') return;
+        const latest = this.store.get('run', run.id), latestTask = latest?.tasks?.[state.index];
+        if (!latestTask || latestTask.artifacts.length >= 3 || latest.tasks.reduce((total: number, task: RunTask) => total + task.artifacts.length, 0) >= 12) return;
+        const artifact = this.artifacts.save(run.id, latestTask, frame, label);
+        this.store.put('run', run.id, latest);
+        this.emit('run.artifact', label + '已保存', { runId: run.id, index: state.index, taskId: state.taskId, artifact });
+      } catch (error) {
+        if (this.running) this.emit('run.artifact_unavailable', '反馈画面获取失败，已保留核心结果信息', { runId: run.id, index: state.index, reason: String(error).slice(0, 500) });
+      }
+    })();
+    this.artifactCaptures.set(key, capture);
+    void capture.finally(() => { if (this.artifactCaptures.get(key) === capture) this.artifactCaptures.delete(key); });
+  }
+  private async finishRunArtifact(runId: string, index: number) {
+    const key = runId + ':' + index, capture = this.artifactCaptures.get(key);
+    if (!capture) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try { await Promise.race([capture, new Promise<void>(resolve => { timer = setTimeout(resolve, 750); })]); }
+    finally {
+      clearTimeout(timer);
+      // A timed-out read may still complete; revoke its permission to persist.
+      if (this.artifactCaptures.get(key) === capture) this.artifactCaptures.delete(key);
+    }
+  }
   private async workerForClient(run: any, clientType: string): Promise<Worker | undefined> {
     const id = run.deviceId, previous = this.workers.get(id), saved = this.workerConfigurations.get(id);
     if (!previous?.connected || !previous.safeIdle) throw new Error('核心尚未连接或未到达安全空闲边界');
@@ -465,6 +548,7 @@ export class Runtime {
     if (configuredTask.type === 'UserDataUpdate') {
       syncSteps ??= userDataSteps(configuredTask.params, this.syncHistory(run.deviceId, clientType), new Date(), clientType);
       if (!syncSteps.length) {
+        this.updateRunTask(run, index, task => { Object.assign(task, { status: 'skipped', finishedAt: now(), message: '当前周期已完成或未选择识别项目' }); });
         this.emit('run.task_skipped', '更新数据已在当前周期完成或未选择识别项目，已跳过', { runId: run.id, index });
         await this.advanceNativeTask(run, index + 1); return;
       }
@@ -482,6 +566,7 @@ export class Runtime {
       state.mallVisitEnabled = task.params.visit_friends !== false;
     }
     this.store.put('execution', run.id, state);
+    this.updateRunTask(run, index, item => { Object.assign(item, { status: 'running', startedAt: item.startedAt ?? now(), message: '正在准备' + (taskLabels[configuredTask.type] ?? configuredTask.type) }); });
     try {
       const worker = await this.workerForClient(run, clientType);
       if (!worker || !this.canSubmit(run.id)) {
@@ -496,7 +581,8 @@ export class Runtime {
       const result = await worker.task(task);
       Object.assign(state, this.store.get('execution', run.id, {}), { taskId: result.taskId, submitting: false }); this.store.put('execution', run.id, state);
       if (state.stopRequested || this.store.get('run', run.id).status !== 'running') return;
-      Object.assign(run, { message: '正在执行 ' + task.type, progress: Math.floor(index * 100 / plan.tasks.length) }); this.store.put('run', run.id, run);
+      this.updateRunTask(run, index, item => { item.message = '正在执行' + (taskLabels[task.type] ?? task.type); });
+      Object.assign(run, { message: '正在执行' + (taskLabels[task.type] ?? task.type), progress: Math.floor(index * 100 / plan.tasks.length) }); this.store.put('run', run.id, run);
       const device = this.store.get('device', run.deviceId); device.state = 'running'; this.store.put('device', device.id, device); this.emit('run.progress', run.message, { run });
     } catch (error) {
       Object.assign(state, this.store.get('execution', run.id, {}), { submitting: false }); this.store.put('execution', run.id, state);
@@ -523,6 +609,8 @@ export class Runtime {
     else await pending;
   }
   finishNativeRun(run: any, status: string, message: string) {
+    Object.assign(run, this.store.get('run', run.id));
+    for (const task of run.tasks ?? []) if (task.status === 'running' && status !== 'completed') Object.assign(task, { status, message: message.slice(0, 1000), finishedAt: now() });
     Object.assign(run, { status, message, finishedAt: now() }); if (status === 'completed') run.progress = 100; this.store.put('run', run.id, run);
     const device = this.store.get('device', run.deviceId), worker = this.workers.get(run.deviceId);
     if (device) { device.state = worker?.connected && worker.safeIdle ? 'idle' : 'offline'; this.store.put('device', device.id, device); }
@@ -558,9 +646,31 @@ export class Runtime {
             const matches = details.taskid === state.taskId;
             if ([0, 1].includes(message) || (message === 10000 && matches) || (message === 10004 && matches)) state.failed = true;
             if (message === 10002 && matches) state.completed = true;
-            if (message === 3 && (!('taskid' in details) || matches)) state.queueEnded = true;
+            if (message === 3 && (matches || (!('taskid' in details) && (!Array.isArray(details.finished_tasks) || details.finished_tasks.includes(state.taskId))))) state.queueEnded = true;
             if (message === 20003 && matches && state.recognitionType && !state.completed && !state.failed && !state.queueEnded && !state.stopRequested && recognitionResult(state.recognitionType, details)) state.recognitionResultAt = now();
             if (message === 20002 && matches && state.mallVisitEnabled && details.subtask === 'ProcessTask' && details.taskchain === 'Mall' && ['VisitLimited', 'VisitNextBlack'].includes(details.details?.task)) state.mallVisitedAt = now();
+            if (matches && !state.stopRequested && !state.failed && !state.queueEnded) {
+              if ([10001, 10002, 20001, 20002].includes(message)) {
+                const action = details.details?.task ?? details.subtask ?? details.taskchain ?? this.store.get('run_plan', run.id)?.tasks[state.index]?.type ?? '';
+                const localized = localizeExecutionMessage(String(action)), fallbackType = this.store.get('run_plan', run.id)?.tasks[state.index]?.type;
+                const actionLabel = /[A-Za-z]/.test(localized) ? (taskLabels[fallbackType] ?? '当前任务') : localized;
+                const messageText = actionLabel + (message === 10002 ? '流程结束，正在确认核心空闲' : message === 20002 ? '已完成' : '执行中');
+                this.updateRunTask(run, state.index, item => { item.message = messageText.slice(0, 1000); });
+                run.message = messageText; this.store.put('run', run.id, run);
+                this.emit('run.task_progress', messageText, { runId: run.id, index: state.index, taskId: state.taskId, action });
+              }
+              if (message === 20003) {
+                let changed = false;
+                const recorded = this.updateRunTask(run, state.index, item => {
+                  if (details.what === 'StageDrops' && details.taskchain === 'Fight') changed = recordDrops(item, details.details, now());
+                  else if (details.taskchain === 'Infrast') changed = recordInfrastructure(item, details.what, details.details, now());
+                }, true);
+                if (changed && recorded) {
+                  this.emit('run.result', details.taskchain === 'Fight' ? '作战掉落已更新' : '基建反馈已更新', { runId: run.id, index: state.index, taskId: state.taskId, what: details.what });
+                  if (details.what === 'StageDrops' || details.what === 'InfrastConfirmButton' || (details.what === 'ProductOfFacility' && !run.tasks[state.index].artifacts.length)) this.captureRunArtifact(run, state, worker, details.taskchain === 'Fight' ? '自动作战反馈画面' : '基建反馈画面');
+                }
+              }
+            }
             this.store.put('execution', run.id, state);
           }
           if (details.what === 'UnsupportedLevel') this.nextChecks.resource = Math.min(this.nextChecks.resource!, Date.now() + 60_000);
@@ -571,6 +681,9 @@ export class Runtime {
       if (state.boundaryWaiting && !state.stopRequested) { if (worker.connected && worker.safeIdle && !this.updates.channels().some(c => c.status === 'waiting_idle') && !this.switching) await this.continueNativeTask(run, state.nextIndex, state.nextSyncSteps, state.nextSyncIndex); }
       else if (state.stopRequested && Date.now() - state.stopRequested > 15_000) { await worker.close(); this.workers.delete(id); this.workerConfigurations.delete(id); this.finishNativeRun(run, 'stopped', '核心停止超时，已结束工作进程；请核对设备现场'); }
       else if (state.idleAfterEnd && worker.safeIdle) {
+        await this.finishRunArtifact(run.id, state.index);
+        // Stop can arrive while the final feedback image is being read.
+        Object.assign(state, this.store.get('execution', run.id, {}));
         if (state.mallVisitedAt) {
           this.store.put('mall_visit', run.deviceId, { visitedAt: state.mallVisitedAt, clientType: state.clientType });
           this.emit('device.friends_visited', '好友访问已获专用成功回调确认', { deviceId: run.deviceId, runId: run.id, visitedAt: state.mallVisitedAt });
@@ -588,6 +701,7 @@ export class Runtime {
             this.emit('device.data_synced', step.type === 'OperBox' ? '干员识别已成功同步' : '仓库识别已成功同步', { deviceId: run.deviceId, runId: run.id, type: step.type, syncedAt: synced[step.key] });
             if (state.syncSteps && state.syncIndex + 1 < state.syncSteps.length) { await this.advanceNativeTask(run, state.index, state.syncSteps, state.syncIndex + 1); continue; }
           }
+          this.updateRunTask(run, state.index, task => { Object.assign(task, { status: 'completed', finishedAt: now(), message: '任务成功且核心已空闲' }); });
           await this.advanceNativeTask(run, state.index + 1);
         }
       }
@@ -621,6 +735,7 @@ export class Runtime {
     for (const run of this.store.all('run')) if (run.status === 'running') await this.stopRun(run.id);
     await Promise.all([...this.workers.values()].map(worker => worker.close())); this.workers.clear(); this.workerConfigurations.clear();
     await Promise.allSettled([...this.submissions, ...[...this.starts.values()].map(start => start.promise)]);
+    await Promise.allSettled([...this.artifactCaptures.values()]);
     this.store.close();
   }
 }

@@ -10,4 +10,5 @@ export type {
 export { taskLabels, taskDefaults, defaultDailyTaskTypes, createDefaultDailyTasks, nextPlanName } from './tasks';
 export { stagePresets } from './stages';
 export { taskEnabled, taskConsumableLimits } from './task-policy';
+export { localizeExecutionMessage } from './execution';
 export { desktopPlatform, minimizeWindow, toggleMaximizeWindow, closeWindow, syncWindowTheme, subscribeWindowMaximized, type DesktopPlatform } from './desktop-window';

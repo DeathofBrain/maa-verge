@@ -20,6 +20,7 @@ export const validateRpcRequest: Validator<RpcRequest>;
 export const validateRpcEvent: Validator<RpcEvent>;
 export const validateDeviceFrameParams: Validator<RpcContract['params']['device.frame']>;
 export const validateDeviceClickParams: Validator<RpcContract['params']['device.click']>;
+export const validateRunArtifactParams: Validator<RpcContract['params']['run.artifact']>;
 export const validateStageListParams: Validator<RpcContract['params']['stages.list']>;
 export const validateStageListResult: Validator<RpcContract['results']['stages.list']>;
 export const validateScreenFrame: Validator<ScreenFrame>;
