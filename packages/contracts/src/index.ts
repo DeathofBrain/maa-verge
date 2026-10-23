@@ -9,5 +9,5 @@ export type {
 } from './worker-types';
 export { taskLabels, taskDefaults, defaultDailyTaskTypes, createDefaultDailyTasks, nextPlanName } from './tasks';
 export { stagePresets } from './stages';
-export { taskEnabled } from './task-policy';
+export { taskEnabled, taskConsumableLimits } from './task-policy';
 export { desktopPlatform, minimizeWindow, toggleMaximizeWindow, closeWindow, syncWindowTheme, subscribeWindowMaximized, type DesktopPlatform } from './desktop-window';

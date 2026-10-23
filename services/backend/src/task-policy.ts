@@ -2,6 +2,7 @@ import type { Plan, Settings, Task } from './models';
 import { RpcError } from './errors';
 import { casefold } from './casefold';
 import { isWireFloat, parseWireJson, stringifyWireJson, wireNumberToken } from './wire-json';
+import { taskConsumableLimits } from '../../../packages/contracts/src/task-policy';
 const CLIENTS = new Set(['', 'Official', 'Bilibili', 'txwy', 'YoStarEN', 'YoStarJP', 'YoStarKR']);
 const FACILITIES = new Set(['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Recycle', 'Dorm', 'Processing', 'Training', 'AssistantChange']);
 const DRONES = new Set(['_NotUse', 'Money', 'SyntheticJade', 'CombatRecord', 'PureGold', 'OriginStone', 'Chip']);
@@ -119,18 +120,15 @@ export function validateTask(task: Task): void {
   }
   if ('formation_index' in p) integer(integerInput(p, 'formation_index'), '编队栏位', 0, 4);
 }
-export function validatePlan(plan: Plan, settings: Settings): void {
-  const budgets = plan.budgets ?? settings.budgets;
-  if (plan.budgets) for (const key of ['originium', 'medicine', 'expedited'] as const) if (plan.budgets[key] > settings.budgets[key]) throw new RpcError(-32010, '任务表消耗上限超出应用已授权额度', { budget: key, limit: plan.budgets[key] });
-  const totals = { originium: 0, medicine: 0, expedited: 0 };
+export function validatePlan(plan: Plan, _settings: Settings): void {
   for (const task of plan.tasks) {
     validateTask(task); const p: any = task.params; if (!task.enabled || p.enable === false) continue;
-    totals.originium += integer(integerInput(p, 'stone', 0), '消耗额度'); totals.medicine += integer(integerInput(p, 'medicine', 0), '消耗额度');
+    integer(integerInput(p, 'stone', 0), '源石上限'); integer(integerInput(p, 'medicine', 0), '理智药上限');
     for (const key of ['expiring_medicine', 'medicine_expire_days']) if (integer(integerInput(p, key, 0), '临期理智药设置')) reject('当前核心的临期理智药不受数量限制，暂不能在有限预算下启用');
     if (p.use_sanity_potion) reject('当前核心的作业理智药不受数量限制，暂不能在有限预算下启用');
     integer(integerInput(p, 'expedite_times', 0), '加急额度'); if (p.expedite) reject('当前核心不执行加急次数上限，暂不能在有限预算下启用加急');
   }
-  for (const key of ['originium', 'medicine', 'expedited'] as const) if (totals[key] > budgets[key]) throw new RpcError(-32010, '计划消耗超出已授权额度', { budget: key, requested: totals[key] });
+  try { taskConsumableLimits(plan); } catch (error) { reject((error as Error).message); }
 }
 export function nativeTask(task: Task): Task {
   if (task.type === 'UserDataUpdate') reject('更新数据必须由应用服务拆分后执行');

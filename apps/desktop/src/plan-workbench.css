@@ -798,25 +798,8 @@
   margin-left: 8px;
 }
 
-.wb-budget-inputs {
-  display: grid;
-  grid-template-columns: repeat(3,minmax(0,1fr));
-  gap: 18px;
-  max-width: 700px;
-  margin: 18px 0 0;
-}
 
-.wb-budget-inputs label {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  font-size: 12px;
-  color: var(--muted,#697587);
-}
 
-.wb-budget-inputs input {
-  width: 100%;
-}
 
 .wb-management-actions {
   display: flex;
@@ -986,9 +969,6 @@
   .wb-new-name {
     padding-inline: 22px;
   }
-  .wb-budget-inputs {
-    gap: 10px;
-  }
   .wb-checkbox-row {
     flex-wrap: wrap;
   }
@@ -1060,9 +1040,6 @@
     padding: 20px 16px;
   }
   .wb-settings-form .wb-fields {
-    grid-template-columns: 1fr;
-  }
-  .wb-budget-inputs {
     grid-template-columns: 1fr;
   }
   .wb-fields {

@@ -3,7 +3,7 @@ import { type Run, type Snapshot, type UpdateChannel } from '@maaverge/contracts
 import './home-dashboard.css';
 import GameInfoPanel from './GameInfoPanel';
 
-type Destination = 'devices' | 'settings' | 'history' | 'copilot' | 'agent';
+type Destination = 'daily' | 'devices' | 'settings' | 'history' | 'copilot' | 'agent';
 type Props = {
   snapshot: Snapshot;
   selectedDevice: string;
@@ -87,7 +87,7 @@ export default function HomeDashboard({ snapshot, selectedDevice, stopping, onSt
       <div className="home-shortcuts" aria-label="快捷入口">
         <button onClick={() => onNavigate('copilot')}><span><BookOpen size={19} /></span><div><strong>作业中心</strong><small>管理与配置本地作业</small></div><ArrowRight size={16} /></button>
         <button onClick={() => onNavigate('agent')}><span><Bot size={20} /></span><div><strong>Agent 助手<em>预览</em></strong><small>从描述目标到审阅计划</small></div><ArrowRight size={16} /></button>
-        <button onClick={() => onNavigate('settings')}><span><ShieldCheck size={20} /></span><div><strong>执行与消耗设置</strong><small>管理授权、限额与偏好</small></div><ArrowRight size={16} /></button>
+        <button onClick={() => onNavigate('daily')}><span><ShieldCheck size={20} /></span><div><strong>任务消耗设置</strong><small>在自动作战任务中设置用药与源石上限</small></div><ArrowRight size={16} /></button>
       </div>
       <footer className="home-footnote"><Terminal size={12} />任务与执行记录保存在本机。</footer>
     </div>

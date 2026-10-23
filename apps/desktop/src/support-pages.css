@@ -485,12 +485,6 @@
   color: var(--text,#202734);
 }
 
-.sp-budget-fields {
-  display: grid;
-  grid-template-columns: repeat(3,minmax(0,1fr));
-  gap: 22px;
-  margin: 26px 0;
-}
 
 .sp-form-actions {
   display: flex;
@@ -1131,9 +1125,6 @@
   .sp-heading-actions .sp-create-controls {
     flex-direction: column;
   }
-  .sp-budget-fields {
-    gap: 14px;
-  }
   .sp-tool-plans {
     grid-template-columns: 1fr;
   }
@@ -1282,16 +1273,11 @@
   .sp-setting-row .sp-inline-select {
     width: 135px;
   }
-  .sp-budget-fields,.sp-capture-fields {
+  .sp-capture-fields {
     grid-template-columns: 1fr;
   }
   .sp-field {
     gap: 7px;
-  }
-  .sp-budget-fields .sp-field {
-    display: grid;
-    grid-template-columns: 90px minmax(0,1fr);
-    align-items: center;
   }
   .sp-settings-content>.sp-content-heading,.sp-content-heading {
     padding: 20px 18px;

@@ -11,7 +11,7 @@ import { parsePlan, parseSettings } from '../src/models';
 import { validatePlan, nativeTask } from '../src/task-policy';
 import { processRequest } from '../src/entry';
 import { syncDue, userDataSteps } from '../src/user-data-sync';
-import { validatePlan as validateSharedPlan } from '../../../packages/contracts/src/task-policy';
+import { taskConsumableLimits, validatePlan as validateSharedPlan } from '../../../packages/contracts/src/task-policy';
 
 const roots: string[] = [], runtimes: Runtime[] = [];
 const temp = () => { const root = mkdtempSync(path.join(tmpdir(), 'maaverge-ts-test-')); roots.push(root); return root; };
@@ -87,11 +87,26 @@ describe('business parity', () => {
     await stopAtIdle(r, worker, run.id); expect(r.store.get('plan', 'daily').tasks).toHaveLength(5); expect(r.store.get('run', run.id).status).toBe('stopped');
     expect(worker.submitted).toHaveLength(1);
   });
-  test('settings and plan budget limits remain independent and default to zero', async () => {
-    const r = fresh(); await expect(r.handle('plan.save', { plan: { name: '消耗', tasks: [{ type: 'Fight', params: { medicine: 1 } }] } })).rejects.toMatchObject({ code: -32010 });
-    await r.handle('settings.save', { settings: { budgets: { medicine: 2 } } });
-    await expect(r.handle('plan.save', { plan: { name: '本表禁用', budgets: { medicine: 0 }, tasks: [{ type: 'Fight', params: { medicine: 1 } }] } })).rejects.toMatchObject({ code: -32010 });
-    expect((await r.handle('plan.save', { plan: { name: '继承', tasks: [{ type: 'Fight', params: { medicine: 2 } }] } })).budgets).toBeNull();
+  test('Fight parameters govern execution despite legacy zero budgets and remain immutable after launch', async () => {
+    const { runtime: r, worker, device } = await native();
+    expect(taskConsumableLimits(parsePlan({ name: '默认', tasks: [{ type: 'Fight' }] }))).toEqual({ medicine: 0, originium: 0, expedited: 0 });
+    const plan = await r.handle('plan.save', { plan: { name: '消耗', budgets: { medicine: 0 }, tasks: [
+      { type: 'Fight', params: { medicine: 2, stone: 1 } },
+      { type: 'Fight', params: { medicine: 3, stone: 2 } },
+      { type: 'Fight', params: { medicine: 99, stone: 99 }, enabled: false },
+      { type: 'Fight', params: { medicine: 99, stone: 99, enable: false } },
+    ] } });
+    expect(taskConsumableLimits(plan)).toEqual({ medicine: 5, originium: 3, expedited: 0 });
+    expect(r.snapshot().settings.budgets).toEqual({ medicine: 0, originium: 0, expedited: 0 });
+    const run = await r.startRun({ planId: plan.id, deviceId: device.id, requestId: 'task-limits' });
+    await r.handle('plan.save', { plan: { ...plan, tasks: [{ type: 'Fight', params: {} }] } });
+    expect(worker.submitted[0].params).toMatchObject({ medicine: 2, stone: 1 });
+    worker.complete(1); await r.tick(true);
+    expect(worker.submitted[1].params).toMatchObject({ medicine: 3, stone: 2 });
+    worker.complete(2); await r.tick(true);
+    expect(worker.submitted).toHaveLength(2);
+    expect(r.store.get('run', run.id).status).toBe('completed');
+    expect(taskConsumableLimits(r.store.get('run_plan', run.id))).toEqual({ medicine: 5, originium: 3, expedited: 0 });
   });
   test('crash recovery fails uncertain execution instead of replaying', () => {
     const root = temp(), store = new Store(root);
@@ -555,10 +570,27 @@ test('shared and backend policies validate the new conventional settings consist
 });
 
 test('task policy denies commands, unbounded consumables and malformed values', () => {
-  for (const params of [{ shell: 'bad' }, { extension: { 'ſhell': 'bad' } }, { medicine: 1 }, { expiring_medicine: 1 }, { expedite: true }, { use_sanity_potion: true }, { times: true }, { server: 'bad' }, { future: '\uD800' }]) {
+  for (const params of [{ shell: 'bad' }, { extension: { 'ſhell': 'bad' } }, { medicine: -1 }, { expiring_medicine: 1 }, { expedite: true }, { use_sanity_potion: true }, { times: true }, { server: 'bad' }, { future: '\uD800' }]) {
     expect(() => validatePlan(parsePlan({ name: '校验', tasks: [{ type: 'Fight', params }] }), parseSettings())).toThrow();
   }
   expect(nativeTask(parsePlan({ name: '默认', tasks: [{ type: 'Fight' }] }).tasks[0]).params).toMatchObject({ medicine: 0, stone: 0, report_to_penguin: false });
+});
+
+test('shared and backend consumption policy ignores legacy limits and rejects unaudited spending', () => {
+  for (const validate of [validatePlan, validateSharedPlan]) {
+    for (const oldLimit of [0, 100]) {
+      const settings = parseSettings({ budgets: { medicine: oldLimit, originium: oldLimit, expedited: oldLimit } });
+      const plan = parsePlan({ name: '旧版兼容', budgets: { medicine: 100 - oldLimit, originium: 100 - oldLimit }, tasks: [{ type: 'Fight', params: { medicine: 2, stone: 3 } }] });
+      expect(() => validate(plan, settings)).not.toThrow();
+      expect(taskConsumableLimits(plan)).toEqual({ medicine: 2, originium: 3, expedited: 0 });
+    }
+    for (const [type, params] of [
+      ['Fight', { medicine: -1 }], ['Fight', { stone: 1.5 }], ['Fight', { medicine: null }], ['Fight', { stone: false }],
+      ['Fight', { expiring_medicine: 1 }], ['Fight', { medicine_expire_days: 1 }],
+      ['Copilot', { filename: 'synthetic.json', use_sanity_potion: true }],
+      ['Recruit', { expedite: true, expedite_times: 1 }], ['Award', { medicine: 1 }], ['Award', { stone: 1 }],
+    ] as const) expect(() => validate(parsePlan({ name: '受限消耗', tasks: [{ type, params }] }), parseSettings({ budgets: { medicine: 100, originium: 100, expedited: 100 } }))).toThrow();
+  }
 });
 
 test('SQLite preserves rowid order, event sequence, exclusive data lease and backup image', () => {

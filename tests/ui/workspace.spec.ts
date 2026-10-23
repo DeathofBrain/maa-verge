@@ -150,7 +150,7 @@ test('create, edit and restore a zero-consumption task table', async ({ page }) 
   await openWorkspace(page);
   await createPlan(page, '测试：每日固源岩');
   await wb(page).getByLabel('作战次数').fill('3');
-  await expect(wb(page).getByText('本表有效上限：理智药 0 · 源石 0')).toBeVisible();
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
   await savePlan(page);
   await expect(page.getByRole('button', { name: '配置任务表测试：每日固源岩', exact: true })).toBeVisible();
   await tab(page, '任务表设置');
@@ -483,14 +483,17 @@ test('enhanced capture requires an installation directory and a nonnegative inte
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
 });
 
-test('task budgets and all-disabled execution are checked after saving', async ({ page }) => {
+test('Fight consumption limits save directly and all-disabled execution is rejected', async ({ page }) => {
   await openWorkspace(page);
-  await createPlan(page, '预算校验');
+  await createPlan(page, '作战消耗');
   await wb(page).getByLabel('理智药上限', { exact: true }).fill('1');
-  await wb(page).getByRole('button', { name: '保存任务表', exact: true }).click();
-  await expect(page.locator('.toast.error')).toContainText('已授权额度');
-  await wb(page).getByLabel('理智药上限', { exact: true }).fill('0');
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 1 · 源石 0')).toBeVisible();
+  await savePlan(page);
+  await reloadWorkspace(page, '作战消耗');
+  await tab(page, '任务编排');
+  await expect(wb(page).getByLabel('理智药上限', { exact: true })).toHaveValue('1');
   for (const checkbox of await wb(page).getByRole('checkbox', { name: /^启用第 \d+ 条任务$/ }).all()) await checkbox.uncheck();
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
   await savePlan(page);
   await wb(page).getByRole('button', { name: '开始日常', exact: true }).click();
   await expect(page.locator('.toast.error')).toContainText('至少需要启用一条任务');
@@ -514,17 +517,13 @@ test('all upstream task entries can be configured and restored', async ({ page }
   await expect(wb(page).getByLabel('作业文件路径', { exact: true })).toHaveValue('/synthetic/Copilot.json');
 });
 
-test('application budget form saves multiple values together', async ({ page }) => {
-  await openWorkspace(page);
-  await settingsCategory(page, '执行与消耗');
-  await page.getByLabel('理智药预算', { exact: true }).fill('2');
-  await page.getByLabel('源石预算', { exact: true }).fill('1');
-  await page.getByRole('button', { name: '保存预算', exact: true }).click();
-  await expect(page.locator('.toast')).toContainText('消耗预算已保存');
-  await page.reload();
-  await settingsCategory(page, '执行与消耗');
-  await expect(page.getByLabel('理智药预算', { exact: true })).toHaveValue('2');
-  await expect(page.getByLabel('源石预算', { exact: true })).toHaveValue('1');
+test('consumption settings live in task tables and the home shortcut opens the editor', async ({ page }) => {
+  await openHome(page);
+  await home(page).getByRole('button', { name: /任务消耗设置/ }).click();
+  await expect(wb(page)).toBeVisible();
+  await navigate(page, '设置');
+  await expect(page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '执行与消耗', exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('理智药预算', { exact: true })).toHaveCount(0);
 });
 
 // New workbench behavior: drafts, scoped settings, search, and common tool entry points.
@@ -548,43 +547,41 @@ test('unsaved task drafts survive navigation and page reloads without corrupting
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
 });
 
-test('task-table metadata, device binding and explicit zero limits persist together', async ({ page }) => {
+test('task-table metadata, device binding and derived zero limits persist together', async ({ page }) => {
   await openWorkspace(page);
   await tab(page, '任务表设置');
   await wb(page).getByLabel('任务表名称', { exact: true }).fill('晚间日常');
   await wb(page).getByLabel('任务表说明', { exact: true }).fill('先收取，再换班；不使用消耗品。');
   await wb(page).getByLabel('绑定设备', { exact: true }).selectOption('mock-device-1');
-  await wb(page).getByRole('checkbox', { name: '使用全局授权上限', exact: true }).uncheck();
-  await expect(wb(page).getByLabel('任务表理智药上限', { exact: true })).toHaveValue('0');
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
+  await expect(wb(page).getByLabel('任务表理智药上限', { exact: true })).toHaveCount(0);
   await savePlan(page);
   await reloadWorkspace(page, '晚间日常');
   await expect(wb(page).getByLabel('任务表名称', { exact: true })).toHaveValue('晚间日常');
   await expect(wb(page).getByLabel('任务表说明', { exact: true })).toHaveValue('先收取，再换班；不使用消耗品。');
   await expect(wb(page).getByLabel('绑定设备', { exact: true })).toHaveValue('mock-device-1');
-  await expect(wb(page).getByRole('checkbox', { name: '使用全局授权上限', exact: true })).not.toBeChecked();
-  await expect(wb(page).getByLabel('任务表理智药上限', { exact: true })).toBeEnabled();
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
   await tab(page, '定时计划');
   await expect(wb(page).getByRole('heading', { name: '定时执行尚未接入', exact: true })).toBeVisible();
   await expect(wb(page).getByRole('button', { name: '开始日常', exact: true })).toBeVisible();
 });
 
-test('a task-table limit can be lower than the application authorization', async ({ page }) => {
+test('enabled Fight task limits accumulate and disabled tasks do not contribute', async ({ page }) => {
   await openWorkspace(page);
-  await settingsCategory(page, '执行与消耗');
-  await page.getByLabel('理智药预算', { exact: true }).fill('2');
-  await page.getByRole('button', { name: '保存预算', exact: true }).click();
-  await navigate(page, '主页');
-  await createPlan(page, '表级限额');
+  await createPlan(page, '累计上限');
   await wb(page).getByLabel('理智药上限', { exact: true }).fill('2');
-  await tab(page, '任务表设置');
-  await wb(page).getByRole('checkbox', { name: '使用全局授权上限', exact: true }).uncheck();
-  await wb(page).getByLabel('任务表理智药上限', { exact: true }).fill('1');
-  await wb(page).getByRole('button', { name: '保存任务表', exact: true }).click();
-  await expect(page.locator('.toast.error')).toContainText('已授权额度');
-  await tab(page, '任务编排');
-  await expect(wb(page).getByText('本表有效上限：理智药 1 · 源石 0')).toBeVisible();
-  await wb(page).getByLabel('理智药上限', { exact: true }).fill('1');
+  await wb(page).getByLabel('源石上限', { exact: true }).fill('1');
+  await wb(page).getByLabel('添加任务类型').selectOption('Fight');
+  await wb(page).getByRole('button', { name: '添加任务', exact: true }).click();
+  await wb(page).getByLabel('理智药上限', { exact: true }).fill('3');
+  await wb(page).getByLabel('源石上限', { exact: true }).fill('2');
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 5 · 源石 3')).toBeVisible();
+  await wb(page).getByRole('checkbox', { name: '启用第 10 条任务', exact: true }).uncheck();
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 2 · 源石 1')).toBeVisible();
   await savePlan(page);
+  await reloadWorkspace(page, '累计上限');
+  await tab(page, '任务表设置');
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 2 · 源石 1')).toBeVisible();
 });
 
 test('global search locates updates, saved tables and individual task settings', async ({ page }) => {
@@ -669,18 +666,18 @@ test('recruitment calculation opens a safe common task configuration', async ({ 
   await expect(dock(page)).not.toContainText('执行中');
 });
 
-test('budget drafts survive settings category changes without saving prematurely', async ({ page }) => {
+test('model drafts survive settings category changes without saving prematurely', async ({ page }) => {
   await openWorkspace(page);
-  await settingsCategory(page, '执行与消耗');
-  await page.getByLabel('理智药预算', { exact: true }).fill('3');
+  await settingsCategory(page, '模型与 Agent');
+  await page.getByLabel('模型名称', { exact: true }).fill('synthetic-model');
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '通用与外观', exact: true }).click();
-  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '执行与消耗', exact: true }).click();
-  await expect(page.getByLabel('理智药预算', { exact: true })).toHaveValue('3');
+  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '模型与 Agent', exact: true }).click();
+  await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-model');
   await expect(page.getByText('有未保存的修改', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '保存预算', exact: true }).click();
+  await page.getByRole('button', { name: '保存模型配置', exact: true }).click();
   await page.reload();
-  await settingsCategory(page, '执行与消耗');
-  await expect(page.getByLabel('理智药预算', { exact: true })).toHaveValue('3');
+  await settingsCategory(page, '模型与 Agent');
+  await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-model');
 });
 
 test('copilot entries focus the exact task when a table contains duplicate task types', async ({ page }) => {

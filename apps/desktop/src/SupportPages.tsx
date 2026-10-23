@@ -3,7 +3,7 @@ import {
   ArrowRight, ArrowUpRight, Bell, BookOpen, Check, ChevronRight,
   Cpu, Database, Download, FileJson, FolderOpen, Gamepad2, HardDrive,
   Info, ListChecks, LoaderCircle, Monitor, Plus, RefreshCw, RotateCcw,
-  Search, Settings2, ShieldCheck, SlidersHorizontal, Unplug, Wifi,
+  Search, Settings2, SlidersHorizontal, Unplug, Wifi,
 } from 'lucide-react';
 import { rpc, taskLabels, type Device, type Event, type Plan, type Settings, type Snapshot, type Task, type UpdateChannel } from '@maaverge/contracts';
 import './support-pages.css';
@@ -177,7 +177,6 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
 
 const categories = [
   { id: 'general', label: '通用与外观', icon: Settings2, keywords: '主题 浅色 深色 跟随系统 托盘 关闭窗口 语言' },
-  { id: 'budgets', label: '执行与消耗', icon: ShieldCheck, keywords: '预算 药 理智药 源石 加急 许可 授权 上限' },
   { id: 'model', label: '模型与 Agent', icon: Cpu, keywords: '模型 API 接口 提供商 地址 问答 智能 托管' },
   { id: 'notifications', label: '通知与远控', icon: Bell, keywords: '推送 通知 远程 控制 消息' },
   { id: 'services', label: '外部服务', icon: ArrowUpRight, keywords: 'MirrorChyan 社区 作业站 企鹅 数据 汇报' },
@@ -196,12 +195,11 @@ export function SettingsPage({ snapshot, busy, onAction, searchQuery }: SupportP
   const saveSettings = (patch: Partial<Settings>, message = '偏好设置已保存') => onAction('settings', () => rpc('settings.save', { settings: { ...snapshot.settings, ...patch } }), message);
   const checkAll = () => onAction('check-all', async () => { for (const channel of ['app', 'core', 'resource'] as const) await rpc('updates.check', { channel }); }, '三个更新通道已独立检查');
 
-  return <div className="sp-page sp-settings-page"><PageHeading title="设置" text="查找应用偏好，管理授权、模型与组件更新。" />
-    <div className="sp-settings-search"><Search size={18} /><input className="text-input" type="search" aria-label="搜索设置" placeholder="搜索主题、预算、资源更新…" value={query} onChange={(event) => setQuery(event.target.value)} />{query && <span>{matches.length} 个分类匹配</span>}</div>
+  return <div className="sp-page sp-settings-page"><PageHeading title="设置" text="查找应用偏好，管理模型与组件更新。" />
+    <div className="sp-settings-search"><Search size={18} /><input className="text-input" type="search" aria-label="搜索设置" placeholder="搜索主题、模型、资源更新…" value={query} onChange={(event) => setQuery(event.target.value)} />{query && <span>{matches.length} 个分类匹配</span>}</div>
     {query && selected && <div className="sp-search-result"><Search size={15} /><span>设置 <ChevronRight size={13} /> {selected.label}</span><span className="sp-scope">应用设置</span></div>}
-    <div className="sp-settings-layout"><nav className="sp-category-nav" aria-label="设置分类">{matches.map(({ id, label, icon: Icon }) => <button key={id} className={selected?.id === id ? 'is-selected' : ''} aria-current={selected?.id === id ? 'page' : undefined} onClick={() => setCategory(id)}><Icon size={18} />{label}</button>)}</nav><div className="sp-settings-content">{!selected ? <Empty title="没有匹配的设置" text="试试“主题”“理智药”或“资源更新”。" icon={<Search size={28} />} /> : <>
+    <div className="sp-settings-layout"><nav className="sp-category-nav" aria-label="设置分类">{matches.map(({ id, label, icon: Icon }) => <button key={id} className={selected?.id === id ? 'is-selected' : ''} aria-current={selected?.id === id ? 'page' : undefined} onClick={() => setCategory(id)}><Icon size={18} />{label}</button>)}</nav><div className="sp-settings-content">{!selected ? <Empty title="没有匹配的设置" text="试试“主题”“模型”或“资源更新”。" icon={<Search size={28} />} /> : <>
       {selected.id === 'general' && <><Section title="通用与外观" description="适用范围：应用"><div className="sp-setting-row"><div><strong>界面主题</strong><p>浅色、深色，或跟随系统外观。</p></div><select className="text-input sp-inline-select" aria-label="界面主题" value={snapshot.settings.theme} disabled={busy} onChange={(event) => void saveSettings({ theme: event.target.value as Settings['theme'] })}><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></div><Toggle label="关闭窗口后驻留托盘" description="关闭窗口后保留本地运行；完全退出时停止本地执行。" checked={snapshot.settings.minimizeToTray} disabled={busy} onChange={(minimizeToTray) => void saveSettings({ minimizeToTray })} /><div className="sp-setting-row"><div><strong>界面语言</strong><p>当前产品界面使用简体中文。</p></div><span className="sp-value">简体中文</span></div></Section></>}
-      {selected.id === 'budgets' && <BudgetForm settings={snapshot.settings} busy={busy} onSave={(budgets) => saveSettings({ budgets }, '消耗预算已保存')} />}
       {selected.id === 'model' && <ModelForm settings={snapshot.settings} busy={busy} onSave={(model) => saveSettings({ model }, '模型配置已保存')} />}
       {selected.id === 'notifications' && <Section title="通知与远控"><Notice icon={<Bell size={17} />}>系统推送、第三方通知与远程控制尚未接入。</Notice><p className="sp-help">当前运行进度、失败原因与完成结果保留在底部运行栏和执行记录中。</p></Section>}
       {selected.id === 'services' && <Section title="外部服务"><dl className="sp-description-list"><div><dt>社区作业服务</dt><dd>尚未接入，当前使用本机作业文件</dd></div><div><dt>MirrorChyan 加速</dt><dd>尚未接入</dd></div><div><dt>数据汇报</dt><dd>默认关闭；按任务参数显式配置</dd></div></dl><p className="sp-help">核心与资源更新可使用官方来源，无需配置付费加速服务。</p></Section>}
@@ -213,12 +211,6 @@ export function SettingsPage({ snapshot, busy, onAction, searchQuery }: SupportP
 }
 
 // Only unsaved form drafts live in the session; saved settings remain runtime-owned.
-function BudgetForm({ settings, busy, onSave }: { settings: Settings; busy: boolean; onSave: (budgets: Settings['budgets']) => Promise<boolean> }) {
-  const [draft, setDraft, resetDraft] = useSettingsDraft('budgets', settings.budgets);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(settings.budgets);
-  return <Section title="执行与消耗" description="应用授权上限；每张任务表可在此范围内进一步限制。"><Notice icon={<ShieldCheck size={17} />}>默认不使用理智药、源石与加急许可。任务参数中的累计消耗会在保存和执行时检查。</Notice><form onSubmit={(event) => { event.preventDefault(); void onSave(draft); }}><div className="sp-budget-fields">{([['medicine', '理智药'], ['originium', '源石'], ['expedited', '加急许可']] as const).map(([key, label]) => <label key={key} className="sp-field">{label}<input className="text-input" type="number" aria-label={`${label}预算`} min={0} max={100} step={1} required value={draft[key]} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, [key]: Number(event.target.value) }))} /></label>)}</div><div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button secondary" type="button" disabled={busy || !dirty} onClick={resetDraft}>放弃修改</button><button className="button primary" type="submit" disabled={busy}>保存预算</button></div></form><p className="sp-help">公招加急、临期药和无上限用药等受限选项，仍需运行时具备可靠的消耗控制后才能启用。</p></Section>;
-}
-
 function ModelForm({ settings, busy, onSave }: { settings: Settings; busy: boolean; onSave: (model: Settings['model']) => Promise<boolean> }) {
   const [draft, setDraft, resetDraft] = useSettingsDraft('model', settings.model);
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.model);
