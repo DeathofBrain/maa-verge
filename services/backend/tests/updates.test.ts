@@ -141,7 +141,7 @@ test('download root creation errors enter a retryable failed state', async () =>
   store.put('settings', 'main', { componentPaths: { core: file, resource: root } });
   const updates = fixtureUpdates(root, store, () => false);
   await updates.check('core');
-  await expect(updates.prepare('core')).rejects.toThrow('活动版本保持可用');
+  await expect(updates.prepare('core')).rejects.toThrow('请先修复核心与基础资源');
   expect(updates.channel('core').status).toBe('failed');
   expect(store.get('active', 'combo')).toBeUndefined();
 });
@@ -165,6 +165,154 @@ test.each(['directory', 'empty-directory', 'library', 'base-resource', 'model'])
   expect(updates.channel('core').currentVersion).toBe(old.version);
   expect(store.get('active', 'combo').core.path).not.toBe(old.path);
   expect(await readdir(root)).toEqual(['generations']);
+  await updates.close();
+});
+
+test.each(['model', 'dependency', 'intact'])('legacy core without an inventory can repair the same version: %s', async missing => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const initial = fixtureUpdates(root, store, () => false, source);
+  await initial.check('core'); await initial.prepare('core'); await initial.activate('core'); await initial.close();
+  const legacy = store.get('active', 'combo');
+  for (const snapshot of Object.values(legacy) as any[]) { delete snapshot.installedFiles; delete snapshot.installedHash; }
+  store.put('active', 'combo', legacy);
+  if (missing !== 'intact') await rm(path.join(legacy.core.path, missing === 'model' ? 'resource/onnx/model' : 'MaaUtils.dll'));
+  const before = await treeHash(legacy.core.path);
+  let busy = false;
+  const updates = fixtureUpdates(root, store, () => busy, source);
+  const checked = await updates.check('core');
+  expect(checked).toMatchObject({ currentVersion: source.coreVersion, latestVersion: source.coreVersion, status: 'available' });
+  expect(checked.message).toContain('完整性记录');
+  expect(store.get('active', 'combo')).toEqual(legacy);
+  await updates.prepare('core');
+  busy = true; expect((await updates.activate('core')).status).toBe('waiting_idle');
+  expect(store.get('active', 'combo')).toEqual(legacy);
+  expect(await treeHash(legacy.core.path)).toBe(before);
+  busy = false; await updates.activatePending();
+  const repaired = store.get('active', 'combo').core;
+  expect(repaired.path).not.toBe(legacy.core.path);
+  expect(repaired.installedHash).toMatch(/^[a-f0-9]{64}$/);
+  expect(await readFile(path.join(repaired.path, 'resource/onnx/model'), 'utf8')).toBe('model');
+  expect(await readFile(path.join(repaired.path, 'MaaUtils.dll'), 'utf8')).toBe('native');
+  expect((await updates.check('core')).status).toBe('idle');
+  await updates.close();
+});
+
+test('failed and successful legacy repairs preserve active files and the last usable rollback', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  source.coreVersion = 'v6.20.1';
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const legacy = store.get('active', 'combo'), previous = store.get('previous', 'combo');
+  for (const snapshot of Object.values(legacy) as any[]) { delete snapshot.installedFiles; delete snapshot.installedHash; }
+  store.put('active', 'combo', legacy);
+  const before = await treeHash(legacy.core.path);
+  const download = source.download.bind(source);
+  source.download = async () => { throw new Error('synthetic offline'); };
+  await updates.check('core'); await expect(updates.prepare('core')).rejects.toThrow('活动版本保持可用');
+  expect(store.get('active', 'combo')).toEqual(legacy);
+  expect(store.get('previous', 'combo')).toEqual(previous);
+  expect(await treeHash(legacy.core.path)).toBe(before);
+  source.download = download;
+  await updates.prepare('core'); await updates.activate('core');
+  expect(store.get('active', 'combo').core.path).not.toBe(legacy.core.path);
+  expect(store.get('previous', 'combo')).toEqual(previous);
+  expect(await treeHash(legacy.core.path)).toBe(before);
+  await updates.close();
+});
+
+test.each(['model', 'dependency', 'empty'])('content integrity detects corrupt installed core files: %s', async corrupted => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const old = store.get('active', 'combo').core;
+  await writeFile(path.join(old.path, corrupted === 'dependency' ? 'MaaUtils.dll' : 'resource/onnx/model'),
+    corrupted === 'empty' ? '' : corrupted === 'dependency' ? 'broken' : 'wrong');
+  expect((await updates.check('core')).status).toBe('available');
+  expect(updates.channel('core').currentVersion).toBe('未安装');
+  await updates.prepare('core'); await updates.activate('core');
+  const repaired = store.get('active', 'combo').core;
+  expect(repaired.path).not.toBe(old.path);
+  expect(await readFile(path.join(repaired.path, 'MaaUtils.dll'), 'utf8')).toBe('native');
+  expect(await readFile(path.join(repaired.path, 'resource/onnx/model'), 'utf8')).toBe('model');
+  await updates.close();
+});
+
+test('legacy resource content hashes detect corruption without inventing an inventory for missing files', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await updates.check('resource'); await updates.prepare('resource'); await updates.activate('resource');
+  const original = store.get('active', 'combo');
+  delete original.resource.installedFiles; delete original.resource.installedHash;
+  store.put('active', 'combo', original);
+  expect((await updates.check('resource')).status).toBe('idle');
+  await writeFile(path.join(original.resource.path, 'resource/onnx/model'), 'wrong');
+  expect((await updates.check('resource')).status).toBe('available');
+  expect(store.get('active', 'combo').resource.path).toBe(original.core.path);
+  await updates.prepare('resource'); await updates.activate('resource');
+  expect(store.get('active', 'combo').resource.path).not.toBe(original.resource.path);
+  expect(updates.channel('resource').currentVersion).toBe(source.resourceVersion);
+  await updates.close();
+});
+
+test.each(['download', 'job'])('losing the base during a resource %s leaves a repairable core state', async phase => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const download = source.download.bind(source);
+  let removeBase = false, jobStarted = false;
+  const eraseBase = async () => { await rm(path.join(store.get('active', 'combo').core.path, 'resource'), { recursive: true }); };
+  source.download = async (...args: Parameters<typeof download>) => {
+    const digest = await download(...args);
+    if (removeBase && phase === 'download') await eraseBase();
+    return digest;
+  };
+  const updates = new UpdateService(root, store, () => {}, () => false, { source, validator: async () => {},
+    jobRunner: async config => {
+      if (removeBase && config.channel === 'resource') { jobStarted = true; if (phase === 'job') await eraseBase(); }
+      return runUpdateJob(config, async () => {});
+    },
+  });
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await updates.check('resource'); removeBase = true;
+  await expect(updates.prepare('resource')).rejects.toThrow('请先修复核心与基础资源');
+  expect(jobStarted).toBe(phase === 'job');
+  expect(updates.channel('core').currentVersion).toBe('未安装');
+  expect(updates.channel('resource').status).toBe('failed');
+  expect(store.get('staged', 'resource')).toBeUndefined();
+  removeBase = false;
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await updates.check('resource'); await updates.prepare('resource'); await updates.activate('resource');
+  expect(updates.channel('resource').currentVersion).toBe(source.resourceVersion);
+  await updates.close();
+});
+
+test('repairing a corrupt active core preserves the last valid rollback combination', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const previous = store.get('active', 'combo');
+  source.coreVersion = 'v6.20.1';
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await writeFile(path.join(store.get('active', 'combo').core.path, 'resource/onnx/model'), 'wrong');
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  expect(store.get('previous', 'combo')).toEqual(previous);
+  await updates.rollback('core');
+  expect(store.get('active', 'combo')).toEqual(previous);
+  await updates.close();
+});
+
+test('a candidate modified after validation is rejected without replacing the working core', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const original = store.get('active', 'combo');
+  source.coreVersion = 'v6.20.1'; await updates.check('core'); await updates.prepare('core');
+  await writeFile(path.join(store.get('staged', 'core').path, 'MaaUtils.dll'), 'broken');
+  await expect(updates.activate('core')).rejects.toThrow('没有已经校验的候选快照');
+  expect(store.get('active', 'combo')).toEqual(original);
+  expect(store.get('staged', 'core')).toBeUndefined();
+  await updates.prepare('core'); await updates.activate('core');
+  expect(updates.channel('core').currentVersion).toBe(source.coreVersion);
   await updates.close();
 });
 
