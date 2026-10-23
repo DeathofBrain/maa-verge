@@ -15,6 +15,15 @@ const platformInstallers = {
   'darwin-x86_64': ['macos-dmg-x64'],
   'linux-x86_64': ['linux-appimage-x64', 'linux-deb-x64', 'linux-rpm-x64'],
 };
+const installerSuffixes = {
+  'windows-exe-x64': version => `_${version}_x64-setup.exe`,
+  'windows-msi-x64': version => `_${version}_x64_zh-CN.msi`,
+  'macos-dmg-arm64': version => `_${version}_aarch64.dmg`,
+  'macos-dmg-x64': version => `_${version}_x64.dmg`,
+  'linux-appimage-x64': version => `_${version}_amd64.AppImage`,
+  'linux-deb-x64': version => `_${version}_amd64.deb`,
+  'linux-rpm-x64': version => `-${version}-1.x86_64.rpm`,
+};
 
 export function updaterBuildArguments(env = process.env) {
   return ['--config', JSON.stringify({ bundle: { createUpdaterArtifacts: !!env.TAURI_SIGNING_PRIVATE_KEY?.trim() } })];
@@ -91,14 +100,22 @@ export async function collectUpdaterArtifacts({ input, output, target, version, 
   const required = platformInstallers[target];
   if (!required) throw new Error('未知发行平台');
   releaseVersion(`v${version}`);
+  if (typeof productName !== 'string' || !productName || productName !== productName.trim() || productName.length > 128
+    || /[<>:"/\\|?*\x00-\x1f]/.test(productName) || productName.endsWith('.')) throw new Error('配置的产品名称不能用于发行文件名');
   const files = await listFiles(input, true), selected = [];
   for (const kind of required) {
-    const matches = files.filter(file => installerKind(path.basename(file), version) === kind);
+    // Tauri uses productName verbatim, including spaces, in bundle filenames.
+    // Match complete configured/canonical names, never a guessed prefix, and
+    // reject raw + normalized duplicates instead of picking one arbitrarily.
+    const suffix = installerSuffixes[kind](version), name = `Maa-Verge${suffix}`;
+    const accepted = new Set([`${productName}${suffix}`, name]);
+    const matches = files.filter(file => accepted.has(path.basename(file)));
     if (matches.length !== 1) throw new Error(`未找到唯一的发行安装包：${kind}`);
-    selected.push({ file: matches[0], name: path.basename(matches[0]), signed: !kind.startsWith('macos-') });
+    selected.push({ file: matches[0], name, signed: !kind.startsWith('macos-') });
   }
   if (target.startsWith('darwin-')) {
-    const matches = files.filter(file => path.basename(file) === `${productName}.app.tar.gz` || path.basename(file) === `${productName.replaceAll(' ', '-')}.app.tar.gz`);
+    const accepted = new Set([`${productName}.app.tar.gz`, 'Maa-Verge.app.tar.gz']);
+    const matches = files.filter(file => accepted.has(path.basename(file)));
     if (matches.length !== 1) throw new Error('未找到唯一的 macOS 应用更新归档');
     selected.push({ file: matches[0], name: `Maa-Verge_${version}_${target === 'darwin-aarch64' ? 'aarch64' : 'x64'}.app.tar.gz`, signed: true });
   }
