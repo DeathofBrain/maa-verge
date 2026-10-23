@@ -39,8 +39,16 @@
     },
     "windows": {
       "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
-      "wix": { "language": "zh-CN" },
-      "nsis": { "languages": ["SimpChinese"], "displayLanguageSelector": false }
+      "wix": {
+        "language": "zh-CN",
+        "fragmentPaths": ["installer/components.wxs"],
+        "componentGroupRefs": ["MaaVergeDownloadedComponents"]
+      },
+      "nsis": {
+        "languages": ["SimpChinese"],
+        "displayLanguageSelector": false,
+        "installerHooks": "installer/hooks.nsh"
+      }
     }
   }
 }

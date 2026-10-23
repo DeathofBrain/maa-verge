@@ -132,6 +132,8 @@ python tools/clean-codex-worktrees.py --force           # 允许删除脏 worktr
 
 MaaCore 首装和更新从官方归档中选择性提取原生依赖与完整资源，跳过原 GUI 和 .NET/WPF；提取规则、上游参考和验证边界见 [maacore-runtime.md](maacore-runtime.md)。
 
+Windows NSIS 和 MSI 卸载会一并清理程序同级默认的 `MaaCore`、`MaaResource` 目录，包含旧版 `downloads`、`generations` 及其内容；Tauri `/UPDATE` 更新和 MSI 版本升级保留这些组件。用户另选的组件目录和业务数据根保留，卸载器不读取数据库或追踪自定义路径。其他平台的移除方式仍需用户自行清理程序外下载的组件。
+
 ```bash
 node tools/package-runtime.mjs
 node tools/smoke-runtime.mjs
