@@ -12,15 +12,16 @@ const repository = "DeathofBrain/maa-verge";
 const checksumLimit = 16 * 1024;
 
 export function releaseVersion(tag) {
-  if (typeof tag !== "string" || tag.length > 128 || !/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag)) {
-    throw new Error("Release tag must be a stable vMAJOR.MINOR.PATCH tag.");
+  if (typeof tag !== "string" || tag !== tag.trim() || tag.length > 128 || !/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(tag)
+    || tag.slice(1).split('-').slice(1).join('-').split('.').some((part) => /^\d+$/.test(part) && part.length > 1 && part.startsWith('0'))) {
+    throw new Error("Release tag must be a vMAJOR.MINOR.PATCH tag with an optional valid prerelease suffix.");
   }
   return tag.slice(1);
 }
 
 export function installerKind(name, version) {
   if (typeof name !== "string" || !/^[A-Za-z0-9._-]+$/.test(name)) return undefined;
-  const prefix = new RegExp(`^maa[-_]verge[_-]${version.replaceAll(".", "\\.")}`, "i");
+  const prefix = new RegExp(`^maa[-_]verge[_-]${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i");
   if (!prefix.test(name)) return undefined;
   const suffix = name.replace(prefix, "");
   if (/^[_-]x64(?:[_-]setup)?\.exe$/i.test(suffix)) return "windows-exe-x64";
@@ -33,15 +34,38 @@ export function installerKind(name, version) {
   return undefined;
 }
 
+// Updater files are an optional, complete extension of the original eight-file
+// release. Ordinary installers remain available to package-manager users.
+export function updaterAssetKind(name, version) {
+  if (typeof name !== 'string' || !/^[A-Za-z0-9._-]+$/.test(name)) return undefined;
+  if (name === 'latest.json') return 'manifest';
+  if (name.endsWith('.sig')) {
+    const base = name.slice(0, -4), installer = installerKind(base, version);
+    if (installer && !installer.startsWith('macos-')) return `${installer}-signature`;
+    const archive = updaterAssetKind(base, version);
+    if (archive?.startsWith('macos-archive-')) return `${archive}-signature`;
+    return undefined;
+  }
+  if (name === `Maa-Verge_${version}_aarch64.app.tar.gz`) return 'macos-archive-arm64';
+  if (name === `Maa-Verge_${version}_x64.app.tar.gz`) return 'macos-archive-x64';
+}
+
+export const updaterAssetKinds = [
+  'manifest', 'windows-exe-x64-signature', 'windows-msi-x64-signature',
+  'linux-appimage-x64-signature', 'linux-deb-x64-signature', 'linux-rpm-x64-signature',
+  'macos-archive-arm64', 'macos-archive-x64', 'macos-archive-arm64-signature', 'macos-archive-x64-signature',
+];
+
 export function validateRelease(release, tag) {
   const version = releaseVersion(tag);
   if (release?.tag_name !== tag || release.draft !== false || !release.published_at) {
     throw new Error("The requested release must already be published with the exact tag.");
   }
-  if (!Array.isArray(release.assets) || release.assets.length !== 8) {
-    throw new Error("Release must contain exactly seven installers and SHA256SUMS.txt.");
+  if (!Array.isArray(release.assets) || ![8, 8 + updaterAssetKinds.length].includes(release.assets.length)) {
+    throw new Error("Release must contain seven installers, SHA256SUMS.txt and optionally the complete signed updater asset set.");
   }
   const kinds = new Set();
+  const updaterKinds = new Set();
   const names = new Set();
   for (const asset of release.assets) {
     if (!asset || !Number.isSafeInteger(asset.id) || asset.id <= 0 || asset.state !== "uploaded" || !Number.isSafeInteger(asset.size) || asset.size <= 0) {
@@ -53,13 +77,19 @@ export function validateRelease(release, tag) {
       if (asset.size > checksumLimit) throw new Error("Checksum manifest is too large.");
       continue;
     }
-    const kind = installerKind(asset.name, version);
-    if (!kind || kinds.has(kind)) throw new Error(`Unexpected or duplicate installer kind: ${asset.name}`);
-    kinds.add(kind);
+    const kind = installerKind(asset.name, version), updaterKind = updaterAssetKind(asset.name, version);
+    if (kind) {
+      if (kinds.has(kind)) throw new Error(`Unexpected or duplicate installer kind: ${asset.name}`);
+      kinds.add(kind);
+    } else if (updaterKind) {
+      if (updaterKinds.has(updaterKind)) throw new Error(`Duplicate updater asset kind: ${asset.name}`);
+      updaterKinds.add(updaterKind);
+    } else throw new Error(`Unexpected release asset: ${asset.name}`);
   }
   if (!names.has(checksumName.toLowerCase()) || !release.assets.some((asset) => asset.name === checksumName) || kinds.size !== 7) {
     throw new Error("Release must contain all seven supported installer kinds and SHA256SUMS.txt.");
   }
+  if (updaterKinds.size && updaterAssetKinds.some((kind) => !updaterKinds.has(kind))) throw new Error('Release has an incomplete signed updater asset set.');
   return release.assets;
 }
 
@@ -198,7 +228,7 @@ async function main() {
   const outputs = { image: "ghcr.io/deathofbrain/maa-verge", version, revision, source: `https://github.com/${repository}` };
   if (!process.env.GITHUB_OUTPUT) throw new Error("GITHUB_OUTPUT must be set by GitHub Actions.");
   await appendFile(process.env.GITHUB_OUTPUT, Object.entries(outputs).map(([key, value]) => `${key}=${value}\n`).join(""));
-  console.log(`Verified seven installers for ${tag} (${revision}).`);
+  console.log(`Verified the installer and updater asset set for ${tag} (${revision}).`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
