@@ -76,6 +76,7 @@ export class Store {
     return row ? parseWireJson(row.value) : fallback as T;
   }
   all<T = any>(kind: string): T[] { this.check(); return (this.db.query('SELECT value FROM objects WHERE kind=? ORDER BY rowid').all(kind) as { value: string }[]).map(r => parseWireJson(r.value)); }
+  recent<T = any>(kind: string, limit: number): T[] { this.check(); return (this.db.query('SELECT value FROM objects WHERE kind=? ORDER BY rowid DESC LIMIT ?').all(kind, Math.max(1, Math.min(1000, Math.trunc(limit)))) as { value: string }[]).map(r => parseWireJson(r.value)); }
   hasRunningRun(deviceId?: string): boolean {
     this.check();
     const active = "SELECT 1 FROM objects WHERE kind='run' AND json_extract(value,'$.status')='running'";
@@ -88,8 +89,8 @@ export class Store {
     const row = this.db.query('INSERT INTO events(type,message,created_at,data) VALUES(?,?,?,?)').run(type, message, createdAt, stringifyWireJson(data));
     return { id: Number(row.lastInsertRowid), type, message, createdAt, data };
   }
-  events(): any[] {
-    this.check(); return (this.db.query('SELECT id,type,message,created_at,data FROM events ORDER BY id DESC LIMIT 100').all() as any[]).reverse().map(r => ({ id: r.id, type: r.type, message: r.message, createdAt: r.created_at, data: parseWireJson(r.data) }));
+  events(limit = 100): any[] {
+    this.check(); return (this.db.query('SELECT id,type,message,created_at,data FROM events ORDER BY id DESC LIMIT ?').all(Math.max(1, Math.min(1000, Math.trunc(limit)))) as any[]).reverse().map(r => ({ id: r.id, type: r.type, message: r.message, createdAt: r.created_at, data: parseWireJson(r.data) }));
   }
   close(): void { if (!this.closed) { this.closed = true; try { this.db.close(); } finally { this.lease.close(); } } }
 }

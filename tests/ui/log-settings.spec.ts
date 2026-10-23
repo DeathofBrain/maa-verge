@@ -32,6 +32,13 @@ async function controlLogs(page: Page) {
   });
 }
 
+test('global log search opens the diagnostic settings category', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('搜索任务与设置').fill('日志');
+  await page.getByRole('region', { name: '搜索结果' }).getByRole('button', { name: '数据与诊断', exact: false }).click();
+  await expect(page.getByRole('button', { name: '导出日志', exact: true })).toBeVisible();
+});
+
 test('log export reports the returned directory and complete path in a persistent narrow dialog', async ({ page }, testInfo) => {
   await openLogSettings(page);
   const directory = 'C:\\Maa Verge\\日志导出\\' + '很长的目录名'.repeat(12);
