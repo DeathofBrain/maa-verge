@@ -75,7 +75,7 @@ test('real callback shapes persist base feedback and PNG is retrieved separately
   worker.result(1, 'InfrastConfirmButton', { facility: 'Mfg', index: 0 }, 'Infrast');
   await runtime.tick(true); await flush();
   const task = (await runtime.handle('run.detail', { id: run.id })).tasks[0];
-  expect(task?.infrastructure).toEqual([{ facility: '制造站', room: 1, operators: ['阿米娅', '白面鸮'], product: '赤金', message: '核心已确认换班', at: expect.any(String) }]);
+  expect(task?.infrastructure).toEqual([{ facility: '制造站', room: 1, operators: ['阿米娅', '白面鸮'], staffingStatus: 'confirmed', product: '赤金', message: '核心已确认换班', at: expect.any(String) }]);
   const artifact = task?.artifacts[0]!;
   expect(artifact.label).toBe('基建反馈画面'); expect(worker.frameCalls).toBe(1);
   expect(existsSync(path.join(runtime.root, 'run-artifacts', run.id, artifact.id + '.png'))).toBe(true);
@@ -105,6 +105,7 @@ test('base rooms kept unchanged or with unavailable groups do not retain a propo
     worker.result(1, 'CustomInfrastRoomOperators', { facility: 'Mfg', index: 0, names: ['阿米娅'] }, 'Infrast');
     worker.result(1, what, { facility: 'Mfg', index: 0 }, 'Infrast'); await runtime.tick(true);
     expect((await runtime.handle('run.detail', { id: run.id })).tasks[0].infrastructure[0].operators).toEqual([]);
+    expect((await runtime.handle('run.detail', { id: run.id })).tasks[0].infrastructure[0].staffingStatus).toBe('unavailable');
   }
 });
 
@@ -118,6 +119,18 @@ test('duplicate base feedback preserves screenshot capacity for a later confirma
   const task = (await runtime.handle('run.detail', { id: run.id })).tasks[0];
   expect(worker.frameCalls).toBe(2); expect(task.artifacts).toHaveLength(2);
   expect(task.infrastructure[0].message).toBe('核心已确认换班');
+});
+
+test('room staffing confirmation survives later product feedback and retries return to planned', async () => {
+  const { runtime, worker, run } = await setup(['Infrast']);
+  const room = { facility: 'Mfg', index: 0 };
+  worker.result(1, 'CustomInfrastRoomOperators', { ...room, names: ['白面鸮'] }, 'Infrast'); await runtime.tick(true);
+  expect((await runtime.handle('run.detail', { id: run.id })).tasks[0].infrastructure[0].staffingStatus).toBe('planned');
+  worker.result(1, 'InfrastConfirmButton', room, 'Infrast');
+  worker.result(1, 'ProductOfFacility', { ...room, product: 'Gold' }, 'Infrast'); await runtime.tick(true);
+  expect((await runtime.handle('run.detail', { id: run.id })).tasks[0].infrastructure[0]).toMatchObject({ staffingStatus: 'confirmed', operators: ['白面鸮'], product: '赤金' });
+  worker.result(1, 'CustomInfrastRoomOperators', { ...room, names: ['银灰'] }, 'Infrast'); await runtime.tick(true);
+  expect((await runtime.handle('run.detail', { id: run.id })).tasks[0].infrastructure[0]).toMatchObject({ staffingStatus: 'planned', operators: ['银灰'] });
 });
 
 test('large result metadata remains below one MiB, warns once, and still records final task states', async () => {

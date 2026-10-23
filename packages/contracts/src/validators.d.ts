@@ -27,6 +27,8 @@ export const validateRecognitionParams: Validator<RpcContract['params']['recogni
 export const validateRecognitionResult: Validator<RpcContract['results']['recognition.get']>;
 export const validateItemResourceParams: Validator<RpcContract['params']['resources.item']>;
 export const validateItemResourceResult: Validator<RpcContract['results']['resources.item']>;
+export const validateOperatorResourceParams: Validator<RpcContract['params']['resources.operator']>;
+export const validateOperatorResourceResult: Validator<RpcContract['results']['resources.operator']>;
 export const validateScreenFrame: Validator<ScreenFrame>;
 export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl'>>;
 export const validateWorkerConfiguration: Validator<WorkerProtocol['configuration']>;

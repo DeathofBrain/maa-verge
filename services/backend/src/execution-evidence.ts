@@ -46,8 +46,15 @@ export function recordInfrastructure(task: RunTask, what: string, details: any, 
     task.infrastructure.push(record);
   }
   const previous = JSON.stringify(record);
-  if (what === 'CustomInfrastRoomOperators' && Array.isArray(details.names)) record.operators = details.names.filter((name: unknown) => typeof name === 'string').slice(0, 20).map((name: string) => text(name, 80));
-  if (['CustomInfrastRoomKeptUnchanged', 'CustomInfrastRoomGroupsMatchFailed', 'CustomInfrastRoomsNotConfigured'].includes(what)) record.operators = [];
+  if (what === 'CustomInfrastRoomOperators' && Array.isArray(details.names)) {
+    record.operators = details.names.filter((name: unknown) => typeof name === 'string').slice(0, 20).map((name: string) => text(name, 80));
+    record.staffingStatus = 'planned';
+  }
+  if (what === 'InfrastConfirmButton') record.staffingStatus = 'confirmed';
+  if (['CustomInfrastRoomKeptUnchanged', 'CustomInfrastRoomGroupsMatchFailed', 'CustomInfrastRoomsNotConfigured'].includes(what)) {
+    record.operators = [];
+    record.staffingStatus = 'unavailable';
+  }
   if (what === 'ProductOfFacility') record.product = products[text(details.product)] ?? text(details.product);
   const message = infrastructureMessages[what]!;
   record.message = message;

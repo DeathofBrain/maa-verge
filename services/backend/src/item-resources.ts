@@ -3,8 +3,8 @@ import { lstat, open, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { crc32, inflateSync } from 'node:zlib';
 
-type Combo = { resource?: { path?: string; version?: string }; core?: { version?: string } };
-type ClientType = 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+export type Combo = { resource?: { path?: string; version?: string }; core?: { version?: string } };
+export type ClientType = 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
 export type ItemResource = { itemId: string; name: string | null; mimeType: 'image/png' | null; data: string | null; resourceVersion: string | null };
 type Item = { name: string | null; icon: string | null };
 type Catalog = { reader: ResourceReader; selected: string; items: Map<string, Item> };
@@ -16,7 +16,7 @@ const text = (value: unknown, limit: number) => typeof value === 'string' && val
 const contained = (root: string, filename: string) => { const relative = path.relative(root, filename); return relative !== '' && !relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative); };
 
 /** Only fixed files in the active immutable generation are readable, never caller paths. */
-class ResourceReader {
+export class ResourceReader {
   constructor(private root: string) {}
   static async create(generation: string): Promise<ResourceReader | undefined> {
     try {
@@ -96,7 +96,7 @@ export async function itemResourceNames(combo: Combo, clientType: ClientType = '
 }
 
 // PNG decoding stays bounded even if an installed pack contains a compressed bomb.
-function validPng(buffer: Buffer): boolean {
+export function validPng(buffer: Buffer): boolean {
   if (buffer.length < 57 || !buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return false;
   let offset = 8, width = 0, height = 0, bits = 0, interlace = 0, palette = false, ended = false;
   const data: Buffer[] = [];

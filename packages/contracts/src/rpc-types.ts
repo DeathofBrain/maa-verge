@@ -96,6 +96,7 @@ export interface RpcContract {
     'stages.list': StageListParams;
     'recognition.get': RecognitionParams;
     'resources.item': ItemResourceParams;
+    'resources.operator': OperatorResourceParams;
     'plan.save': {
       plan: Plan;
     };
@@ -151,6 +152,7 @@ export interface RpcContract {
     'stages.list': StageListResult;
     'recognition.get': RecognitionResult;
     'resources.item': ItemResourceResult;
+    'resources.operator': OperatorResourceResult;
     'plan.save': Plan;
     'plan.delete': {
       deleted: boolean;
@@ -214,6 +216,14 @@ export interface RecognitionParams {
  */
 export interface ItemResourceParams {
   itemId: string;
+  clientType?: ClientType;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "OperatorResourceParams".
+ */
+export interface OperatorResourceParams {
+  name: string;
   clientType?: ClientType;
 }
 /**
@@ -891,6 +901,10 @@ export interface RunInfrastructure {
         string,
         string
       ];
+  /**
+   * Latest staffing evidence; configured names are not an independently recognized final roster.
+   */
+  staffingStatus?: 'planned' | 'confirmed' | 'unavailable';
   product: string;
   message: string;
   at: string;
@@ -1121,6 +1135,23 @@ export interface RecognizedOperator {
 export interface ItemResourceResult {
   itemId: string;
   name: string | null;
+  mimeType: 'image/png' | null;
+  data: string | null;
+  resourceVersion: string | null;
+}
+/**
+ * Bounded artwork and metadata from the active installed MaaResource; missing or ambiguous names keep text and known rarity without guessing an avatar.
+ *
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "OperatorResourceResult".
+ */
+export interface OperatorResourceResult {
+  name: string;
+  id: string | null;
+  /**
+   * 1-based star count; null means unknown or conflicting candidates.
+   */
+  rarity: number | null;
   mimeType: 'image/png' | null;
   data: string | null;
   resourceVersion: string | null;
