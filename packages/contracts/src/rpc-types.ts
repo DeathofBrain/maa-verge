@@ -324,6 +324,12 @@ export interface Settings {
    */
   logRetentionDays?: 0 | 7 | 14 | 30;
   autoConnect: Autoconnect;
+  /**
+   * 启动时检查应用更新；下载和安装始终由用户确认。
+   */
+  autoUpdateApp?: boolean;
+  appUpdateChannel?: 'stable' | 'preview';
+  coreUpdateChannel?: 'stable' | 'preview';
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
   minimizeToTray: Minimizetotray;
@@ -928,6 +934,17 @@ export interface RunArtifact {
  * via the `definition` "UpdateChannel".
  */
 export interface UpdateChannel {
+  checkedAt?: string;
+  /**
+   * 此安装形式是否支持签名自动更新。
+   */
+  appCanInstall?: boolean;
+  appRelease?: {
+    url: string;
+    notes: string;
+    publishedAt: string;
+    prerelease: boolean;
+  };
   installDirectory?: string;
   /**
    * @maxItems 6

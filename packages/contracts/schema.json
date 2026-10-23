@@ -880,6 +880,27 @@
           "title": "Autoconnect",
           "type": "boolean"
         },
+        "autoUpdateApp": {
+          "type": "boolean",
+          "default": true,
+          "description": "启动时检查应用更新；下载和安装始终由用户确认。"
+        },
+        "appUpdateChannel": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "preview"
+          ],
+          "default": "preview"
+        },
+        "coreUpdateChannel": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "preview"
+          ],
+          "default": "stable"
+        },
         "autoUpdateCore": {
           "default": true,
           "title": "Autoupdatecore",
@@ -999,6 +1020,41 @@
     "UpdateChannel": {
       "additionalProperties": false,
       "properties": {
+        "checkedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "appCanInstall": {
+          "type": "boolean",
+          "description": "此安装形式是否支持签名自动更新。"
+        },
+        "appRelease": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "notes",
+            "publishedAt",
+            "prerelease"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 16384
+            },
+            "publishedAt": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "prerelease": {
+              "type": "boolean"
+            }
+          }
+        },
         "installDirectory": {
           "type": "string",
           "maxLength": 4096

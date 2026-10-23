@@ -14,6 +14,8 @@ import { pruneGenerations } from "./generation-retention.ts";
 import { snapshotIntegrity } from "./snapshot-integrity.ts";
 import { downloadArchive } from "./download.ts";
 import type { ComponentDownload } from "../../../packages/contracts/src/types.ts";
+import { compareReleaseVersions, releaseVersion } from './release-version';
+import application from '../../../package.json';
 
 const GITHUB = "https://api.github.com/repos/MaaAssistantArknights";
 export { MAX_DOWNLOAD_BYTES } from "./download.ts";
@@ -26,7 +28,7 @@ export interface UpdateStore {
   delete(kind: string, id: string): void;
 }
 export interface UpdateSource {
-  check(channel: string): Promise<UpdateMetadata> | UpdateMetadata;
+  check(channel: string, releaseChannel?: 'stable' | 'preview'): Promise<UpdateMetadata> | UpdateMetadata;
   download(metadata: UpdateMetadata, destination: string, progress: (percent: number) => void, options?: ComponentDownload): Promise<string> | string;
   close?(): void;
 }
@@ -111,15 +113,31 @@ export class OfficialSource implements UpdateSource {
     }
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
   }
-  async check(channel: string): Promise<UpdateMetadata> {
+  async check(channel: string, releaseChannel: 'stable' | 'preview' = 'stable'): Promise<UpdateMetadata> {
     if (channel === "core") {
-      const release = await this.getJson(`${GITHUB}/MaaAssistantArknights/releases/latest`);
-      if (release.prerelease || release.draft) throw new Error("稳定通道返回非稳定版本");
+      let release: any;
+      if (releaseChannel === 'stable') release = await this.getJson(`${GITHUB}/MaaAssistantArknights/releases/latest`);
+      else {
+        const releases: any[] = [];
+        for (let page = 1; page <= 10; page++) {
+          const batch = await this.getJson(`${GITHUB}/MaaAssistantArknights/releases?per_page=100&page=${page}`);
+          if (!Array.isArray(batch)) throw new Error('核心发布列表格式无效');
+          releases.push(...batch.filter(item => item && !item.draft && releaseVersion(item.tag_name)));
+          if (batch.length < 100) break;
+          if (page === 10) throw new Error('核心发布列表超出检查范围，请稍后重试');
+        }
+        releases.sort((a, b) => compareReleaseVersions(b.tag_name, a.tag_name));
+        release = releases[0];
+      }
+      const parsed = releaseVersion(release?.tag_name);
+      if (!parsed || release.draft || !Array.isArray(release.assets)) throw new Error('未找到有效的核心发布版本');
+      if (releaseChannel === 'stable' && (release.prerelease || parsed.prerelease.length)) throw new Error("稳定通道返回非稳定版本");
       const suffix = platformAsset();
       const assets = release.assets.filter((asset: any) => typeof asset.name === "string" && asset.name.startsWith("MAA-") && asset.name.endsWith("-" + suffix));
       if (assets.length !== 1) throw new Error("未找到唯一匹配的官方运行时包");
       const asset = assets[0], url = asset.browser_download_url;
-      if (typeof url !== "string" || !url.startsWith("https://github.com/MaaAssistantArknights/")) throw new Error("更新包来源不是官方仓库");
+      const expected = `https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases/download/${encodeURIComponent(release.tag_name)}/${encodeURIComponent(asset.name)}`;
+      if (url !== expected) throw new Error("更新包来源不是官方仓库的对应发布");
       return { version: release.tag_name, url, name: asset.name, size: asset.size, digest: asset.digest ?? undefined, source: "GitHub" };
     }
     if (channel !== "resource") throw new Error("未知更新通道");
@@ -284,6 +302,8 @@ export class UpdateService {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly children = new Set<ChildProcess>();
   private closing = false;
+  private pending = 0;
+  get pendingOperations(): number { return this.pending; }
   constructor(readonly root: string, private readonly store: UpdateStore,
     private readonly emit: (kind: string, text: string, data: any) => void,
     private readonly busy: () => boolean, options: UpdateOptions = {}) {
@@ -301,9 +321,10 @@ export class UpdateService {
       return executeJson(options.jobCommand ?? defaultJobCommand(), config, 180_000, this.children);
     });
     if (!store.get("update", "core")) {
-      const versions = { app: "0.1.0", core: "未安装", resource: "未安装" };
+      const versions = { app: application.version, core: "未安装", resource: "未安装" };
       for (const [channel, version] of Object.entries(versions)) this.save({ id: channel, currentVersion: version, status: "idle", progress: 0, message: "尚未检查" });
     }
+    this.save({ id: 'app', currentVersion: application.version, status: 'idle', progress: 0, message: '应用更新由桌面更新器检查' });
     for (const state of this.channels()) if (["checking", "downloading"].includes(state.status)) this.save({ ...state, status: "failed", message: "上次更新准备被中断，可重试继续下载", progress: 0 });
     this.rememberRoots();
     this.reconcileInstalled(true);
@@ -390,12 +411,14 @@ export class UpdateService {
   }
   private serial<T>(action: () => Promise<T>): Promise<T> {
     if (this.closing) return Promise.reject(new Error("更新服务正在关闭"));
+    this.pending++;
     const result = this.queue.then(() => {
       if (this.closing) throw new Error("更新服务正在关闭");
       return action();
     });
-    this.queue = result.catch(() => {});
-    return result;
+    const tracked = result.finally(() => { this.pending--; });
+    this.queue = tracked.catch(() => {});
+    return tracked;
   }
   async close(): Promise<void> {
     this.closing = true;
@@ -465,26 +488,22 @@ export class UpdateService {
     await this.pruneVersions();
     const current = this.channel(channel);
     if (["downloading", "staged", "waiting_idle"].includes(current.status)) return current;
-    if (channel === "app") return this.change(channel, { status: "idle", message: "开发预览版尚未配置应用发行更新源" });
+    if (channel === "app") return this.change(channel, { status: "idle", message: "请在桌面应用中检查签名更新" });
     this.change(channel, { status: "checking", message: "正在检查官方版本", progress: 0 });
     try {
-      const metadata = await this.source.check(channel);
+      const releaseChannel = this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable';
+      const metadata = await this.source.check(channel, releaseChannel);
+      if (channel === 'core' && releaseChannel !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')) throw new Error('核心更新通道已改变，请重新检查');
+      if (channel === 'core') metadata.releaseChannel = releaseChannel;
       this.store.put("update_metadata", channel, metadata);
       const repair = this.needsRepair(channel);
       const available = metadata.version !== current.currentVersion || repair;
       if (channel === "core" && available) {
-        const parse = (value: string) => /^v?(\d+)\.(\d+)\.(\d+)$/.exec(value)?.slice(1).map(Number);
-        const installed = parse(current.currentVersion), latest = parse(metadata.version);
-        if (installed && latest) {
-          for (let index = 0; index < 3; index++) {
-            if (latest[index] < installed[index]) throw new Error("官方稳定版本低于已安装版本，拒绝自动降级");
-            if (latest[index] > installed[index]) break;
-          }
-        }
+        if (releaseVersion(current.currentVersion) && releaseVersion(metadata.version) && compareReleaseVersions(metadata.version, current.currentVersion) < 0) throw new Error("所选通道版本低于已安装版本，拒绝自动降级");
       }
-      return this.change(channel, { latestVersion: metadata.version, status: available ? "available" : "idle", message: repair && metadata.version === current.currentVersion
+      return this.change(channel, { checkedAt: new Date().toISOString(), latestVersion: metadata.version, status: available ? "available" : "idle", message: repair && metadata.version === current.currentVersion
         ? "旧版组件缺少完整性记录，可重新下载安装修复" : available ? "发现可用更新" : "当前已是最新版本" });
-    } catch (error) { this.change(channel, { status: "failed", message: message(error) }); throw new RpcError(-32020, "检查更新失败", message(error)); }
+    } catch (error) { this.store.delete('update_metadata', channel); this.change(channel, { checkedAt: new Date().toISOString(), latestVersion: null, status: "failed", message: message(error) }); throw new RpcError(-32020, "检查更新失败", message(error)); }
   }
   prepare(channel: string): Promise<any> { return this.serial(() => this.prepareCurrent(channel)); }
   private async prepareCurrent(channel: string): Promise<any> {
@@ -493,7 +512,7 @@ export class UpdateService {
     if (channel === "app") throw new RpcError(-32020, "应用更新需使用桌面发行通道");
     if (["staged", "waiting_idle", "downloading"].includes(current.status)) return current;
     let metadata: UpdateMetadata = this.store.get("update_metadata", channel);
-    if (!metadata) { await this.checkCurrent(channel); metadata = this.store.get("update_metadata", channel); current = this.channel(channel); }
+    if (!metadata || channel === 'core' && metadata.releaseChannel !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')) { await this.checkCurrent(channel); metadata = this.store.get("update_metadata", channel); current = this.channel(channel); }
     if (metadata.version === current.currentVersion && !this.needsRepair(channel)) return current;
     const directory = this.directories()[channel as 'core' | 'resource'];
     const generation = path.join(directory, "generations", `${channel}-${randomUUID().replaceAll("-", "")}`);

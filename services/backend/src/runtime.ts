@@ -65,6 +65,7 @@ export class Runtime {
   private ticking = false;
   private closing?: Promise<void>;
   running = true;
+  appUpdating = false;
   constructor(readonly root: string, private options: RuntimeOptions = {}) {
     this.store = new Store(root);
     this.logs = new Logs(root, {
@@ -141,6 +142,7 @@ export class Runtime {
     if (params === null) params = {};
     if (typeof params !== 'object' || Array.isArray(params)) throw new RpcError(-32602, 'params 必须是对象');
     if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
+    if (this.appUpdating && method !== 'app.snapshot' && !(method === 'updates.rollback' && params.channel === 'app')) throw new RpcError(-32011, '应用正在准备安装更新，请稍后重启');
     const required = (...keys: string[]) => { if (keys.some(key => !(key in params))) throw new RpcError(-32602, '请求参数无效'); };
     switch (method) {
       case 'app.snapshot': return this.snapshot();
@@ -233,6 +235,18 @@ export class Runtime {
       case 'updates.check': case 'updates.prepare': case 'updates.activate': case 'updates.rollback': {
         if (!('channel' in params)) throw new RpcError(-32602, '缺少更新通道');
         const operation = method.slice(8) as 'check' | 'prepare' | 'activate' | 'rollback';
+        if (params.channel === 'app' && operation === 'activate') {
+          // This decision and the gate are synchronous: background discovery or
+          // update timers cannot start between the idle check and the gate.
+          if (this.busy() || this.autoConnecting || this.switching || this.starts.size || this.clientSwitches.size || this.artifactCaptures.size
+            || this.updates.pendingOperations || this.store.all('run').some(run => run.status === 'running')) throw new RpcError(-32021, '任务、连接或组件更新仍在进行，请空闲后安装应用更新');
+          this.appUpdating = true;
+          return { ...this.updates.channel('app'), status: 'staged', message: '已暂停新操作，准备退出安装应用更新' };
+        }
+        if (params.channel === 'app' && operation === 'rollback') {
+          this.appUpdating = false;
+          return { ...this.updates.channel('app'), message: '已取消安装准备，可以继续使用' };
+        }
         const result = await this.updates[operation](params.channel);
         if (operation === 'activate' && params.channel === 'core') this.nextChecks.resource = Date.now(); return result;
       }
@@ -432,7 +446,7 @@ export class Runtime {
     } finally { this.autoConnecting = false; }
   }
   async automaticConnections() {
-    if (!this.running || !parseSettings(this.store.get('settings', 'main')).autoConnect || Date.now() < this.nextAutoConnect || this.switching || this.busy()) return;
+    if (!this.running || this.appUpdating || !parseSettings(this.store.get('settings', 'main')).autoConnect || Date.now() < this.nextAutoConnect || this.switching || this.busy()) return;
     this.nextAutoConnect = Date.now() + 30_000; if (!this.store.get('active', 'combo', {}).core) return;
     try { await this.autoConnectDevices(true); } catch (error) { const diagnostics = [String(error)]; if (this.running && JSON.stringify(diagnostics) !== JSON.stringify(this.lastDiagnostics)) this.emit('device.auto_connect_failed', '模拟器自动发现失败', { detail: String(error) }); this.lastDiagnostics = diagnostics; }
   }
@@ -782,7 +796,7 @@ export class Runtime {
     } finally { this.ticking = false; }
   }
   async automaticUpdates() {
-    if (!this.running) return;
+    if (!this.running || this.appUpdating) return;
     const settings = parseSettings(this.store.get('settings', 'main'));
     for (const [channel, interval] of [['core', 86400], ['resource', 21600]] as const) {
       if (!(channel === 'core' ? settings.autoUpdateCore : settings.autoUpdateResource) || Date.now() < this.nextChecks[channel]!) continue;
