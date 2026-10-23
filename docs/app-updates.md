@@ -36,7 +36,7 @@ Maa Verge 的「启动时检查应用更新」默认开启，仅检查，不自�
 
 ## 从 v0.1.0 迁移
 
-[现有 v0.1.0](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.0) 的 GitHub 元数据标记为预发布，包含七个平台安装包及校验文件，没有内置应用更新器，也没有签名更新清单/更新包。用户需要从 Releases 手动安装一次后续包含本实现的版本，之后才能使用应用内更新。保留旧标签与产物，不覆盖重发 v0.1.0。
+[v0.1.0](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.0) 的 GitHub 元数据标记为预发布，包含七个平台安装包及校验文件，没有内置应用更新器，也没有签名更新清单/更新包。用户需要手动安装一次 [v0.1.1 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.1)，之后才能使用应用内更新。保留旧标签与产物，不覆盖重发 v0.1.0。
 
 ## 准备新发行版
 
