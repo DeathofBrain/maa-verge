@@ -1,8 +1,8 @@
 /** Independent immutable MaaCore / MaaResource generations. Jobs never open the business DB. */
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { cp, mkdir, open, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { createReadStream, lstatSync, readFileSync } from "node:fs";
+import { cp, lstat, mkdir, open, readdir, rename, rm, rmdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractArchive, extractCoreArchive, normalizeRuntimeRoot } from "./archives.ts";
@@ -10,6 +10,7 @@ import { RpcError } from "./errors.ts";
 import { nativeWorkerPath } from "./native-path.ts";
 import { childEnvironment, nativeEnvironment, normalizeComponentPath, type ComponentPaths } from "./config.ts";
 import { resourceActivityVersions } from "./resource-version.ts";
+import { pruneGenerations } from "./generation-retention.ts";
 
 const GITHUB = "https://api.github.com/repos/MaaAssistantArknights";
 export const MAX_DOWNLOAD_BYTES = 2 * 1024 ** 3;
@@ -34,6 +35,7 @@ export interface UpdateOptions {
   beforeActivate?: Hook; afterActivate?: Hook; finishActivate?: (error?: string) => Promise<void> | void;
   jobCommand?: string[];
   jobRunner?: (config: UpdateJobConfig) => Promise<UpdateJobResult>;
+  protectedPaths?: () => string[];
 }
 export interface UpdateJobConfig {
   channel: "core" | "resource"; archive: string; target: string; version: string;
@@ -41,6 +43,38 @@ export interface UpdateJobConfig {
 }
 export interface UpdateJobResult { ownedFiles?: string[]; coreVersion?: string; contentHash?: string }
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
+
+// Database versions are only hints: uninstall/reinstall and manual file removal
+// can leave them behind. Older generations lack an inventory, so retain support
+// for them while checking the native library and resource metadata explicitly.
+function installedSnapshot(snapshot: any, core: boolean, full: boolean): boolean {
+  if (typeof snapshot?.path !== 'string' || typeof snapshot.version !== 'string') return false;
+  const file = (relative: string) => {
+    try {
+      const info = lstatSync(path.join(snapshot.path, relative));
+      return info.isFile() && !info.isSymbolicLink() && info.size > 0;
+    } catch { return false; }
+  };
+  try {
+    if (!lstatSync(snapshot.path).isDirectory() || lstatSync(snapshot.path).isSymbolicLink()) return false;
+    if (core && !['MaaCore.dll', 'libMaaCore.so', 'libMaaCore.dylib'].some(file)) return false;
+    if (!file('resource/version.json')) return false;
+    {
+      const versionPath = path.join(snapshot.path, 'resource/version.json');
+      if (lstatSync(versionPath).size > 256 * 1024) return false;
+      const version = JSON.parse(readFileSync(versionPath, 'utf8'));
+      if (!version || typeof version !== 'object' || Array.isArray(version)) return false;
+      if (full && snapshot.installedFiles && (!Array.isArray(snapshot.installedFiles) || !snapshot.installedFiles.every((relative: unknown) => {
+        if (typeof relative !== 'string' || path.isAbsolute(relative) || relative.split(/[\\/]/).some(part => part === '..')) return false;
+        try { const info = lstatSync(path.join(snapshot.path, relative)); return info.isFile() && !info.isSymbolicLink(); } catch { return false; }
+      }))) return false;
+    }
+    return true;
+  } catch { return false; }
+}
+function resourceVersion(combo: any): string {
+  return combo.core && combo.resource?.path === combo.core.path ? 'bundled@' + combo.core.version : combo.resource?.version ?? '未安装';
+}
 
 export function platformAsset(system: string = process.platform, machine: string = process.arch): string {
   const architecture = machine.toLowerCase();
@@ -260,6 +294,7 @@ export class UpdateService {
   private readonly afterActivate: Hook;
   private readonly finishActivate: (error?: string) => Promise<void> | void;
   private readonly jobRunner: (config: UpdateJobConfig) => Promise<UpdateJobResult>;
+  private readonly protectedPaths: () => string[];
   private queue: Promise<unknown> = Promise.resolve();
   private readonly children = new Set<ChildProcess>();
   private closing = false;
@@ -274,6 +309,7 @@ export class UpdateService {
     });
     this.beforeActivate = options.beforeActivate ?? (() => {}); this.afterActivate = options.afterActivate ?? (() => {});
     this.finishActivate = options.finishActivate ?? (() => {});
+    this.protectedPaths = options.protectedPaths ?? (() => []);
     this.jobRunner = options.jobRunner ?? ((config) => {
       if (this.closing) throw new Error("更新服务正在关闭");
       return executeJson(options.jobCommand ?? defaultJobCommand(), config, 180_000, this.children);
@@ -283,6 +319,77 @@ export class UpdateService {
       for (const [channel, version] of Object.entries(versions)) this.save({ id: channel, currentVersion: version, status: "idle", progress: 0, message: "尚未检查" });
     }
     for (const state of this.channels()) if (["checking", "downloading"].includes(state.status)) this.save({ ...state, status: "failed", message: "上次更新准备被中断，请重试", progress: 0 });
+    this.rememberRoots();
+    this.reconcileInstalled(true);
+    this.queue = this.pruneVersions();
+  }
+  private snapshots(): any[] {
+    return ['active', 'previous'].flatMap(kind => Object.values(this.store.get(kind, 'combo', {})))
+      .concat(['core', 'resource'].map(channel => this.store.get('staged', channel))).filter(Boolean);
+  }
+  private rememberRoots(): string[] {
+    const roots = new Set<string>([this.root, ...Object.values(this.defaults), ...Object.values(this.directories()),
+      ...this.store.get('meta', 'component_roots', [])]);
+    for (const snapshot of this.snapshots()) {
+      if (typeof snapshot.path === 'string' && path.basename(path.dirname(snapshot.path)) === 'generations') roots.add(path.dirname(path.dirname(snapshot.path)));
+    }
+    const values = [...roots].filter(root => typeof root === 'string' && path.isAbsolute(root));
+    this.store.put('meta', 'component_roots', values); return values;
+  }
+  private async pruneVersions(): Promise<void> {
+    if (this.closing || this.busy()) return;
+    const roots = this.rememberRoots();
+    await pruneGenerations(roots, [...this.snapshots().map(snapshot => snapshot.path), ...this.protectedPaths()]);
+    for (const root of roots) await rmdir(path.join(root, 'downloads')).catch(() => {});
+  }
+  private async reconcileCurrent(): Promise<void> {
+    // Inventory checks yield to execution polling. Only initial startup scans
+    // synchronously, before any workers or RPC requests can run.
+    const missing = new Set<string>();
+    const seen = new Set<string>();
+    for (const snapshot of this.snapshots()) {
+      if (!snapshot.installedFiles || seen.has(snapshot.path)) continue;
+      seen.add(snapshot.path);
+      if (!Array.isArray(snapshot.installedFiles)) { missing.add(snapshot.path); continue; }
+      for (let offset = 0; offset < snapshot.installedFiles.length; offset += 64) {
+        const present = await Promise.all(snapshot.installedFiles.slice(offset, offset + 64).map(async (relative: unknown) => {
+          if (typeof relative !== 'string' || path.isAbsolute(relative) || relative.split(/[\\/]/).some(part => part === '..')) return false;
+          try { const info = await lstat(path.join(snapshot.path, relative)); return info.isFile() && !info.isSymbolicLink(); } catch { return false; }
+        }));
+        if (present.some(value => !value)) { missing.add(snapshot.path); break; }
+      }
+    }
+    this.reconcileInstalled(false, missing);
+  }
+  private reconcileInstalled(full = false, missing = new Set<string>()): void {
+    const installed = (snapshot: any, core: boolean) => !missing.has(snapshot?.path) && installedSnapshot(snapshot, core, full);
+    const active = this.store.get('active', 'combo', {});
+    let combo = active;
+    if (active.core && !installed(active.core, true)) {
+      combo = {}; this.store.delete('active', 'combo');
+    } else if (active.core && !installed(active.resource, false)) {
+      combo = { core: active.core, resource: active.core }; this.store.put('active', 'combo', combo);
+    } else if (!active.core && active.resource) {
+      combo = {}; this.store.delete('active', 'combo');
+    }
+    const previous = this.store.get('previous', 'combo');
+    if (previous && (!installed(previous.core, true) || !installed(previous.resource, false))) this.store.delete('previous', 'combo');
+    for (const channel of ['core', 'resource'] as const) {
+      const staged = this.store.get('staged', channel);
+      const valid = staged && installed(staged, channel === 'core') &&
+        (channel === 'core' || (combo.core && staged.coreVersion === combo.core.version));
+      if (staged && !valid) this.store.delete('staged', channel);
+      const current = this.store.get('update', channel);
+      if (!current) continue;
+      const version = channel === 'core' ? combo.core?.version ?? '未安装' : resourceVersion(combo);
+      const lost = current.currentVersion !== version;
+      const lostCandidate = ['staged', 'waiting_idle'].includes(current.status) && !valid;
+      if (lost || lostCandidate) this.save({ ...current, currentVersion: version,
+        status: valid ? (current.status === 'waiting_idle' ? 'waiting_idle' : 'staged') : current.latestVersion && current.latestVersion !== version ? 'available' : 'idle',
+        progress: valid ? 100 : 0,
+        message: valid ? '快照已校验，等待在空闲边界生效' : version === '未安装' ? '组件文件缺失，请重新下载安装' : lost ? '已恢复核心附带的基础资源，请检查资源更新' : '候选快照文件缺失，请重新准备更新',
+      });
+    }
   }
   private serial<T>(action: () => Promise<T>): Promise<T> {
     if (this.closing) return Promise.reject(new Error("更新服务正在关闭"));
@@ -328,6 +435,8 @@ export class UpdateService {
         finally { if (created && probe) await rm(probe, { force: true }).catch(() => {}); }
       }
       persist(next);
+      this.rememberRoots();
+      await this.pruneVersions();
     });
   }
   private decorate(value: any): any {
@@ -351,6 +460,8 @@ export class UpdateService {
   }
   check(channel: string): Promise<any> { return this.serial(() => this.checkCurrent(channel)); }
   private async checkCurrent(channel: string): Promise<any> {
+    await this.reconcileCurrent();
+    await this.pruneVersions();
     const current = this.channel(channel);
     if (["downloading", "staged", "waiting_idle"].includes(current.status)) return current;
     if (channel === "app") return this.change(channel, { status: "idle", message: "开发预览版尚未配置应用发行更新源" });
@@ -374,6 +485,7 @@ export class UpdateService {
   }
   prepare(channel: string): Promise<any> { return this.serial(() => this.prepareCurrent(channel)); }
   private async prepareCurrent(channel: string): Promise<any> {
+    await this.reconcileCurrent();
     const current = this.channel(channel);
     if (channel === "app") throw new RpcError(-32020, "应用更新需使用桌面发行通道");
     if (["staged", "waiting_idle", "downloading"].includes(current.status)) return current;
@@ -385,24 +497,29 @@ export class UpdateService {
     this.change(channel, { status: "downloading", progress: 0, message: "正在准备独立更新快照" });
     try {
       await mkdir(generation, { recursive: true });
-      await mkdir(path.join(directory, 'downloads'), { recursive: true });
       let digest: string;
       if (typeof metadata.name !== "string" || path.basename(metadata.name) !== metadata.name || metadata.name.includes("\\")) throw new Error("更新包文件名无效");
-      const archive = path.join(directory, "downloads", randomUUID() + "-" + metadata.name);
+      const archive = path.join(directory, ".download-" + randomUUID() + "-" + metadata.name);
       try {
         digest = await this.source.download(metadata, archive, (progress) => this.change(channel, { progress, message: "正在下载官方组件" }));
         const core = this.store.get("active", "combo", {}).core;
         const config: UpdateJobConfig = { channel: channel as "core" | "resource", archive, target: generation, version: metadata.version, core: core?.path, coreVersion: core?.version };
         Object.assign(metadata, await this.jobRunner(config));
       } finally { await rm(archive, { force: true }); }
-      const manifest = { ...metadata, path: generation, sha256: digest, validatedAt: new Date().toISOString() };
+      const manifest = { ...metadata, installedFiles: await treeFiles(generation), path: generation, sha256: digest, validatedAt: new Date().toISOString() };
       await writeFile(path.join(generation, "manifest.json"), JSON.stringify(manifest));
       this.store.put("staged", channel, manifest);
+      await this.pruneVersions();
       return this.change(channel, { status: "staged", progress: 100, message: "快照已校验，等待在空闲边界生效" });
-    } catch (error) { this.change(channel, { status: "failed", progress: 0, message: message(error) }); throw new RpcError(-32020, "准备更新失败，活动版本保持可用", message(error)); }
+    } catch (error) {
+      await rm(generation, { recursive: true, force: true }).catch(() => {});
+      await this.pruneVersions();
+      this.change(channel, { status: "failed", progress: 0, message: message(error) }); throw new RpcError(-32020, "准备更新失败，活动版本保持可用", message(error));
+    }
   }
   activate(channel: string): Promise<any> { return this.serial(() => this.activateCurrent(channel)); }
   private async activateCurrent(channel: string): Promise<any> {
+    await this.reconcileCurrent();
     this.channel(channel);
     const staged = this.store.get("staged", channel);
     if (!staged) throw new RpcError(-32020, "没有已经校验的候选快照");
@@ -422,7 +539,7 @@ export class UpdateService {
         this.change("resource", { currentVersion: "bundled@" + staged.version, status: "active", message: "使用新核心附带的已验证基础资源" });
       }
       const result = this.change(channel, { currentVersion: staged.version, status: "active", progress: 100, message: "新快照已生效，桌面无需重启" });
-      await this.finishActivate(); return result;
+      await this.finishActivate(); await this.pruneVersions(); return result;
     } catch (error) { this.change(channel, { status: "failed", message: "切换校验失败，保留原版本: " + message(error) }); throw new RpcError(-32020, "更新切换失败，已保留原版本", message(error)); }
   }
   private async switchCombo(candidate: any, original: any): Promise<void> {
@@ -446,6 +563,7 @@ export class UpdateService {
   }
   rollback(channel: string): Promise<any> { return this.serial(() => this.rollbackCurrent(channel)); }
   private async rollbackCurrent(channel: string): Promise<any> {
+    await this.reconcileCurrent();
     this.channel(channel);
     if (this.busy()) throw new RpcError(-32021, "请等待任务结束后回滚");
     const previous = this.store.get("previous", "combo");
@@ -456,7 +574,7 @@ export class UpdateService {
       await this.switchCombo(previous, active);
     } catch (error) { this.change(channel, { status: "failed", message: "回滚初始化失败，已恢复活动版本" }); throw new RpcError(-32020, "回滚初始化失败，已恢复活动版本", message(error)); }
     this.store.put("previous", "combo", active);
-    for (const key of ["core", "resource"]) if (previous[key]) this.change(key, { currentVersion: previous[key].version, status: "active", message: "已恢复上一组验证通过的核心与资源", progress: 100 });
-    await this.finishActivate(); return this.channel(channel);
+    for (const key of ["core", "resource"]) if (previous[key]) this.change(key, { currentVersion: key === 'resource' ? resourceVersion(previous) : previous[key].version, status: "active", message: "已恢复上一组验证通过的核心与资源", progress: 100 });
+    await this.finishActivate(); await this.pruneVersions(); return this.channel(channel);
   }
 }

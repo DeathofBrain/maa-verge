@@ -89,6 +89,7 @@ export class Runtime {
     this.updates = new UpdateService(path.join(root, 'components'), this.store, this.emit.bind(this), this.busy.bind(this), {
       source: options.source, validator: options.validator, directories: defaults,
       beforeActivate: () => this.beforeSwitch(), afterActivate: () => this.afterSwitch(), finishActivate: (error?: string) => this.finishSwitch(error),
+      protectedPaths: () => [...this.workerConfigurations.values()].flatMap(config => [config.core, config.resource]),
     });
     this.preview = new Preview({
       available: () => this.running && !this.switching,

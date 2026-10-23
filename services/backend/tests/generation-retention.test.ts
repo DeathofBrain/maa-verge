@@ -1,19 +1,19 @@
 import { afterEach, expect, test } from 'bun:test';
-import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, utimes, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pruneGenerations } from '../src/generation-retention.ts';
 
 const temporary: string[] = [];
 async function temp() {
-  const directory = await mkdtemp(path.join(tmpdir(), 'maaverge-retention-'));
+  const directory = await realpath(await mkdtemp(path.join(tmpdir(), 'maaverge-retention-')));
   temporary.push(directory);
   return directory;
 }
 afterEach(async () => {
   for (const directory of temporary.splice(0)) {
     const resolved = path.resolve(directory);
-    if (path.dirname(resolved) !== path.resolve(tmpdir()) || !path.basename(resolved).startsWith('maaverge-retention-')) {
+    if (path.dirname(resolved) !== await realpath(tmpdir()) || !path.basename(resolved).startsWith('maaverge-retention-')) {
       throw new Error('临时测试目录越界');
     }
     await rm(resolved, { recursive: true, force: true });
