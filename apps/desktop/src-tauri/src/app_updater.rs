@@ -329,6 +329,18 @@ struct State {
     candidate: Option<Candidate>,
 }
 
+impl State {
+    fn fail_check(&mut self, error: &str) {
+        self.candidate = None;
+        // A failed check cannot supply prepare() with a usable candidate. Clear
+        // the version as well so the UI offers another check, not a download.
+        self.value["latestVersion"] = Value::Null;
+        self.value["status"] = json!("failed");
+        self.value["progress"] = json!(0);
+        self.value["message"] = json!(error);
+    }
+}
+
 pub struct AppUpdater {
     app: AppHandle,
     current: Version,
@@ -484,11 +496,7 @@ impl AppUpdater {
         })?;
         let result = self.find_candidate(generation, &channel).await;
         if let Err(error) = &result {
-            let _ = self.change(generation, |state| {
-                state.candidate = None;
-                state.value["status"] = json!("failed");
-                state.value["message"] = json!(error);
-            });
+            let _ = self.change(generation, |state| state.fail_check(error));
         }
         result
     }
@@ -994,5 +1002,34 @@ mod tests {
         assert!(configure_state(&mut state, &automatic, &current, true));
         assert!(!configure_state(&mut state, &automatic, &current, true));
         assert_eq!(state.generation, 8);
+    }
+
+    #[test]
+    fn failed_checks_offer_rechecking_while_retaining_release_explanation() {
+        let current = Version::parse("0.1.0").unwrap();
+        let information = json!({ "url": "https://github.com/DeathofBrain/maa-verge/releases/tag/v0.2.0", "notes": "等待签名产物" });
+        for error in ["应用更新源 HTTP 403", "此发行版缺少签名更新包"] {
+            let mut value = initial_value(&current, true);
+            value["latestVersion"] = json!("0.2.0");
+            value["status"] = json!("checking");
+            value["appRelease"] = information.clone();
+            value["checkedAt"] = json!("2026-10-23T00:00:00Z");
+            let mut state = State {
+                channel: "preview".into(),
+                automatic: true,
+                generation: 4,
+                value,
+                candidate: None,
+            };
+            state.fail_check(error);
+            assert_eq!(state.value["status"], "failed");
+            assert_eq!(state.value["latestVersion"], Value::Null);
+            assert_eq!(state.value["currentVersion"], "0.1.0");
+            assert_eq!(state.value["appRelease"], information);
+            assert_eq!(state.value["checkedAt"], "2026-10-23T00:00:00Z");
+            assert_eq!(state.value["message"], error);
+            assert_eq!(state.generation, 4);
+            assert!(state.candidate.is_none());
+        }
     }
 }
