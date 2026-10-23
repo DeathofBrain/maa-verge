@@ -150,14 +150,39 @@ test('real tar source extraction preserves bytes and rejects foreign archive roo
   }
 });
 
-test('Windows ZIP extraction works when PATH tar is the Git GNU build', { skip: process.platform !== 'win32' }, (t) => {
+test('archive read failures identify the archive, member and command error', () => {
+  const failure = new Error('spawnSync tar ETIMEDOUT');
+  assert.throws(() => archiveFile(() => ({ error: failure }), 'source archive.tar.xz', 'source/COPYING'), (error) => {
+    assert.ok(error.message.includes('source archive.tar.xz'));
+    assert.ok(error.message.includes('source/COPYING'));
+    assert.ok(error.message.includes(failure.message));
+    assert.ok(error.cause.message.includes('aria2 setup failed'));
+    return true;
+  });
+});
+
+test('Windows ZIP and compressed tar members use system libarchive with Git GNU tools first in PATH', { skip: process.platform !== 'win32' }, (t) => {
   const root = fixture(t), member = `${aria2Assets.windows.root}/aria2c.exe`;
   const expected = Buffer.from([0, 255, 128, 13, 10, 1, 254]);
   mkdirSync(path.join(root, 'source', aria2Assets.windows.root), { recursive: true });
   writeFileSync(path.join(root, 'source', member), expected);
   const systemTar = path.join(process.env.SystemRoot || process.env.WINDIR, 'System32', 'tar.exe');
-  const archive = createArchive(systemTar, root, 'aria2 binary fixture.zip', [member], true);
-  const fallback = gitTar() || 'tar';
-  const execute = (program, args, options) => spawnSync(program === 'tar' ? fallback : program, args, { ...options, timeout: 10000 });
-  assert.deepEqual(archiveFile(execute, archive, member), expected);
+  const gnu = gitTar();
+  const execute = (program, args, options) => {
+    assert.equal(program, systemTar);
+    const env = { ...options.env };
+    const pathKey = Object.keys(env).find(key => key.toUpperCase() === 'PATH') || 'PATH';
+    if (gnu) env[pathKey] = path.dirname(gnu) + path.delimiter + env[pathKey];
+    return spawnSync(program, args, { ...options, env, timeout: 10000 });
+  };
+  for (const extension of ['zip', 'tar.gz', 'tar.bz2', 'tar.xz']) {
+    const archive = createArchive(systemTar, root, `aria2 binary fixture.${extension}`, [member], true);
+    assert.deepEqual(archiveFile(execute, archive, member), expected);
+    assert.throws(() => archiveFile(execute, archive, 'missing/member'), (error) => {
+      assert.ok(error.message.includes(path.basename(archive)));
+      assert.ok(error.message.includes('missing/member'));
+      return true;
+    });
+    t.diagnostic(`Verified Windows system libarchive extraction of ${extension}`);
+  }
 });

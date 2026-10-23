@@ -92,15 +92,20 @@ async function acquire(asset, directory, fetcher) {
 
 export function archiveFile(execute, archive, member) {
   // GNU tar treats drive letters (and other colons) in -f as remote hosts.
-  // Its ZIP support also differs from Windows' bundled libarchive tar.
-  const directory = path.dirname(path.resolve(archive));
-  let tar = 'tar';
-  if (process.platform === 'win32' && path.extname(archive).toLowerCase() === '.zip') {
-    const systemRoot = process.env.SystemRoot || process.env.WINDIR;
-    if (!systemRoot) throw new Error('Cannot locate Windows tar for aria2 ZIP extraction');
-    tar = path.join(systemRoot, 'System32', 'tar.exe');
+  // Use Windows' bundled libarchive for every format: PATH GNU/MSYS tools
+  // may need external decompressors and have different ZIP support.
+  try {
+    const directory = path.dirname(path.resolve(archive));
+    let tar = 'tar';
+    if (process.platform === 'win32') {
+      const systemRoot = process.env.SystemRoot || process.env.WINDIR;
+      if (!systemRoot) throw new Error('Cannot locate Windows system tar');
+      tar = path.join(systemRoot, 'System32', 'tar.exe');
+    }
+    return command(execute, tar, ['-xOf', `./${path.basename(archive)}`, member], { cwd: directory, encoding: null });
+  } catch (error) {
+    throw new Error(`Cannot read aria2 archive ${path.basename(archive)} member ${member}: ${error.message}`, { cause: error });
   }
-  return command(execute, tar, ['-xOf', `./${path.basename(archive)}`, member], { cwd: directory, encoding: null });
 }
 
 export function unpackSource(execute, archive, directory, asset) {
