@@ -208,3 +208,58 @@ test('empty monitor keeps instance startup available and navigation opens the ov
   await page.getByRole('tab', { name: '监控总览', exact: true }).click();
   await expect(monitor(page)).toBeVisible();
 });
+
+test('returning from details restores the overview position and keyboard focus', async ({ page }) => {
+  await seedMonitor(page);
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openMonitor(page);
+  const trigger = card(page, 'monitor-failed').getByRole('button', { name: '查看执行monitor-failed', exact: true });
+  await trigger.scrollIntoViewIfNeeded();
+  const position = await monitor(page).locator('.monitor-scroll').evaluate((element) => element.scrollTop);
+  expect(position).toBeGreaterThan(0);
+  await trigger.click();
+  await expect(detail(page)).toContainText('一号模拟器的独立任务结果');
+  await page.getByRole('button', { name: '返回监控总览', exact: true }).click();
+  await expect(trigger).toBeFocused();
+  expect(await monitor(page).locator('.monitor-scroll').evaluate((element) => element.scrollTop)).toBe(position);
+});
+
+test('a selected run omitted from summaries still receives its final detail status', async ({ page }) => {
+  await seedMonitor(page);
+  await openMonitor(page);
+  await card(page, 'monitor-a').getByRole('button', { name: '查看执行monitor-a', exact: true }).click();
+  await expect(detail(page)).toContainText('一号模拟器的独立任务结果');
+  await page.evaluate(() => {
+    const target = window as unknown as MonitorWindow;
+    const run = target.monitorState.runs.find((item) => item.id === 'monitor-a')!;
+    run.status = 'completed'; run.progress = 100; run.finishedAt = new Date().toISOString();
+    run.tasks = run.tasks?.map((task) => ({ ...task, status: 'completed', finishedAt: run.finishedAt }));
+    const call = target.runtimeHarness.call;
+    target.runtimeHarness.call = async (method, params) => {
+      const result = await call(method, params);
+      if (method !== 'app.snapshot') return result;
+      const snapshot = result as Snapshot;
+      return { ...snapshot, runs: snapshot.runs.filter((item) => item.id !== run.id) };
+    };
+    target.runtimeHarness.emitEvent('run.completed', { runId: run.id });
+  });
+  await expect(detail(page).getByRole('region', { name: '本次执行总览', exact: true })).toContainText('已完成');
+  await expect(switcher(page).getByRole('button', { name: '切换执行monitor-a', exact: true })).toContainText('已完成');
+  await expect(detail(page).getByRole('button', { name: '停止执行', exact: true })).toHaveCount(0);
+});
+
+test('execution workspace tabs support arrow keys and keep only the selected tab in the tab order', async ({ page }) => {
+  await page.goto('/');
+  await openMonitor(page);
+  const overview = page.getByRole('tab', { name: '监控总览', exact: true });
+  const instances = page.getByRole('tab', { name: '实例启动', exact: true });
+  await overview.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(instances).toBeFocused();
+  await expect(instances).toHaveAttribute('aria-selected', 'true');
+  await expect(overview).toHaveAttribute('tabindex', '-1');
+  await page.keyboard.press('Home');
+  await expect(overview).toBeFocused();
+  await expect(overview).toHaveAttribute('aria-selected', 'true');
+  await expect(instances).toHaveAttribute('tabindex', '-1');
+});

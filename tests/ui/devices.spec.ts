@@ -88,6 +88,7 @@ async function installDeviceHarness(page: Page) {
         }
         if (command === 'plugin:event|unlisten') { listeners.delete(args.eventId as number); return; }
         if (command === 'plugin:window|is_maximized') return false;
+        if (command === 'get_desktop_lifecycle') return 'running';
         if (['plugin:window|set_background_color', 'plugin:webview|set_webview_background_color'].includes(command)) return;
         throw new Error(`Unexpected desktop command: ${command}`);
       },
