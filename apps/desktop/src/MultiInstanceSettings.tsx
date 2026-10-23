@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { deviceAddressIdentity, deviceProfileIdentity, deviceProfileListError, type Device, type DeviceConnectionProfile, type Event, type Settings } from '@maaverge/contracts';
+import { deviceProfileListError, type Device, type DeviceConnectionProfile, type Event, type Settings } from '@maaverge/contracts';
 import { ConnectionFields, defaultConnectionSettings } from './TaskConnectionSettings';
 import { CaptureFields } from './CaptureSettingsForm';
 import { useSettingsDraft } from './settings-draft';
+import { deviceForProfile } from './device-association';
 
 type InstanceCandidate = { name: string; address: string };
 const connectionEventTypes = ['device.connecting', 'device.connected', 'device.failed', 'device.connection_failed', 'device.disconnected'];
@@ -41,7 +42,7 @@ export function MultiInstanceSettings({ settings, devices, events, busy, candida
     const timer = setTimeout(() => setConnectionTick(value => value + 1), Math.min(...deadlines) - now + 1);
     return () => clearTimeout(timer);
   }, [events, connectionTick]);
-  const associated = (profile: DeviceConnectionProfile) => devices.find(device => device.connectionProfileId === profile.id) ?? devices.find(device => deviceAddressIdentity(device.address) === deviceProfileIdentity(profile));
+  const associated = (profile: DeviceConnectionProfile) => deviceForProfile(devices, profile);
   const operate = async (profile: DeviceConnectionProfile, device?: Device) => {
     const disconnecting = device && device.state !== 'offline';
     if (device?.state === 'running') return;

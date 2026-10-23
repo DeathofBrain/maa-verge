@@ -2,6 +2,7 @@
 import type { Device, Event, Plan, Run, RunArtifact, Settings, Snapshot, UpdateChannel } from '../../../packages/contracts/src/types';
 import { taskLabels } from '../../../packages/contracts/src/tasks';
 import { taskEnabled, validatePlan } from '../../../packages/contracts/src/task-policy';
+import { matchingDeviceProfile } from '../../../packages/contracts/src/device-profiles';
 import { mockPreviewImage } from '../../fixtures/preview-image';
 import { stagePresets } from '../../../packages/contracts/src/stages';
 import { validateDeviceClickParams, validateDeviceFrameParams } from '../../../packages/contracts/src/validators.js';
@@ -161,7 +162,7 @@ const timer = globalThis.setInterval(() => {
             (task.artifacts as RunArtifact[]).push({ id: `fixture-${run.id}-${index}`, kind: 'screenshot', label: '自动作战反馈画面', capturedAt: now(), width: mockPreviewImage.width, height: mockPreviewImage.height });
           }
           if (task.type === 'Infrast') {
-            task.infrastructure.push({ facility: '制造站', room: 1, operators: ['合成干员甲', '合成干员乙'], product: '赤金', message: '已完成换班', at: now() });
+            task.infrastructure.push({ facility: '制造站', room: 1, operators: ['合成三星干员', '合成四星干员', '合成五星干员', '合成六星干员', '合成未知干员'], staffingStatus: 'confirmed', product: '赤金', message: '核心已确认换班', at: now() });
             (task.artifacts as RunArtifact[]).push({ id: `fixture-${run.id}-${index}`, kind: 'screenshot', label: '基建反馈画面', capturedAt: now(), width: mockPreviewImage.width, height: mockPreviewImage.height });
           }
         }
@@ -214,6 +215,11 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       const itemId = String(params.itemId);
       const name = ({ '30012': '固源岩', '30013': '固源岩组' } as Record<string, string>)[itemId];
       return { itemId, name: name ?? null, mimeType: name ? 'image/png' : null, data: name ? mockPreviewImage.data : null, resourceVersion: name ? 'synthetic-resource' : null };
+    }
+    case 'resources.operator': {
+      const name = String(params.name);
+      const rarity = ({ '合成三星干员': 3, '合成四星干员': 4, '合成五星干员': 5, '合成六星干员': 6, '阿米娅': 5, '能天使': 6 } as Record<string, number>)[name] ?? null;
+      return { name, id: rarity ? `char_fixture_${rarity}` : null, rarity, mimeType: rarity ? 'image/png' : null, data: rarity ? mockPreviewImage.data : null, resourceVersion: 'synthetic-resource' };
     }
     case 'logs.info': return { directory: navigator.platform.startsWith('Mac') ? '/Users/synthetic/Library/Logs/MAAVerge' : navigator.platform.startsWith('Win') ? 'C:\\Maa Verge\\log' : '/home/synthetic/.local/state/MAAVerge/log', retentionDays: state.settings.logRetentionDays ?? 7 };
     case 'logs.export': {
@@ -282,6 +288,8 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
         } satisfies Device;
         state.devices.push(device);
       } else if (device.state === 'offline') device.state = 'idle';
+      const profile = matchingDeviceProfile(state.settings, address);
+      if (profile) { device.connectionProfileId = profile.id; device.name = profile.name; }
       emit('device.connected', '模拟设备已连接，未访问真实 ADB', { deviceId: device.id });
       return clone(device);
     }

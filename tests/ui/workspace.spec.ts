@@ -406,13 +406,15 @@ test('routine settings stay usable in desktop and narrow inspectors', async ({ p
 test('automatic connection is deterministic with the test runtime and its preference persists', async ({ page }) => {
   await openWorkspace(page);
   await navigate(page, '设备');
-  await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).toBeChecked();
   await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
   await expect(page.locator('.connection-diagnostics')).toContainText('未访问真实模拟器');
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
+  await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).toBeChecked();
   await page.getByRole('switch', { name: '自动连接模拟器', exact: true }).click();
   await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).not.toBeChecked();
   await page.reload();
   await navigate(page, '设备');
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).not.toBeChecked();
   await navigate(page, '执行记录');
   await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
@@ -421,6 +423,7 @@ test('automatic connection is deterministic with the test runtime and its prefer
 test('capture choices preserve drafts and save independently of the actual connected protocol', async ({ page }) => {
   await openHome(page);
   await navigate(page, '设备');
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   const form = page.locator('.sp-capture-form');
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
   await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认');
@@ -429,9 +432,11 @@ test('capture choices preserve drafts and save independently of the actual conne
   await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
   await navigate(page, '主页');
   await navigate(page, '设备');
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('mumu');
   await page.reload();
   await navigate(page, '设备');
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue('C:\\synthetic\\MuMu');
   await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('2');
   await expect(form).toContainText('有未保存的修改');
@@ -446,6 +451,7 @@ test('capture choices preserve drafts and save independently of the actual conne
   await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认');
   await page.reload();
   await navigate(page, '设备');
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('mumu');
   await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue('C:\\synthetic\\MuMu');
   await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('2');
@@ -456,6 +462,7 @@ test('capture choices preserve drafts and save independently of the actual conne
   await expect(form.getByText('已保存', { exact: true })).toBeVisible();
   await page.reload();
   await navigate(page, '设备');
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('ldplayer');
   await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue('C:\\synthetic\\LDPlayer');
   await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('0');
@@ -469,6 +476,7 @@ test('capture choices preserve drafts and save independently of the actual conne
 test('enhanced capture requires an installation directory and a nonnegative integer instance', async ({ page }) => {
   await openHome(page);
   await navigate(page, '设备');
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   const form = page.locator('.sp-capture-form');
   await page.getByLabel('截图协议', { exact: true }).selectOption('ldplayer');
   await expect(form).toContainText('不会自动改用 ADB 截图');

@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowRight, ArrowUpRight, Bell, BookOpen, Check, ChevronRight,
   Cpu, Database, Download, FileJson, FolderOpen, Gamepad2, HardDrive,
-  Info, ListChecks, LoaderCircle, Monitor, Plus, RefreshCw, RotateCcw,
-  Search, Settings2, SlidersHorizontal, Unplug, Wifi,
+  Info, ListChecks, LoaderCircle, Plus, RefreshCw, RotateCcw,
+  Search, Settings2, SlidersHorizontal,
 } from 'lucide-react';
-import { rpc, taskLabels, type ComponentDownload, type Device, type Event, type Plan, type Settings, type Snapshot, type Task, type UpdateChannel } from '@maaverge/contracts';
+import { rpc, taskLabels, type ComponentDownload, type Event, type Plan, type Settings, type Snapshot, type Task, type UpdateChannel } from '@maaverge/contracts';
 import './support-pages.css';
 import { useSettingsDraft } from './settings-draft';
-import { TaskConnectionSettings } from './TaskConnectionSettings';
-import { MultiInstanceSettings } from './MultiInstanceSettings';
 import RecognitionPanel, { type RecognitionClient } from './RecognitionPanel';
 import LogSettings from './LogSettings';
 import { resourceClientFor, resourceClientLabels, resourceVersionDetail, resourceVersionLabel, type ResourceClient } from './update-display';
@@ -27,23 +25,13 @@ export interface SupportPageProps {
   searchQuery?: string;
 }
 
-const deviceLabels: Record<Device['state'], string> = { idle: '空闲就绪', running: '执行中', offline: '已断开' };
 const updateLabels: Record<UpdateChannel['status'], string> = {
   idle: '等待检查', checking: '正在检查', available: '发现新版本', downloading: '正在准备',
   staged: '已验证，待生效', waiting_idle: '等待空闲生效', active: '已更新', failed: '更新失败',
 };
 const channelLabels: Record<UpdateChannel['id'], string> = { app: 'Maa Verge 应用', core: 'MaaCore 核心', resource: '游戏资源' };
-const captureLabels = { adb: 'ADB 默认截图', mumu: 'MuMu 增强截图', ldplayer: '雷电增强截图' } as const;
 const formatDate = (value: string) => new Date(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 const displayValue = (value: unknown, fallback = '使用默认值') => value === undefined || value === null || value === '' ? fallback : Array.isArray(value) ? value.join('、') : String(value);
-
-function actualCaptureMethod(device: Device) {
-  if (device.state === 'offline') return '未确认（设备已断开）';
-  if (!device.captureMethod) return '未确认';
-  if (device.captureMethod === 'MumuExtras') return captureLabels.mumu;
-  if (device.captureMethod === 'LDExtras') return captureLabels.ldplayer;
-  return `ADB（${device.captureMethod}）`;
-}
 
 function PageHeading({ title, text, actions }: { title: string; text: string; actions?: ReactNode }) {
   return <header className="sp-page-heading"><div><h1>{title}</h1><p>{text}</p></div>{actions && <div className="sp-heading-actions">{actions}</div>}</header>;
@@ -72,112 +60,6 @@ function downloadJson(filename: string, value: unknown) {
   anchor.download = filename;
   anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-type DeviceOperation = {
-  kind: 'discover' | 'auto-connect' | 'connect' | 'disconnect';
-  phase: 'working' | 'complete' | 'empty' | 'error';
-  message: string;
-};
-
-export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction, busy }: SupportPageProps) {
-  const [address, setAddress] = useState('');
-  const [diagnostics, setDiagnostics] = useState<string[]>([]);
-  const [discovered, setDiscovered] = useState<{ address: string; name: string; adbState: string }[]>([]);
-  const [operation, setOperation] = useState<DeviceOperation | null>(null);
-  const operationActive = useRef(false);
-  const working = operation?.phase === 'working';
-  const disabled = busy || working;
-  const selected = snapshot.devices.find((device) => device.id === selectedDevice) || snapshot.devices[0];
-
-  const runDeviceOperation = async (kind: DeviceOperation['kind'], message: string, call: () => Promise<void>) => {
-    if (operationActive.current || busy) return false;
-    operationActive.current = true;
-    setOperation({ kind, phase: 'working', message });
-    setDiagnostics([]);
-    if (kind === 'discover' || kind === 'auto-connect') setDiscovered([]);
-    try {
-      return await onAction('device-operation', async () => {
-        try { await call(); }
-        catch (cause) {
-          const detail = cause instanceof Error ? cause.message : String(cause);
-          setDiagnostics((previous) => [...previous, detail]);
-          setOperation({ kind, phase: 'error', message: `${kind === 'discover' ? '发现设备' : kind === 'disconnect' ? '断开设备' : '连接设备'}失败，请查看下方连接诊断。` });
-          throw cause;
-        }
-      });
-    } finally { operationActive.current = false; }
-  };
-
-  const waitForReady = async (devices: Device[], kind: 'auto-connect' | 'connect') => {
-    const ids = new Set(devices.map((device) => device.id));
-    let ready = devices.filter((device) => device.state !== 'offline');
-    let failed = devices.filter((device) => device.state === 'offline' && device.connectionError);
-    // MaaCore allows 30s for an asynchronous connection; leave room for its
-    // completion event before reporting that readiness is still pending.
-    const deadline = Date.now() + 35_000;
-    while (ready.length + failed.length < ids.size && Date.now() < deadline) {
-      setOperation({ kind, phase: 'working', message: `正在等待设备连接就绪（${ready.length}/${ids.size}）…` });
-      await new Promise((resolve) => window.setTimeout(resolve, 250));
-      const latest = await rpc('app.snapshot', {});
-      ready = latest.devices.filter((device) => ids.has(device.id) && device.state !== 'offline');
-      failed = latest.devices.filter((device) => ids.has(device.id) && device.state === 'offline' && device.connectionError);
-    }
-    if (ready[0] || devices[0]) onSelectDevice((ready[0] || devices[0]).id);
-    const pending = ids.size - ready.length - failed.length;
-    if (failed.length) setDiagnostics((previous) => [...previous, ...failed.map((device) => `${device.name}（${device.address}）：${device.connectionError}`)]);
-    if (pending) {
-      setDiagnostics((previous) => [...previous, `${pending} 台设备的连接尚未就绪。请确认模拟器已启动并开启 ADB 调试，稍后重试。`]);
-    }
-    const prefix = '连接';
-    const incomplete = [failed.length ? `${failed.length} 台连接失败` : '', pending ? `${pending} 台尚未就绪` : ''].filter(Boolean);
-    setOperation({ kind, phase: failed.length ? 'error' : pending ? 'empty' : 'complete', message: incomplete.length ? `${prefix}结果：${ready.length} 台已就绪，${incomplete.join('，')}。` : `${prefix}完成：${ready.length} 台设备已就绪。` });
-    return ready.length === ids.size;
-  };
-
-  const discover = () => runDeviceOperation('discover', '正在发现设备…', async () => {
-    const result = await rpc('device.discover', {});
-    setDiscovered(result);
-    const existing = result.filter((device) => snapshot.devices.some((known) => known.address === device.address)).length;
-    const prefix = '发现';
-    setOperation({ kind: 'discover', phase: result.length ? 'complete' : 'empty', message: result.length ? `${prefix}完成：找到 ${result.length} 台设备${existing ? `，其中 ${existing} 台已在设备列表中` : ''}。` : `${prefix}完成：未发现设备。` });
-    setDiagnostics([result.length ? '发现设备会刷新下方列表；选择“连接”或“自动连接模拟器”来建立连接。' : '请确认模拟器已启动并开启 ADB 调试，也可在下方手动填写连接地址。']);
-  });
-  const autoConnect = () => runDeviceOperation('auto-connect', '正在发现并连接模拟器…', async () => {
-    const result = await rpc('device.auto_connect', {});
-    setDiagnostics(result.diagnostics);
-    setDiscovered(result.discovered);
-    if (!result.devices.length) {
-      setOperation({ kind: 'auto-connect', phase: 'empty', message: '自动连接完成：没有连接到可用设备。' });
-      setDiagnostics((previous) => [...previous, '请确认模拟器已启动并开启 ADB 调试，也可手动填写连接地址。']);
-      return;
-    }
-    await waitForReady(result.devices, 'auto-connect');
-  });
-  const connect = async (value: string) => {
-    if (!value.trim()) return;
-    let ready = false;
-    const ok = await runDeviceOperation('connect', '正在连接设备…', async () => {
-      const device = await rpc('device.connect', { address: value.trim() });
-      ready = await waitForReady([device], 'connect');
-    });
-    if (ok && ready) setAddress('');
-  };
-
-  return <div className="sp-page"><PageHeading title="设备" text="发现、连接与管理模拟器，连接后由你选择执行任务。" actions={<><button className="button secondary" disabled={disabled} onClick={() => void discover()}>{working && operation.kind === 'discover' ? <LoaderCircle size={16} className="spin" /> : <Search size={16} />}{working && operation.kind === 'discover' ? '正在发现…' : '发现设备'}</button><button className="button primary" disabled={disabled} onClick={() => void autoConnect()}>{working && operation.kind === 'auto-connect' ? <LoaderCircle size={16} className="spin" /> : <Wifi size={16} />}{working && operation.kind === 'auto-connect' ? '正在连接…' : '自动连接模拟器'}</button></>} />
-    {operation && <div className="sp-notice" role={operation.phase === 'error' ? 'alert' : 'status'} aria-label="设备操作结果" aria-atomic="true" aria-busy={working}>{working ? <LoaderCircle size={17} className="spin" /> : operation.phase === 'complete' ? <Check size={17} /> : <Info size={17} />}<div>{operation.message}</div></div>}
-    <div className="sp-device-layout"><aside className="sp-device-list" aria-label="设备列表"><div className="sp-list-heading">已知设备 <span>{snapshot.devices.length}</span></div>{snapshot.devices.length ? snapshot.devices.map((device) => <button key={device.id} className={`sp-device-item ${selected?.id === device.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === device.id} onClick={() => onSelectDevice(device.id)}><Monitor size={20} /><span><strong>{device.name}</strong><small>{device.address}</small></span><i className={`status-dot ${device.state === 'offline' ? 'offline' : ''}`} /></button>) : <p className="sp-small-empty">启动模拟器后尝试自动连接。</p>}</aside>
-      <div className="sp-device-detail"><MultiInstanceSettings settings={snapshot.settings} devices={snapshot.devices} events={snapshot.events} busy={disabled} onSelectDevice={onSelectDevice} onConnect={connect} onSaveSettings={(settings) => onAction('settings', () => rpc('settings.save', { settings }), '多开实例配置已保存')} /><Section title="连接配置" description="自动连接不会启动游戏，也不会自动执行任务。"><Toggle label="自动连接模拟器" description="启动后与空闲期间发现本地模拟器；手动断开后保持断开。" checked={snapshot.settings.autoConnect} disabled={disabled} onChange={(autoConnect) => void onAction('settings', () => rpc('settings.save', { settings: { ...snapshot.settings, autoConnect } }), '连接偏好已保存')} />
-        {selected && <><div className="sp-device-detail-heading"><Monitor size={28} /><div><h3>{selected.name}</h3><span className={`sp-state ${selected.state}`}>{deviceLabels[selected.state]}</span></div><button className="button secondary" disabled={disabled || selected.state === 'running' || selected.state === 'offline'} onClick={() => void runDeviceOperation('disconnect', '正在断开设备…', async () => {
-          await rpc('device.disconnect', { id: selected.id });
-          setOperation({ kind: 'disconnect', phase: 'complete', message: '设备已断开。' });
-          setDiagnostics(['设备已断开，可手动重新连接。']);
-        })}><Unplug size={15} />断开设备</button></div><dl className="sp-description-list"><div><dt>连接地址</dt><dd className="sp-mono">{selected.address}</dd></div><div><dt>连接方式</dt><dd>ADB</dd></div><div><dt>实际截图方式</dt><dd aria-label="实际截图方式">{actualCaptureMethod(selected)}</dd></div><div><dt>核心版本</dt><dd className="sp-mono">{selected.coreVersion || '尚未加载'}</dd></div><div><dt>资源版本</dt><dd className="sp-mono">{selected.resourceVersion || '尚未加载'}</dd></div></dl>{selected.state === 'running' && <p className="sp-help">请先停止执行，再断开设备。其他页面仍可通过底部运行栏停止。</p>}</>}
-        <form className="sp-connect-form" onSubmit={(event) => { event.preventDefault(); void connect(address); }}><label htmlFor="manual-device-address">手动连接 ADB 地址</label><div><input id="manual-device-address" className="text-input" placeholder="127.0.0.1:5555 或 USB 序列号" value={address} onChange={(event) => setAddress(event.target.value)} /><button type="submit" className="button secondary" disabled={disabled || !address.trim()}>{working && operation.kind === 'connect' ? <LoaderCircle size={15} className="spin" /> : <Wifi size={15} />}{working && operation.kind === 'connect' ? '正在连接…' : '连接设备'}</button></div></form>
-        {discovered.length > 0 && <div className="sp-discovered"><h3>发现的设备</h3>{discovered.map((item) => <div key={item.address}><span><strong>{item.name}</strong><small>{item.address} · {item.adbState}</small></span><button className="button secondary" disabled={disabled} onClick={() => void connect(item.address)}>连接</button></div>)}</div>}
-      </Section><TaskConnectionSettings settings={snapshot.settings} selectedDeviceId={selected?.id} deviceProfileId={selected?.connectionProfileId} busy={disabled} showAutomatic={false} onSaveSettings={(settings) => onAction('settings', () => rpc('settings.save', { settings }), '连接配置已保存，请断开设备后重新连接生效')} /><Section title="连接诊断" description="本次发现、连接结果和失败原因显示在这里。">{diagnostics.length ? <div className="connection-diagnostics sp-diagnostics" role="status">{diagnostics.map((message, index) => <p key={index}>{message}</p>)}</div> : <p className="sp-help">发现或连接设备后可查看本次结果。</p>}</Section></div>
-    </div>
-  </div>;
 }
 
 const categories = [
