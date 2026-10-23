@@ -1,3 +1,4 @@
+use crate::app_updater::AppUpdater;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -8,7 +9,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, Command};
-use tokio::sync::{oneshot, Mutex as AsyncMutex};
+use tokio::sync::{oneshot, Mutex as AsyncMutex, RwLock};
 
 type Reply = Result<Value, String>;
 type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Reply>>>>;
@@ -20,6 +21,8 @@ pub struct Runtime {
     pending: Pending,
     next_id: AtomicU64,
     minimize_to_tray: AtomicBool,
+    pub update_gate: RwLock<()>,
+    updating: AtomicBool,
 }
 
 fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
@@ -192,6 +195,8 @@ impl Runtime {
             pending,
             next_id: AtomicU64::new(1),
             minimize_to_tray: AtomicBool::new(true),
+            update_gate: RwLock::new(()),
+            updating: AtomicBool::new(false),
         };
         runtime.request("app.snapshot".into(), json!({})).await?;
         Ok(runtime)
@@ -199,6 +204,10 @@ impl Runtime {
 
     pub fn minimize_to_tray(&self) -> bool {
         self.minimize_to_tray.load(Ordering::Relaxed)
+    }
+
+    pub fn mark_updating(&self) {
+        self.updating.store(true, Ordering::Release);
     }
 
     pub async fn request(&self, method: String, params: Value) -> Reply {
@@ -426,9 +435,39 @@ mod tests {
 
 #[tauri::command]
 pub async fn runtime_request(
+    app: AppHandle,
     runtime: tauri::State<'_, Runtime>,
+    updater: tauri::State<'_, AppUpdater>,
     method: String,
     params: Option<Value>,
 ) -> Reply {
-    runtime.request(method, params.unwrap_or(json!({}))).await
+    let params = params.unwrap_or(json!({}));
+    if method.starts_with("updates.")
+        && params.get("channel").and_then(Value::as_str) == Some("app")
+    {
+        if params.as_object().is_none_or(|params| params.len() != 1) {
+            return Err("应用更新请求参数无效".into());
+        }
+        return match method.as_str() {
+            "updates.check" => updater.check().await,
+            "updates.prepare" => updater.prepare().await,
+            "updates.activate" => updater.activate(&runtime).await,
+            "updates.rollback" => updater.rollback(),
+            _ => Err("未知的应用更新操作".into()),
+        };
+    }
+    let _request = runtime.update_gate.read().await;
+    if runtime.updating.load(Ordering::Acquire) {
+        return Err("正在退出并安装应用更新，请等待应用重新启动".into());
+    }
+    let snapshot = method == "app.snapshot";
+    let settings = method == "settings.save";
+    let mut result = runtime.request(method, params).await?;
+    if settings && updater.configure(&result) {
+        AppUpdater::check_in_background(app, true);
+    }
+    if snapshot {
+        updater.merge_snapshot(&mut result);
+    }
+    Ok(result)
 }

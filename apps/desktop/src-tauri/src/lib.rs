@@ -1,3 +1,4 @@
+mod app_updater;
 mod runtime;
 
 use runtime::Runtime;
@@ -58,13 +59,22 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             show_main(app);
         }))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![runtime::runtime_request])
         .setup(|app| {
             #[cfg(target_os = "windows")]
             configure_window_transitions(app.handle());
             let runtime = tauri::async_runtime::block_on(Runtime::start(app.handle().clone()))
                 .map_err(std::io::Error::other)?;
+            let snapshot = tauri::async_runtime::block_on(
+                runtime.request("app.snapshot".into(), serde_json::json!({})),
+            )
+            .map_err(std::io::Error::other)?;
+            let updater = app_updater::AppUpdater::new(app.handle().clone());
+            updater.configure(&snapshot["settings"]);
             app.manage(runtime);
+            app.manage(updater);
+            app_updater::AppUpdater::check_in_background(app.handle().clone(), false);
             let show = MenuItem::with_id(app, "show", "显示 Maa Verge", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
