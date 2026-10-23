@@ -1,0 +1,4 @@
+# Preserve the exact upstream bytes verified by rust-overrides.json.
+*-LICENSE* -text whitespace=-blank-at-eof,-blank-at-eol
+MPL-2.0.txt -text whitespace=-blank-at-eof,-blank-at-eol
+MIT-SPDX.txt -text whitespace=-blank-at-eof,-blank-at-eol
