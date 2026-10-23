@@ -4,7 +4,7 @@ import { createReadStream } from 'node:fs';
 import { copyFile, lstat, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { installerKind, releaseVersion, updaterAssetKind, updaterAssetKinds } from './github-package.mjs';
+import { installerKind, releaseVersion, updaterAssetKind, updaterAssetKinds } from './release-assets.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const repository = 'https://github.com/DeathofBrain/maa-verge';
