@@ -69,6 +69,8 @@ try {
     if ($Native) {
         & $nodeExecutable (Join-Path $PSScriptRoot 'doctor.mjs') --native
         if ($LASTEXITCODE -ne 0) { throw 'Native prerequisites are incomplete; follow docs/development.md' }
+        & $nodeExecutable (Join-Path $PSScriptRoot 'setup-aria2.mjs')
+        if ($LASTEXITCODE -ne 0) { throw 'Bundled aria2 preparation failed; follow docs/development.md' }
     }
     Write-Host 'Ready. Run: powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 dev'
 } finally { Pop-Location }

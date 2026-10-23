@@ -507,7 +507,7 @@ export class UpdateService {
       const scope = path.resolve(this.root);
       const identity = createHash('sha256').update(JSON.stringify([scope, channel, metadata.url, metadata.version, metadata.name, metadata.size, metadata.digest])).digest('hex');
       const archive = path.join(directory, ".download-" + identity + "-" + metadata.name);
-      const downloadOptions: ComponentDownload | undefined = this.store.get('settings', 'main', {}).componentDownload;
+      const downloadOptions: ComponentDownload = this.store.get('settings', 'main', {}).componentDownload ?? { engine: 'aria2', aria2Path: '' };
       let lastProgress = -1, lastReport = 0;
       try {
         digest = await this.source.download(metadata, archive, (value) => {

@@ -1,10 +1,10 @@
 /** Resumable component archives. A partial belongs to one immutable release identity. */
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { lstat, mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { childEnvironment } from "./config.ts";
+import { childEnvironment, normalizeComponentPath } from "./config.ts";
 
 export const MAX_DOWNLOAD_BYTES = 2 * 1024 ** 3;
 export type DownloadEngine = "builtin" | "aria2";
@@ -21,6 +21,47 @@ class InvalidDownload extends Error {}
 const USER_AGENT = "maa-verge/0.1";
 const invalid = (message: string): never => { throw new InvalidDownload(message); };
 const exists = async (file: string) => lstat(file).catch((error) => { if (error.code === "ENOENT") return undefined; throw error; });
+/** Packaged downloads never depend on the user's PATH or working directory. */
+export function aria2ExecutablePath(configured = ""): string {
+  let custom: string;
+  try { custom = normalizeComponentPath(configured); }
+  catch { throw new Error("aria2 路径必须是可执行文件的绝对路径，留空使用随应用提供的 aria2c"); }
+  if (/\.(?:cmd|bat|ps1)$/i.test(custom)) throw new Error("aria2 路径必须指向可执行文件，不能使用脚本");
+  const name = "aria2c" + (process.platform === "win32" ? ".exe" : "");
+  return custom || (Bun.isStandaloneExecutable ? path.join(path.dirname(process.execPath), name)
+    : path.resolve(import.meta.dir, "../../../.tools/aria2", name));
+}
+async function checkedAria2Executable(configured?: string): Promise<string> {
+  const executable = aria2ExecutablePath(configured);
+  try { if (!(await stat(executable)).isFile()) throw new Error("不是普通文件"); }
+  catch (error) {
+    const recovery = configured?.trim() ? "请检查自定义可执行文件路径" : Bun.isStandaloneExecutable
+      ? "请重新安装 Maa Verge" : "请先运行 pnpm setup:aria2";
+    throw new Error(`无法启动 aria2 下载器：${executable}。${recovery}（${error instanceof Error ? error.message : String(error)}）`);
+  }
+  return executable;
+}
+export async function aria2FeatureArguments(executable: string, options: DownloadOptions, platform = process.platform): Promise<string[]> {
+  // Windows ships the full official binary. Our POSIX build removes optional
+  // protocols, whose command switches would otherwise be rejected by aria2.
+  let features = platform === "win32" ? "BitTorrent, Metalink" : "";
+  if (platform !== "win32" && options.aria2Path?.trim()) {
+    options.signal?.throwIfAborted();
+    const version = await new Promise<string>((resolve, reject) => {
+      execFile(executable, ["--version"], { encoding: "utf8", windowsHide: true, shell: false, timeout: 5_000,
+        maxBuffer: 64 * 1024, killSignal: "SIGKILL", signal: options.signal,
+        env: { ...childEnvironment(), LC_ALL: "C", LANG: "C" } }, (error, stdout) => {
+        if (error) reject(options.signal?.reason ?? new Error(`无法读取自定义 aria2 功能：${error.message}`));
+        else resolve(stdout);
+      });
+    });
+    const match = /^Enabled Features:\s*(.*)$/m.exec(version);
+    if (!match) throw new Error("无法识别自定义 aria2 的可用功能，请检查 aria2c 可执行文件");
+    features = match[1];
+  }
+  return [...(/\bBitTorrent\b/.test(features) ? ["--follow-torrent=false", "--enable-dht=false", "--enable-dht6=false",
+    "--enable-peer-exchange=false", "--seed-time=0"] : []), ...(/\bMetalink\b/.test(features) ? ["--follow-metalink=false"] : [])];
+}
 const purge = async (partial: string) => {
   await Promise.all([partial, partial + ".json", partial + ".json.tmp", partial + ".aria2"].map((file) => rm(file, { force: true })));
 };
@@ -186,6 +227,8 @@ async function builtin(metadata: DownloadMetadata, partial: string, state: Parti
 
 async function aria2(metadata: DownloadMetadata, partial: string, state: PartialState, offset: number,
     report: ReturnType<typeof reporter>, options: DownloadOptions, idleMs: number): Promise<PartialState> {
+  const executable = await checkedAria2Executable(options.aria2Path);
+  const featureArguments = await aria2FeatureArguments(executable, options);
   // Resolve and validate redirects ourselves, and bind aria2's control file to the
   // same remote object before allowing it to continue an interrupted transfer.
   const idle = idleController(options.signal, idleMs);
@@ -211,20 +254,20 @@ async function aria2(metadata: DownloadMetadata, partial: string, state: Partial
     } finally { await probe.body?.cancel(); }
   } finally { idle.close(); }
   options.signal?.throwIfAborted();
-  const args = ["--no-conf=true", "--enable-rpc=false", "--continue=true", "--always-resume=true",
+  const args = ["--no-conf=true", "--no-netrc=true", "--enable-rpc=false", "--continue=true", "--always-resume=true",
     "--allow-overwrite=true", "--auto-file-renaming=false", "--file-allocation=none", "--max-concurrent-downloads=1",
-    "--split=1", "--max-connection-per-server=1", "--follow-torrent=false", "--follow-metalink=false",
-    "--enable-dht=false", "--enable-dht6=false", "--enable-peer-exchange=false", "--seed-time=0",
+    "--split=1", "--max-connection-per-server=1",
     "--check-certificate=true", "--http-accept-gzip=false", "--content-disposition=false", "--max-tries=1",
     "--connect-timeout=30", `--timeout=${Math.max(1, Math.ceil(idleMs / 1000))}`, "--auto-save-interval=1",
     "--summary-interval=1", "--show-console-readout=true", "--truncate-console-readout=false", "--human-readable=false",
     "--download-result=hide", "--console-log-level=warn", "--enable-color=false",
     `--user-agent=${USER_AGENT}`, `--dir=${path.dirname(partial)}`, `--out=${path.basename(partial)}`];
+  args.push(...featureArguments);
   if (state.validator) args.push(`--header=If-Range: ${state.validator.value}`);
   if (metadata.digest) args.push(`--checksum=sha-256=${metadata.digest.slice(7)}`);
   args.push("--", url!);
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(options.aria2Path?.trim() || "aria2c", args, { windowsHide: true, shell: false, env: childEnvironment(), stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(executable, args, { windowsHide: true, shell: false, env: childEnvironment(), stdio: ["ignore", "pipe", "pipe"] });
     let output = "", failure: Error | undefined, lastModified = -1, lastCompleted = -1, lastActivity = performance.now(), polling = false, settled = false;
     const stop = (error: Error) => { failure ??= error; child.kill("SIGKILL"); };
     const abort = () => stop(options.signal?.reason instanceof Error ? options.signal.reason : new Error("下载已取消"));
@@ -258,7 +301,7 @@ async function aria2(metadata: DownloadMetadata, partial: string, state: Partial
     const cleanup = () => { settled = true; clearInterval(timer); options.signal?.removeEventListener("abort", abort); };
     options.signal?.addEventListener("abort", abort, { once: true });
     if (options.signal?.aborted) abort();
-    child.once("error", (error) => { cleanup(); reject(new Error(`无法启动 aria2 下载器: ${error.message}`)); });
+    child.once("error", (error) => { cleanup(); reject(new Error(`无法启动 aria2 下载器：${executable}（${error.message}）`)); });
     child.once("close", (code) => {
       cleanup();
       if (failure) reject(failure);
@@ -277,7 +320,7 @@ export async function downloadArchive(metadata: DownloadMetadata, destination: s
   if (metadata.digest != null && !/^sha256:[0-9a-f]{64}$/i.test(metadata.digest)) invalid("下载包 SHA-256 摘要无效");
   const idleMs = options.idleTimeoutMs ?? 30_000;
   if (!Number.isSafeInteger(idleMs) || idleMs <= 0) throw new Error("下载空闲超时无效");
-  const engine = options.engine ?? "builtin";
+  const engine = options.engine ?? "aria2";
   if (!["builtin", "aria2"].includes(engine)) throw new Error("未知下载器");
   options.signal?.throwIfAborted();
   await mkdir(path.dirname(destination), { recursive: true });

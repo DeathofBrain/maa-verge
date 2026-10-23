@@ -27,7 +27,7 @@ async function launch(t, { browserMock = false, mode, expectedCode = 0, override
   write('.node-version', process.versions.node);
   write('apps/desktop/src-tauri/Cargo.lock', 'fixture');
   write('tools/environment.mjs', 'export function assertWorkspaceDependencies() {}\n');
-  for (const file of ['setup-bun', 'doctor', 'build-core-worker', 'prepare-native-check']) write(`tools/${file}.mjs`, '');
+  for (const file of ['setup-bun', 'setup-aria2', 'doctor', 'build-core-worker', 'prepare-native-check']) write(`tools/${file}.mjs`, '');
   for (const file of ['dev.mjs', 'project.mjs']) copyFileSync(path.join(root, 'tools', file), path.join(directory, 'tools', file));
   write('.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs', `
     const { appendFileSync } = require('node:fs');

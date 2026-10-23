@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { devEnvironment, executable, root } from './project.mjs';
+import { aria2Executable, readAria2BuildInfo } from './setup-aria2.mjs';
 
 const noticeName = /^(?:licen[sc]e|copying|notice|copyright)(?:[._-]|$)/iu;
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
@@ -155,6 +156,19 @@ export function writeRustNotices(output, { metadata, target, version, sysroot, p
   return written;
 }
 
+export function writeAria2Notices(output, { aria2Directory = path.dirname(aria2Executable) } = {}) {
+  const info = readAria2BuildInfo(aria2Directory);
+  const target = path.join(output, 'aria2');
+  mkdirSync(target, { recursive: true });
+  for (const notice of info.notices) {
+    const file = path.join(target, notice.name);
+    mkdirSync(path.dirname(file), { recursive: true });
+    copyFileSync(path.join(aria2Directory, 'licenses', notice.name), file);
+  }
+  copyFileSync(path.join(aria2Directory, 'build-info.json'), path.join(output, 'aria2-build-info.json'));
+  return info;
+}
+
 export function writeRuntimeNotices(destination, options = {}) {
   const projectRoot = options.projectRoot || root;
   const output = path.join(destination, 'licenses'); mkdirSync(output, { recursive: true });
@@ -165,5 +179,6 @@ export function writeRuntimeNotices(destination, options = {}) {
   const javascript = writeJavaScriptNotices(output, { projectRoot });
   const rust = loadRustNoticeMetadata({ ...options, projectRoot });
   const crates = writeRustNotices(output, { ...rust, projectRoot });
+  writeAria2Notices(output, options);
   console.log(`Runtime licenses: ${javascript} JavaScript dependencies, ${crates} Rust dependencies (${rust.target}), Rust standard library`);
 }

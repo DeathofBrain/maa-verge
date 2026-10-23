@@ -21,9 +21,11 @@ bash tools/bootstrap.sh
 bash tools/pnpm.sh run doctor --native
 ```
 
-引导脚本在仓库 `.tools` 安装或修复与项目固定版本不符的 Node/pnpm，冻结同步所有工作区依赖，安装并验证固定 Bun，并使用 uv 管理参考测试所需的 Python。`-SkipReference` / `--skip-reference` 跳过 Python 参考环境；`-Native` / `--native` 额外验证原生依赖。更新代码后应重新运行引导，或执行 `pnpm install --frozen-lockfile` 同步新增工作区。
+引导脚本在仓库 `.tools` 安装或修复与项目固定版本不符的 Node/pnpm，冻结同步所有工作区依赖，安装并验证固定 Bun，并使用 uv 管理参考测试所需的 Python。`-SkipReference` / `--skip-reference` 跳过 Python 参考环境；`-Native` / `--native` 额外验证原生依赖并准备包内 aria2。更新代码后应重新运行引导，或执行 `pnpm install --frozen-lockfile` 同步新增工作区。
 
 `pnpm setup:bun` 也可单独运行：下载官方固定版本归档，按仓库保存的 SHA-256 校验后安装 `.tools/bun`，不会采用 PATH 中的全局 Bun。Node 下载通过官方 SHA256 清单验证，下载或校验失败保留旧工具。Rust、CMake、C++ 编译器和系统 SDK 需要单独安装。脚本只调整当前进程的 PATH；没有全局 Node/pnpm 时，使用 `powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 <command>` 或 `bash tools/pnpm.sh <command>`，包装脚本会选择本地工具，版本不符时提示重新引导。
+
+`pnpm setup:aria2` 准备固定 aria2 1.37.0 到 `.tools/aria2/aria2c[.exe]`，不使用全局安装。Windows x64 下载官方 ZIP，Linux x64/macOS arm64/x64 编译官方源码；归档按仓库固定 SHA-256 校验。Linux 另外编译并静态链接固定 OpenSSL，需要 `build-essential`、`pkg-config`、`perl`；macOS 使用 Xcode Command Line Tools 与系统 AppleTLS。包内许可目录包含对应源码及构建说明；缓存和二进制留在忽略目录，不能提交。`pnpm dev` 和打包流程会自动准备，无需重复手动运行。
 
 已有工具链的机器可直接运行：
 
@@ -47,7 +49,7 @@ pnpm dev
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential pkg-config curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf
+sudo apt-get install -y build-essential pkg-config perl curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf
 # Ubuntu 22.04 使用 libfuse2；24.04 使用 libfuse2t64（AppImage 运行依赖）
 sudo apt-get install -y libfuse2       # 22.04
 # sudo apt-get install -y libfuse2t64  # 24.04
@@ -70,7 +72,7 @@ node tools/check-native.mjs --required
 pnpm build
 ```
 
-`pnpm dev` 验证项目固定 Bun、以生产配置构建 C++ worker，再运行 Vite 和 Tauri；Tauri 使用 `.tools/bun` 执行 `services/backend/src/entry.ts`。前端不能传入可执行文件路径或 Shell。release 只运行资源目录内的固定 `runtime/maaverge-runtime`，缺失时直接报错，不查找系统 Python/Node/Bun，也不切换后端。产品只接受 native；旧 `MAAVERGE_MODE=mock` 会明确报错，请移除该环境变量。数据继续存于 `<data-root>/native`，旧 mock 数据不读取、不迁移、不删除。退出时先关闭 stdin，让服务释放设备和数据库，超时再终止。
+`pnpm dev` 验证项目固定 Bun、以生产配置构建 C++ worker、准备固定 aria2，再运行 Vite 和 Tauri；Tauri 使用 `.tools/bun` 执行 `services/backend/src/entry.ts`。前端不能执行 Shell 或启动下载子进程；可通过类型化设置接口保存经过后端校验的自定义 aria2 绝对路径。release 只运行资源目录内的固定 `runtime/maaverge-runtime`，缺失时直接报错，不查找系统 Python/Node/Bun，也不切换后端。产品只接受 native；旧 `MAAVERGE_MODE=mock` 会明确报错，请移除该环境变量。数据继续存于 `<data-root>/native`，旧 mock 数据不读取、不迁移、不删除。退出时先关闭 stdin，让服务释放设备和数据库，超时再终止。
 
 比较旧实现时，可在终端显式设置 `MAAVERGE_BACKEND=python` 后运行 `pnpm dev`；启动器此时执行 `uv sync --frozen`，debug Tauri 选择项目 `.venv` 内的 `python -m maaverge_runtime`。该 selector 在 release 不生效。不要同时让新旧服务打开同一模式的数据目录；两者使用相同 SQLite 租约，首次 TypeScript 接管会备份旧数据库。交接和手动恢复步骤见 [runtime-migration.md](runtime-migration.md)。
 
@@ -138,17 +140,17 @@ node tools/smoke-runtime.mjs
 pnpm test:desktop-runtime
 ```
 
-服务目录为 `dist/runtime/maaverge-runtime`，包含 `maaverge-runtime[.exe]`、`maaverge-core-worker[.exe]`、`build-info.json` 和 `licenses/`；Tauri 安装包位于 `apps/desktop/src-tauri/target/release/bundle`。自包含服务内嵌 Bun/JavaScriptCore，仍需系统库与 WebView。Bun SQLite 在 Windows/Linux 随运行时链接，macOS 使用系统 SQLite。C++ worker 在 Windows 使用 `/MT`，Linux 静态链接 libstdc++/libgcc，macOS 使用系统 libc++；MaaCore 仍动态加载。
+服务目录为 `dist/runtime/maaverge-runtime`，包含 `maaverge-runtime[.exe]`、`maaverge-core-worker[.exe]`、`aria2c[.exe]`、`build-info.json` 和 `licenses/`；Tauri 安装包位于 `apps/desktop/src-tauri/target/release/bundle`。自包含服务内嵌 Bun/JavaScriptCore，仍需系统库与 WebView。Bun SQLite 在 Windows/Linux 随运行时链接，macOS 使用系统 SQLite。C++ worker 在 Windows 使用 `/MT`，Linux 静态链接 libstdc++/libgcc，macOS 使用系统 libc++；MaaCore 仍动态加载。aria2 在 Windows/macOS 使用系统 TLS 和证书存储，Linux 静态链接 OpenSSL、libstdc++/libgcc，仍需系统 CA 证书。
 
-smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下执行包内 native 服务，覆盖空设备、Agent 提案、计划与设置持久化、缺失设备拒绝及 EOF 退出；若已构建 CTest 合成库，还会测试包内 `--update-job` 选择性提取及 C++ 验证链路。预置测试数据禁用自动连接和更新，不下载真实核心、不连接设备或调用模型。完整测试先运行 `uv sync --frozen`、`pnpm build:native-worker` 和 `pnpm check`；参考 Python 与 CTest 解释器都仅用于开发。
+smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下执行包内 native 服务，覆盖空设备、Agent 提案、计划与设置持久化、缺失设备拒绝及 EOF 退出。下载专项将完整运行时复制到带空格的临时目录，另编译直接使用生产下载模块的探针，只调用同目录真实 aria2，验证本机 HTTP 下载、摘要失败与传输取消；探针不进入发行目录。若已构建 CTest 合成库，还会测试包内 `--update-job` 选择性提取及 C++ 验证链路。预置测试数据禁用自动连接和更新，不下载真实核心、不连接设备或调用模型。完整测试先运行 `uv sync --frozen`、`pnpm build:native-worker` 和 `pnpm check`；参考 Python 与 CTest 解释器都仅用于开发。
 
 `pnpm test:desktop-runtime` 直接使用桌面 `Runtime` 的同一 Rust transport，连接包内 native 服务，检查事件转发、设置与计划的重启持久化、空 PATH、环境清理及缺失设备拒绝，另用合成设备键检查包内 C++ worker 的锁排他/释放。真实控制链的运行去重、停止、更新边界由服务合成核心测试覆盖。它执行 Rust 集成测试，不启动真实窗口或 WebView。
 
-许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`；设计与提示词见 [branding.md](branding.md)。
+许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。aria2 及其静态依赖的声明、完整对应源码归档与重建说明放在 `licenses/aria2/`，构建来源、配置与哈希记录在 `licenses/aria2-build-info.json`；Linux 静态 OpenSSL 固定为 3.5.9，Windows 使用官方包的依赖版本。其他对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`；设计与提示词见 [branding.md](branding.md)。
 
 CI 先在 Windows x64、Ubuntu x64、macOS arm64/x64 分别编译并执行 Bun 探针，检查 SQLite/WAL、保留 rowid 的备份、跨进程锁、子进程 NDJSON 和 ZIP/TAR。四宿主 gate 成功后才运行原生矩阵的 C++ CTest、TypeScript 测试、Rust fmt/clippy/test 和未签名构建。应用 job 另保留 Python 参考、契约及浏览器 IPC 夹具端到端检查。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
 
-Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runtime/maaverge-runtime` 中的 Linux x64 两个可执行文件。测试驱动在宿主 Node 中准备隔离数据，容器使用原始 Ubuntu 22.04 镜像并确认没有 Python、Node、Bun；后端会话断网，覆盖真实 native 服务、持久化、缺失设备拒绝和 EOF 重启。CI 在 Linux 构建后自动执行。这是后端容器测试，桌面和安装器仍需单独验收。
+Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runtime/maaverge-runtime` 中的 Linux x64 三个可执行文件。测试驱动在宿主 Node 中准备隔离数据，容器使用原始 Ubuntu 22.04 镜像并确认没有 Python、Node、Bun 或全局 aria2；后端会话断网，覆盖包内 aria2 启动、真实 native 服务、持久化、缺失设备拒绝和 EOF 重启。CI 在 Linux 构建后自动执行。这是后端容器测试，桌面和安装器仍需单独验收。
 
 Windows 完整构建后可运行 `pnpm test:desktop-webview`，需要本机已有 WebView2。工具通过独立环回 CDP 端口操作真实 release 窗口，使用专属 native 空设备数据和 WebView profile，预先禁用自动连接和下载，检查初始化异常、Agent 提案、设置持久化及正常关窗；测试前须先退出其他 Maa Verge 实例。日志与截图保留在忽略目录 `build/webview-smoke`，临时数据和 profile 退出后清理。该项由宿主 Node/Playwright 驱动，不代表卸载开发工具后的干净系统安装验收。
 

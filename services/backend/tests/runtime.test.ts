@@ -680,8 +680,10 @@ test.skipIf(!existsSync(python))('Python reference and Bun native service preser
     const code = await new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
     expect(code, stderr).toBe(0); return stdout.trim().split(/\r?\n/).map(line => JSON.parse(line)).filter(item => 'id' in item).sort((a, b) => a.id - b.id);
   }
-  const normalize = (value: any): any => Array.isArray(value) ? value.map(normalize) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'componentPaths').map(([k, v]) => [k, k === 'createdAt' ? '<timestamp>' : normalize(v)])) : value;
+  // The retained Python reference predates TypeScript-only component settings.
+  const normalize = (value: any): any => Array.isArray(value) ? value.map(normalize) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).filter(([key]) => !['componentPaths', 'componentDownload'].includes(key)).map(([k, v]) => [k, k === 'createdAt' ? '<timestamp>' : normalize(v)])) : value;
   const py = await run([python, '-m', 'maaverge_runtime'], temp());
   const ts = await run([process.execPath, path.join(repo, 'services/backend/src/entry.ts')], temp());
+  expect(ts.find(response => response.id === 2).result.componentDownload).toEqual({ engine: 'aria2', aria2Path: '' });
   expect(normalize(ts)).toEqual(normalize(py));
 });

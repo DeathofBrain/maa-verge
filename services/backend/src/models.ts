@@ -1,4 +1,4 @@
-import type { Plan, Settings, Task, Snapshot } from '../../../packages/contracts/src/types';
+import type { ComponentDownload, Plan, Settings, Task, Snapshot } from '../../../packages/contracts/src/types';
 import { validatePlan, validateSettings, validateSnapshot } from '../../../packages/contracts/src/validators.js';
 import { RpcError } from './errors';
 import { validateDeviceProfiles } from './device-profiles';
@@ -9,6 +9,7 @@ export type { DeviceConnectionProfile } from '../../../packages/contracts/src/ty
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
 export const defaultCapture = () => ({ method: 'adb' as const, emulatorPath: '', instanceIndex: 0 });
 export const defaultConnection = () => ({ adbPath: '', address: '', config: 'General' as const, touchMode: 'minitouch' as const, adbLite: false, clientType: 'Official' as const });
+export const defaultComponentDownload = (): ComponentDownload => ({ engine: 'aria2', aria2Path: '' });
 function record(value: any): value is Record<string, any> { return value !== null && typeof value === 'object' && [Object.prototype, null].includes(Object.getPrototypeOf(value)); }
 // Preserve the Python model's documented scalar coercions at the RPC boundary;
 // task params remain untouched and are checked strictly by task-policy.ts.
@@ -68,7 +69,7 @@ export function parseSettings(input: any = {}): Settings {
   }
   if (value.componentDownload) {
     try { value.componentDownload = { ...value.componentDownload, aria2Path: normalizeComponentPath(value.componentDownload.aria2Path) }; }
-    catch { throw new RpcError(-32602, 'aria2 路径必须是可执行文件的绝对路径，留空时从 PATH 查找 aria2c'); }
+    catch { throw new RpcError(-32602, 'aria2 路径必须是可执行文件的绝对路径，留空使用随应用提供的 aria2c'); }
     if (/\.(?:cmd|bat|ps1)$/i.test(value.componentDownload.aria2Path)) throw new RpcError(-32602, 'aria2 路径必须指向可执行文件，不能使用脚本');
   }
   validateInfrastructureProfiles(value.infrastructureEstimates);

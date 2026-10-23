@@ -346,7 +346,7 @@ export interface ComponentPaths {
   resource: string;
 }
 /**
- * Component download engine. Empty aria2Path resolves aria2c from PATH; otherwise use an absolute executable path. Changes apply to subsequent downloads.
+ * Component download engine; defaults to bundled aria2. Empty aria2Path uses aria2c beside the packaged service, or checkout/.tools/aria2 in development; otherwise use an absolute executable path. Never searches PATH. Changes apply to subsequent downloads.
  *
  * This interface was referenced by `Snapshot`'s JSON-Schema
  * via the `definition` "ComponentDownload".

@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { Store, now } from './storage';
 import { RpcError } from './errors';
-import { defaultConnection, parsePlan, parseSettings, parseSnapshot, type Plan, type Settings } from './models';
+import { defaultComponentDownload, defaultConnection, parsePlan, parseSettings, parseSnapshot, type Plan, type Settings } from './models';
 import { automaticCapture } from './auto-capture';
 import { nativeTask, validatePlan } from './task-policy';
 import { propose } from './agent';
@@ -81,7 +81,8 @@ export class Runtime {
     }
     const defaults = defaultComponentPaths(root, options.applicationDirectory);
     const settings = parseSettings(this.store.get('settings', 'main'));
-    if (!settings.componentPaths) this.store.put('settings', 'main', { ...settings, componentPaths: defaults });
+    if (!settings.componentPaths || !settings.componentDownload) this.store.put('settings', 'main', { ...settings,
+      componentPaths: settings.componentPaths ?? defaults, componentDownload: settings.componentDownload ?? defaultComponentDownload() });
     for (const device of this.store.all('device')) { device.state = 'offline'; this.store.put('device', device.id, device); }
     for (const run of this.store.all('run')) if (run.status === 'running') {
       for (const task of run.tasks ?? []) if (task.status === 'running') Object.assign(task, { status: 'failed', finishedAt: now(), message: '上次运行被中断，结果未知' });

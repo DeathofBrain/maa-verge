@@ -142,8 +142,10 @@ test('aria2 download preference saves together and survives navigation and reloa
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   await updatesPage(page);
-  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('builtin');
-  await page.getByLabel('组件下载器', { exact: true }).selectOption('aria2');
+  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('aria2');
+  await expect(page.getByText('已随应用提供 aria2，无需另行安装。中断后可重试续传。')).toBeVisible();
+  await expect(page.getByLabel('aria2c 路径', { exact: true })).toBeHidden();
+  await page.getByText('高级选项：自定义 aria2c 路径', { exact: true }).click();
   await page.getByLabel('aria2c 路径', { exact: true }).fill('C:\\Tools\\aria2\\aria2c.exe');
   await page.getByRole('button', { name: '保存下载器', exact: true }).click();
   await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
@@ -160,6 +162,19 @@ test('aria2 download preference saves together and survives navigation and reloa
   await page.getByLabel('aria2c 路径', { exact: true }).fill('');
   await page.getByRole('button', { name: '保存下载器', exact: true }).click();
   await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
+  await page.reload();
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await updatesPage(page);
+  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('aria2');
+  await expect(page.getByLabel('aria2c 路径', { exact: true })).toHaveValue('');
+  await page.getByLabel('组件下载器', { exact: true }).selectOption('builtin');
+  await page.getByRole('button', { name: '保存下载器', exact: true }).click();
+  await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
+  await page.reload();
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await updatesPage(page);
+  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('builtin');
+  await expect(page.getByLabel('aria2c 路径', { exact: true })).toHaveCount(0);
 });
 
 test.describe('startup component download', () => {

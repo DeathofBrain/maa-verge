@@ -16,6 +16,7 @@
     "test:e2e": "playwright test",
     "test:python": "uv run pytest",
     "setup:bun": "node tools/setup-bun.mjs",
+    "setup:aria2": "node tools/setup-aria2.mjs",
     "test:runtime": "node tools/test-runtime.mjs",
     "test:desktop-runtime": "node tools/smoke-desktop-runtime.mjs",
     "test:desktop-webview": "node tools/smoke-webview-windows.mjs",
