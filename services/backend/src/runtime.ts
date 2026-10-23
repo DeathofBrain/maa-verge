@@ -223,9 +223,11 @@ export class Runtime {
       }
       case 'settings.save': {
         required('settings'); const settings = parseSettings(params.settings), previous = parseSettings(this.store.get('settings', 'main'));
+        if (settings.coreUpdateChannel !== previous.coreUpdateChannel && this.updates.pendingOperations) throw new RpcError(-32021, '组件检查、下载或切换正在进行，请完成后再切换核心更新通道');
         if (!settings.componentDownload && previous.componentDownload) settings.componentDownload = previous.componentDownload;
         await this.updates.saveDirectories(settings.componentPaths ?? previous.componentPaths!, (componentPaths) => {
           settings.componentPaths = componentPaths; this.store.put('settings', 'main', settings);
+          if (settings.coreUpdateChannel !== previous.coreUpdateChannel) this.updates.coreChannelChanged();
         });
         if (settings.autoConnect && !previous.autoConnect) { this.suppressed.clear(); this.nextAutoConnect = 0; }
         if (settings.logRetentionDays !== previous.logRetentionDays) { this.logs.resetCleanup(); this.logs.automatic(settings.logRetentionDays ?? 7); }
@@ -238,7 +240,7 @@ export class Runtime {
         if (params.channel === 'app' && operation === 'activate') {
           // This decision and the gate are synchronous: background discovery or
           // update timers cannot start between the idle check and the gate.
-          if (this.busy() || this.autoConnecting || this.switching || this.starts.size || this.clientSwitches.size || this.artifactCaptures.size
+          if (this.busy() || this.connectingAddresses.size || this.autoConnecting || this.switching || this.starts.size || this.clientSwitches.size || this.artifactCaptures.size
             || this.updates.pendingOperations || this.store.all('run').some(run => run.status === 'running')) throw new RpcError(-32021, '任务、连接或组件更新仍在进行，请空闲后安装应用更新');
           this.appUpdating = true;
           return { ...this.updates.channel('app'), status: 'staged', message: '已暂停新操作，准备退出安装应用更新' };
@@ -341,7 +343,7 @@ export class Runtime {
     let id: string | undefined, reservedAddress: string | undefined, profileId: string | undefined, attemptedAddress: string | undefined, reserved = false, worker: Worker | undefined;
     try {
       if (this.switching && !internal) throw new RpcError(-32011, '正在切换核心与资源，暂不能连接设备');
-      if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
+      if (!this.running || this.appUpdating) throw new RpcError(-32011, '应用运行时正在退出或安装更新');
       const address = validateAddress(params.address);
       attemptedAddress = address;
       if (automatic) this.validateAutomatic(address);
@@ -350,7 +352,7 @@ export class Runtime {
       if (this.connectingAddresses.has(address)) throw new RpcError(-32011, '该设备正在建立连接');
       this.connectingAddresses.add(address); reservedAddress = address;
       this.emulatorInventory = inventory ?? await this.readEmulatorInventory();
-      if (!this.running || this.switching && !internal) throw new RpcError(-32011, '正在退出或切换核心，连接已取消');
+      if (!this.running || this.appUpdating || this.switching && !internal) throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
       const settings = parseSettings(this.store.get('settings', 'main'));
       let profile = findDeviceProfile(settings, address) ?? settings.deviceProfiles?.find(profile => this.profileLockAddress(profile) === this.lockAddress(address)); profileId = profile?.id;
       let selected = profile ? { capture: profile.capture, connection: profile.connection } : settings;
@@ -358,7 +360,7 @@ export class Runtime {
       if (detected) selected = { ...selected, capture: detected.capture, ...(detected.config ? { connection: { ...defaultConnection(), ...selected.connection, config: detected.config } } : {}) };
       const knownInstance = emulatorInstanceForAddress(address, this.emulatorInventory) ?? (selected.capture?.mumuBridge ? this.sdkInstance(selected.capture) : undefined);
       const capture = await connectionCapture(selected.capture, address, process.platform, knownInstance);
-      if (!this.running || this.switching && !internal) throw new RpcError(-32011, '正在退出或切换核心，连接已取消');
+      if (!this.running || this.appUpdating || this.switching && !internal) throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
       if (detected?.instance && detected.capture.method !== 'adb') {
         const current = parseSettings(this.store.get('settings', 'main'));
         const profiles = current.deviceProfiles ?? [];
@@ -399,7 +401,7 @@ export class Runtime {
       const workerCapture = capture.method === 'adb' ? { method: 'adb' } : capture.method === 'mumu' ? { ...plainCapture, ...(mumuTouch !== undefined ? { mumuTouch } : {}), ...(mumuBridge !== undefined ? { mumuBridge } : {}) } : plainCapture;
       const config = { core: combo.core.path, resource: combo.resource.path, adb, address, capture: workerCapture, ...(connection ? { connection } : {}), userDir: path.join(this.root, 'workers', id!), lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical) };
       worker = await this.startWorker(config); await worker.connect();
-      if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
+      if (!this.running || this.appUpdating) throw new RpcError(-32011, '应用运行时正在退出或安装更新');
       if (automatic) this.validateAutomatic(address);
       this.workers.set(id!, worker);
       this.workerConfigurations.set(id!, structuredClone(config));
@@ -412,7 +414,7 @@ export class Runtime {
     if (this.autoConnecting) throw new RpcError(-32011, '模拟器自动连接正在进行');
     this.autoConnecting = true;
     try {
-      if (!this.running || this.switching) throw new RpcError(-32011, '正在退出或切换核心，请稍后重试');
+      if (!this.running || this.appUpdating || this.switching) throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，请稍后重试');
       if (!automatic) this.suppressed.clear();
       if (!this.store.get('active', 'combo', {}).core) throw new RpcError(-32040, '请先在更新中心安装并启用核心，再自动连接模拟器');
       const profiles = parseSettings(this.store.get('settings', 'main')).deviceProfiles ?? [];

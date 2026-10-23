@@ -52,6 +52,7 @@ test('an in-flight component metadata check prevents application shutdown even b
   const checking = runtime.updates.check('core');
   await Bun.sleep(10);
   expect(runtime.updates.pendingOperations).toBe(1);
+  await expect(runtime.handle('settings.save', { settings: { ...runtime.snapshot().settings, coreUpdateChannel: 'preview' } })).rejects.toThrow('完成后再切换');
   await expect(runtime.handle('updates.activate', { channel: 'app' })).rejects.toThrow('空闲后安装');
   complete({ version: 'v9.0.0' }); await checking;
   expect(runtime.updates.pendingOperations).toBe(0);
@@ -67,4 +68,32 @@ test('application and core release preferences default independently and survive
   await runtime.close();
   const reopened = new Runtime(runtime.root, { calendar: { fetcher: null } }); runtimes.push(reopened);
   expect(reopened.snapshot().settings).toMatchObject({ autoUpdateApp: false, appUpdateChannel: 'stable', coreUpdateChannel: 'preview' });
+});
+
+test('device inventory discovery reserves the installation gate before a worker or device ID exists', async () => {
+  let finish!: (inventory: any) => void, entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const runtime = fixture();
+  (runtime as any).options.emulatorInventory = () => { entered(); return new Promise(resolve => { finish = resolve; }); };
+  const connecting = runtime.connectDevice({ address: '127.0.0.1:5555' });
+  const rejected = connecting.catch(() => {});
+  await started;
+  expect(runtime.busy()).toBe(false);
+  await expect(runtime.handle('updates.activate', { channel: 'app' })).rejects.toThrow('空闲后安装');
+  expect(runtime.appUpdating).toBe(false);
+  finish({ instances: [], diagnostics: [] }); await rejected;
+  await runtime.handle('updates.activate', { channel: 'app' });
+  await expect(runtime.connectDevice({ address: '127.0.0.1:5555' })).rejects.toThrow('安装更新');
+});
+
+test('saving a different core channel drops its prepared preview without changing the installed version', async () => {
+  const runtime = fixture();
+  const settings = { ...runtime.snapshot().settings, coreUpdateChannel: 'preview' };
+  await runtime.handle('settings.save', { settings });
+  runtime.store.put('staged', 'core', { version: 'v6.22.0-beta.1', releaseChannel: 'preview', path: 'synthetic-unused-candidate' });
+  runtime.store.put('update_metadata', 'core', { version: 'v6.22.0-beta.1', releaseChannel: 'preview' });
+  runtime.store.put('update', 'core', { ...runtime.updates.channel('core'), status: 'staged', latestVersion: 'v6.22.0-beta.1' });
+  await runtime.handle('settings.save', { settings: { ...settings, coreUpdateChannel: 'stable' } });
+  expect(runtime.store.get('staged', 'core')).toBeUndefined(); expect(runtime.store.get('update_metadata', 'core')).toBeUndefined();
+  expect(runtime.updates.channel('core')).toMatchObject({ status: 'idle', latestVersion: null, currentVersion: '未安装' });
 });

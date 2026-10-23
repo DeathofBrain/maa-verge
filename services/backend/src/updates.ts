@@ -482,6 +482,16 @@ export class UpdateService {
     const combo = this.store.get('active', 'combo', {}), snapshot = combo[channel];
     return !!snapshot && !hasIntegrity(snapshot, channel === 'core' || snapshot.path === combo.core?.path);
   }
+  coreChannelChanged(): void {
+    // Keep files immutable; only remove candidate references. Retention will
+    // clean an unused generation at the next safe boundary.
+    this.store.delete('update_metadata', 'core');
+    this.store.delete('staged', 'core');
+    const current = this.channel('core');
+    this.change('core', { latestVersion: null, progress: 0,
+      status: ['checking', 'downloading'].includes(current.status) ? current.status : 'idle',
+      message: '核心更新通道已切换，旧候选已取消，请重新检查' });
+  }
   check(channel: string): Promise<any> { return this.serial(() => this.checkCurrent(channel)); }
   private async checkCurrent(channel: string): Promise<any> {
     await this.reconcileCurrent();
@@ -513,6 +523,11 @@ export class UpdateService {
     if (["staged", "waiting_idle", "downloading"].includes(current.status)) return current;
     let metadata: UpdateMetadata = this.store.get("update_metadata", channel);
     if (!metadata || channel === 'core' && metadata.releaseChannel !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')) { await this.checkCurrent(channel); metadata = this.store.get("update_metadata", channel); current = this.channel(channel); }
+    if (channel === 'core' && releaseVersion(current.currentVersion) && releaseVersion(metadata.version) && compareReleaseVersions(metadata.version, current.currentVersion) < 0) {
+      this.store.delete('update_metadata', channel);
+      this.change(channel, { status: 'failed', latestVersion: null, progress: 0, message: '缓存版本低于当前核心，拒绝自动降级，请重新检查' });
+      throw new RpcError(-32020, '缓存版本低于当前核心，拒绝自动降级，请重新检查');
+    }
     if (metadata.version === current.currentVersion && !this.needsRepair(channel)) return current;
     const directory = this.directories()[channel as 'core' | 'resource'];
     const generation = path.join(directory, "generations", `${channel}-${randomUUID().replaceAll("-", "")}`);
@@ -543,10 +558,14 @@ export class UpdateService {
         const config: UpdateJobConfig = { channel: channel as "core" | "resource", archive, target: generation, version: metadata.version, core: core?.path, coreVersion: core?.version };
         Object.assign(metadata, await this.jobRunner(config));
       } finally { await rm(archive, { force: true }); }
-      const manifest = { ...metadata, ...await snapshotIntegrity(generation), path: generation, sha256: digest, validatedAt: new Date().toISOString() };
+      const integrity = await snapshotIntegrity(generation);
+      if (channel === 'core' && metadata.releaseChannel !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')) throw new Error('核心更新通道已改变，已取消旧通道候选，请重新检查');
+      const manifest = { ...metadata, ...integrity, path: generation, sha256: digest, validatedAt: new Date().toISOString() };
       await writeFile(path.join(generation, "manifest.json"), JSON.stringify(manifest));
+      if (channel === 'core' && metadata.releaseChannel !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')) throw new Error('核心更新通道已改变，已取消旧通道候选，请重新检查');
       this.store.put("staged", channel, manifest);
       await this.pruneVersions();
+      if (channel === 'core' && metadata.releaseChannel !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')) throw new Error('核心更新通道已改变，已取消旧通道候选，请重新检查');
       return this.change(channel, { status: "staged", progress: 100, message: "快照已校验，等待在空闲边界生效" });
     } catch (error) {
       await rm(generation, { recursive: true, force: true }).catch(() => {});
@@ -563,6 +582,16 @@ export class UpdateService {
     this.channel(channel);
     const staged = this.store.get("staged", channel);
     if (!staged) throw new RpcError(-32020, "没有已经校验的候选快照");
+    if (channel === 'core' && (staged.releaseChannel ?? 'stable') !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')) {
+      this.coreChannelChanged();
+      throw new RpcError(-32020, '核心更新通道已改变，请重新检查并准备更新');
+    }
+    const current = this.channel(channel).currentVersion;
+    if (channel === 'core' && releaseVersion(current) && releaseVersion(staged.version) && compareReleaseVersions(staged.version, current) < 0) {
+      this.store.delete('staged', channel); this.store.delete('update_metadata', channel);
+      this.change(channel, { status: 'failed', latestVersion: null, progress: 0, message: '候选版本低于当前核心，拒绝自动降级，请重新检查' });
+      throw new RpcError(-32020, '候选版本低于当前核心，拒绝自动降级，请重新检查');
+    }
     if (this.busy()) return this.change(channel, { status: "waiting_idle", message: "等待当前任务结束后热切换" });
     const combo = this.store.get("active", "combo", {}), next = { ...combo };
     if (channel === "core") { next.core = staged; next.resource = staged; }

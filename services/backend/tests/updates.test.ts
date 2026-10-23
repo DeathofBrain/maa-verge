@@ -558,6 +558,35 @@ test("failed candidate reconnection restores original pointer and reinitializes 
   expect(store.get("staged", "core")).toBeDefined();
 });
 
+test('changing core release channel invalidates staged preview and rejects its activation', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  store.put('settings', 'main', { coreUpdateChannel: 'preview' }); source.coreVersion = 'v6.22.0-beta.1';
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core');
+  const preview = store.get('staged', 'core'); expect(preview.releaseChannel).toBe('preview');
+  store.put('settings', 'main', { coreUpdateChannel: 'stable' });
+  await expect(updates.activate('core')).rejects.toThrow('通道已改变');
+  expect(store.get('staged', 'core')).toBeUndefined(); expect(store.get('active', 'combo')).toBeUndefined();
+  expect(await Bun.file(path.join(preview.path, 'manifest.json')).exists()).toBe(true);
+  await updates.close();
+});
+
+test('cached metadata and staged packages cannot downgrade a core after explicit rollback restores a newer version', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource(), updates = fixtureUpdates(root, store, () => false, source);
+  source.coreVersion = 'v6.20.0'; await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const older = store.get('active', 'combo').core;
+  source.coreVersion = 'v6.21.0'; await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await updates.rollback('core'); source.coreVersion = 'v6.20.0'; await updates.check('core');
+  await updates.rollback('core');
+  expect(updates.channel('core').currentVersion).toBe('v6.21.0');
+  await expect(updates.prepare('core')).rejects.toThrow('拒绝自动降级');
+  expect(updates.channel('core').currentVersion).toBe('v6.21.0');
+  store.put('staged', 'core', { ...older, releaseChannel: 'stable' });
+  await expect(updates.activate('core')).rejects.toThrow('拒绝自动降级');
+  expect(updates.channel('core').currentVersion).toBe('v6.21.0');
+  await updates.close();
+});
+
 test("restart marks interrupted preparations failed; stable channel rejects downgrade", async () => {
   const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
   source.coreVersion = 'v6.21.0';
