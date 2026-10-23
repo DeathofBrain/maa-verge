@@ -50,40 +50,20 @@ jobs:
 
   application:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/linux-ci-image
+      - uses: actions/cache@v4
         with:
-          node-version-file: .node-version
-          cache: pnpm
-      - uses: astral-sh/setup-uv@v6
-        with:
-          # An exact version avoids the GitHub API request to discover latest.
-          version: '0.13.5'
-          enable-cache: true
-      - run: pnpm install --frozen-lockfile
-      - run: uv sync --frozen
-      - run: node tools/setup-bun.mjs
-      - name: Test build environment diagnostics
-        run: node --test tools/tests/environment.test.mjs tools/tests/vite-cache.test.mjs tools/tests/process-tree.test.mjs tools/tests/dev-mode.test.mjs tools/tests/release-assets.test.mjs tools/tests/app-updater-release.test.mjs tools/tests/runtime-notices.test.mjs tools/tests/setup-aria2.test.mjs tools/tests/windows-installer.test.mjs
-      - run: pnpm contracts:check
-      - run: pnpm -r check
-      - name: Validate generated public and worker contracts
-        run: node --test packages/contracts/test/validators.test.mjs
-      - name: Test TypeScript backend without real devices or models
-        run: pnpm test:runtime
-      - run: uv run --frozen ruff check services/runtime
-      - name: Type check runtime for supported platforms
+          path: .cache/ci
+          key: linux-application-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: linux-application-
+      - name: Check application and browser fixtures in the Linux image
         run: |
-          uv run --frozen mypy --platform linux
-          uv run --frozen mypy --platform darwin
-          uv run --frozen mypy --platform win32
-      - run: uv run --frozen pytest
-      - run: pnpm -r build
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+          docker run --rm --init --ipc=host --user "$(id -u):$(id -g)" \
+            --mount "type=bind,source=$PWD,target=/workspace" \
+            --env CI=true maa-verge-ci:local bash tools/ci/run.sh application
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -112,39 +92,63 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        if: runner.os != 'Linux'
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: pnpm
+          cache: ${{ runner.os != 'Linux' && 'pnpm' || '' }}
       - uses: astral-sh/setup-uv@v6
+        if: runner.os != 'Linux'
         with:
-          # Keep this aligned with the application job's verified version.
+          # Keep this aligned with tools/ci/Dockerfile.
           version: '0.13.5'
           enable-cache: true
       - uses: dtolnay/rust-toolchain@1.90.0
+        if: runner.os != 'Linux'
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+        if: runner.os != 'Linux'
         with:
           workspaces: apps/desktop/src-tauri
-      - name: Linux native prerequisites
+      - uses: ./.github/actions/linux-ci-image
+        if: runner.os == 'Linux'
+      - uses: actions/cache@v4
+        if: runner.os == 'Linux'
+        with:
+          path: |
+            .cache/ci
+            apps/desktop/src-tauri/target
+          key: linux-native-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: linux-native-
+      - name: Build and check Linux package in the CI image
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential pkg-config curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
+          docker run --rm --init --user "$(id -u):$(id -g)" \
+            --mount "type=bind,source=$PWD,target=/workspace" \
+            --env CI=true maa-verge-ci:local bash tools/ci/run.sh native
       - run: pnpm install --frozen-lockfile
+        if: runner.os != 'Linux'
       - run: uv sync --frozen
+        if: runner.os != 'Linux'
       - run: node tools/setup-bun.mjs
+        if: runner.os != 'Linux'
       - name: Verify native build environment
+        if: runner.os != 'Linux'
         run: pnpm run doctor --native
       - name: Install pinned bundled aria2 and verify HTTPS support
+        if: runner.os != 'Linux'
         run: node tools/setup-aria2.mjs
       - name: Build C++ worker and run synthetic CTest fixtures
+        if: runner.os != 'Linux'
         run: node tools/build-core-worker.mjs
       - name: Test TypeScript backend
+        if: runner.os != 'Linux'
         run: pnpm test:runtime
       - run: node tools/check-native.mjs --required
+        if: runner.os != 'Linux'
       - name: Build unsigned package with standalone TypeScript service and C++ worker
+        if: runner.os != 'Linux'
         run: pnpm build
       - name: Verify Windows component uninstall hooks without installing the application
         if: runner.os == 'Windows'
@@ -153,7 +157,8 @@ jobs:
           MAAVERGE_INSTALLER_TOOLS_REQUIRED: '1'
       - name: Smoke packaged backend in clean Ubuntu 22.04 container
         if: runner.os == 'Linux'
-        run: pnpm test:clean-linux
+        # Run on the host so Docker bind paths and the non-root UID match.
+        run: node tools/smoke-clean-linux.mjs
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

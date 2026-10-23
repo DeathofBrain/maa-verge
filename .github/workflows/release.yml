@@ -78,36 +78,61 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
+        if: runner.os != 'Linux'
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-          cache: pnpm
+          cache: ${{ runner.os != 'Linux' && 'pnpm' || '' }}
       - uses: astral-sh/setup-uv@v6
+        if: runner.os != 'Linux'
         with:
           version: '0.13.5'
           enable-cache: true
       - uses: dtolnay/rust-toolchain@1.90.0
+        if: runner.os != 'Linux'
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+        if: runner.os != 'Linux'
         with:
           workspaces: apps/desktop/src-tauri
-      - name: Install Linux native prerequisites
+      - uses: ./.github/actions/linux-ci-image
         if: runner.os == 'Linux'
+      - uses: actions/cache@v4
+        if: runner.os == 'Linux'
+        with:
+          path: |
+            .cache/ci
+            apps/desktop/src-tauri/target
+          key: linux-native-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: linux-native-
+      - name: Build signed Linux installers in the CI image
+        if: runner.os == 'Linux'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential pkg-config curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
+          docker run --rm --init --user "$(id -u):$(id -g)" \
+            --mount "type=bind,source=$PWD,target=/workspace" \
+            --env CI=true --env TAURI_SIGNING_PRIVATE_KEY --env TAURI_SIGNING_PRIVATE_KEY_PASSWORD \
+            maa-verge-ci:local bash tools/ci/run.sh release
       - run: pnpm install --frozen-lockfile
+        if: runner.os != 'Linux'
       - run: uv sync --frozen
+        if: runner.os != 'Linux'
       - run: node tools/setup-bun.mjs
+        if: runner.os != 'Linux'
       - name: Compile and execute the pinned Bun probe on this host
+        if: runner.os != 'Linux'
         run: node tools/probe-bun.mjs
       - name: Prepare and verify the pinned Windows downloader
         if: runner.os == 'Windows'
         run: node tools/setup-aria2.mjs
       - name: Verify checks with isolated synthetic fixtures
+        if: runner.os != 'Linux'
         run: pnpm check
       - name: Build installers and version-bound updater signatures
+        if: runner.os != 'Linux'
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}

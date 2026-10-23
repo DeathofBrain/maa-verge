@@ -128,6 +128,8 @@ python tools/clean-codex-worktrees.py --force           # 允许删除脏 worktr
 
 ## 构建与持续集成
 
+Linux CI 使用基于 Ubuntu 22.04 的[构建镜像](ci-image.md)，从 checkout 构建并缓存工具链与 Chromium，统一 application 检查、Linux 未签名及签名打包环境；Windows/macOS 继续使用宿主工具链。镜像定义、版本来源、本地复现和干净容器检查的边界见该文档。
+
 `pnpm build` 先检查工作区并构建 React，再由 Bun 1.4.3 `--compile` 生成自包含 TypeScript 服务，构建并复制 C++20 worker、收集许可，执行包内及 Rust transport 集成 smoke，最后调用 Tauri 打包。生产 C++ 配置使用 `BUILD_TESTING=OFF`，不查找 Python；发行目录不包含 `.venv`、`node_modules` 或独立解释器安装。MaaCore 和游戏资源由运行期安装器下载。
 
 MaaCore 首装和更新从官方归档中选择性提取原生依赖与完整资源，跳过原 GUI 和 .NET/WPF；提取规则、上游参考和验证边界见 [maacore-runtime.md](maacore-runtime.md)。

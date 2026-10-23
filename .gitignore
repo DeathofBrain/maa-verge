@@ -3,6 +3,7 @@ node_modules/
 .venv/
 .tools/
 .bun-cache/
+.cache/ci/
 __pycache__/
 *.py[cod]
 *.egg-info/

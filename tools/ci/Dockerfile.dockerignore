@@ -1,0 +1,14 @@
+# Build context is an allowlist. Source, local configuration, credentials,
+# downloaded native runtimes and host-specific dependencies stay out.
+**
+!.node-version
+!.python-version
+!.bun-version
+!rust-toolchain.toml
+!package.json
+!pnpm-lock.yaml
+!tools/
+!tools/setup-bun.mjs
+!tools/ci/
+!tools/ci/Dockerfile
+!tools/ci/install.sh
