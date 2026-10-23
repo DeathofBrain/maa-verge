@@ -26,8 +26,9 @@ import type { RunTask } from '../../../packages/contracts/src/types';
 import { recordDrops, recordInfrastructure, RunArtifacts } from './execution-evidence';
 import { validateRunArtifactParams } from '../../../packages/contracts/src/validators.js';
 import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
-import { validateRecognitionParams } from '../../../packages/contracts/src/validators.js';
+import { validateRecognitionParams, validateItemResourceParams } from '../../../packages/contracts/src/validators.js';
 import { clearDeviceRecognition, parseRecognition, recognitionKey, recognitionSnapshot } from './recognition';
+import { itemResource, itemResourceNames } from './item-resources';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
@@ -123,8 +124,22 @@ export class Runtime {
         const settings = parseSettings(this.store.get('settings', 'main'));
         const profile = settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address);
         const clientType = params.clientType ?? this.store.get('device_client', device.id) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';
-        return recognitionSnapshot(this.store, device.id, params.kind, clientType);
+        const result = recognitionSnapshot(this.store, device.id, params.kind, clientType);
+        if (!result.items.length) return result;
+        const names = await itemResourceNames(this.store.get('active', 'combo', {}), clientType);
+        let size = Buffer.byteLength(JSON.stringify(result));
+        return { ...result, items: result.items.map(item => {
+          const name = names[item.id];
+          if (!name) return item;
+          const increase = Buffer.byteLength(JSON.stringify(name)) - Buffer.byteLength(JSON.stringify(item.name));
+          if (size + increase > 3 * 1024 * 1024) return item;
+          size += increase;
+          return { ...item, name };
+        }) };
       }
+      case 'resources.item':
+        if (!validateItemResourceParams(params)) throw new RpcError(-32602, '材料资源请求参数无效');
+        return itemResource(this.store.get('active', 'combo', {}), params.itemId, params.clientType);
       case 'home.info': {
         if (Object.keys(params).some(key => !['deviceId', 'clientType', 'refresh'].includes(key)) || (params.deviceId !== undefined && (typeof params.deviceId !== 'string' || !params.deviceId || params.deviceId.length > 200)) || (params.refresh !== undefined && typeof params.refresh !== 'boolean')) throw new RpcError(-32602, '主页信息请求参数无效');
         if (params.clientType !== undefined && !['Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'].includes(params.clientType)) throw new RpcError(-32602, '游戏客户端无效');

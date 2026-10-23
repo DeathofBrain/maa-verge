@@ -10,6 +10,7 @@ import './support-pages.css';
 import { useSettingsDraft } from './settings-draft';
 import { TaskConnectionSettings } from './TaskConnectionSettings';
 import { MultiInstanceSettings } from './MultiInstanceSettings';
+import RecognitionPanel, { type RecognitionClient } from './RecognitionPanel';
 import { resourceClientFor, resourceClientLabels, resourceVersionDetail, resourceVersionLabel, type ResourceClient } from './update-display';
 
 export interface SupportPageProps {
@@ -280,8 +281,9 @@ function eventPlanId(event: Event): string | undefined {
   return typeof event.data.planId === 'string' ? event.data.planId : run && typeof run === 'object' && 'planId' in run && typeof run.planId === 'string' ? run.planId : undefined;
 }
 
-export function ToolsPage({ snapshot, onOpenPlan, onCreateTaskPlan, searchQuery }: SupportPageProps) {
+export function ToolsPage({ snapshot, selectedDevice, busy, onAction, onOpenPlan, onCreateTaskPlan, searchQuery }: SupportPageProps) {
   const [tool, setTool] = useState<ToolId>('depot');
+  const [recognitionClients, setRecognitionClients] = useState<Record<string, RecognitionClient>>({});
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
   useEffect(() => {
     if (!searchQuery) return;
@@ -301,11 +303,12 @@ export function ToolsPage({ snapshot, onOpenPlan, onCreateTaskPlan, searchQuery 
   };
   const createLabel = tool === 'recruit' ? '配置只计算任务' : tool === 'games' ? '配置像素画任务' : tool === 'operators' ? '配置干员识别' : '配置仓库识别';
 
-  return <div className="sp-page"><PageHeading title="工具箱" text="识别、计算与本地数据，每项结果都有来源。" /><div className="sp-tools-layout"><nav className="sp-category-nav" aria-label="工具分类">{tools.map(({ id, label, icon: Icon }) => <button key={id} className={tool === id ? 'is-selected' : ''} aria-current={tool === id ? 'page' : undefined} onClick={() => { setTool(id); setSelectedEvent(null); }}><Icon size={18} />{label}</button>)}</nav><div className="sp-tool-content"><div className="sp-content-heading"><div><h2>{active.label}</h2><p>{tool === 'inventory' ? '目标库存与补货流程' : tool === 'data' ? '当前本地事件与数据导出' : '配置任务，执行后查看相关记录'}</p></div>{tool !== 'data' && <button className="button primary" onClick={createTool}><Plus size={16} />{createLabel}</button>}</div>
-      {tool === 'inventory' && <Notice>目标库存、持久仓库缓存与自动补货尚未接入。可以先配置仓库识别；本页不会把旧事件当作当前库存。</Notice>}
+  return <div className="sp-page"><PageHeading title="工具箱" text="识别、计算与本地数据，每项结果都有来源。" /><div className="sp-tools-layout"><nav className="sp-category-nav" aria-label="工具分类">{tools.map(({ id, label, icon: Icon }) => <button key={id} className={tool === id ? 'is-selected' : ''} aria-current={tool === id ? 'page' : undefined} onClick={() => { setTool(id); setSelectedEvent(null); }}><Icon size={18} />{label}</button>)}</nav><div className="sp-tool-content"><div className="sp-content-heading"><div><h2>{active.label}</h2><p>{tool === 'inventory' ? '目标库存与补货流程' : tool === 'data' ? '当前本地事件与数据导出' : tool === 'depot' ? '识别物品数量，查看与导出本机采集结果' : tool === 'operators' ? '识别已拥有干员及练度，查看与导出采集结果' : '配置任务，执行后查看相关记录'}</p></div>{tool !== 'data' && <button className="button primary" onClick={createTool}><Plus size={16} />{createLabel}</button>}</div>
+      {tool === 'inventory' && <Notice>目标库存与自动补货尚未接入。可先在“仓库”中识别并查看本机保存的物品数量。</Notice>}
+      {(tool === 'depot' || tool === 'operators') && <RecognitionPanel key={`${tool}:${selectedDevice}`} kind={tool === 'depot' ? 'depot' : 'operators'} snapshot={snapshot} selectedDevice={selectedDevice} busy={busy} onAction={onAction} clientType={recognitionClients[selectedDevice]} onClientChange={(value) => setRecognitionClients((previous) => ({ ...previous, [selectedDevice]: value }))} />}
       {tool === 'recruit' && <Notice>“只计算”任务预设招募次数为 0、关闭确认与刷新。请在执行前核对，实际招募使用日常中的公开招募任务。</Notice>}
       {tool === 'games' && <Notice>目前只开放经审核的资源入口。像素画任务使用已有 Custom 执行路径。</Notice>}
       {tool !== 'data' && <Section title="相关任务配置" description="与日常、专项任务使用同一任务表。">{planEntries.length ? <div className="sp-tool-plans">{planEntries.map(({ plan, task, index }) => <button key={`${plan.id}:${index}`} onClick={() => onOpenPlan(plan, task.type, index)}><FileJson size={17} /><span><strong>{plan.name}</strong><small>第 {index + 1} 条 · {taskLabels[task.type]}{task.type === 'Recruit' ? ` · ${Number(task.params.times ?? 4) === 0 ? '仅计算' : '实际招募'}` : ''}</small></span><ChevronRight size={16} /></button>)}</div> : <div className="sp-inline-empty"><FolderOpen size={21} /><div><strong>还没有相关任务</strong><p>创建配置后，可在任务工作台调整参数并执行。</p></div><button className="button secondary" onClick={createTool}>创建配置</button></div>}</Section>}
-      <Section title={tool === 'data' ? '本地事件' : '相关执行事件'} description={tool === 'data' ? `当前快照包含 ${snapshot.events.length} 条事件。` : '只展示当前快照中的相关记录，原生识别结果解析与结构化导出仍待接入。'}>{events.length ? <div className="sp-event-layout"><div className="sp-tool-events" aria-label="工具执行事件">{events.map((item) => <button key={item.id} className={event?.id === item.id ? 'is-selected' : ''} onClick={() => setSelectedEvent(item.id)}><time>{formatDate(item.createdAt)}</time><strong>{item.message}</strong><small>{item.type}</small></button>)}</div><div className="sp-event-detail">{event && <><div><h3>{event.message}</h3><time>{formatDate(event.createdAt)}</time></div><pre>{JSON.stringify(event.data, null, 2)}</pre><button className="button secondary" onClick={() => downloadJson(`maaverge-event-${event.id}.json`, event)}><Download size={15} />导出此事件</button></>}</div></div> : <Empty icon={<Database size={28} />} title="尚无相关结果" text="执行工具任务后查看相关事件；任务成功与识别数据完整性仍需分别核对。" />}{events.length > 0 && <div className="sp-form-actions"><button className="button secondary" onClick={() => downloadJson(`maaverge-${tool}-events.json`, events)}><Download size={15} />导出相关事件</button></div>}</Section>
+      <Section title={tool === 'data' ? '本地事件' : '相关执行事件'} description={tool === 'data' ? `当前快照包含 ${snapshot.events.length} 条事件。` : '当前快照中的执行记录；仓库和干员的采集结果在上方独立展示。'}>{events.length ? <div className="sp-event-layout"><div className="sp-tool-events" aria-label="工具执行事件">{events.map((item) => <button key={item.id} className={event?.id === item.id ? 'is-selected' : ''} onClick={() => setSelectedEvent(item.id)}><time>{formatDate(item.createdAt)}</time><strong>{item.message}</strong><small>{item.type}</small></button>)}</div><div className="sp-event-detail">{event && <><div><h3>{event.message}</h3><time>{formatDate(event.createdAt)}</time></div><pre>{JSON.stringify(event.data, null, 2)}</pre><button className="button secondary" onClick={() => downloadJson(`maaverge-event-${event.id}.json`, event)}><Download size={15} />导出此事件</button></>}</div></div> : <Empty icon={<Database size={28} />} title="尚无相关结果" text="执行工具任务后查看相关事件；任务成功与识别数据完整性仍需分别核对。" />}{events.length > 0 && <div className="sp-form-actions"><button className="button secondary" onClick={() => downloadJson(`maaverge-${tool}-events.json`, events)}><Download size={15} />导出相关事件</button></div>}</Section>
     </div></div></div>;
 }

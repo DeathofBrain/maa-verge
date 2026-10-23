@@ -43,6 +43,10 @@ stdio 通知方法保留 `runtime.event`；Tauri 宿主将其映射为合法事�
 
 反馈 PNG 保存到当前数据根的 `run-artifacts/<runId>/<artifactId>.png`，每任务最多 3 张、每次执行最多 12 张，每张低于 3 MiB 且不超过 8192 边长/16777216 像素。SQLite、事件和快照只保存尺寸、标签与 ID，通过类型化 `run.artifact({runId,artifactId})` 显式读取 `{mimeType,data}`；核验执行归属，不接受路径，不上传图片。`capturedAt` 是服务取帧时间。取图失败保留实际核心结果并记录诊断；Python debug 参考没有执行产物接口。
 
+仓库/干员使用 `recognition.get({deviceId,kind,clientType?})` 按需读取本机快照，`kind` 为 `depot` / `operators`。返回设备、客户端、采集时间、来源执行 ID 和物品/干员数组；无成功采集时两个时间/执行字段为空、数组为空，不从旧事件推断库存。服务仅在有效的 `DepotInfo` / `OperBoxInfo` 最终回调、匹配任务成功且核心安全空闲后事务保存结果与同步时间；单次及 UserDataUpdate 均支持。按设备/客户端/类型隔离，确认账号或客户端切换后清除此设备的快照，失败不覆盖旧成功数据。物品最多 10000 项、干员最多 2000 项，保存的结果数组限制为 2 MiB；查询时从启用资源补全物品名称，响应限制为 3 MiB，仍低于桌面 NDJSON 上限。`own`、精英化、等级、潜能和星级保持核心值，潜能/星级从 1 开始；负数保留未识别语义。
+
+`resources.item({itemId,clientType?})` 只读取当前启用不可变 MaaResource 中的物品目录和 PNG，返回名称、资源版本、MIME 和 base64，缺失时名称/图像可为空。不接受文件路径，不联网下载；外服名称只读目标客户端索引，图片可回退共用模板，B服复用官服。固定目录读取拒绝链接、越界及超限文件，PNG 校验后最多 512 KiB；前端通过类型化 RPC 显示仓库与执行材料图，按资源版本缓存，缺图显示通用图标。Python debug 参考尚无这两个接口，明确报错而不切换后端。
+
 高频预览的运行状态查询使用 `objects` 上仅覆盖运行中记录的 `active_run_device` 索引；表格式、业务值、隐式 rowid 和请求去重数据保持兼容，首次接管备份在创建索引前完成。服务退出时先启动已有 worker 的有界关闭，再等待请求收尾，避免挂起的取帧请求让设备锁滞留在退出后的原生进程中。
 
 核心精简提取的 `e6e8493` 和接入更新的 `103bc99` 已进入本次迁移基线，规则与测试已迁至 TypeScript；不需要另行重复应用。这部分只减少落盘范围，不减少官方完整包的下载流量。提取白名单和历史 Windows 数据见 [maacore-runtime.md](maacore-runtime.md)。

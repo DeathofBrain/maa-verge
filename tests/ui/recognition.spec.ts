@@ -69,6 +69,7 @@ test('warehouse recognition shows decoded resource images, searches and exports 
   expect(await downloadResult(page, '导出仓库结果')).toMatchObject({ deviceId: 'mock-device-1', kind: 'depot', clientType: 'Official', runId: started.runs[0].id, items: [{ id: '30012', name: '固源岩', quantity: 42 }, { id: '30013', name: '固源岩组', quantity: 7 }, { id: 'fixture-no-icon', name: '合成无图材料', quantity: 3 }], operators: [] });
   await page.screenshot({ path: testInfo.outputPath('warehouse-results.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.locator('.sidebar').evaluate((sidebar) => sidebar.getBoundingClientRect().right <= 0)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('warehouse-mobile.png'), fullPage: true });
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -98,12 +99,18 @@ test('operator recognition exports owned progress and isolates devices and clien
   await expect(operators(page).getByRole('table')).toHaveCount(0);
   await expect(operators(page)).toContainText('尚无干员识别结果');
   await expect(operators(page).getByRole('button', { name: '导出干员结果', exact: true })).toHaveCount(0);
+  await openTools(page, '仓库');
+  await expect(page.getByLabel('识别结果客户端', { exact: true })).toHaveValue('YoStarJP');
+  await openTools(page, '干员');
+  await expect(page.getByLabel('识别结果客户端', { exact: true })).toHaveValue('YoStarJP');
   await page.getByLabel('识别结果客户端', { exact: true }).selectOption('Official');
   await expect(amiya).toBeVisible();
   const second = await page.evaluate(async () => (window as HarnessWindow).runtimeHarness.call('device.connect', { address: '127.0.0.1:5557', name: '第二个模拟器' })) as { id: string };
   await page.getByLabel('选择设备', { exact: true }).selectOption(second.id);
   await expect(operators(page).getByRole('table')).toHaveCount(0);
+  await page.getByLabel('识别结果客户端', { exact: true }).selectOption('YoStarEN');
   await page.getByLabel('选择设备', { exact: true }).selectOption('mock-device-1');
+  await expect(page.getByLabel('识别结果客户端', { exact: true })).toHaveValue('Official');
   await expect(amiya).toBeVisible();
 });
 
