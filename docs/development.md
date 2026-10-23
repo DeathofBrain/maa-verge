@@ -4,7 +4,7 @@
 
 版本来源为 `.node-version`（Node 24）、`package.json#packageManager`（pnpm 10）、`.bun-version`（Bun 1.4.3）和 `rust-toolchain.toml`。C++ worker 使用 CMake 3.25+ 与 C++20。`.python-version` 的 Python 3.12 仅供保留的参考实现和合成测试。依赖由 `pnpm-lock.yaml`、`uv.lock`、`apps/desktop/src-tauri/Cargo.lock` 及 CMake 中的源码哈希锁定。
 
-CI 在 `.github/workflows/ci.yml` 的 application 和 native 作业中统一固定 uv 0.13.5，避免安装前通过 GitHub API 查询最新版；升级时同时更新两处并检查冻结同步和原生合成测试。固定版本仍需访问对应发行资产及依赖下载源，不能消除全部网络故障。
+CI 在常规检查与签名发行工作流中统一固定 uv 0.13.5，避免安装前通过 GitHub API 查询最新版；升级时同时更新相关作业并检查冻结同步和原生合成测试。固定版本仍需访问对应发行资产及依赖下载源，不能消除全部网络故障。
 
 每台机器从相同 Git 提交重新执行引导脚本。不要复制其他电脑的 `node_modules`、`.venv`、`.tools`、Rust target 或产品数据库。
 
@@ -156,7 +156,7 @@ Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runti
 
 Windows 完整构建后可运行 `pnpm test:desktop-webview`，需要本机已有 WebView2。工具通过独立环回 CDP 端口操作真实 release 窗口，使用专属 native 空设备数据和 WebView profile，预先禁用自动连接和下载，检查初始化异常、Agent 提案、设置持久化及正常关窗；测试前须先退出其他 Maa Verge 实例。日志与截图保留在忽略目录 `build/webview-smoke`，临时数据和 profile 退出后清理。该项由宿主 Node/Playwright 驱动，不代表卸载开发工具后的干净系统安装验收。
 
-macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的签名、公证和下载 MaaCore 后的加载。Windows 签名和 Tauri 应用自动更新发布源也需要发行凭据；当前 CI 不自动发布。
+macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和下载 MaaCore 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；手动 `release.yml` 四宿主工作流只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、18 项附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
 
 ## VS Code 的 C++ 配置
 
