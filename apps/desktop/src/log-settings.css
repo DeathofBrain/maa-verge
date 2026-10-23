@@ -1,0 +1,76 @@
+.log-settings {
+  margin-top: 18px;
+}
+
+.log-settings-path,.log-settings-locations dd {
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.log-settings-actions {
+  justify-content: flex-start;
+}
+
+.log-retention-form {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 8px;
+}
+
+.log-settings-dialog {
+  color: var(--text);
+  width: min(560px,calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  margin: auto;
+}
+
+.log-settings-dialog::backdrop {
+  background: #11182759;
+}
+
+.log-settings-locations {
+  margin: 16px 0 0;
+  font-size: 13px;
+}
+
+.log-settings-locations>div+div {
+  margin-top: 14px;
+}
+
+.log-settings-locations dt {
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.log-settings-locations dd {
+  margin: 0;
+  font-family: ui-monospace,SFMono-Regular,Consolas,monospace;
+  line-height: 1.7;
+}
+
+.log-settings-warnings {
+  background: var(--accent-soft);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.8;
+  padding: 12px 14px;
+  margin-top: 18px;
+  overflow-wrap: anywhere;
+}
+
+.log-settings-warnings ul {
+  padding-left: 18px;
+  margin: 6px 0 0;
+}
+
+@media (max-width: 600px) {
+  .log-retention-form .sp-setting-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .log-settings-dialog {
+    padding: 20px 18px;
+  }
+}

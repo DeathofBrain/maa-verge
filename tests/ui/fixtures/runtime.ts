@@ -36,7 +36,7 @@ const defaults = (): Snapshot => ({
     { id: 'core', currentVersion: 'v6.19.0', latestVersion: null, status: 'idle', progress: 0, message: '演示核心版本，未加载原生库' },
     { id: 'resource', currentVersion: '2026-10-18', latestVersion: null, status: 'idle', progress: 0, message: '演示资源快照，不访问网络' },
   ],
-  settings: { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' }, capture: { method: 'adb', emulatorPath: '', instanceIndex: 0 } },
+  settings: { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', logRetentionDays: 7, budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' }, capture: { method: 'adb', emulatorPath: '', instanceIndex: 0 } },
   events: [],
 });
 
@@ -167,6 +167,12 @@ function mockAddress(value: unknown): string {
 export async function fixtureRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
     case 'app.snapshot': return clone({ ...state, runs: state.runs.map(({ tasks: _tasks, ...summary }) => summary) });
+    case 'logs.info': return { directory: navigator.platform.startsWith('Mac') ? '/Users/synthetic/Library/Logs/MAAVerge' : navigator.platform.startsWith('Win') ? 'C:\\Maa Verge\\log' : '/home/synthetic/.local/state/MAAVerge/log', retentionDays: state.settings.logRetentionDays ?? 7 };
+    case 'logs.export': {
+      const { directory } = await fixtureRpc('logs.info', {}) as { directory: string };
+      return { directory, path: directory + (directory.startsWith('C:') ? '\\' : '/') + 'maaverge-' + crypto.randomUUID() + '.log', bytes: 2048, warnings: [] };
+    }
+    case 'logs.clean': return { removedFiles: 2, removedBytes: 2048, skippedFiles: 1, warnings: [] };
     case 'stages.list': {
       const clientType = String(params.clientType || 'Official');
       const jp = clientType === 'YoStarJP';
@@ -354,6 +360,7 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
     case 'settings.save': {
       const settings = clone(params.settings) as Settings;
       if (!settings?.budgets || Object.values(settings.budgets).some((value) => !Number.isInteger(value) || value < 0 || value > 100)) throw new Error('预算必须为 0–100 的整数');
+      if (settings.logRetentionDays !== undefined && ![0, 7, 14, 30].includes(settings.logRetentionDays)) throw new Error('日志保留天数无效');
       state.settings = settings; emit('settings.saved', '本地演示设置已保存'); return clone(settings);
     }
     default: throw new Error('尚未实现的方法：' + method);
