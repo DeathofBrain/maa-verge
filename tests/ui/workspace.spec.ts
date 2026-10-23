@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures/desktop';
+import { expect, test, type HarnessWindow } from './fixtures/desktop';
 
 const wb = (page: Page) => page.getByRole('region', { name: '任务表工作台', exact: true });
 const dock = (page: Page) => page.getByRole('contentinfo', { name: '执行状态栏', exact: true });
@@ -231,18 +231,21 @@ test('a prepared update waits for the running device before activating', async (
   await expect(core.locator('.channel-version')).toHaveText('v6.20.0');
 });
 
-test('the runtime rejects deleting an executing task table and displays the error', async ({ page }) => {
+test('executing task tables cannot be deleted through the editor or runtime', async ({ page }) => {
   await openWorkspace(page);
   await wb(page).getByRole('button', { name: '开始日常', exact: true }).click();
   await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
-  await tab(page, '任务表设置');
-  await wb(page).getByRole('button', { name: '删除任务表', exact: true }).click();
-  const confirmation = page.getByRole('dialog', { name: '删除任务表', exact: true });
-  await confirmation.getByRole('button', { name: '删除任务表', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('请先停止执行中的计划');
-  await expect(confirmation).toBeVisible();
-  await confirmation.getByRole('button', { name: '取消', exact: true }).click();
+  const remove = wb(page).getByRole('button', { name: '删除任务表', exact: true });
+  await expect(remove).toBeVisible();
+  await expect(remove).toBeDisabled();
+  await expect(remove).toHaveAttribute('title', '请先停止此任务表的执行，再删除任务表');
+  expect(await page.evaluate(async () => {
+    try { await (window as HarnessWindow).runtimeHarness.call('plan.delete', { id: 'daily' }); return ''; }
+    catch (cause) { return cause instanceof Error ? cause.message : String(cause); }
+  })).toContain('请先停止执行中的计划');
   await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
+  await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
+  await expect(remove).toBeEnabled();
 });
 
 test('mobile navigation and all primary pages fit the viewport', async ({ page }) => {
