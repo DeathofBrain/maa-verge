@@ -654,6 +654,29 @@
   color: var(--muted,#697587);
 }
 
+.sp-release-notes {
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.sp-app-install-modal {
+  z-index: 100;
+}
+
+.sp-release-notes summary {
+  color: var(--accent,#4965d4);
+  cursor: pointer;
+}
+
+.sp-release-notes pre {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.7;
+}
+
 .sp-channel-actions {
   display: flex;
   flex-direction: column;
