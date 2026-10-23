@@ -35,7 +35,8 @@
 - 补齐前后端 JavaScript 生产依赖、各平台 Cargo 运行依赖与 Rust 标准库许可。缺正文的上游 crate 按精确版本保留固定来源与哈希，未知缺失阻止打包；不再只收集后端归档库。版本说明记录应用标签、固定 Bun/WebKit 来源和重建入口。
 - Windows 宿主实际许可收集通过：13 个 JavaScript 依赖与 176 个 Rust 运行 crate；同一宿主解析锁定的 Linux x64、macOS x64/arm64 依赖图并收集许可，分别为 243、191、191 个 Rust crate，另附标准库声明。这些依赖图检查不等同于对应系统构建或安装验收。
 - 新增 GitHub Packages 工作流，从已发布 Release 严格核对 7 个安装包和 `SHA256SUMS.txt`，发布 `ghcr.io/deathofbrain/maa-verge:<版本号>` 的双架构安装包集合，拒绝覆盖已有版本；上传后按不可变摘要提取并再次核对全部文件。README 增加入口与 [提取说明](packages.md)；镜像不启动游戏或桌面应用。
-- 合并后 32 项工程测试中 30 项通过、2 项 Unix 进程组测试在 Windows 跳过，包含 9 项许可收集和 11 项发布校验测试。此前提交 `159b95a` 的 [Checks](https://github.com/DeathofBrain/maa-verge/actions/runs/39921136697) 已通过应用检查、四宿主探针、四平台安装包构建及 Linux 干净容器后端测试；最终安装包须使用包含本次补齐的对应提交重新构建。
+- 合并后 32 项工程测试中 30 项通过、2 项 Unix 进程组测试在 Windows 跳过，包含 9 项许可收集和 11 项发布校验测试。发行提交 `eb6fafb00b322f44d962c406696e0605a27d2ada` 的 [Checks](https://github.com/DeathofBrain/maa-verge/actions/runs/39923647573) 全部 9 项通过，覆盖应用检查、四宿主探针、四平台安装包构建及 Linux 干净容器后端测试；Linux 下载源阻塞后仅重跑该作业，保留其他成功产物。实际安装包的许可文件已核对，Linux AppDir 与 DEB 目录的许可文件逐一哈希相同。
+- [v0.1.0 开发预览](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.0) 已发布，标签精确指向上述发行提交，7 个安装包与 `SHA256SUMS.txt` 的远端大小、摘要均与本地一致。[GitHub Packages](https://github.com/DeathofBrain/maa-verge/pkgs/container/maa-verge) 已公开发布 `0.1.0`，[发布工作流](https://github.com/DeathofBrain/maa-verge/actions/runs/39930002910) 已按不可变摘要提取并核验全部文件，另已确认匿名读取和源码标签；镜像摘要为 `sha256:ece5eaaea8a415f9775d0d4ac9aec307bea20fcbea2dcc9532f9c5ce29d0091e`。以上不代表完成正式签名、公证、交互安装或新增真实游戏验收。
 
 ### 本次 v0.1.0 发行文档与截图（Windows x64，2026-10-23）
 
