@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Check, ChevronDown, Circle, Clock3, ImageIcon, Layers, ListChecks, LoaderCircle, Monitor, Package, Square, Terminal, TriangleAlert } from 'lucide-react';
 import { localizeExecutionMessage, rpc, taskLabels, type Plan, type Run, type RunArtifact, type RunTask, type Snapshot } from '@maaverge/contracts';
 import MaterialIcon from './MaterialIcon';
@@ -9,7 +9,7 @@ type Props = {
   snapshot: Snapshot;
   run?: Run;
   pending: Set<string>;
-  onSelectRun: (run: Run) => void;
+  onRunUpdate: (run: Run) => void;
   onStop: (run: Run) => Promise<boolean>;
   onEdit: (plan: Plan) => void;
   onPrepare: () => void;
@@ -33,12 +33,10 @@ const duration = (start: string, end: string | null | undefined, now: number) =>
   return seconds >= 3600 ? `${Math.floor(seconds / 3600)} 小时 ${Math.floor(seconds % 3600 / 60)} 分` : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
 };
 
-export default function ExecutionPage({ snapshot, run: summary, pending, onSelectRun, onStop, onEdit, onPrepare }: Props) {
+export default function ExecutionPage({ snapshot, run: summary, pending, onRunUpdate, onStop, onEdit, onPrepare }: Props) {
   const [detail, setDetail] = useState<Run>();
   const [loadError, setLoadError] = useState('');
-  const summaryRef = useRef(summary);
-  summaryRef.current = summary;
-  const run = detail?.id === summary?.id && detail?.status === summary?.status ? detail : summary;
+  const run = detail?.id === summary?.id && (detail?.status === summary?.status || detail?.status !== 'running') ? detail : summary;
   const [referenceRun, setReferenceRun] = useState<string | null>(null);
   const [clock, setClock] = useState(Date.now);
   useEffect(() => {
@@ -51,7 +49,8 @@ export default function ExecutionPage({ snapshot, run: summary, pending, onSelec
         const value = await readRunDetail(id);
         if (cancelled) return;
         setDetail(value); setLoadError('');
-        if (summaryRef.current?.status === 'running' || value.status === 'running') timer = window.setTimeout(() => { void poll(); }, 1000);
+        onRunUpdate(value);
+        if (value.status === 'running') timer = window.setTimeout(() => { void poll(); }, 1000);
       } catch (cause) {
         if (cancelled) return;
         setLoadError(cause instanceof Error ? cause.message : String(cause));
@@ -60,7 +59,7 @@ export default function ExecutionPage({ snapshot, run: summary, pending, onSelec
     };
     void poll();
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [summary?.id]);
+  }, [summary?.id, onRunUpdate]);
   useEffect(() => {
     if (run?.status !== 'running') return;
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
@@ -93,7 +92,7 @@ export default function ExecutionPage({ snapshot, run: summary, pending, onSelec
   return <section className="exec-page" aria-label="任务表执行页面">
     <header className="exec-header"><div><div className="exec-eyebrow"><ListChecks size={14} />任务表执行<span className={`pill ${run.status}`}>{runNames[run.status]}</span></div><h1>{run.planName || plan?.name || '已删除的任务表'}</h1><p>{localizeExecutionMessage(run.message)}</p></div><div className="exec-actions"><button className="button secondary" onClick={() => plan ? onEdit(plan) : onPrepare()}><ArrowLeft size={15} />返回任务设置</button>{run.status === 'running' && <button className="button danger" disabled={pending.has(`stop-${run.id}`)} onClick={() => void onStop(run)}><Square size={13} />停止执行</button>}</div></header>
     {loadError && <p className="error-banner" role="alert">任务结果读取失败：{loadError}</p>}
-    <div className="exec-overview"><label className="exec-run-picker"><span>查看执行</span><select className="text-input" aria-label="执行页选择记录" value={run.id} onChange={(event) => { const next = snapshot.runs.find((item) => item.id === event.target.value); if (next) onSelectRun(next); }}>{snapshot.runs.map((item) => <option key={item.id} value={item.id}>{item.planName || snapshot.plans.find((p) => p.id === item.planId)?.name || '任务表'} · {snapshot.devices.find((d) => d.id === item.deviceId)?.name || item.deviceId} · {dateTime(item.startedAt)}</option>)}</select></label><div className="exec-meta"><span><Monitor size={14} />{device?.name || run.deviceId}</span><span><Clock3 size={14} />{duration(run.startedAt, run.finishedAt, clock)}</span><span title={dateTime(run.startedAt)}>开始于 {new Date(run.startedAt).toLocaleTimeString('zh-CN', { hour12: false })}</span></div></div>
+    <div className="exec-overview"><div className="exec-meta"><span><Monitor size={14} />{device?.name || run.deviceId}</span><span><Clock3 size={14} />{duration(run.startedAt, run.finishedAt, clock)}</span><span title={dateTime(run.startedAt)}>开始于 {new Date(run.startedAt).toLocaleTimeString('zh-CN', { hour12: false })}</span>{run.finishedAt && <span>结束于 {dateTime(run.finishedAt)}</span>}</div></div>
     <div className="exec-layout">
       <aside className="exec-task-panel" aria-label="本次执行任务"><div className="exec-panel-heading"><h2>任务进度</h2><span>{completed} / {tasks.length}</span></div><div className="exec-progress" role="progressbar" aria-label="整表执行进度" aria-valuenow={run.progress} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${run.progress}%` }} /></div>{tasks.length ? <ol className="exec-tasks">{tasks.map((task, index) => <li key={task.index}><div className={`exec-task ${task.status}`} aria-current={task.status === 'running' ? 'step' : undefined}><span className="exec-task-icon"><TaskStatusIcon status={task.status} /></span><span className="exec-task-info"><strong>{index + 1}. {taskLabels[task.type] || '任务'}</strong><small>{taskNames[task.status]}</small>{task.startedAt && <small>{duration(task.startedAt, task.finishedAt, clock)}</small>}</span></div></li>)}</ol> : <p className="exec-placeholder">{!detail && !loadError ? '正在读取任务结果…' : '此历史记录未保存逐任务结果。'}</p>}<p className="exec-snapshot-note">本页显示开始执行时的任务。修改设置用于下次执行。</p></aside>
       <div className="exec-results">
