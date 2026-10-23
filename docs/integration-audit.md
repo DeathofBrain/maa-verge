@@ -1,5 +1,28 @@
 # 工作树与分支整合记录
 
+## 全部工作树与用户 README 合入 dev（2026-10-23）
+
+基线为 `dev@8e7a71d`，检查主区及八个附加 worktree。主区 20 个改动路径先保存为 `86ac38d`，其完整文件树与原始 Git 快照 `710e2aa` 一致；保留用户对 README、skill 和设计说明删除的调整。三个脏来源的已跟踪及未跟踪文件均保存为独立快照提交，未改变原工作树索引或文件。快照清单位于本机 `.git/integration-snapshots/20261023-221300/manifest.json`，四份快照分支使用 `codex/pre-integration-20261023-221300-` 前缀，分别对应 `dev`、`app-release-source`、`app-update-ui` 和 `remove-github-packages`。
+
+| 来源工作区 | 整合结果与证据 |
+| --- | --- |
+| `execution-monitor` | `5791a2c` 经 `631ea9b` 合入；主区较新的监控与文档调整保留 |
+| `execution-monitor-tests` | `37562d1` 的两个独有提交均为补丁等价；共享文件一致，最终监控测试覆盖其用例，经 `53b16dc` 记录关系 |
+| `app-native-updater` | `8de31e6` 的两项提交已由 `codex/signed-release-updates@ce87f3a` 等价整合；经 `95b99c5` 合入最终实现、`a25e62b` 记录原来源关系 |
+| `app-release-source` | `3f48e4d` 的两项提交同上；额外未跟踪的 `app-release.ts` 及 13 项测试由安全快照经 `4613787` 合入，保持独立，未接入服务 |
+| `app-update-ui` | `9519776` 的两项提交同上；三份未提交生成文件与签名更新分支完全一致，合并后的协议源重新生成全部契约，再经 `89996e4` 记录快照关系 |
+| `bundled-aria2` | `3f3c4c4` 经 `a545292` 合入，保留内置下载器、固定来源/摘要、许可/源码、默认值与测试 |
+| `release-notes` | `b13524c` 经 `1c602be` 合入，保留用户版本说明与 `.skill/maa-verge-release-notes` 规范、模板和文档入口 |
+| `remove-github-packages` | 原 HEAD `cafdc82` 已为基线祖先；11 个未提交变更经安全快照及 `e1d48c8` 合入，移除旧 Packages 专用通道，保留 Releases 与签名更新 |
+
+对原生更新、发行来源、更新 UI 三组原提交执行 `git cherry`，六个独有提交全部显示 `-`；主要实现文件与签名更新整合分支逐组一致。主区更近的关闭偏好与生命周期继续保留；Rust 两文件在隔离功能分支解决冲突，`c7087fc` 经 `ade01eb` 合入，新增更新重启与并发清理回归。移除 Packages 时发现签名更新工具仍依赖其中的纯 Release 解析函数，将六个导出原样迁至 `tools/release-assets.mjs`；隔离修复 `3123b7f` 经 `faae930` 合入，20 项相关测试通过，新增资产测试接入本地及 CI 清单。未保留旧通道的网络 API、容器或发布命令。
+
+README 按 `.skill/maa-verge-readme/SKILL.md` 重写，保留完整副标题和 Logo 声明，以公开 `v0.1.0` 的实际安装包、界面、备份路径与事件导出为准。原版本说明使用 release-notes 分支的最终用户文案；状态文档合并各方记录，清除被用户删除的设计文档链接及仍声称 Packages 可用的当前说明。
+
+最终核对全部登记工作树 HEAD 与四份安全快照均为 `dev` 的祖先；原来源脏文件逐项 SHA-256 与合并前清单相同。原工作区、分支和快照保留，未推送远端。
+
+完整 `pnpm check`、前端生产构建及 128 项 Edge 全量界面回归通过。包括 52 项工程测试、11 项契约、4/4 CTest、965 项 Bun、276 项 Python 和 17 项 Rust；既定平台跳过与首轮单项超时后的专项/全量复验见 [STATUS.md](STATUS.md)。固定 Bun 编译探针、重新打包的 Windows 运行时、实际内置 aria2 回环下载/摘要/取消、合成核心更新作业、Rust transport 与 C++ 合成租约 smoke 通过。README 发行事实与链接、两个项目 skill、工作流语法和差异检查通过。未连接真实游戏、调用模型、重建桌面安装器或新增 macOS/Linux 验收。
+
 ## 设备页与执行总览合入 dev（2026-10-23）
 
 基线为 `dev@f3de037`，检查主目录与两个附加 worktree。两份来源成果已同步为主目录的未提交内容；先保护主目录快照，再提交干员资源工作树、合并来源分支，并恢复和提交额外执行界面。原有 38 个改动文件逐一比对 Git 规范化后的 blob，内容全部保留。两个附加工作区均干净，全部登记 worktree 的 HEAD 均为最终 `dev` 的祖先；未删除工作区或分支，未推送远端。

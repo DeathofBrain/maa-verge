@@ -146,7 +146,7 @@ smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下�
 
 `pnpm test:desktop-runtime` 直接使用桌面 `Runtime` 的同一 Rust transport，连接包内 native 服务，检查事件转发、设置与计划的重启持久化、空 PATH、环境清理及缺失设备拒绝，另用合成设备键检查包内 C++ worker 的锁排他/释放。真实控制链的运行去重、停止、更新边界由服务合成核心测试覆盖。它执行 Rust 集成测试，不启动真实窗口或 WebView。
 
-许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。aria2 及其静态依赖的声明、完整对应源码归档与重建说明放在 `licenses/aria2/`，构建来源、配置与哈希记录在 `licenses/aria2-build-info.json`；Linux 静态 OpenSSL 固定为 3.5.9，Windows 使用官方包的依赖版本。其他对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`；设计与提示词见 [branding.md](branding.md)。
+许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。aria2 及其静态依赖的声明、完整对应源码归档与重建说明放在 `licenses/aria2/`，构建来源、配置与哈希记录在 `licenses/aria2-build-info.json`；Linux 静态 OpenSSL 固定为 3.5.9，Windows 使用官方包的依赖版本。其他对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`。
 
 CI 先在 Windows x64、Ubuntu x64、macOS arm64/x64 分别编译并执行 Bun 探针，检查 SQLite/WAL、保留 rowid 的备份、跨进程锁、子进程 NDJSON 和 ZIP/TAR。四宿主 gate 成功后才运行原生矩阵的 C++ CTest、TypeScript 测试、Rust fmt/clippy/test 和未签名构建。应用 job 另保留 Python 参考、契约及浏览器 IPC 夹具端到端检查。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
 

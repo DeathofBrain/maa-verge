@@ -29,6 +29,7 @@ Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, l
 ## Project skills
 
 - Project-local skills live in `.skill/`. Load the relevant `SKILL.md` only when its task applies.
+- When creating, editing or reviewing the user-facing README, read and follow [maa-verge-readme](.skill/maa-verge-readme/SKILL.md). Keep installation and usage claims aligned with the actual published release and preserve the user's branding and Logo disclosure choices.
 - When creating, editing or reviewing Maa Verge Release notes, changelogs or release copy, read and follow [maa-verge-release-notes](.skill/maa-verge-release-notes/SKILL.md). Its `assets/release-notes.md` is the maintained template; version notes belong in `docs/releases/<tag>.md`. Build-only and updater implementation work do not require this writing skill.
 
 ## Commands

@@ -50,6 +50,6 @@ Maa Verge 的「启动时检查应用更新」默认开启，仅检查，不自�
 
 完整附件集合为七个首次安装包、两个分架构 macOS 更新归档、七个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`。`latest.json` 包含 `windows-x86_64-nsis`、`windows-x86_64-msi`、`darwin-aarch64`、`darwin-x86_64`、`linux-x86_64` 五个目标。DEB/RPM 也生成签名供发行校验，但不交给应用内安装器。
 
-发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；macOS 归档还加入版本与架构，避免多宿主上传时覆盖。复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。GitHub Packages 分发支持旧八附件与新十八附件两种完整集合，拒绝不完整的混合版本；只分发已经公开的 Release。
+发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；macOS 归档还加入版本与架构，避免多宿主上传时覆盖。复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，支持既有八附件与完整签名更新十八附件两种集合，拒绝不完整的混合版本；安装包仅通过 GitHub Releases 分发。
 
 当前验证范围见 [开发状态](STATUS.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。
