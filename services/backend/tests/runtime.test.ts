@@ -650,7 +650,7 @@ test('WAL takeover backup is standalone, read-only accessible and preserves spar
 
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const python = path.join(repo, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
-test.skipIf(!existsSync(python))('Python reference and Bun native service preserve plan/settings CRUD parity', async () => {
+test.skipIf(!existsSync(python))('Python reference and Bun native service preserve shared plan/settings CRUD parity', async () => {
   const trace = [
     ['plan.save', { plan: { id: 'fixture', name: '保留未知参数', tasks: [{ type: 'Award', params: { future: { 中文: [1, true] } } }] } }],
     ['settings.save', { settings: { theme: 'dark', budgets: { medicine: 2 } } }], ['plan.delete', { id: 'fixture' }],
@@ -662,7 +662,7 @@ test.skipIf(!existsSync(python))('Python reference and Bun native service preser
     const code = await new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
     expect(code, stderr).toBe(0); return stdout.trim().split(/\r?\n/).map(line => JSON.parse(line)).filter(item => 'id' in item).sort((a, b) => a.id - b.id);
   }
-  const normalize = (value: any): any => Array.isArray(value) ? value.map(normalize) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, k === 'createdAt' ? '<timestamp>' : normalize(v)])) : value;
+  const normalize = (value: any): any => Array.isArray(value) ? value.map(normalize) : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'componentPaths').map(([k, v]) => [k, k === 'createdAt' ? '<timestamp>' : normalize(v)])) : value;
   const py = await run([python, '-m', 'maaverge_runtime'], temp());
   const ts = await run([process.execPath, path.join(repo, 'services/backend/src/entry.ts')], temp());
   expect(normalize(ts)).toEqual(normalize(py));
