@@ -1,0 +1,176 @@
+name: Prepare signed application release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Tag matching the committed application version (for example v0.1.1)
+        required: true
+        type: string
+      prerelease:
+        description: Mark the draft as a development preview
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prepare-application-release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'DeathofBrain/maa-verge'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Verify committed version and requested tag
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: node tools/app-updater-release.mjs check --tag "$RELEASE_TAG"
+      - name: Refuse existing releases and tags pointing at another commit
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        with:
+          script: |
+            const repo = { owner: context.repo.owner, repo: context.repo.repo };
+            const tag = process.env.RELEASE_TAG;
+            try {
+              await github.rest.repos.getReleaseByTag({ ...repo, tag });
+              throw new Error('A release already exists for this tag; create a new committed version.');
+            } catch (error) { if (error.status !== 404) throw error; }
+            try {
+              let object = (await github.rest.git.getRef({ ...repo, ref: `tags/${tag}` })).data.object;
+              for (let depth = 0; object.type === 'tag' && depth < 10; depth++) {
+                object = (await github.rest.git.getTag({ ...repo, tag_sha: object.sha })).data.object;
+              }
+              if (object.type !== 'commit' || object.sha !== context.sha) throw new Error('The tag does not point at this workflow commit.');
+            } catch (error) { if (error.status !== 404) throw error; }
+
+  build:
+    needs: verify
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            target: windows-x86_64
+          - os: macos-14
+            target: darwin-aarch64
+          - os: macos-15-intel
+            target: darwin-x86_64
+          - os: ubuntu-22.04
+            target: linux-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.13.5'
+          enable-cache: true
+      - uses: dtolnay/rust-toolchain@1.90.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - name: Install Linux native prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential pkg-config curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev patchelf libfuse2
+      - run: pnpm install --frozen-lockfile
+      - run: uv sync --frozen
+      - run: node tools/setup-bun.mjs
+      - name: Compile and execute the pinned Bun probe on this host
+        run: node tools/probe-bun.mjs
+      - name: Verify checks with isolated synthetic fixtures
+        run: pnpm check
+      - name: Build installers and version-bound updater signatures
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          node -e "if (!process.env.TAURI_SIGNING_PRIVATE_KEY?.trim()) throw new Error('TAURI_SIGNING_PRIVATE_KEY secret is required')"
+          pnpm build
+      - name: Verify and collect updater artifacts
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_TARGET: ${{ matrix.target }}
+        shell: bash
+        run: node tools/app-updater-release.mjs collect --tag "$RELEASE_TAG" --target "$RELEASE_TARGET" --input apps/desktop/src-tauri/target/release/bundle --output "dist/app-updater/$RELEASE_TARGET"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: updater-${{ matrix.target }}
+          path: dist/app-updater/${{ matrix.target }}/
+          if-no-files-found: error
+
+  draft:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: updater-*
+          path: dist/release
+          merge-multiple: true
+      - name: Verify all signatures and create per-release manifest and checksums
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: node tools/app-updater-release.mjs manifest --tag "$RELEASE_TAG" --input dist/release
+      - name: Recheck tag before creating the draft
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        with:
+          script: |
+            const repo = { owner: context.repo.owner, repo: context.repo.repo };
+            const tag = process.env.RELEASE_TAG;
+            try {
+              await github.rest.repos.getReleaseByTag({ ...repo, tag });
+              throw new Error('A release appeared during the build; refusing to overwrite it.');
+            } catch (error) { if (error.status !== 404) throw error; }
+            try {
+              let object = (await github.rest.git.getRef({ ...repo, ref: `tags/${tag}` })).data.object;
+              for (let depth = 0; object.type === 'tag' && depth < 10; depth++) {
+                object = (await github.rest.git.getTag({ ...repo, tag_sha: object.sha })).data.object;
+              }
+              if (object.type !== 'commit' || object.sha !== context.sha) throw new Error('The release tag changed during the build.');
+            } catch (error) { if (error.status !== 404) throw error; }
+      - name: Create a draft for review (never publish automatically)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          PREVIEW: ${{ inputs.prerelease }}
+        shell: bash
+        run: |
+          flags=()
+          if [[ "$PREVIEW" == "true" || "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" dist/release/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Maa Verge $RELEASE_TAG" --generate-notes "${flags[@]}"

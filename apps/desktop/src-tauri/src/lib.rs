@@ -1,3 +1,4 @@
+mod app_updater;
 mod runtime;
 
 use runtime::Runtime;
@@ -82,8 +83,10 @@ impl DesktopLifecycle {
         self.phase.store(EXIT_READY, Ordering::Release);
     }
 
-    fn can_exit(&self) -> bool {
-        self.phase.load(Ordering::Acquire) == EXIT_READY
+    fn can_exit(&self, code: Option<i32>) -> bool {
+        // The updater closes the service before asking Tauri to restart. Avoid
+        // starting a second normal-exit flow that could interfere with restart.
+        code == Some(tauri::RESTART_EXIT_CODE) || self.phase.load(Ordering::Acquire) == EXIT_READY
     }
 }
 
@@ -198,6 +201,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             show_main(app);
         }))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             runtime::runtime_request,
             resolve_window_close,
@@ -209,7 +213,15 @@ pub fn run() {
             configure_window_transitions(app.handle());
             let runtime = tauri::async_runtime::block_on(Runtime::start(app.handle().clone()))
                 .map_err(std::io::Error::other)?;
+            let snapshot = tauri::async_runtime::block_on(
+                runtime.request("app.snapshot".into(), serde_json::json!({})),
+            )
+            .map_err(std::io::Error::other)?;
+            let updater = app_updater::AppUpdater::new(app.handle().clone());
+            updater.configure(&snapshot["settings"]);
             app.manage(runtime);
+            app.manage(updater);
+            app_updater::AppUpdater::check_in_background(app.handle().clone(), false);
             let show = MenuItem::with_id(app, "show", "显示 Maa Verge", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
@@ -271,8 +283,8 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("Maa Verge desktop initialization failed");
     app.run(|app, event| {
-        if let tauri::RunEvent::ExitRequested { api, .. } = event {
-            if !app.state::<DesktopLifecycle>().can_exit() {
+        if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+            if !app.state::<DesktopLifecycle>().can_exit(code) {
                 api.prevent_exit();
                 request_exit(app);
             }
@@ -284,6 +296,22 @@ pub fn run() {
 mod lifecycle_tests {
     use super::*;
     use std::sync::Arc;
+
+    #[test]
+    fn updater_restart_bypasses_pending_normal_exit_without_cancelling_restart() {
+        let lifecycle = DesktopLifecycle::default();
+        assert!(lifecycle.request_close());
+        assert!(!lifecycle.can_exit(None));
+        assert!(!lifecycle.can_exit(Some(0)));
+        assert!(lifecycle.can_exit(Some(tauri::RESTART_EXIT_CODE)));
+        assert_eq!(lifecycle.status(), "close-requested");
+        assert!(lifecycle.begin_exit());
+        assert!(!lifecycle.can_exit(Some(0)));
+        assert!(lifecycle.can_exit(Some(tauri::RESTART_EXIT_CODE)));
+        assert_eq!(lifecycle.status(), "exiting");
+        lifecycle.finish_exit();
+        assert!(lifecycle.can_exit(None));
+    }
 
     #[test]
     fn pending_close_survives_queries_and_can_be_cancelled() {
@@ -316,7 +344,7 @@ mod lifecycle_tests {
         lifecycle.cancel_close();
         assert_eq!(lifecycle.status(), "exiting");
         assert!(!lifecycle.request_close());
-        assert!(!lifecycle.can_exit());
+        assert!(!lifecycle.can_exit(None));
     }
 
     #[test]
@@ -326,9 +354,9 @@ mod lifecycle_tests {
             assert!(lifecycle.begin_exit());
             lifecycle.acknowledge_ui();
             assert!(lifecycle.wait_for_ui(Duration::from_millis(100)).await);
-            assert!(!lifecycle.can_exit());
+            assert!(!lifecycle.can_exit(None));
             lifecycle.finish_exit();
-            assert!(lifecycle.can_exit());
+            assert!(lifecycle.can_exit(None));
             assert!(!lifecycle.begin_exit());
         });
     }
@@ -341,9 +369,9 @@ mod lifecycle_tests {
             assert!(lifecycle.begin_exit());
             assert!(!lifecycle.wait_for_ui(Duration::from_millis(1)).await);
             assert_eq!(lifecycle.status(), "exiting");
-            assert!(!lifecycle.can_exit());
+            assert!(!lifecycle.can_exit(None));
             lifecycle.finish_exit();
-            assert!(lifecycle.can_exit());
+            assert!(lifecycle.can_exit(None));
         });
     }
 }

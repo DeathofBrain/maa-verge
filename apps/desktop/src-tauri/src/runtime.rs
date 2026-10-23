@@ -1,14 +1,15 @@
+use crate::app_updater::AppUpdater;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, Command};
-use tokio::sync::{oneshot, Mutex as AsyncMutex};
+use tokio::sync::{oneshot, Mutex as AsyncMutex, RwLock};
 
 type Reply = Result<Value, String>;
 type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Reply>>>>;
@@ -49,6 +50,8 @@ pub struct Runtime {
     pending: Pending,
     next_id: AtomicU64,
     close_preferences: Mutex<ClosePreferences>,
+    pub update_gate: RwLock<()>,
+    updating: AtomicBool,
 }
 
 fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
@@ -221,6 +224,8 @@ impl Runtime {
             pending,
             next_id: AtomicU64::new(1),
             close_preferences: Mutex::new(ClosePreferences::default()),
+            update_gate: RwLock::new(()),
+            updating: AtomicBool::new(false),
         };
         runtime.request("app.snapshot".into(), json!({})).await?;
         Ok(runtime)
@@ -231,6 +236,10 @@ impl Runtime {
             .close_preferences
             .lock()
             .expect("close preferences lock")
+    }
+
+    pub fn mark_updating(&self) {
+        self.updating.store(true, Ordering::Release);
     }
 
     pub async fn request(&self, method: String, params: Value) -> Reply {
@@ -364,6 +373,8 @@ mod tests {
             pending: Arc::new(Mutex::new(HashMap::new())),
             next_id: AtomicU64::new(1),
             close_preferences: Mutex::new(ClosePreferences::default()),
+            update_gate: RwLock::new(()),
+            updating: AtomicBool::new(false),
         }
     }
 
@@ -406,6 +417,27 @@ mod tests {
             };
             assert!(written.await.is_err());
             assert!(runtime.child.lock().await.is_none());
+        });
+    }
+
+    #[test]
+    fn update_shutdown_and_normal_exit_can_share_bounded_cleanup() {
+        tauri::async_runtime::block_on(async {
+            let runtime = Arc::new(shutdown_runtime("eof"));
+            let _install = runtime.update_gate.write().await;
+            runtime.mark_updating();
+            let other = runtime.clone();
+            let exiting = tauri::async_runtime::spawn(async move { other.shutdown().await });
+            tokio::time::timeout(Duration::from_secs(4), async {
+                runtime.shutdown().await;
+                exiting.await.unwrap();
+            })
+            .await
+            .expect("concurrent update and window exit must finish cleanup promptly");
+            assert!(runtime.stdin.lock().await.is_none());
+            assert!(runtime.child.lock().await.is_none());
+            assert!(runtime.updating.load(Ordering::Acquire));
+            assert!(!runtime.close_preferences().remember_close_action);
         });
     }
 
@@ -551,9 +583,39 @@ mod tests {
 
 #[tauri::command]
 pub async fn runtime_request(
+    app: AppHandle,
     runtime: tauri::State<'_, Runtime>,
+    updater: tauri::State<'_, AppUpdater>,
     method: String,
     params: Option<Value>,
 ) -> Reply {
-    runtime.request(method, params.unwrap_or(json!({}))).await
+    let params = params.unwrap_or(json!({}));
+    if method.starts_with("updates.")
+        && params.get("channel").and_then(Value::as_str) == Some("app")
+    {
+        if params.as_object().is_none_or(|params| params.len() != 1) {
+            return Err("应用更新请求参数无效".into());
+        }
+        return match method.as_str() {
+            "updates.check" => updater.check().await,
+            "updates.prepare" => updater.prepare().await,
+            "updates.activate" => updater.activate(&runtime).await,
+            "updates.rollback" => updater.rollback(),
+            _ => Err("未知的应用更新操作".into()),
+        };
+    }
+    let _request = runtime.update_gate.read().await;
+    if runtime.updating.load(Ordering::Acquire) {
+        return Err("正在退出并安装应用更新，请等待应用重新启动".into());
+    }
+    let snapshot = method == "app.snapshot";
+    let settings = method == "settings.save";
+    let mut result = runtime.request(method, params).await?;
+    if settings && updater.configure(&result) {
+        AppUpdater::check_in_background(app, true);
+    }
+    if snapshot {
+        updater.merge_snapshot(&mut result);
+    }
+    Ok(result)
 }

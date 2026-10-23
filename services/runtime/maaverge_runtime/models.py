@@ -65,6 +65,9 @@ class ModelSettings(StrictModel):
 
 class Settings(StrictModel):
     autoConnect: bool = True
+    autoUpdateApp: bool = True
+    appUpdateChannel: Literal["stable", "preview"] = "preview"
+    coreUpdateChannel: Literal["stable", "preview"] = "stable"
     autoUpdateCore: bool = True
     autoUpdateResource: bool = True
     minimizeToTray: bool = True

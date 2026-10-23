@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowRight, ArrowUpRight, Bell, BookOpen, Check, ChevronRight,
   Cpu, Database, Download, FileJson, FolderOpen, Gamepad2, HardDrive,
   Info, ListChecks, LoaderCircle, Plus, RefreshCw, RotateCcw,
-  Search, Settings2, SlidersHorizontal,
+  Search, Settings2, SlidersHorizontal, X,
 } from 'lucide-react';
 import { rpc, taskLabels, type ComponentDownload, type Event, type Plan, type Settings, type Snapshot, type Task, type UpdateChannel } from '@maaverge/contracts';
 import './support-pages.css';
@@ -67,7 +68,7 @@ const categories = [
   { id: 'model', label: '模型与 Agent', icon: Cpu, keywords: '模型 API 接口 提供商 地址 问答 智能 托管' },
   { id: 'notifications', label: '通知与远控', icon: Bell, keywords: '推送 通知 远程 控制 消息' },
   { id: 'services', label: '外部服务', icon: ArrowUpRight, keywords: 'MirrorChyan 社区 作业站 企鹅 数据 汇报' },
-  { id: 'updates', label: '更新', icon: RefreshCw, keywords: '更新 核心 MaaCore 游戏资源 资源更新 下载 版本 活动 目录 路径 检查 回滚 aria2 断点续传 下载器' },
+  { id: 'updates', label: '更新', icon: RefreshCw, keywords: '更新 应用 核心 MaaCore 游戏资源 资源更新 下载 版本 正式版 预览版 频道 活动 目录 路径 检查 回滚 aria2 断点续传 下载器' },
   { id: 'data', label: '数据与诊断', icon: HardDrive, keywords: '数据 日志 log 诊断 事件 导出 清理 自动 保留 存储 本地 目录 路径' },
   { id: 'about', label: '关于', icon: Info, keywords: '版本 AGPL 许可证 开源 系统 模式' },
 ] as const;
@@ -81,7 +82,14 @@ export function SettingsPage({ snapshot, busy, onAction, onPrepareUpdate, prepar
   const selected = matches.find((item) => item.id === category) || matches[0];
   const saveSettings = (patch: Partial<Settings>, message = '偏好设置已保存') => onAction('settings', () => rpc('settings.save', { settings: { ...snapshot.settings, ...patch } }), message);
   const updating = preparingUpdates.size > 0 || snapshot.updates.some(channel => ['checking', 'downloading'].includes(channel.status));
-  const checkAll = () => onAction('check-all', async () => { for (const channel of ['app', 'core', 'resource'] as const) await rpc('updates.check', { channel }); }, '三个更新通道已独立检查');
+  const checkAll = () => onAction('check-all', async () => {
+    const failures: string[] = [];
+    for (const channel of ['app', 'core', 'resource'] as const) {
+      try { await rpc('updates.check', { channel }); }
+      catch (cause) { failures.push(`${channelLabels[channel]}：${cause instanceof Error ? cause.message : String(cause)}`); }
+    }
+    if (failures.length) throw new Error(`部分更新检查失败：${failures.join('；')}`);
+  }, '三个更新通道已独立检查');
 
   return <div className="sp-page sp-settings-page"><PageHeading title="设置" text="查找应用偏好，管理模型与组件更新。" />
     <div className="sp-settings-search"><Search size={18} /><input className="text-input" type="search" aria-label="搜索设置" placeholder="搜索主题、模型、资源更新…" value={query} onChange={(event) => setQuery(event.target.value)} />{query && <span>{matches.length} 个分类匹配</span>}</div>
@@ -91,9 +99,9 @@ export function SettingsPage({ snapshot, busy, onAction, onPrepareUpdate, prepar
       {selected.id === 'model' && <ModelForm settings={snapshot.settings} busy={busy} onSave={(model) => saveSettings({ model }, '模型配置已保存')} />}
       {selected.id === 'notifications' && <Section title="通知与远控"><Notice icon={<Bell size={17} />}>系统推送、第三方通知与远程控制尚未接入。</Notice><p className="sp-help">当前运行进度、失败原因与完成结果保留在底部运行栏和执行记录中。</p></Section>}
       {selected.id === 'services' && <Section title="外部服务"><dl className="sp-description-list"><div><dt>社区作业服务</dt><dd>尚未接入，当前使用本机作业文件</dd></div><div><dt>MirrorChyan 加速</dt><dd>尚未接入</dd></div><div><dt>数据汇报</dt><dd>默认关闭；按任务参数显式配置</dd></div></dl><p className="sp-help">核心与资源更新可使用官方来源，无需配置付费加速服务。</p></Section>}
-      {selected.id === 'updates' && <><div className="sp-content-heading"><div><h2>更新</h2><p>后台准备，空闲生效；三个通道独立检查。</p></div><button className="button secondary" disabled={busy || updating} onClick={() => void checkAll()}><RefreshCw size={15} />检查全部更新</button></div><ComponentDownloadForm settings={snapshot.settings} busy={busy} onSave={saveSettings} />{snapshot.updates.map((channel) => <UpdateSection key={channel.id} channel={channel} settings={snapshot.settings} hasActiveRun={snapshot.runs.some((run) => run.status === 'running')} busy={busy} updatesBlocked={updating} preparing={preparingUpdates.has(channel.id)} onPrepare={onPrepareUpdate} onAction={onAction} onSave={saveSettings} />)}<Notice>下载完成、验证通过与已生效是不同状态。任务执行期间继续使用原版本，失败时保留旧组合。</Notice></>}
+      {selected.id === 'updates' && <><div className="sp-content-heading"><div><h2>更新</h2><p>应用确认后重启安装；核心与资源空闲生效。</p></div><button className="button secondary" disabled={busy || updating} onClick={() => void checkAll()}><RefreshCw size={15} />检查全部更新</button></div><ComponentDownloadForm settings={snapshot.settings} busy={busy} onSave={saveSettings} />{snapshot.updates.map((channel) => <UpdateSection key={channel.id} channel={channel} settings={snapshot.settings} hasActiveRun={snapshot.runs.some((run) => run.status === 'running')} busy={busy} updatesBlocked={updating} preparing={preparingUpdates.has(channel.id)} onPrepare={onPrepareUpdate} onAction={onAction} onSave={saveSettings} />)}<Notice>下载完成、验证通过与已生效是不同状态。任务执行期间继续使用原版本，失败时保留旧组合。</Notice></>}
       {selected.id === 'data' && <Section title="数据与诊断"><dl className="sp-description-list"><div><dt>数据归属</dt><dd>保存在本机</dd></div><div><dt>任务表</dt><dd>{snapshot.plans.length} 张</dd></div><div><dt>执行记录</dt><dd>{snapshot.runs.length} 条</dd></div><div><dt>当前事件</dt><dd>{snapshot.events.length} 条</dd></div></dl><LogSettings settings={snapshot.settings} busy={busy} onAction={onAction} onSave={saveSettings} /></Section>}
-      {selected.id === 'about' && <Section title="关于 Maa Verge"><p className="sp-about-intro">以任务为中心的本地桌面助手。</p><dl className="sp-description-list"><div><dt>应用版本</dt><dd>0.1.0 开发预览</dd></div><div><dt>运行模式</dt><dd>本地原生运行时</dd></div><div><dt>开源许可证</dt><dd>AGPL-3.0-only</dd></div><div><dt>界面语言</dt><dd>简体中文</dd></div></dl><Notice>完整原 MAA 兼容仍在推进中。各项能力以实际接入与验证状态为准。</Notice></Section>}
+      {selected.id === 'about' && <Section title="关于 Maa Verge"><p className="sp-about-intro">以任务为中心的本地桌面助手。</p><dl className="sp-description-list"><div><dt>应用版本</dt><dd>{snapshot.updates.find((channel) => channel.id === 'app')?.currentVersion || '未知版本'}</dd></div><div><dt>运行模式</dt><dd>本地原生运行时</dd></div><div><dt>开源许可证</dt><dd>AGPL-3.0-only</dd></div><div><dt>界面语言</dt><dd>简体中文</dd></div></dl><Notice>完整原 MAA 兼容仍在推进中。各项能力以实际接入与验证状态为准。</Notice></Section>}
     </>}</div></div>
   </div>;
 }
@@ -132,16 +140,39 @@ function ComponentDownloadForm({ settings, busy, onSave }: { settings: Settings;
 
 function UpdateSection({ channel, settings, busy, updatesBlocked, preparing, hasActiveRun, onAction, onPrepare, onSave }: { channel: UpdateChannel; settings: Settings; busy: boolean; updatesBlocked: boolean; preparing: boolean; hasActiveRun: boolean; onAction: SupportPageProps['onAction']; onPrepare: SupportPageProps['onPrepareUpdate']; onSave: (patch: Partial<Settings>) => Promise<boolean> }) {
   const [resourceClient, setResourceClient] = useState<ResourceClient>(resourceClientFor(settings.connection?.clientType ?? 'Official'));
+  const [confirmInstall, setConfirmInstall] = useState(false);
   const Icon = channel.id === 'app' ? HardDrive : channel.id === 'core' ? Cpu : Database;
   const working = preparing || ['checking', 'downloading'].includes(channel.status);
-  const status = channel.status === 'idle' ? channel.id === 'app' ? '开发预览' : channel.latestVersion === channel.currentVersion ? '已是最新版本' : '等待检查' : updateLabels[channel.status];
-  return <section className="sp-update-channel update-channel"><div className="sp-update-main"><div className="sp-update-title"><Icon size={19} /><h3>{channelLabels[channel.id]}</h3><span className={`pill sp-update-state ${channel.status === 'failed' ? 'is-error' : ''}`}>{status}</span></div><div className="channel-version sp-channel-version">{resourceVersionLabel(channel, resourceClient)}{channel.latestVersion && channel.latestVersion !== channel.currentVersion && <><ArrowRight size={13} /><span>{channel.id === 'resource' ? channel.latestVersion.slice(0, 10) : channel.latestVersion}</span></>}</div><p className="sp-help">{channel.id === 'resource' && resourceVersionDetail(channel, resourceClient)}</p><p className="sp-help">{channel.id === 'app' ? '桌面应用与本地服务' : channel.id === 'core' ? '来源：官方 MaaCore 发布' : '关卡、活动与公招数据；版本独立于核心'}</p>{channel.message && <p className="sp-channel-message">{channel.message}</p>}{working && <div className="sp-update-progress" aria-label={`${channelLabels[channel.id]}更新进度`}><span style={{ width: `${Math.max(0, Math.min(100, channel.progress))}%` }} /></div>}</div><div className="sp-channel-actions">
-    {['idle', 'active', 'failed'].includes(channel.status) && <button className="button secondary" disabled={busy || updatesBlocked} onClick={() => void onAction(`check-${channel.id}`, () => rpc('updates.check', { channel: channel.id }))}><RefreshCw size={14} />检查更新</button>}
-    {(channel.status === 'available' || (channel.status === 'failed' && channel.latestVersion && channel.latestVersion !== channel.currentVersion)) && channel.id !== 'app' && <button className="button primary" disabled={busy || preparing} onClick={() => void onPrepare(channel)}><Download size={14} />{channel.status === 'failed' ? '重试下载' : channel.currentVersion ? '准备更新' : '下载安装'}</button>}
-    {['staged', 'waiting_idle'].includes(channel.status) && <button className="button primary" disabled={busy || updatesBlocked || channel.status === 'waiting_idle'} onClick={() => void onAction(`activate-${channel.id}`, () => rpc('updates.activate', { channel: channel.id }), '更新将在安全空闲边界生效')}><Check size={14} />{channel.status === 'waiting_idle' ? '等待空闲生效' : '应用更新'}</button>}
+  const isApp = channel.id === 'app';
+  const canInstall = !isApp || channel.appCanInstall === true;
+  const staged = ['staged', 'waiting_idle'].includes(channel.status);
+  const hasCandidate = channel.latestVersion && channel.latestVersion !== channel.currentVersion && ['available', 'downloading', 'staged', 'waiting_idle', 'failed'].includes(channel.status);
+  const status = channel.status === 'idle' ? channel.latestVersion && channel.latestVersion === channel.currentVersion ? '已是最新版本' : channel.checkedAt ? '暂无新版本' : '等待检查' : isApp && channel.status === 'staged' ? '签名已验证，待安装' : updateLabels[channel.status];
+  const checkedAt = channel.checkedAt && !Number.isNaN(Date.parse(channel.checkedAt)) ? formatDate(channel.checkedAt) : '尚未检查';
+  useEffect(() => { if (!staged || !canInstall) setConfirmInstall(false); }, [staged, canInstall]);
+  return <section className="sp-update-channel update-channel"><div className="sp-update-main"><div className="sp-update-title"><Icon size={19} /><h3>{channelLabels[channel.id]}</h3><span className={`pill sp-update-state ${channel.status === 'failed' ? 'is-error' : ''}`}>{status}</span></div><div className="channel-version sp-channel-version">{resourceVersionLabel(channel, resourceClient)}{hasCandidate && <><ArrowRight size={13} /><span>{channel.id === 'resource' ? channel.latestVersion!.slice(0, 10) : channel.latestVersion}</span></>}</div>{channel.id === 'resource' && <p className="sp-help">{resourceVersionDetail(channel, resourceClient)}</p>}<p className="sp-help">{isApp ? '桌面应用与本地服务；下载并校验签名后，确认重启安装。' : channel.id === 'core' ? '来源：官方 MaaCore 发布' : '关卡、活动与公招数据；版本独立于核心'}</p><p className="sp-help sp-update-checked">上次检查：{checkedAt}</p>{channel.message && <p className="sp-channel-message">{channel.message}</p>}{isApp && channel.appCanInstall === false && <p className="sp-help">当前安装方式不支持自动安装，请使用对应平台的安装包或软件包管理器更新。</p>}{isApp && channel.appRelease && <details className="sp-release-notes"><summary>发布说明{channel.appRelease.prerelease ? ' · 预览版' : ' · 正式版'}</summary>{!Number.isNaN(Date.parse(channel.appRelease.publishedAt)) && <p className="sp-help">发布于 {formatDate(channel.appRelease.publishedAt)}</p>}<pre>{channel.appRelease.notes || '此版本未提供发布说明。'}</pre></details>}{working && <div className="sp-update-progress" aria-label={`${channelLabels[channel.id]}更新进度`}><span style={{ width: `${Math.max(0, Math.min(100, channel.progress))}%` }} /></div>}{isApp && staged && hasActiveRun && <p className="sp-channel-message">任务正在运行，请等待全部任务结束后安装。</p>}</div><div className="sp-channel-actions">
+    {['idle', 'available', 'active', 'failed'].includes(channel.status) && <button className="button secondary" disabled={busy || updatesBlocked} onClick={() => void onAction(`check-${channel.id}`, () => rpc('updates.check', { channel: channel.id }))}><RefreshCw size={14} />检查更新</button>}
+    {(channel.status === 'available' || (channel.status === 'failed' && channel.latestVersion && channel.latestVersion !== channel.currentVersion)) && canInstall && <button className="button primary" disabled={busy || preparing} onClick={() => void onPrepare(channel)}><Download size={14} />{channel.status === 'failed' ? '重试下载' : isApp ? '下载更新' : channel.currentVersion ? '准备更新' : '下载安装'}</button>}
+    {staged && canInstall && <button className="button primary" disabled={busy || updatesBlocked || channel.status === 'waiting_idle' || (isApp && hasActiveRun)} onClick={() => isApp ? setConfirmInstall(true) : void onAction(`activate-${channel.id}`, () => rpc('updates.activate', { channel: channel.id }), '更新将在安全空闲边界生效')}><Check size={14} />{isApp ? '安装并重启' : channel.status === 'waiting_idle' ? '等待空闲生效' : '应用更新'}</button>}
     {working && <span className="sp-working"><LoaderCircle className="spin" size={15} />{channel.progress}%</span>}
     {channel.id !== 'app' && ['active', 'staged', 'waiting_idle'].includes(channel.status) && <button className="button secondary" disabled={busy || updatesBlocked || hasActiveRun} onClick={() => void onAction(`rollback-${channel.id}`, () => rpc('updates.rollback', { channel: channel.id }), '回滚请求已处理')}><RotateCcw size={14} />回滚上一版本</button>}
-  </div>{channel.id === 'resource' && <label className="sp-resource-client sp-field">资源客户端<select className="text-input" aria-label="资源版本客户端" value={resourceClient} onChange={(event) => setResourceClient(event.target.value as ResourceClient)}>{Object.entries(resourceClientLabels).map(([client, label]) => <option key={client} value={client}>{label}</option>)}</select></label>}{channel.id !== 'app' && <div className="sp-update-preference"><Toggle label={channel.id === 'core' ? '自动检查核心更新' : '独立检查游戏资源'} description={channel.id === 'core' ? '启动时与每 24 小时检查' : '每 6 小时独立检查资源更新'} checked={channel.id === 'core' ? settings.autoUpdateCore : settings.autoUpdateResource} disabled={busy} onChange={(value) => void onSave(channel.id === 'core' ? { autoUpdateCore: value } : { autoUpdateResource: value })} /><ComponentPathForm channel={channel} settings={settings} busy={busy || updatesBlocked} onSave={onSave} /></div>}</section>;
+  </div>{channel.id === 'resource' && <label className="sp-resource-client sp-field">资源客户端<select className="text-input" aria-label="资源版本客户端" value={resourceClient} onChange={(event) => setResourceClient(event.target.value as ResourceClient)}>{Object.entries(resourceClientLabels).map(([client, label]) => <option key={client} value={client}>{label}</option>)}</select></label>}<div className="sp-update-preference">{channel.id !== 'resource' && <div className="sp-setting-row"><div><strong>{isApp ? '应用更新频道' : 'MaaCore 更新频道'}</strong><p>{staged ? isApp ? '切换频道会取消已准备的版本并重新检查。' : '切换频道会取消已准备的版本，下次检查使用新频道。' : '正式版提供稳定更新；预览版包含最新预览版与正式版。'}</p></div><select className="text-input sp-inline-select" aria-label={isApp ? '应用更新频道' : 'MaaCore 更新频道'} value={isApp ? settings.appUpdateChannel ?? 'preview' : settings.coreUpdateChannel ?? 'stable'} disabled={busy || working} onChange={(event) => void onSave(isApp ? { appUpdateChannel: event.target.value as Settings['appUpdateChannel'] } : { coreUpdateChannel: event.target.value as Settings['coreUpdateChannel'] })}><option value="stable">正式版</option><option value="preview">预览版</option></select></div>}<Toggle label={isApp ? '启动时检查应用更新' : channel.id === 'core' ? '自动检查核心更新' : '独立检查游戏资源'} description={isApp ? '仅检查新版本，下载与重启安装由你确认。' : channel.id === 'core' ? '启动时与每 24 小时检查' : '每 6 小时独立检查资源更新'} checked={isApp ? settings.autoUpdateApp ?? true : channel.id === 'core' ? settings.autoUpdateCore : settings.autoUpdateResource} disabled={busy} onChange={(value) => void onSave(isApp ? { autoUpdateApp: value } : channel.id === 'core' ? { autoUpdateCore: value } : { autoUpdateResource: value })} />{!isApp && <ComponentPathForm channel={channel} settings={settings} busy={busy || updatesBlocked} onSave={onSave} />}</div>{confirmInstall && <AppInstallConfirmation version={channel.latestVersion || '新版本'} busy={busy || updatesBlocked} hasActiveRun={hasActiveRun} onClose={() => setConfirmInstall(false)} onInstall={async () => { if (await onAction('activate-app', () => rpc('updates.activate', { channel: 'app' }))) setConfirmInstall(false); }} />}</section>;
+}
+
+function AppInstallConfirmation({ version, busy, hasActiveRun, onClose, onInstall }: { version: string; busy: boolean; hasActiveRun: boolean; onClose: () => void; onInstall: () => Promise<void> }) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    ref.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    return () => previous?.focus();
+  }, []);
+  return createPortal(<div className="modal-backdrop sp-app-install-modal" onClick={() => { if (!busy) onClose(); }}><section ref={ref} className="modal confirm-dialog" role="dialog" aria-modal="true" aria-label="安装应用更新" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+    if (event.key === 'Escape' && !busy) { event.stopPropagation(); onClose(); }
+    if (event.key !== 'Tab') return;
+    const nodes = [...(ref.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') || [])];
+    if (event.shiftKey && document.activeElement === nodes[0]) { event.preventDefault(); nodes.at(-1)?.focus(); }
+    else if (!event.shiftKey && document.activeElement === nodes.at(-1)) { event.preventDefault(); nodes[0]?.focus(); }
+  }}><div className="modal-title"><h2>安装应用更新</h2><button className="icon-button" aria-label="关闭安装确认" disabled={busy} onClick={onClose}><X size={18} /></button></div><p>版本 {version} 已下载并通过签名验证。请先保存未保存的更改；继续后应用将退出、安装更新并重新启动。</p>{hasActiveRun && <p role="status">任务正在运行，请等待全部任务结束后安装。</p>}<div className="modal-actions"><button className="button secondary" disabled={busy} onClick={onClose}>取消</button><button className="button primary" disabled={busy || hasActiveRun} onClick={() => void onInstall()}>{busy && <LoaderCircle className="spin" size={15} />}确认安装并重启</button></div></section></div>, document.body);
 }
 
 const copilotTypes: Task['type'][] = ['Copilot', 'SSSCopilot', 'ParadoxCopilot', 'VideoRecognition'];
