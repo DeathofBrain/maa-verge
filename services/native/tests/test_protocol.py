@@ -412,7 +412,8 @@ class Worker(Base):
         for scenario, operation in [("screencap-wrong-id", "frame"), ("click-wrong-id", "click")]:
             with self.subTest(scenario=scenario):
                 Path(self.config["trace"]).unlink(missing_ok=True)
-                session = self.connected(scenario, config={**self.config, "asyncTimeoutMs": 80})
+                # Allow normal connection scheduling before testing the wrong callback ID.
+                session = self.connected(scenario, config={**self.config, "asyncTimeoutMs": 1000})
                 if operation == "click":
                     self.preview(session)
                 session.send({"id": "command", "operation": operation, "x": 0, "y": 0})
