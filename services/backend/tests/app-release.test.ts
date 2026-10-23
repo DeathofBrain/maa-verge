@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import backendPackage from '../package.json';
 import { APP_RELEASES_URL, APP_VERSION, checkAppRelease, compareAppVersions } from '../src/app-release.ts';
 
 const repository = 'https://github.com/DeathofBrain/maa-verge';
@@ -16,7 +17,7 @@ const source = (entries: any[]) => async () => structuredClone(entries);
 const windows = { platform: 'win32', arch: 'x64' };
 
 test('application constants use the project version and official release page', () => {
-  expect(APP_VERSION).toBe('0.1.0');
+  expect(APP_VERSION).toBe(backendPackage.version);
   expect(APP_RELEASES_URL).toBe(`${repository}/releases`);
 });
 

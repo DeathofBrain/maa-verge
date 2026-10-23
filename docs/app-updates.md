@@ -40,7 +40,7 @@ Maa Verge 的「启动时检查应用更新」默认开启，仅检查，不自�
 
 ## 准备新发行版
 
-`.github/workflows/release.yml` 的 **Prepare signed application release** 手动工作流会执行四宿主检查、构建、签名和资产校验，最后创建 GitHub **草稿**；不会自动公开发布。GitHub 要求手动工作流先进入仓库默认分支，之后可选择具体源码 ref。当前实现源码仍是 `0.1.0`，下次发行需先提交新的版本号。
+`.github/workflows/release.yml` 的 **Prepare signed application release** 手动工作流会执行四宿主检查、构建、签名和资产校验，最后创建 GitHub **草稿**；不会自动公开发布。GitHub 要求手动工作流先进入仓库默认分支，之后可选择具体源码 ref。当前应用版本为 `0.1.1`；后续发行仍需先提交新的版本号，并保留既有标签与资产。
 
 1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。
 2. 使用 `node tools/app-updater-release.mjs check --tag v版本号` 核对。工作流拒绝覆盖现有 Release，已有标签必须指向选中的源码提交。

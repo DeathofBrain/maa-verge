@@ -193,7 +193,7 @@ class UpdateService:
         (root / "downloads").mkdir(exist_ok=True)
         if not store.get("update", "core"):
             versions = {
-                "app": "0.1.0",
+                "app": "0.1.1",
                 "core": "v6.20.0" if mode == "mock" else "未安装",
                 "resource": "2026.10.18" if mode == "mock" else "未安装",
             }
