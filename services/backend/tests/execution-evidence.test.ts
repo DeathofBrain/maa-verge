@@ -169,9 +169,69 @@ test('callback, completion and idle in one batch preserve the image before the n
   const current = runtime.store.get('run', run.id);
   expect(current.tasks.map((task: any) => task.status)).toEqual(['completed', 'running']);
   expect(current.tasks[0].artifacts).toHaveLength(1); expect(current.tasks[1].artifacts).toHaveLength(0);
+  const eventCount = runtime.store.events().length;
   worker.events.push({ type: 'callback', message: 20001, details: { taskid: 2, subtask: 'ProcessTask', details: { task: 'UnmappedInternalFlow' } } }); await runtime.tick(true);
-  expect(runtime.store.get('run', run.id).message).toBe('自动作战执行中');
-  expect(runtime.store.events().at(-1).data.action).toBe('UnmappedInternalFlow');
+  expect(runtime.store.get('run', run.id).message).toBe(current.message);
+  expect(runtime.store.events()).toHaveLength(eventCount);
+});
+
+test('internal Fight steps do not announce task completion or flood progress with generic callbacks', async () => {
+  const { runtime, worker, run } = await setup(['Fight']);
+  const callback = (message: number, details: any) => worker.events.push({ type: 'callback', message, details: { taskid: 1, taskchain: 'Fight', ...details } });
+  callback(10001, {}); await runtime.tick(true);
+  const genericEvents = runtime.store.events().length;
+  for (let repeat = 0; repeat < 3; repeat++) for (const details of [
+    ...['UnmappedInternalFlow', 'ProcessTask', 'Start', 'Fight', '未登记内部动作', '123'].map(task => ({ subtask: 'ProcessTask', details: { task } })),
+    { subtask: 'ProcessTask' }, {},
+  ]) { callback(20001, details); callback(20002, details); }
+  await runtime.tick(true);
+  let current = await runtime.handle('run.detail', { id: run.id });
+  expect(current.message).toBe('自动作战执行中');
+  expect(current.status).toBe('running'); expect(current.tasks[0].status).toBe('running');
+  expect(runtime.store.events()).toHaveLength(genericEvents);
+
+  callback(20001, { subtask: 'ProcessTask', details: { task: 'Fight@StartButton2' } }); await runtime.tick(true);
+  expect(runtime.store.get('run', run.id).message).toBe('自动作战 · 开始作战');
+  expect(runtime.store.events().at(-1).data.action).toBe('Fight@StartButton2');
+  const namedEvents = runtime.store.events().length;
+  callback(20001, { subtask: 'ProcessTask', details: { task: 'Fight@StartButton2' } });
+  callback(20002, { subtask: 'ProcessTask', details: { task: 'Fight@StartButton2' } });
+  callback(20001, { taskid: 99, subtask: 'ProcessTask', details: { task: 'EndOfAction' } });
+  await runtime.tick(true);
+  current = await runtime.handle('run.detail', { id: run.id });
+  expect(current.message).toBe('自动作战 · 开始作战');
+  expect(current.status).toBe('running'); expect(current.tasks[0].status).toBe('running');
+  expect(current.progress).toBe(0); expect(runtime.store.events()).toHaveLength(namedEvents);
+
+  callback(20001, { subtask: 'ProcessTask', details: { task: 'EndOfAction' } }); await runtime.tick(true);
+  expect(runtime.store.get('run', run.id).message).toBe('自动作战 · 作战结算');
+});
+
+test('chain completion keeps its idle-wait message through late internal progress until success is confirmed', async () => {
+  const { runtime, worker, run } = await setup(['Fight']);
+  worker.events.push({ type: 'callback', message: 10002, details: { taskid: 1, taskchain: 'Fight' } }); await runtime.tick(true);
+  const waiting = await runtime.handle('run.detail', { id: run.id }), eventCount = runtime.store.events().length;
+  expect(waiting.message).toBe('自动作战流程结束，正在确认核心空闲');
+  expect(waiting.status).toBe('running'); expect(waiting.tasks[0].status).toBe('running');
+  for (const message of [10001, 20001, 20002, 10002]) worker.events.push({ type: 'callback', message, details: { taskid: 1, taskchain: 'Fight', subtask: 'ProcessTask', details: { task: 'Fight@StartButton2' } } });
+  worker.events.push({ type: 'status', running: false, pendingAsync: [] }); await runtime.tick(true);
+  expect(runtime.store.get('run', run.id).message).toBe(waiting.message);
+  expect(runtime.store.events()).toHaveLength(eventCount);
+  worker.events.push({ type: 'callback', message: 3, details: { finished_tasks: [1] } }, { type: 'status', running: false, pendingAsync: [5] }); await runtime.tick(true);
+  expect(runtime.store.get('run', run.id).status).toBe('running');
+  worker.safeIdle = true; worker.events.push({ type: 'status', running: false, pendingAsync: [] }); await runtime.tick(true);
+  const completed = await runtime.handle('run.detail', { id: run.id });
+  expect(completed.status).toBe('completed'); expect(completed.tasks[0].status).toBe('completed');
+});
+
+test('an internal completion followed by an idle queue is insufficient evidence of Fight success', async () => {
+  const { runtime, worker, run } = await setup(['Fight']);
+  worker.events.push({ type: 'callback', message: 20002, details: { taskid: 1, taskchain: 'Fight', subtask: 'ProcessTask', details: { task: 'EndOfAction' } } },
+    { type: 'callback', message: 3, details: { finished_tasks: [1] } }, { type: 'status', running: false, pendingAsync: [] });
+  worker.safeIdle = true; await runtime.tick(true);
+  const current = await runtime.handle('run.detail', { id: run.id });
+  expect(current.status).toBe('failed'); expect(current.tasks[0].status).toBe('failed');
+  expect(runtime.store.events().some(event => event.type === 'run.task_progress' && event.message.includes('已完成'))).toBe(false);
 });
 
 test('a timed-out final image cannot attach after another run reuses the same worker and native ID', async () => {

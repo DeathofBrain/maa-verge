@@ -711,14 +711,21 @@ export class Runtime {
             }
             if (message === 20002 && matches && state.mallVisitEnabled && details.subtask === 'ProcessTask' && details.taskchain === 'Mall' && ['VisitLimited', 'VisitNextBlack'].includes(details.details?.task)) state.mallVisitedAt = now();
             if (matches && !state.stopRequested && !state.failed && !state.queueEnded) {
-              if ([10001, 10002, 20001, 20002].includes(message)) {
+              // SubTaskCompleted ends one internal step, never the configured task.
+              // After TaskChainCompleted, late step callbacks must not undo the idle wait.
+              if (message === 10002 || (!state.completed && [10001, 20001].includes(message))) {
                 const action = details.details?.task ?? details.subtask ?? details.taskchain ?? this.store.get('run_plan', run.id)?.tasks[state.index]?.type ?? '';
-                const localized = localizeExecutionMessage(String(action)), fallbackType = this.store.get('run_plan', run.id)?.tasks[state.index]?.type;
-                const actionLabel = /[A-Za-z]/.test(localized) ? (taskLabels[fallbackType] ?? '当前任务') : localized;
-                const messageText = actionLabel + (message === 10002 ? '流程结束，正在确认核心空闲' : message === 20002 ? '已完成' : '执行中');
-                this.updateRunTask(run, state.index, item => { item.message = messageText.slice(0, 1000); });
-                run.message = messageText; this.store.put('run', run.id, run);
-                this.emit('run.task_progress', messageText, { runId: run.id, index: state.index, taskId: state.taskId, action });
+                const taskType = state.syncSteps?.[state.syncIndex]?.type ?? this.store.get('run_plan', run.id)?.tasks[state.index]?.type;
+                const taskLabel = taskLabels[taskType] ?? '当前任务', localized = localizeExecutionMessage(String(action));
+                const namedStep = typeof details.details?.task === 'string' && localized !== action && !/[A-Za-z]/.test(localized) && !taskLabels[action] && !['Start', 'ProcessTask'].includes(action);
+                const messageText = message === 10002 ? taskLabel + '流程结束，正在确认核心空闲'
+                  : message === 10001 ? taskLabel + '执行中'
+                  : namedStep ? (localized.startsWith(taskLabel + ' · ') ? localized : taskLabel + ' · ' + localized) : null;
+                if (messageText && messageText !== run.message) {
+                  this.updateRunTask(run, state.index, item => { item.message = messageText.slice(0, 1000); });
+                  run.message = messageText; this.store.put('run', run.id, run);
+                  this.emit('run.task_progress', messageText, { runId: run.id, index: state.index, taskId: state.taskId, action });
+                }
               }
               if (message === 20003) {
                 let changed = false;
