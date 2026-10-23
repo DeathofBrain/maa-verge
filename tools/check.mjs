@@ -3,7 +3,7 @@ import { assertWorkspaceDependencies } from './environment.mjs';
 
 async function main() {
   assertWorkspaceDependencies();
-  await run('node', ['--test', 'tools/tests/environment.test.mjs', 'tools/tests/vite-cache.test.mjs', 'tools/tests/process-tree.test.mjs', 'tools/tests/dev-mode.test.mjs', 'tools/tests/github-package.test.mjs', 'tools/tests/app-updater-release.test.mjs', 'tools/tests/runtime-notices.test.mjs', 'tools/tests/setup-aria2.test.mjs', 'tools/tests/windows-installer.test.mjs']);
+  await run('node', ['--test', 'tools/tests/environment.test.mjs', 'tools/tests/vite-cache.test.mjs', 'tools/tests/process-tree.test.mjs', 'tools/tests/dev-mode.test.mjs', 'tools/tests/app-updater-release.test.mjs', 'tools/tests/runtime-notices.test.mjs', 'tools/tests/setup-aria2.test.mjs', 'tools/tests/windows-installer.test.mjs']);
   await run('pnpm', ['contracts:check']);
   await run('pnpm', ['-r', 'check']);
   await run('node', ['tools/build-core-worker.mjs']);

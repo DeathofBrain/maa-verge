@@ -30,7 +30,7 @@
 | 更新切换 | 不可变版本目录；新进程校验；等待当前任务边界和异步调用结束后切换工作进程，保留后续任务；失败保留旧组合，可回滚上一组核心/资源；两类组件各保留最多三版，保护活动、回滚、候选和 worker 引用，使用中延后清理 |
 | 自动检查 | 应用启动时仅检查；核心启动时及每 24 小时、资源每 6 小时，组件失败五分钟后重试；异步下载、独立更新作业进程与执行轮询互不阻塞；三个开关独立，关闭后支持手动操作 |
 | 桌面生命周期 | 一体化可拖动顶栏及最小化/最大化/还原/关闭，加载期保留窗口操作；Windows 修正最大化旧画面拉伸、主题同步窗口/WebView 背景；关窗默认询问托盘或退出，可记住并从设置改回每次询问；完全退出显示转圈、异步清理服务，托盘退出共用此流程；单实例，开发与安装版统一 native，拒绝旧 mock 环境配置 |
-| 发行与 CI | Tauri 携带 Bun 单文件后端、C++ 工作进程、固定 aria2c 和前后端/Rust/下载器依赖许可及对应源码，无 Python 环境、node_modules 或原生 JS 插件；/MT、Linux 静态 libstdc++/libgcc、MaaCore 动态更新；四宿主 Bun 探针门禁、原生构建矩阵和 Linux 干净容器测试；新增手动签名工作流、版本对齐与全量签名/清单校验，只创建草稿；GitHub Packages 按已发布 Release 校验并分发安装包集合，实际结果见下文 |
+| 发行与 CI | Tauri 携带 Bun 单文件后端、C++ 工作进程、固定 aria2c 和前后端/Rust/下载器依赖许可及对应源码，无 Python 环境、node_modules 或原生 JS 插件；/MT、Linux 静态 libstdc++/libgcc、MaaCore 动态更新；四宿主 Bun 探针门禁、原生构建矩阵和 Linux 干净容器测试；新增手动签名工作流、版本对齐与全量签名/清单校验，只创建草稿；安装包通过 GitHub Releases 分发，实际结果见下文 |
 
 原生设备路径已实现，尚未通过真实账号的游戏操作验收。单独成功加载核心也不能证明所有关卡或任务语义兼容。
 
@@ -107,6 +107,13 @@
 - 按追加要求在说明全文最底部常显“上游引用与版权”，列出 MAA / MaaCore、MaaResource 地址与引用范围、各自许可入口和代码版权归属；游戏素材及第三方内容保留各自声明。规范与模板同步该格式；静态检查及 GitHub GFM 渲染确认署名位于全部折叠块之后。
 - 文档静态检查与 `git diff --check` 通过：本地链接存在，Release 正文使用完整 URL，删去工程记录后两个折叠块配对且无模板占位。此前 GitHub GFM 渲染接口确认下载表、八个资产链接、三项亮点及折叠块结构正确，当前版本日志默认展开；本次删除后静态复核结构与底部署名保留。通过 GitHub 只读 API 核对过七个安装包及校验清单的全部文件名、发布日期、Pre-release 标记与成功构建的源码提交；功能及此前保留的验证数量与 v0.1.0 标签一致。
 - 本轮仅修改文档，在独立工作树完成；未重建安装包、运行产品服务或修改线上 Release。后续版本按该规范维护正文，实际发布时再随对应版本使用。
+
+### 本次停用 GitHub Packages（Windows x64，2026-10-23）
+
+- 停用 GitHub Packages 安装包集合分发，移除专用发布工作流、容器配置、发布脚本与对应测试及提取说明；本地检查和 CI 清单同步移除该测试入口。README 与版本说明统一使用 GitHub Releases 获取安装包。
+- GitHub Releases 的安装包、校验文件和源码标签继续保留，运行时构建、许可收集及对应检查保持原有路径。
+- 使用固定 Node 24.22.0 与 pnpm 10.20.0 离线恢复独立工作树依赖（零下载），六组工程脚本测试共 23 项，21 项通过、2 项 Unix 进程组测试在 Windows 按原规则跳过；检查脚本语法、CI 的 `actionlint` 与 `git diff --check` 通过。未重建发行安装包或进行其他平台、真实设备验收。
+- 通过已登录的 GitHub 网页删除远端 `maa-verge` 包，仓库 Packages 已显示空态；GitHub CLI 缺少 `read:packages` 而返回 403，包删除结果由网页确认。历史发布工作流已禁用（`disabled_manually`），无排队或运行中的发布；v0.1.0 Release 描述已移除 Packages 段，原有 8 个资产保持不变。
 
 ### 本次执行动态与任务表删除修复（Windows x64，2026-10-23）
 
@@ -217,13 +224,13 @@
 - 三个工作区 TypeScript 检查、前端生产构建与 71 项 Edge 界面回归通过；`pnpm test:runtime` 的 787 项 Bun 后端回归通过，另 1 项 Windows SIGTERM 测试跳过，包含 20 项预览、原生合成 worker、执行截图和 Python/Bun 数据根互斥。新增逐帧变化 PNG 连续显示验证，图片资源同时最多两份、收起后归零，统计更新频率低于画面更新；补充旧解码永不结束时重新打开仍能刷新，以及任务页不取实时帧的回归。取消修复后另有四轮预览专项共 32 项通过；已检查执行页桌面与 390px 截图。
 - 本轮使用隔离数据、浏览器测试桥与合成 worker，未连接真实设备、操作游戏、调用付费模型或重建安装包。真实设备长时间帧率、WebView 进程内存趋势，以及 macOS/Linux 对应宿主仍需单独验收。
 
-### 本次发行许可与 GitHub Packages（Windows x64，2026-10-23）
+### 本次发行许可与 GitHub Packages（Windows x64，2026-10-23；Packages 已停用）
 
 - 补齐前后端 JavaScript 生产依赖、各平台 Cargo 运行依赖与 Rust 标准库许可。缺正文的上游 crate 按精确版本保留固定来源与哈希，未知缺失阻止打包；不再只收集后端归档库。版本说明记录应用标签、固定 Bun/WebKit 来源和重建入口。
 - Windows 宿主实际许可收集通过：13 个 JavaScript 依赖与 176 个 Rust 运行 crate；同一宿主解析锁定的 Linux x64、macOS x64/arm64 依赖图并收集许可，分别为 243、191、191 个 Rust crate，另附标准库声明。这些依赖图检查不等同于对应系统构建或安装验收。
-- 新增 GitHub Packages 工作流，从已发布 Release 严格核对 7 个安装包和 `SHA256SUMS.txt`，发布 `ghcr.io/deathofbrain/maa-verge:<版本号>` 的双架构安装包集合，拒绝覆盖已有版本；上传后按不可变摘要提取并再次核对全部文件。README 增加入口与 [提取说明](packages.md)；镜像不启动游戏或桌面应用。
+- 当时新增 GitHub Packages 工作流，从已发布 Release 严格核对 7 个安装包和 `SHA256SUMS.txt`，发布双架构安装包集合，拒绝覆盖已有版本；上传后按不可变摘要提取并再次核对全部文件。此分发通道现已停用，专用实现、README 入口与提取说明已移除。
 - 合并后 32 项工程测试中 30 项通过、2 项 Unix 进程组测试在 Windows 跳过，包含 9 项许可收集和 11 项发布校验测试。发行提交 `eb6fafb00b322f44d962c406696e0605a27d2ada` 的 [Checks](https://github.com/DeathofBrain/maa-verge/actions/runs/39923647573) 全部 9 项通过，覆盖应用检查、四宿主探针、四平台安装包构建及 Linux 干净容器后端测试；Linux 下载源阻塞后仅重跑该作业，保留其他成功产物。实际安装包的许可文件已核对，Linux AppDir 与 DEB 目录的许可文件逐一哈希相同。
-- [v0.1.0 开发预览](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.0) 已发布，标签精确指向上述发行提交，7 个安装包与 `SHA256SUMS.txt` 的远端大小、摘要均与本地一致。[GitHub Packages](https://github.com/DeathofBrain/maa-verge/pkgs/container/maa-verge) 已公开发布 `0.1.0`，[发布工作流](https://github.com/DeathofBrain/maa-verge/actions/runs/39930002910) 已按不可变摘要提取并核验全部文件，另已确认匿名读取和源码标签；镜像摘要为 `sha256:ece5eaaea8a415f9775d0d4ac9aec307bea20fcbea2dcc9532f9c5ce29d0091e`。以上不代表完成正式签名、公证、交互安装或新增真实游戏验收。
+- [v0.1.0 开发预览](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.0) 已发布，标签精确指向上述发行提交，7 个安装包与 `SHA256SUMS.txt` 的远端大小、摘要均与本地一致。当时还公开发布过 Packages `0.1.0`，[历史发布工作流](https://github.com/DeathofBrain/maa-verge/actions/runs/39930002910) 曾按不可变摘要提取并核验全部文件，确认匿名读取和源码标签；历史镜像摘要为 `sha256:ece5eaaea8a415f9775d0d4ac9aec307bea20fcbea2dcc9532f9c5ce29d0091e`。该通道现已停用，本段仅保留当时的验证记录。以上不代表完成正式签名、公证、交互安装或新增真实游戏验收。
 
 ### 本次 v0.1.0 发行文档与截图（Windows x64，2026-10-23）
 
