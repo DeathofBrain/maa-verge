@@ -19,6 +19,26 @@ interface Owner {
   clicked: (data: ClickParams) => void;
 }
 type FrameRecord = { deviceId: string; issuedAt: number; width: number; height: number; worker?: PreviewWorker; canControl: boolean };
+const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const base64Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function validPngHeader(data: string, width: number, height: number): boolean {
+  // Buffer's base64 decoder accepts whitespace, URL-safe characters and nonzero
+  // padding bits. Check canonical encoding directly rather than allocating and
+  // re-encoding a complete PNG for every preview frame.
+  if (data.length % 4 || /[^A-Za-z0-9+/=]/.test(data)) return false;
+  const padding = data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0;
+  const firstPadding = data.indexOf('=');
+  if (firstPadding !== -1 && firstPadding !== data.length - padding) return false;
+  const bytes = data.length / 4 * 3 - padding;
+  if (bytes < 24 || bytes > 3 * 1024 * 1024 - 8192) return false;
+  if (padding && (base64Alphabet.indexOf(data[data.length - padding - 1]!) & (padding === 2 ? 15 : 3))) return false;
+  // The first 24 bytes contain the signature, IHDR type and both dimensions.
+  // Frame pixels remain encoded until their consumer decodes or saves them.
+  const header = Buffer.from(data.slice(0, 32), 'base64');
+  return header.subarray(0, 8).equals(pngSignature) && header.readUInt32BE(8) === 13 &&
+    header.toString('ascii', 12, 16) === 'IHDR' && header.readUInt32BE(16) === width && header.readUInt32BE(20) === height;
+}
 
 /** Images and short-lived control tokens stay in memory, outside business data. */
 export class Preview {
@@ -58,10 +78,7 @@ export class Preview {
     try { image = await worker.frame(); }
     catch (error) { throw new RpcError(-32040, '获取画面失败：' + (error instanceof Error ? error.message : String(error))); }
     if (!validateWorkerFrame(image) || image.width * image.height > 16_777_216) throw new RpcError(-32040, '核心返回了无效的画面');
-    const png = Buffer.from(image.data, 'base64');
-    if (png.length < 24 || png.length > 3 * 1024 * 1024 - 8192 || png.toString('base64') !== image.data ||
-        !png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
-        png.toString('ascii', 12, 16) !== 'IHDR' || png.readUInt32BE(16) !== image.width || png.readUInt32BE(20) !== image.height) {
+    if (!validPngHeader(image.data, image.width, image.height)) {
       throw new RpcError(-32040, '核心返回了无效的 PNG 画面');
     }
     const current = this.device(deviceId);
