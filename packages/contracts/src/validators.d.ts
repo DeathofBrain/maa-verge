@@ -23,6 +23,10 @@ export const validateDeviceClickParams: Validator<RpcContract['params']['device.
 export const validateRunArtifactParams: Validator<RpcContract['params']['run.artifact']>;
 export const validateStageListParams: Validator<RpcContract['params']['stages.list']>;
 export const validateStageListResult: Validator<RpcContract['results']['stages.list']>;
+export const validateRecognitionParams: Validator<RpcContract['params']['recognition.get']>;
+export const validateRecognitionResult: Validator<RpcContract['results']['recognition.get']>;
+export const validateItemResourceParams: Validator<RpcContract['params']['resources.item']>;
+export const validateItemResourceResult: Validator<RpcContract['results']['resources.item']>;
 export const validateScreenFrame: Validator<ScreenFrame>;
 export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl'>>;
 export const validateWorkerConfiguration: Validator<WorkerProtocol['configuration']>;
