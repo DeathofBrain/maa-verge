@@ -26,6 +26,11 @@ Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, l
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, etc.); write the description after the colon in Simplified Chinese, for example `feat: 添加主页仪表盘` or `fix(ui): 修复窗口缩放闪烁`.
 - Keep docs/STATUS.md accurate: implemented behavior, verification, limitations and next actions. Never report an untested platform as verified.
 
+## Project skills
+
+- Project-local skills live in `.skill/`. Load the relevant `SKILL.md` only when its task applies.
+- When creating, editing or reviewing Maa Verge Release notes, changelogs or release copy, read and follow [maa-verge-release-notes](.skill/maa-verge-release-notes/SKILL.md). Its `assets/release-notes.md` is the maintained template; version notes belong in `docs/releases/<tag>.md`. Build-only and updater implementation work do not require this writing skill.
+
 ## Commands
 
 The root package.json is the command source of truth: pnpm dev, pnpm dev:ui, pnpm setup:bun, pnpm run doctor, pnpm check, pnpm test:runtime, pnpm test:packaging, pnpm test:desktop-runtime, pnpm test:e2e, pnpm build.
