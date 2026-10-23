@@ -19,6 +19,10 @@ export function useComponentDownloads(channels: UpdateChannel[] | undefined, ref
       let next = previous;
       for (const channel of updates) {
         const existing = previous[channel.id];
+        if (!force && existing && ['idle', 'checking', 'available'].includes(channel.status)) {
+          next = { ...next }; delete next[channel.id];
+          continue;
+        }
         const failedCandidate = channel.status === 'failed' && channel.latestVersion && channel.latestVersion !== channel.currentVersion;
         const appReady = channel.id === 'app' && channel.status === 'staged';
         if (!force && channel.status !== 'downloading' && !failedCandidate && !appReady && !(existing && terminal.has(channel.status))) continue;

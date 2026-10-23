@@ -22,14 +22,14 @@ async function settingsCategory(page: Page, name: string) {
 
 // All installer responses remain inside this browser bridge. No network,
 // filesystem installer, platform updater or real device is used by these tests.
-async function controlAppUpdate(page: Page, options: { supported?: boolean; staged?: boolean; currentVersion?: string } = {}) {
+async function controlAppUpdate(page: Page, options: { supported?: boolean; staged?: boolean; currentVersion?: string; noUpdate?: boolean } = {}) {
   await page.evaluate(async (options) => {
     const target = window as AppUpdateWindow;
     const original = target.runtimeHarness.call;
     const initial = await original('app.snapshot', {}) as Snapshot;
     const channel: UpdateChannel = {
       ...initial.updates.find((item) => item.id === 'app')!, currentVersion: options.currentVersion ?? '0.1.0',
-      latestVersion: '0.1.1', status: options.staged ? 'staged' : 'available', progress: options.staged ? 100 : 0,
+      latestVersion: '0.1.1', status: options.noUpdate ? 'idle' : options.staged ? 'staged' : 'available', progress: options.staged ? 100 : 0,
       appCanInstall: options.supported ?? true, checkedAt: '2026-10-23T03:00:00.000Z',
       message: options.supported === false ? '此软件包请使用系统软件包管理器更新' : '合成签名更新，不访问网络',
       appRelease: { url: 'javascript:alert(1)', notes: '<img src=x onerror=alert(1)>\n[外部链接](javascript:alert(1))\n合成发布说明', publishedAt: '2026-10-23T02:00:00.000Z', prerelease: false },
@@ -161,19 +161,61 @@ test('unsupported installers show platform guidance without download or install 
   await expect(appSection(page).getByRole('button', { name: '检查更新', exact: true })).toBeEnabled();
 });
 
-test('changing the core channel preserves the verified candidate for this activation', async ({ page }) => {
+test('switching a staged preview core to stable cancels the old candidate and notification', async ({ page }) => {
   await page.goto('/');
   await expect(home(page)).toBeVisible();
   await settingsCategory(page, '更新');
+  await page.getByLabel('MaaCore 更新频道', { exact: true }).selectOption('preview');
+  await expect(page.getByLabel('MaaCore 更新频道', { exact: true })).toBeEnabled();
   await coreSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
   await coreSection(page).getByRole('button', { name: '准备更新', exact: true }).click();
   await expect(coreSection(page).getByRole('button', { name: '应用更新', exact: true })).toBeEnabled();
-  await page.getByLabel('MaaCore 更新频道', { exact: true }).selectOption('preview');
-  await expect(coreSection(page)).toContainText('已准备的版本保持不变');
-  await expect(coreSection(page)).toContainText('v6.20.0');
+  await expect(coreSection(page)).toContainText('切换频道会取消已准备的版本，下次检查使用新频道');
+  await expect(coreSection(page)).toContainText('v6.21.0-beta.1');
+  await page.getByLabel('MaaCore 更新频道', { exact: true }).selectOption('stable');
+  await expect(coreSection(page).getByRole('button', { name: '应用更新', exact: true })).toHaveCount(0);
+  await expect(coreSection(page).getByRole('button', { name: '准备更新', exact: true })).toHaveCount(0);
   await expect(coreSection(page)).not.toContainText('v6.21.0-beta.1');
-  await coreSection(page).getByRole('button', { name: '应用更新', exact: true }).click();
-  await expect(coreSection(page).locator('.channel-version')).toHaveText('v6.20.0');
+  await expect(page.getByRole('status', { name: 'MaaCore 核心下载通知', exact: true })).toHaveCount(0);
+  await coreSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
+  await expect(coreSection(page)).toContainText('v6.20.0');
+});
+
+test('changing the app channel invalidates its staged installation confirmation', async ({ page }) => {
+  await page.goto('/');
+  await expect(home(page)).toBeVisible();
+  await settingsCategory(page, '更新');
+  await appSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
+  await appSection(page).getByRole('button', { name: '下载更新', exact: true }).click();
+  await expect(appSection(page).getByRole('button', { name: '安装并重启', exact: true })).toBeEnabled();
+  await expect(appSection(page)).toContainText('切换频道会取消已准备的版本并重新检查');
+  await appSection(page).getByRole('button', { name: '安装并重启', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: '安装应用更新', exact: true });
+  await expect(confirmation).toBeVisible();
+  await page.evaluate(async () => {
+    const harness = (window as HarnessWindow).runtimeHarness;
+    const snapshot = await harness.call('app.snapshot', {}) as Snapshot;
+    await harness.call('settings.save', { settings: { ...snapshot.settings, appUpdateChannel: 'stable' } });
+  });
+  await expect(confirmation).toHaveCount(0);
+  await expect(page.getByLabel('应用更新频道', { exact: true })).toHaveValue('stable');
+  await expect(appSection(page).getByRole('button', { name: '安装并重启', exact: true })).toHaveCount(0);
+  await expect(appSection(page).locator('.channel-version')).toHaveText('0.1.0');
+  await expect(page.getByRole('status', { name: 'Maa Verge 应用下载通知', exact: true })).toHaveCount(0);
+});
+
+test('a preview newer than stable stays installed without a downgrade candidate', async ({ page }) => {
+  await page.goto('/');
+  await expect(home(page)).toBeVisible();
+  await controlAppUpdate(page, { currentVersion: '0.2.0-beta.1', noUpdate: true });
+  await settingsCategory(page, '更新');
+  await page.getByLabel('应用更新频道', { exact: true }).selectOption('stable');
+  await appSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
+  await expect(appSection(page).locator('.sp-update-state')).toHaveText('暂无新版本');
+  await expect(appSection(page).locator('.channel-version')).toHaveText('0.2.0-beta.1');
+  await expect(appSection(page).locator('.channel-version svg')).toHaveCount(0);
+  await expect(appSection(page).getByRole('button', { name: '下载更新', exact: true })).toHaveCount(0);
+  await expect(appSection(page).getByRole('button', { name: '安装并重启', exact: true })).toHaveCount(0);
 });
 
 test('check all continues after failures and reports the failed channel', async ({ page }) => {
