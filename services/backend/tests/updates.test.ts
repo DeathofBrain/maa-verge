@@ -160,6 +160,77 @@ function fixtureUpdates(root: string, store: MemoryStore, busy: () => boolean, s
   return new UpdateService(root, store, () => {}, busy, { source, validator, jobRunner: config => runUpdateJob(config, validator), ...hooks });
 }
 
+test.each(['core', 'resource'])('concurrent and repeated %s activation only switches once', async (channel) => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource(); let switches = 0;
+  const updates = fixtureUpdates(root, store, () => false, source, { afterActivate: () => { switches++; } });
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  if (channel === 'core') source.coreVersion = 'v6.20.1';
+  await updates.check(channel); await updates.prepare(channel);
+  const before = switches;
+  const [automatic, manual] = await Promise.all([updates.activate(channel), updates.activate(channel)]);
+  expect(manual).toEqual(automatic);
+  expect(manual.status).toBe('active');
+  expect(switches).toBe(before + 1);
+  const active = store.get('active', 'combo'), previous = store.get('previous', 'combo');
+  expect(await updates.activate(channel)).toEqual(manual);
+  expect(switches).toBe(before + 1);
+  expect(store.get('active', 'combo')).toEqual(active);
+  expect(store.get('previous', 'combo')).toEqual(previous);
+  await updates.close();
+});
+
+test('a missing candidate never acknowledges an older active version or a different core channel', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await expect(updates.activate('core')).rejects.toThrow('更新候选已失效，请重新检查并下载更新');
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  source.coreVersion = 'v6.20.1'; await updates.check('core');
+  await expect(updates.activate('core')).rejects.toThrow('更新候选已失效');
+  expect(updates.channel('core').currentVersion).toBe('v6.20.0');
+  await updates.prepare('core'); await updates.activate('core'); await updates.rollback('core');
+  await expect(updates.activate('core')).rejects.toThrow('更新候选已失效');
+  store.put('settings', 'main', { coreUpdateChannel: 'preview' });
+  updates.coreChannelChanged();
+  await expect(updates.activate('core')).rejects.toThrow('更新候选已失效');
+  await updates.close();
+});
+
+test('a core update cancelling a resource candidate does not acknowledge bundled resources as that update', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await updates.check('resource'); await updates.prepare('resource');
+  source.coreVersion = 'v6.20.1'; await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await expect(updates.activate('resource')).rejects.toThrow('更新候选已失效');
+  expect(updates.channel('resource').currentVersion).toBe('bundled@v6.20.1');
+  await updates.close();
+});
+
+test('repeat activation still rejects an active generation whose files were changed', async () => {
+  const root = await temp(), store = new MemoryStore();
+  const updates = fixtureUpdates(root, store, () => false);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await writeFile(path.join(store.get('active', 'combo').core.path, 'MaaUtils.dll'), 'broken');
+  await expect(updates.activate('core')).rejects.toThrow('更新候选已失效');
+  expect(store.get('active', 'combo')).toBeUndefined();
+  await updates.close();
+});
+
+test('a damaged same-version repair candidate is rejected even with a working active generation', async () => {
+  const root = await temp(), store = new MemoryStore();
+  const updates = fixtureUpdates(root, store, () => false);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const active = store.get('active', 'combo');
+  for (const snapshot of [active.core, active.resource]) { delete snapshot.installedFiles; delete snapshot.installedHash; }
+  store.put('active', 'combo', active);
+  await updates.check('core'); await updates.prepare('core');
+  await writeFile(path.join(store.get('staged', 'core').path, 'MaaUtils.dll'), 'broken');
+  await expect(updates.activate('core')).rejects.toThrow('更新文件缺失或完整性校验未通过，请重新下载更新');
+  expect(store.get('active', 'combo')).toEqual(active);
+  expect(store.get('staged', 'core')).toBeUndefined();
+  await updates.close();
+});
+
 test('component roots keep active/staged generations and rollback intact when future downloads move', async () => {
   const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
   const updates = fixtureUpdates(root, store, () => false, source);
@@ -367,7 +438,7 @@ test('a candidate modified after validation is rejected without replacing the wo
   const original = store.get('active', 'combo');
   source.coreVersion = 'v6.20.1'; await updates.check('core'); await updates.prepare('core');
   await writeFile(path.join(store.get('staged', 'core').path, 'MaaUtils.dll'), 'broken');
-  await expect(updates.activate('core')).rejects.toThrow('没有已经校验的候选快照');
+  await expect(updates.activate('core')).rejects.toThrow('更新文件缺失或完整性校验未通过，请重新下载更新');
   expect(store.get('active', 'combo')).toEqual(original);
   expect(store.get('staged', 'core')).toBeUndefined();
   await updates.prepare('core'); await updates.activate('core');
@@ -401,6 +472,7 @@ test('missing staged and rollback snapshots never block preparing a fresh update
   await updates.check('core'); await updates.prepare('core');
   busy = true; await updates.activate('core');
   const candidate = store.get('staged', 'core'); await rm(candidate.path, { recursive: true });
+  await expect(updates.activate('core')).rejects.toThrow('更新文件缺失或完整性校验未通过，请重新下载更新');
   expect((await updates.check('core')).status).toBe('available');
   expect(store.get('staged', 'core')).toBeUndefined();
   await updates.prepare('core'); busy = false; await updates.activate('core');

@@ -99,7 +99,7 @@ export default function App() {
     setToast(null);
     pendingRef.current.add(key); setPending(new Set(pendingRef.current));
     try { await call(); await refresh(); if (success) setToast({ text: success }); return true; }
-    catch (cause) { setToast({ text: cause instanceof Error ? cause.message : String(cause), error: true }); return false; }
+    catch (cause) { await refresh(); setToast({ text: cause instanceof Error ? cause.message : String(cause), error: true }); return false; }
     finally { pendingRef.current.delete(key); setPending(new Set(pendingRef.current)); }
   }, [refresh]);
   const navigate = (next: Page) => { setDeviceSettingsEntry(undefined); navigationRevision.current++; setPage(next); setSidebarOpen(false); setPageSearch(''); setSearchOpen(false); };

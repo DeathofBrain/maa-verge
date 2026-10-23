@@ -578,10 +578,26 @@ export class UpdateService {
   }
   activate(channel: string): Promise<any> { return this.serial(() => this.activateCurrent(channel)); }
   private async activateCurrent(channel: string): Promise<any> {
-    await this.reconcileCurrent();
     this.channel(channel);
+    const candidate = this.store.get('staged', channel);
+    await this.reconcileCurrent();
+    const state = this.channel(channel);
     const staged = this.store.get("staged", channel);
-    if (!staged) throw new RpcError(-32020, "没有已经校验的候选快照");
+    if (!staged) {
+      const combo = this.store.get('active', 'combo', {}), active = combo[channel];
+      // Automatic activation can consume the candidate before a stale UI button
+      // is clicked. Only acknowledge the same, still verified active version;
+      // never turn a candidate rejected by reconciliation into a success.
+      if (!candidate && state.status === 'active' && state.latestVersion && state.latestVersion === state.currentVersion
+        && combo.core && combo.resource && active?.version === state.latestVersion && hasIntegrity(active, channel === 'core')
+        && (channel === 'core'
+          ? (active.releaseChannel ?? 'stable') === (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')
+          : channel === 'resource' && active.path !== combo.core.path && active.coreVersion === combo.core.version)) return state;
+      if (candidate && channel === 'resource' && candidate.coreVersion !== combo.core?.version) {
+        throw new RpcError(-32020, '核心版本已变化，请重新准备资源更新');
+      }
+      throw new RpcError(-32020, candidate ? '更新文件缺失或完整性校验未通过，请重新下载更新' : '更新候选已失效，请重新检查并下载更新');
+    }
     if (channel === 'core' && (staged.releaseChannel ?? 'stable') !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')) {
       this.coreChannelChanged();
       throw new RpcError(-32020, '核心更新通道已改变，请重新检查并准备更新');

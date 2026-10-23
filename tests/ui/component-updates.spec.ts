@@ -138,6 +138,41 @@ test('a preparation overtaken by an installed version does not announce a staged
   await expect(page.getByLabel('组件下载通知', { exact: true })).toHaveCount(0);
 });
 
+for (const id of ['core', 'resource'] as const) {
+  test(`${id} activation failure immediately refreshes the invalid candidate without a runtime event`, async ({ page }) => {
+    await page.clock.install();
+    await page.goto('/');
+    await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+    await page.evaluate(async (id) => {
+      const target = window as HarnessWindow, original = target.runtimeHarness.call;
+      const initial = await original('app.snapshot', {}) as Snapshot;
+      const channel: UpdateChannel = { ...initial.updates.find(item => item.id === id)!, status: 'staged',
+        latestVersion: id === 'core' ? 'v6.20.0' : '2026-10-20', progress: 100, message: '合成候选已校验' };
+      target.runtimeHarness.call = async (method, params) => {
+        if (method === 'updates.activate' && params.channel === id) {
+          channel.status = 'available'; channel.progress = 0;
+          channel.message = '更新文件缺失或完整性校验未通过，请重新下载更新';
+          // Reconciliation can invalidate a candidate without emitting an event.
+          throw new Error(channel.message);
+        }
+        const result = await original(method, params);
+        if (method === 'app.snapshot') (result as Snapshot).updates = (result as Snapshot).updates.map(item => item.id === id ? structuredClone(channel) : item);
+        return result;
+      };
+      target.runtimeHarness.emitEvent('update.changed');
+    }, id);
+    await updatesPage(page);
+    const channel = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: id === 'core' ? 'MaaCore 核心' : '游戏资源', exact: true }) });
+    await expect(channel.getByRole('button', { name: '应用更新', exact: true })).toBeVisible();
+    // Freeze polling so only the failed action's refresh can remove the button.
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await channel.getByRole('button', { name: '应用更新', exact: true }).click();
+    await expect(page.locator('.toast.error')).toContainText('更新文件缺失或完整性校验未通过，请重新下载更新');
+    await expect(channel.getByRole('button', { name: '应用更新', exact: true })).toHaveCount(0);
+    await expect(channel.getByRole('button', { name: '准备更新', exact: true })).toBeVisible();
+  });
+}
+
 test('aria2 download preference saves together and survives navigation and reload', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
