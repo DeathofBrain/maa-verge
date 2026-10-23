@@ -15,12 +15,41 @@ type Reply = Result<Value, String>;
 type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Reply>>>>;
 type Emit = Arc<dyn Fn(&str, Value) + Send + Sync>;
 
+#[derive(Clone, Copy)]
+pub struct ClosePreferences {
+    pub minimize_to_tray: bool,
+    pub remember_close_action: bool,
+}
+
+impl Default for ClosePreferences {
+    fn default() -> Self {
+        Self {
+            minimize_to_tray: true,
+            remember_close_action: false,
+        }
+    }
+}
+
+impl ClosePreferences {
+    fn update(&mut self, settings: &Value) {
+        self.minimize_to_tray = settings
+            .get("minimizeToTray")
+            .and_then(Value::as_bool)
+            .unwrap_or(true);
+        // Existing installations must still ask until the user remembers a choice.
+        self.remember_close_action = settings
+            .get("rememberCloseAction")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+    }
+}
+
 pub struct Runtime {
     child: AsyncMutex<Option<Child>>,
     stdin: AsyncMutex<Option<ChildStdin>>,
     pending: Pending,
     next_id: AtomicU64,
-    minimize_to_tray: AtomicBool,
+    close_preferences: Mutex<ClosePreferences>,
     pub update_gate: RwLock<()>,
     updating: AtomicBool,
 }
@@ -194,7 +223,7 @@ impl Runtime {
             stdin: AsyncMutex::new(Some(stdin)),
             pending,
             next_id: AtomicU64::new(1),
-            minimize_to_tray: AtomicBool::new(true),
+            close_preferences: Mutex::new(ClosePreferences::default()),
             update_gate: RwLock::new(()),
             updating: AtomicBool::new(false),
         };
@@ -202,8 +231,11 @@ impl Runtime {
         Ok(runtime)
     }
 
-    pub fn minimize_to_tray(&self) -> bool {
-        self.minimize_to_tray.load(Ordering::Relaxed)
+    pub fn close_preferences(&self) -> ClosePreferences {
+        *self
+            .close_preferences
+            .lock()
+            .expect("close preferences lock")
     }
 
     pub fn mark_updating(&self) {
@@ -251,15 +283,18 @@ impl Runtime {
         match tokio::time::timeout(timeout, receiver).await {
             Ok(Ok(reply)) => {
                 if let Ok(value) = &reply {
-                    let minimize = if snapshot {
-                        value.pointer("/settings/minimizeToTray")
+                    let preferences = if snapshot {
+                        value.get("settings")
                     } else if settings {
-                        value.get("minimizeToTray")
+                        Some(value)
                     } else {
                         None
                     };
-                    if let Some(minimize) = minimize.and_then(Value::as_bool) {
-                        self.minimize_to_tray.store(minimize, Ordering::Relaxed);
+                    if let Some(preferences) = preferences {
+                        self.close_preferences
+                            .lock()
+                            .expect("close preferences lock")
+                            .update(preferences);
                     }
                 }
                 reply
@@ -274,12 +309,16 @@ impl Runtime {
 
     pub async fn shutdown(&self) {
         // EOF lets the service destroy native instances and close storage first.
-        self.stdin.lock().await.take();
         if let Some(mut child) = self.child.lock().await.take() {
-            if tokio::time::timeout(Duration::from_secs(5), child.wait())
-                .await
-                .is_err()
-            {
+            let graceful = async {
+                // Include a concurrent blocked stdin write in the same deadline.
+                self.stdin.lock().await.take();
+                child.wait().await
+            };
+            if !matches!(
+                tokio::time::timeout(Duration::from_secs(5), graceful).await,
+                Ok(Ok(_))
+            ) {
                 let _ = child.kill().await;
                 let _ = child.wait().await;
             }
@@ -292,6 +331,115 @@ mod tests {
     use super::*;
     use std::io::{BufRead, BufReader, Write};
     use std::path::Path;
+
+    #[test]
+    fn existing_settings_require_a_choice_until_explicitly_remembered() {
+        let mut preferences = ClosePreferences::default();
+        preferences.update(&json!({"minimizeToTray": false}));
+        assert!(!preferences.minimize_to_tray);
+        assert!(!preferences.remember_close_action);
+        preferences.update(&json!({"minimizeToTray": true, "rememberCloseAction": true}));
+        assert!(preferences.minimize_to_tray);
+        assert!(preferences.remember_close_action);
+        preferences.update(&json!({"minimizeToTray": false, "rememberCloseAction": true}));
+        assert!(!preferences.minimize_to_tray);
+        assert!(preferences.remember_close_action);
+        preferences.update(&json!({"minimizeToTray": false}));
+        assert!(!preferences.remember_close_action);
+    }
+
+    fn shutdown_runtime(mode: &str) -> Runtime {
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--ignored",
+                "--exact",
+                "runtime::tests::shutdown_fixture",
+                "--nocapture",
+                "--test-threads=1",
+            ])
+            .env("MAAVERGE_TEST_SHUTDOWN_FIXTURE", mode)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+        #[cfg(windows)]
+        command.creation_flags(0x08000000);
+        let mut child = command.spawn().unwrap();
+        let stdin = child.stdin.take().unwrap();
+        Runtime {
+            child: AsyncMutex::new(Some(child)),
+            stdin: AsyncMutex::new(Some(stdin)),
+            pending: Arc::new(Mutex::new(HashMap::new())),
+            next_id: AtomicU64::new(1),
+            close_preferences: Mutex::new(ClosePreferences::default()),
+            update_gate: RwLock::new(()),
+            updating: AtomicBool::new(false),
+        }
+    }
+
+    #[test]
+    #[ignore = "synthetic subprocess fixture for shutdown tests"]
+    fn shutdown_fixture() {
+        match std::env::var("MAAVERGE_TEST_SHUTDOWN_FIXTURE").as_deref() {
+            Ok("eof") => {
+                std::io::copy(&mut std::io::stdin().lock(), &mut std::io::sink()).unwrap();
+            }
+            Ok("hang") => std::thread::sleep(Duration::from_secs(30)),
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn shutdown_allows_graceful_eof_without_waiting_for_deadline() {
+        tauri::async_runtime::block_on(async {
+            let runtime = shutdown_runtime("eof");
+            tokio::time::timeout(Duration::from_secs(4), runtime.shutdown())
+                .await
+                .expect("an EOF-aware service must exit promptly");
+            assert!(runtime.stdin.lock().await.is_none());
+            assert!(runtime.child.lock().await.is_none());
+        });
+    }
+
+    #[test]
+    fn shutdown_deadline_includes_waiting_for_a_busy_stdin_lock() {
+        tauri::async_runtime::block_on(async {
+            let runtime = shutdown_runtime("hang");
+            let mut stdin = runtime.stdin.lock().await;
+            tokio::time::timeout(Duration::from_secs(8), runtime.shutdown())
+                .await
+                .expect("a blocked writer must not prevent bounded cleanup");
+            let writer = stdin.as_mut().unwrap();
+            let written = async {
+                writer.write_all(b"service must have been killed").await?;
+                writer.flush().await
+            };
+            assert!(written.await.is_err());
+            assert!(runtime.child.lock().await.is_none());
+        });
+    }
+
+    #[test]
+    fn update_shutdown_and_normal_exit_can_share_bounded_cleanup() {
+        tauri::async_runtime::block_on(async {
+            let runtime = Arc::new(shutdown_runtime("eof"));
+            let _install = runtime.update_gate.write().await;
+            runtime.mark_updating();
+            let other = runtime.clone();
+            let exiting = tauri::async_runtime::spawn(async move { other.shutdown().await });
+            tokio::time::timeout(Duration::from_secs(4), async {
+                runtime.shutdown().await;
+                exiting.await.unwrap();
+            })
+            .await
+            .expect("concurrent update and window exit must finish cleanup promptly");
+            assert!(runtime.stdin.lock().await.is_none());
+            assert!(runtime.child.lock().await.is_none());
+            assert!(runtime.updating.load(Ordering::Acquire));
+            assert!(!runtime.close_preferences().remember_close_action);
+        });
+    }
 
     fn lease(worker: &Path, lock: &Path) -> std::process::Output {
         let mut command = std::process::Command::new(worker);
@@ -367,7 +515,7 @@ mod tests {
                 .request("settings.save".into(), json!({"settings": settings}))
                 .await
                 .unwrap();
-            assert!(!runtime.minimize_to_tray());
+            assert!(!runtime.close_preferences().minimize_to_tray);
             let proposal = runtime
                 .request("agent.message".into(), json!({"message": "刷1-7材料3次"}))
                 .await
@@ -416,7 +564,7 @@ mod tests {
                 "EOF must release the C++ device lease"
             );
             let restarted = Runtime::start_process(command(), emit).await.unwrap();
-            assert!(!restarted.minimize_to_tray());
+            assert!(!restarted.close_preferences().minimize_to_tray);
             let recovered = restarted
                 .request("app.snapshot".into(), json!({}))
                 .await
