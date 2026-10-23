@@ -15,6 +15,16 @@ test('starting a table opens its execution page and preserves the editing draft'
   await expect(execution(page).getByRole('heading', { name: '固源岩补给', exact: true })).toBeVisible();
   await expect(execution(page).getByRole('complementary', { name: '本次执行任务', exact: true })).toContainText('自动作战');
   await expect(execution(page).getByRole('checkbox', { name: '允许点击操作' })).toHaveCount(0);
+  await expect(execution(page).getByRole('region', { name: '设备画面预览', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.frames.length)).toBe(0);
+  await execution(page).getByRole('button', { name: '查看第 1 项自动作战结果', exact: true }).click();
+  await execution(page).getByRole('button', { name: '跟随当前任务', exact: true }).click();
+  await expect(execution(page).getByRole('region', { name: '设备画面预览', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.frames.length)).toBe(0);
+  await expect(execution(page).getByRole('button', { name: '实时画面', exact: true })).toHaveCount(0);
+  await page.getByRole('contentinfo', { name: '执行状态栏', exact: true }).getByRole('button', { name: '画面', exact: true }).click();
+  await expect(page.getByRole('region', { name: '设备画面预览', exact: true }).getByRole('img', { name: /实时画面$/ })).toBeVisible();
+  await page.getByRole('button', { name: '收起运行详情', exact: true }).click();
   await expect(execution(page)).not.toContainText(/StartUp|Fight|Infrast/);
   await execution(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await expect(execution(page).getByRole('region', { name: '所选任务结果', exact: true })).toContainText('已停止');
