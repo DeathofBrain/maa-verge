@@ -807,7 +807,7 @@
   gap: 9px;
 }
 
-.wb-management-actions .wb-danger {
+.wb-workbench .wb-danger {
   color: var(--danger,#b5473d);
 }
 
@@ -991,6 +991,7 @@
   .wb-header-actions {
     width: 100%;
     justify-content: flex-end;
+    flex-wrap: wrap;
   }
   .wb-header-actions .button {
     flex: 1;

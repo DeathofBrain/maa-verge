@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AlertCircle, ArrowRight, BookOpen, Bot, Check, ChevronDown, ChevronRight, ChevronUp, Clock3, Copy, FileJson, FolderOpen, History, House, Layers, ListChecks, LoaderCircle, Menu, Monitor, Plus, Search, Send, Settings2, ShieldCheck, Square, Terminal, Trash2, Wifi, Wrench, X } from 'lucide-react';
 import { desktopPlatform, syncWindowTheme, rpc, subscribe, localizeExecutionMessage, taskEnabled, taskLabels, nextPlanName, type Plan, type Run, type Snapshot, type Task } from '@maaverge/contracts';
 import { DevicesPage } from './DevicesPage';
-import PlanEditor, { taskFieldSearch } from './PlanEditor';
+import PlanEditor, { discardPlanDraft, taskFieldSearch } from './PlanEditor';
 import { CopilotPage, SettingsPage, ToolsPage } from './SupportPages';
 import HomeDashboard from './HomeDashboard';
 import WindowControls from './WindowControls';
@@ -89,7 +89,7 @@ export default function App() {
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); searchInput.current?.focus(); setSearchOpen(true); }
-      if (event.key === 'Escape') { setSidebarOpen(false); setSearchOpen(false); setDeleting(null); setRunPanel(null); }
+      if (event.key === 'Escape') { setSidebarOpen(false); setSearchOpen(false); if (!pendingRef.current.has('delete-plan')) setDeleting(null); setRunPanel(null); }
     };
     window.addEventListener('keydown', handler); return () => window.removeEventListener('keydown', handler);
   }, []);
@@ -139,6 +139,20 @@ export default function App() {
   const duplicatePlan = async (plan: Plan) => {
     const copy = { ...structuredClone(plan), id: uid(), name: `${plan.name.slice(0, 75)} 副本` };
     if (await action('duplicate-plan', () => rpc('plan.save', { plan: copy }), '任务表已复制')) choosePlan(copy);
+  };
+  const deletePlan = async (plan: Plan) => {
+    const revision = navigationRevision.current;
+    const nextPlan = snapshot?.plans.find((item) => item.id !== plan.id && (item.group || 'daily') === (plan.group || 'daily'));
+    if (!await action('delete-plan', () => rpc('plan.delete', { id: plan.id }), '任务表已删除')) return;
+    discardPlanDraft(plan.id);
+    setDeleting(null);
+    if (navigationRevision.current !== revision) return;
+    setSelectedPlanId(nextPlan?.id || '');
+    setFocusTaskType(undefined); setFocusTaskIndex(undefined); setInitialParams(undefined);
+    try {
+      if (nextPlan) localStorage.setItem('maaverge:ui:selected-plan', nextPlan.id);
+      else localStorage.removeItem('maaverge:ui:selected-plan');
+    } catch { /* UI selection is optional. */ }
   };
   const sendMessage = async (text: string) => {
     if (!text.trim() || pendingRef.current.has('agent')) return;
@@ -217,7 +231,7 @@ export default function App() {
       {runPanel === 'preview' && <DevicePreview key={device?.id || 'no-device'} device={device} />}
     </div></section>}
     <footer className={`run-dock ${dockRun ? 'is-running' : ''}`} aria-label="执行状态栏"><button className="dock-status" onClick={() => toggleRunPanel('progress')}>{dockRun ? <LoaderCircle size={17} className="spin" /> : <span className={`status-dot ${!device || device.state === 'offline' ? 'offline' : ''}`} />}<strong>{dockRun ? '执行中' : device && device.state !== 'offline' ? '就绪' : '等待连接'}</strong>{(dockRun || page !== 'home') && <><span className="dock-divider" /><span className="dock-message">{dockRun ? localizeExecutionMessage(dockRun.message) : selectedPlan?.name || pageNames[page]}<small>{dockRun ? `${snapshot.devices.find((item) => item.id === dockRun.deviceId)?.name || dockRun.deviceId} · 任务进度 ${dockRun.progress}%` : device?.name || '请连接模拟器或设备'}</small></span></>}</button><div className="dock-actions"><button aria-label="多开执行" className={runPanel === 'instances' ? 'selected' : ''} onClick={() => toggleRunPanel('instances')}><Layers size={16} /><span>多开执行{activeRuns.length > 1 ? ` · ${activeRuns.length}` : ''}</span></button>{dockRun && <button className="button danger dock-stop" disabled={pending.has(`stop-${dockRun.id}`)} onClick={() => void stopRun(dockRun)}><Square size={12} />停止执行</button>}<button aria-label="运行详情" className={runPanel === 'progress' ? 'selected' : ''} onClick={() => toggleRunPanel('progress')}><ListChecks size={16} /><span>运行详情</span></button><button aria-label="日志" className={runPanel === 'logs' ? 'selected' : ''} onClick={() => toggleRunPanel('logs')}><Terminal size={16} /><span>日志</span></button><button aria-label="画面" className={runPanel === 'preview' ? 'selected' : ''} onClick={() => toggleRunPanel('preview')}><Monitor size={16} /><span>画面</span></button><button className="icon-button" aria-label={runPanel ? '收起运行面板' : '展开运行面板'} onClick={() => { if (dockRun) setSelectedRunId(dockRun.id); setRunPanel(runPanel ? null : 'progress'); }}>{runPanel ? <ChevronDown size={17} /> : <ChevronUp size={17} />}</button></div></footer>
-    {deleting && <ConfirmDialog title="删除任务表" onClose={() => setDeleting(null)}><p>确定删除“{deleting.name}”？执行记录会保留。</p><div className="modal-actions"><button className="button secondary" onClick={() => setDeleting(null)}>取消</button><button className="button danger" disabled={pending.has('delete-plan')} onClick={async () => { if (await action('delete-plan', () => rpc('plan.delete', { id: deleting.id }), '任务表已删除')) { setDeleting(null); setSelectedPlanId(''); } }}><Trash2 size={15} />删除任务表</button></div></ConfirmDialog>}
+    {deleting && <ConfirmDialog title="删除任务表" onClose={() => { if (!pendingRef.current.has('delete-plan')) setDeleting(null); }}><p>确定删除“{deleting.name}”？此表的未保存改动也会丢弃，执行记录会保留。</p>{activeRuns.some((run) => run.planId === deleting.id) && <p role="alert">请先停止此任务表的执行，再删除任务表。</p>}<div className="modal-actions"><button className="button secondary" disabled={pending.has('delete-plan')} onClick={() => setDeleting(null)}>取消</button><button className="button danger" disabled={pending.has('delete-plan') || activeRuns.some((run) => run.planId === deleting.id)} onClick={() => void deletePlan(deleting)}><Trash2 size={15} />{pending.has('delete-plan') ? '正在删除…' : '删除任务表'}</button></div></ConfirmDialog>}
     <UpdateNotifications notices={downloads.notices} onDismiss={downloads.dismiss} />
     {toast && <div role={toast.error ? 'alert' : 'status'} className={`toast ${toast.error ? 'error' : ''}`}>{toast.error ? <AlertCircle size={17} /> : <Check size={17} />}<span>{toast.text}</span><button className="icon-button" aria-label="关闭提示" onClick={() => setToast(null)}><X size={15} /></button></div>}
   </div>;
