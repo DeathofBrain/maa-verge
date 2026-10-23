@@ -176,8 +176,17 @@ test('Windows ZIP and compressed tar members use system libarchive with Git GNU 
     return spawnSync(program, args, { ...options, env, timeout: 10000 });
   };
   for (const extension of ['zip', 'tar.gz', 'tar.bz2', 'tar.xz']) {
-    const archive = createArchive(systemTar, root, `aria2 binary fixture.${extension}`, [member], true);
-    assert.deepEqual(archiveFile(execute, archive, member), expected);
+    let archive;
+    if (extension === 'tar.xz') {
+      // Read-only USTAR/XZ fixture containing member with the seven expected bytes.
+      // Windows Server 2022's libarchive reads XZ but cannot create XZ archives.
+      // Created once with Python tarfile, USTAR format and zeroed owner/time metadata.
+      archive = path.join(root, 'aria2 binary fixture.tar.xz');
+      writeFileSync(archive, Buffer.from('/Td6WFoAAATm1rRGAgAhARYAAAB0L+Wj4Cf/AIBdADCciVV/ppr3BWItikKDwIzRjadXJbo43/C+KxT8nlrLF8LyJH8S6rfELVvrTBQJOR4NRE+2hK1jCbkJak5U3FpPDN9i7a7CdcJZuw3cz+Xt/EzVwMsLJvaD7qbj8EroA1VqdIdjztEyP9g2xLUWPxSi1AZ5ipEVO0NvMXL1XmAAAL056UTyg2lzAAGcAYBQAADes3QVscRn+wIAAAAABFla', 'base64'));
+    } else archive = createArchive(systemTar, root, `aria2 binary fixture.${extension}`, [member], true);
+    const actual = archiveFile(execute, archive, member);
+    assert.deepEqual(actual, expected);
+    assert.equal(sha256(actual), '7900d72a8b5907273e481afa9762278c51bec283c7950236a6db528473e821b1');
     assert.throws(() => archiveFile(execute, archive, 'missing/member'), (error) => {
       assert.ok(error.message.includes(path.basename(archive)));
       assert.ok(error.message.includes('missing/member'));
