@@ -3,6 +3,12 @@ import type { Run, RunTask, Snapshot } from '../../packages/contracts/src/types'
 
 const execution = (page: import('@playwright/test').Page) => page.getByRole('region', { name: '任务表执行页面', exact: true });
 
+async function openLatestExecution(page: import('@playwright/test').Page) {
+  await page.locator('.sidebar').getByRole('button', { name: '任务表执行', exact: true }).click();
+  const run = await page.evaluate(async () => ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot).runs[0]);
+  await page.getByRole('region', { name: '任务表执行监控', exact: true }).getByRole('button', { name: `查看执行${run.id}`, exact: true }).click();
+}
+
 test('starting a table opens its execution page and preserves the editing draft', async ({ page }) => {
   await page.goto('/');
   await page.locator('.sidebar').getByRole('button', { name: '任务表', exact: true }).click();
@@ -73,7 +79,7 @@ test('slow run details remain serial and are not discarded by progress snapshots
     };
     await api.call('run.start', { planId: 'daily', deviceId: 'mock-device-1', requestId: 'slow-detail' });
   });
-  await page.locator('.sidebar').getByRole('button', { name: '任务表执行', exact: true }).click();
+  await openLatestExecution(page);
   await expect(execution(page).locator('.exec-tasks > li').first()).toBeVisible({ timeout: 5000 });
   expect(await page.evaluate(() => ((window as HarnessWindow).runtimeHarness as unknown as { maxDetails: number }).maxDetails)).toBe(1);
 });
@@ -101,7 +107,7 @@ test('execution overview shows every result, facility staff and optional referen
     // Editing the stored table must not rewrite the in-flight result list.
     await api.call('plan.save', { plan: { ...plan, name: '下次执行的新配置', tasks: [{ type: 'Award', params: {}, enabled: true }] } });
   });
-  await page.locator('.sidebar').getByRole('button', { name: '任务表执行', exact: true }).click();
+  await openLatestExecution(page);
   await expect(execution(page).getByRole('heading', { name: '作战与基建', exact: true })).toBeVisible();
   await expect(execution(page).locator('.exec-tasks > li')).toHaveCount(4);
   await expect(execution(page).locator('.exec-eyebrow')).toContainText('已完成', { timeout: 18_000 });
@@ -149,7 +155,7 @@ test('execution overview shows every result, facility staff and optional referen
   await expect(outcomes.locator('.exec-outcomes > li')).toHaveCount(4);
   await page.reload();
   await page.getByRole('button', { name: '打开导航', exact: true }).click();
-  await page.locator('.sidebar').getByRole('button', { name: '任务表执行', exact: true }).click();
+  await openLatestExecution(page);
   await expect(execution(page).locator('.exec-task.completed')).toHaveCount(4);
   await expect(reference.getByRole('button')).toHaveAttribute('aria-expanded', 'false');
   await reference.getByRole('button').click();
@@ -186,7 +192,7 @@ test('overview preserves failure reasons and separates confirmed staff from a pe
     };
     api.emitEvent('run.failed');
   });
-  await page.locator('.sidebar').getByRole('button', { name: '任务表执行', exact: true }).click();
+  await openLatestExecution(page);
   const outcomes = execution(page).getByRole('region', { name: '全部任务结果', exact: true });
   await expect(outcomes).toContainText('可用干员不足，换班未完成');
   await expect(outcomes).toContainText('前序任务失败，未执行');

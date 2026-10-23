@@ -161,6 +161,8 @@ test('combined data sync stores only enabled recognition kinds and execution mat
   await openTools(page, '干员');
   await expect(operators(page).getByRole('row').filter({ hasText: '阿米娅' })).toBeVisible();
   await page.locator('.sidebar').getByRole('button', { name: '任务表执行', exact: true }).click();
+  const run = await page.evaluate(async () => ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot).runs[0]);
+  await page.getByRole('region', { name: '任务表执行监控', exact: true }).getByRole('button', { name: `查看执行${run.id}`, exact: true }).click();
   const drops = page.getByRole('region', { name: '本次获得材料', exact: true });
   const image = drops.getByRole('img', { name: '固源岩', exact: true });
   await expect(image).toBeVisible();
