@@ -64,3 +64,20 @@ test('ordinary settings save immediately while a component download is pending',
     expect(runtime.updates.channel('core').status).toBe('downloading');
   } finally { release(); await downloading; }
 });
+
+test('download engine settings persist, survive legacy saves and reject command text', async () => {
+  const root = temporary(), runtime = new Runtime(root); instances.push(runtime);
+  expect(runtime.snapshot().settings.componentDownload).toBeUndefined();
+  const componentDownload = { engine: 'aria2' as const, aria2Path: path.join(root, 'tools with spaces', process.platform === 'win32' ? 'aria2c.exe' : 'aria2c') };
+  const saved = await runtime.handle('settings.save', { settings: { ...runtime.snapshot().settings, componentDownload } });
+  expect(saved.componentDownload).toEqual(componentDownload);
+  expect((await runtime.handle('settings.save', { settings: parseSettings({ theme: 'dark' }) })).componentDownload).toEqual(componentDownload);
+  for (const aria2Path of ['aria2c --enable-rpc', 'relative/aria2c', path.join(root, 'aria2c.cmd'), 'bad\0path']) {
+    expect(() => parseSettings({ componentDownload: { engine: 'aria2', aria2Path } })).toThrow();
+  }
+  expect(() => parseSettings({ componentDownload: { engine: 'shell', aria2Path: '' } })).toThrow();
+  expect(() => parseSettings({ componentDownload: { engine: 'aria2', aria2Path: '', arguments: '--enable-rpc' } })).toThrow();
+  expect(parseSettings({ componentDownload: { engine: 'aria2', aria2Path: '' } }).componentDownload).toEqual({ engine: 'aria2', aria2Path: '' });
+  const reset = await runtime.handle('settings.save', { settings: { ...saved, componentDownload: { engine: 'builtin', aria2Path: '' } } });
+  expect(reset.componentDownload).toEqual({ engine: 'builtin', aria2Path: '' });
+});

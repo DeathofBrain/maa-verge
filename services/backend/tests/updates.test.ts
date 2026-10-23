@@ -61,6 +61,57 @@ test("download validates SHA-256/size and removes partial files", async () => {
   expect(await source.download(metadata, destination, () => {})).toBe(metadata.digest.slice(7));
   expect(await readFile(destination)).toEqual(body);
 });
+
+test('retry and service restart keep a source-bound download cache while versions and data roots stay isolated', async () => {
+  const root = await temp(), store = new MemoryStore(), destinations: string[] = [];
+  let version = 'v1.0.0';
+  const source: UpdateSource = {
+    check: () => ({ version, url: `https://example.test/${version}/core.zip`, name: 'core.zip' }),
+    download: async (_metadata, destination) => {
+      destinations.push(destination);
+      await writeFile(destination + '.partial', 'retained bytes');
+      throw new Error('synthetic network interruption');
+    },
+  };
+  const updates = new UpdateService(root, store, () => {}, () => false, { source });
+  await updates.check('core');
+  await expect(updates.prepare('core')).rejects.toThrow('准备更新失败');
+  expect(await readFile(destinations[0] + '.partial', 'utf8')).toBe('retained bytes');
+  await updates.close();
+  const restarted = new UpdateService(root, store, () => {}, () => false, { source });
+  await expect(restarted.prepare('core')).rejects.toThrow('准备更新失败');
+  expect(destinations[1]).toBe(destinations[0]);
+  version = 'v1.0.1'; await restarted.check('core');
+  await expect(restarted.prepare('core')).rejects.toThrow('准备更新失败');
+  expect(destinations[2]).not.toBe(destinations[0]);
+  const otherStore = new MemoryStore();
+  otherStore.put('settings', 'main', { componentPaths: { core: root, resource: root } });
+  const other = new UpdateService(await temp(), otherStore, () => {}, () => false, { source });
+  await other.check('core'); await expect(other.prepare('core')).rejects.toThrow('准备更新失败');
+  expect(destinations[3]).not.toBe(destinations[2]);
+  await restarted.close(); await other.close();
+});
+
+test('download preferences are captured per preparation and repeated progress emits bounded events', async () => {
+  const root = await temp(), store = new MemoryStore(), events: any[] = [], options: any[] = [];
+  const source: UpdateSource = {
+    check: () => ({ version: 'v1.0.0', name: 'core.zip' }),
+    download: async (_metadata, destination, progress, settings) => {
+      options.push(settings);
+      for (let index = 0; index < 10_000; index++) progress(Math.trunc(index / 112));
+      progress(90); progress(90);
+      await writeFile(destination, 'fixture'); return 'a'.repeat(64);
+    },
+  };
+  store.put('settings', 'main', { componentDownload: { engine: 'aria2', aria2Path: '' } });
+  const updates = new UpdateService(root, store, (_type, _message, data) => events.push(data.update), () => false, { source, jobRunner: async () => ({}) });
+  await updates.check('core'); await updates.prepare('core');
+  expect(options).toEqual([{ engine: 'aria2', aria2Path: '' }]);
+  expect(events.filter(event => event.message === '正在下载官方组件').length).toBeLessThanOrEqual(2);
+  expect(events.some(event => event.message === '正在解压并校验组件' && event.progress === 90)).toBe(true);
+  expect(updates.channel('core').status).toBe('staged');
+  await updates.close();
+});
 test("fixture resource update activates only at idle and rolls back independently", async () => {
   const root = await temp(), store = new MemoryStore(), source = new FixtureSource(); let busy = false;
   const updates = fixtureUpdates(root, store, () => busy, source);

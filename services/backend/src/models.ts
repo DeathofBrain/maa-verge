@@ -66,6 +66,11 @@ export function parseSettings(input: any = {}): Settings {
     try { value.componentPaths = { core: normalizeComponentPath(value.componentPaths.core), resource: normalizeComponentPath(value.componentPaths.resource) }; }
     catch (error) { throw new RpcError(-32602, error instanceof Error ? error.message : String(error)); }
   }
+  if (value.componentDownload) {
+    try { value.componentDownload = { ...value.componentDownload, aria2Path: normalizeComponentPath(value.componentDownload.aria2Path) }; }
+    catch { throw new RpcError(-32602, 'aria2 路径必须是可执行文件的绝对路径，留空时从 PATH 查找 aria2c'); }
+    if (/\.(?:cmd|bat|ps1)$/i.test(value.componentDownload.aria2Path)) throw new RpcError(-32602, 'aria2 路径必须指向可执行文件，不能使用脚本');
+  }
   validateInfrastructureProfiles(value.infrastructureEstimates);
   if ((value.capture?.mumuTouch || value.capture?.mumuBridge) && value.capture.method !== 'mumu') throw new RpcError(-32602, 'MuMu 触控增强和网络桥接需要启用 MuMu 截图增强');
   validateDeviceProfiles(value.deviceProfiles);

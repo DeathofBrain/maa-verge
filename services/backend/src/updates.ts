@@ -12,9 +12,11 @@ import { childEnvironment, nativeEnvironment, normalizeComponentPath, type Compo
 import { resourceActivityVersions } from "./resource-version.ts";
 import { pruneGenerations } from "./generation-retention.ts";
 import { snapshotIntegrity } from "./snapshot-integrity.ts";
+import { downloadArchive } from "./download.ts";
+import type { ComponentDownload } from "../../../packages/contracts/src/types.ts";
 
 const GITHUB = "https://api.github.com/repos/MaaAssistantArknights";
-export const MAX_DOWNLOAD_BYTES = 2 * 1024 ** 3;
+export { MAX_DOWNLOAD_BYTES } from "./download.ts";
 export type UpdateChannel = "app" | "core" | "resource";
 export type UpdateMetadata = Record<string, any> & { version: string };
 export interface UpdateStore {
@@ -25,7 +27,7 @@ export interface UpdateStore {
 }
 export interface UpdateSource {
   check(channel: string): Promise<UpdateMetadata> | UpdateMetadata;
-  download(metadata: UpdateMetadata, destination: string, progress: (percent: number) => void): Promise<string> | string;
+  download(metadata: UpdateMetadata, destination: string, progress: (percent: number) => void, options?: ComponentDownload): Promise<string> | string;
   close?(): void;
 }
 type Validator = (core: string, resource: string, version: string) => Promise<void> | void;
@@ -118,7 +120,7 @@ export class OfficialSource implements UpdateSource {
       if (assets.length !== 1) throw new Error("未找到唯一匹配的官方运行时包");
       const asset = assets[0], url = asset.browser_download_url;
       if (typeof url !== "string" || !url.startsWith("https://github.com/MaaAssistantArknights/")) throw new Error("更新包来源不是官方仓库");
-      return { version: release.tag_name, url, name: asset.name, size: asset.size, digest: asset.digest, source: "GitHub" };
+      return { version: release.tag_name, url, name: asset.name, size: asset.size, digest: asset.digest ?? undefined, source: "GitHub" };
     }
     if (channel !== "resource") throw new Error("未知更新通道");
     const commit = (await this.getJson(`${GITHUB}/MaaResource/commits/main`)).sha;
@@ -128,33 +130,9 @@ export class OfficialSource implements UpdateSource {
       url: `https://codeload.github.com/MaaAssistantArknights/MaaResource/zip/${commit}`,
       name: `MaaResource-${commit}.zip`, source: "GitHub" };
   }
-  async download(metadata: UpdateMetadata, destination: string, progress: (percent: number) => void): Promise<string> {
-    const partial = destination + ".partial", digest = createHash("sha256");
-    let count = 0;
-    try {
-      const response = await this.fetcher(metadata.url, { signal: AbortSignal.any([this.abort.signal, AbortSignal.timeout(120_000)]), headers: { "User-Agent": "maa-verge/0.1" } });
-      if (!response.ok || !response.body) throw new Error(`下载失败 HTTP ${response.status}`);
-      const size = Number(metadata.size || response.headers.get("content-length") || 0);
-      if (!Number.isSafeInteger(size) || size < 0 || size > MAX_DOWNLOAD_BYTES) throw new Error("下载包超过大小限制");
-      const file = await open(partial, "wx");
-      try {
-        for await (const chunk of response.body) {
-          count += chunk.length;
-          if (count > MAX_DOWNLOAD_BYTES) throw new Error("下载包超过大小限制");
-          digest.update(chunk);
-          // FileHandle.write may perform a short write.
-          let offset = 0;
-          while (offset < chunk.length) offset += (await file.write(chunk, offset, chunk.length - offset)).bytesWritten;
-          progress(size ? Math.min(90, Math.trunc(count / size * 90)) : 25);
-        }
-        await file.sync();
-      } finally { await file.close(); }
-      if (metadata.size && count !== metadata.size) throw new Error("下载包大小不符");
-      const hash = digest.digest("hex");
-      if (metadata.digest && metadata.digest !== "sha256:" + hash) throw new Error("下载包 SHA-256 校验失败");
-      await rename(partial, destination);
-      return hash;
-    } finally { await rm(partial, { force: true }); }
+  async download(metadata: UpdateMetadata, destination: string, progress: (percent: number) => void, options?: ComponentDownload): Promise<string> {
+    return downloadArchive(metadata as UpdateMetadata & { url: string }, destination, progress,
+      { ...options, signal: this.abort.signal, fetcher: this.fetcher });
   }
 }
 
@@ -326,7 +304,7 @@ export class UpdateService {
       const versions = { app: "0.1.0", core: "未安装", resource: "未安装" };
       for (const [channel, version] of Object.entries(versions)) this.save({ id: channel, currentVersion: version, status: "idle", progress: 0, message: "尚未检查" });
     }
-    for (const state of this.channels()) if (["checking", "downloading"].includes(state.status)) this.save({ ...state, status: "failed", message: "上次更新准备被中断，请重试", progress: 0 });
+    for (const state of this.channels()) if (["checking", "downloading"].includes(state.status)) this.save({ ...state, status: "failed", message: "上次更新准备被中断，可重试继续下载", progress: 0 });
     this.rememberRoots();
     this.reconcileInstalled(true);
     this.queue = this.pruneVersions();
@@ -524,11 +502,22 @@ export class UpdateService {
       await mkdir(generation, { recursive: true });
       let digest: string;
       if (typeof metadata.name !== "string" || path.basename(metadata.name) !== metadata.name || metadata.name.includes("\\")) throw new Error("更新包文件名无效");
-      const archive = path.join(directory, ".download-" + randomUUID() + "-" + metadata.name);
+      // Stable per data root and immutable source, so interrupted downloads can
+      // resume without two independent data roots sharing a writable cache.
+      const scope = path.resolve(this.root);
+      const identity = createHash('sha256').update(JSON.stringify([scope, channel, metadata.url, metadata.version, metadata.name, metadata.size, metadata.digest])).digest('hex');
+      const archive = path.join(directory, ".download-" + identity + "-" + metadata.name);
+      const downloadOptions: ComponentDownload | undefined = this.store.get('settings', 'main', {}).componentDownload;
+      let lastProgress = -1, lastReport = 0;
       try {
-        digest = await this.source.download(metadata, archive, (progress) => this.change(channel, { progress, message: "正在下载官方组件" }));
-        // A user or uninstaller can remove the base while the download is in
-        // flight. Recheck before starting a resource copy into the candidate.
+        digest = await this.source.download(metadata, archive, (value) => {
+          const progress = Math.max(0, Math.min(90, Math.trunc(value)));
+          if (!Number.isFinite(progress) || progress === lastProgress || (progress < 90 && Date.now() - lastReport < 250)) return;
+          lastProgress = progress; lastReport = Date.now();
+          this.change(channel, { progress, message: "正在下载官方组件" });
+        }, downloadOptions);
+        this.change(channel, { progress: 90, message: "正在解压并校验组件" });
+        // Recheck the resource base after downloading, before copying it.
         if (channel === 'resource') await this.reconcileCurrent();
         const core = this.store.get("active", "combo", {}).core;
         if (channel === 'resource' && !core) throw new Error('核心或基础资源文件缺失或损坏，请先重新下载安装并启用核心');

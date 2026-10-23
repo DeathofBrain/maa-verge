@@ -1,5 +1,190 @@
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
-import type { Snapshot } from '../../packages/contracts/src/types';
+import type { Page } from '@playwright/test';
+import type { Snapshot, UpdateChannel } from '../../packages/contracts/src/types';
+
+type DownloadWindow = HarnessWindow & { downloadControl: {
+  started: number;
+  checks: number;
+  progress: (value: number) => Promise<void>;
+  finish: (failed?: boolean) => void;
+  notify: () => Promise<void>;
+} };
+
+// Hold only the synthetic download RPC. Snapshot/event traffic stays live, just
+// as it does while the real service downloads outside the Settings component.
+async function controlDownload(page: Page, id: 'core' | 'resource', startup = false) {
+  await page.evaluate(async ({ id, startup }) => {
+    const target = window as DownloadWindow;
+    const original = target.runtimeHarness.call;
+    const initial = await original('app.snapshot', {}) as Snapshot;
+    const channel: UpdateChannel = { ...initial.updates.find((item) => item.id === id)!, status: startup ? 'downloading' : 'available', latestVersion: id === 'core' ? 'v6.20.0' : '2026-10-20', progress: startup ? 23 : 0, message: '合成下载，未访问网络' };
+    let resolve: ((channel: UpdateChannel) => void) | undefined;
+    let reject: ((error: Error) => void) | undefined;
+    const notify = async () => { const state = await original('app.snapshot', {}) as Snapshot; await original('settings.save', { settings: state.settings }); };
+    const control: DownloadWindow['downloadControl'] = {
+      started: 0, checks: 0,
+      notify,
+      progress: async (value) => { channel.progress = value; await notify(); },
+      finish: (failed) => {
+        channel.status = failed ? 'failed' : 'staged';
+        channel.message = failed ? '合成网络中断，可重试续传' : '合成候选版本已验证';
+        if (failed) reject?.(new Error(channel.message));
+        else { channel.progress = 100; resolve?.(structuredClone(channel)); }
+        void notify();
+      },
+    };
+    target.downloadControl = control;
+    target.runtimeHarness.call = async (method, params) => {
+      if (method === 'updates.check' && params.channel === id) control.checks++;
+      if (method === 'updates.prepare' && params.channel === id) {
+        control.started++;
+        channel.status = 'downloading'; channel.progress = 0;
+        return new Promise<UpdateChannel>((accept, fail) => { resolve = accept; reject = fail; });
+      }
+      const result = await original(method, params);
+      if (method === 'app.snapshot') {
+        const snapshot = result as Snapshot;
+        snapshot.updates = snapshot.updates.map((item) => item.id === id ? structuredClone(channel) : item);
+      }
+      return result;
+    };
+    await notify();
+  }, { id, startup });
+}
+
+async function updatesPage(page: Page) {
+  await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
+  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '更新', exact: true }).click();
+}
+
+test('component downloads keep progress and completion visible after leaving Settings', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await controlDownload(page, 'core');
+  await updatesPage(page);
+  const core = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+  await core.getByRole('button', { name: '准备更新', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started)).toBe(1);
+  const notice = page.getByRole('status', { name: 'MaaCore 核心下载通知', exact: true });
+  await expect(notice).toContainText('正在下载与验证');
+  await expect(page.getByRole('button', { name: '检查全部更新', exact: true })).toBeDisabled();
+  await expect(page.getByLabel('游戏资源下载目录', { exact: true })).toBeDisabled();
+  await expect(page.getByLabel('组件下载器', { exact: true })).toBeEnabled();
+  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '通用与外观', exact: true }).click();
+  await expect(page.getByLabel('界面主题', { exact: true })).toBeEnabled();
+  await page.locator('.sidebar').getByRole('button', { name: '工具箱', exact: true }).click();
+  await page.evaluate(() => (window as DownloadWindow).downloadControl.progress(42));
+  await expect(notice.getByRole('progressbar')).toHaveAttribute('value', '42');
+  await expect(notice).toContainText('可继续使用其他页面');
+  const position = await notice.boundingBox();
+  expect(position!.x).toBeGreaterThan(1000);
+  expect(position!.y).toBeLessThan(100);
+  await page.screenshot({ path: testInfo.outputPath('background-core-download.png') });
+  await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
+  await expect(notice).toContainText('已下载并验证，待生效');
+  await notice.getByRole('button', { name: '关闭MaaCore 核心下载通知', exact: true }).click();
+  await page.evaluate(() => (window as DownloadWindow).downloadControl.notify());
+  await expect(page.getByLabel('组件下载通知', { exact: true })).toHaveCount(0);
+  await updatesPage(page);
+  await expect(core.getByRole('button', { name: '应用更新', exact: true })).toBeEnabled();
+  await expect(page.getByLabel('组件下载通知', { exact: true })).toHaveCount(0);
+});
+
+test('download failure survives navigation and retries the pinned candidate directly', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await controlDownload(page, 'resource');
+  await updatesPage(page);
+  const resource = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: '游戏资源', exact: true }) });
+  await resource.getByRole('button', { name: '准备更新', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started)).toBe(1);
+  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+  await page.evaluate(() => (window as DownloadWindow).downloadControl.finish(true));
+  const failure = page.getByRole('alert', { name: 'MaaResource 游戏资源下载通知', exact: true });
+  await expect(failure).toContainText('合成网络中断，可重试续传');
+  await updatesPage(page);
+  await resource.getByRole('button', { name: '重试下载', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started)).toBe(2);
+  expect(await page.evaluate(() => (window as DownloadWindow).downloadControl.checks)).toBe(0);
+  await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
+  await expect(page.getByRole('status', { name: 'MaaResource 游戏资源下载通知', exact: true })).toContainText('已下载并验证，待生效');
+});
+
+test('a preparation overtaken by an installed version does not announce a staged candidate', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await controlDownload(page, 'core');
+  await page.evaluate(() => {
+    const target = window as DownloadWindow, original = target.runtimeHarness.call;
+    let installed: UpdateChannel | undefined;
+    target.runtimeHarness.call = async (method, params) => {
+      if (method === 'updates.prepare') {
+        const state = await original('app.snapshot', {}) as Snapshot;
+        const core = state.updates.find(channel => channel.id === 'core')!;
+        installed = { ...core, currentVersion: core.latestVersion!, status: 'idle', message: '当前已是最新版本' };
+        return installed;
+      }
+      const result = await original(method, params);
+      if (method === 'app.snapshot' && installed) (result as Snapshot).updates = (result as Snapshot).updates.map(channel => channel.id === 'core' ? installed! : channel);
+      return result;
+    };
+  });
+  await updatesPage(page);
+  const core = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+  await core.getByRole('button', { name: '准备更新', exact: true }).click();
+  await expect(core).toContainText('已是最新版本');
+  await expect(core.getByRole('button', { name: '应用更新', exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('组件下载通知', { exact: true })).toHaveCount(0);
+});
+
+test('aria2 download preference saves together and survives navigation and reload', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await updatesPage(page);
+  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('builtin');
+  await page.getByLabel('组件下载器', { exact: true }).selectOption('aria2');
+  await page.getByLabel('aria2c 路径', { exact: true }).fill('C:\\Tools\\aria2\\aria2c.exe');
+  await page.getByRole('button', { name: '保存下载器', exact: true }).click();
+  await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
+  const preference = await page.evaluate(async () => {
+    const snapshot = await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}) as Snapshot;
+    return snapshot.settings.componentDownload;
+  });
+  expect(preference).toEqual({ engine: 'aria2', aria2Path: 'C:\\Tools\\aria2\\aria2c.exe' });
+  await page.reload();
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await updatesPage(page);
+  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('aria2');
+  await expect(page.getByLabel('aria2c 路径', { exact: true })).toHaveValue('C:\\Tools\\aria2\\aria2c.exe');
+  await page.getByLabel('aria2c 路径', { exact: true }).fill('');
+  await page.getByRole('button', { name: '保存下载器', exact: true }).click();
+  await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
+});
+
+test.describe('startup component download', () => {
+  test.use({ runtimeHoldSnapshot: true });
+  test('automatic download status appears on Home without opening Settings', async ({ page }) => {
+    await page.goto('/');
+    await controlDownload(page, 'resource', true);
+    await page.evaluate(() => (window as HarnessWindow).runtimeHarness.releaseSnapshot());
+    await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+    const notice = page.getByRole('status', { name: 'MaaResource 游戏资源下载通知', exact: true });
+    await expect(notice.getByRole('progressbar')).toHaveAttribute('value', '23');
+    await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
+    await expect(notice).toContainText('已下载并验证，待生效');
+  });
+  test('a candidate that failed before the first snapshot still reports its error', async ({ page }) => {
+    await page.goto('/');
+    await controlDownload(page, 'core', true);
+    await page.evaluate(() => {
+      (window as DownloadWindow).downloadControl.finish(true);
+      (window as HarnessWindow).runtimeHarness.releaseSnapshot();
+    });
+    await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+    await expect(page.getByRole('alert', { name: 'MaaCore 核心下载通知', exact: true })).toContainText('合成网络中断，可重试续传');
+  });
+});
 
 test('component roots save independently and installed resource versions use each client activity', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
