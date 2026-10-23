@@ -90,14 +90,24 @@ async function acquire(asset, directory, fetcher) {
   return file;
 }
 
-function archiveFile(execute, archive, member) {
-  return command(execute, 'tar', ['-xOf', archive, member], { encoding: null });
+export function archiveFile(execute, archive, member) {
+  // GNU tar treats drive letters (and other colons) in -f as remote hosts.
+  // Its ZIP support also differs from Windows' bundled libarchive tar.
+  const directory = path.dirname(path.resolve(archive));
+  let tar = 'tar';
+  if (process.platform === 'win32' && path.extname(archive).toLowerCase() === '.zip') {
+    const systemRoot = process.env.SystemRoot || process.env.WINDIR;
+    if (!systemRoot) throw new Error('Cannot locate Windows tar for aria2 ZIP extraction');
+    tar = path.join(systemRoot, 'System32', 'tar.exe');
+  }
+  return command(execute, tar, ['-xOf', `./${path.basename(archive)}`, member], { cwd: directory, encoding: null });
 }
 
-function unpackSource(execute, archive, directory, asset) {
-  const entries = command(execute, 'tar', ['-tf', archive]).trim().split(/\r?\n/);
+export function unpackSource(execute, archive, directory, asset) {
+  const archiveDirectory = path.dirname(path.resolve(archive)), filename = `./${path.basename(archive)}`;
+  const entries = command(execute, 'tar', ['-tf', filename], { cwd: archiveDirectory }).trim().split(/\r?\n/);
   if (!entries.length || entries.some(name => !name.startsWith(asset.root + '/') || name.includes('\\') || name.split('/').includes('..'))) throw new Error('Unsafe aria2 source archive paths');
-  command(execute, 'tar', ['-xf', archive, '-C', directory]);
+  command(execute, 'tar', ['-xf', filename, '-C', path.resolve(directory)], { cwd: archiveDirectory });
   return path.join(directory, asset.root);
 }
 
