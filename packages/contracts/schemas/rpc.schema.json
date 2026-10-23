@@ -7,7 +7,7 @@
   "properties": {
     "params": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "logs.info", "logs.export", "logs.clean", "home.info", "stages.list", "recognition.get", "resources.item", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "logs.info", "logs.export", "logs.clean", "home.info", "stages.list", "recognition.get", "resources.item", "resources.operator", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "#/$defs/EmptyParams" },
         "logs.info": { "$ref": "#/$defs/EmptyParams" },
@@ -17,6 +17,7 @@
         "stages.list": { "$ref": "#/$defs/StageListParams" },
         "recognition.get": { "$ref": "#/$defs/RecognitionParams" },
         "resources.item": { "$ref": "#/$defs/ItemResourceParams" },
+        "resources.operator": { "$ref": "#/$defs/OperatorResourceParams" },
         "plan.save": { "type": "object", "additionalProperties": false, "required": ["plan"], "properties": { "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" } } },
         "plan.delete": { "$ref": "#/$defs/IdParams" },
         "device.discover": { "$ref": "#/$defs/EmptyParams" },
@@ -45,7 +46,7 @@
     },
     "results": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "logs.info", "logs.export", "logs.clean", "home.info", "stages.list", "recognition.get", "resources.item", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "logs.info", "logs.export", "logs.clean", "home.info", "stages.list", "recognition.get", "resources.item", "resources.operator", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "./runtime.schema.json" },
         "logs.info": { "type": "object", "additionalProperties": false, "required": ["directory", "retentionDays"], "properties": { "directory": { "type": "string" }, "retentionDays": { "type": "integer", "enum": [0, 7, 14, 30] } } },
@@ -55,6 +56,7 @@
         "stages.list": { "$ref": "#/$defs/StageListResult" },
         "recognition.get": { "$ref": "#/$defs/RecognitionResult" },
         "resources.item": { "$ref": "#/$defs/ItemResourceResult" },
+        "resources.operator": { "$ref": "#/$defs/OperatorResourceResult" },
         "plan.save": { "$ref": "./runtime.schema.json#/$defs/Plan" },
         "plan.delete": { "type": "object", "additionalProperties": false, "required": ["deleted"], "properties": { "deleted": { "type": "boolean" } } },
         "device.discover": { "type": "array", "items": { "$ref": "#/$defs/DiscoveredDevice" } },
@@ -142,6 +144,25 @@
         "name": { "type": ["string", "null"], "maxLength": 300 },
         "mimeType": { "enum": ["image/png", null] },
         "data": { "type": ["string", "null"], "maxLength": 1398104 },
+        "resourceVersion": { "type": ["string", "null"], "maxLength": 200 }
+      }
+    },
+    "OperatorResourceParams": {
+      "type": "object", "additionalProperties": false, "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 300, "pattern": "^[^\\u0000-\\u001f\\u007f]+$" },
+        "clientType": { "$ref": "#/$defs/ClientType" }
+      }
+    },
+    "OperatorResourceResult": {
+      "description": "Bounded artwork and metadata from the active installed MaaResource; missing or ambiguous names keep text and known rarity without guessing an avatar.",
+      "type": "object", "additionalProperties": false, "required": ["name", "id", "rarity", "mimeType", "data", "resourceVersion"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "id": { "type": ["string", "null"], "maxLength": 200 },
+        "rarity": { "description": "1-based star count; null means unknown or conflicting candidates.", "type": ["integer", "null"], "minimum": 1, "maximum": 6 },
+        "mimeType": { "enum": ["image/png", null] },
+        "data": { "type": ["string", "null"], "maxLength": 699052 },
         "resourceVersion": { "type": ["string", "null"], "maxLength": 200 }
       }
     },

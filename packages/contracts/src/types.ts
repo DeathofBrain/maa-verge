@@ -307,6 +307,10 @@ export interface RunInfrastructure {
         string,
         string
       ];
+  /**
+   * Latest staffing evidence; configured names are not an independently recognized final roster.
+   */
+  staffingStatus?: 'planned' | 'confirmed' | 'unavailable';
   product: string;
   message: string;
   at: string;

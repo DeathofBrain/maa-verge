@@ -633,6 +633,14 @@
             "maxLength": 80
           }
         },
+        "staffingStatus": {
+          "description": "Latest staffing evidence; configured names are not an independently recognized final roster.",
+          "enum": [
+            "planned",
+            "confirmed",
+            "unavailable"
+          ]
+        },
         "product": {
           "type": "string",
           "maxLength": 200

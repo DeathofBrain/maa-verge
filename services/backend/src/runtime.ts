@@ -26,9 +26,10 @@ import type { RunTask } from '../../../packages/contracts/src/types';
 import { recordDrops, recordInfrastructure, RunArtifacts } from './execution-evidence';
 import { validateRunArtifactParams } from '../../../packages/contracts/src/validators.js';
 import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
-import { validateRecognitionParams, validateItemResourceParams } from '../../../packages/contracts/src/validators.js';
+import { validateRecognitionParams, validateItemResourceParams, validateOperatorResourceParams } from '../../../packages/contracts/src/validators.js';
 import { clearDeviceRecognition, parseRecognition, recognitionKey, recognitionSnapshot } from './recognition';
 import { itemResource, itemResourceNames } from './item-resources';
+import { operatorResource } from './operator-resources';
 import { Logs } from './logs';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
@@ -177,6 +178,9 @@ export class Runtime {
       case 'resources.item':
         if (!validateItemResourceParams(params)) throw new RpcError(-32602, '材料资源请求参数无效');
         return itemResource(this.store.get('active', 'combo', {}), params.itemId, params.clientType);
+      case 'resources.operator':
+        if (!validateOperatorResourceParams(params)) throw new RpcError(-32602, '干员资源请求参数无效');
+        return operatorResource(this.store.get('active', 'combo', {}), params.name, params.clientType);
       case 'home.info': {
         if (Object.keys(params).some(key => !['deviceId', 'clientType', 'refresh'].includes(key)) || (params.deviceId !== undefined && (typeof params.deviceId !== 'string' || !params.deviceId || params.deviceId.length > 200)) || (params.refresh !== undefined && typeof params.refresh !== 'boolean')) throw new RpcError(-32602, '主页信息请求参数无效');
         if (params.clientType !== undefined && !['Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'].includes(params.clientType)) throw new RpcError(-32602, '游戏客户端无效');
