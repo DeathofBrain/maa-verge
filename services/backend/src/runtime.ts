@@ -130,13 +130,19 @@ export class Runtime {
       return { ...device, dataSync: { operatorsAt: synced.operatorsAt ?? null, depotAt: synced.depotAt ?? null } };
     });
   }
-  snapshot() { return parseSnapshot({ mode: this.mode, devices: this.devices(), plans: this.store.all('plan').map(parsePlan), runs: this.store.all('run').reverse().slice(0, 100).map(run => {
-    const { tasks, ...summary } = run;
-    return { finishedAt: null, ...summary };
-  }), updates: this.updates.channels(), settings: parseSettings(this.store.get('settings', 'main')), events: this.store.events().map(event => {
-    if (!event.data.run?.tasks) return event;
-    const { tasks: _tasks, ...run } = event.data.run; return { ...event, data: { ...event.data, run } };
-  }) }); }
+  snapshot() {
+    let endedCount = 0;
+    // Retain creation order while keeping long-running executions visible even
+    // when other devices have produced more than 100 finished executions.
+    const runs = this.store.all('run').reverse().filter(run => run.status === 'running' || endedCount++ < 100).map(run => {
+      const { tasks, ...summary } = run;
+      return { finishedAt: null, ...summary };
+    });
+    return parseSnapshot({ mode: this.mode, devices: this.devices(), plans: this.store.all('plan').map(parsePlan), runs, updates: this.updates.channels(), settings: parseSettings(this.store.get('settings', 'main')), events: this.store.events().map(event => {
+      if (!event.data.run?.tasks) return event;
+      const { tasks: _tasks, ...run } = event.data.run; return { ...event, data: { ...event.data, run } };
+    }) });
+  }
   async handle(method: string, params: any = {}) {
     if (params === null) params = {};
     if (typeof params !== 'object' || Array.isArray(params)) throw new RpcError(-32602, 'params 必须是对象');
