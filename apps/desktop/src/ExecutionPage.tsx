@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Check, ChevronRight, Circle, Clock3, ImageIcon, Layers, ListChecks, LoaderCircle, Monitor, Package, Square, Terminal, TriangleAlert } from 'lucide-react';
 import { localizeExecutionMessage, rpc, taskLabels, type Plan, type Run, type RunArtifact, type RunTask, type Snapshot } from '@maaverge/contracts';
 import DevicePreview from './DevicePreview';
@@ -16,6 +16,16 @@ type Props = {
 };
 const runNames: Record<Run['status'], string> = { running: '执行中', completed: '已完成', failed: '执行失败', stopped: '已停止' };
 const taskNames: Record<RunTask['status'], string> = { waiting: '未执行', running: '执行中', completed: '已完成', failed: '执行失败', stopped: '已停止', skipped: '已跳过' };
+const pendingDetails = new Map<string, Promise<Run>>();
+function readRunDetail(id: string): Promise<Run> {
+  const previous = pendingDetails.get(id);
+  if (previous) return previous;
+  const request = rpc('run.detail', { id });
+  pendingDetails.set(id, request);
+  const clear = () => { if (pendingDetails.get(id) === request) pendingDetails.delete(id); };
+  void request.then(clear, clear);
+  return request;
+}
 const dateTime = (value: string) => new Date(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const duration = (start: string, end: string | null | undefined, now: number) => {
   const seconds = Math.max(0, Math.floor(((end ? Date.parse(end) : now) - Date.parse(start)) / 1000));
@@ -26,16 +36,32 @@ const duration = (start: string, end: string | null | undefined, now: number) =>
 export default function ExecutionPage({ snapshot, run: summary, pending, onSelectRun, onStop, onEdit, onPrepare, livePreviewVisible = true }: Props) {
   const [detail, setDetail] = useState<Run>();
   const [loadError, setLoadError] = useState('');
+  const summaryRef = useRef(summary);
+  summaryRef.current = summary;
   const run = detail?.id === summary?.id && detail?.status === summary?.status ? detail : summary;
   const [selection, setSelection] = useState<number | null>(null);
   const [view, setView] = useState<'live' | 'captures'>(run?.status === 'running' ? 'live' : 'captures');
   const [clock, setClock] = useState(Date.now);
   useEffect(() => {
     if (!summary) return;
+    const id = summary.id;
     let cancelled = false;
-    void rpc('run.detail', { id: summary.id }).then((value) => { if (!cancelled) { setDetail(value); setLoadError(''); } }).catch((cause: unknown) => { if (!cancelled) setLoadError(cause instanceof Error ? cause.message : String(cause)); });
-    return () => { cancelled = true; };
-  }, [summary?.id, snapshot]);
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const value = await readRunDetail(id);
+        if (cancelled) return;
+        setDetail(value); setLoadError('');
+        if (summaryRef.current?.status === 'running' || value.status === 'running') timer = window.setTimeout(() => { void poll(); }, 1000);
+      } catch (cause) {
+        if (cancelled) return;
+        setLoadError(cause instanceof Error ? cause.message : String(cause));
+        timer = window.setTimeout(() => { void poll(); }, 5000);
+      }
+    };
+    void poll();
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [summary?.id]);
   useEffect(() => {
     if (run?.status !== 'running') return;
     const timer = window.setInterval(() => setClock(Date.now()), 1000);

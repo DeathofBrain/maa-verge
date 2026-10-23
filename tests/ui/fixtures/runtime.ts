@@ -77,6 +77,7 @@ let state = restore();
 let sequence = Math.max(0, ...state.events.map((event) => Number(event.id) || 0));
 function persist() { localStorage.setItem(key, JSON.stringify(state)); }
 function emit(type: string, message: string, data: Record<string, unknown> = {}) {
+  if (data.run && typeof data.run === 'object') { const { tasks: _tasks, ...summary } = data.run as Run; data = { ...data, run: summary }; }
   const event: Event = { id: ++sequence, type, message, createdAt: now(), data };
   state.events = [...state.events.slice(-99), event];
   persist();
@@ -165,7 +166,7 @@ function mockAddress(value: unknown): string {
 
 export async function fixtureRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
-    case 'app.snapshot': return clone(state);
+    case 'app.snapshot': return clone({ ...state, runs: state.runs.map(({ tasks: _tasks, ...summary }) => summary) });
     case 'stages.list': {
       const clientType = String(params.clientType || 'Official');
       const jp = clientType === 'YoStarJP';

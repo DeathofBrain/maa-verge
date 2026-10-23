@@ -10,7 +10,7 @@ Maa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完�
 
 每个根目录下有临时下载的 `downloads/` 与不可变的 `generations/`。保存目录要求完整绝对路径，并检测实际写入能力；安装在系统只读目录时可选择用户可写目录，错误会保留当前设置和活动版本。恢复默认只改变后续下载位置。变更目录不移动或覆盖现有活动、候选、上一组回滚文件，运行中的 worker 继续使用其固定路径，已经安装在旧用户数据目录的版本继续可用。
 
-契约新增可选 `Settings.componentPaths`（`core`、`resource`；保存空字符串恢复对应默认目录）与 `UpdateChannel.installDirectory`。服务初始化补全旧设置，旧客户端保存其他设置时保留目录。`UpdateChannel.resourceActivities` 按客户端提供已安装资源的活动名与 `last_updated`；官服和 B 服共享基础 `resource/version.json`，其他客户端读取各自 `global/<client>/resource/version.json`，缺失时明确显示“活动信息未提供”。主页和更新页以活动名显示游戏资源版本，保留提交号、基础资源版本和更新时间用于核对。这是资源包标记，不替代官方活动日历的开放时间。
+契约新增可选 `Settings.componentPaths`（`core`、`resource`；保存空字符串恢复对应默认目录）与 `UpdateChannel.installDirectory`。服务初始化补全旧设置，旧客户端保存其他设置时保留目录。`UpdateChannel.resourceActivities` 按客户端提供已安装资源的活动名与 `last_updated`；官服和 B 服共享基础 `resource/version.json`，资源页合并显示为「国服（官服 / B服）」，其他客户端读取各自 `global/<client>/resource/version.json`，缺失时明确显示“活动信息未提供”。主页和更新页以活动名显示游戏资源版本，保留提交号、基础资源版本和更新时间用于核对。这是资源包标记，不替代官方活动日历的开放时间。
 
 ## 与 maa-cli 的关系
 

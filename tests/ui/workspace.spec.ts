@@ -208,11 +208,12 @@ test('resource updates activate independently without changing MaaCore', async (
   await resource.getByRole('button', { name: '检查更新', exact: true }).click();
   await resource.getByRole('button', { name: '准备更新', exact: true }).click();
   await resource.getByRole('button', { name: '应用更新', exact: true }).click();
-  await expect(resource.locator('.channel-version')).toHaveText('2026-10-20');
+  await expect(resource.locator('.channel-version')).toHaveText('活动信息未提供');
+  await expect(resource).toContainText('2026-10-20');
   await expect(resource.locator('.pill')).toHaveText('已更新');
   await expect(core.locator('.channel-version')).toHaveText('v6.19.0');
   await resource.getByRole('button', { name: '回滚上一版本', exact: true }).click();
-  await expect(resource.locator('.channel-version')).toContainText('2026-10-18');
+  await expect(resource).toContainText('2026-10-18');
 });
 
 test('a prepared update waits for the running device before activating', async ({ page }) => {

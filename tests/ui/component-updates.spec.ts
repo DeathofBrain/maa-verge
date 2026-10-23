@@ -9,6 +9,7 @@ test('component roots save independently and installed resource versions use eac
     const harness = (window as HarnessWindow).runtimeHarness;
     const snapshot = await harness.call('app.snapshot', {}) as Snapshot;
     snapshot.settings.componentPaths = { core: 'C:\\Maa Verge\\MaaCore', resource: 'D:\\Game Data\\MaaResource' };
+    snapshot.settings.connection = { adbPath: '', address: '', config: 'General', touchMode: 'minitouch', adbLite: false, clientType: 'Bilibili' };
     await harness.call('settings.save', { settings: snapshot.settings });
     const resource = snapshot.updates.find(channel => channel.id === 'resource')!;
     resource.currentVersion = 'a'.repeat(40);
@@ -29,6 +30,9 @@ test('component roots save independently and installed resource versions use eac
   const paths = await page.evaluate(async () => ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot).settings.componentPaths);
   expect(paths).toEqual({ core: 'E:\\Custom Components\\Core', resource: 'D:\\Game Data\\MaaResource' });
   await expect(resource.locator('.channel-version')).toHaveText('合成活动 · 新篇章');
+  await expect(resource.getByLabel('资源版本客户端', { exact: true })).toHaveValue('Official');
+  await expect(resource.getByLabel('资源版本客户端', { exact: true }).locator('option[value="Official"]')).toHaveText('国服（官服 / B服）');
+  await expect(resource.getByLabel('资源版本客户端', { exact: true }).locator('option[value="Bilibili"]')).toHaveCount(0);
   await expect(resource).toContainText('2026-10-23 12:00:00');
   await resource.getByLabel('资源版本客户端', { exact: true }).selectOption('YoStarEN');
   await expect(resource.locator('.channel-version')).toHaveText('Synthetic EN event');

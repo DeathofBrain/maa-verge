@@ -23,6 +23,51 @@ test('starting a table opens its execution page and preserves the editing draft'
   await expect(workbench.locator('.wb-save-state')).toHaveText('未保存');
 });
 
+test('save-and-start respects navigation made while the save was pending', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.sidebar').getByRole('button', { name: '任务表', exact: true }).click();
+  await page.getByRole('button', { name: '配置任务表固源岩补给', exact: true }).click();
+  await page.evaluate(() => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const call = api.call;
+    let release!: () => void;
+    const saved = new Promise<void>((resolve) => { release = resolve; });
+    Object.assign(api, { releaseSave: release });
+    api.call = async (method, params) => { if (method === 'plan.save') await saved; return call(method, params); };
+  });
+  const workbench = page.getByRole('region', { name: '任务表工作台', exact: true });
+  await workbench.getByLabel('作战次数', { exact: true }).fill('9');
+  await workbench.getByRole('button', { name: '开始日常', exact: true }).click();
+  await workbench.getByRole('button', { name: '保存并开始', exact: true }).click();
+  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+  await page.evaluate(() => ((window as HarnessWindow).runtimeHarness as unknown as { releaseSave: () => void }).releaseSave());
+  await expect(page.locator('.toast')).toContainText('任务表已开始执行');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await expect(execution(page)).toHaveCount(0);
+});
+
+test('slow run details remain serial and are not discarded by progress snapshots', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await page.evaluate(async () => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const call = api.call;
+    let active = 0;
+    Object.assign(api, { maxDetails: 0 });
+    api.call = async (method, params) => {
+      if (method !== 'run.detail') return call(method, params);
+      active++;
+      Object.assign(api, { maxDetails: Math.max((api as unknown as { maxDetails: number }).maxDetails, active) });
+      try { await new Promise((resolve) => setTimeout(resolve, 1400)); return await call(method, params); }
+      finally { active--; }
+    };
+    await api.call('run.start', { planId: 'daily', deviceId: 'mock-device-1', requestId: 'slow-detail' });
+  });
+  await page.locator('.sidebar').getByRole('button', { name: '任务表执行', exact: true }).click();
+  await expect(execution(page).locator('.exec-tasks > li').first()).toBeVisible({ timeout: 5000 });
+  expect(await page.evaluate(() => ((window as HarnessWindow).runtimeHarness as unknown as { maxDetails: number }).maxDetails)).toBe(1);
+});
+
 test('duplicate tasks retain independent results, materials, infrastructure and local screenshots', async ({ page }, testInfo) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
@@ -53,9 +98,16 @@ test('duplicate tasks retain independent results, materials, infrastructure and 
   await expect(execution(page).getByRole('img', { name: '自动作战反馈画面', exact: true })).toBeVisible();
   await expect(execution(page).getByRole('region', { name: '所选任务掉落记录', exact: true })).toContainText('× 2');
   await page.screenshot({ path: testInfo.outputPath('execution-desktop.png'), fullPage: true });
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.screenshot({ path: testInfo.outputPath('execution-desktop-dark.png'), fullPage: true });
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('execution-mobile.png'), fullPage: true });
+  await execution(page).getByRole('region', { name: '本次获得材料', exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('execution-mobile-results.png'), fullPage: true });
   await page.reload();
   await page.getByRole('button', { name: '打开导航', exact: true }).click();
   await page.locator('.sidebar').getByRole('button', { name: '任务表执行', exact: true }).click();

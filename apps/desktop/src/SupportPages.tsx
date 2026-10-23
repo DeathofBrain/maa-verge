@@ -10,7 +10,7 @@ import './support-pages.css';
 import { useSettingsDraft } from './settings-draft';
 import { TaskConnectionSettings } from './TaskConnectionSettings';
 import { MultiInstanceSettings } from './MultiInstanceSettings';
-import { resourceClientLabels, resourceVersionDetail, resourceVersionLabel, type ResourceClient } from './update-display';
+import { resourceClientFor, resourceClientLabels, resourceVersionDetail, resourceVersionLabel, type ResourceClient } from './update-display';
 
 export interface SupportPageProps {
   snapshot: Snapshot;
@@ -232,7 +232,7 @@ function ComponentPathForm({ channel, settings, busy, onSave }: { channel: Updat
 }
 
 function UpdateSection({ channel, settings, busy, hasActiveRun, onAction, onSave }: { channel: UpdateChannel; settings: Settings; busy: boolean; hasActiveRun: boolean; onAction: SupportPageProps['onAction']; onSave: (patch: Partial<Settings>) => Promise<boolean> }) {
-  const [resourceClient, setResourceClient] = useState<ResourceClient>(settings.connection?.clientType ?? 'Official');
+  const [resourceClient, setResourceClient] = useState<ResourceClient>(resourceClientFor(settings.connection?.clientType ?? 'Official'));
   const Icon = channel.id === 'app' ? HardDrive : channel.id === 'core' ? Cpu : Database;
   const working = ['checking', 'downloading'].includes(channel.status);
   const status = channel.status === 'idle' ? channel.id === 'app' ? '开发预览' : channel.latestVersion === channel.currentVersion ? '已是最新版本' : '等待检查' : updateLabels[channel.status];
