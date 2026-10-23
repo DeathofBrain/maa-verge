@@ -8,7 +8,7 @@
 
 当前为 **0.1.0 开发预览**。请以 [开发状态](docs/STATUS.md) 判断当前实际能力；[完整计划](PLAN.md) 描述后续交付。开发和安装版均直接使用真实设备、核心、画面和更新源，仅 Agent 保留本地规则提案。自动测试使用隔离夹具。
 
-[下载 v0.1.0 开发预览](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.0) · [版本说明](docs/releases/v0.1.0.md)
+[下载 v0.1.0 开发预览](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.0) · [版本说明](docs/releases/v0.1.0.md) · [GitHub Packages](https://github.com/DeathofBrain/maa-verge/pkgs/container/maa-verge)
 
 默认进入主页仪表盘，任务表通过独立侧栏入口管理。Logo 采用蓝色渐变与帕拉斯白色头部图形，保留双角和玫瑰；[设计说明](docs/branding.md) 记录图标来源、提示词和生成方式。仓库：[DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。
 
@@ -67,6 +67,8 @@
 从 [GitHub Releases](https://github.com/DeathofBrain/maa-verge/releases) 下载对应系统与架构的安装包：Windows x64 提供 EXE / MSI，macOS 提供 Apple Silicon / Intel DMG，Linux x64 提供 AppImage / DEB / RPM。macOS 最低目标为 13.5。当前开发预览包未完成正式签名和 macOS 公证。
 
 用户无需安装 Python、Node 或 Bun；Windows 使用 WebView2，Linux 仍需系统 WebView 和桌面库。启动后按需下载 MaaCore 与资源；默认组件目录不可写时，在「设置 → 更新」选择可写目录后重试。连接已启动的模拟器，再由用户手动开始任务。发行包的验证范围和已知限制见 [v0.1.0 版本说明](docs/releases/v0.1.0.md)。
+
+也可从 [GitHub Packages](https://github.com/DeathofBrain/maa-verge/pkgs/container/maa-verge) 获取同版安装包集合：`ghcr.io/deathofbrain/maa-verge:0.1.0`。镜像包含全部平台的安装包和 `SHA256SUMS.txt`，提取后按系统安装，使用方法见 [软件包分发](docs/packages.md)。
 
 ## 开始开发
 
