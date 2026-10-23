@@ -1,0 +1,14 @@
+.operator-badge { --rarity-color: var(--muted); --rarity-ink: var(--muted); display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.operator-badge.rarity-1 { --rarity-color: #929ba6; --rarity-ink: #606b7a; }
+.operator-badge.rarity-2 { --rarity-color: #7d9f45; --rarity-ink: #59732d; }
+.operator-badge.rarity-3 { --rarity-color: #49a8dc; --rarity-ink: #2376aa; }
+.operator-badge.rarity-4 { --rarity-color: #a17bd5; --rarity-ink: #8156b1; }
+.operator-badge.rarity-5 { --rarity-color: #d2ac4e; --rarity-ink: #947018; }
+.operator-badge.rarity-6 { --rarity-color: #ed8152; --rarity-ink: #b74f29; }
+.operator-avatar { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 6px; overflow: hidden; color: var(--rarity-ink); border: 1px solid color-mix(in srgb, var(--rarity-color) 55%, var(--line)); border-bottom: 3px solid var(--rarity-color); background: linear-gradient(145deg, color-mix(in srgb, var(--rarity-color) 12%, var(--surface)), color-mix(in srgb, var(--rarity-color) 48%, var(--surface))); }
+.operator-avatar img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.operator-identity { display: grid; gap: 3px; min-width: 0; }
+.operator-identity strong { color: var(--rarity-ink); font-size: 12px; overflow-wrap: anywhere; }
+.operator-identity small { color: var(--muted); font-size: 10px; }
+:root[data-theme=dark] .operator-badge { --rarity-ink: var(--rarity-color); }
+:root[data-theme=dark] .operator-badge.rarity-1 { --rarity-ink: #b4bdc8; }
