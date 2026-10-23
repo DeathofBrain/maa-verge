@@ -51,6 +51,14 @@
 - README 和 Release 的七个安装包及校验清单直链均通过匿名 HEAD：八项全部返回 200，长度与资产登记一致；本地拉取 `v0.1.1` 标签后确认提交与构建 SHA 一致。README、升级说明和完整分类变更按项目 skill 发布，原 v0.1.0 预发布及资产保留。
 - 远端四宿主构建 / 自动 smoke 不包含交互安装升级、最低系统、macOS / Linux 实际桌面或真实游戏操作验收。此前本地 Windows 原生 release WebView 的启动、保存、重启和退出 smoke 已通过，仍未进行真实升级安装；本轮未连接游戏、下载 MaaCore / 游戏资源或调用模型。更新签名不代表 Windows 发布者签名或 macOS 开发者签名 / 公证。
 
+### Linux CI 构建镜像（Windows x64 / Docker Linux x64，2026-10-24）
+
+- 新增 Ubuntu 22.04 x64 构建镜像，按仓库版本文件准备 Node、pnpm、Bun、Python 与 Rust，固定 uv、CMake 和 rustup，预装 Tauri 原生库及锁文件对应的 Chromium。Docker 上下文采用允许列表，实际初次传输约 61 KB；不包含本地业务数据、配置、依赖缓存或签名密钥。[镜像使用与本地复现](ci-image.md)。
+- application、Linux 原生矩阵及手动发行的 Linux 构建共用 Buildx 镜像与 Actions 层缓存；项目依赖保持 frozen/locked，按宿主 UID/GID 写出产物，依赖与 Cargo 缓存留在 checkout。首次 CI 可直接从源码构建，无需预先发布镜像；Windows/macOS 宿主步骤保留。签名变量仅在发行容器运行时传入，原始 Ubuntu 后端 smoke 继续由宿主执行。
+- 本机 Docker Desktop Linux/amd64 实际镜像构建、缓存命中重建、非 root 工具版本与 `doctor --native` 通过；固定 Bun 独立运行探针、4/4 合成 CTest 及原生夹具下 958 项 Bun 测试通过（9 项按平台或夹具条件跳过）。应用任务的 60 项工程测试（3 项跳过）、11 项契约、三个工作区类型、951 项 Bun（16 项缺少原生夹具或平台条件跳过）、Python Ruff/三目标 mypy/276 项 pytest、前端构建及 128 项 Chromium 回归通过。
+- Rust fmt、严格 clippy、17 项单元测试通过（日常检查忽略的两项夹具中，包内 transport 随后单独通过）。完整 `pnpm build` 通过，生成 AppImage（180.11 MiB）、DEB（109.44 MiB）、RPM（109.45 MiB）；编译服务、真实包内 aria2 回环下载/摘要拒绝/取消、合成更新及 Rust transport smoke 通过。Windows 宿主 Node 驱动原始 Ubuntu 22.04 容器的后端 smoke 通过：无 Python/Node/Bun/全局 aria2、空 PATH、断网会话、持久化及 EOF 重启均已检查。
+- 本机高并发首轮遇到 Docker daemon 重启，两个容器同时中断，恢复后发现一个临时 C++ 构建文件为空；清理该临时构建重新生成后原生检查和完整打包通过，浏览器固定两 worker 后全量通过。验证采用独立 Linux 卷、临时数据与合成设备，未连接游戏、下载 MaaCore/游戏资源、调用模型或发布工件。远端 Actions 缓存与签名发行尚未运行，不据本机容器结果声明 Windows/macOS、Linux 桌面或交互安装验收。
+
 ### Windows 下载器构建修复与第三方源码入库（2026-10-24）
 
 - 第五轮 [v0.1.1 签名工作流](https://github.com/DeathofBrain/maa-verge/actions/runs/39982765196) 在 `6e6a8f7765c17d356520714cd48763bd3c118c92` 上通过四宿主完整检查，Linux 与 macOS 双架构的签名构建、收集及上传完成；Windows 在系统 tar 读取真实 `aria2-1.37.0.tar.xz` 的 `COPYING` 时等待 180 秒超时，未生成正式 Release。小型 XZ 夹具通过不能证明该真实输入可用；本机强制使用外部 XZ 过滤器也复现小夹具通过、大归档超时，未将本机复现当作 Windows Server 2022 内部实现的直接证据。
