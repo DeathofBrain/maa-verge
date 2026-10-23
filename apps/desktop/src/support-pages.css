@@ -105,7 +105,7 @@
 }
 
 .sp-mono {
-  font-family: ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
@@ -641,7 +641,7 @@
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  font-family: ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-family: var(--font-mono);
   margin: 12px 0;
   color: var(--muted,#697587);
   overflow-wrap: anywhere;
@@ -903,7 +903,7 @@
 
 .sp-path {
   font-size: 12px;
-  font-family: ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-family: var(--font-mono);
 }
 
 .sp-full-width {

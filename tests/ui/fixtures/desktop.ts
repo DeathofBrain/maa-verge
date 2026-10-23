@@ -6,6 +6,7 @@ export type RuntimeHarness = {
   backgrounds: { command: string; value: unknown }[];
   releaseSnapshot: () => void;
   emitResize: (maximized: boolean) => void;
+  emitEvent: (type: string, data?: Record<string, unknown>) => void;
   resizeListeners: () => number;
   frames: string[];
   clicks: ClickRequest[];
@@ -63,6 +64,10 @@ export async function installRuntimeBridge(page: Page, options: Omit<RuntimeOpti
       emitResize: (next) => {
         maximized = next;
         for (const [id, listener] of listeners) if (listener.event === 'tauri://resize') callbacks.get(listener.handler)?.({ event: listener.event, id, payload: { width: next ? 1600 : 1280, height: 900 } });
+      },
+      emitEvent: (type, data = {}) => {
+        const payload = { id: ++sequence, type, data, message: '合成事件', createdAt: new Date().toISOString() };
+        for (const [id, listener] of listeners) if (listener.event === 'runtime-event') callbacks.get(listener.handler)?.({ event: listener.event, id, payload });
       },
       resizeListeners: () => [...listeners.values()].filter((listener) => listener.event === 'tauri://resize').length,
       releaseFrames: () => { harness.holdFrames = false; heldFrames.splice(0).forEach((release) => release()); },

@@ -679,7 +679,7 @@
   border-radius: 6px;
   background: var(--code-bg,#f8fafc);
   color: var(--text,#202734);
-  font: 12px/1.8 ui-monospace,SFMono-Regular,Consolas,monospace;
+  font: 12px/1.8 var(--font-mono);
   margin-top: 6px;
   tab-size: 2;
 }

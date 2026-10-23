@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CalendarClock, Factory, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { rpc, subscribe, type Device, type Settings, type RpcResult } from '@maaverge/contracts';
+import { gameDataChanged } from './update-display';
 import './game-info.css';
 
 type Client = RpcResult<'home.info'>['clientType'];
@@ -14,14 +15,16 @@ const remaining = (end: string, at: string) => { const hours = Math.max(0, Math.
 
 export default function GameInfoPanel({ device, settings }: { device?: Device; settings: Settings }) {
   const [client, setClient] = useState<Client | ''>('');
-  const [info, setInfo] = useState<RpcResult<'home.info'> | null>(null);
-  const [error, setError] = useState('');
+  const [result, setResult] = useState<{ key: string; info: RpcResult<'home.info'> | null; error: string } | null>(null);
   const [revision, setRevision] = useState(0);
   const requestedRefresh = useRef(false);
   const [loading, setLoading] = useState(false);
   const estimatesKey = JSON.stringify(settings.infrastructureEstimates);
+  const contextKey = JSON.stringify([device?.id, client, estimatesKey]);
+  const info = result?.key === contextKey ? result.info : null;
+  const error = result?.key === contextKey ? result.error : '';
   const deviceEstimatesKey = JSON.stringify(settings.infrastructureEstimates?.find(profile => profile.deviceId === device?.id)?.lines || []);
-  useEffect(() => subscribe(event => { if (['calendar.changed', 'update.changed'].includes(event.type)) setRevision(value => value + 1); }), []);
+  useEffect(() => subscribe(event => { if (gameDataChanged(event)) setRevision(value => value + 1); }), []);
   useEffect(() => {
     let active = true, busy = false;
     const refresh = async () => {
@@ -31,14 +34,16 @@ export default function GameInfoPanel({ device, settings }: { device?: Device; s
         const force = requestedRefresh.current; requestedRefresh.current = false;
         const next = await rpc('home.info', { ...(device ? { deviceId: device.id } : {}), ...(client ? { clientType: client } : {}), ...(force ? { refresh: true } : {}) });
         if (!active) return;
-        setInfo(next); setError('');
-      } catch (cause) { if (active) { setInfo(null); setError(cause instanceof Error ? cause.message : String(cause)); } }
+        setResult({ key: contextKey, info: next, error: '' });
+      } catch (cause) {
+        if (active) setResult(previous => ({ key: contextKey, info: previous?.key === contextKey ? previous.info : null, error: cause instanceof Error ? cause.message : String(cause) }));
+      }
       finally { busy = false; if (active) setLoading(false); }
     };
-    setInfo(null); void refresh();
+    void refresh();
     const timer = window.setInterval(() => { if (!document.hidden) void refresh(); }, 60_000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [device?.id, client, estimatesKey, revision]);
+  }, [device?.id, client, contextKey, revision]);
   const stages = info?.activityCatalog;
   const activeActivities = stages?.activities.filter(activity => activity.status === 'active') || [];
   const otherActivities = stages?.activities.filter(activity => activity.status !== 'active') || [];
@@ -46,12 +51,13 @@ export default function GameInfoPanel({ device, settings }: { device?: Device; s
     <section className="home-panel game-calendar" aria-label="游戏日与活动提醒">
       <div className="home-panel-heading"><h2><CalendarClock size={16} />游戏提醒</h2><div className="game-info-controls"><select aria-label="提醒使用的客户端" value={client} onChange={event => setClient(event.target.value as Client | '')}><option value="">跟随所选设备</option>{clients.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button className="icon-button" aria-label="刷新游戏提醒" disabled={loading} onClick={() => { requestedRefresh.current = true; setRevision(value => value + 1); }}><RefreshCw size={14} className={loading ? 'spin' : ''} /></button></div></div>
       <div className="game-info-body">
-        {error ? <p role="alert">{error}</p> : info ? <>
+        {error && <p role="alert">{error}</p>}
+        {info ? <>
           <div className="game-day"><span>{clients.find(([value]) => value === info.clientType)?.[1]} · 游戏日 {info.gameDate} · 周{'日一二三四五六'[info.weekday]}</span><small>每日 04:00 换日 · 按服务器时区</small></div>
           <div className={`game-weekly ${info.annihilation.kind}`}><strong>{info.annihilation.kind === 'weekly-reset' ? '周一 · 剿灭刷新' : info.annihilation.kind === 'weekly-last-day' ? '周日 · 剿灭查漏' : '本周剿灭提醒'}</strong><p>{info.annihilation.message}</p><small>下次周刷新 {time(info.nextWeeklyResetAt)}（本机时间）· 未读取游戏内完成状态</small></div>
-        </> : <p className="game-muted">正在读取游戏日…</p>}
+        </> : !error && <p className="game-muted">正在读取游戏日…</p>}
         <div className="game-activity-list"><h3>活动与限时安排</h3>
-          {activeActivities.length ? activeActivities.map(activity => <article className="game-activity" key={activity.id}><div><strong>{activity.name}</strong><span className="pill running">进行中</span></div>{activity.endAt && <p>距结束约 {remaining(activity.endAt, info?.generatedAt || new Date().toISOString())} · {time(activity.endAt)} 结束（本机时间）</p>}</article>) : <p className="game-muted">{stages ? '暂无已确认开放期的活动。' : '正在读取活动信息…'}</p>}
+          {activeActivities.length ? activeActivities.map(activity => <article className="game-activity" key={activity.id}><div><strong>{activity.name}</strong><span className="pill running">进行中</span></div>{activity.endAt && <p>距结束约 {remaining(activity.endAt, info?.generatedAt || new Date().toISOString())} · {time(activity.endAt)} 结束（本机时间）</p>}</article>) : <p className="game-muted">{stages ? '暂无已确认开放期的活动。' : error ? '活动信息暂不可用。' : '正在读取活动信息…'}</p>}
           {otherActivities.map(activity => <article className="game-activity" key={activity.id}><div><strong>{activity.name}</strong><span className="game-activity-unknown">{activity.status === 'upcoming' ? '即将开放' : '资源标记活动 · 开放期未确认'}</span></div>{activity.status === 'upcoming' && activity.startAt && <p>{time(activity.startAt)} 开始（本机时间）</p>}</article>)}
           {stages && <small className="game-source">{stages.message}</small>}
           {stages?.calendar && <small className="game-source">{stages.calendar.source === 'official-cache' ? 'MAA 官方活动日历' : stages.calendar.source === 'installed' ? '已安装资源日历' : '活动日历暂不可用'}{stages.calendar.fetchedAt ? ` · 数据更新 ${time(stages.calendar.fetchedAt)}` : ''}{stages.calendar.checkedAt ? ` · 最近检查 ${time(stages.calendar.checkedAt)}` : ''}{stages.calendar.stale ? ' · 缓存待更新' : ''}{stages.calendar.error ? ` · ${stages.calendar.error}` : ''}</small>}

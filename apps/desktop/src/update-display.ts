@@ -1,4 +1,12 @@
-import type { ResourceActivityVersion, UpdateChannel } from '@maaverge/contracts';
+import type { Event, ResourceActivityVersion, UpdateChannel } from '@maaverge/contracts';
+
+/** Download/check progress does not change the installed game data. */
+export function gameDataChanged(event: Event): boolean {
+  if (event.type === 'calendar.changed') return true;
+  const update = event.data.update;
+  return event.type === 'update.changed' && ['core', 'resource'].includes(String(event.data.channel))
+    && !!update && typeof update === 'object' && 'status' in update && update.status === 'active';
+}
 
 type GameClient = ResourceActivityVersion['clientType'];
 export type ResourceClient = Exclude<GameClient, 'Bilibili'>;

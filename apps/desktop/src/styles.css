@@ -1,5 +1,7 @@
 :root {
-  font-family: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --font-sans: "Noto Sans SC Variable",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei UI","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+  --font-mono: "SFMono-Regular",Consolas,"Liberation Mono",Menlo,"DejaVu Sans Mono",var(--font-sans);
+  font-family: var(--font-sans);
   color-scheme: light;
   --bg: #f5f7fa;
   --sidebar: #f1f3f7;
@@ -64,6 +66,10 @@ body {
 
 button,input,textarea,select {
   font: inherit;
+}
+
+code,pre,kbd,samp {
+  font-family: var(--font-mono);
 }
 
 button,a,input,textarea,select {

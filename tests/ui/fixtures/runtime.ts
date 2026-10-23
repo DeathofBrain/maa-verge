@@ -140,7 +140,7 @@ function activate(channel: UpdateChannel) {
       if (channel.id === 'resource') device.resourceVersion = channel.currentVersion;
     });
   }
-  emit('update.changed', channel.message);
+  emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
 }
 
 const timer = globalThis.setInterval(() => {
@@ -362,7 +362,7 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
     case 'updates.check': {
       const channel = channelFor(params.channel);
       if (['downloading','staged','waiting_idle'].includes(channel.status)) return clone(channel);
-      channel.status = 'checking'; emit('update.changed', '模拟检查更新');
+      channel.status = 'checking'; emit('update.changed', '模拟检查更新', { channel: channel.id, update: clone(channel) });
       await delay(350);
       if (channel.id === 'app') { channel.status = 'idle'; channel.message = '发行更新源尚未配置'; }
       else {
@@ -370,7 +370,7 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
         channel.status = channel.currentVersion === channel.latestVersion ? 'idle' : 'available';
         channel.message = channel.status === 'available' ? '模拟发现新版本，不访问下载源' : '模拟检查完成，已是最新';
       }
-      emit('update.changed', channel.message);
+      emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
       return clone(channel);
     }
     case 'updates.prepare': {
@@ -379,10 +379,10 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       if (channel.status !== 'available') throw new Error('请先检查可用更新');
       channel.status = 'downloading'; channel.progress = 0;
       for (let progress = 20; progress <= 100; progress += 20) {
-        await delay(120); channel.progress = progress; emit('update.changed', '模拟准备候选版本');
+        await delay(120); channel.progress = progress; emit('update.changed', '模拟准备候选版本', { channel: channel.id, update: clone(channel) });
       }
       channel.status = 'staged'; channel.message = '模拟候选版本已验证，等待启用';
-      emit('update.changed', channel.message);
+      emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
       return clone(channel);
     }
     case 'updates.activate': { const channel = channelFor(params.channel); activate(channel); return clone(channel); }
@@ -391,8 +391,8 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       if (channel.id === 'app') throw new Error('应用回滚尚未配置');
       if (state.runs.some((run) => run.status === 'running')) throw new Error('请等待设备空闲再回滚');
       channel.currentVersion = channel.id === 'core' ? 'v6.19.0' : '2026-10-18';
-      channel.status = 'idle'; channel.message = '已模拟回滚到上一版本'; channel.progress = 0;
-      emit('update.changed', channel.message); return clone(channel);
+      channel.status = 'active'; channel.message = '已模拟回滚到上一版本'; channel.progress = 100;
+      emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) }); return clone(channel);
     }
     case 'agent.message': {
       const message = String(params.message || '').trim();
