@@ -9,6 +9,23 @@ import { homeInfo } from '../../../services/backend/src/home-info';
 
 const workspace = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID || 'browser';
 const key = 'maaverge:test-runtime:v1:' + workspace;
+const recognitionKey = 'maaverge:test-recognition:v1:' + workspace;
+type Recognition = {
+  deviceId: string;
+  kind: 'depot' | 'operators';
+  clientType: string;
+  collectedAt: string | null;
+  runId: string | null;
+  items: { id: string; name: string; quantity: number }[];
+  operators: { id: string; name: string; own: boolean; elite: number; level: number; potential: number; rarity: number }[];
+};
+function restoreRecognition(): Recognition[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(recognitionKey) || '[]');
+    return Array.isArray(value) ? value as Recognition[] : [];
+  } catch { return []; }
+}
+let recognition = restoreRecognition();
 const listeners = new Set<(event: Event) => void>();
 const executionTasks = new Map<string, Plan['tasks']>();
 const requestRuns = new Map<string, string>();
@@ -75,7 +92,25 @@ function restore(): Snapshot {
 
 let state = restore();
 let sequence = Math.max(0, ...state.events.map((event) => Number(event.id) || 0));
-function persist() { localStorage.setItem(key, JSON.stringify(state)); }
+function persist() {
+  localStorage.setItem(key, JSON.stringify(state));
+  localStorage.setItem(recognitionKey, JSON.stringify(recognition));
+}
+function collectRecognition(run: Run, task: Plan['tasks'][number], tasks: Plan['tasks']) {
+  const clientType = String(task.params.client_type || tasks.find(item => item.type === 'StartUp')?.params.client_type || 'Official');
+  const kinds: Recognition['kind'][] = task.type === 'Depot' ? ['depot'] : task.type === 'OperBox' ? ['operators'] : task.type === 'UserDataUpdate'
+    ? [...(task.params.depot !== false ? ['depot' as const] : []), ...(task.params.operators !== false ? ['operators' as const] : [])] : [];
+  for (const kind of kinds) {
+    const result: Recognition = { deviceId: run.deviceId, kind, clientType, collectedAt: now(), runId: run.id,
+      items: kind === 'depot' ? [{ id: '30012', name: '固源岩', quantity: 42 }, { id: '30013', name: '固源岩组', quantity: 7 }, { id: 'fixture-no-icon', name: '合成无图材料', quantity: 3 }] : [],
+      operators: kind === 'operators' ? [{ id: 'char_002_amiya', name: '阿米娅', own: true, elite: 2, level: 80, potential: 6, rarity: 5 }, { id: 'char_103_angel', name: '能天使', own: true, elite: 2, level: 90, potential: 1, rarity: 6 }] : [],
+    };
+    recognition = recognition.filter(item => item.deviceId !== result.deviceId || item.kind !== kind || item.clientType !== clientType);
+    recognition.push(result);
+    const device = state.devices.find(item => item.id === run.deviceId);
+    if (device) device.dataSync = { operatorsAt: device.dataSync?.operatorsAt ?? null, depotAt: device.dataSync?.depotAt ?? null, [kind === 'depot' ? 'depotAt' : 'operatorsAt']: result.collectedAt };
+  }
+}
 function emit(type: string, message: string, data: Record<string, unknown> = {}) {
   if (data.run && typeof data.run === 'object') { const { tasks: _tasks, ...summary } = data.run as Run; data = { ...data, run: summary }; }
   const event: Event = { id: ++sequence, type, message, createdAt: now(), data };
@@ -120,6 +155,7 @@ const timer = globalThis.setInterval(() => {
       if (index < currentIndex || run.progress === 100) {
         if (task.status !== 'completed') {
           task.status = 'completed'; task.startedAt ||= now(); task.finishedAt = now(); task.message = `${taskLabels[task.type]}已完成`;
+          collectRecognition(run, tasks[index], tasks);
           if (task.type === 'Fight') {
             task.drops.push({ itemId: '30012', name: '固源岩', quantity: 2, stage: String(tasks[index].params.stage || '1-7'), at: now() });
             (task.artifacts as RunArtifact[]).push({ id: `fixture-${run.id}-${index}`, kind: 'screenshot', label: '自动作战反馈画面', capturedAt: now(), width: mockPreviewImage.width, height: mockPreviewImage.height });
@@ -167,6 +203,18 @@ function mockAddress(value: unknown): string {
 export async function fixtureRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
     case 'app.snapshot': return clone({ ...state, runs: state.runs.map(({ tasks: _tasks, ...summary }) => summary) });
+    case 'recognition.get': {
+      const deviceId = String(params.deviceId), kind = params.kind as Recognition['kind'], clientType = String(params.clientType || 'Official');
+      if (!state.devices.some(device => device.id === deviceId)) throw new Error('设备不存在');
+      if (kind !== 'depot' && kind !== 'operators') throw new Error('识别类型无效');
+      return clone(recognition.find(item => item.deviceId === deviceId && item.kind === kind && item.clientType === clientType)
+        || { deviceId, kind, clientType, collectedAt: null, runId: null, items: [], operators: [] });
+    }
+    case 'resources.item': {
+      const itemId = String(params.itemId);
+      const name = ({ '30012': '固源岩', '30013': '固源岩组' } as Record<string, string>)[itemId];
+      return { itemId, name: name ?? null, mimeType: name ? 'image/png' : null, data: name ? mockPreviewImage.data : null, resourceVersion: name ? 'synthetic-resource' : null };
+    }
     case 'stages.list': {
       const clientType = String(params.clientType || 'Official');
       const jp = clientType === 'YoStarJP';
