@@ -50,11 +50,11 @@ const defaults = (): Snapshot => ({
   ],
   runs: [],
   updates: [
-    { id: 'app', currentVersion: '0.1.0', latestVersion: null, status: 'idle', progress: 0, message: '开发预览 · 发行更新源尚未配置' },
+    { id: 'app', currentVersion: '0.1.0', latestVersion: null, status: 'idle', progress: 0, appCanInstall: true, message: '合成应用版本，未访问更新源' },
     { id: 'core', currentVersion: 'v6.19.0', latestVersion: null, status: 'idle', progress: 0, message: '演示核心版本，未加载原生库' },
     { id: 'resource', currentVersion: '2026-10-18', latestVersion: null, status: 'idle', progress: 0, message: '演示资源快照，不访问网络' },
   ],
-  settings: { autoConnect: true, autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', logRetentionDays: 7, budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' }, capture: { method: 'adb', emulatorPath: '', instanceIndex: 0 } },
+  settings: { autoConnect: true, autoUpdateApp: true, appUpdateChannel: 'preview', coreUpdateChannel: 'stable', autoUpdateCore: true, autoUpdateResource: true, minimizeToTray: true, theme: 'system', logRetentionDays: 7, budgets: { originium: 0, medicine: 0, expedited: 0 }, model: { provider: 'none', baseUrl: '', model: '' }, capture: { method: 'adb', emulatorPath: '', instanceIndex: 0 } },
   events: [],
 });
 
@@ -128,6 +128,7 @@ function channelFor(id: unknown): UpdateChannel {
 
 function activate(channel: UpdateChannel) {
   if (!['staged', 'waiting_idle'].includes(channel.status)) throw new Error('请先准备更新');
+  if (channel.id === 'app' && (channel.appCanInstall !== true || state.runs.some((run) => run.status === 'running'))) throw new Error('当前不能安装应用更新');
   if (state.runs.some((run) => run.status === 'running')) {
     channel.status = 'waiting_idle';
     channel.message = '模拟：当前任务完成后自动切换，应用保持运行';
@@ -372,24 +373,27 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       if (['downloading','staged','waiting_idle'].includes(channel.status)) return clone(channel);
       channel.status = 'checking'; emit('update.changed', '模拟检查更新', { channel: channel.id, update: clone(channel) });
       await delay(350);
-      if (channel.id === 'app') { channel.status = 'idle'; channel.message = '发行更新源尚未配置'; }
-      else {
-        channel.latestVersion = channel.id === 'core' ? 'v6.20.0' : '2026-10-20';
-        channel.status = channel.currentVersion === channel.latestVersion ? 'idle' : 'available';
-        channel.message = channel.status === 'available' ? '模拟发现新版本，不访问下载源' : '模拟检查完成，已是最新';
+      if (channel.id === 'app') {
+        channel.latestVersion = state.settings.appUpdateChannel === 'stable' ? '0.1.1' : '0.2.0-beta.1';
+        channel.appRelease = { url: 'https://example.invalid/synthetic-release', notes: '合成发布说明，仅用于界面测试。', publishedAt: now(), prerelease: state.settings.appUpdateChannel !== 'stable' };
+      } else {
+        channel.latestVersion = channel.id === 'core' ? state.settings.coreUpdateChannel === 'preview' ? 'v6.21.0-beta.1' : 'v6.20.0' : '2026-10-20';
       }
+      channel.checkedAt = now();
+      channel.status = channel.currentVersion === channel.latestVersion ? 'idle' : 'available';
+      channel.message = channel.status === 'available' ? '模拟发现新版本，不访问下载源' : '模拟检查完成，已是最新';
       emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
       return clone(channel);
     }
     case 'updates.prepare': {
       const channel = channelFor(params.channel);
-      if (channel.id === 'app') throw new Error('发行更新源尚未配置');
+      if (channel.id === 'app' && channel.appCanInstall !== true) throw new Error('当前安装方式不支持自动安装');
       if (channel.status !== 'available') throw new Error('请先检查可用更新');
       channel.status = 'downloading'; channel.progress = 0;
       for (let progress = 20; progress <= 100; progress += 20) {
         await delay(120); channel.progress = progress; emit('update.changed', '模拟准备候选版本', { channel: channel.id, update: clone(channel) });
       }
-      channel.status = 'staged'; channel.message = '模拟候选版本已验证，等待启用';
+      channel.status = 'staged'; channel.message = channel.id === 'app' ? '合成签名验证成功，未安装真实应用' : '模拟候选版本已验证，等待启用';
       emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
       return clone(channel);
     }
