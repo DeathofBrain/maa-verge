@@ -102,6 +102,9 @@ jobs:
       - run: node tools/setup-bun.mjs
       - name: Compile and execute the pinned Bun probe on this host
         run: node tools/probe-bun.mjs
+      - name: Prepare and verify the pinned Windows downloader
+        if: runner.os == 'Windows'
+        run: node tools/setup-aria2.mjs
       - name: Verify checks with isolated synthetic fixtures
         run: pnpm check
       - name: Build installers and version-bound updater signatures
