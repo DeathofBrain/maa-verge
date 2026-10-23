@@ -856,6 +856,17 @@
             "$ref": "#/$defs/DeviceConnectionProfile"
           }
         },
+        "logRetentionDays": {
+          "type": "integer",
+          "enum": [
+            0,
+            7,
+            14,
+            30
+          ],
+          "default": 7,
+          "description": "Log retention in days; zero disables automatic cleanup."
+        },
         "autoConnect": {
           "default": true,
           "title": "Autoconnect",

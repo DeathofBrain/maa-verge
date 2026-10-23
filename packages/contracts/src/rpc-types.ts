@@ -85,6 +85,9 @@ export type Events = Event[];
 export interface RpcContract {
   params: {
     'app.snapshot': EmptyParams;
+    'logs.info': EmptyParams;
+    'logs.export': EmptyParams;
+    'logs.clean': EmptyParams;
     'home.info': {
       deviceId?: string;
       clientType?: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
@@ -128,6 +131,22 @@ export interface RpcContract {
   };
   results: {
     'app.snapshot': Snapshot;
+    'logs.info': {
+      directory: string;
+      retentionDays: 0 | 7 | 14 | 30;
+    };
+    'logs.export': {
+      directory: string;
+      path: string;
+      bytes: number;
+      warnings: string[];
+    };
+    'logs.clean': {
+      removedFiles: number;
+      removedBytes: number;
+      skippedFiles: number;
+      warnings: string[];
+    };
     'home.info': HomeInfo;
     'stages.list': StageListResult;
     'recognition.get': RecognitionResult;
@@ -290,6 +309,10 @@ export interface Settings {
    * @maxItems 32
    */
   deviceProfiles?: DeviceConnectionProfile[];
+  /**
+   * Log retention in days; zero disables automatic cleanup.
+   */
+  logRetentionDays?: 0 | 7 | 14 | 30;
   autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;

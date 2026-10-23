@@ -373,6 +373,10 @@ export interface Settings {
    * @maxItems 32
    */
   deviceProfiles?: DeviceConnectionProfile[];
+  /**
+   * Log retention in days; zero disables automatic cleanup.
+   */
+  logRetentionDays?: 0 | 7 | 14 | 30;
   autoConnect: Autoconnect;
   autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;

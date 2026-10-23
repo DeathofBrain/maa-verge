@@ -29,13 +29,17 @@ import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
 import { validateRecognitionParams, validateItemResourceParams } from '../../../packages/contracts/src/validators.js';
 import { clearDeviceRecognition, parseRecognition, recognitionKey, recognitionSnapshot } from './recognition';
 import { itemResource, itemResourceNames } from './item-resources';
+import { Logs } from './logs';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
-export interface RuntimeOptions { applicationDirectory?: string; notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
+export interface RuntimeOptions { applicationDirectory?: string; logExportDirectory?: string; notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
 export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
+  readonly logs: Logs;
+  // Keep session-used directories protected through disconnect/client-switch shutdown.
+  private protectedWorkerLogs = new Set<string>();
   readonly updates: UpdateService;
   readonly preview: Preview;
   readonly calendar: ActivityCalendar;
@@ -62,6 +66,12 @@ export class Runtime {
   running = true;
   constructor(readonly root: string, private options: RuntimeOptions = {}) {
     this.store = new Store(root);
+    this.logs = new Logs(root, {
+      applicationDirectory: options.applicationDirectory, exportDirectory: options.logExportDirectory,
+      activeWorkers: () => new Set([...this.protectedWorkerLogs, ...this.workers.keys(), ...this.connecting]),
+      summary: () => this.diagnosticSummary(), events: () => this.store.events(1000).map(event => this.diagnosticEvent(event)),
+    });
+    this.logs.diagnostics.write('info', 'runtime.started', { protocolVersion: 1, dataRoot: root });
     this.artifacts = new RunArtifacts(root);
     this.calendar = new ActivityCalendar(path.join(root, 'cache'), { ...options.calendar, changed: () => { if (this.running) this.emit('calendar.changed', '活动日历缓存已更新'); } });
     if (!this.store.get('meta', 'initialized')) {
@@ -87,12 +97,30 @@ export class Runtime {
       hasRun: id => this.store.hasRunningRun(id) || [...this.starts.values()].some(start => start.deviceId === id),
       clicked: data => { this.emit('device.clicked', '点击指令已获核心确认', data); },
     });
+    this.logs.automatic(settings.logRetentionDays ?? 7);
+  }
+  private diagnosticEvent(event: any) {
+    const { id, type, message, createdAt } = event, data = event.data ?? {};
+    return { id, type, message, createdAt, runId: data.runId ?? data.run?.id, deviceId: data.deviceId ?? data.device?.id ?? data.run?.deviceId, taskId: data.taskId, index: data.index, reason: data.reason };
+  }
+  private diagnosticSummary() {
+    const settings = parseSettings(this.store.get('settings', 'main')), combo = this.store.get('active', 'combo', {});
+    return {
+      protocolVersion: 1, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, uptimeSeconds: Math.round(process.uptime()),
+      components: this.updates.channels(), generations: Object.fromEntries(['core', 'resource'].map(key => [key, combo[key] ? { version: combo[key].version, path: combo[key].path } : null])),
+      settings: { autoConnect: settings.autoConnect, autoUpdateCore: settings.autoUpdateCore, autoUpdateResource: settings.autoUpdateResource, logRetentionDays: settings.logRetentionDays, capture: settings.capture, connection: settings.connection },
+      devices: this.store.all('device').map(({ id, state, captureMethod, connectionError }) => ({ id, state, captureMethod, connectionError })),
+      workers: [...this.workerConfigurations].map(([deviceId, { core, resource, adb, address, capture, connection }]) => ({ deviceId, core, resource, adb, address, capture, connection, connected: this.workers.get(deviceId)?.connected, safeIdle: this.workers.get(deviceId)?.safeIdle })),
+      deviceProfiles: settings.deviceProfiles?.map(({ id, address, connection, capture }) => ({ id, address, connection, capture })),
+      runs: this.store.recent('run', 50).map(({ id, deviceId, status, startedAt, finishedAt, message, tasks }) => ({ id, deviceId, status, startedAt, finishedAt, message, tasks: tasks?.map(({ index, type, status, message, startedAt, finishedAt }: RunTask) => ({ index, type, status, message, startedAt, finishedAt })) })),
+      connectionDiagnostics: this.lastDiagnostics,
+    };
   }
   emit(type: string, message: string, data: any = {}) {
     // Execution details are fetched explicitly; repeated events must not copy
     // every material, facility and image reference into transport or history.
     if (data.run?.tasks) { const { tasks: _tasks, ...run } = data.run; data = { ...data, run }; }
-    const event = this.store.event(type, message, data); this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event }); return event;
+    const event = this.store.event(type, message, data); this.logs.diagnostics.write('info', type, this.diagnosticEvent(event)); this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event }); return event;
   }
   busy() { return !!this.preview?.busy || this.connecting.size > 0 || this.store.all('run').some(run => run.status === 'running' && !this.store.get('execution', run.id, {}).boundaryWaiting) || [...this.workers.values()].some(worker => !worker.safeIdle); }
   devices(): any[] {
@@ -115,6 +143,14 @@ export class Runtime {
     const required = (...keys: string[]) => { if (keys.some(key => !(key in params))) throw new RpcError(-32602, '请求参数无效'); };
     switch (method) {
       case 'app.snapshot': return this.snapshot();
+      case 'logs.info': case 'logs.export': case 'logs.clean': {
+        if (Object.keys(params).length) throw new RpcError(-32602, '日志操作不接受自定义文件路径或参数');
+        if (method === 'logs.info') return { directory: this.logs.directory, retentionDays: parseSettings(this.store.get('settings', 'main')).logRetentionDays ?? 7 };
+        try {
+          if (method === 'logs.export') return this.logs.export();
+          const result = this.logs.clean(); this.logs.diagnostics.write('info', 'logs.manual_cleanup', result); return result;
+        } catch (error) { throw new RpcError(-32050, method === 'logs.export' ? '日志导出失败' : '日志清理失败', `${this.logs.directory}：${String(error)}`); }
+      }
       case 'stages.list':
         if (!validateStageListParams(params)) throw new RpcError(-32602, '关卡目录请求参数无效');
         return this.stages(params.clientType, params.refresh);
@@ -186,6 +222,7 @@ export class Runtime {
           settings.componentPaths = componentPaths; this.store.put('settings', 'main', settings);
         });
         if (settings.autoConnect && !previous.autoConnect) { this.suppressed.clear(); this.nextAutoConnect = 0; }
+        if (settings.logRetentionDays !== previous.logRetentionDays) { this.logs.resetCleanup(); this.logs.automatic(settings.logRetentionDays ?? 7); }
         this.emit('settings.saved', '设置已保存'); return settings;
       }
       case 'agent.message': { required('message'); const result = propose(params.message, p => this.validatePolicy(p)); this.emit('agent.plan_proposed', '本地演示已生成待确认计划，尚未执行'); return result; }
@@ -458,6 +495,7 @@ export class Runtime {
     if (estimatesInvalidated) this.emit('device.infrastructure_estimate_invalidated', '账号或客户端已切换，请重新校准此设备的基建估算', { deviceId: run.deviceId, runId: run.id });
   }
   private startWorker(config: any, signal?: AbortSignal) {
+    this.protectedWorkerLogs.add(path.basename(config.userDir));
     return this.options.workerFactory ? this.options.workerFactory(structuredClone(config), { signal }) : CoreWorker.start(config, { signal });
   }
   private canSubmit(runId: string) {
@@ -735,6 +773,7 @@ export class Runtime {
     if (!this.running || this.ticking || (!force && Date.now() - this.lastTick < (this.options.tickSeconds ?? 0.6) * 1000)) return;
     this.ticking = true; this.lastTick = Date.now();
     try {
+      if (this.logs.maintenanceDue) this.logs.automatic(parseSettings(this.store.get('settings', 'main')).logRetentionDays ?? 7);
       await this.pollNativeWorkers();
     } finally { this.ticking = false; }
   }
@@ -760,6 +799,7 @@ export class Runtime {
     await Promise.all([...this.workers.values()].map(worker => worker.close())); this.workers.clear(); this.workerConfigurations.clear();
     await Promise.allSettled([...this.submissions, ...[...this.starts.values()].map(start => start.promise)]);
     await Promise.allSettled([...this.artifactCaptures.values()]);
+    this.logs.diagnostics.write('info', 'runtime.stopped');
     this.store.close();
   }
 }

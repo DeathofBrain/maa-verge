@@ -182,6 +182,7 @@ export default function App() {
     const categories = [
       ['更新 资源更新 核心 应用 回滚', '更新', 'settings'], ['主题 外观 浅色 深色 托盘', '通用与外观', 'settings'],
       ['模型 Agent API', '模型与 Agent', 'settings'], ['通知 远控', '通知与远控', 'settings'], ['ADB 连接 截图 触控 模拟器 设备', '设备与连接', 'devices'],
+      ['日志 log 诊断 导出 清理 保留', '数据与诊断', 'settings'],
       ['仓库 干员 库存 材料 导出 公招', '工具箱', 'tools'], ['作业 社区 视频', '作业中心', 'copilot'],
     ] as const;
     for (const [keywords, title, target] of categories) if (keywords.toLowerCase().includes(term) || term.includes(title)) results.push({ key: `setting-${title}`, title, location: target === 'settings' ? '应用设置' : pageNames[target], open: () => { navigate(target); setPageSearch(search.trim()); } });
