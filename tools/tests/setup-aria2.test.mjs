@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { archiveFile, aria2Assets, aria2BuildArguments, aria2RecipeSha256, aria2Target, ensureAria2, readAria2BuildInfo, sqlitePublicDomainNotice, unpackSource, validateAria2Version, verifyAria2Asset } from '../setup-aria2.mjs';
+import { archiveFile, aria2Assets, aria2BuildArguments, aria2RecipeSha256, aria2SourceRoot, aria2Target, ensureAria2, readAria2BuildInfo, readAria2Vendor, sqlitePublicDomainNotice, unpackSource, validateAria2Version, verifyAria2Asset } from '../setup-aria2.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const supported = 'aria2 version 1.37.0\nEnabled Features: HTTPS, Message Digest\nHash Algorithms: sha-1, sha-256\n';
@@ -60,9 +60,12 @@ test('does not trust a downloaded or cached asset with the wrong digest', async 
   assert.throws(() => verifyAria2Asset(Buffer.from('wrong archive'), aria2Assets.aria2), /SHA-256 mismatch/);
   const projectRoot = fixture(t);
   mkdirSync(path.join(projectRoot, '.tools/aria2-downloads'), { recursive: true });
-  writeFileSync(path.join(projectRoot, '.tools/aria2-downloads', aria2Assets.aria2.name), 'corrupt cached archive');
+  writeFileSync(path.join(projectRoot, '.tools/aria2-downloads', aria2Assets.windows.name), 'corrupt cached archive');
   await assert.rejects(ensureAria2({ projectRoot, platform: 'win32', arch: 'x64', fetcher: () => assert.fail('must not fetch'), execute: () => assert.fail('must not execute') }), /SHA-256 mismatch/);
-  await assert.rejects(ensureAria2({ projectRoot: fixture(t), platform: 'win32', arch: 'x64', fetcher: async () => new Response('wrong download'), execute: () => assert.fail('must not execute') }), /SHA-256 mismatch/);
+  await assert.rejects(ensureAria2({ projectRoot: fixture(t), platform: 'win32', arch: 'x64', fetcher: async (url) => {
+    assert.equal(url, aria2Assets.windows.url);
+    return new Response('wrong download');
+  }, execute: () => assert.fail('must not execute') }), /SHA-256 mismatch/);
 });
 
 test('check mode cannot download missing tools or fall back to a PATH executable', async (t) => {
@@ -89,6 +92,77 @@ test('preserves the complete SQLite copyright disclaimer instead of truncating f
   const comment = '/*\nThe author disclaims copyright to this source code.\nMay you share freely, never taking more than you give.\n*/';
   assert.equal(sqlitePublicDomainNotice(Buffer.from('/* amalgamation header */\n' + comment + '\nint source;')).toString(), comment + '\n');
   assert.throws(() => sqlitePublicDomainNotice(Buffer.from('not a copyright disclaimer')), /Missing SQLite/);
+});
+
+test('loads verified upstream sources and complete platform notices from the checkout', async (t) => {
+  const expectedSources = {
+    win32: ['aria2', 'gmp', 'expat', 'sqlite', 'zlib', 'cares', 'libssh2', 'gccException', 'gccLicense', 'mingw'],
+    linux: ['aria2', 'openssl', 'gccException', 'gccLicense'],
+    darwin: ['aria2'],
+  };
+  for (const [platform, keys] of Object.entries(expectedSources)) {
+    const vendor = readAria2Vendor({ platform });
+    for (const key of keys) {
+      const asset = aria2Assets[key], source = vendor.sourceFiles.get(asset.name);
+      assert.ok(path.isAbsolute(source), `${platform}: missing ${asset.name}`);
+      assert.ok(path.relative(aria2SourceRoot, source).split(path.sep).every(part => part !== '..'));
+      assert.equal(sha256(readFileSync(source)), asset.sha256);
+      if (asset.root) {
+        for (const notice of asset.notices) assert.ok(vendor.notices.get(`${asset.root}/${notice}`)?.length, `${platform}: missing ${notice}`);
+      } else assert.deepEqual(vendor.notices.get(`${asset.name}.txt`), readFileSync(source));
+    }
+  }
+  const notice = readAria2Vendor({ platform: 'win32' }).notices.get(`${aria2Assets.sqlite.root}/PUBLIC-DOMAIN.txt`);
+  assert.ok(notice.toString().startsWith('/*'));
+  assert.ok(notice.toString().endsWith('*/\n'));
+  for (const sentence of ['The author disclaims copyright', 'May you do good and not evil.', 'May you find forgiveness for yourself and forgive others.', 'May you share freely, never taking more than you give.']) assert.ok(notice.includes(sentence));
+  await assert.rejects(ensureAria2({ projectRoot: fixture(t), platform: 'win32', arch: 'x64', download: false, fetcher: () => assert.fail('must not fetch'), execute: () => assert.fail('must not execute') }), /Pinned aria2 is missing/);
+});
+
+test('missing or damaged vendored files fail before any download or command', async (t) => {
+  const projectRoot = fixture(t), sourceRoot = path.join(projectRoot, 'vendor');
+  cpSync(aria2SourceRoot, sourceRoot, { recursive: true });
+  const valid = readAria2Vendor({ sourceRoot, platform: 'win32' });
+  const source = valid.sourceFiles.get(aria2Assets.aria2.name);
+  const notice = path.join(sourceRoot, 'notices', `${aria2Assets.sqlite.root}/PUBLIC-DOMAIN.txt`);
+  const setup = () => ensureAria2({ projectRoot, sourceRoot, platform: 'win32', arch: 'x64', fetcher: () => assert.fail('must not replace a missing or damaged vendored file with a download'), execute: () => assert.fail('must not run a command with invalid vendored files') });
+  for (const [file, error] of [[source, /SHA-256 mismatch|ENOENT|Vendored aria2 source/], [notice, /Vendored aria2 notice|ENOENT/]]) {
+    const original = readFileSync(file);
+    try {
+      rmSync(file);
+      await assert.rejects(setup(), error);
+      writeFileSync(file, Buffer.concat([original, Buffer.from('\nmodified')]));
+      await assert.rejects(setup(), error);
+    } finally { writeFileSync(file, original); }
+  }
+  assert.deepEqual(readAria2Vendor({ sourceRoot, platform: 'win32' }).notices, valid.notices);
+});
+
+test('rejects source or notice provenance changes before opening vendored files', async (t) => {
+  const projectRoot = fixture(t), sourceRoot = path.join(projectRoot, 'vendor');
+  mkdirSync(sourceRoot);
+  const manifestFile = path.join(sourceRoot, 'manifest.json'), manifestBytes = readFileSync(path.join(aria2SourceRoot, 'manifest.json'));
+  for (const [change, error] of [
+    [manifest => { manifest.schemaVersion = 2; }, /Vendored aria2 source provenance mismatch/],
+    [manifest => { manifest.sources[0].url = 'https://example.invalid/different-source'; }, /Vendored aria2 source provenance mismatch/],
+    [manifest => { manifest.sources[0].sha256 = '0'.repeat(64); }, /Vendored aria2 source provenance mismatch/],
+    [manifest => { manifest.sources.pop(); }, /Vendored aria2 source provenance mismatch/],
+    [manifest => { manifest.notices[0].member = '../outside'; }, /Vendored aria2 notice provenance mismatch/],
+    [manifest => { delete manifest.notices.find(notice => notice.transform === 'sqlite-public-domain').transform; }, /Vendored aria2 notice provenance mismatch/],
+    [manifest => { manifest.notices.pop(); }, /Vendored aria2 notice provenance mismatch/],
+  ]) {
+    const manifest = JSON.parse(manifestBytes);
+    change(manifest);
+    writeFileSync(manifestFile, JSON.stringify(manifest));
+    await assert.rejects(ensureAria2({ projectRoot, sourceRoot, platform: 'win32', arch: 'x64', fetcher: () => assert.fail('must not fetch with changed provenance'), execute: () => assert.fail('must not execute with changed provenance') }), error);
+  }
+});
+
+test('a cached executable cannot hide missing vendored inputs', async (t) => {
+  const f = buildFixture(t), executable = Buffer.from('cached executable');
+  f.info.executableSha256 = sha256(executable); f.save();
+  writeFileSync(path.join(f.directory, 'aria2c'), executable);
+  await assert.rejects(ensureAria2({ projectRoot: f.projectRoot, sourceRoot: path.join(f.projectRoot, 'missing-vendor'), platform: 'darwin', arch: 'arm64', fetcher: () => assert.fail('must not fetch'), execute: () => assert.fail('must validate vendored inputs before running a cached executable') }), /ENOENT|Vendored aria2/);
 });
 
 test('invalidates cached recipe, source identities, and damaged or escaping notices', (t) => {

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { cleanRuntimeEnvironment } from './setup-bun.mjs';
 
 export const aria2Root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const aria2SourceRoot = path.join(aria2Root, '3rdparty/aria2');
 export const aria2Version = '1.37.0';
 export const aria2Executable = path.join(aria2Root, '.tools/aria2', process.platform === 'win32' ? 'aria2c.exe' : 'aria2c');
 const release = `https://github.com/aria2/aria2/releases/download/release-${aria2Version}/`;
@@ -70,9 +71,54 @@ export function sqlitePublicDomainNotice(bytes) {
   return Buffer.from(text.slice(start, end + 2) + '\n');
 }
 
-async function acquire(asset, directory, fetcher) {
+function vendorNoticeEntries(assets) {
+  return assets.flatMap(asset => asset.root ? [
+    ...asset.notices.map(notice => ({ name: `${asset.root}/${notice}`, source: asset.name, member: `${asset.root}/${notice}` })),
+    ...(asset.extraNotice ? [{ name: `${asset.root}/PUBLIC-DOMAIN.txt`, source: asset.name, member: `${asset.root}/${asset.extraNotice}`, transform: 'sqlite-public-domain' }] : []),
+  ] : [{ name: asset.name + '.txt', source: asset.name }]);
+}
+
+export function readAria2Vendor({ sourceRoot = aria2SourceRoot, platform = process.platform } = {}) {
+  const manifest = JSON.parse(readFileSync(path.join(sourceRoot, 'manifest.json'), 'utf8'));
+  const allAssets = Object.values(aria2Assets), sourceAssets = allAssets.filter(asset => asset !== aria2Assets.windows);
+  const provenance = sourceAssets.map(({ name, url, sha256 }) => ({ name, url, sha256 }));
+  const { name, url, sha256 } = aria2Assets.windows;
+  if (manifest.schemaVersion !== 1 || JSON.stringify(manifest.sources) !== JSON.stringify(provenance) || JSON.stringify(manifest.externalAssets) !== JSON.stringify([{ name, url, sha256 }])) throw new Error('Vendored aria2 source provenance mismatch');
+  const expected = vendorNoticeEntries(allAssets);
+  if (!Array.isArray(manifest.notices) || manifest.notices.length !== expected.length || manifest.notices.some((notice, index) => {
+    const { sha256, ...identity } = notice;
+    return !/^[a-f0-9]{64}$/.test(sha256) || JSON.stringify(identity) !== JSON.stringify(expected[index]);
+  })) throw new Error('Vendored aria2 notice provenance mismatch');
+  const assets = assetsFor(platform), selected = new Set(assets.map(asset => asset.name));
+  const sourceFiles = new Map(), notices = new Map();
+  for (const asset of assets) {
+    if (asset === aria2Assets.windows) continue;
+    const file = path.join(sourceRoot, 'sources', asset.name);
+    try { verifyAria2Asset(readFileSync(file), asset); }
+    catch (error) { throw new Error(`Vendored aria2 source ${asset.name}: ${error.message}`, { cause: error }); }
+    sourceFiles.set(asset.name, file);
+  }
+  for (const notice of manifest.notices) {
+    if (!selected.has(notice.source)) continue;
+    let bytes;
+    try { bytes = readFileSync(path.join(sourceRoot, 'notices', notice.name)); }
+    catch (error) { throw new Error(`Vendored aria2 notice ${notice.name}: ${error.message}`, { cause: error }); }
+    if (hash(bytes) !== notice.sha256) throw new Error(`Vendored aria2 notice checksum mismatch: ${notice.name}`);
+    notices.set(notice.name, bytes);
+  }
+  return { sourceFiles, notices };
+}
+
+async function acquire(asset, directory, fetcher, sourceFile) {
   const file = path.join(directory, asset.name);
   if (existsSync(file)) { verifyAria2Asset(readFileSync(file), asset); return file; }
+  if (asset !== aria2Assets.windows) {
+    if (!sourceFile) throw new Error(`Vendored aria2 source is missing: ${asset.name}`);
+    const bytes = verifyAria2Asset(readFileSync(sourceFile), asset);
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(file, bytes, { flag: 'wx' });
+    return file;
+  }
   const response = await fetcher(asset.url, { signal: AbortSignal.timeout(180000), redirect: 'follow' });
   if (!response.ok) throw new Error(`aria2 download failed (${asset.name}): HTTP ${response.status}`);
   if (response.url && new URL(response.url).protocol !== 'https:') throw new Error('aria2 download redirected outside HTTPS');
@@ -116,19 +162,19 @@ export function unpackSource(execute, archive, directory, asset) {
   return path.join(directory, asset.root);
 }
 
-function collectNotices(execute, assets, archives, output, platform) {
+function collectNotices(assets, archives, output, platform, vendoredNotices) {
   const files = [];
   const save = (name, bytes) => { const file = path.join(output, name); mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, bytes); files.push({ name, sha256: hash(bytes) }); };
   for (const asset of assets) {
     const archive = path.join(archives, asset.name);
-    if (!asset.root) { save(asset.name + '.txt', readFileSync(archive)); continue; }
+    if (!asset.root) { save(asset.name + '.txt', vendoredNotices.get(asset.name + '.txt')); continue; }
     // Carry full corresponding sources, including GMP under its GPL-3.0-or-later option.
     if (asset !== aria2Assets.windows) save('sources/' + asset.name, readFileSync(archive));
-    for (const notice of asset.notices) save(`${asset.root}/${notice}`, archiveFile(execute, archive, `${asset.root}/${notice}`));
-    if (asset.extraNotice) save(`${asset.root}/PUBLIC-DOMAIN.txt`, sqlitePublicDomainNotice(archiveFile(execute, archive, `${asset.root}/${asset.extraNotice}`)));
+    for (const notice of asset.notices) save(`${asset.root}/${notice}`, vendoredNotices.get(`${asset.root}/${notice}`));
+    if (asset.extraNotice) save(`${asset.root}/PUBLIC-DOMAIN.txt`, vendoredNotices.get(`${asset.root}/PUBLIC-DOMAIN.txt`));
   }
   const instructions = `Bundled aria2 ${aria2Version}; target ${platform}.\n\naria2 is GPL-2.0-or-later; this distribution selects GPL-3.0-or-later. GMP is also distributed under its GPL-3.0-or-later option. No local aria2 source changes. Full upstream sources are included in sources/. The GCC runtime uses the GCC Runtime Library Exception; MinGW runtime notices are included for the official Windows executable.\n\nRebuild Maa Verge's exact integration: use the matching Maa Verge source revision, pnpm install --frozen-lockfile, then node tools/setup-aria2.mjs. Build configuration and compiler output are in ../aria2-build-info.json.\n\nWindows: official upstream release-1.37.0 win-64bit-build1 executable, SHA-256 ${windowsExecutableHash}; its source archive contains Dockerfile.mingw and mingw-config. Extract all matching dependency source archives, use Dockerfile.mingw's build commands with HOST=x86_64-w64-mingw32 and ARIA2_VERSION=release-1.37.0 (the upstream default master is not this release). The archive README.mingw lists the linked dependency versions. GCC Runtime Library Exception permits distribution of eligible compiler runtime code without corresponding GCC source.\n\nLinux: fixed OpenSSL 3.5.9 built with no-shared no-tests no-module no-dso, linked as libssl.a/libcrypto.a; libstdc++ and libgcc are static. glibc and the system CA store remain platform dependencies.\nmacOS: AppleTLS/CommonCrypto and system libc++; no Homebrew runtime libraries.\n`;
-  save('REBUILD.txt', Buffer.from(instructions));
+  save('REBUILD.txt', Buffer.from(instructions + '\nThe matching Maa Verge source tree vendors the exact dependency archives and verified notice manifest in 3rdparty/aria2/. Source preparation reads those files without network downloads; Windows still obtains and verifies the official executable ZIP.\n'));
   return files;
 }
 
@@ -145,8 +191,9 @@ export function readAria2BuildInfo(directory = path.dirname(aria2Executable)) {
   return info;
 }
 
-export async function ensureAria2({ download = true, projectRoot = aria2Root, platform = process.platform, arch = process.arch, fetcher = fetch, execute = spawnSync } = {}) {
+export async function ensureAria2({ download = true, projectRoot = aria2Root, sourceRoot = aria2SourceRoot, platform = process.platform, arch = process.arch, fetcher = fetch, execute = spawnSync } = {}) {
   const target = aria2Target(platform, arch), tools = path.join(projectRoot, '.tools'), directory = path.join(tools, 'aria2');
+  const vendor = readAria2Vendor({ sourceRoot, platform });
   const name = platform === 'win32' ? 'aria2c.exe' : 'aria2c', executable = path.join(directory, name);
   if (existsSync(executable)) {
     const info = readAria2BuildInfo(directory);
@@ -158,7 +205,7 @@ export async function ensureAria2({ download = true, projectRoot = aria2Root, pl
   const assets = assetsFor(platform);
   const archives = path.join(tools, 'aria2-downloads');
   // Bound concurrency avoids hammering release servers and limits in-memory archives.
-  for (const asset of assets) await acquire(asset, archives, fetcher);
+  for (const asset of assets) await acquire(asset, archives, fetcher, vendor.sourceFiles.get(asset.name));
   const staging = path.join(tools, `aria2-staging-${process.pid}`);
   if (existsSync(staging)) throw new Error(`aria2 setup already has a staging directory: ${staging}`);
   mkdirSync(staging, { recursive: true });
@@ -195,7 +242,7 @@ export async function ensureAria2({ download = true, projectRoot = aria2Root, pl
       chmodSync(temporary, 0o755);
     }
     const versionOutput = validateAria2Version(command(execute, temporary, ['--version']));
-    const notices = collectNotices(execute, assets, archives, path.join(staging, 'licenses'), target);
+    const notices = collectNotices(assets, archives, path.join(staging, 'licenses'), target, vendor.notices);
     const info = { version: aria2Version, target, recipeSha256: aria2RecipeSha256, executableSha256: hash(readFileSync(temporary)), sources: provenanceFor(platform), configuration, compiler, versionOutput, notices };
     writeFileSync(path.join(staging, 'build-info.json'), JSON.stringify(info, null, 2) + '\n');
     // Do not copy build trees into the product runtime.
