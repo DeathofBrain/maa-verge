@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -71,7 +71,9 @@ async function launch(t, { browserMock = false, mode, expectedCode = 0, override
   });
   const result = await finished;
   assert.equal(result.code, expectedCode, output);
-  return { calls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line)) : [], data: overrideData ? environment.MAAVERGE_DATA_DIR : path.join(directory, 'config'), port: environment.MAAVERGE_DEV_PORT, output };
+  // Node resolves the copied module's checkout through aliases such as macOS /var.
+  // The fixture never creates config, so resolve its existing parent directory.
+  return { calls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line)) : [], data: overrideData ? environment.MAAVERGE_DATA_DIR : path.join(realpathSync(directory), 'config'), port: environment.MAAVERGE_DEV_PORT, output };
 }
 
 test('default development root stays in the checkout and lets the service import legacy configuration', { timeout: 10000 }, async t => {
