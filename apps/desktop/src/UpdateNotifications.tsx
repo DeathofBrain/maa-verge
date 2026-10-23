@@ -38,7 +38,10 @@ export function useComponentDownloads(channels: UpdateChannel[] | undefined, ref
     observe([{ ...channel, status: 'downloading', progress: 0, message: '正在开始下载…' }], true);
     try {
       const result = await rpc('updates.prepare', { channel: channel.id });
-      observe([result], true);
+      if (result.status === 'downloading' || terminal.has(result.status)) observe([result], true);
+      else setNotices((previous) => {
+        const next = { ...previous }; delete next[channel.id]; return next;
+      });
     } catch (cause) {
       observe([{ ...channel, status: 'failed', message: cause instanceof Error ? cause.message : String(cause) }], true);
     } finally {

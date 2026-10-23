@@ -167,6 +167,7 @@ export class Runtime {
       }
       case 'settings.save': {
         required('settings'); const settings = parseSettings(params.settings), previous = parseSettings(this.store.get('settings', 'main'));
+        if (!settings.componentDownload && previous.componentDownload) settings.componentDownload = previous.componentDownload;
         await this.updates.saveDirectories(settings.componentPaths ?? previous.componentPaths!, (componentPaths) => {
           settings.componentPaths = componentPaths; this.store.put('settings', 'main', settings);
         });

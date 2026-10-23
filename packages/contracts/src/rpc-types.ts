@@ -258,6 +258,7 @@ export interface ChannelParams {
  */
 export interface Settings {
   componentPaths?: ComponentPaths;
+  componentDownload?: ComponentDownload;
   /**
    * @maxItems 100
    */
@@ -285,6 +286,16 @@ export interface Settings {
 export interface ComponentPaths {
   core: string;
   resource: string;
+}
+/**
+ * Component download engine. Empty aria2Path resolves aria2c from PATH; otherwise use an absolute executable path. Changes apply to subsequent downloads.
+ *
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "ComponentDownload".
+ */
+export interface ComponentDownload {
+  engine: 'builtin' | 'aria2';
+  aria2Path: string;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema

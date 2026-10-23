@@ -96,6 +96,16 @@ test('generated validators have no external imports or runtime schema compiler',
   assert.doesNotMatch(source, /[A-Za-z]:\\|\.\.\/typescript-cpp-runtime/u);
 });
 
+test('component downloader contract is optional and limits configuration to an engine and executable', () => {
+  assert.equal(validateSettings(settings()), true);
+  for (const engine of ['builtin', 'aria2']) {
+    assert.equal(validateSettings({ ...settings(), componentDownload: { engine, aria2Path: '' } }), true);
+  }
+  for (const componentDownload of [null, { engine: 'curl', aria2Path: '' }, { engine: 'aria2' }, { engine: 'aria2', aria2Path: '', args: '--enable-rpc' }]) {
+    assert.equal(validateSettings({ ...settings(), componentDownload }), false);
+  }
+});
+
 test('JSON-RPC envelopes preserve notifications and reject malformed protocol data', () => {
   assert.equal(validateRpcRequest({ jsonrpc: '2.0', id: 1, method: 'app.snapshot', params: {} }), true);
   assert.equal(validateRpcRequest({ jsonrpc: '2.0', method: 'future.method' }), true);

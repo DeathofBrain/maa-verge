@@ -770,6 +770,28 @@
         }
       }
     },
+    "ComponentDownload": {
+      "description": "Component download engine. Empty aria2Path resolves aria2c from PATH; otherwise use an absolute executable path. Changes apply to subsequent downloads.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "aria2Path"
+      ],
+      "properties": {
+        "engine": {
+          "type": "string",
+          "enum": [
+            "builtin",
+            "aria2"
+          ]
+        },
+        "aria2Path": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      }
+    },
     "ResourceActivityVersion": {
       "type": "object",
       "additionalProperties": false,
@@ -810,6 +832,9 @@
       "properties": {
         "componentPaths": {
           "$ref": "#/$defs/ComponentPaths"
+        },
+        "componentDownload": {
+          "$ref": "#/$defs/ComponentDownload"
         },
         "infrastructureEstimates": {
           "type": "array",

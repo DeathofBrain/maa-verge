@@ -362,6 +362,7 @@ export interface ResourceActivityVersion {
 }
 export interface Settings {
   componentPaths?: ComponentPaths;
+  componentDownload?: ComponentDownload;
   /**
    * @maxItems 100
    */
@@ -386,6 +387,13 @@ export interface Settings {
 export interface ComponentPaths {
   core: string;
   resource: string;
+}
+/**
+ * Component download engine. Empty aria2Path resolves aria2c from PATH; otherwise use an absolute executable path. Changes apply to subsequent downloads.
+ */
+export interface ComponentDownload {
+  engine: 'builtin' | 'aria2';
+  aria2Path: string;
 }
 export interface InfrastructureEstimateProfile {
   deviceId: string;

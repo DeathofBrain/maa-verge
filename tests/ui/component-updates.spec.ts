@@ -68,6 +68,9 @@ test('component downloads keep progress and completion visible after leaving Set
   await expect.poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started)).toBe(1);
   const notice = page.getByRole('status', { name: 'MaaCore 核心下载通知', exact: true });
   await expect(notice).toContainText('正在下载与验证');
+  await expect(page.getByRole('button', { name: '检查全部更新', exact: true })).toBeDisabled();
+  await expect(page.getByLabel('游戏资源下载目录', { exact: true })).toBeDisabled();
+  await expect(page.getByLabel('组件下载器', { exact: true })).toBeEnabled();
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '通用与外观', exact: true }).click();
   await expect(page.getByLabel('界面主题', { exact: true })).toBeEnabled();
   await page.locator('.sidebar').getByRole('button', { name: '工具箱', exact: true }).click();
@@ -106,6 +109,33 @@ test('download failure survives navigation and retries the pinned candidate dire
   expect(await page.evaluate(() => (window as DownloadWindow).downloadControl.checks)).toBe(0);
   await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
   await expect(page.getByRole('status', { name: 'MaaResource 游戏资源下载通知', exact: true })).toContainText('已下载并验证，待生效');
+});
+
+test('a preparation overtaken by an installed version does not announce a staged candidate', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await controlDownload(page, 'core');
+  await page.evaluate(() => {
+    const target = window as DownloadWindow, original = target.runtimeHarness.call;
+    let installed: UpdateChannel | undefined;
+    target.runtimeHarness.call = async (method, params) => {
+      if (method === 'updates.prepare') {
+        const state = await original('app.snapshot', {}) as Snapshot;
+        const core = state.updates.find(channel => channel.id === 'core')!;
+        installed = { ...core, currentVersion: core.latestVersion!, status: 'idle', message: '当前已是最新版本' };
+        return installed;
+      }
+      const result = await original(method, params);
+      if (method === 'app.snapshot' && installed) (result as Snapshot).updates = (result as Snapshot).updates.map(channel => channel.id === 'core' ? installed! : channel);
+      return result;
+    };
+  });
+  await updatesPage(page);
+  const core = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+  await core.getByRole('button', { name: '准备更新', exact: true }).click();
+  await expect(core).toContainText('已是最新版本');
+  await expect(core.getByRole('button', { name: '应用更新', exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('组件下载通知', { exact: true })).toHaveCount(0);
 });
 
 test('aria2 download preference saves together and survives navigation and reload', async ({ page }) => {
