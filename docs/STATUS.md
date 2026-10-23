@@ -24,11 +24,18 @@
 | 更新切换 | 不可变版本目录；新进程校验；等待当前任务边界和异步调用结束后切换工作进程，保留后续任务；失败保留旧组合，可回滚上一组核心/资源 |
 | 自动检查 | 原生模式启动时、核心每 24 小时、资源每 6 小时；失败五分钟后重试；异步下载、独立更新作业进程与执行轮询互不阻塞；关闭自动检查后支持手动操作 |
 | 桌面生命周期 | 一体化可拖动顶栏及最小化/最大化/还原/关闭，加载期保留窗口操作；Windows 修正最大化旧画面拉伸、主题同步窗口/WebView 背景；单实例、托盘、设置控制关窗行为、完全退出时关闭本地服务；开发与安装版统一 native，拒绝旧 mock 环境配置 |
-| 发行与 CI | Tauri 携带 Bun 单文件后端、C++ 工作进程和许可文本，无 Python 环境、node_modules 或原生 JS 插件；/MT、Linux 静态 libstdc++/libgcc、MaaCore 动态更新；四宿主 Bun 探针门禁、原生构建矩阵和 Linux 干净容器测试，实际结果见下文 |
+| 发行与 CI | Tauri 携带 Bun 单文件后端、C++ 工作进程和前后端/Rust 依赖许可文本，无 Python 环境、node_modules 或原生 JS 插件；/MT、Linux 静态 libstdc++/libgcc、MaaCore 动态更新；四宿主 Bun 探针门禁、原生构建矩阵和 Linux 干净容器测试；GitHub Packages 按已发布 Release 校验并分发安装包集合，实际结果见下文 |
 
 原生设备路径已实现，尚未通过真实账号的游戏操作验收。单独成功加载核心也不能证明所有关卡或任务语义兼容。
 
 ## 平台验证
+
+### 本次发行许可与 GitHub Packages（Windows x64，2026-10-23）
+
+- 补齐前后端 JavaScript 生产依赖、各平台 Cargo 运行依赖与 Rust 标准库许可。缺正文的上游 crate 按精确版本保留固定来源与哈希，未知缺失阻止打包；不再只收集后端归档库。版本说明记录应用标签、固定 Bun/WebKit 来源和重建入口。
+- Windows 宿主实际许可收集通过：13 个 JavaScript 依赖与 176 个 Rust 运行 crate；同一宿主解析锁定的 Linux x64、macOS x64/arm64 依赖图并收集许可，分别为 243、191、191 个 Rust crate，另附标准库声明。这些依赖图检查不等同于对应系统构建或安装验收。
+- 新增 GitHub Packages 工作流，从已发布 Release 严格核对 7 个安装包和 `SHA256SUMS.txt`，发布 `ghcr.io/deathofbrain/maa-verge:<版本号>` 的双架构安装包集合，拒绝覆盖已有版本；上传后按不可变摘要提取并再次核对全部文件。README 增加入口与 [提取说明](packages.md)；镜像不启动游戏或桌面应用。
+- 合并后 32 项工程测试中 30 项通过、2 项 Unix 进程组测试在 Windows 跳过，包含 9 项许可收集和 11 项发布校验测试。此前提交 `159b95a` 的 [Checks](https://github.com/DeathofBrain/maa-verge/actions/runs/39921136697) 已通过应用检查、四宿主探针、四平台安装包构建及 Linux 干净容器后端测试；最终安装包须使用包含本次补齐的对应提交重新构建。
 
 ### 本次 v0.1.0 发行文档与截图（Windows x64，2026-10-23）
 
