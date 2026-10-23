@@ -7,7 +7,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { collectUpdaterArtifacts, createUpdaterManifest, releaseConfiguration, updaterBuildArguments, verifyUpdaterSignature } from '../app-updater-release.mjs';
-import { parseChecksums, validateRelease } from '../github-package.mjs';
+import { parseChecksums, validateRelease } from '../release-assets.mjs';
 
 const version = '0.1.0';
 function signingKey() {
@@ -219,7 +219,7 @@ test('incomplete platform sets, unsigned versions and unexpected files never pro
   });
 });
 
-test('prerelease tags retain one exact SemVer in artifact names, signed comments, manifest and Packages validation', async () => temporary(async directory => {
+test('prerelease tags retain one exact SemVer in artifact names, signed comments, manifest and release asset validation', async () => temporary(async directory => {
   const key = signingKey(), prerelease = '0.2.0-beta.1';
   await fullSet(directory, key, prerelease);
   const manifest = await createUpdaterManifest({ input: directory, tag: `v${prerelease}`, publicKey: key.publicKey });
