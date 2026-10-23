@@ -1,17 +1,38 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { aria2Assets, aria2BuildArguments, aria2RecipeSha256, aria2Target, ensureAria2, readAria2BuildInfo, sqlitePublicDomainNotice, validateAria2Version, verifyAria2Asset } from '../setup-aria2.mjs';
+import { archiveFile, aria2Assets, aria2BuildArguments, aria2RecipeSha256, aria2Target, ensureAria2, readAria2BuildInfo, sqlitePublicDomainNotice, unpackSource, validateAria2Version, verifyAria2Asset } from '../setup-aria2.mjs';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const supported = 'aria2 version 1.37.0\nEnabled Features: HTTPS, Message Digest\nHash Algorithms: sha-1, sha-256\n';
 function fixture(t) {
   const root = mkdtempSync(path.join(tmpdir(), 'maa verge aria2 setup-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => {
+    assert.ok(path.resolve(root).startsWith(path.resolve(tmpdir()) + path.sep));
+    rmSync(root, { recursive: true, force: true });
+  });
   return root;
+}
+function gitTar() {
+  if (process.platform !== 'win32') return undefined;
+  const result = spawnSync('git', ['--exec-path'], { encoding: 'utf8', windowsHide: true, timeout: 10000 });
+  if (result.error || result.status !== 0) return undefined;
+  const program = path.resolve(result.stdout.trim(), '../../../usr/bin/tar.exe');
+  return existsSync(program) ? program : undefined;
+}
+function tarPrograms() {
+  const gnu = gitTar();
+  return gnu ? ['tar', gnu] : ['tar'];
+}
+function createArchive(program, root, name, members, zip = false) {
+  const result = spawnSync(program, [...(zip ? ['-a'] : []), '-cf', `./${name}`, '-C', './source', ...members], { cwd: root, windowsHide: true, encoding: 'utf8', timeout: 10000 });
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  return path.join(root, name);
 }
 function buildFixture(t) {
   const projectRoot = fixture(t), directory = path.join(projectRoot, '.tools/aria2');
@@ -89,4 +110,54 @@ test('refuses to execute a cached executable that differs from recorded build ou
   f.info.executableSha256 = sha256('expected binary'); f.save();
   writeFileSync(path.join(f.directory, 'aria2c'), 'modified binary');
   await assert.rejects(ensureAria2({ projectRoot: f.projectRoot, platform: 'darwin', arch: 'arm64', execute: () => assert.fail('must not execute corrupted tool'), fetcher: () => assert.fail('must not silently fetch replacement') }), /checksum\/target mismatch/);
+});
+
+test('real tar reads exact binary members from local archives with spaces and colon paths', (t) => {
+  for (const program of tarPrograms()) {
+    const root = fixture(t), member = `${aria2Assets.windows.root}/aria2c.exe`;
+    const expected = Buffer.from(Array.from({ length: 256 }, (_, index) => index));
+    mkdirSync(path.join(root, 'source', aria2Assets.windows.root), { recursive: true });
+    writeFileSync(path.join(root, 'source', member), expected);
+    const name = process.platform === 'win32' ? 'aria2 binary fixture.tar' : 'aria2:binary fixture.tar';
+    const archive = createArchive(program, root, name, [member]);
+    const execute = (_program, args, options) => spawnSync(program, args, { ...options, timeout: 10000 });
+    const actual = archiveFile(execute, archive, member);
+    assert.ok(Buffer.isBuffer(actual));
+    assert.deepEqual(actual, expected);
+    assert.equal(verifyAria2Asset(actual, { name, sha256: sha256(expected) }), actual);
+    assert.throws(() => archiveFile(execute, archive, 'missing-member'), /aria2 setup failed/);
+    t.diagnostic(`Verified binary extraction using ${program}`);
+  }
+});
+
+test('real tar source extraction preserves bytes and rejects foreign archive roots', (t) => {
+  for (const program of tarPrograms()) {
+    const root = fixture(t), asset = aria2Assets.aria2, member = `${asset.root}/COPYING`;
+    mkdirSync(path.join(root, 'source', asset.root), { recursive: true });
+    writeFileSync(path.join(root, 'source', member), 'complete source notice\n');
+    const name = process.platform === 'win32' ? 'aria2 source fixture.tar' : 'aria2:source fixture.tar';
+    const archive = createArchive(program, root, name, [member]);
+    const output = path.join(root, 'source output');
+    mkdirSync(output);
+    const execute = (_program, args, options) => spawnSync(program, args, { ...options, timeout: 10000 });
+    assert.equal(unpackSource(execute, archive, output, asset), path.join(output, asset.root));
+    assert.equal(readFileSync(path.join(output, member), 'utf8'), 'complete source notice\n');
+    mkdirSync(path.join(root, 'source', 'unexpected'));
+    writeFileSync(path.join(root, 'source', 'unexpected/file'), 'must not extract');
+    const unsafe = createArchive(program, root, 'foreign-root.tar', ['unexpected/file']);
+    assert.throws(() => unpackSource(execute, unsafe, output, asset), /Unsafe aria2 source archive paths/);
+    assert.equal(existsSync(path.join(output, 'unexpected')), false);
+  }
+});
+
+test('Windows ZIP extraction works when PATH tar is the Git GNU build', { skip: process.platform !== 'win32' }, (t) => {
+  const root = fixture(t), member = `${aria2Assets.windows.root}/aria2c.exe`;
+  const expected = Buffer.from([0, 255, 128, 13, 10, 1, 254]);
+  mkdirSync(path.join(root, 'source', aria2Assets.windows.root), { recursive: true });
+  writeFileSync(path.join(root, 'source', member), expected);
+  const systemTar = path.join(process.env.SystemRoot || process.env.WINDIR, 'System32', 'tar.exe');
+  const archive = createArchive(systemTar, root, 'aria2 binary fixture.zip', [member], true);
+  const fallback = gitTar() || 'tar';
+  const execute = (program, args, options) => spawnSync(program === 'tar' ? fallback : program, args, { ...options, timeout: 10000 });
+  assert.deepEqual(archiveFile(execute, archive, member), expected);
 });
