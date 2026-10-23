@@ -127,13 +127,13 @@ function ComponentPathForm({ channel, settings, busy, onSave }: { channel: Updat
 }
 
 function ComponentDownloadForm({ settings, busy, onSave }: { settings: Settings; busy: boolean; onSave: (patch: Partial<Settings>) => Promise<boolean> }) {
-  const saved = settings.componentDownload || { engine: 'builtin', aria2Path: '' };
+  const saved = settings.componentDownload || { engine: 'aria2', aria2Path: '' };
   const [draft, setDraft, reset] = useSettingsDraft<ComponentDownload>('component-download', saved);
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const save = () => onSave({ componentDownload: draft });
   return <Section title="组件下载器" description="MaaCore 与 MaaResource 共用；保存后用于后续下载。"><form className="sp-model-form" onSubmit={(event) => { event.preventDefault(); void save(); }}>
-    <label className="sp-field">下载器<select className="text-input" aria-label="组件下载器" value={draft.engine} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, engine: event.target.value as ComponentDownload['engine'] }))}><option value="builtin">内置下载器</option><option value="aria2">aria2（断点续传）</option></select></label>
-    {draft.engine === 'aria2' && <><label className="sp-field">aria2c 路径<input className="text-input" aria-label="aria2c 路径" value={draft.aria2Path} disabled={busy} placeholder="留空则从 PATH 查找 aria2c" onChange={(event) => setDraft((previous) => ({ ...previous, aria2Path: event.target.value }))} /></label><p className="sp-help">请先安装 aria2，填写 aria2c 可执行文件路径，或将其加入 PATH。中断后可重试续传。</p></>}
+    <label className="sp-field">下载器<select className="text-input" aria-label="组件下载器" value={draft.engine} disabled={busy} onChange={(event) => setDraft((previous) => ({ ...previous, engine: event.target.value as ComponentDownload['engine'] }))}><option value="aria2">aria2（随应用提供，推荐）</option><option value="builtin">内置 HTTP 下载器</option></select></label>
+    {draft.engine === 'aria2' && <><p className="sp-help">已随应用提供 aria2，无需另行安装。中断后可重试续传。</p><details open={Boolean(saved.aria2Path)}><summary>高级选项：自定义 aria2c 路径</summary><label className="sp-field">aria2c 路径<input className="text-input" aria-label="aria2c 路径" value={draft.aria2Path} disabled={busy} placeholder="留空使用随应用提供的 aria2c" onChange={(event) => setDraft((previous) => ({ ...previous, aria2Path: event.target.value }))} /></label><p className="sp-help">仅在需要替换下载器时填写可执行文件的绝对路径。</p></details></>}
     <div className="sp-form-actions"><span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span><button className="button secondary" type="button" disabled={busy || !dirty} onClick={reset}>放弃修改</button><button className="button primary" type="submit" disabled={busy || !dirty}>保存下载器</button></div>
   </form></Section>;
 }

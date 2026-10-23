@@ -3,6 +3,15 @@ import { mkdir, open, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const args = process.argv.slice(2);
+if (args.length === 1 && args[0] === "--version") {
+  const mode = process.env.MAAVERGE_TEST_ARIA2_VERSION;
+  if (mode === "wait") {
+    await writeFile(process.env.MAAVERGE_TEST_ARIA2_VERSION_PID!, String(process.pid));
+    await Bun.sleep(60_000);
+  }
+  process.stdout.write(mode === "invalid" ? "synthetic invalid executable\n" : `aria2 version 1.37.0\nEnabled Features: HTTPS, Message Digest${mode === "minimal" ? "" : ", BitTorrent, Metalink"}\n`);
+  process.exit(0);
+}
 const argument = (name: string) => args.find((value) => value.startsWith(name + "="))?.slice(name.length + 1) ?? "";
 const destination = path.join(argument("--dir"), argument("--out"));
 await mkdir(path.dirname(destination), { recursive: true });

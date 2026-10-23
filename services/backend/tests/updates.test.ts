@@ -55,10 +55,10 @@ test("download validates SHA-256/size and removes partial files", async () => {
   const root = await temp(), destination = path.join(root, "core.zip"), body = Buffer.from("synthetic package");
   const source = new OfficialSource((async () => new Response(body)) as unknown as typeof fetch);
   const metadata = { version: "v1.0.0", url: "https://example.test/core.zip", size: body.length, digest: "sha256:" + "0".repeat(64) };
-  await expect(source.download(metadata, destination, () => {})).rejects.toThrow("SHA-256");
+  await expect(source.download(metadata, destination, () => {}, { engine: 'builtin', aria2Path: '' })).rejects.toThrow("SHA-256");
   expect(await readdir(root)).toEqual([]);
   metadata.digest = "sha256:" + createHash("sha256").update(body).digest("hex");
-  expect(await source.download(metadata, destination, () => {})).toBe(metadata.digest.slice(7));
+  expect(await source.download(metadata, destination, () => {}, { engine: 'builtin', aria2Path: '' })).toBe(metadata.digest.slice(7));
   expect(await readFile(destination)).toEqual(body);
 });
 
@@ -106,7 +106,6 @@ test('download preferences are captured per preparation and repeated progress em
       await writeFile(destination, 'fixture'); return 'a'.repeat(64);
     },
   };
-  store.put('settings', 'main', { componentDownload: { engine: 'aria2', aria2Path: '' } });
   const updates = new UpdateService(root, store, (_type, _message, data) => events.push(data.update), () => false, { source, jobRunner: async config => {
     const coreName = process.platform === 'win32' ? 'MaaCore.dll' : process.platform === 'darwin' ? 'libMaaCore.dylib' : 'libMaaCore.so';
     await mkdir(path.join(config.target, 'resource'), { recursive: true });

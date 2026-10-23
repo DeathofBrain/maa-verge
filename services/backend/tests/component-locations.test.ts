@@ -67,7 +67,7 @@ test('ordinary settings save immediately while a component download is pending',
 
 test('download engine settings persist, survive legacy saves and reject command text', async () => {
   const root = temporary(), runtime = new Runtime(root); instances.push(runtime);
-  expect(runtime.snapshot().settings.componentDownload).toBeUndefined();
+  expect(runtime.snapshot().settings.componentDownload).toEqual({ engine: 'aria2', aria2Path: '' });
   const componentDownload = { engine: 'aria2' as const, aria2Path: path.join(root, 'tools with spaces', process.platform === 'win32' ? 'aria2c.exe' : 'aria2c') };
   const saved = await runtime.handle('settings.save', { settings: { ...runtime.snapshot().settings, componentDownload } });
   expect(saved.componentDownload).toEqual(componentDownload);
@@ -80,4 +80,17 @@ test('download engine settings persist, survive legacy saves and reject command 
   expect(parseSettings({ componentDownload: { engine: 'aria2', aria2Path: '' } }).componentDownload).toEqual({ engine: 'aria2', aria2Path: '' });
   const reset = await runtime.handle('settings.save', { settings: { ...saved, componentDownload: { engine: 'builtin', aria2Path: '' } } });
   expect(reset.componentDownload).toEqual({ engine: 'builtin', aria2Path: '' });
+  expect((await runtime.handle('settings.save', { settings: parseSettings({ theme: 'light' }) })).componentDownload).toEqual(reset.componentDownload);
+  await runtime.close(); instances.splice(instances.indexOf(runtime), 1);
+  const restarted = new Runtime(root); instances.push(restarted);
+  expect(restarted.snapshot().settings.componentDownload).toEqual(reset.componentDownload);
+});
+
+test('existing settings without a download preference acquire the bundled default on restart', async () => {
+  const root = temporary(), runtime = new Runtime(root); instances.push(runtime);
+  const settings = runtime.snapshot().settings; delete settings.componentDownload;
+  runtime.store.put('settings', 'main', settings);
+  await runtime.close(); instances.splice(instances.indexOf(runtime), 1);
+  const restarted = new Runtime(root); instances.push(restarted);
+  expect(restarted.snapshot().settings.componentDownload).toEqual({ engine: 'aria2', aria2Path: '' });
 });

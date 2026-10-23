@@ -123,7 +123,7 @@ pnpm test:desktop-runtime
 pnpm build
 ```
 
-`dist/runtime/maaverge-runtime` 包含两个可执行文件、`build-info.json` 和 `licenses/`。生产 CMake 使用 `BUILD_TESTING=OFF`，不需要 Python。测试构建使用 Python 3.12/filelock 驱动合成动态库与锁互斥测试；这不构成发行依赖。
+`dist/runtime/maaverge-runtime` 包含应用服务、C++ worker、`aria2c[.exe]` 三个可执行文件、`build-info.json` 和 `licenses/`。aria2 固定版本并随包携带许可、对应源码和构建信息；下载引擎由 TypeScript 服务持有，不并入 MaaCore worker。新配置默认使用包内 aria2，空路径不查找 PATH；既有内置 HTTP 下载器选择保留。开发通过 `pnpm setup:aria2` 准备，详见 [开发指南](development.md)。生产 CMake 使用 `BUILD_TESTING=OFF`，不需要 Python。测试构建使用 Python 3.12/filelock 驱动合成动态库与锁互斥测试；这不构成发行依赖。
 
 打包禁用自动加载 `.env` 与 `bunfig.toml`，启动时清理影响运行方式的 Node/Bun 环境选项。包内更新任务通过 `process.execPath` 重新启动同一服务的 `--update-job`，不依赖源码树或开发目录。最小探针检查空 PATH 下的 SQLite/WAL、保留 rowid 的备份、跨进程独占锁、子进程 NDJSON 与归档读取；包内 smoke 检查真实服务的空设备状态、Agent 提案、设置与计划保存、重启持久化、缺失设备拒绝和退出收尾，合成核心可用时继续验证 `--update-job` 的选择性归档提取与 C++ 校验。运行去重、空闲更新和回滚由注入合成适配器的服务测试覆盖。
 

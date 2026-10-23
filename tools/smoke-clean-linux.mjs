@@ -42,13 +42,24 @@ function session(data) {
   const name = `maaverge-clean-linux-${randomUUID()}`;
   containers.add(name);
   const command = String.raw`
-    for runtime in python python3 node bun; do
+    for runtime in python python3 node bun aria2c; do
       if command -v "$runtime" >/dev/null 2>&1; then
-        printf 'Unexpected interpreter in clean image: %s\n' "$runtime" >&2
+        printf 'Unexpected runtime in clean image: %s\n' "$runtime" >&2
         exit 1
       fi
     done
-    printf '%s\n' 'Clean image has no Python, Node or Bun commands.' >&2
+    printf '%s\n' 'Clean image has no Python, Node, Bun or aria2c commands.' >&2
+    aria2_features=$(/opt/maaverge/aria2c --version)
+    case "$aria2_features" in
+      *'aria2 version '*) ;;
+      *) printf '%s\n' 'Bundled aria2c did not report its version.' >&2; exit 1 ;;
+    esac
+    case "$aria2_features" in
+      *'Enabled Features:'*'HTTPS'*) ;;
+      *) printf '%s\n' 'Bundled aria2c has no HTTPS support.' >&2; exit 1 ;;
+    esac
+    printf '%s\n' "$aria2_features" 'Bundled aria2c loads with HTTPS support.' >&2
+    PATH=''; export PATH
     exec /opt/maaverge/maaverge-runtime --data-dir /data
   `;
   const child = spawn('docker', [
@@ -103,7 +114,8 @@ function session(data) {
       child.stdin.end();
       const timer = setTimeout(() => child.kill(), 15_000);
       try { await exit; } finally { clearTimeout(timer); }
-      assert(diagnostics.includes('Clean image has no Python, Node or Bun commands.'), 'Missing clean-image interpreter check');
+      assert(diagnostics.includes('Clean image has no Python, Node, Bun or aria2c commands.'), 'Missing clean-image runtime check');
+      assert(diagnostics.includes('Bundled aria2c loads with HTTPS support.'), 'Missing bundled aria2c dependency/HTTPS check');
     },
   };
 }
@@ -111,6 +123,7 @@ function session(data) {
 async function main() {
   assertLinuxBinary('maaverge-runtime');
   assertLinuxBinary('maaverge-core-worker');
+  assertLinuxBinary('aria2c');
   // Pull while networking is available. Every backend run itself is offline.
   await docker(['pull', '--platform', platform, image], { timeout: 300_000 });
   const data = mkdtempSync(path.join(tmpdir(), 'maaverge-clean-linux-'));
@@ -140,7 +153,7 @@ async function main() {
     await assert.rejects(second.request('run.start', request), /"code":-32004/u);
     await second.end();
     assert(existsSync(path.join(data, 'native/maaverge.sqlite3'))); assert(!existsSync(path.join(data, 'mock')));
-    console.log('Ubuntu 22.04 container native backend smoke passed: no Python/Node/Bun, empty devices, local Agent proposals, settings/plans persistence, missing-device rejection and EOF restart.');
+    console.log('Ubuntu 22.04 container native backend smoke passed: no Python/Node/Bun/global aria2c, bundled aria2c dependencies and HTTPS support, empty PATH, empty devices, local Agent proposals, settings/plans persistence, missing-device rejection and EOF restart.');
   } finally {
     for (const name of containers) await docker(['rm', '--force', name], { quiet: true, timeout: 15_000 }).catch(() => {});
     assert.equal(path.dirname(path.resolve(data)), path.resolve(tmpdir()));

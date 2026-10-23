@@ -19,6 +19,7 @@ async function main() {
       await run('node', ['tools/setup-bun.mjs']);
       await run('node', ['tools/doctor.mjs', '--native']);
       await run('node', ['tools/build-core-worker.mjs', '--production']);
+      await run('node', ['tools/setup-aria2.mjs']);
     }
     if (!existsSync(path.join(root, 'apps', 'desktop', 'src-tauri', 'Cargo.lock'))) {
       throw new Error('Cargo.lock missing. Run cargo generate-lockfile --manifest-path apps/desktop/src-tauri/Cargo.toml');

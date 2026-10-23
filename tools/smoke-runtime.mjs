@@ -7,13 +7,16 @@ import path from 'node:path';
 import { root, windows, fail } from './project.mjs';
 import { cleanRuntimeEnvironment } from './setup-bun.mjs';
 import { seedNativeData } from './test-support/seed-native.mjs';
+import { smokeBundledDownload } from './test-support/bundled-download-smoke.mjs';
 import { zipBytes } from '../services/backend/tests/archive-fixture.ts';
 
 async function main() {
   const temporary = mkdtempSync(path.join(tmpdir(), 'maaverge-package-smoke-'));
   const executable = path.join(root, 'dist/runtime/maaverge-runtime', windows ? 'maaverge-runtime.exe' : 'maaverge-runtime');
   const children = new Set();
-  const environment = { ...cleanRuntimeEnvironment(), PATH: '', MAAVERGE_MODE: 'native', MAAVERGE_DEVICE_LOCK_DIR: path.join(temporary, 'locks') };
+  const environment = { ...cleanRuntimeEnvironment(), MAAVERGE_MODE: 'native', MAAVERGE_DEVICE_LOCK_DIR: path.join(temporary, 'locks') };
+  for (const key of Object.keys(environment)) if (key.toUpperCase() === 'PATH') delete environment[key];
+  environment.PATH = '';
   const spawnOwned = (arguments_) => {
     const child = spawn(executable, arguments_, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: environment, cwd: temporary });
     children.add(child); child.once('close', () => children.delete(child)); child.stdin.on('error', () => {});
@@ -36,6 +39,7 @@ async function main() {
     return { request, end: async () => { child.stdin.end(); await exit; } };
   }
   try {
+    await smokeBundledDownload({ runtimeDirectory: path.dirname(executable), temporary, environment });
     await seedNativeData(temporary);
     writeFileSync(path.join(temporary, '.env'), 'BUN_BE_BUN=1\nNODE_OPTIONS=--invalid-option\n');
     writeFileSync(path.join(temporary, 'bunfig.toml'), '[broken\n');
