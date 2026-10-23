@@ -4,6 +4,7 @@ import { expect, test, type HarnessWindow } from './fixtures/desktop';
 test('shared connection settings persist native profile, ADB, touch and bridge preferences', async ({ page }) => {
   await page.goto('/');
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await page.getByLabel('连接配置', { exact: true }).selectOption('MuMuEmulator12');
   await page.getByLabel('ADB 路径', { exact: true }).fill('C:\\synthetic\\adb.exe');
   await page.getByLabel('连接地址', { exact: true }).fill('192.168.1.22:5555');
@@ -18,6 +19,7 @@ test('shared connection settings persist native profile, ADB, touch and bridge p
   await page.getByRole('button', { name: '保存截图配置', exact: true }).click();
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await expect(page.getByLabel('连接配置', { exact: true })).toHaveValue('MuMuEmulator12');
   await expect(page.getByLabel('ADB 路径', { exact: true })).toHaveValue('C:\\synthetic\\adb.exe');
   await expect(page.getByLabel('触控模式', { exact: true })).toHaveValue('maatouch');
@@ -30,6 +32,7 @@ test('shared connection settings persist native profile, ADB, touch and bridge p
 test('screenshot test reads a single actual connected frame through typed transport', async ({ page }) => {
   await page.goto('/');
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await page.getByRole('button', { name: '截图测试', exact: true }).click();
   await expect(page.getByRole('img', { name: '连接截图测试结果', exact: true })).toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: '截图成功' })).toContainText('耗时');
@@ -38,6 +41,7 @@ test('screenshot test reads a single actual connected frame through typed transp
 test('automatic capture is the default and manual ADB remains an explicit saved choice', async ({ page }) => {
   await page.goto('/');
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   const protocol = page.getByLabel('截图协议', { exact: true });
   const save = page.getByRole('button', { name: '保存截图配置', exact: true });
   await expect(protocol).toHaveValue('auto');
@@ -45,6 +49,7 @@ test('automatic capture is the default and manual ADB remains an explicit saved 
   await save.click();
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await expect(protocol).toHaveValue('adb');
   await protocol.selectOption('mumu');
   await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\MuMu');
@@ -57,6 +62,7 @@ test('automatic capture is the default and manual ADB remains an explicit saved 
   expect(snapshot.settings.capture).toMatchObject({ method: 'adb', autoDetect: true, mumuTouch: false, mumuBridge: false });
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await expect(protocol).toHaveValue('auto');
 });
 
@@ -69,6 +75,7 @@ test('automatically identified capture details are read only while legacy enhanc
   });
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   const protocol = page.getByLabel('截图协议', { exact: true });
   const directory = page.getByLabel('模拟器安装目录', { exact: true });
   const index = page.getByLabel('模拟器实例索引', { exact: true });
@@ -86,6 +93,7 @@ test('automatically identified capture details are read only while legacy enhanc
   });
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
   await expect(protocol).toHaveValue('ldplayer');
   await expect(directory).toBeEditable();
   await expect(index).toBeEditable();

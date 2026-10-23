@@ -4,6 +4,7 @@ import { expect, test, type HarnessWindow } from './fixtures/desktop';
 test('multi-instance profiles keep independent capture and connection fields across edits and reloads', async ({ page }) => {
   await page.goto('/');
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: /^多开管理/ }).click();
   const editor = page.getByRole('form', { name: '多开实例配置', exact: true });
   for (const [name, address, index, touch] of [
     ['日常实例', '127.0.0.1:16384', '0', 'minitouch'],
@@ -31,6 +32,7 @@ test('multi-instance profiles keep independent capture and connection fields acr
   await editor.getByRole('button', { name: '保存实例配置', exact: true }).click();
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: /^多开管理/ }).click();
   await expect(first).toContainText('实例 0');
   await expect(second).toContainText('实例 2');
   await first.getByRole('button', { name: '编辑实例', exact: true }).click();
@@ -45,6 +47,7 @@ test('multi-instance profiles keep independent capture and connection fields acr
 test('duplicate device aliases are rejected and a connected instance must disconnect before deletion', async ({ page }) => {
   await page.goto('/');
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: /^多开管理/ }).click();
   const editor = page.getByRole('form', { name: '多开实例配置', exact: true });
   await page.getByRole('button', { name: '添加多开实例', exact: true }).click();
   await editor.getByLabel('实例名称', { exact: true }).fill('第二实例');
@@ -61,7 +64,7 @@ test('duplicate device aliases are rejected and a connected instance must discon
   await card.getByRole('button', { name: '连接实例', exact: true }).click();
   await expect(card).toContainText('已连接');
   await expect(card.getByRole('button', { name: '删除实例', exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: '断开设备', exact: true }).click();
+  await card.getByRole('button', { name: '断开实例', exact: true }).click();
   await expect(card.getByRole('button', { name: '删除实例', exact: true })).toBeEnabled();
   await card.getByRole('button', { name: '删除实例', exact: true }).click();
   await expect(card).toHaveCount(0);
@@ -80,6 +83,7 @@ test('automatic multi-instance capture shows each detected type and user edits o
   });
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: /^多开管理/ }).click();
   const mumu = page.getByRole('article', { name: '多开实例：自动 MuMu', exact: true });
   const ldplayer = page.getByRole('article', { name: '多开实例：自动雷电', exact: true });
   await expect(mumu).toContainText('自动 · MuMu 增强截图 · 实例 32');

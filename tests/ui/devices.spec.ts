@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 type DeviceHarness = {
   calls: string[];
   holdDiscovery: boolean;
+  holdConnection: boolean;
   discovery: 'normal' | 'empty' | 'error';
   connection: 'normal' | 'empty' | 'error' | 'delayed';
   native: boolean;
@@ -11,6 +12,7 @@ type DeviceHarness = {
   connectionErrors: Record<string, string>;
   errorSnapshots: number;
   releaseDiscovery: () => void;
+  releaseConnection: () => void;
 };
 type HarnessWindow = Window & { deviceHarness: DeviceHarness };
 const result = (page: Page) => page.getByLabel('设备操作结果', { exact: true });
@@ -31,12 +33,14 @@ async function installDeviceHarness(page: Page) {
     const callbacks = new Map<number, (event: unknown) => void>();
     const listeners = new Map<number, { event: string; handler: number }>();
     const held: (() => void)[] = [];
+    const heldConnections: (() => void)[] = [];
     let sequence = 0;
     let subscribed = false;
     const target = window as unknown as HarnessWindow & { __TAURI_INTERNALS__: unknown; __TAURI_EVENT_PLUGIN_INTERNALS__: unknown };
     const harness: DeviceHarness = {
-      calls: [], holdDiscovery: false, discovery: 'normal', connection: 'normal', native: false, waiting: false, readyDeviceIds: [], connectionErrors: {}, errorSnapshots: 0,
+      calls: [], holdDiscovery: false, holdConnection: false, discovery: 'normal', connection: 'normal', native: false, waiting: false, readyDeviceIds: [], connectionErrors: {}, errorSnapshots: 0,
       releaseDiscovery: () => { harness.holdDiscovery = false; held.splice(0).forEach((release) => release()); },
+      releaseConnection: () => { harness.holdConnection = false; heldConnections.splice(0).forEach((release) => release()); },
     };
     target.deviceHarness = harness;
     const loadMock = async () => {
@@ -64,6 +68,7 @@ async function installDeviceHarness(page: Page) {
             if (harness.discovery === 'empty') return [];
           }
           if (method === 'device.auto_connect') {
+            if (harness.holdConnection) await new Promise<void>((resolve) => heldConnections.push(resolve));
             if (harness.connection === 'error') throw new Error('连接失败，请先安装并启用核心');
             if (harness.connection === 'empty') return { devices: [], discovered: [], diagnostics: ['未检测到已启动的模拟器'] };
             if (harness.connection === 'delayed') harness.waiting = true;
@@ -98,14 +103,14 @@ test.beforeEach(async ({ page }) => { await installDeviceHarness(page); });
 test('discovery and auto connection report completion when mock devices already exist', async ({ page }) => {
   await openDevices(page);
   await page.getByRole('button', { name: '发现设备', exact: true }).click();
-  await expect(result(page)).toHaveText('发现完成：找到 1 台设备，其中 1 台已在设备列表中。');
+  await expect(result(page)).toHaveText('发现完成：找到 1 台设备。');
   await expect(page.locator('.sp-discovered')).toContainText('本地模拟设备');
   await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
   await expect(result(page)).toHaveText('连接完成：1 台设备已就绪。');
   await expect(page.locator('.sp-device-item')).toHaveCount(1);
   await expect(page.locator('.connection-diagnostics')).toContainText('未访问真实模拟器');
   await page.getByRole('button', { name: '发现设备', exact: true }).click();
-  await expect(result(page)).toContainText('其中 1 台已在设备列表中');
+  await expect(result(page)).toContainText('找到 1 台设备');
   await expect(page.locator('.connection-diagnostics')).not.toContainText('已连接演示设备');
   await page.setViewportSize({ width: 390, height: 800 });
   await expect(result(page)).toBeVisible();
@@ -121,7 +126,7 @@ test('discovery shows progress, prevents duplicate requests and clears old resul
   await expect(result(page)).toHaveText('正在发现设备…');
   await expect(page.getByRole('button', { name: '正在发现…', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeDisabled();
-  await expect(page.locator('.sp-discovered')).toHaveCount(0);
+  await expect(page.locator('.dp-discovered-row')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (window as HarnessWindow).deviceHarness.calls.filter((method) => method === 'device.discover').length)).toBe(2);
   await page.evaluate(() => (window as HarnessWindow).deviceHarness.releaseDiscovery());
   await expect(result(page)).toContainText('未发现设备');
@@ -144,6 +149,8 @@ test('auto connection waits for ready devices and reports an empty result or con
   await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connection = 'delayed'; });
   await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
   await expect(result(page)).toHaveText('正在等待设备连接就绪（0/1）…');
+  await expect(page.getByRole('region', { name: '正在连接设备', exact: true })).toContainText('正在连接');
+  await expect(page.locator('.dp-history .sp-device-item')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '正在连接…', exact: true })).toBeDisabled();
   await expect(result(page)).not.toContainText('连接完成');
   await page.evaluate(() => { (window as HarnessWindow).deviceHarness.waiting = false; });
@@ -158,6 +165,40 @@ test('auto connection waits for ready devices and reports an empty result or con
   await expect(result(page)).toContainText('连接设备失败，请查看下方连接诊断。');
   await expect(page.locator('.connection-diagnostics')).toContainText('请先安装并启用核心');
   await expect(page.locator('.connection-diagnostics')).not.toContainText('未检测到已启动的模拟器');
+});
+
+test('a late connection does not replace the device chosen after leaving the page', async ({ page }) => {
+  await openDevices(page);
+  await page.getByLabel('手动连接 ADB 地址', { exact: true }).fill('127.0.0.1:5557');
+  await page.getByRole('button', { name: '连接设备', exact: true }).click();
+  await expect(result(page)).toHaveText('连接完成：1 台设备已就绪。');
+  const secondId = await page.getByLabel('选择设备', { exact: true }).inputValue();
+  await page.getByLabel('选择设备', { exact: true }).selectOption('mock-device-1');
+  await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connection = 'delayed'; });
+  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+  await expect(result(page)).toHaveText('正在等待设备连接就绪（0/2）…');
+  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+  await page.getByLabel('选择设备', { exact: true }).selectOption(secondId);
+  await page.evaluate(() => { (window as HarnessWindow).deviceHarness.waiting = false; });
+  // Allow the previously started readiness interval to finish after navigation.
+  await page.waitForTimeout(600);
+  await expect(page.getByLabel('选择设备', { exact: true })).toHaveValue(secondId);
+});
+
+test('a slow initial connection request preserves a device selected while it was pending', async ({ page }) => {
+  await openDevices(page);
+  await page.getByLabel('手动连接 ADB 地址', { exact: true }).fill('127.0.0.1:5557');
+  await page.getByRole('button', { name: '连接设备', exact: true }).click();
+  await expect(result(page)).toHaveText('连接完成：1 台设备已就绪。');
+  const secondId = await page.getByLabel('选择设备', { exact: true }).inputValue();
+  await page.getByLabel('选择设备', { exact: true }).selectOption('mock-device-1');
+  await page.evaluate(() => { (window as HarnessWindow).deviceHarness.holdConnection = true; });
+  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+  await expect(result(page)).toHaveText('正在发现并连接模拟器…');
+  await page.getByLabel('选择设备', { exact: true }).selectOption(secondId);
+  await page.evaluate(() => (window as HarnessWindow).deviceHarness.releaseConnection());
+  await expect(result(page)).toHaveText('连接完成：2 台设备已就绪。');
+  await expect(page.getByLabel('选择设备', { exact: true })).toHaveValue(secondId);
 });
 
 test('an asynchronous connection that stays offline reports pending readiness without claiming success', async ({ page }) => {

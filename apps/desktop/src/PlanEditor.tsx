@@ -2,14 +2,13 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, Check, ChevronDown, Copy, FileText, GripVertical, Info, ListChecks, LoaderCircle, Play, Plus, RotateCcw, Search, Settings2, ShieldCheck, Trash2, X } from 'lucide-react';
 import { taskDefaults, defaultDailyTaskTypes, taskEnabled, taskConsumableLimits, taskLabels, type Device, type Plan, type Settings, type RpcParams } from '@maaverge/contracts';
 import TaskParameterField, { type Field } from './TaskParameterField';
-import { TaskConnectionSettings } from './TaskConnectionSettings';
 import './plan-workbench.css';
 
 type Task = Plan['tasks'][number];
 type Step = { key: string; task: Task; json: string };
 const clients: [string, string][] = [['Official', '官服'], ['Bilibili', 'B 服'], ['YoStarEN', '国际服'], ['YoStarJP', '日服'], ['YoStarKR', '韩服'], ['txwy', '繁中服']];
 const fields: Record<string, Field[]> = {
-  StartUp: [{ key: 'client_type', label: '游戏客户端', kind: 'select', options: clients }, { key: 'start_game_enabled', label: '自动启动游戏', kind: 'check' }, { key: 'account_name', label: '切换账号标识', kind: 'account', hint: '填写已在游戏登录的账号显示名的唯一片段；留空不切换。' }],
+  StartUp: [{ key: 'client_type', label: '游戏客户端', kind: 'select', options: clients }, { key: 'start_game_enabled', label: '自动启动游戏', kind: 'check', hint: '在已连接设备中启动所选客户端；不会启动模拟器。' }, { key: 'account_name', label: '切换账号标识', kind: 'account', hint: '填写已在游戏登录的账号显示名的唯一片段；留空不切换。' }],
   CloseDown: [{ key: 'client_type', label: '游戏客户端', kind: 'select', options: clients }],
   Fight: [{ key: 'stage', label: '作战关卡', kind: 'stage', hint: '预设与原版关卡对应；也可直接输入活动关卡代码。关卡开放与可代理状态由游戏和当前资源决定。' }, { key: 'times', label: '作战次数', kind: 'limit', min: 1, max: 2147483647 }, { key: 'drops', label: '指定材料', kind: 'drops' }, { key: 'medicine', label: '理智药上限', kind: 'limit', min: 0, max: 100, hint: '取消勾选为 0；本项上限与其他启用的自动作战任务累计，作为本次执行的消耗上限。' }, { key: 'stone', label: '源石上限', kind: 'limit', min: 0, max: 100 }, { key: 'series', label: '代理倍率', kind: 'select', numeric: true, options: [['0', 'AUTO · 自动识别最大倍率'], ['-1', '不切换 · 保留游戏内设置'], ...Array.from({ length: 10 }, (_, index): [string, string] => [String(index + 1), `${index + 1} 倍`])], hint: 'AUTO 保持可用最大倍率；固定倍率需要足够的理智和剩余次数。不切换时保留游戏内设置。' }, { key: 'DrGrandet', label: '源石使用前等待理智恢复', kind: 'check' }, { key: 'report_to_penguin', label: '上传掉落至企鹅物流', kind: 'check' }, { key: 'report_to_yituliu', label: '上传掉落至一图流', kind: 'check' }],
   Recruit: [{ key: 'times', label: '招募次数', kind: 'number', min: 0, max: 2147483647, hint: '每次执行时最大招募次数；0 表示只识别标签，不开始招募。' }, { key: 'select', label: '选择星级', kind: 'stars' }, { key: 'confirm', label: '自动确认星级与招募时长', kind: 'recruit-confirm' }, { key: 'set_time', label: '自动设置招募时长', kind: 'check' }, { key: 'refresh', label: '自动刷新标签', kind: 'check' }, { key: 'expedite', label: '自动使用加急许可', kind: 'check', disabled: true, hint: '尚未开放：当前核心忽略加急次数限制，需要补齐可靠消耗控制。' }, { key: 'skip_robot', label: '跳过支援机械', kind: 'check' }, { key: 'extra_tags_mode', label: '额外标签策略', kind: 'select', numeric: true, options: [['0', '默认'], ['1', '选择更多标签'], ['2', '选择稀有标签']] }],
@@ -48,7 +47,7 @@ type Props = {
   plan: Plan | 'new'; devices?: Device[]; settings?: Settings; running?: boolean; unsaved?: boolean;
   selectedDeviceId?: string;
   busyDeviceIds?: string[];
-  onSaveSettings?: (settings: Settings) => Promise<boolean>;
+  onOpenDeviceSettings?: (deviceId?: string) => void;
   onSave: (plan: Plan) => Promise<boolean>; onStart?: (plan: Plan) => Promise<boolean>;
   onDelete?: (plan: Plan) => void; onClose?: () => void; onSaved?: (plan: Plan) => void;
   initialGroup?: Group; defaultName?: string; focusTaskType?: Task['type']; focusTaskIndex?: number; initialParams?: Task['params']; searchQuery?: string;
@@ -129,7 +128,7 @@ function fieldGroups(type: Task['type']): FieldGroup[] {
   return definitions.map(([title, keys, expanded]) => ({ title, fields: keys.flatMap((key) => available.filter((field) => field.key === key)), expanded })).filter((group) => group.fields.length);
 }
 
-export default function PlanEditor({ plan, devices = [], settings, selectedDeviceId, busyDeviceIds = [], onSaveSettings, running = false, unsaved = false, onSave, onStart, onDelete, onClose, onSaved, initialGroup = 'daily', defaultName, focusTaskType, focusTaskIndex, initialParams, searchQuery = '' }: Props) {
+export default function PlanEditor({ plan, devices = [], settings, selectedDeviceId, busyDeviceIds = [], onOpenDeviceSettings, running = false, unsaved = false, onSave, onStart, onDelete, onClose, onSaved, initialGroup = 'daily', defaultName, focusTaskType, focusTaskIndex, initialParams, searchQuery = '' }: Props) {
   const cacheKey = `maaverge.ui.draft.${plan === 'new' ? `new:${initialGroup}:${focusTaskType || 'default'}:${stable(initialParams || {})}` : plan.id}`;
   const [draft, setDraft] = useState<Draft>(() => loadDraft(cacheKey, plan, initialGroup, focusTaskType, initialParams, focusTaskIndex, defaultName));
   const [saving, setSaving] = useState(false);
@@ -295,7 +294,7 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
       {step.task.type === 'OperProgress' && <div className="wb-task-help"><Info size={17} /><p>干员养成会执行精英化、技能升级与专精并消耗材料。在高级参数的 plans 数组填写目标，执行前逐项核对。</p></div>}
       {!fields[step.task.type]?.length && step.task.type !== 'OperProgress' && <div className="wb-task-help"><FileText size={17} /><p>识别使用核心默认参数。结果可在运行事件中查看；专用结果与导出仍待接入。</p></div>}
       {step.task.type === 'Recruit' && <p className="wb-helper">次数为 0 时仅识别标签。当前核心无法保证加急次数上限，加急请求会被策略拒绝。</p>}
-      {step.task.type === 'StartUp' && settings && <FieldSection key={`${step.key}-connection`} title="多任务共用连接" expanded={!fieldSearch} summary="连接、触控与截图设置"><TaskConnectionSettings settings={settings} onSaveSettings={onSaveSettings} selectedDeviceId={draft.deviceId || selectedDeviceId} deviceProfileId={syncDevice?.connectionProfileId} busy={saving || starting} /></FieldSection>}
+      {step.task.type === 'StartUp' && <FieldSection key={`${step.key}-connection`} title="执行设备" expanded summary={syncDevice?.name || '尚未选择设备'}><p className="wb-helper">{draft.deviceId ? `本表绑定设备：${syncDevice?.name || '设备暂不可用'}` : `使用顶部所选设备：${syncDevice?.name || '尚未选择'}`}{syncDevice ? `（${syncDevice.address}）` : ''}</p><p className="wb-helper">开始唤醒负责启动游戏与切换账号。请先在模拟器中启动实例并连接设备；ADB、触控与截图统一在设备页配置。</p>{onOpenDeviceSettings && <button className="button secondary" type="button" onClick={() => onOpenDeviceSettings(draft.deviceId || selectedDeviceId)}>管理设备连接</button>}</FieldSection>}
       {step.task.type === 'Mall' && <p className="wb-helper">会客室信息板收取信用、线索交流与赠送线索，请在「基建换班 → 信用与线索」中设置。</p>}
       {step.task.type === 'UserDataUpdate' && <div className="wb-sync-times" aria-label="数据同步状态"><span>设备：{syncDevice?.name || '请绑定或选择设备'}</span><span>干员上次同步：{syncDevice?.dataSync?.operatorsAt ? new Date(syncDevice.dataSync.operatorsAt).toLocaleString('zh-CN') : '暂无成功记录'}</span><span>仓库上次同步：{syncDevice?.dataSync?.depotAt ? new Date(syncDevice.dataSync.depotAt).toLocaleString('zh-CN') : '暂无成功记录'}</span><span>按游戏客户端时区在凌晨 4 点换日，周一换周；已成功同步的项目在本周期内跳过。</span></div>}
       {step.task.type === 'SingleStep' && <p className="wb-helper">在高级参数的 details 配置动作；战斗动作使用 details.actions 数组，完成后仍需观察验证。</p>}
