@@ -185,6 +185,38 @@ test('preserves all declared fallback files and the selected license branch', (t
   for (const value of [body, declaration.source, declaration.sha256, override.source, override.sha256, 'Selected license: MIT', 'Authors: Fixture Author']) assert.ok(text.includes(value), value);
 });
 
+test('collects verified fallback text for every locked objc2 family crate on both macOS architectures', (t) => {
+  const f = rustFixture(t);
+  const licenseDirectory = new URL('../licenses/', import.meta.url);
+  const overrides = JSON.parse(readFileSync(new URL('rust-overrides.json', licenseDirectory), 'utf8'));
+  json(path.join(f.projectRoot, 'tools/licenses/rust-overrides.json'), overrides);
+  for (const override of Object.values(overrides)) {
+    for (const notice of override.files || [override]) {
+      write(path.join(f.projectRoot, 'tools/licenses', notice.file), readFileSync(new URL(notice.file, licenseDirectory)));
+    }
+  }
+  const lock = readFileSync(new URL('../../apps/desktop/src-tauri/Cargo.lock', import.meta.url), 'utf8');
+  const crates = lock.split('[[package]]').flatMap(section => {
+    const name = /^name = "([^"]+)"$/mu.exec(section)?.[1];
+    const version = /^version = "([^"]+)"$/mu.exec(section)?.[1];
+    return name && /^(?:objc2(?:-|$)|block2$|dispatch2$)/u.test(name) ? [{ name, version }] : [];
+  });
+  assert.ok(crates.some(({ name }) => name === 'objc2-osa-kit'), 'the updater dependency must be included');
+  for (const { name, version } of crates) f.dependency('fixture-root', f.crate(name, version, { notices: {} }));
+  for (const target of ['aarch64-apple-darwin', 'x86_64-apple-darwin']) {
+    const output = path.join(f.output, target);
+    assert.equal(writeRustNotices(output, { ...f.options, target }), crates.length);
+    for (const { name, version } of crates) {
+      const identity = `${name}@${version}`, override = overrides[identity];
+      const text = readFileSync(path.join(output, `rust-${identity}.txt`), 'utf8');
+      for (const value of [identity, `Build target: ${target}`, 'Selected license: MIT', override.commit, override.evidence]) assert.ok(text.includes(value), value);
+      for (const notice of override.files) {
+        for (const value of [notice.source, notice.sha256, readFileSync(new URL(notice.file, licenseDirectory), 'utf8')]) assert.ok(text.includes(value), `${identity}: ${notice.file}`);
+      }
+    }
+  }
+});
+
 function rustToolFixture(projectRoot, environment, calls, failure) {
   const version = 'rustc 1.90.0 (fixture)\r\nbinary: rustc\r\nhost: x86_64-pc-windows-msvc\r\nrelease: 1.90.0\r\n';
   const metadata = { packages: [], resolve: { root: 'fixture-root', nodes: [] } };

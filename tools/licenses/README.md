@@ -6,6 +6,7 @@
 - `webview2-com@0.39.1`、`webview2-com-sys@0.39.1`：同一固定提交的 workspace 根 LICENSE。
 - `selectors@0.38.0`：固定提交的 `selectors/lib.rs` 首部明确声明 MPL 2.0，并链接 Mozilla 官方正文；该仓库提交没有对应 LICENSE 文件。保留 Mozilla 官方 MPL 2.0 全文，包含附录 A/B。
 - `dlopen2@0.8.2`、`libappindicator-sys@0.9.0`：各自固定提交的 workspace 根完整许可；后者同时保留 MIT 与 Apache 2.0。
-- macOS 使用的 `objc2`、`block2`、`dispatch2` 和相关 framework crate：各自精确提交的根 `LICENSE.md` 只有许可选择声明。保留该原文（包括 Apple SDK 衍生说明），并为全部 12 个精确包版本选择共同允许的 MIT 分支，附 SPDX 固定提交的 MIT 全文。MIT 原文中的版权占位符不作猜测替换；生成文本单独保留 Cargo `authors` 声明，没有声明的包保持为空。
+- 锁文件中的 `objc2`、`block2`、`dispatch2` 和相关 framework crate：各自精确提交的根 `LICENSE.md` 只有许可选择声明。保留该原文（包括 Apple SDK 衍生说明），并为全部 20 个精确包版本选择共同允许的 MIT 分支，附 SPDX 固定提交的 MIT 全文。MIT 原文中的版权占位符不作猜测替换；生成文本单独保留 Cargo `authors` 声明，没有声明的包保持为空。
+- 框架 `objc2-cloud-kit`、`objc2-core-data`、`objc2-core-image`、`objc2-core-location`、`objc2-core-text`、`objc2-osa-kit`、`objc2-ui-kit`、`objc2-user-notifications` 的 `0.3.2` 包同样未附许可正文。其 crates.io 归档 SHA-256 均与 Cargo.lock 一致，`.cargo_vcs_info.json` 均指向 `7b1abfd750a2cacaea71d6a56ecfb83cb7de560b`；各包的 `Cargo.toml` 从该提交的 workspace 继承 `0.3.2` 和 `Zlib OR Apache-2.0 OR MIT` 声明。补充项逐个绑定精确包版本，没有家族通配规则。当前两个 macOS 发行目标实际使用 `objc2-osa-kit`，其余七项属于锁文件中的其他平台或可选依赖，仅在进入正常运行时依赖闭包时收集。
 
 打包时优先收集实际 Cargo 源目录中的 LICENSE、COPYING、NOTICE、COPYRIGHT 和 `license_file`；仅在正文缺失且版本精确匹配时使用此目录。固定来源、声明证据与哈希会写入生成的许可文本。Rust 标准库版权及完整第三方许可从实际 `rustc --print sysroot` 的 `share/doc/rust/COPYRIGHT-library.html` 和 `licenses/` 收集；这些文件属于 rustc 组件，不需要 rust-docs。
