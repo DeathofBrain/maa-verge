@@ -60,6 +60,8 @@ jobs:
           cache: pnpm
       - uses: astral-sh/setup-uv@v6
         with:
+          # An exact version avoids the GitHub API request to discover latest.
+          version: '0.13.5'
           enable-cache: true
       - run: pnpm install --frozen-lockfile
       - run: uv sync --frozen
@@ -116,6 +118,8 @@ jobs:
           cache: pnpm
       - uses: astral-sh/setup-uv@v6
         with:
+          # Keep this aligned with the application job's verified version.
+          version: '0.13.5'
           enable-cache: true
       - uses: dtolnay/rust-toolchain@1.90.0
         with:

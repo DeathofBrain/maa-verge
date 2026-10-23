@@ -33,6 +33,12 @@
 
 ## 平台验证
 
+### 本次 macOS Intel CI 排查与版本固定（2026-10-23）
+
+- 核对全部 22 次 Checks 运行，最近连续 6 次完整运行成功；最新 [Intel native 作业](https://github.com/DeathofBrain/maa-verge/actions/runs/39945649247/job/120387930576) 已通过 CTest、后端、Rust 检查及完整安装包构建。历史失败并非同一编译错误：较早的 macOS `/var` 与 `/private/var` 路径断言已规范化；错误回调测试在连接阶段使用 80 毫秒时限，已由 `3049fe6` 改为 1000 毫秒，保留未知结果退出 124 与禁止重放断言。
+- [另一次 Intel 失败](https://github.com/DeathofBrain/maa-verge/actions/runs/39803795302/job/119914552184) 发生在 setup-uv 查询最新版时，日志为 GitHub API `Connect Timeout Error`，此前缓存请求也出现 DNS `ENOTFOUND`。本次将 application/native 的 uv 固定为最新成功运行使用的 0.13.5；setup-uv 的精确版本分支跳过版本发现 API，具体发行资产和依赖下载仍需要网络。
+- Windows 独立 worktree 的 actionlint 1.7.12 检查全部工作流通过；实际下载并校验 uv 0.13.5，`uv sync --frozen` 与 `node tools/build-core-worker.mjs` 通过，4/4 CTest 成功，依赖锁未改变。本次只修改 CI 工具版本及文档，未修改产品超时或跳过检查；尚未推送或触发本次配置的远端 macOS 重跑。
+
 ### 本次 dev 提交前验证（Windows x64，2026-10-23）
 
 - 将工作树整合后保留的中文字体、防闪烁改动及相关测试一并提交；字体依赖与锁文件同步，未修改运行时接口。

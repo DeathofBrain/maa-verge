@@ -4,6 +4,8 @@
 
 版本来源为 `.node-version`（Node 24）、`package.json#packageManager`（pnpm 10）、`.bun-version`（Bun 1.4.3）和 `rust-toolchain.toml`。C++ worker 使用 CMake 3.25+ 与 C++20。`.python-version` 的 Python 3.12 仅供保留的参考实现和合成测试。依赖由 `pnpm-lock.yaml`、`uv.lock`、`apps/desktop/src-tauri/Cargo.lock` 及 CMake 中的源码哈希锁定。
 
+CI 在 `.github/workflows/ci.yml` 的 application 和 native 作业中统一固定 uv 0.13.5，避免安装前通过 GitHub API 查询最新版；升级时同时更新两处并检查冻结同步和原生合成测试。固定版本仍需访问对应发行资产及依赖下载源，不能消除全部网络故障。
+
 每台机器从相同 Git 提交重新执行引导脚本。不要复制其他电脑的 `node_modules`、`.venv`、`.tools`、Rust target 或产品数据库。
 
 ```powershell
