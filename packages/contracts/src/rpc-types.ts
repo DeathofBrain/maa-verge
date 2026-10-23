@@ -91,6 +91,8 @@ export interface RpcContract {
       refresh?: boolean;
     };
     'stages.list': StageListParams;
+    'recognition.get': RecognitionParams;
+    'resources.item': ItemResourceParams;
     'plan.save': {
       plan: Plan;
     };
@@ -128,6 +130,8 @@ export interface RpcContract {
     'app.snapshot': Snapshot;
     'home.info': HomeInfo;
     'stages.list': StageListResult;
+    'recognition.get': RecognitionResult;
+    'resources.item': ItemResourceResult;
     'plan.save': Plan;
     'plan.delete': {
       deleted: boolean;
@@ -175,6 +179,23 @@ export interface EmptyParams {}
 export interface StageListParams {
   clientType?: ClientType;
   refresh?: boolean;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "RecognitionParams".
+ */
+export interface RecognitionParams {
+  deviceId: string;
+  kind: 'depot' | 'operators';
+  clientType?: ClientType;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ItemResourceParams".
+ */
+export interface ItemResourceParams {
+  itemId: string;
+  clientType?: ClientType;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -1022,6 +1043,64 @@ export interface InfrastructureEstimate {
   full: boolean;
   fullAt: string | null;
   error: string | null;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "RecognitionResult".
+ */
+export interface RecognitionResult {
+  deviceId: string;
+  kind: 'depot' | 'operators';
+  clientType: ClientType;
+  collectedAt: string | null;
+  runId: string | null;
+  /**
+   * @maxItems 10000
+   */
+  items: RecognizedItem[];
+  /**
+   * @maxItems 2000
+   */
+  operators: RecognizedOperator[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "RecognizedItem".
+ */
+export interface RecognizedItem {
+  id: string;
+  name: string;
+  quantity: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "RecognizedOperator".
+ */
+export interface RecognizedOperator {
+  id: string;
+  name: string;
+  own: boolean;
+  elite: number;
+  level: number;
+  /**
+   * MaaCore potential: 1-based; negative values preserve unknown results.
+   */
+  potential: number;
+  /**
+   * MaaCore rarity: 1-based star count; negative values preserve unknown results.
+   */
+  rarity: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ItemResourceResult".
+ */
+export interface ItemResourceResult {
+  itemId: string;
+  name: string | null;
+  mimeType: 'image/png' | null;
+  data: string | null;
+  resourceVersion: string | null;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

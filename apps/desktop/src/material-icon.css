@@ -1,0 +1,2 @@
+.material-icon { display: inline-grid; place-items: center; width: 42px; height: 42px; flex: none; border-radius: 8px; color: var(--muted); background: var(--accent-soft); }
+.material-icon img { display: block; width: 100%; height: 100%; object-fit: contain; }

@@ -7,11 +7,13 @@
   "properties": {
     "params": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "home.info", "stages.list", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "home.info", "stages.list", "recognition.get", "resources.item", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "#/$defs/EmptyParams" },
         "home.info": { "type": "object", "additionalProperties": false, "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "refresh": { "type": "boolean" } } },
         "stages.list": { "$ref": "#/$defs/StageListParams" },
+        "recognition.get": { "$ref": "#/$defs/RecognitionParams" },
+        "resources.item": { "$ref": "#/$defs/ItemResourceParams" },
         "plan.save": { "type": "object", "additionalProperties": false, "required": ["plan"], "properties": { "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" } } },
         "plan.delete": { "$ref": "#/$defs/IdParams" },
         "device.discover": { "$ref": "#/$defs/EmptyParams" },
@@ -40,11 +42,13 @@
     },
     "results": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "home.info", "stages.list", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot", "home.info", "stages.list", "recognition.get", "resources.item", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
       "properties": {
         "app.snapshot": { "$ref": "./runtime.schema.json" },
         "home.info": { "$ref": "#/$defs/HomeInfo" },
         "stages.list": { "$ref": "#/$defs/StageListResult" },
+        "recognition.get": { "$ref": "#/$defs/RecognitionResult" },
+        "resources.item": { "$ref": "#/$defs/ItemResourceResult" },
         "plan.save": { "$ref": "./runtime.schema.json#/$defs/Plan" },
         "plan.delete": { "type": "object", "additionalProperties": false, "required": ["deleted"], "properties": { "deleted": { "type": "boolean" } } },
         "device.discover": { "type": "array", "items": { "$ref": "#/$defs/DiscoveredDevice" } },
@@ -77,6 +81,64 @@
     }
   },
   "$defs": {
+    "RecognitionParams": {
+      "type": "object", "additionalProperties": false, "required": ["deviceId", "kind"],
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "kind": { "enum": ["depot", "operators"] },
+        "clientType": { "$ref": "#/$defs/ClientType" }
+      }
+    },
+    "RecognitionResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["deviceId", "kind", "clientType", "collectedAt", "runId", "items", "operators"],
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "kind": { "enum": ["depot", "operators"] },
+        "clientType": { "$ref": "#/$defs/ClientType" },
+        "collectedAt": { "type": ["string", "null"], "minLength": 1, "maxLength": 40 },
+        "runId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+        "items": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/RecognizedItem" } },
+        "operators": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/RecognizedOperator" } }
+      }
+    },
+    "RecognizedItem": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "quantity"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "quantity": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+      }
+    },
+    "RecognizedOperator": {
+      "type": "object", "additionalProperties": false, "required": ["id", "name", "own", "elite", "level", "potential", "rarity"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "own": { "type": "boolean" },
+        "elite": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "level": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "potential": { "description": "MaaCore potential: 1-based; negative values preserve unknown results.", "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "rarity": { "description": "MaaCore rarity: 1-based star count; negative values preserve unknown results.", "type": "integer", "minimum": -2147483648, "maximum": 2147483647 }
+      }
+    },
+    "ItemResourceParams": {
+      "type": "object", "additionalProperties": false, "required": ["itemId"],
+      "properties": {
+        "itemId": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9_-]+$" },
+        "clientType": { "$ref": "#/$defs/ClientType" }
+      }
+    },
+    "ItemResourceResult": {
+      "type": "object", "additionalProperties": false, "required": ["itemId", "name", "mimeType", "data", "resourceVersion"],
+      "properties": {
+        "itemId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "name": { "type": ["string", "null"], "maxLength": 300 },
+        "mimeType": { "enum": ["image/png", null] },
+        "data": { "type": ["string", "null"], "maxLength": 1398104 },
+        "resourceVersion": { "type": ["string", "null"], "maxLength": 200 }
+      }
+    },
     "RunArtifactParams": {
       "type": "object", "additionalProperties": false, "required": ["runId", "artifactId"],
       "properties": { "runId": { "type": "string", "minLength": 1, "maxLength": 200 }, "artifactId": { "type": "string", "pattern": "^[a-f0-9-]{36}$" } }
