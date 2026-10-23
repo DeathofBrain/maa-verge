@@ -89,6 +89,7 @@ export class Runtime {
     this.updates = new UpdateService(path.join(root, 'components'), this.store, this.emit.bind(this), this.busy.bind(this), {
       source: options.source, validator: options.validator, directories: defaults,
       beforeActivate: () => this.beforeSwitch(), afterActivate: () => this.afterSwitch(), finishActivate: (error?: string) => this.finishSwitch(error),
+      protectedPaths: () => [...this.workerConfigurations.values()].flatMap(config => [config.core, config.resource]),
     });
     this.preview = new Preview({
       available: () => this.running && !this.switching,
@@ -352,7 +353,7 @@ export class Runtime {
       if (!configuredOnly) {
         try { const result = await (this.options.discoverDevices ?? autoDiscover)(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); discovered = result.devices; diagnostics = result.diagnostics; inventory = result.inventory; }
         catch (error) { throw new RpcError(-32040, '模拟器自动发现失败', String(error)); }
-      } else inventory = await this.readEmulatorInventory();
+      } else { inventory = await this.readEmulatorInventory(); diagnostics = [...inventory.diagnostics]; }
       this.emulatorInventory = inventory;
       // Explicit multi-instance profiles use their own ADB executables and SDK
       // indices. A global enhanced-capture index must never be applied to all.

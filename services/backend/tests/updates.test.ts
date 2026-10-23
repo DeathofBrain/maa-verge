@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { OfficialSource, platformAsset, runUpdateJob, treeHash, UpdateService, type UpdateSource, type UpdateStore } from "../src/updates.ts";
@@ -15,7 +15,7 @@ class MemoryStore implements UpdateStore {
   all(kind: string) { return [...this.rows.entries()].filter(([key]) => key.startsWith(kind + "|")).map(([, value]) => structuredClone(value)); }
 }
 const roots: string[] = [];
-async function temp() { const root = await mkdtemp(path.join(tmpdir(), "maaverge-updates-")); roots.push(root); return root; }
+async function temp() { const root = await realpath(await mkdtemp(path.join(tmpdir(), "maaverge-updates-"))); roots.push(root); return root; }
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 test("platform assets cover all release architectures", () => {
   expect(platformAsset("Darwin", "arm64")).toBe("macos-runtime-universal.zip");
@@ -95,6 +95,7 @@ class FixtureSource implements UpdateSource {
 }
 function fixtureUpdates(root: string, store: MemoryStore, busy: () => boolean, source = new FixtureSource(), hooks: {
   afterActivate?: () => void | Promise<void>; finishActivate?: (error?: string) => void | Promise<void>;
+  protectedPaths?: () => string[];
 } = {}) {
   const validator = async () => {};
   return new UpdateService(root, store, () => {}, busy, { source, validator, jobRunner: config => runUpdateJob(config, validator), ...hooks });
@@ -103,6 +104,7 @@ function fixtureUpdates(root: string, store: MemoryStore, busy: () => boolean, s
 test('component roots keep active/staged generations and rollback intact when future downloads move', async () => {
   const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
   const updates = fixtureUpdates(root, store, () => false, source);
+  await mkdir(path.join(root, 'downloads'), { recursive: true });
   await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
   const activeCore = store.get('active', 'combo').core.path, hash = await treeHash(activeCore);
   await updates.check('resource'); await updates.prepare('resource');
@@ -121,7 +123,8 @@ test('component roots keep active/staged generations and rollback intact when fu
   await updates.rollback('resource');
   expect(store.get('active', 'combo').resource.path).toBe(stagedPath);
   expect(await readdir(paths.core)).toEqual([]);
-  expect(await readdir(path.join(paths.resource, 'downloads'))).toEqual([]);
+  expect(await readdir(paths.resource)).toEqual(['generations']);
+  expect(await readdir(root)).not.toContain('downloads');
 });
 
 test('unwritable component root fails without replacing settings or active generation', async () => {
@@ -138,9 +141,298 @@ test('download root creation errors enter a retryable failed state', async () =>
   store.put('settings', 'main', { componentPaths: { core: file, resource: root } });
   const updates = fixtureUpdates(root, store, () => false);
   await updates.check('core');
-  await expect(updates.prepare('core')).rejects.toThrow('活动版本保持可用');
+  await expect(updates.prepare('core')).rejects.toThrow('请先修复核心与基础资源');
   expect(updates.channel('core').status).toBe('failed');
   expect(store.get('active', 'combo')).toBeUndefined();
+});
+
+test.each(['directory', 'empty-directory', 'library', 'base-resource', 'model'])('restart repairs a missing core %s and allows reinstalling the same version', async missing => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const initial = fixtureUpdates(root, store, () => false, source);
+  await initial.check('core'); await initial.prepare('core'); await initial.activate('core');
+  const old = store.get('active', 'combo').core;
+  await initial.close();
+  if (missing === 'directory' || missing === 'empty-directory') {
+    await rm(old.path, { recursive: true });
+    if (missing === 'empty-directory') await mkdir(old.path);
+  } else await rm(path.join(old.path, missing === 'library' ? 'MaaCore.dll' : missing === 'model' ? 'resource/onnx/model' : 'resource/version.json'));
+  const updates = fixtureUpdates(root, store, () => false, source);
+  expect(updates.channel('core').currentVersion).toBe('未安装');
+  expect(updates.channel('resource').currentVersion).toBe('未安装');
+  expect(store.get('active', 'combo')).toBeUndefined();
+  expect((await updates.check('core')).status).toBe('available');
+  await updates.prepare('core'); await updates.activate('core');
+  expect(updates.channel('core').currentVersion).toBe(old.version);
+  expect(store.get('active', 'combo').core.path).not.toBe(old.path);
+  expect(await readdir(root)).toEqual(['generations']);
+  await updates.close();
+});
+
+test.each(['model', 'dependency', 'intact'])('legacy core without an inventory can repair the same version: %s', async missing => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const initial = fixtureUpdates(root, store, () => false, source);
+  await initial.check('core'); await initial.prepare('core'); await initial.activate('core'); await initial.close();
+  const legacy = store.get('active', 'combo');
+  for (const snapshot of Object.values(legacy) as any[]) { delete snapshot.installedFiles; delete snapshot.installedHash; }
+  store.put('active', 'combo', legacy);
+  if (missing !== 'intact') await rm(path.join(legacy.core.path, missing === 'model' ? 'resource/onnx/model' : 'MaaUtils.dll'));
+  const before = await treeHash(legacy.core.path);
+  let busy = false;
+  const updates = fixtureUpdates(root, store, () => busy, source);
+  const checked = await updates.check('core');
+  expect(checked).toMatchObject({ currentVersion: source.coreVersion, latestVersion: source.coreVersion, status: 'available' });
+  expect(checked.message).toContain('完整性记录');
+  expect(store.get('active', 'combo')).toEqual(legacy);
+  await updates.prepare('core');
+  busy = true; expect((await updates.activate('core')).status).toBe('waiting_idle');
+  expect(store.get('active', 'combo')).toEqual(legacy);
+  expect(await treeHash(legacy.core.path)).toBe(before);
+  busy = false; await updates.activatePending();
+  const repaired = store.get('active', 'combo').core;
+  expect(repaired.path).not.toBe(legacy.core.path);
+  expect(repaired.installedHash).toMatch(/^[a-f0-9]{64}$/);
+  expect(await readFile(path.join(repaired.path, 'resource/onnx/model'), 'utf8')).toBe('model');
+  expect(await readFile(path.join(repaired.path, 'MaaUtils.dll'), 'utf8')).toBe('native');
+  expect((await updates.check('core')).status).toBe('idle');
+  await updates.close();
+});
+
+test('failed and successful legacy repairs preserve active files and the last usable rollback', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  source.coreVersion = 'v6.20.1';
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const legacy = store.get('active', 'combo'), previous = store.get('previous', 'combo');
+  for (const snapshot of Object.values(legacy) as any[]) { delete snapshot.installedFiles; delete snapshot.installedHash; }
+  store.put('active', 'combo', legacy);
+  const before = await treeHash(legacy.core.path);
+  const download = source.download.bind(source);
+  source.download = async () => { throw new Error('synthetic offline'); };
+  await updates.check('core'); await expect(updates.prepare('core')).rejects.toThrow('活动版本保持可用');
+  expect(store.get('active', 'combo')).toEqual(legacy);
+  expect(store.get('previous', 'combo')).toEqual(previous);
+  expect(await treeHash(legacy.core.path)).toBe(before);
+  source.download = download;
+  await updates.prepare('core'); await updates.activate('core');
+  expect(store.get('active', 'combo').core.path).not.toBe(legacy.core.path);
+  expect(store.get('previous', 'combo')).toEqual(previous);
+  expect(await treeHash(legacy.core.path)).toBe(before);
+  await updates.close();
+});
+
+test.each(['model', 'dependency', 'empty'])('content integrity detects corrupt installed core files: %s', async corrupted => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const old = store.get('active', 'combo').core;
+  await writeFile(path.join(old.path, corrupted === 'dependency' ? 'MaaUtils.dll' : 'resource/onnx/model'),
+    corrupted === 'empty' ? '' : corrupted === 'dependency' ? 'broken' : 'wrong');
+  expect((await updates.check('core')).status).toBe('available');
+  expect(updates.channel('core').currentVersion).toBe('未安装');
+  await updates.prepare('core'); await updates.activate('core');
+  const repaired = store.get('active', 'combo').core;
+  expect(repaired.path).not.toBe(old.path);
+  expect(await readFile(path.join(repaired.path, 'MaaUtils.dll'), 'utf8')).toBe('native');
+  expect(await readFile(path.join(repaired.path, 'resource/onnx/model'), 'utf8')).toBe('model');
+  await updates.close();
+});
+
+test('legacy resource content hashes detect corruption without inventing an inventory for missing files', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await updates.check('resource'); await updates.prepare('resource'); await updates.activate('resource');
+  const original = store.get('active', 'combo');
+  delete original.resource.installedFiles; delete original.resource.installedHash;
+  store.put('active', 'combo', original);
+  expect((await updates.check('resource')).status).toBe('idle');
+  await writeFile(path.join(original.resource.path, 'resource/onnx/model'), 'wrong');
+  expect((await updates.check('resource')).status).toBe('available');
+  expect(store.get('active', 'combo').resource.path).toBe(original.core.path);
+  await updates.prepare('resource'); await updates.activate('resource');
+  expect(store.get('active', 'combo').resource.path).not.toBe(original.resource.path);
+  expect(updates.channel('resource').currentVersion).toBe(source.resourceVersion);
+  await updates.close();
+});
+
+test.each(['download', 'job'])('losing the base during a resource %s leaves a repairable core state', async phase => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const download = source.download.bind(source);
+  let removeBase = false, jobStarted = false;
+  const eraseBase = async () => { await rm(path.join(store.get('active', 'combo').core.path, 'resource'), { recursive: true }); };
+  source.download = async (...args: Parameters<typeof download>) => {
+    const digest = await download(...args);
+    if (removeBase && phase === 'download') await eraseBase();
+    return digest;
+  };
+  const updates = new UpdateService(root, store, () => {}, () => false, { source, validator: async () => {},
+    jobRunner: async config => {
+      if (removeBase && config.channel === 'resource') { jobStarted = true; if (phase === 'job') await eraseBase(); }
+      return runUpdateJob(config, async () => {});
+    },
+  });
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await updates.check('resource'); removeBase = true;
+  await expect(updates.prepare('resource')).rejects.toThrow('请先修复核心与基础资源');
+  expect(jobStarted).toBe(phase === 'job');
+  expect(updates.channel('core').currentVersion).toBe('未安装');
+  expect(updates.channel('resource').status).toBe('failed');
+  expect(store.get('staged', 'resource')).toBeUndefined();
+  removeBase = false;
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await updates.check('resource'); await updates.prepare('resource'); await updates.activate('resource');
+  expect(updates.channel('resource').currentVersion).toBe(source.resourceVersion);
+  await updates.close();
+});
+
+test('repairing a corrupt active core preserves the last valid rollback combination', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const previous = store.get('active', 'combo');
+  source.coreVersion = 'v6.20.1';
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await writeFile(path.join(store.get('active', 'combo').core.path, 'resource/onnx/model'), 'wrong');
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  expect(store.get('previous', 'combo')).toEqual(previous);
+  await updates.rollback('core');
+  expect(store.get('active', 'combo')).toEqual(previous);
+  await updates.close();
+});
+
+test('a candidate modified after validation is rejected without replacing the working core', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const original = store.get('active', 'combo');
+  source.coreVersion = 'v6.20.1'; await updates.check('core'); await updates.prepare('core');
+  await writeFile(path.join(store.get('staged', 'core').path, 'MaaUtils.dll'), 'broken');
+  await expect(updates.activate('core')).rejects.toThrow('没有已经校验的候选快照');
+  expect(store.get('active', 'combo')).toEqual(original);
+  expect(store.get('staged', 'core')).toBeUndefined();
+  await updates.prepare('core'); await updates.activate('core');
+  expect(updates.channel('core').currentVersion).toBe(source.coreVersion);
+  await updates.close();
+});
+
+test('missing independent resources fall back to bundled resources and reinstall the same commit', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const initial = fixtureUpdates(root, store, () => false, source);
+  await initial.check('core'); await initial.prepare('core'); await initial.activate('core');
+  await initial.check('resource'); await initial.prepare('resource'); await initial.activate('resource');
+  const original = store.get('active', 'combo'); await initial.close();
+  await rm(path.join(original.resource.path, 'resource'), { recursive: true });
+  const updates = fixtureUpdates(root, store, () => false, source);
+  expect(store.get('active', 'combo')).toEqual({ core: original.core, resource: original.core });
+  expect(updates.channel('resource').currentVersion).toBe('bundled@' + original.core.version);
+  expect((await updates.check('resource')).status).toBe('available');
+  await updates.prepare('resource'); await updates.activate('resource');
+  expect(updates.channel('resource').currentVersion).toBe(source.resourceVersion);
+  await updates.rollback('resource');
+  expect(updates.channel('resource').currentVersion).toBe('bundled@' + original.core.version);
+  await updates.close();
+});
+
+test('missing staged and rollback snapshots never block preparing a fresh update', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource(); let busy = false;
+  const updates = fixtureUpdates(root, store, () => busy, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  source.coreVersion = 'v6.20.1';
+  await updates.check('core'); await updates.prepare('core');
+  busy = true; await updates.activate('core');
+  const candidate = store.get('staged', 'core'); await rm(candidate.path, { recursive: true });
+  expect((await updates.check('core')).status).toBe('available');
+  expect(store.get('staged', 'core')).toBeUndefined();
+  await updates.prepare('core'); busy = false; await updates.activate('core');
+  const active = store.get('active', 'combo');
+  await rm(store.get('previous', 'combo').core.path, { recursive: true });
+  await expect(updates.rollback('core')).rejects.toThrow('没有可回滚');
+  expect(store.get('active', 'combo')).toEqual(active);
+  await updates.close();
+});
+
+test('invalid resource metadata is detected before same-version preparation', async () => {
+  const root = await temp(), store = new MemoryStore(), updates = fixtureUpdates(root, store, () => false);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const core = store.get('active', 'combo').core;
+  await writeFile(path.join(core.path, 'resource/version.json'), 'broken-json');
+  expect((await updates.prepare('core')).status).toBe('staged');
+  expect(updates.channel('core').currentVersion).toBe('未安装');
+  await updates.close();
+});
+
+test('failed downloads remove temporary archives without creating a downloads directory', async () => {
+  const root = await temp(), store = new MemoryStore();
+  const source = new FixtureSource();
+  source.download = async (_metadata, destination) => { await writeFile(destination, 'partial'); throw new Error('synthetic failure'); };
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core');
+  await expect(updates.prepare('core')).rejects.toThrow('准备更新失败');
+  expect(await readdir(root)).toEqual(['generations']);
+  await updates.close();
+});
+
+test('updates retain three generations per component across directory changes and service restarts', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  let updates = fixtureUpdates(root, store, () => false, source);
+  const oldRoot = path.join(root, 'old'), newRoot = path.join(root, 'new');
+  await updates.saveDirectories({ core: oldRoot, resource: oldRoot }, componentPaths => store.put('settings', 'main', { componentPaths }));
+  for (let index = 0; index < 5; index++) {
+    source.coreVersion = 'v6.20.' + index;
+    if (index === 2) {
+      await updates.saveDirectories({ core: newRoot, resource: newRoot }, componentPaths => store.put('settings', 'main', { componentPaths }));
+      await updates.close(); updates = fixtureUpdates(root, store, () => false, source);
+    }
+    await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  }
+  for (let index = 0; index < 5; index++) {
+    source.resourceVersion = String(index).repeat(40);
+    await updates.check('resource'); await updates.prepare('resource'); await updates.activate('resource');
+  }
+  const names = (await readdir(path.join(oldRoot, 'generations'))).concat(await readdir(path.join(newRoot, 'generations')));
+  expect(names.filter(name => name.startsWith('core-'))).toHaveLength(3);
+  expect(names.filter(name => name.startsWith('resource-'))).toHaveLength(3);
+  expect(store.get('meta', 'component_roots')).toContain(oldRoot);
+  await updates.rollback('resource');
+  expect(updates.channel('resource').currentVersion).toBe('3'.repeat(40));
+  await updates.close();
+});
+
+test('retention protects idle worker paths after resource recovery and cleans them once released', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  let protectedPaths: string[] = [];
+  const updates = fixtureUpdates(root, store, () => false, source, { protectedPaths: () => protectedPaths });
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  await updates.check('resource'); await updates.prepare('resource'); await updates.activate('resource');
+  const workerResource = store.get('active', 'combo').resource.path;
+  protectedPaths = [workerResource];
+  await rm(path.join(workerResource, 'resource/version.json'));
+  for (const version of ['b', 'c', 'd', 'e']) {
+    source.resourceVersion = version.repeat(40);
+    await updates.check('resource'); await updates.prepare('resource'); await updates.activate('resource');
+  }
+  expect(await Bun.file(path.join(workerResource, 'resource/onnx/model')).exists()).toBe(true);
+  expect((await readdir(path.join(root, 'generations'))).filter(name => name.startsWith('resource-'))).toHaveLength(3);
+  protectedPaths = []; source.resourceVersion = 'f'.repeat(40);
+  await updates.check('resource'); await updates.prepare('resource'); await updates.activate('resource');
+  expect(await Bun.file(path.join(workerResource, 'resource/onnx/model')).exists()).toBe(false);
+  await updates.close();
+});
+
+test('busy workers defer generation cleanup until an idle update boundary', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource(); let busy = false;
+  const updates = fixtureUpdates(root, store, () => busy, source);
+  for (let index = 0; index < 3; index++) {
+    source.coreVersion = 'v6.20.' + index;
+    await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  }
+  busy = true; source.coreVersion = 'v6.20.3';
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  expect(await readdir(path.join(root, 'generations'))).toHaveLength(4);
+  busy = false; await updates.activatePending();
+  expect(await readdir(path.join(root, 'generations'))).toHaveLength(3);
+  await updates.close();
 });
 
 test('resource version labels read installed activity names per client and refresh after rollback', async () => {
@@ -150,6 +442,7 @@ test('resource version labels read installed activity names per client and refre
     await mkdir(path.join(generation, 'resource', 'global', 'YoStarEN', 'resource'), { recursive: true });
     await writeFile(path.join(generation, 'resource', 'version.json'), JSON.stringify({ activity: { name, time: 1 }, last_updated: '2026-10-23 12:00:00' }));
     await writeFile(path.join(generation, 'resource', 'global', 'YoStarEN', 'resource', 'version.json'), JSON.stringify({ activity: { name: `EN ${name}`, time: 1 }, last_updated: '2026-10-22' }));
+    await writeFile(path.join(generation, 'MaaCore.dll'), 'synthetic');
   }
   const combo = (generation: string) => ({ core: { path: generation, version: 'v6.20.0' }, resource: { path: generation, version: generation } });
   store.put('active', 'combo', combo(second)); store.put('previous', 'combo', combo(first));
@@ -207,8 +500,11 @@ test("failed candidate reconnection restores original pointer and reinitializes 
 
 test("restart marks interrupted preparations failed; stable channel rejects downgrade", async () => {
   const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
-  new UpdateService(root, store, () => {}, () => false);
+  source.coreVersion = 'v6.21.0';
+  const original = fixtureUpdates(root, store, () => false, source);
+  await original.check('core'); await original.prepare('core'); await original.activate('core'); await original.close();
   store.put("update", "core", { ...store.get("update", "core"), status: "downloading", currentVersion: "v6.21.0" });
+  source.coreVersion = 'v6.20.0';
   const updates = new UpdateService(root, store, () => {}, () => false, { source });
   expect(updates.channel("core").status).toBe("failed");
   await expect(updates.check("core")).rejects.toThrow("检查更新失败");

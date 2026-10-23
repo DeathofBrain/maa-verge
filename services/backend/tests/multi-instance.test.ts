@@ -90,6 +90,35 @@ test('one configured connection failure does not block another instance and asyn
   expect(runtime.snapshot().devices[0]!.connectionError).toBe('synthetic native connection error');
 });
 
+for (const enhanced of [false, true]) test(`configured instance preserves probe diagnostics when its connection ${enhanced ? 'fails' : 'succeeds'}`, async () => {
+  const selected = profile(0, enhanced), configs: any[] = [];
+  if (enhanced) selected.capture.autoDetect = true;
+  const inventoryDiagnostics = ['MuMu 多开管理器查询超时：无法核实正在运行的实例'];
+  let discoveries = 0;
+  const runtime = instance({
+    emulatorInventory: async () => ({ instances: [], diagnostics: inventoryDiagnostics }),
+    discoverDevices: async () => { discoveries++; throw new Error('手动清单不应触发全量发现'); },
+    workerFactory: async config => { configs.push(config); return fakeWorker(); },
+  });
+  await runtime.handle('settings.save', { settings: parseSettings({ deviceProfiles: [selected] }) });
+  const result = await runtime.handle('device.auto_connect'); await runtime.pollNativeWorkers();
+  expect(discoveries).toBe(0);
+  expect(result.diagnostics).toContain(inventoryDiagnostics[0]);
+  const event = runtime.snapshot().events.reverse().find(event => event.type === 'device.auto_connect');
+  expect(event?.data.diagnostics).toEqual(result.diagnostics);
+  expect(inventoryDiagnostics).toEqual(['MuMu 多开管理器查询超时：无法核实正在运行的实例']);
+  if (enhanced) {
+    expect(result.devices).toHaveLength(0); expect(configs).toHaveLength(0);
+    expect(result.diagnostics.some((message: string) => message.includes(selected.address) && message.includes('增强截图实例或 SDK'))).toBe(true);
+    expect(runtime.snapshot().settings.deviceProfiles![0]!.capture.method).toBe('mumu');
+  } else {
+    expect(result.devices).toHaveLength(1); expect(configs).toHaveLength(1);
+    expect(result.devices[0].connectionProfileId).toBe(selected.id);
+    expect(runtime.snapshot().devices[0]!.state).toBe('idle');
+    expect(result.diagnostics).toEqual(inventoryDiagnostics);
+  }
+});
+
 test('concurrent aliases cannot create a second controller and later alias requests reuse the first worker', async () => {
   let release!: () => void, began!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; }), started = new Promise<void>(resolve => { began = resolve; });
