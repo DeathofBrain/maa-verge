@@ -394,9 +394,10 @@ export class Runtime {
     }
     const pending = this.starts.get(params.requestId);
     if (pending) { if (pending.source !== 'copilot' || pending.identity !== identity || pending.deviceId !== params.deviceId) throw new RpcError(-32011, '同一请求标识不能用于不同执行'); return pending.promise; }
-    const prepared = this.copilot.prepare(params.kind);
+    const clientType = this.deviceClient(params.deviceId);
+    const prepared = this.copilot.prepare(params.kind, clientType);
     this.validatePolicy(parsePlan({ name: prepared.name, tasks: prepared.tasks }));
-    const promise = this.beginExecution(params, { ...prepared, source: 'copilot', kind: params.kind });
+    const promise = this.beginExecution(params, { ...prepared, source: 'copilot', kind: params.kind, clientType });
     this.starts.set(params.requestId, { source: 'copilot', identity, deviceId: params.deviceId, promise });
     try { return await promise; } finally { this.starts.delete(params.requestId); }
   }
@@ -434,11 +435,11 @@ export class Runtime {
       const worker = this.workers.get(run.deviceId);
       if (worker) {
         const execution = this.store.get('execution', id, {}); execution.stopRequested = Date.now(); this.store.put('execution', id, execution);
-        run.message = '正在停止并等待核心与异步调用结束，原计划保留'; this.putExecution(id, run);
+        run.message = '正在停止并等待核心与异步调用结束，保存的配置保留'; this.putExecution(id, run);
         try { await worker.stop(); return this.execution(id); }
         catch { await worker.close(); this.workers.delete(run.deviceId); this.workerConfigurations.delete(run.deviceId); }
       }
-      this.finishNativeRun(run, 'stopped', '工作进程已结束，请核对设备现场，原计划保留');
+      this.finishNativeRun(run, 'stopped', '工作进程已结束，请核对设备现场，保存的配置保留');
     }
     return run;
   }
@@ -616,13 +617,17 @@ export class Runtime {
     this.reconnect = []; this.switching = false;
   }
   private taskClient(run: any, index: number): string {
-    const tasks = this.executionSnapshot(run.id).tasks;
+    const snapshot = this.executionSnapshot(run.id), tasks = snapshot.tasks;
+    if (snapshot.source === 'copilot' && snapshot.clientType) return snapshot.clientType;
     if (typeof tasks[index].params.client_type === 'string' && tasks[index].params.client_type) return tasks[index].params.client_type;
     if (['StartUp', 'CloseDown'].includes(tasks[index].type) && !('client_type' in tasks[index].params)) return 'Official';
     for (let previous = index - 1; previous >= 0; previous--) if (tasks[previous].type === 'StartUp') return tasks[previous].params.client_type || 'Official';
-    const settings = parseSettings(this.store.get('settings', 'main')), device = this.store.get('device', run.deviceId);
+    return this.deviceClient(run.deviceId);
+  }
+  private deviceClient(deviceId: string): NonNullable<RpcContract['params']['stages.list']['clientType']> {
+    const settings = parseSettings(this.store.get('settings', 'main')), device = this.store.get('device', deviceId);
     const profile = device && (settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address));
-    return this.store.get('device_client', run.deviceId) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';
+    return this.store.get('device_client', deviceId) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';
   }
   private syncHistory(deviceId: string, clientType: string): { operatorsAt?: string | null; depotAt?: string | null } {
     const synced = this.store.get('user_data_sync', deviceId, {});
@@ -783,7 +788,7 @@ export class Runtime {
       const worker = await this.workerForClient(run, clientType);
       if (!worker || !this.canSubmit(run.id)) {
         Object.assign(state, this.store.get('execution', run.id, {}), { submitting: false }); this.store.put('execution', run.id, state);
-        if (this.execution(run.id)?.status === 'running' && (state.stopRequested || !this.running)) this.finishNativeRun(run, 'stopped', '执行已停止，未执行计划保留');
+        if (this.execution(run.id)?.status === 'running' && (state.stopRequested || !this.running)) this.finishNativeRun(run, 'stopped', '执行已停止，保存的配置及未执行项保留');
         return;
       }
       if (this.updates.channels().some(channel => channel.status === 'waiting_idle')) {
@@ -799,7 +804,7 @@ export class Runtime {
       const device = this.store.get('device', run.deviceId); device.state = 'running'; this.store.put('device', device.id, device); this.emit('run.progress', run.message, { run });
     } catch (error) {
       Object.assign(state, this.store.get('execution', run.id, {}), { submitting: false }); this.store.put('execution', run.id, state);
-      if (this.execution(run.id)?.status === 'running') this.finishNativeRun(run, state.stopRequested ? 'stopped' : 'failed', state.stopRequested ? '执行已停止，未执行计划保留' : '任务提交失败或结果未知: ' + String(error));
+      if (this.execution(run.id)?.status === 'running') this.finishNativeRun(run, state.stopRequested ? 'stopped' : 'failed', state.stopRequested ? '执行已停止，保存的配置及未执行项保留' : '任务提交失败或结果未知: ' + String(error));
     }
   }
   private async advanceNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
@@ -846,6 +851,19 @@ export class Runtime {
       return false;
     }
     const entry = entries[state.currentCopilotIndex ?? -1];
+    // Fixed-core ProcessTask errors identify their configured root, not an invented
+    // sanity/non-three-star result. Both roots are fatal in native CopilotTask.
+    if (entry && message === 20000 && details.subtask === 'ProcessTask' && Array.isArray(details.first)) {
+      const settlement = details.first.includes('Copilot@WaitUntilEndOfAction');
+      const starting = details.first.includes('BattleStartAll');
+      if (settlement || starting) {
+        state.failed = true;
+        state.copilotFailureMessage = settlement ? '核心未通过三星结算检查，停止后续队列；通关结果未确认' : '未能进入战斗，请检查理智及游戏界面；停止后续队列';
+        Object.assign(entry, { verdict: 'unknown', message: state.copilotFailureMessage });
+        this.putExecution(run.id, run); this.emit('run.copilot_result', entry.message, { runId: run.id, entryId: entry.id, verdict: entry.verdict });
+        return true;
+      }
+    }
     if (entry && message === 20001 && details.subtask === 'BattleProcessTask') state.copilotBattleStarted = true;
     const action = details.details?.task;
     if (!entry || typeof action !== 'string' || message !== 20002 || details.subtask !== 'ProcessTask') return false;
@@ -855,7 +873,7 @@ export class Runtime {
     const confirmsAll = (this.executionSnapshot(run.id).workspace?.options.loopTimes ?? 1) === 1;
     Object.assign(entry, { verdict: failure ? 'failure' : confirmsAll ? 'success' : 'unknown', message: failure ? '已识别战斗失败，停止后续队列' : confirmsAll ? '已识别三星结算' : '已识别单次三星结算；整个循环结果未确认' });
     state.copilotBattleStarted = false;
-    if (failure) state.failed = true;
+    if (failure) { state.failed = true; state.copilotFailureMessage = entry.message; }
     this.putExecution(run.id, run); this.emit('run.copilot_result', entry.message, { runId: run.id, entryId: entry.id, verdict: entry.verdict });
     return failure;
   }
@@ -906,9 +924,9 @@ export class Runtime {
             const stopCopilot = this.recordCopilotCallback(run, state, message, details);
             if (stopCopilot) {
               state.copilotStopRequested = Date.now(); this.store.put('execution', run.id, state);
-              this.captureRunArtifact(run, state, worker, '作业战斗失败反馈画面');
+              this.captureRunArtifact(run, state, worker, '作业异常反馈画面');
               try { await worker.stop(); }
-              catch { await worker.close(); worker.connected = false; this.workers.delete(id); this.workerConfigurations.delete(id); this.finishNativeRun(run, 'failed', '战斗失败且停止未获确认，已结束工作进程；请核对设备现场'); }
+              catch { await worker.close(); worker.connected = false; this.workers.delete(id); this.workerConfigurations.delete(id); this.finishNativeRun(run, 'failed', '作业异常且停止未获确认，已结束工作进程；请核对设备现场'); }
             } else if (matches && message === 20002 && details.subtask === 'ProcessTask' && ['Copilot@StageDrops-Stars-3', 'Copilot@StageDrops-Stars-Adverse'].includes(details.details?.task)) this.captureRunArtifact(run, state, worker, '作业结算反馈画面');
             if ([0, 1].includes(message) || (message === 10000 && matches) || (message === 10004 && matches)) state.failed = true;
             if (message === 10002 && matches) state.completed = true;
@@ -969,8 +987,8 @@ export class Runtime {
           this.store.put('mall_visit', run.deviceId, { visitedAt: state.mallVisitedAt, clientType: state.clientType });
           this.emit('device.friends_visited', '好友访问已获专用成功回调确认', { deviceId: run.deviceId, runId: run.id, visitedAt: state.mallVisitedAt });
         }
-        if (state.stopRequested) this.finishNativeRun(run, 'stopped', '执行已停止，未执行计划保留');
-        else if (state.failed || !state.completed) this.finishNativeRun(run, 'failed', '核心任务失败或缺少成功证据；不会继续后续任务');
+        if (state.stopRequested) this.finishNativeRun(run, 'stopped', '执行已停止，保存的配置及未执行项保留');
+        else if (state.failed || !state.completed) this.finishNativeRun(run, 'failed', state.copilotFailureMessage || '核心任务失败或缺少成功证据；不会继续后续任务');
         else if (run.toolKind === 'recruit' && !state.toolResult) this.finishNativeRun(run, 'failed', '缺少有效公招计算结果，未报告计算成功');
         else if (state.recognitionType && !state.recognitionResultAt) this.finishNativeRun(run, 'failed', '识别任务已结束但缺少有效的最终识别结果，结果未知；未记录同步成功');
         else {
