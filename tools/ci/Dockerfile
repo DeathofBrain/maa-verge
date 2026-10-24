@@ -3,7 +3,10 @@ FROM ghcr.io/astral-sh/uv:0.13.5 AS uv
 FROM ubuntu:22.04
 
 ARG TARGETARCH
+# Chromium converts POSIX download filenames using the process locale.
 ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
     RUSTUP_HOME=/opt/rustup \
     CARGO_HOME=/opt/cargo \
     UV_PYTHON_INSTALL_DIR=/opt/python \

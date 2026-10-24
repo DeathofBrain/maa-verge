@@ -12,6 +12,7 @@
 | CMake | 固定 3.31.10 的 PyPI 二进制 wheel；Ubuntu 22.04 默认 CMake 3.22 不满足项目 3.25+ 要求 |
 | 原生依赖 | C++20、pkg-config、WebKitGTK 4.1、GTK、OpenSSL、托盘、SVG、AppImage 打包工具，以及 aria2 源码构建所需 Perl/make/归档工具 |
 | 浏览器 | 从 `pnpm-lock.yaml` 读取精确 Playwright 版本，预装匹配的 Chromium 与系统依赖 |
+| 字符编码 | `LANG` 与 `LC_ALL` 固定为 Ubuntu 自带的 `C.UTF-8`，保证 Chromium 保留中文下载文件名；默认 `C/POSIX` 会将其退化为 `download` |
 
 Python 仅用于参考测试与合成 CTest。生产服务、worker、aria2 继续由现有项目脚本构建，生产路径没有 Python fallback。镜像不预置 MaaCore、游戏资源、ADB、业务配置或模型密钥。
 
