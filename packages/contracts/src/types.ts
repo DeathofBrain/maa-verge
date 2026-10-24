@@ -85,6 +85,7 @@ export interface Snapshot {
   updates: Updates;
   settings: Settings;
   events: Events;
+  toolJobs?: ToolJobSummary[];
 }
 export interface Device {
   connectionProfileId?: string;
@@ -129,7 +130,7 @@ export interface Params {
 export interface Run {
   planName?: string;
   /**
-   * @maxItems 30
+   * @maxItems 31
    */
   tasks?: RunTask[];
   id: Id2;
@@ -140,6 +141,8 @@ export interface Run {
   message: Message;
   startedAt: Startedat;
   finishedAt: Finishedat;
+  scheduleId?: string;
+  scheduledFor?: string;
 }
 export interface RunTask {
   index: number;
@@ -409,6 +412,7 @@ export interface Settings {
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;
+  scheduler?: SchedulerSettings;
 }
 /**
  * Absolute installation/download roots. An empty string restores the application default on settings.save.
@@ -720,6 +724,13 @@ export interface ModelSettings {
   baseUrl: Baseurl;
   model: Model;
 }
+export interface SchedulerSettings {
+  forceScheduledStart: boolean;
+  showWindowBeforeForceScheduledStart: boolean;
+  notifyBeforeScheduledStart: boolean;
+  notificationMinutes: number;
+  scheduledWakeUp: boolean;
+}
 export interface Event {
   id: Id4;
   type: Type1;
@@ -729,4 +740,15 @@ export interface Event {
 }
 export interface Data {
   [k: string]: unknown;
+}
+export interface ToolJobSummary {
+  id: string;
+  kind: 'depot' | 'operators' | 'recruit' | 'inventory' | 'data' | 'games';
+  deviceId: string;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  progress: number;
+  message: string;
+  startedAt: string;
+  finishedAt: string | null;
 }

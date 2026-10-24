@@ -127,6 +127,7 @@ test('execution overview shows every result, facility staff and optional referen
   await expect(infrastructure).toContainText('制造站');
   await expect(infrastructure).toContainText('核心已确认换班');
   for (const rarity of [3, 4, 5, 6]) {
+    await infrastructure.locator('.operator-badge').filter({hasText:`合成${({3:'三',4:'四',5:'五',6:'六'} as Record<number,string>)[rarity]}星干员`}).scrollIntoViewIfNeeded();
     const badge = infrastructure.locator(`.operator-badge.rarity-${rarity}`);
     await expect(badge).toContainText(`${rarity} 星`);
     await expect(badge.getByRole('img')).toBeVisible();

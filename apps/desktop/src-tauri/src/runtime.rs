@@ -143,12 +143,20 @@ impl Runtime {
         let (executable, arguments) = program(&app)?;
         let mut command = Command::new(executable);
         command.args(arguments);
+        // Preserve the service's default-root migration. Only a scheduled launch
+        // explicitly pins its root; ordinary startup retains the existing resolver.
+        if std::env::args().any(|arg| arg == "--schedule-data-root") {
+            command.env("MAAVERGE_DATA_DIR", crate::desktop_scheduler::data_root());
+        }
         if !cfg!(debug_assertions) {
             // The service lives in resource_dir/runtime, not beside the main executable.
             command.env("MAAVERGE_APP_DIR", application_directory()?);
         }
         let emit: Emit = Arc::new(move |event, payload| {
-            let _ = app.emit(event, payload);
+            let _ = app.emit(event, payload.clone());
+            if event == "runtime-event" {
+                crate::desktop_scheduler::handle_event(app.clone(), &payload);
+            }
         });
         Self::start_process(command, emit).await
     }

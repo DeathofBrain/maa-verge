@@ -25,6 +25,12 @@ afterEach(async () => {
 });
 
 describe('installed operator resources', () => {
+  test('explicit identity resolves duplicate names without selecting a different operator', async () => {
+    const combo=pack({'battle_data.json':{chars:{char_one:operator,char_two:operator}},'template/avatar/char_two.png':image});
+    expect(await operatorResource(combo,operator.name)).toMatchObject({id:null,data:null});
+    expect(await operatorResource(combo,operator.name,'Official','char_two')).toMatchObject({id:'char_two',data:image.toString('base64')});
+    expect(await operatorResource(combo,operator.name,'Official','char_missing')).toMatchObject({id:null,data:null});
+  });
   test('resolves client names and unique cross-language aliases with one-based rarity', async () => {
     const combo = pack();
     expect(await operatorResource(combo, '白面鸮')).toEqual({ name: '白面鸮', id: 'char_128_plosis', rarity: 5, mimeType: 'image/png', data: image.toString('base64'), resourceVersion: 'synthetic-resource-1' });

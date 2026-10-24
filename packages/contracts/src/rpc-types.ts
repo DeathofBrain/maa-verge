@@ -50,6 +50,11 @@ export type Theme = 'dark' | 'light' | 'system';
 export type Provider = string;
 export type Baseurl = string;
 export type Model = string;
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ToolKind".
+ */
+export type ToolKind = 'depot' | 'operators' | 'recruit' | 'inventory' | 'data' | 'games';
 export type Mode = 'native';
 export type Id1 = string;
 export type Name1 = string;
@@ -129,6 +134,29 @@ export interface RpcContract {
       message: string;
       deviceId?: string;
     };
+    'device.availability': {
+      deviceId: string;
+    };
+    'tool.start': ToolStartParams;
+    'tool.get': IdParams;
+    'tool.stop': IdParams;
+    'tool.config.get': ToolIdentity;
+    'tool.config.save': ToolConfigParams;
+    'tool.catalog': {
+      clientType?: ClientType;
+    };
+    'schedule.list': EmptyParams;
+    'schedule.save': ScheduleSaveParams;
+    'schedule.delete': IdParams;
+    'schedule.override': ScheduleOverrideParams;
+    'schedule.cancel': IdParams;
+    'schedule.host': {
+      wake: {
+        supported: boolean;
+        status: 'disabled' | 'registered' | 'failed' | 'unsupported';
+        message: string;
+      };
+    };
   };
   results: {
     'app.snapshot': Snapshot;
@@ -186,6 +214,25 @@ export interface RpcContract {
       requiresConfirmation: boolean;
       mode: string;
     };
+    'device.availability': DeviceAvailability;
+    'tool.start': ToolJob;
+    'tool.get': ToolJob;
+    'tool.stop': ToolJob;
+    'tool.config.get': ToolConfig;
+    'tool.config.save': ToolConfig;
+    'tool.catalog': ToolCatalog;
+    'schedule.list': ScheduleList;
+    'schedule.save': Schedule1;
+    'schedule.delete': {
+      deleted: boolean;
+    };
+    'schedule.override': Schedule1;
+    'schedule.cancel': {
+      cancelled: boolean;
+    };
+    'schedule.host': {
+      accepted: true;
+    };
   };
 }
 /**
@@ -225,6 +272,7 @@ export interface ItemResourceParams {
 export interface OperatorResourceParams {
   name: string;
   clientType?: ClientType;
+  operatorId?: string;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -340,6 +388,7 @@ export interface Settings {
   theme: Theme;
   budgets: Budgets;
   model: ModelSettings;
+  scheduler?: SchedulerSettings;
 }
 /**
  * Absolute installation/download roots. An empty string restores the application default on settings.save.
@@ -681,6 +730,119 @@ export interface ModelSettings {
   baseUrl: Baseurl;
   model: Model;
 }
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "SchedulerSettings".
+ */
+export interface SchedulerSettings {
+  forceScheduledStart: boolean;
+  showWindowBeforeForceScheduledStart: boolean;
+  notifyBeforeScheduledStart: boolean;
+  notificationMinutes: number;
+  scheduledWakeUp: boolean;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ToolStartParams".
+ */
+export interface ToolStartParams {
+  deviceId: string;
+  kind: ToolKind;
+  clientType?: ClientType;
+  requestId: string;
+  config?: ToolConfig;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ToolConfig".
+ */
+export interface ToolConfig {
+  mode?: 'device' | 'manual';
+  /**
+   * @maxItems 5
+   */
+  tags?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  /**
+   * @maxItems 29
+   */
+  targets?: {
+    id: string;
+    stage: string;
+    itemId: string;
+    quantity: number;
+    medicine: number;
+    stone: number;
+  }[];
+  updateDepot?: boolean;
+  sortByProgress?: boolean;
+  onlyFirst?: boolean;
+  skipDuringActivity?: boolean;
+  skipDuringResourceCollection?: boolean;
+  autoSeries?: boolean;
+  operators?: boolean;
+  depot?: boolean;
+  game?: 'pixelpaint' | 'secretfront';
+  ending?: 'A' | 'B' | 'C' | 'D' | 'E';
+  branch?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ToolIdentity".
+ */
+export interface ToolIdentity {
+  deviceId: string;
+  kind: ToolKind;
+  clientType?: ClientType;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ToolConfigParams".
+ */
+export interface ToolConfigParams {
+  deviceId: string;
+  kind: ToolKind;
+  clientType?: ClientType;
+  config: ToolConfig;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ScheduleSaveParams".
+ */
+export interface ScheduleSaveParams {
+  schedule: Schedule1;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "Schedule".
+ */
+export interface Schedule1 {
+  id: string;
+  planId: string;
+  deviceId: string;
+  hour: number;
+  minute: number;
+  enabled: boolean;
+  override?: 'enable' | 'skip' | null;
+  nextAt?: string | null;
+  last?: {
+    [k: string]: unknown;
+  } | null;
+  disabledReason?: string | null;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ScheduleOverrideParams".
+ */
+export interface ScheduleOverrideParams {
+  id: string;
+  mode: 'enable' | 'skip' | 'clear';
+}
 export interface Snapshot {
   mode: Mode;
   devices: Devices;
@@ -689,6 +851,7 @@ export interface Snapshot {
   updates: Updates;
   settings: Settings;
   events: Events;
+  toolJobs?: ToolJobSummary[];
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -721,7 +884,7 @@ export interface UserDataSync {
 export interface Run {
   planName?: string;
   /**
-   * @maxItems 30
+   * @maxItems 31
    */
   tasks?: RunTask[];
   id: Id2;
@@ -732,6 +895,8 @@ export interface Run {
   message: Message;
   startedAt: Startedat;
   finishedAt: Finishedat;
+  scheduleId?: string;
+  scheduledFor?: string;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -1005,6 +1170,21 @@ export interface Data {
   [k: string]: unknown;
 }
 /**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "ToolJobSummary".
+ */
+export interface ToolJobSummary {
+  id: string;
+  kind: 'depot' | 'operators' | 'recruit' | 'inventory' | 'data' | 'games';
+  deviceId: string;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  progress: number;
+  message: string;
+  startedAt: string;
+  finishedAt: string | null;
+}
+/**
  * This interface was referenced by `RpcContract`'s JSON-Schema
  * via the `definition` "HomeInfo".
  */
@@ -1120,6 +1300,7 @@ export interface RecognitionResult {
    * @maxItems 2000
    */
   operators: RecognizedOperator[];
+  estimatedAt?: string | null;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -1129,6 +1310,7 @@ export interface RecognizedItem {
   id: string;
   name: string;
   quantity: number;
+  estimatedQuantity?: number;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -1210,6 +1392,70 @@ export interface ScreenFrame {
 export interface RunArtifactImage {
   mimeType: 'image/png';
   data: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DeviceAvailability".
+ */
+export interface DeviceAvailability {
+  deviceId: string;
+  available: boolean;
+  connected: boolean;
+  reason: string;
+  owner: 'none' | 'run' | 'tool' | 'manual' | 'connecting' | 'updates' | 'runtime';
+  ownerId: string | null;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ToolJob".
+ */
+export interface ToolJob {
+  id: string;
+  kind: ToolKind;
+  deviceId: string;
+  clientType: ClientType;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  progress: number;
+  message: string;
+  startedAt: string;
+  finishedAt: string | null;
+  result?: {
+    [k: string]: unknown;
+  };
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ToolCatalog".
+ */
+export interface ToolCatalog {
+  tags: string[];
+  /**
+   * @maxItems 2000
+   */
+  operators: {
+    id: string;
+    name: string;
+    rarity: number;
+    tags: string[];
+  }[];
+  games: ('pixelpaint' | 'secretfront')[];
+  resourceVersion: string | null;
+  diagnostics: string[];
+  topOperatorTag?: string | null;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ScheduleList".
+ */
+export interface ScheduleList {
+  schedules: Schedule1[];
+  occurrences: {
+    [k: string]: unknown;
+  }[];
+  timezone: string;
+  wake: {
+    [k: string]: unknown;
+  };
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

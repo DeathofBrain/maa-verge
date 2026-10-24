@@ -112,7 +112,7 @@ function idleController(signal: AbortSignal | undefined, timeout: number) {
   signal?.addEventListener("abort", abort, { once: true });
   if (signal?.aborted) abort();
   touch();
-  return { signal: controller.signal, touch, close: () => { clearTimeout(timer); signal?.removeEventListener("abort", abort); } };
+  return { signal: controller.signal, touch, pause: () => clearTimeout(timer), close: () => { clearTimeout(timer); signal?.removeEventListener("abort", abort); } };
 }
 /** Manual redirects prevent HTTPS downgrades and non-HTTP download protocols. */
 async function request(url: string, headers: Record<string, string>, fetcher: typeof fetch, signal: AbortSignal): Promise<{ response: Response; url: string }> {
@@ -165,7 +165,9 @@ async function builtin(metadata: DownloadMetadata, partial: string, state: Parti
     const headers: Record<string, string> = {};
     if (offset) { headers.Range = `bytes=${offset}-`; headers["If-Range"] = state.validator!.value; }
     ({ response } = await request(metadata.url, headers, options.fetcher ?? fetch, idle.signal));
-    idle.touch();
+    // Local file preparation and writes are not network inactivity. Arm the
+    // timer only while waiting for headers or the next response chunk.
+    idle.pause();
     if (offset && response.status === 416) {
       // A completed partial (crash before rename), or a changed remote object,
       // must not leave every later retry stuck on an unsatisfiable Range.
@@ -197,12 +199,15 @@ async function builtin(metadata: DownloadMetadata, partial: string, state: Parti
       const reader = response.body.getReader();
       const cancel = () => { void reader.cancel(idle.signal.reason).catch(() => {}); };
       idle.signal.addEventListener("abort", cancel, { once: true });
+      if (idle.signal.aborted) cancel();
       try {
         while (true) {
+          idle.signal.throwIfAborted();
+          idle.touch();
           const { value: chunk, done } = await reader.read();
+          idle.pause();
           idle.signal.throwIfAborted();
           if (done) break;
-          idle.touch(); idle.signal.throwIfAborted();
           count += chunk.length;
           if (count > MAX_DOWNLOAD_BYTES || state.total !== undefined && count > state.total || end !== undefined && count > end) invalid("下载包超过声明大小或大小限制");
           let written = 0;

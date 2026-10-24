@@ -23,9 +23,21 @@ export function parseRecognition(type: 'OperBox' | 'Depot', callback: any): Reco
       if (!object(oper) || !text(oper.id, 200) || !text(oper.name, 300) || typeof oper.own !== 'boolean'
         || !['elite', 'level', 'potential', 'rarity'].every(key => int32(oper[key])) || ids.has(oper.id)) return;
       ids.add(oper.id);
-      // Do not persist arbitrary callback extensions or all_opers metadata.
+      // Persist only the explicit fields used by the product.
       const { id, name, own, elite, level, potential, rarity } = oper;
       operators.push({ id, name, own, elite, level, potential, rarity });
+    }
+    if (Array.isArray(result.all_opers) && result.all_opers.length <= 2000) {
+      const allIds = new Set<string>();
+      const missing: RecognitionSnapshot['operators'] = [];
+      for (const oper of result.all_opers) {
+        if (!object(oper) || !text(oper.id, 200) || !text(oper.name, 300) || typeof oper.own !== 'boolean' || !int32(oper.rarity) || allIds.has(oper.id)) { missing.length = 0; break; }
+        allIds.add(oper.id);
+        if (ids.has(oper.id)) continue;
+        if (oper.own) { missing.length = 0; break; }
+        missing.push({ id: oper.id, name: oper.name, rarity: oper.rarity, own: false, elite: -1, level: -1, potential: -1 });
+      }
+      operators.push(...missing);
     }
     return bounded({ items: [], operators });
   }
@@ -52,4 +64,6 @@ export function recognitionSnapshot(store: Store, deviceId: string, kind: Recogn
 
 export function clearDeviceRecognition(store: Store, deviceId: string) {
   for (const saved of store.all<RecognitionSnapshot>('recognition')) if (saved.deviceId === deviceId) store.delete('recognition', recognitionKey(deviceId, saved.clientType, saved.kind));
+  for (const saved of store.all('inventory')) if (saved.deviceId === deviceId) store.delete('inventory', recognitionKey(deviceId, saved.clientType, 'depot'));
+  for (const saved of store.all('tool_job')) if (saved.deviceId === deviceId) { saved.accountInvalidated = true; saved.result = {}; store.put('tool_job', saved.id, saved); }
 }

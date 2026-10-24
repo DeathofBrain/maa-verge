@@ -1,6 +1,6 @@
 # 原 MAA 功能覆盖与验收
 
-核对日期：2026-10-23。基线为官方 **v6.20.0**。完整覆盖原 MAA 功能是 Maa Verge 的产品交付要求；下表用于跟踪差距，不能把接口可提交或 mock 测试通过表述为原版功能已全部实现。
+核对日期：2026-10-24。基线为官方 **v6.20.0**。完整覆盖原 MAA 功能是 Maa Verge 的产品交付要求；下表用于跟踪差距，不能把接口可提交或 mock 测试通过表述为原版功能已全部实现。
 
 ## 核对依据
 
@@ -28,13 +28,13 @@
 | Copilot | 作业执行、作业列表、自动编队 | 单文件或 `copilot_list`；作业循环、编队等参数；无数量上限的用药开关暂拒绝 |
 | SSSCopilot | 保全派驻作业 | 本地作业文件与循环次数；文件格式由固定版本核心最终校验 |
 | ParadoxCopilot | 悖论模拟作业 | 单文件或 `list`；列表全部为文件路径，或全部为带整数 ID 的对象，不混用 |
-| Depot | 仓库识别 | 可提交核心；专用识别结果/库存导出面板尚未接入 |
-| OperBox | 干员识别 | 可提交核心；专用结果/导出面板尚未接入 |
+| Depot | 仓库识别 | 独立工具识别、持久缓存、搜索、多格式导出；任务表入口保留，真实游戏待验收 |
+| OperBox | 干员识别 | 独立识别、按 ID 资源头像、持有筛选、练度展示与导出；真实游戏待验收 |
 | Reclamation | 生息演算 | Tales 的 0/1 模式，RelaunchAnchor 的 16/32/48 模式；已关闭 Fire 不作为可执行选项 |
-| Custom | 上游资源内自定义流程与小游戏 | 当前仅开放像素画与秘密前线入口；任意资源任务链尚未经过消耗策略审核，明确拒绝 |
+| Custom | 上游资源内自定义流程与小游戏 | 当前仅开放像素画与隐秘战线入口；任意资源任务链尚未经过消耗策略审核，明确拒绝 |
 | SingleStep | 单步关卡/开始/战斗动作 | 按源码要求，动作使用 `details.actions` 数组；不是视觉 Agent，也不把回调视为动作成功证据 |
 | VideoRecognition | 作业视频识别 | 本地视频路径可提交；独立离线识别流程、结果查看与导出尚未接入，当前沿用设备执行入口 |
-| UserDataUpdate | 干员/仓库周期同步 | 应用任务；每次/每日/每周与成功时间，仅匹配专用识别结果且确认空闲后计成功；专用结果面板仍待交付 |
+| UserDataUpdate | 干员/仓库周期同步 | 应用任务；每次/每日/每周与成功时间，仅匹配专用识别结果且确认空闲后计成功；结果在仓库/干员工具页面查看 |
 | OperProgress | 干员精英化、技能升级/专精 | `plans` 条目保留；校验名称与等级范围，干员/资源可用性仍由核心判断 |
 
 上表的“可提交”仅说明应用服务到工作进程的协议路径已接通。相关测试使用合成 Worker，不包含核心下载、账号登录、游戏点击或数据上传。所有任务仍需固定核心/资源组合的真实验证。
@@ -54,22 +54,22 @@
 
 ## 完整替代原版的发布门槛
 
-以下项目都是待交付工作，不能从“登记了 19 类任务”推导为已完成：
+以下项目包含尚未交付或尚未完成真实验收的工作，不能从“登记了 19 类任务”推导为已完成：
 
 | 范围 | 还需完成的验收 |
 | --- | --- |
 | 所有任务与选项 | 各任务主路径及原版常用选项的 UI、失败反馈、结果解析与真实游戏验证；补齐上述受限消耗选项及自定义流程 |
-| 识别与工具 | 仓库、公招、干员、视频的专用结果面板、导出、作业导入与工具工作流；离线视频不应强制连接设备 |
-| 编排与调度 | 定时执行、跨配置调度、任务执行结束后的系统动作、休眠恢复及任务中修改参数等原版体验；现有非空 schedule 仍明确拒绝 |
+| 识别与工具 | 仓库/公招/干员/补货/小游戏已有独立工具与合成验证；仍需六种客户端实测、视频工具与作业导入，离线视频不应强制连接设备 |
+| 编排与调度 | 独立 Schedule 支持每日定时、普通跳过、可取消强制接管、通知、准备和去重；仍需真实强制关闭游戏/休眠恢复、完整跨配置与完成后系统动作验收。旧 Plan.schedule 不解释为新规则 |
 | 连接与平台 | 已实现独立实例配置、同时执行/单独停止和错误隔离；仍需各模拟器真实多开验收、启动模拟器和全部触控/截图模式验证；Windows 原生窗口/PlayCover 等原版平台能力也必须单列方案，不能因为首版只走 ADB 而宣布覆盖 |
-| 展示与数据 | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需掉落统计、完整识别结果及游戏公告等数据展示 |
+| 展示与数据 | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需跨执行掉落统计及游戏公告等数据展示 |
 | 设置与外部服务 | 原版通知/推送、作业站/公共数据接口、MirrorChyan、自定义基建文件管理、其他原版设置的覆盖或等价路径 |
 | 发行与兼容 | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测 |
 
 其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：
 
-- **库存保持**：仓库缓存、目标库存、材料缺口、关卡开放时间、掉落更新、预更新与补货优先级。依据：[库存保持说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/depot-maintain.md)。
-- **数据更新与工具箱**：干员/仓库周期同步与成功时间已接入，仍需完整结果缓存面板、JSON/Markdown/CSV 导出及全部工具流程；公招计算、截图和已审核小游戏已有入口。依据：[数据更新](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/user-data-update.md)、[工具箱](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/tools.md)。
+- **库存保持**：已接入仓库刷新、目标缺口、关卡开放跳过、累计掉落去重、顺序/达成率和有限消耗；待真实客户端验收。依据：[库存保持说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/depot-maintain.md)。
+- **数据更新与工具箱**：干员/仓库独立结果、资源头像、JSON/Markdown/CSV 及仓库 ArkPlanner/Lolicon 导出已接入；公招计算、补货和已审核小游戏使用独立 ToolJob。使用与未验收范围见 [工具箱与定时计划](toolbox-schedules.md)。依据：[数据更新](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/user-data-update.md)、[工具箱](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/tools.md)。
 - **定时、多配置与系统动作**：原版定时器及强制启动语义、配置切换、启动/结束动作、通知、远控、配置导入导出与运行诊断。用户手工配置的前后脚本必须保持在模型工具表之外。依据：[其他设置](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/others.md)、[原版设置实现](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/v6.20.0/src/MaaWpfGui/ViewModels/UserControl/Settings)。
 - **作业管理**：本地/社区作业导入、列表顺序、练习/突袭、自动编队、助战选择和结果查看。依据：[自动作业](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/copilot.md)。
 
