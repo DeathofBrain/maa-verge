@@ -4,6 +4,7 @@ import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import net from "node:net";
+import { connectionError } from './connection-errors';
 import { deviceAddressIdentity } from '../../../packages/contracts/src/device-profiles';
 import { emptyEmulatorInventory, runningWindowsAdbCandidates, runningWindowsEmulatorInventory, type EmulatorInventory, type EmulatorInstance } from './windows-emulators';
 
@@ -213,14 +214,14 @@ export async function autoDiscover(executable: string | undefined = undefined, o
       if (!timeout) { truncated = true; return; }
       try {
         const output = (await execute(selectedExecutable, ["connect", address], timeout)).trim();
-        if (!output.toLowerCase().includes("connected to")) messages[index] = `${address}：${output.slice(0, 180) || "ADB 未确认连接"}`;
-      } catch (error) { messages[index] = `${address}：ADB 连接失败（${(error instanceof Error ? error.message : String(error)).slice(0, 180)}）`; }
+        if (!output.toLowerCase().includes("connected to")) messages[index] = `${address}：${connectionError(output || "ADB 未确认连接", 'adb').slice(0, 500)}`;
+      } catch (error) { messages[index] = `${address}：${connectionError(error, 'adb').slice(0, 500)}`; }
     }
   };
   await Promise.all(Array.from({ length: Math.min(4, addresses.length) }, scan));
   const diagnostics = [...inventory.diagnostics, ...messages.filter((message): message is string => message !== undefined)];
   if (truncated) diagnostics.push("自动发现扫描达到时限，部分候选地址尚未检查；请重试或手动填写地址");
   const devices = await devicesAtDeadline();
-  for (const device of devices) if (isLocalEmulator(device.address) && device.adbState !== "device") diagnostics.push(`${device.address}：${device.adbState}，请检查模拟器 ADB 授权`);
+  for (const device of devices) if (isLocalEmulator(device.address) && device.adbState !== "device") diagnostics.push(`${device.address}：${connectionError(device.adbState, 'adb')}（ADB 状态：${device.adbState}）`);
   return { devices: distinctEmulatorDevices(devices, inventory), diagnostics, inventory };
 }

@@ -686,19 +686,22 @@ test('model drafts survive settings category changes without saving prematurely'
 
 test('copilot entries focus the exact task when a table contains duplicate task types', async ({ page }) => {
   await openWorkspace(page);
-  await createPlan(page, '双作业');
-  for (const filename of ['/synthetic/first.json', '/synthetic/second.json']) {
-    await wb(page).getByLabel('添加任务类型').selectOption('Copilot');
-    await wb(page).getByRole('button', { name: '添加任务', exact: true }).click();
-    await wb(page).getByLabel('作业文件路径', { exact: true }).fill(filename);
-  }
-  await savePlan(page);
+  // Seed a pre-existing task table: new作业 belong to the independent center.
+  await page.evaluate(async () => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const state = await api.call('app.snapshot', {}) as { plans: { tasks: unknown[] }[] };
+    await api.call('plan.save', { plan: { ...state.plans[0], id: 'legacy-double-copilot', name: '双作业', tasks: [
+      ...state.plans[0].tasks,
+      { type: 'Copilot', enabled: true, params: { filename: '/synthetic/first.json' } },
+      { type: 'Copilot', enabled: true, params: { filename: '/synthetic/second.json' } },
+    ] } });
+  });
   await navigate(page, '作业中心');
-  await page.getByRole('button', { name: '/synthetic/second.json', exact: true }).click();
-  await page.getByRole('button', { name: '编辑作业配置', exact: true }).click();
+  await page.locator('details.cp-legacy summary').click();
+  await page.locator('.cp-legacy-row').filter({ hasText: '/synthetic/second.json' }).getByRole('button', { name: '编辑原配置', exact: true }).click();
   await expect(wb(page).getByRole('heading', { name: '双作业', exact: true })).toBeVisible();
   await expect(wb(page).getByLabel('作业文件路径', { exact: true })).toHaveValue('/synthetic/second.json');
-  await expect(wb(page).getByText('第 11 条任务 · 独立设置', { exact: true })).toBeVisible();
+  await expect(wb(page).getByText('第 7 条任务 · 独立设置', { exact: true })).toBeVisible();
 });
 
 test('moving a table to specialized tasks preserves its editor entry while reload returns home', async ({ page }) => {
