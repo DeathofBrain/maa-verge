@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -7,6 +8,8 @@ import type { CopilotKind } from '../../../packages/contracts/src/rpc-types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 
 const roots: string[] = [], runtimes: Runtime[] = [];
+const reverseObjectKeys = (value: any): any => Array.isArray(value) ? value.map(reverseObjectKeys)
+  : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).reverse().map(([key, child]) => [key, reverseObjectKeys(child)])) : value;
 class Worker {
   connected = true; safeIdle = true; events: any[] = []; tasks: any[] = []; stops = 0;
   async connect() { this.connected = true; return { asyncId: 1 }; }
@@ -128,6 +131,34 @@ test('persistent request deduplication spans restarts and cannot collide with ta
   const nextWorker = new Worker(), next = open(root, nextWorker);
   const existing = await next.handle('copilot.start', { kind: 'Copilot', requestId: 'persistent', deviceId: device.id });
   expect(existing.id).toBe(run.id); expect(nextWorker.tasks).toHaveLength(0);
+});
+
+test('equivalent workspace field ordering retries the same run while queue order remains significant', async () => {
+  const { r, root, worker, device, imported, queue, start } = await fixture(); const item = await imported();
+  const workspace = await queue([item.versionId, item.versionId], 'Copilot', { formation: true, additionalOperators: [{ name: '合成干员', skill: 1 }] });
+  const run = await start('canonical'), reordered = reverseObjectKeys(workspace);
+  expect(JSON.stringify(reordered)).not.toBe(JSON.stringify(workspace));
+  await r.handle('copilot.workspace.save', { workspace: reordered });
+  expect(r.copilot.prepare('Copilot').identity).toBe(r.store.get('request', 'canonical').identity);
+  expect((await start('canonical')).id).toBe(run.id); expect(worker.tasks).toHaveLength(1);
+  worker.complete(); await r.tick(true); await r.close(); runtimes.splice(runtimes.indexOf(r), 1);
+  const nextWorker = new Worker(), next = open(root, nextWorker), params = { kind: 'Copilot', requestId: 'canonical', deviceId: device.id };
+  expect((await next.handle('copilot.start', params)).id).toBe(run.id);
+  reordered.queue.reverse(); await next.handle('copilot.workspace.save', { workspace: reordered });
+  await expect(next.handle('copilot.start', params)).rejects.toThrow('同一请求标识'); expect(nextWorker.tasks).toHaveLength(0);
+});
+
+test('legacy field-order hashes still deduplicate reordered workspaces after restart without accepting changed options', async () => {
+  const { r, root, worker, device, imported, queue, start } = await fixture(); const item = await imported(); const workspace = await queue([item.versionId]);
+  const run = await start('legacy-workspace'), request = r.store.get('request', 'legacy-workspace'), snapshot = r.store.get('run_snapshot', run.id);
+  const legacy = createHash('sha256').update(JSON.stringify(snapshot.workspace)).digest('hex'); expect(legacy).not.toBe(request.identity);
+  r.store.put('request', 'legacy-workspace', { ...request, identity: legacy });
+  const reordered = reverseObjectKeys(workspace); await r.handle('copilot.workspace.save', { workspace: reordered });
+  worker.complete(); await r.tick(true); await r.close(); runtimes.splice(runtimes.indexOf(r), 1);
+  const nextWorker = new Worker(), next = open(root, nextWorker), params = { kind: 'Copilot', requestId: 'legacy-workspace', deviceId: device.id };
+  expect((await next.handle('copilot.start', params)).id).toBe(run.id);
+  reordered.options.loopTimes = 2; await next.handle('copilot.workspace.save', { workspace: reordered });
+  await expect(next.handle('copilot.start', params)).rejects.toThrow('同一请求标识'); expect(nextWorker.tasks).toHaveLength(0);
 });
 
 test('task-table, tool, update, manual-click and worker idle gates share copilot occupancy', async () => {

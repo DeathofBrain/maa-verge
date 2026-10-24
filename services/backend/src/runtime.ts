@@ -33,7 +33,7 @@ import { operatorResource } from './operator-resources';
 import { Logs } from './logs';
 import { Toolbox, toolJob, toolCatalog } from './toolbox';
 import { Scheduler } from './scheduler';
-import { CopilotLibrary } from './copilot';
+import { CopilotLibrary, copilotWorkspaceIdentity } from './copilot';
 import { validateCopilotListParams, validateCopilotIdentityParams, validateCopilotExportParams, validateCopilotPreviewParams, validateCopilotImportParams, validateCopilotWorkspaceParams, validateCopilotWorkspaceSaveParams, validateCopilotSearchParams, validateCopilotStartParams } from '../../../packages/contracts/src/validators.js';
 import { validateDeviceAvailabilityParams, validateToolIdentity, validateToolConfigParams, validateScheduleHostParams, validateIdParams, validateEmptyParams, validateToolCatalogParams } from '../../../packages/contracts/src/validators.js';
 
@@ -386,10 +386,16 @@ export class Runtime {
     if (!validateCopilotStartParams(params)) throw new RpcError(-32602, '作业启动请求无效');
     // Idempotent lookup must remain available after disconnect, restart or component removal.
     const workspace = this.copilot.workspaceGet({ kind: params.kind });
-    const identity = createHash('sha256').update(JSON.stringify(workspace)).digest('hex');
+    const identity = copilotWorkspaceIdentity(workspace);
     const existing = this.store.get('request', params.requestId);
     if (existing) {
-      if (existing.source !== 'copilot' || existing.identity !== identity || existing.kind !== params.kind || existing.deviceId !== params.deviceId) throw new RpcError(-32011, '同一请求标识不能用于不同来源、设备或作业配置');
+      // Before canonical identities, the request hash retained JSON field order.
+      // Verify that old hash against its immutable snapshot before comparing semantics.
+      const snapshot = existing.identity === identity ? undefined : this.store.get('run_snapshot', existing.runId);
+      const legacyMatch = snapshot?.workspace && snapshot.source === 'copilot'
+        && existing.identity === createHash('sha256').update(JSON.stringify(snapshot.workspace)).digest('hex')
+        && copilotWorkspaceIdentity(snapshot.workspace) === identity;
+      if (existing.source !== 'copilot' || (existing.identity !== identity && !legacyMatch) || existing.kind !== params.kind || existing.deviceId !== params.deviceId) throw new RpcError(-32011, '同一请求标识不能用于不同来源、设备或作业配置');
       return this.execution(existing.runId);
     }
     const pending = this.starts.get(params.requestId);
