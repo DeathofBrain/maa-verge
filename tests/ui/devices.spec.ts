@@ -198,6 +198,7 @@ test('a slow initial connection request preserves a device selected while it was
   await page.evaluate(() => { (window as HarnessWindow).deviceHarness.holdConnection = true; });
   await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
   await expect(result(page)).toHaveText('正在发现并连接模拟器…');
+  await expect.poll(() => page.evaluate(() => (window as HarnessWindow).deviceHarness.calls.filter(method => method === 'device.auto_connect').length)).toBe(1);
   await page.getByLabel('选择设备', { exact: true }).selectOption(secondId);
   await page.evaluate(() => (window as HarnessWindow).deviceHarness.releaseConnection());
   await expect(result(page)).toHaveText('连接完成：2 台设备已就绪。');

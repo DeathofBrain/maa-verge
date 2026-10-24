@@ -211,6 +211,7 @@ test('a preview newer than stable stays installed without a downgrade candidate'
   await settingsCategory(page, '更新');
   await page.getByLabel('应用更新频道', { exact: true }).selectOption('stable');
   await appSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.checks)).toBe(1);
   await expect(appSection(page).locator('.sp-update-state')).toHaveText('暂无新版本');
   await expect(appSection(page).locator('.channel-version')).toHaveText('0.2.0-beta.1');
   await expect(appSection(page).locator('.channel-version svg')).toHaveCount(0);

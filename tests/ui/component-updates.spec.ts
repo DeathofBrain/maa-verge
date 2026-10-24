@@ -264,6 +264,7 @@ test('component roots save independently and installed resource versions use eac
   await expect(resource.getByLabel('游戏资源下载目录', { exact: true })).toHaveValue('D:\\Game Data\\MaaResource');
   await core.getByLabel('MaaCore 核心下载目录', { exact: true }).fill('E:\\Custom Components\\Core');
   await core.getByRole('button', { name: '保存目录', exact: true }).click();
+  await expect(core.locator('.sp-component-path .sp-form-actions > .sp-help')).toHaveText('用于后续下载与安装');
   await expect(core.getByRole('button', { name: '保存目录', exact: true })).toBeDisabled();
   const paths = await page.evaluate(async () => ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot).settings.componentPaths);
   expect(paths).toEqual({ core: 'E:\\Custom Components\\Core', resource: 'D:\\Game Data\\MaaResource' });

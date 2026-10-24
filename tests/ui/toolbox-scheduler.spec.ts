@@ -100,6 +100,7 @@ test('daily schedules support eight rules, temporary overrides, global options a
   await panel.getByRole('checkbox',{name:'定时前通知',exact:true}).check();
   await panel.getByRole('spinbutton',{name:'提前分钟数'}).fill('10');
   await expect(panel.getByRole('spinbutton',{name:'提前分钟数'})).toBeEnabled();
+  await expect.poll(async () => (await page.evaluate(() => (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot).settings.scheduler).toMatchObject({ forceScheduledStart: true, notifyBeforeScheduledStart: true, notificationMinutes: 10 });
   await panel.getByRole('button',{name:'查看全部定时'}).click();await expect(panel.getByRole('row')).toHaveCount(9);
   await page.reload();
   await page.locator('.sidebar').getByRole('button',{name:'任务表',exact:true}).click();

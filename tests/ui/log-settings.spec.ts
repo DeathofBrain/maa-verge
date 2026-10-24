@@ -117,7 +117,7 @@ test('log operations block overlapping actions and failures never show a success
   await expect(page.getByRole('button', { name: '正在导出…', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: '清理日志', exact: true })).toBeDisabled();
   await expect(page.getByLabel('自动清理日志', { exact: true })).toBeDisabled();
-  expect(await page.evaluate(() => (window as LogHarnessWindow).logHarness.exportCalls)).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as LogHarnessWindow).logHarness.exportCalls)).toBe(1);
   await page.evaluate(() => (window as LogHarnessWindow).logHarness.release());
   await expect(page.getByRole('alert')).toContainText('合成导出失败：目录不可写');
   await expect(page.getByRole('dialog')).toHaveCount(0);

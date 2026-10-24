@@ -104,7 +104,7 @@ test('sidebar menu edits names, copies the current configuration and preserves s
   await expect(name).toBeFocused(); await name.fill('新名称'); await saved(page);
   const renamed = page.getByRole('button', { name: '配置任务表新名称', exact: true });
   await renamed.click({ button: 'right' }); await menu(page).getByRole('menuitem', { name: '停用任务表', exact: true }).click();
-  await saved(page); expect((await snapshot(page)).plans.find((p) => p.id === 'farm-1-7')?.enabled).toBe(false);
+  await saved(page); await expect.poll(async () => (await snapshot(page)).plans.find((p) => p.id === 'farm-1-7')?.enabled).toBe(false);
   await renamed.click({ button: 'right' });
   const download = page.waitForEvent('download'); await menu(page).getByRole('menuitem', { name: '导出任务表', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('新名称.json');
