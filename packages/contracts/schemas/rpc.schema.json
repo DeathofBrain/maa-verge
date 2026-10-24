@@ -748,11 +748,31 @@
             "content": {
               "type": "string",
               "maxLength": 700000
+            },
+            "attribution": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "filename": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "content": {
+                  "type": "string",
+                  "maxLength": 16000
+                }
+              },
+              "required": [
+                "filename",
+                "content"
+              ],
+              "description": "可与原始 JSON 一同保存的来源和署名旁文件；不表示已取得转载授权或适用应用许可证。"
             }
           },
           "required": [
             "filename",
-            "content"
+            "content",
+            "attribution"
           ]
         },
         "copilot.preview": {
@@ -2435,7 +2455,13 @@
         },
         "author": {
           "type": "string",
-          "maxLength": 300
+          "maxLength": 300,
+          "description": "仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。"
+        },
+        "uploader": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。"
         },
         "description": {
           "type": "string",
@@ -2683,7 +2709,13 @@
         },
         "author": {
           "type": "string",
-          "maxLength": 300
+          "maxLength": 300,
+          "description": "仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。"
+        },
+        "uploader": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。"
         },
         "url": {
           "type": "string",
@@ -2771,6 +2803,12 @@
         "versionId": {
           "type": "string",
           "pattern": "^[a-f0-9]{64}$"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "选择同一原始 JSON 的具体导入来源，必须与 versionId 匹配；缺省沿用版本最初来源。"
         }
       },
       "required": [

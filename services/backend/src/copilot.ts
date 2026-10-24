@@ -20,6 +20,12 @@ const identifier = (prefix: string) => `${prefix}-${randomUUID()}`;
 const fail = (message: string): never => { throw new RpcError(-32602, message); };
 const message = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause)).slice(0, 1000);
 const clone = <T>(value: T): T => structuredClone(value);
+/** These nonstandard fields are content signatures, not the API's uploader identity. */
+function contentAuthor(value: unknown): string {
+  if (!object(value)) return '';
+  const author = [value.author, object(value.doc) ? value.doc.author : undefined].find(item => typeof item === 'string' && item.trim());
+  return text(author, 300);
+}
 function validate<T>(validator: (value: unknown) => value is T, input: unknown): T {
   if (!validator(input)) fail('作业请求参数无效'); return input as T;
 }
@@ -161,11 +167,22 @@ export class CopilotLibrary {
     if (!version) throw new RpcError(-32004, '找不到指定作业版本');
     return version;
   }
-  private record(version: Version): CopilotRecord { return { ...clone(version.record), compatibility: this.compatibility(version.record, version.stages) }; }
+  private record(version: Version, stored = version.record): CopilotRecord {
+    const record = clone(stored);
+    if (record.source.kind === 'community' && record.uploader === undefined) {
+      // Older community records stored the API uploader in author. Recover display metadata
+      // from verified immutable content without rewriting the version or business record.
+      let author = '';
+      try { author = contentAuthor(JSON.parse(this.readVersion(version).replace(/^\ufeff/, ''))); } catch { /* Missing content cannot substantiate an author claim. */ }
+      if (record.author && record.author !== author) record.uploader = record.author;
+      record.author = author;
+    }
+    return { ...record, compatibility: this.compatibility(version.record, version.stages) };
+  }
   list(input: RpcContract['params']['copilot.list'] = {}): RpcContract['results']['copilot.list'] {
     const params = validate(validators.validateCopilotListParams, input);
     const items = this.store.all<CopilotRecord>('copilot').filter(item => !params.kind || item.kind === params.kind), page = params.page ?? 1;
-    const result = { items: items.slice((page - 1) * 20, page * 20).map(item => ({ ...item, compatibility: this.record(this.version(item.versionId)).compatibility })), page, total: items.length, hasNext: page * 20 < items.length };
+    const result = { items: items.slice((page - 1) * 20, page * 20).map(item => this.record(this.version(item.versionId), item)), page, total: items.length, hasNext: page * 20 < items.length };
     if (Buffer.byteLength(JSON.stringify(result)) > MAX_RESPONSE) throw new RpcError(-32010, '本页作业元数据超过通信限制，请按类型筛选或清理异常作业');
     return result;
   }
@@ -175,11 +192,20 @@ export class CopilotLibrary {
     if (params.versionId) return this.record(this.version(params.versionId));
     const record = this.store.get<CopilotRecord | undefined>('copilot', params.id!);
     if (!record) throw new RpcError(-32004, '作业已删除或不存在');
-    return { ...record, compatibility: this.record(this.version(record.versionId)).compatibility };
+    return this.record(this.version(record.versionId), record);
   }
   export(input: RpcContract['params']['copilot.export']): RpcContract['results']['copilot.export'] {
     const params = validate(validators.validateCopilotExportParams, input), version = this.version(params.versionId), content = this.readVersion(version);
-    return { filename: `${version.record.title.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 100) || 'copilot'}.json`, content };
+    const record = params.id ? this.get({ id: params.id }) : this.record(version);
+    if (record.versionId !== params.versionId) return fail('作业条目与导出版本不匹配');
+    const filename = `${record.title.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 100) || 'copilot'}.json`;
+    const attribution = {
+      formatVersion: 1, contentFile: filename, versionId: record.versionId, title: record.title,
+      source: record.source, author: contentAuthor(JSON.parse(content.replace(/^\ufeff/, ''))), ...(record.uploader !== undefined ? { uploader: record.uploader } : {}),
+      licenseStatus: 'unverified',
+      licenseNotice: '未发现已核实的统一内容许可；未声明的许可视为未知，不推定适用 Maa Verge 的 AGPL-3.0-only。具体版权与许可文字以原始 JSON（包括 doc.details）中的声明为准。此来源记录不代表已经获得转载或再分发许可。',
+    };
+    return { filename, content, attribution: { filename: filename.replace(/\.json$/, '.attribution.json'), content: JSON.stringify(attribution, null, 2) + '\n' } };
   }
   private readVersion(version: Version): string {
     let content: string;
@@ -188,7 +214,7 @@ export class CopilotLibrary {
     if (createHash('sha256').update(content).digest('hex') !== version.record.versionId) throw new RpcError(-32010, '作业版本文件已损坏，请重新导入；不会覆盖正在使用的文件');
     return content;
   }
-  private stage(raw: string, source: CopilotSource, expectedKind?: CopilotKind, author = ''): CopilotRecord {
+  private stage(raw: string, source: CopilotSource, expectedKind?: CopilotKind, uploader?: string): CopilotRecord {
     if (!raw.trim() || Buffer.byteLength(raw, 'utf8') > MAX_CONTENT) return fail('作业 JSON 为空或超过 700 KB，请拆分导入');
     let value: any; try { value = JSON.parse(raw.replace(/^\ufeff/, '')); } catch { return fail('作业 JSON 格式无效'); }
     if (!object(value)) return fail('作业 JSON 必须是对象');
@@ -268,7 +294,7 @@ export class CopilotLibrary {
     if (operators.length > 100) return fail('作业干员要求超过 100 项');
     const doc = object(value.doc) ? value.doc : {};
     const details = text(doc.details, 3000), videos = [...new Set((details.match(/https?:\/\/[^\s<>"）)]+/g) ?? []).map(safeUrl).filter(Boolean))].slice(0, 20);
-    const record: CopilotRecord = { id: identifier('copilot'), versionId, kind, title: text(doc.title || source.name || stageName, 300), stageName, author: text(author || value.author || '', 300), description: details,
+    const record: CopilotRecord = { id: identifier('copilot'), versionId, kind, title: text(doc.title || source.name || stageName, 300), stageName, author: contentAuthor(value), ...(uploader !== undefined ? { uploader: text(uploader, 300) } : {}), description: details,
       minimumCoreVersion: text(value.minimum_required, 80), operators, videos, source: clone(source), createdAt: now(), compatibility: { status: 'unverified', reasons: [] } };
     record.compatibility = this.compatibility(record, stages);
     const filename = path.join(this.directory, versionId + '.json');
@@ -281,8 +307,8 @@ export class CopilotLibrary {
     if (!existing) this.store.put('copilot_version', versionId, { record, stages, file: filename } satisfies Version);
     return record;
   }
-  private previewEntry(content: string, source: CopilotSource, expectedKind?: CopilotKind, author = ''): CopilotPreview['entries'][number] {
-    try { return { id: identifier('entry'), record: this.stage(content, source, expectedKind, author), error: null }; }
+  private previewEntry(content: string, source: CopilotSource, expectedKind?: CopilotKind, uploader?: string): CopilotPreview['entries'][number] {
+    try { return { id: identifier('entry'), record: this.stage(content, source, expectedKind, uploader), error: null }; }
     catch (cause) { return { id: identifier('entry'), record: null, error: message(cause) }; }
   }
   async preview(input: RpcContract['params']['copilot.preview']): Promise<CopilotPreview> {
@@ -339,7 +365,7 @@ export class CopilotLibrary {
     this.store.transaction(() => {
       for (const entry of preview.public.entries) if (selected.has(entry.id)) {
         if (!entry.record || entry.error) { errors.push({ id: entry.id, message: entry.error || '作业解析失败' }); continue; }
-        const record = { ...entry.record, compatibility: this.record(this.version(entry.record.versionId)).compatibility };
+        const record = this.record(this.version(entry.record.versionId), entry.record);
         this.store.put('copilot', record.id, record); items.push(record);
       }
     });
@@ -419,7 +445,7 @@ export class CopilotLibrary {
       const data = await this.request(`/copilot/get/${normalizeId(id)}`, undefined, deadline);
       if (!object(data) || data.available === false || data.status === 'DELETED' || typeof data.content !== 'string') throw new Error('作业已删除、不可用或缺少完整内容');
       const source: CopilotSource = { kind: 'community', name: `PRTS Plus #${id}`, url: `https://prts.plus/copilot/${id}`, communityId: id, ...(setId ? { setId } : {}) };
-      const entry = this.previewEntry(data.content, source, undefined, text(data.uploader ?? data.author, 300));
+      const entry = this.previewEntry(data.content, source, undefined, text(data.uploader, 300));
       return entry;
     } catch (cause) { return { id: identifier('entry'), record: null, error: `作业 #${id}：${message(cause)}`.slice(0, 1000) }; }
   }
@@ -442,7 +468,7 @@ export class CopilotLibrary {
       const id = normalizeId(entry.id); let content: Record<string, any> = {};
       if (typeof entry.content === 'string' && Buffer.byteLength(entry.content) <= MAX_CONTENT) { try { const parsed = JSON.parse(entry.content); if (object(parsed)) content = parsed; } catch { /* A malformed summary cannot be imported; detail lookup reports its error. */ } }
       const doc = object(content.doc) ? content.doc : {};
-      return { id, title: text(params.target === 'set' ? entry.name : doc.title || entry.title || `作业 #${id}`, 300), description: text(params.target === 'set' ? entry.description : doc.details, 3000), author: text(entry.creator ?? entry.uploader, 300), url: `https://prts.plus/${params.target === 'set' ? 'set' : 'copilot'}/${id}`,
+      return { id, title: text(params.target === 'set' ? entry.name : doc.title || entry.title || `作业 #${id}`, 300), description: text(params.target === 'set' ? entry.description : doc.details, 3000), author: params.target === 'set' ? '' : contentAuthor(content), uploader: text(params.target === 'set' ? entry.creator ?? entry.uploader : entry.uploader ?? entry.creator, 300), url: `https://prts.plus/${params.target === 'set' ? 'set' : 'copilot'}/${id}`,
         ...(params.target === 'set' ? {} : { kind: content.type === 'SSS' ? 'SSSCopilot' : /^(?:mem_|mem-|paradox)/i.test(String(content.stage_name)) ? 'ParadoxCopilot' : 'Copilot' as CopilotKind }) };
     });
     // data.page is total pages for sets: preserve the requested page explicitly.
