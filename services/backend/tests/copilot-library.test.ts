@@ -27,7 +27,7 @@ function setup(http?: typeof fetch) {
 }
 const ordinary = (extra: Record<string, unknown> = {}) => JSON.stringify({ stage_name: 'main_01-07', minimum_required: 'v6.20.0', doc: { title: '合成作业', details: '作者说明 https://www.bilibili.com/video/synthetic' }, opers: [{ name: '合成干员', skill: 2, requirements: { elite: 2, level: 80 } }], actions: [{ type: 'SpeedUp' }], ...extra });
 const paradox = () => ordinary({ stage_name: 'mem_char_test_1' });
-const sss = () => JSON.stringify({ type: 'SSS', stage_name: '保全地图', tool_men: {}, minimum_required: 'v6.20.0', stages: [{ stage_name: 'sss_test', strategies: [] }] });
+const sss = () => JSON.stringify({ type: 'SSS', stage_name: '保全地图', tool_men: {}, minimum_required: 'v6.20.0', stages: [{ stage_name: 'sss_test', strategies: [], draw_as_possible: true, actions: [] }] });
 async function imported(library: CopilotLibrary, content = ordinary()) {
   const preview = await library.preview({ content, name: '合成.json' });
   const result = library.import({ previewId: preview.id }); expect(result.errors).toEqual([]); return result.items[0]!;
@@ -127,6 +127,17 @@ describe('immutable local copilot library', () => {
     const { library } = setup(), p = await workspace(library, [paradox(), paradox()], 'ParadoxCopilot');
     library.workspaceSave({ workspace: p }); expect(library.prepare('ParadoxCopilot').tasks[0]!.params.list).toMatchObject([{ id: 1 }, { id: 2 }]);
     const s = await workspace(library, [sss(), sss()], 'SSSCopilot'); expect(() => library.workspaceSave({ workspace: s })).toThrow('仅支持一份');
+  });
+  test('SSS stages follow fixed core required draw/action fields and strategy coordinates', async () => {
+    const { library } = setup(), document = JSON.parse(sss());
+    delete document.stages[0].draw_as_possible;
+    expect((await library.preview({ content: JSON.stringify(document) })).entries[0]!.error).toContain('draw_as_possible');
+    document.stages[0].draw_as_possible = true; delete document.stages[0].actions;
+    expect((await library.preview({ content: JSON.stringify(document) })).entries[0]!.error).toContain('actions');
+    document.stages[0].actions = []; document.stages[0].strategies = [{ core: '合成干员', tool_men: { Pioneer: 1 }, location: [0] }];
+    expect((await library.preview({ content: JSON.stringify(document) })).entries[0]!.error).toContain('location');
+    document.stages[0].strategies[0].location = [0, 0];
+    expect((await library.preview({ content: JSON.stringify(document) })).entries[0]!.error).toBeNull();
   });
   test('minimum version, unknown stages and missing map files have concrete compatibility reasons', async () => {
     const { library, state, directory } = setup();
