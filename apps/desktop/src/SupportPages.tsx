@@ -1,13 +1,12 @@
-import { useContextMenu } from './ContextMenu';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowRight, ArrowUpRight, Bell, BookOpen, Check, ChevronRight,
-  Cpu, Database, Download, FileJson, FolderOpen, HardDrive,
-  Info, LoaderCircle, Plus, RefreshCw, RotateCcw,
-  Search, Settings2, SlidersHorizontal, X,
+  ArrowRight, ArrowUpRight, Bell, Check, ChevronRight,
+  Cpu, Database, Download, FolderOpen, HardDrive,
+  Info, LoaderCircle, RefreshCw, RotateCcw,
+  Search, Settings2, X,
 } from 'lucide-react';
-import { rpc, taskLabels, type ComponentDownload, type Plan, type Settings, type Snapshot, type Task, type UpdateChannel } from '@maaverge/contracts';
+import { rpc, type ComponentDownload, type Plan, type Settings, type Snapshot, type Task, type UpdateChannel } from '@maaverge/contracts';
 import './support-pages.css';
 import { useSettingsDraft } from './settings-draft';
 import LogSettings from './LogSettings';
@@ -32,7 +31,6 @@ const updateLabels: Record<UpdateChannel['status'], string> = {
 };
 const channelLabels: Record<UpdateChannel['id'], string> = { app: 'Maa Verge 应用', core: 'MaaCore 核心', resource: '游戏资源' };
 const formatDate = (value: string) => new Date(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-const displayValue = (value: unknown, fallback = '使用默认值') => value === undefined || value === null || value === '' ? fallback : Array.isArray(value) ? value.join('、') : String(value);
 
 function PageHeading({ title, text, actions }: { title: string; text: string; actions?: ReactNode }) {
   return <header className="sp-page-heading"><div><h1>{title}</h1><p>{text}</p></div>{actions && <div className="sp-heading-actions">{actions}</div>}</header>;
@@ -168,29 +166,6 @@ function AppInstallConfirmation({ version, busy, hasActiveRun, onClose, onInstal
   }}><div className="modal-title"><h2>安装应用更新</h2><button className="icon-button" aria-label="关闭安装确认" disabled={busy} onClick={onClose}><X size={18} /></button></div><p>版本 {version} 已下载并通过签名验证。请先保存未保存的更改；继续后应用将退出、安装更新并重新启动。</p>{hasActiveRun && <p role="status">任务正在运行，请等待全部任务结束后安装。</p>}<div className="modal-actions"><button className="button secondary" disabled={busy} onClick={onClose}>取消</button><button className="button primary" disabled={busy || hasActiveRun} onClick={() => void onInstall()}>{busy && <LoaderCircle className="spin" size={15} />}确认安装并重启</button></div></section></div>, document.body);
 }
 
-const copilotTypes: Task['type'][] = ['Copilot', 'SSSCopilot', 'ParadoxCopilot', 'VideoRecognition'];
-const copilotTabs: { type: Task['type'] | 'all'; label: string }[] = [{ type: 'all', label: '全部作业' }, { type: 'Copilot', label: '普通作业' }, { type: 'SSSCopilot', label: '保全派驻' }, { type: 'ParadoxCopilot', label: '悖论模拟' }, { type: 'VideoRecognition', label: '视频识别' }];
-
-export function CopilotPage({ snapshot, onOpenPlan, onCreateTaskPlan, searchQuery }: SupportPageProps) {
-  const contextMenu = useContextMenu();
-  const [tab, setTab] = useState<Task['type'] | 'all'>('all');
-  const [query, setQuery] = useState(searchQuery || '');
-  const [selection, setSelection] = useState('');
-  const [newType, setNewType] = useState<Task['type']>('Copilot');
-  useEffect(() => { if (searchQuery !== undefined) setQuery(searchQuery); }, [searchQuery]);
-  const entries = useMemo(() => snapshot.plans.flatMap((plan) => plan.tasks.flatMap((task, index) => copilotTypes.includes(task.type) ? [{ id: `${plan.id}:${index}`, plan, task, index }] : [])), [snapshot.plans]);
-  const visible = entries.filter(({ plan, task }) => (tab === 'all' || task.type === tab) && `${plan.name} ${taskLabels[task.type]} ${displayValue(task.params.filename, '')}`.toLowerCase().includes(query.toLowerCase()));
-  const selected = visible.find((entry) => entry.id === selection) || visible[0];
-
-  return <div className="sp-page"><PageHeading title="作业中心" text="集中查看任务表中的本地作业与视频识别配置。" actions={<div className="sp-create-controls"><select className="text-input" aria-label="新建作业类型" value={newType} onChange={(event) => setNewType(event.target.value as Task['type'])}>{copilotTypes.map((type) => <option key={type} value={type}>{taskLabels[type]}</option>)}</select><button className="button primary" onClick={() => onCreateTaskPlan(newType)}><Plus size={16} />新建作业配置</button></div>} />
-    <div className="sp-tabs" role="tablist" aria-label="作业类型">{copilotTabs.map(({ type, label }) => <button key={type} role="tab" aria-selected={tab === type} className={tab === type ? 'is-selected' : ''} onClick={() => setTab(type)}>{label}</button>)}</div>
-    <div className="sp-library-layout"><section className="sp-library-list"><div className="sp-list-toolbar"><Search size={17} /><input className="text-input" type="search" aria-label="搜索作业" placeholder="搜索名称、文件路径或类型" value={query} onChange={(event) => setQuery(event.target.value)} /><span>{visible.length} 份配置</span></div>{visible.length ? <div className="sp-table-scroll"><table className="sp-table"><thead><tr><th>作业文件</th><th>类型</th><th>所属任务表</th><th>状态</th></tr></thead><tbody>{visible.map((entry) => <tr key={entry.id} tabIndex={0} {...contextMenu('作业配置菜单', [
-      { label: '查看作业详情', action: () => setSelection(entry.id) },
-      { label: '编辑作业配置', action: () => onOpenPlan(entry.plan, entry.task.type, entry.index) },
-    ])} className={selected?.id === entry.id ? 'is-selected' : ''}><td><button className="sp-row-link" onClick={() => setSelection(entry.id)} title={displayValue(entry.task.params.filename, '尚未指定文件')}><FileJson size={16} /><span>{displayValue(entry.task.params.filename, Array.isArray(entry.task.params.copilot_list) ? `作业列表 · ${entry.task.params.copilot_list.length} 项` : '尚未指定文件')}</span></button></td><td>{taskLabels[entry.task.type]}</td><td>{entry.plan.name}</td><td><span className="sp-subtle-state">待核心校验</span></td></tr>)}</tbody></table></div> : <Empty icon={<BookOpen size={30} />} title={query ? '没有匹配的作业' : '还没有作业配置'} text={query ? '调整名称、文件路径或类型筛选。' : '选择作业类型，新建配置并填写本机文件路径。'} action={!query && <button className="button secondary" onClick={() => onCreateTaskPlan(tab === 'all' ? 'Copilot' : tab)}><Plus size={15} />添加第一份作业</button>} />}
-      <div className="sp-library-footnote"><Info size={15} /><p>社区编号导入、文件解析预览与练度校验尚未接入。本页展示已保存参数，文件是否有效由核心执行时校验。</p></div>
-    </section><aside className="sp-inspector" aria-label="作业详情">{selected ? <><div className="sp-inspector-heading"><FileJson size={24} /><h2>{taskLabels[selected.task.type]}</h2><p>{selected.plan.name} · 第 {selected.index + 1} 条任务</p></div><Section title="保存的配置"><dl className="sp-description-list"><div><dt>文件路径</dt><dd className="sp-path">{displayValue(selected.task.params.filename, '未指定；请检查作业列表参数')}</dd></div><div><dt>循环次数</dt><dd>{displayValue(selected.task.params.loop_times, '1')}</dd></div>{selected.task.type === 'Copilot' && <><div><dt>自动编队</dt><dd>{selected.task.params.formation ? '已开启' : '已关闭'}</dd></div><div><dt>编队序号</dt><dd>{displayValue(selected.task.params.formation_index, '默认')}</dd></div></>}<div><dt>任务状态</dt><dd>{selected.task.enabled === false || selected.task.params.enable === false ? '已禁用' : '已启用'}</dd></div></dl></Section><Notice>查看并核对任务参数后，从任务表开始执行。运行中的作业使用启动时配置。</Notice><button className="button primary sp-full-width" onClick={() => onOpenPlan(selected.plan, selected.task.type, selected.index)}><SlidersHorizontal size={16} />编辑作业配置<ArrowRight size={15} /></button>{selected.task.type === 'VideoRecognition' && <p className="sp-help">当前视频任务仍沿用设备执行入口，独立离线识别流程待接入。</p>}</> : <Empty title="选择一份作业" text="详情会显示文件路径、模式与保存参数。" icon={<FileJson size={28} />} />}</aside></div>
-  </div>;
-}
+export { default as CopilotPage } from './CopilotPage';
 
 export { default as ToolsPage } from './ToolsPage';
