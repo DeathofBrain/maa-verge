@@ -43,10 +43,10 @@ test('community results distinguish the uploader and preserve source links and a
   await page.getByRole('tab', { name: '社区搜索', exact: true }).click();
   await expect(library(page).locator('.cp-record')).toContainText('上传者：合成上传者 · 作者：未标注');
   await library(page).screenshot({ path: testInfo.outputPath('community-attribution.png') });
-  await library(page).getByRole('button', { name: '预览 合成社区作业 1', exact: true }).click();
-  await expect(preview(page)).toContainText('作者：合成作者');
-  await expect(preview(page)).toContainText('上传者：合成上传者');
-  await preview(page).getByRole('button', { name: '导入到作业库', exact: true }).click();
+  await library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true }).click();
+  await expect(detail(page)).toContainText('作者：合成作者');
+  await expect(detail(page)).toContainText('上传者：合成上传者');
+  await detail(page).getByRole('button', { name: '导入到作业库', exact: true }).click();
   await expect(detail(page).locator('.cp-detail-heading')).toContainText('作者：合成作者');
   await expect(detail(page).locator('.cp-meta')).toContainText('上传者合成上传者');
   const source = detail(page).getByRole('link', { name: '查看原站', exact: true });
@@ -72,8 +72,9 @@ test('community results distinguish the uploader and preserve source links and a
 test('a community upload without a content signature keeps its author unmarked', async ({ page }) => {
   await openCenter(page); await importCode(page, '103');
   await expect(detail(page).locator('.cp-detail-heading')).toContainText('作者：未标注');
-  await expect(detail(page).locator('.cp-detail-heading')).not.toContainText('合成上传者');
+  await expect(detail(page).locator('.cp-detail-heading')).not.toContainText('作者：合成上传者');
   await expect(detail(page).locator('.cp-meta')).toContainText('上传者合成上传者');
+  await detail(page).getByRole('button', { name: '返回作业列表', exact: true }).click();
   await expect(library(page).locator('.cp-record')).toContainText('作者：未标注 · 上传者：合成上传者');
 });
 

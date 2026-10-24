@@ -12,14 +12,15 @@ type Context = {
 const clone = <T>(value: T): T => structuredClone(value);
 const now = () => new Date().toISOString();
 const kinds: CopilotKind[] = ['Copilot', 'SSSCopilot', 'ParadoxCopilot'];
-const defaultOptions = (): CopilotOptions => ({ loopTimes: 1, formation: false, formationIndex: 0, addTrust: false, ignoreRequirements: false, supportUnitName: '', additionalOperators: [] });
-const synthetic = (id: string) => ({ stage_name: 'main_01-07', minimum_required: 'v6.0.0', doc: { title: `合成社区作业 ${id}`, details: '仅供界面验证的本地夹具，不访问社区', ...(id === '103' ? {} : { author: '合成作者' }) }, opers: [{ name: '阿米娅', skill: 1 }], actions: [{ type: 'SpeedUp' }] });
+const defaultOptions = (): CopilotOptions => ({ loopTimes: 1, formation: false, formationIndex: 0, addTrust: false, ignoreRequirements: false, supportUnitName: '', additionalOperators: [], autoLikeOnSuccess: false });
+const synthetic = (id: string) => ({ stage_name: 'main_01-07', minimum_required: 'v6.0.0', doc: { title: `合成社区作业 ${id}`, details: '仅供界面验证的本地夹具，不访问社区', ...(id === '103' ? {} : { author: '合成作者' }) }, opers: [{ name: '阿米娅', skill: 1, requirements: { elite: 2, level: 80 } }], groups: [{ name: '输出备选', opers: [{ name: '能天使', skill: 3 }, { name: '合成六星干员', skill: 2 }] }], actions: [{ type: 'SpeedUp' }] });
 
 export function createCopilotFixture(context: Context) {
   const storageKey = context.key + ':copilot';
   const restored = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
   const data: { items: CopilotRecord[]; versions: Record<string, { record: CopilotRecord; content: string }>; workspaces: Partial<Record<CopilotKind, CopilotWorkspace>> } = restored ?? { items: [], versions: {}, workspaces: {} };
   const previews = new Map<string, { preview: CopilotPreview; content: Map<string, string> }>();
+  const ratings = new Map<string, { communityId: string; likes: number; dislikes: number; rating: 'none' | 'like' | 'dislike' }>();
   const persist = () => localStorage.setItem(storageKey, JSON.stringify(data));
   const workspace = (kind: CopilotKind): CopilotWorkspace => clone(data.workspaces[kind] ?? { kind, queue: [], options: defaultOptions() });
   async function record(content: string, name: string, source: CopilotRecord['source']): Promise<CopilotRecord> {
@@ -28,7 +29,7 @@ export function createCopilotFixture(context: Context) {
     if (!json || typeof json !== 'object' || Array.isArray(json) || !Array.isArray(json.actions) && !Array.isArray(json.stages)) throw new Error('无法识别作业内容，需要 actions 或 stages');
     const kind: CopilotKind = json.type === 'SSS' || Array.isArray(json.stages) ? 'SSSCopilot' : json.type === 'Paradox' || /^mem_/u.test(json.stage_name || '') ? 'ParadoxCopilot' : 'Copilot';
     const versionId = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content)))].map(value => value.toString(16).padStart(2, '0')).join('');
-    return { id: source.communityId ? `community-${source.communityId}` : versionId, versionId, kind, title: json.doc?.title || name || json.stage_name || '未命名作业', stageName: json.stage_name || json.stage_name_override || '保全派驻', author: typeof json.author === 'string' ? json.author : typeof json.doc?.author === 'string' ? json.doc.author : '', ...(source.kind === 'community' ? { uploader: '合成上传者' } : {}), description: String(json.doc?.details || ''), minimumCoreVersion: json.minimum_required || '', operators: json.opers || [], videos: [], source, createdAt: now(), compatibility: { status: 'ready', reasons: [] } };
+    return { id: source.communityId ? `community-${source.communityId}` : versionId, versionId, kind, title: json.doc?.title || name || json.stage_name || '未命名作业', stageName: json.stage_name || json.stage_name_override || '保全派驻', author: typeof json.author === 'string' ? json.author : typeof json.doc?.author === 'string' ? json.doc.author : '', ...(source.kind === 'community' ? { uploader: '合成上传者' } : {}), description: String(json.doc?.details || ''), minimumCoreVersion: json.minimum_required || '', operators: [...(json.opers || []), ...(json.groups || []).flatMap((group: { name: string; opers: object[] }) => group.opers.map(operator => ({ ...operator, group: group.name })))], videos: [], source, createdAt: now(), compatibility: { status: 'ready', reasons: [] } };
   }
   return async function copilotRpc(method: string, params: Record<string, any>): Promise<unknown> {
     const state = context.snapshot();
@@ -40,6 +41,22 @@ export function createCopilotFixture(context: Context) {
       case 'copilot.get': {
         const value = params.versionId ? data.versions[params.versionId]?.record : data.items.find(item => item.id === params.id);
         if (!value) throw new Error('作业不存在');
+        return clone(value);
+      }
+      case 'copilot.rating.get':
+      case 'copilot.rating.set': {
+        const record = [...data.items, ...[...previews.values()].flatMap(value => value.preview.entries.flatMap(entry => entry.record ? [entry.record] : []))].find(record => record.versionId === params.versionId && (!params.recordId || record.id === params.recordId));
+        const communityId = record?.source.communityId;
+        if (!communityId) throw new Error('本地作业不支持社区评价');
+        const value = ratings.get(communityId) ?? { communityId, likes: 12, dislikes: 1, rating: 'none' as const };
+        if (method === 'copilot.rating.set') {
+          if (value.rating === 'like') value.likes--;
+          if (value.rating === 'dislike') value.dislikes--;
+          value.rating = params.rating;
+          if (value.rating === 'like') value.likes++;
+          if (value.rating === 'dislike') value.dislikes++;
+        }
+        ratings.set(communityId, value);
         return clone(value);
       }
       case 'copilot.export': {

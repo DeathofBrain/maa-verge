@@ -37,6 +37,7 @@ test('local preview, duplicate queue entries and ordered edits persist without c
   const before = await call<{ plans: unknown[] }>(page, 'app.snapshot');
   await importJson(page, json('合成 1-7 作业'));
   await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
+  await queue(page).locator('.cp-settings > summary').click();
   await queue(page).getByLabel('作业循环次数', { exact: true }).fill('3');
   await library(page).getByRole('button', { name: '加入队列 合成 1-7 作业', exact: true }).click();
   await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(2);
@@ -59,7 +60,7 @@ test('local preview, duplicate queue entries and ordered edits persist without c
   await expect(queue(page).getByLabel('执行队列 2', { exact: true })).not.toBeChecked();
   await queue(page).getByRole('button', { name: '清除未勾选项', exact: true }).click();
   await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
-  await expect(queue(page).getByText('突袭', { exact: true })).toHaveCount(0);
+  await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toBeVisible();
 });
 
 test('independent execution stays in the center, fixes its queue snapshot and supports source navigation and stop', async ({ page }) => {
@@ -113,9 +114,9 @@ test('community pagination and set preview retain member order and explicitly sh
   await library(page).getByRole('button', { name: '下一页', exact: true }).click();
   await expect(library(page)).toContainText('合成社区作业 2');
   await expect(library(page).getByRole('button', { name: '下一页', exact: true })).toBeDisabled();
-  await library(page).getByRole('button', { name: '作业集', exact: true }).click();
+  await library(page).getByRole('tab', { name: '社区作业集', exact: true }).click();
   await expect(library(page)).toContainText('合成有序作业集');
-  await library(page).getByRole('button', { name: '预览 合成有序作业集', exact: true }).click();
+  await library(page).getByRole('button', { name: '查看详情 合成有序作业集', exact: true }).click();
   await expect(preview(page).locator('.cp-preview-entry')).toHaveCount(3);
   await expect(preview(page)).toContainText('作业 404 已删除');
   await expect(preview(page).getByLabel('选择导入 3', { exact: true })).toBeDisabled();
@@ -135,6 +136,7 @@ test('three kinds use separate persisted queues and SSS only allows a single wor
   await expect(queue(page).getByLabel('自动编队', { exact: true })).toHaveCount(0);
   await page.getByRole('tab', { name: '悖论模拟', exact: true }).click();
   await importJson(page, json('悖论独立队列', { type: 'Paradox', stage_name: 'mem_amiya_1' }));
+  await queue(page).locator('.cp-settings > summary').click();
   await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toBeDisabled();
   await page.getByRole('tab', { name: '普通作业', exact: true }).click();
   await expect(queue(page)).toContainText('普通独立队列');
