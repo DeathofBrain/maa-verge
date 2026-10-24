@@ -19,6 +19,7 @@ function setup(http?: typeof fetch) {
   ];
   writeFileSync(path.join(directory, 'overview.json'), JSON.stringify(Object.fromEntries(entries.map(entry => [entry.stageId, entry]))));
   for (const entry of entries) writeFileSync(path.join(directory, entry.filename), '{}');
+  writeFileSync(path.join(root, 'resources', 'resource', 'tasks.json'), JSON.stringify({ Episode1: {}, 'Fixture-Navigation': {} }));
   const store = new Store(root); stores.push(store);
   const state = { core: 'v6.20.0', resource: path.join(root, 'resources') as string | undefined };
   const library = new CopilotLibrary(root, store, { coreVersion: () => state.core, resourceDirectory: () => state.resource, http });
@@ -68,6 +69,21 @@ describe('immutable local copilot library', () => {
     expect(library.get({ versionId: record.versionId }).title).toBe(record.title);
     expect(store.all('plan')).toEqual([]);
   });
+  test('library pagination returns all records without truncating or overloading responses', async () => {
+    const { library } = setup();
+    for (let index = 0; index < 23; index++) await imported(library, ordinary({ doc: { title: `作业 ${index}` } }));
+    const first = library.list(), second = library.list({ page: 2 }), third = library.list({ page: 3 });
+    expect(first).toMatchObject({ page: 1, total: 23, hasNext: true }); expect(first.items).toHaveLength(20);
+    expect(second).toMatchObject({ page: 2, total: 23, hasNext: false }); expect(second.items).toHaveLength(3);
+    expect(new Set([...first.items, ...second.items].map(item => item.id)).size).toBe(23);
+    expect(third.items).toEqual([]); expect(third.page).toBe(3);
+    expect(() => library.list({ page: 0 })).toThrow('参数无效');
+  });
+  test('oversized metadata page fails clearly rather than silently dropping records', async () => {
+    const { library, store } = setup(), record = await imported(library);
+    for (let index = 0; index < 20; index++) store.put('copilot', `huge-${index}`, { ...record, id: `huge-${index}`, description: 'x'.repeat(200000) });
+    expect(() => library.list()).toThrow('通信限制');
+  });
   test('workspace survives a lease-preserving store restart', async () => {
     const { library, store, root, state } = setup(), draft = await workspace(library);
     library.workspaceSave({ workspace: draft }); store.close(); stores.splice(stores.indexOf(store), 1);
@@ -88,6 +104,16 @@ describe('immutable local copilot library', () => {
     expect(execution.tasks).toHaveLength(1); expect(execution.tasks[0]!.params.filename).toBeUndefined();
     expect(execution.tasks[0]!.params.copilot_list).toMatchObject([{ id: 1, is_raid: false, nav_name_override: null }, { id: 2, is_raid: true, nav_name_override: '1-7' }]);
     expect(execution.entries.map(entry => [entry.id, entry.nativeId])).toEqual([['queue-0', 1], ['second-entry', 2]]);
+  });
+  test('navigation overrides require activated navigation tasks with split-layout support', async () => {
+    const { library, state, root } = setup(), draft = await workspace(library);
+    draft.queue.push({ ...draft.queue[0]!, id: 'second', navName: 'Unknown-Stage' }); library.workspaceSave({ workspace: draft });
+    expect(() => library.prepare('Copilot')).toThrow('不支持导航关卡');
+    draft.queue[1]!.navName = 'Fixture-Navigation'; library.workspaceSave({ workspace: draft }); expect(library.prepare('Copilot').entries).toHaveLength(2);
+    const changed = path.join(root, 'changed-resources'), maps = path.join(changed, 'resource', 'Arknights-Tile-Pos'); mkdirSync(maps, { recursive: true });
+    writeFileSync(path.join(maps, 'overview.json'), JSON.stringify({ stage: { stageId: 'main_01-07', code: '1-7', levelId: 'same', name: '暴君', filename: 'map.json' } })); writeFileSync(path.join(maps, 'map.json'), '{}');
+    const navigation = path.join(changed, 'resource', 'tasks', 'Stages'); mkdirSync(navigation, { recursive: true }); writeFileSync(path.join(navigation, 'main.json'), JSON.stringify({ 'Split-Stage': {} }));
+    state.resource = changed; draft.queue[1]!.navName = 'Split-Stage'; library.workspaceSave({ workspace: draft }); expect(library.prepare('Copilot').entries).toHaveLength(2);
   });
   test('three source formats map to their native task types', async () => {
     const { library } = setup();

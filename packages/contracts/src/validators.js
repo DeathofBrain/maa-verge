@@ -5997,7 +5997,7 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
   let errors = 0;
   if (data && typeof data == "object" && !Array.isArray(data)) {
     for (const key0 in data) {
-      if (!(key0 === "kind")) {
+      if (!(key0 === "kind" || key0 === "page")) {
         const err0 = { instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" };
         if (vErrors === null) {
           vErrors = [err0];
@@ -6019,12 +6019,44 @@ function validate108(data, { instancePath = "", parentData, parentDataProperty, 
         errors++;
       }
     }
+    if (data.page !== void 0) {
+      let data1 = data.page;
+      if (!(typeof data1 == "number" && (!(data1 % 1) && !isNaN(data1)) && isFinite(data1))) {
+        const err2 = { instancePath: instancePath + "/page", schemaPath: "#/properties/page/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+        if (vErrors === null) {
+          vErrors = [err2];
+        } else {
+          vErrors.push(err2);
+        }
+        errors++;
+      }
+      if (typeof data1 == "number" && isFinite(data1)) {
+        if (data1 > 1e6 || isNaN(data1)) {
+          const err3 = { instancePath: instancePath + "/page", schemaPath: "#/properties/page/maximum", keyword: "maximum", params: { comparison: "<=", limit: 1e6 }, message: "must be <= 1000000" };
+          if (vErrors === null) {
+            vErrors = [err3];
+          } else {
+            vErrors.push(err3);
+          }
+          errors++;
+        }
+        if (data1 < 1 || isNaN(data1)) {
+          const err4 = { instancePath: instancePath + "/page", schemaPath: "#/properties/page/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" };
+          if (vErrors === null) {
+            vErrors = [err4];
+          } else {
+            vErrors.push(err4);
+          }
+          errors++;
+        }
+      }
+    }
   } else {
-    const err2 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err5 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err2];
+      vErrors = [err5];
     } else {
-      vErrors.push(err2);
+      vErrors.push(err5);
     }
     errors++;
   }
