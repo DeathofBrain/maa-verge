@@ -85,7 +85,7 @@ test('StartUp keeps game actions local and opens its bound device settings witho
   expect(snapshot.settings).toEqual(savedSettings);
   await page.locator('.sidebar').getByRole('button', { name: '任务表', exact: true }).click();
   await expect(wb.getByLabel('游戏客户端', { exact: true })).toHaveValue('YoStarJP');
-  await expect(wb.locator('.wb-save-state')).toHaveText('未保存');
+  await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
 });
 
 test('device and instance pages fit desktop, dark mode and a narrow window', async ({ page }, testInfo) => {

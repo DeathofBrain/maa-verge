@@ -1,3 +1,4 @@
+import { useContextMenu } from './ContextMenu';
 import { useEffect, useState } from 'react';
 import { deviceProfileListError, type Device, type DeviceConnectionProfile, type Event, type Settings } from '@maaverge/contracts';
 import { ConnectionFields, defaultConnectionSettings } from './TaskConnectionSettings';
@@ -28,6 +29,7 @@ export function MultiInstanceSettings({ settings, devices, events, busy, candida
   onSelectDevice: (id: string) => void;
   onConfigure?: (device: Device) => void;
 }) {
+  const contextMenu = useContextMenu();
   const profiles = settings.deviceProfiles ?? [];
   const [editing, setEditing] = useState<DeviceConnectionProfile | undefined>(() => candidate ? newInstanceProfile(profiles.length, candidate) : undefined);
   const [pending, setPending] = useState<{ profileId: string; action: 'connect' | 'disconnect' }>();
@@ -62,7 +64,13 @@ export function MultiInstanceSettings({ settings, devices, events, busy, candida
       const latestFailure = latest && ['device.failed', 'device.connection_failed'].includes(latest.type) ? String(latest.data.error ?? (latest.data.device as Device | undefined)?.connectionError ?? latest.message) : '';
       const nativeError = !online && !connecting && latest?.type !== 'device.disconnected' ? device?.connectionError || latestFailure : '';
       const status = disconnecting ? '正在断开' : device?.state === 'running' ? '执行中' : online ? '已连接' : connecting ? '正在连接' : nativeError ? '连接失败' : '未连接';
-      return <article className="sp-instance-card" key={profile.id} aria-label={`多开实例：${profile.name}`}>
+      return <article className="sp-instance-card" key={profile.id} {...contextMenu('多开实例菜单', [
+        { label: online ? '断开实例' : '连接实例', disabled: busy || !!pending || !!connecting || device?.state === 'running', action: () => { void operate(profile, device); } },
+        { label: '选择设备', disabled: !device, action: () => { if (device) onSelectDevice(device.id); } },
+        { label: '连接设置', disabled: !device || !onConfigure, action: () => { if (device) onConfigure?.(device); } },
+        { label: '编辑实例', disabled: busy || !!pending, action: () => { setError(''); setEditing(profile); } },
+        { label: '删除实例', danger: true, disabled: busy || !!pending || !!connecting || online, action: () => { void onSaveSettings({ ...settings, deviceProfiles: profiles.filter(item => item.id !== profile.id) }); } },
+      ])} aria-label={`多开实例：${profile.name}`}>
         <div className="sp-instance-heading"><div><h3>{profile.name}</h3><p className="sp-help">{profile.autoDetected && '自动发现 · '}{profile.address} · {(profile.capture.autoDetect ?? (profile.capture.method === 'adb')) && '自动 · '}{profile.capture.method === 'adb' ? 'ADB 截图' : `${profile.capture.method === 'mumu' ? 'MuMu' : '雷电'} 增强截图 · 实例 ${profile.capture.instanceIndex}`}</p></div><span className="sp-value">{status}</span></div>
         {device && device.address !== profile.address && <p className="sp-help">当前设备地址：{device.address}；配置改动将在断开后重新连接时生效。</p>}
         {nativeError && <p className="sp-instance-error" role="alert">{nativeError}</p>}

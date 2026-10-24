@@ -110,7 +110,7 @@ async function start() {
   // initialization errors (including illegal Tauri event names) can precede CDP.
   await page.reload({ waitUntil: 'load' });
   await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
-  await expect(page.locator('.environment-badge')).toHaveText('本地运行');
+  await expect(page.getByLabel('选择设备', { exact: true })).toBeVisible();
   await expect(page.getByLabel('设备统计', { exact: true }).locator('strong')).toHaveText('0');
   await delay(200); // Let initialization IPC listener rejections reach pageerror.
   assertNoPageErrors();
@@ -161,7 +161,7 @@ try {
   await page.getByRole('button', { name: '检查并保存计划', exact: true }).click();
   const workspace = page.getByRole('region', { name: '任务表工作台', exact: true });
   await expect(workspace.getByRole('heading', { name: '1-7 材料补给', exact: true })).toBeVisible();
-  await workspace.getByRole('button', { name: '保存任务表', exact: true }).click();
+  await page.keyboard.press('Control+s');
   await expect(workspace.locator('.wb-save-state')).toHaveText('已保存');
   const activeTree = ownTree();
   assert.ok(activeTree.some(process => process.Name === 'maaverge-runtime.exe'));

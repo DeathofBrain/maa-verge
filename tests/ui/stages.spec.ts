@@ -13,7 +13,7 @@ test('resource activity stages and manual input share the saved stage without lo
   await manual.check();
   await expect(wb.getByRole('textbox', { name: '作战关卡', exact: true })).toHaveValue('TEST-1');
   await wb.getByRole('textbox', { name: '作战关卡', exact: true }).fill('FUTURE-99');
-  await wb.getByRole('button', { name: '保存任务表', exact: true }).click();
+  await page.keyboard.press('Control+s');
   await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
   await page.reload();
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();

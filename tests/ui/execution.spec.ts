@@ -16,7 +16,6 @@ test('starting a table opens its execution page and preserves the editing draft'
   const workbench = page.getByRole('region', { name: '任务表工作台', exact: true });
   await workbench.getByLabel('作战次数', { exact: true }).fill('9');
   await workbench.getByRole('button', { name: '开始日常', exact: true }).click();
-  await workbench.getByRole('button', { name: '使用已保存配置', exact: true }).click();
   await expect(execution(page)).toBeVisible();
   await expect(execution(page).getByRole('heading', { name: '固源岩补给', exact: true })).toBeVisible();
   await expect(execution(page).getByRole('complementary', { name: '本次执行任务', exact: true })).toContainText('自动作战');
@@ -36,7 +35,7 @@ test('starting a table opens its execution page and preserves the editing draft'
   await expect(execution(page).getByRole('region', { name: '本次执行总览', exact: true })).toContainText('已停止');
   await execution(page).getByRole('button', { name: '返回任务设置', exact: true }).click();
   await expect(workbench.getByLabel('作战次数', { exact: true })).toHaveValue('9');
-  await expect(workbench.locator('.wb-save-state')).toHaveText('未保存');
+  await expect(workbench.locator('.wb-save-state')).toHaveText('已保存');
 });
 
 test('save-and-start respects navigation made while the save was pending', async ({ page }) => {
@@ -54,7 +53,6 @@ test('save-and-start respects navigation made while the save was pending', async
   const workbench = page.getByRole('region', { name: '任务表工作台', exact: true });
   await workbench.getByLabel('作战次数', { exact: true }).fill('9');
   await workbench.getByRole('button', { name: '开始日常', exact: true }).click();
-  await workbench.getByRole('button', { name: '保存并开始', exact: true }).click();
   await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
   await page.evaluate(() => ((window as HarnessWindow).runtimeHarness as unknown as { releaseSave: () => void }).releaseSave());
   await expect(page.locator('.toast')).toContainText('任务表已开始执行');

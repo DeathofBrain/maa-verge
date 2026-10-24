@@ -710,20 +710,6 @@ textarea.text-input {
   overflow-wrap: anywhere;
 }
 
-.workspace-name {
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.context-divider {
-  height: 15px;
-  border-left: 1px solid var(--line);
-}
-
 .device-selector {
   display: flex;
   gap: 7px;
@@ -750,15 +736,6 @@ textarea.text-input {
   right: 1px;
   pointer-events: none;
   color: var(--muted);
-}
-
-.environment-badge {
-  font-size: 9px;
-  padding: 3px 5px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--dim);
-  white-space: nowrap;
 }
 
 .global-search {
@@ -1701,14 +1678,8 @@ textarea.text-input {
 }
 
 @media(max-width:1280px) {
-  .workspace-name {
-    display: none;
-  }
   .workspace-context {
     gap: 0;
-  }
-  .context-divider {
-    display: none;
   }
   .topbar {
     padding-inline: 23px;
@@ -1716,9 +1687,6 @@ textarea.text-input {
   }
   .topbar-actions {
     gap: 15px;
-  }
-  .environment-badge {
-    display: none;
   }
   .agent-layout {
     grid-template-columns: minmax(0,1fr) 230px;

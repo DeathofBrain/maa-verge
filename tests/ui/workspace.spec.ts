@@ -8,7 +8,6 @@ const metric = (page: Page, name: string) => home(page).getByLabel(name, { exact
 async function openHome(page: Page) {
   await page.goto('/');
   await expect(home(page)).toBeVisible();
-  await expect(page.locator('.environment-badge')).toHaveText('本地运行');
 }
 async function openTaskTables(page: Page, group: 'daily' | 'specialized' = 'daily') {
   const menu = page.getByRole('button', { name: '打开导航', exact: true });
@@ -39,7 +38,7 @@ async function createPlan(page: Page, name: string) {
   await wb(page).getByLabel('任务表名称', { exact: true }).fill(name);
 }
 async function savePlan(page: Page) {
-  await wb(page).getByRole('button', { name: '保存任务表', exact: true }).click();
+  await page.keyboard.press('Control+s');
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
 }
 async function tab(page: Page, name: string) { await wb(page).getByRole('tab', { name, exact: true }).click(); }
@@ -79,12 +78,11 @@ test('home shows runtime information and task tables have their own navigation e
   expect(await page.evaluate(() => localStorage.getItem('maaverge:ui:selected-plan'))).toBe('farm-1-7');
 });
 
-test('home reports an editor-started run without changing its unsaved draft', async ({ page }) => {
+test('home reports a run started after automatically saving editor changes', async ({ page }) => {
   await openHome(page);
   await openSavedPlan(page, '固源岩补给');
   await wb(page).getByLabel('作战次数').fill('9');
   await wb(page).getByRole('button', { name: '开始日常', exact: true }).click();
-  await wb(page).getByRole('button', { name: '使用已保存配置', exact: true }).click();
   await expect(dock(page)).toContainText('执行中');
   await navigate(page, '主页');
   await expect(metric(page, '今日执行统计')).toHaveText('1');
@@ -103,11 +101,9 @@ test('home reports an editor-started run without changing its unsaved draft', as
   await expect(home(page).getByRole('region', { name: '最近执行', exact: true })).toContainText('模拟执行已停止');
   await openSavedPlan(page, '固源岩补给');
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('未保存');
-  await tab(page, '任务表设置');
-  await wb(page).getByRole('button', { name: '恢复已保存配置', exact: true }).click();
-  await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
+  await tab(page, '任务表设置');
+  await expect(wb(page).getByRole('button', { name: '恢复已保存配置', exact: true })).toBeDisabled();
   await navigate(page, '主页');
   await expect(metric(page, '今日执行统计')).toHaveText('1');
   await expect(metric(page, '今日完成统计')).toHaveText('0');
@@ -171,7 +167,7 @@ test('Agent proposes a reviewable plan without starting a run', async ({ page })
   await page.getByRole('button', { name: '检查并保存计划' }).click();
   await expect(wb(page).getByLabel('作战关卡')).toHaveValue('1-7');
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('未保存');
+  await expect(wb(page).locator('.wb-save-state')).toHaveText('待确认保存');
   await savePlan(page);
   await navigate(page, '执行记录');
   await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
@@ -297,7 +293,7 @@ test('advanced JSON preserves invalid drafts and updates list fields and switche
   await expect(wb(page).getByRole('checkbox', { name: '自动确认 4 星', exact: true })).not.toBeChecked();
   await wb(page).getByLabel('任务参数 JSON').fill('{"confirm":');
   await expect(wb(page).getByLabel('招募次数')).toBeDisabled();
-  await wb(page).getByRole('button', { name: '保存任务表', exact: true }).click();
+  await page.keyboard.press('Control+s');
   await expect(wb(page).getByRole('alert').first()).toContainText('有效 JSON');
   await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"confirm":');
   await wb(page).getByLabel('任务参数 JSON').fill('{"enable":false,"confirm":[4,5],"times":0}');
@@ -550,7 +546,7 @@ test('unsaved task drafts survive navigation and page reloads without corrupting
   await navigate(page, '主页');
   await openSavedPlan(page, '固源岩补给');
   await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"stage":');
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('未保存');
+  await expect(wb(page).locator('.wb-save-state')).toHaveText('保存失败');
   await reloadWorkspace(page, '固源岩补给');
   await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"stage":');
   await expect(wb(page).getByLabel('作战次数')).toBeDisabled();
@@ -625,20 +621,17 @@ test('global search locates updates, saved tables and individual task settings',
   await expect(wb(page).getByLabel('设施顺序', { exact: true })).toHaveCount(0);
 });
 
-test('starting with a draft offers saved execution or save-and-start explicitly', async ({ page }) => {
+test('starting flushes pending changes and uses the latest saved configuration', async ({ page }) => {
   await openWorkspace(page);
   await page.getByRole('button', { name: '配置任务表固源岩补给', exact: true }).click();
   await wb(page).getByLabel('作战次数').fill('9');
   await wb(page).getByRole('button', { name: '开始日常', exact: true }).click();
-  await expect(wb(page).getByText('任务表有未保存的改动')).toBeVisible();
-  await wb(page).getByRole('button', { name: '使用已保存配置', exact: true }).click();
   await expect(dock(page)).toContainText('执行中');
   await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('未保存');
+  await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
   await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await wb(page).getByRole('button', { name: '开始日常', exact: true }).click();
-  await wb(page).getByRole('button', { name: '保存并开始', exact: true }).click();
   await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
   await expect(dock(page)).toContainText('执行中');
@@ -716,7 +709,7 @@ test('moving a table to specialized tasks preserves its editor entry while reloa
   await openWorkspace(page);
   await tab(page, '任务表设置');
   await wb(page).getByLabel('任务分组', { exact: true }).selectOption('specialized');
-  await wb(page).getByRole('button', { name: '保存任务表', exact: true }).click();
+  await page.keyboard.press('Control+s');
   await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('专项任务');
   await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
   await page.reload();

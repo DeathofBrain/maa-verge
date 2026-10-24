@@ -12,7 +12,7 @@ test('new daily tables have upstream defaults, save immediately and receive unus
   await wb.getByRole('button', { name: '设置第 3 条基建换班', exact: true }).click();
   await expect(wb.getByRole('combobox', { name: '无人机用途', exact: true })).toHaveValue('Money');
   for (const checkbox of await wb.getByRole('group', { name: '换班设施与顺序', exact: true }).getByRole('checkbox').all()) await expect(checkbox).toBeChecked();
-  await wb.getByRole('button', { name: '保存任务表', exact: true }).click();
+  await page.keyboard.press('Control+s');
   await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
   const plan = await page.evaluate(async () => {
     const snapshot = await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}) as { plans: { name: string; tasks: { type: string; enabled: boolean; params: Record<string, unknown> }[] }[] };
@@ -26,7 +26,7 @@ test('new daily tables have upstream defaults, save immediately and receive unus
   expect(plan.tasks[5].params).toEqual({ award: true, mail: false, recruit: false, orundum: false, mining: false, specialaccess: false, signinevent: false });
   await page.getByRole('button', { name: '添加任务表', exact: true }).click();
   await expect(wb.getByLabel('任务表名称', { exact: true })).toHaveValue('日常表2');
-  await wb.getByRole('button', { name: '保存任务表', exact: true }).click();
+  await page.keyboard.press('Control+s');
   await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
   await page.reload();
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();

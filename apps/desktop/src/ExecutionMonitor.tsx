@@ -1,3 +1,4 @@
+import { useContextMenu } from './ContextMenu';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Clock3, Layers, ListChecks, LoaderCircle, Monitor, Search, Square, TriangleAlert } from 'lucide-react';
 import { localizeExecutionMessage, type Plan, type Run, type Snapshot } from '@maaverge/contracts';
@@ -27,6 +28,12 @@ function elapsed(run: Run, now: number) {
 }
 
 export default function ExecutionMonitor({ snapshot, selectedRun, pending, onSelectRun, onRunUpdate, onOverview, onStart, onStop, onEdit, onPrepare, onDevices }: Props) {
+  const contextMenu = useContextMenu();
+  const runMenu = (run: Run) => contextMenu('执行菜单', [
+    { label: '查看执行详情', action: () => onSelectRun(run) },
+    { label: '编辑任务表', disabled: !snapshot.plans.some((plan) => plan.id === run.planId), action: () => { const plan = snapshot.plans.find((plan) => plan.id === run.planId); if (plan) onEdit(plan); } },
+    { label: '停止执行', danger: true, disabled: run.status !== 'running' || pending.has(`stop-${run.id}`), action: () => { void onStop(run); } },
+  ]);
   const [view, setView] = useState<'monitor' | 'instances'>('monitor');
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
@@ -60,7 +67,7 @@ export default function ExecutionMonitor({ snapshot, selectedRun, pending, onSel
     const watched = running.some((run) => run.id === selectedRun.id) ? running : [selectedRun, ...running];
     return <section className="execution-monitor inspecting" aria-label="任务表执行监控">
       <div className="monitor-inspector-bar"><button className="text-button" onClick={() => { setView('monitor'); onOverview(); }}><ArrowLeft size={15} />返回监控总览</button><span><i className={hasRunning ? 'monitor-live-dot' : ''} />{running.length} 项正在执行</span></div>
-      <nav className="monitor-run-strip" ref={runStrip} aria-label="正在监控的执行">{watched.map((run) => <button key={run.id} className={`monitor-run-tab ${run.status} ${selectedRun.id === run.id ? 'selected' : ''}`} aria-label={`切换执行${run.id}`} aria-current={selectedRun.id === run.id ? 'true' : undefined} onClick={() => onSelectRun(run)}><span><RunIcon status={run.status} /><strong>{planName(run)}</strong><b>{run.progress}%</b></span><small><span className="monitor-run-device" title={deviceName(run)}>{deviceName(run)}</span><span>{statusNames[run.status]}</span></small></button>)}</nav>
+      <nav className="monitor-run-strip" ref={runStrip} aria-label="正在监控的执行">{watched.map((run) => <button key={run.id} {...runMenu(run)} className={`monitor-run-tab ${run.status} ${selectedRun.id === run.id ? 'selected' : ''}`} aria-label={`切换执行${run.id}`} aria-current={selectedRun.id === run.id ? 'true' : undefined} onClick={() => onSelectRun(run)}><span><RunIcon status={run.status} /><strong>{planName(run)}</strong><b>{run.progress}%</b></span><small><span className="monitor-run-device" title={deviceName(run)}>{deviceName(run)}</span><span>{statusNames[run.status]}</span></small></button>)}</nav>
       <ExecutionPage key={selectedRun.id} snapshot={snapshot} run={selectedRun} pending={pending} onRunUpdate={onRunUpdate} onStop={onStop} onEdit={onEdit} onPrepare={onPrepare} />
     </section>;
   }
@@ -77,7 +84,7 @@ export default function ExecutionMonitor({ snapshot, selectedRun, pending, onSel
     { id: 'failed', label: '执行失败', count: ended.filter((run) => run.status === 'failed').length },
     { id: 'ended', label: '已结束', count: ended.length },
   ];
-  const renderCard = (run: Run) => <article key={run.id} className={`monitor-card ${run.status}`} aria-label={`执行 ${planName(run)} · ${deviceName(run)}`}>
+  const renderCard = (run: Run) => <article key={run.id} {...runMenu(run)} className={`monitor-card ${run.status}`} aria-label={`执行 ${planName(run)} · ${deviceName(run)}`}>
     <header><span className={`monitor-status ${run.status}`}><RunIcon status={run.status} />{statusNames[run.status]}</span><time dateTime={run.startedAt} title={`开始于 ${dateTime(run.startedAt)}`}>{dateTime(run.startedAt)}</time></header>
     <h3>{planName(run)}</h3><div className="monitor-card-device"><Monitor size={14} /><span>{deviceName(run)}</span></div>
     <p className="monitor-card-message" title={localizeExecutionMessage(run.message)}>{localizeExecutionMessage(run.message) || statusNames[run.status]}</p>

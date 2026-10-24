@@ -29,8 +29,8 @@ test('task arrangement exposes deletion, cancel preserves the draft, and deletio
   await expect(confirmation(page)).toContainText('未保存改动也会丢弃，执行记录会保留');
   await confirmation(page).getByRole('button', { name: '取消', exact: true }).click();
   await expect(workbench(page).getByLabel('作战次数')).toHaveValue('9');
-  await expect(workbench(page).locator('.wb-save-state')).toHaveText('未保存');
-  expect((await snapshot(page)).plans.find((plan) => plan.id === 'farm-1-7')?.tasks[0].params.times).toBe(6);
+  await expect(workbench(page).locator('.wb-save-state')).toHaveText('已保存');
+  expect((await snapshot(page)).plans.find((plan) => plan.id === 'farm-1-7')?.tasks[0].params.times).toBe(9);
 
   await confirmDelete(page);
   await expect(page.getByRole('button', { name: '配置任务表固源岩补给', exact: true })).toHaveCount(0);
@@ -55,7 +55,7 @@ test('the last specialized task table can be deleted without affecting daily tab
   await navigate(page, '专项任务');
   await page.getByRole('button', { name: '新建任务表', exact: true }).click();
   await expect(remove(page)).toHaveCount(0);
-  await workbench(page).getByRole('button', { name: '保存任务表', exact: true }).click();
+  await page.keyboard.press('Control+s');
   await expect(workbench(page).locator('.wb-save-state')).toHaveText('已保存');
   const saved = (await snapshot(page)).plans.find((plan) => plan.group === 'specialized')!;
   await workbench(page).getByLabel('开始探索次数').fill('8');

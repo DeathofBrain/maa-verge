@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, Check, ChevronDown, Copy, FileText, GripVertical, Info, ListChecks, LoaderCircle, Play, Plus, RotateCcw, Search, Settings2, ShieldCheck, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, Check, Copy, FileText, GripVertical, Info, ListChecks, Play, Plus, RotateCcw, Search, Settings2, ShieldCheck, Trash2, X } from 'lucide-react';
 import { taskDefaults, defaultDailyTaskTypes, taskEnabled, taskConsumableLimits, taskLabels, type Device, type Plan, type Settings, type RpcParams } from '@maaverge/contracts';
 import TaskParameterField, { type Field } from './TaskParameterField';
+import { useContextMenu } from './ContextMenu';
 import './plan-workbench.css';
 
 type Task = Plan['tasks'][number];
@@ -38,6 +39,7 @@ type Group = 'daily' | 'specialized';
 type Metadata = { description?: string; deviceId?: string | null; group?: Group; budgets?: Budgets | null };
 type WorkbenchPlan = Plan & Metadata;
 type Tab = 'tasks' | 'settings' | 'schedule';
+export type PlanEditorCommand = { id: string; type: 'settings' | 'rename' | 'toggle' | 'export' | 'duplicate' };
 type Draft = {
   id: string; name: string; description: string; deviceId: string | null; group: Group;
   budgets: Budgets | null; enabled: boolean; steps: Step[]; selected: number;
@@ -47,6 +49,7 @@ type Props = {
   plan: Plan | 'new'; devices?: Device[]; settings?: Settings; running?: boolean; unsaved?: boolean;
   selectedDeviceId?: string;
   busyDeviceIds?: string[];
+  suspended?: boolean; command?: PlanEditorCommand; onCommandHandled?: () => void; onDuplicate?: (plan: Plan) => void;
   onOpenDeviceSettings?: (deviceId?: string) => void;
   onSave: (plan: Plan) => Promise<boolean>; onStart?: (plan: Plan) => Promise<boolean>;
   onDelete?: (plan: Plan) => void; onClose?: () => void; onSaved?: (plan: Plan) => void;
@@ -88,6 +91,30 @@ export function discardPlanDraft(planId: string) {
 }
 function draftPlan(draft: Draft, source: Plan | 'new', tasks = draft.steps.map((entry) => entry.task)): WorkbenchPlan {
   return { ...(source === 'new' ? {} : source), id: draft.id, name: draft.name.trim(), tasks: tasks as Plan['tasks'], enabled: draft.enabled, schedule: source === 'new' ? null : source.schedule, description: draft.description, deviceId: draft.deviceId, group: draft.group, budgets: draft.budgets };
+}
+function parseDraft(draft: Draft, source: Plan | 'new'): WorkbenchPlan {
+  if (!draft.name.trim()) throw new Error('请给任务表起一个名字');
+  if (!draft.steps.length) throw new Error('请至少添加一个任务');
+  const tasks = draft.steps.map((entry, index) => {
+    try {
+      const params = JSON.parse(entry.json);
+      if (!params || typeof params !== 'object' || Array.isArray(params)) throw new Error();
+      return { ...entry.task, params };
+    } catch { throw new Error(`第 ${index + 1} 条任务的高级参数必须是有效 JSON 对象`); }
+  });
+  return draftPlan(draft, source, tasks);
+}
+function draftVersion(draft: Draft): string {
+  return stable({ ...draftPlan(draft, 'new'), json: draft.steps.map((entry) => entry.json) });
+}
+function cacheSavedDraft(cacheKey: string, captured: Draft, value: Plan) {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(cacheKey) || 'null') as Draft | null;
+    if (cached?.id !== captured.id || draftVersion(cached) !== draftVersion(captured)) return;
+    const next = { ...cached, name: value.name, base: fingerprint(value) };
+    sessionStorage.setItem(`maaverge.ui.draft.${value.id}`, JSON.stringify(next));
+    if (cacheKey !== `maaverge.ui.draft.${value.id}`) sessionStorage.removeItem(cacheKey);
+  } catch { /* Optional recovery cache. */ }
 }
 export function taskSummary(task: Task): string {
   const p = task.params;
@@ -131,7 +158,8 @@ function fieldGroups(type: Task['type']): FieldGroup[] {
   return definitions.map(([title, keys, expanded]) => ({ title, fields: keys.flatMap((key) => available.filter((field) => field.key === key)), expanded })).filter((group) => group.fields.length);
 }
 
-export default function PlanEditor({ plan, devices = [], settings, selectedDeviceId, busyDeviceIds = [], onOpenDeviceSettings, running = false, unsaved = false, onSave, onStart, onDelete, onClose, onSaved, initialGroup = 'daily', defaultName, focusTaskType, focusTaskIndex, initialParams, searchQuery = '' }: Props) {
+export default function PlanEditor({ plan, devices = [], settings, selectedDeviceId, busyDeviceIds = [], suspended = false, command, onCommandHandled, onDuplicate, onOpenDeviceSettings, running = false, unsaved = false, onSave, onStart, onDelete, onClose, onSaved, initialGroup = 'daily', defaultName, focusTaskType, focusTaskIndex, initialParams, searchQuery = '' }: Props) {
+  const contextMenu = useContextMenu();
   const cacheKey = `maaverge.ui.draft.${plan === 'new' ? `new:${initialGroup}:${focusTaskType || 'default'}:${stable(initialParams || {})}` : plan.id}`;
   const [draft, setDraft] = useState<Draft>(() => loadDraft(cacheKey, plan, initialGroup, focusTaskType, initialParams, focusTaskIndex, defaultName));
   const [saving, setSaving] = useState(false);
@@ -143,9 +171,13 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
   const [fieldSearch, setFieldSearch] = useState(searchQuery);
   const [advanced, setAdvanced] = useState<Record<string, boolean>>({});
   const [mobileDetail, setMobileDetail] = useState(false);
-  const [startMenu, setStartMenu] = useState(false);
   const [dragKey, setDragKey] = useState<string | null>(null);
   const root = useRef<HTMLElement>(null);
+  const mounted = useRef(true);
+  const inFlight = useRef<Promise<boolean> | null>(null);
+  const savingVersion = useRef('');
+  const renameRequested = useRef(false);
+  const discardOnLeave = useRef(false);
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const callbacks = useRef({ onSave, onSaved, onStart });
@@ -168,8 +200,8 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
   const taskClient = (clients.some(([id]) => id === requestedClient) ? requestedClient : 'Official') as NonNullable<RpcParams<'stages.list'>['clientType']>;
   const draftTargetBusy = busyDeviceIds.includes(draft.deviceId || selectedDeviceId || '');
   const hasSavedPlan = plan !== 'new' && !unsaved;
-  const savedTargetBusy = hasSavedPlan && busyDeviceIds.includes(plan.deviceId || selectedDeviceId || '');
-  const startUnavailable = dirty ? draftTargetBusy && (!hasSavedPlan || savedTargetBusy) : savedTargetBusy;
+  const startUnavailable = draftTargetBusy;
+  const contentVersion = draftVersion(draft);
   const filteredTypes = Object.entries(taskLabels).filter(([type, label]) => `${label} ${type} ${taskCategories[type]}`.toLowerCase().includes(typeSearch.toLowerCase()));
   const tab = draft.tab;
   const patch = (value: Partial<Draft>) => setDraft((previous) => ({ ...previous, ...value }));
@@ -197,13 +229,13 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
   }, [focusTaskType, focusTaskIndex]);
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's' && root.current?.getClientRects().length) { event.preventDefault(); root.current.querySelector<HTMLButtonElement>('[data-save-plan]')?.click(); }
-      if (event.key === 'Escape') setStartMenu(false);
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's' && root.current?.getClientRects().length) { event.preventDefault(); void saveRef.current(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  useEffect(() => { setFormError(''); }, [contentVersion]);
   const setTask = (index: number, transform: (entry: Step) => Step) => setDraft((previous) => ({ ...previous, steps: previous.steps.map((entry, i) => i === index ? transform(entry) : entry) }));
   const setEnabled = (index: number, enabled: boolean) => setTask(index, (entry) => {
     let params = entry.task.params;
@@ -230,40 +262,58 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
     if (draft.steps.length >= 30) return;
     const type = filteredTypes.some(([type]) => type === addType) ? addType : filteredTypes[0]?.[0] as Task['type'] | undefined;
     if (!type) return;
-    patch({ steps: [...draft.steps, createStep(type)], selected: draft.steps.length, tab: 'tasks' }); setMobileDetail(true); setFieldSearch(''); setNotice('已添加任务，保存后生效');
+    patch({ steps: [...draft.steps, createStep(type)], selected: draft.steps.length, tab: 'tasks' }); setMobileDetail(true); setFieldSearch(''); setNotice('已添加任务');
   };
   const buildPlan = (): WorkbenchPlan | null => {
-    if (!draft.name.trim()) { setFormError('请给任务表起一个名字'); patch({ tab: 'settings' }); return null; }
-    if (!draft.steps.length) { setFormError('请至少添加一个任务'); patch({ tab: 'tasks' }); return null; }
-    const tasks: Task[] = [];
-    for (let i = 0; i < draft.steps.length; i++) {
-      try {
-        const params = JSON.parse(draft.steps[i].json);
-        if (!params || typeof params !== 'object' || Array.isArray(params)) throw new Error();
-        tasks.push({ ...draft.steps[i].task, params });
-      } catch { patch({ selected: i, tab: 'tasks' }); setMobileDetail(true); setAdvanced((previous) => ({ ...previous, [draft.steps[i].key]: true })); setFormError(`第 ${i + 1} 条任务的高级参数必须是有效 JSON 对象`); return null; }
-    }
-    return draftPlan(draft, plan, tasks);
+    try { return parseDraft(draftRef.current, plan); }
+    catch (cause) { setFormError((cause as Error).message); return null; }
   };
-  const save = async (andStart = false) => {
-    if (saving || starting || (andStart && draftTargetBusy)) return;
+  const save = async (andStart = false): Promise<void> => {
+    if (suspended || starting || (andStart && draftTargetBusy)) return;
+    if (inFlight.current) { await inFlight.current; return saveRef.current(andStart); }
     const value = buildPlan();
     if (!value) return;
-    setSaving(true); setFormError(''); setStartMenu(false);
+    const captured = draftRef.current;
+    setSaving(true); setFormError('');
+    savingVersion.current = draftVersion(captured);
     try {
-      const saved = await callbacks.current.onSave(value);
-      if (!saved) { setFormError('保存失败，请根据提示检查任务参数与消耗上限。'); return; }
-      setDraft((previous) => ({ ...previous, name: value.name, base: fingerprint(value) }));
-      try { sessionStorage.removeItem(cacheKey); } catch { /* Optional draft cache. */ }
-      setNotice('任务表已保存');
-      callbacks.current.onSaved?.(value);
+      inFlight.current = callbacks.current.onSave(value);
+      const saved = await inFlight.current;
+      if (saved) cacheSavedDraft(cacheKey, captured, value);
+      if (!mounted.current) { if (saved && andStart) await callbacks.current.onStart?.(value); return; }
+      if (!saved) { setFormError('自动保存失败，草稿已保留。请检查参数或连接后重试。'); return; }
+      setDraft((previous) => ({ ...previous, name: previous.name === captured.name ? value.name : previous.name, base: fingerprint(value) }));
+      setNotice('任务表已自动保存');
+      if (draftVersion(draftRef.current) === savingVersion.current) callbacks.current.onSaved?.(value);
       if (andStart && callbacks.current.onStart) { setStarting(true); await callbacks.current.onStart(value); }
-    } finally { setSaving(false); setStarting(false); }
+    } finally { inFlight.current = null; if (mounted.current) { setSaving(false); setStarting(false); } }
   };
-  const startSaved = async () => {
-    if (plan === 'new' || unsaved || !onStart || saving || starting || savedTargetBusy) return;
-    setStartMenu(false); setStarting(true);
-    try { await onStart(plan); } finally { setStarting(false); }
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  const leaveRef = useRef(() => {});
+  leaveRef.current = () => {
+    if (discardOnLeave.current || suspended || unsaved || !dirty || savingVersion.current === contentVersion) return;
+    try {
+      const captured = draftRef.current;
+      const value = parseDraft(captured, plan);
+      void callbacks.current.onSave(value).then((saved) => { if (saved) cacheSavedDraft(cacheKey, captured, value); });
+    } catch { /* Invalid input remains in the recovery cache. */ }
+  };
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; queueMicrotask(() => { if (!mounted.current) leaveRef.current(); }); };
+  }, []);
+  useEffect(() => {
+    if (!dirty || unsaved || suspended || saving || starting || formError) return;
+    const timer = window.setTimeout(() => { void saveRef.current(); }, 600);
+    return () => window.clearTimeout(timer);
+  }, [contentVersion, dirty, unsaved, suspended, saving, starting, formError]);
+  const start = async () => {
+    if (starting || suspended || draftTargetBusy) return;
+    if (dirty || saving) { await saveRef.current(true); return; }
+    const value = buildPlan(); if (!value || !onStart) return;
+    setStarting(true);
+    try { await onStart(value); } finally { if (mounted.current) setStarting(false); }
   };
   const revert = () => { setDraft(createDraft(plan, initialGroup, focusTaskType, initialParams, focusTaskIndex, defaultName)); setFormError(''); setNotice('已恢复为保存的配置'); };
   const exportPlan = () => {
@@ -271,26 +321,54 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
     const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = `${value.name}.json`; link.click(); URL.revokeObjectURL(url);
   };
+  const duplicateTask = (index: number) => {
+    if (draft.steps.length >= 30) return;
+    const next = [...draft.steps]; next.splice(index + 1, 0, { ...structuredClone(draft.steps[index]), key: crypto.randomUUID() });
+    patch({ steps: next, selected: index + 1 }); setNotice('已复制任务');
+  };
+  const deleteTask = (index: number) => { patch({ steps: draft.steps.filter((_, i) => i !== index), selected: Math.max(0, selected - (index <= selected ? 1 : 0)) }); setNotice('已删除任务'); };
+  useEffect(() => {
+    if (!command) return;
+    if (command.type === 'settings' || command.type === 'rename') {
+      patch({ tab: 'settings' });
+      if (command.type === 'rename') renameRequested.current = true;
+    }
+    if (command.type === 'toggle') patch({ enabled: !draftRef.current.enabled });
+    if (command.type === 'export') exportPlan();
+    if (command.type === 'duplicate') { const value = buildPlan(); if (value) onDuplicate?.(value); }
+    onCommandHandled?.();
+  }, [command?.id]);
+  useEffect(() => {
+    if (tab !== 'settings' || !renameRequested.current) return;
+    const input = root.current?.querySelector<HTMLInputElement>('[aria-label="任务表名称"]');
+    input?.focus(); input?.select(); renameRequested.current = false;
+  }, [tab, command?.id]);
 
   return <section ref={root} className={`wb-workbench ${mobileDetail ? 'wb-show-detail' : ''}`} aria-label="任务表工作台" aria-busy={saving}>
-    <header className="wb-page-header"><div className="wb-page-title"><h1>{draft.name || '新建任务表'}</h1><span className={`wb-save-state ${dirty ? 'is-dirty' : ''}`}><i />{dirty ? '未保存' : '已保存'}</span><p>{draft.description || `${draft.steps.filter((entry) => taskEnabled(entry.task)).length} 项已启用 · 按顺序执行，每条任务独立设置`}</p></div><div className="wb-header-actions" inert={saving}>
-      {plan === 'new' && onClose && <button className="button secondary" onClick={onClose}>取消新建</button>}
+    <header className="wb-page-header"><div className="wb-page-title"><h1>{draft.name || '新建任务表'}</h1><span className={`wb-save-state ${dirty ? 'is-dirty' : ''}`} role="status"><i />{saving ? '正在保存…' : formError ? '保存失败' : dirty ? unsaved ? '待确认保存' : '等待自动保存' : '已保存'}</span><p>{draft.description || `${draft.steps.filter((entry) => taskEnabled(entry.task)).length} 项已启用 · 按顺序执行，每条任务独立设置`}</p></div><div className="wb-header-actions">
+      {plan === 'new' && onClose && <button className="button secondary" disabled={saving} onClick={() => { discardOnLeave.current = true; try { sessionStorage.removeItem(cacheKey); } catch { /* Optional recovery cache. */ } onClose(); }}>取消新建</button>}
       {hasSavedPlan && onDelete && <button className="button secondary wb-danger" disabled={running || starting} title={running ? '请先停止此任务表的执行，再删除任务表' : '删除当前任务表'} onClick={() => onDelete(plan)}><Trash2 size={15} />删除任务表</button>}
-      <button className="button secondary" data-save-plan disabled={saving} onClick={() => void save()}>{saving ? <LoaderCircle size={15} className="spin" /> : <Check size={15} />}保存任务表</button>
-      {onStart && <div className="wb-start-wrap"><button className="button primary" disabled={startUnavailable || saving || starting} aria-expanded={startMenu} onClick={() => dirty ? setStartMenu(!startMenu) : void startSaved()}><Play size={15} fill="currentColor" />{starting ? '正在开始…' : initialGroup === 'specialized' ? '开始执行' : '开始日常'}{dirty && <ChevronDown size={14} />}</button>{startMenu && <div className="wb-start-menu"><strong>任务表有未保存的改动</strong><button disabled={draftTargetBusy || saving || starting} onClick={() => void save(true)}>保存并开始</button>{hasSavedPlan && <button disabled={savedTargetBusy || saving || starting} onClick={() => void startSaved()}>使用已保存配置</button>}<small>当前草稿会保留</small></div>}</div>}
+      {(unsaved || formError) && <button className="button secondary" data-save-plan disabled={saving} onClick={() => void save()}><Check size={15} />{unsaved ? '保存任务表' : '重试保存'}</button>}
+      {onStart && <button className="button primary" disabled={startUnavailable || starting || suspended} onClick={() => void start()}><Play size={15} fill="currentColor" />{starting ? '正在开始…' : initialGroup === 'specialized' ? '开始执行' : '开始日常'}</button>}
     </div></header>
-    <div className="wb-tabs" inert={saving} role="tablist" aria-label="任务表页面">{([['tasks', '任务编排', ListChecks], ['settings', '任务表设置', Settings2], ['schedule', '定时计划', CalendarClock]] as const).map(([id, label, Icon]) => <button key={id} role="tab" aria-selected={tab === id} aria-controls={`wb-panel-${id}`} id={`wb-tab-${id}`} onClick={() => patch({ tab: id })}><Icon size={16} />{label}</button>)}</div>
-    {saving && <div className="wb-running-note" role="status"><LoaderCircle size={15} className="spin" />正在保存任务表，保存完成后可继续编辑。</div>}
+    <div className="wb-tabs" role="tablist" aria-label="任务表页面">{([['tasks', '任务编排', ListChecks], ['settings', '任务表设置', Settings2], ['schedule', '定时计划', CalendarClock]] as const).map(([id, label, Icon]) => <button key={id} role="tab" aria-selected={tab === id} aria-controls={`wb-panel-${id}`} id={`wb-tab-${id}`} onClick={() => patch({ tab: id })}><Icon size={16} />{label}</button>)}</div>
     {running && <div className="wb-running-note"><Info size={15} />当前执行使用启动时配置。这里的修改用于下次执行。</div>}
     {dirty && !unsaved && plan !== 'new' && draft.base !== sourceVersion && <div className="wb-running-note"><Info size={15} />已保存配置有更新，当前草稿已保留。保存将以这份草稿替换已保存配置。</div>}
     {formError && <div className="wb-form-error" role="alert"><Info size={16} /><span>{formError}</span><button className="icon-button" aria-label="关闭参数错误" onClick={() => setFormError('')}><X size={15} /></button></div>}
     <span className="wb-sr-only" role="status">{notice}</span>
-    {tab === 'tasks' && <div className="wb-task-layout" inert={saving} id="wb-panel-tasks" role="tabpanel" aria-labelledby="wb-tab-tasks"><aside className="wb-queue" aria-label="任务顺序"><div className="wb-queue-heading"><h2>任务顺序</h2><span>{draft.steps.length} / 30</span></div>
-      <ol className="wb-step-list editor-steps">{draft.steps.map((entry, index) => <li key={entry.key} draggable onDragStart={() => setDragKey(entry.key)} onDragEnd={() => setDragKey(null)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const from = draft.steps.findIndex((item) => item.key === dragKey); if (from >= 0) reorder(from, index); setDragKey(null); }} className={`${index === selected ? 'selected' : ''} ${!taskEnabled(entry.task) ? 'wb-disabled-step' : ''} ${dragKey === entry.key ? 'wb-dragging' : ''}`}>
+    {tab === 'tasks' && <div className="wb-task-layout" id="wb-panel-tasks" role="tabpanel" aria-labelledby="wb-tab-tasks"><aside className="wb-queue" aria-label="任务顺序"><div className="wb-queue-heading"><h2>任务顺序</h2><span>{draft.steps.length} / 30</span></div>
+      <ol className="wb-step-list editor-steps">{draft.steps.map((entry, index) => <li key={entry.key} {...contextMenu('任务编辑菜单', [
+        { label: '编辑任务', action: () => selectTask(index) },
+        { label: taskEnabled(entry.task) ? '停用任务' : '启用任务', action: () => setEnabled(index, !taskEnabled(entry.task)) },
+        { label: '上移任务', disabled: index === 0, action: () => reorder(index, index - 1) },
+        { label: '下移任务', disabled: index === draft.steps.length - 1, action: () => reorder(index, index + 1) },
+        { label: '复制任务', disabled: draft.steps.length >= 30, action: () => duplicateTask(index) },
+        { label: '删除任务', danger: true, action: () => deleteTask(index) },
+      ])} draggable onDragStart={() => setDragKey(entry.key)} onDragEnd={() => setDragKey(null)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const from = draft.steps.findIndex((item) => item.key === dragKey); if (from >= 0) reorder(from, index); setDragKey(null); }} className={`${index === selected ? 'selected' : ''} ${!taskEnabled(entry.task) ? 'wb-disabled-step' : ''} ${dragKey === entry.key ? 'wb-dragging' : ''}`}>
         <GripVertical className="wb-grip" size={14} aria-hidden="true" /><input type="checkbox" aria-label={`启用第 ${index + 1} 条任务`} checked={taskEnabled(entry.task)} onChange={(event) => setEnabled(index, event.target.checked)} /><button className="wb-step-select" aria-label={`设置第 ${index + 1} 条${taskLabels[entry.task.type] || entry.task.type}`} aria-current={index === selected ? 'step' : undefined} onClick={() => selectTask(index)} onKeyDown={(event) => { if (event.altKey && ['ArrowUp', 'ArrowDown'].includes(event.key)) { event.preventDefault(); reorder(index, index + (event.key === 'ArrowUp' ? -1 : 1)); } }}><span className="wb-step-number">{index + 1}</span><span className="wb-step-copy"><strong>{taskLabels[entry.task.type] || entry.task.type}</strong><small>{taskSummary(entry.task)}</small></span></button>
       </li>)}</ol>
       <div className="wb-add-task"><div className="wb-type-search"><Search size={14} /><input aria-label="搜索任务类型" placeholder="搜索任务类型" value={typeSearch} onChange={(event) => setTypeSearch(event.target.value)} /></div><label className="wb-sr-only" htmlFor="task-type">添加任务类型</label><select id="task-type" className="text-input" value={filteredTypes.some(([type]) => type === addType) ? addType : filteredTypes[0]?.[0] || ''} onChange={(event) => setAddType(event.target.value as Task['type'])}>{filteredTypes.map(([type, label]) => <option key={type} value={type}>{taskCategories[type]} · {label}</option>)}</select><button className="button secondary" disabled={draft.steps.length >= 30 || !filteredTypes.length} onClick={addTask}><Plus size={15} />添加任务</button><small>{draft.steps.filter((entry) => taskEnabled(entry.task)).length} 项已启用 · 拖动或使用排序按钮调整</small></div>
-    </aside><section className="wb-inspector" aria-label="单项任务设置">{step ? <><div className="wb-inspector-header"><div><button className="wb-mobile-back" onClick={() => setMobileDetail(false)}><ArrowLeft size={15} />任务列表</button><h2>{taskLabels[step.task.type] || step.task.type}</h2><p>第 {selected + 1} 条任务 · 独立设置</p></div><div className="wb-step-tools"><button className="icon-button" aria-label="上移任务" title="上移任务（Alt ↑）" disabled={selected === 0} onClick={() => reorder(selected, selected - 1)}><ArrowUp size={16} /></button><button className="icon-button" aria-label="下移任务" title="下移任务（Alt ↓）" disabled={selected === draft.steps.length - 1} onClick={() => reorder(selected, selected + 1)}><ArrowDown size={16} /></button><button className="icon-button" aria-label="复制任务" title="复制任务" disabled={draft.steps.length >= 30} onClick={() => { const next = [...draft.steps]; next.splice(selected + 1, 0, { ...structuredClone(step), key: crypto.randomUUID() }); patch({ steps: next, selected: selected + 1 }); setNotice('已复制任务'); }}><Copy size={16} /></button><button className="icon-button danger-hover" aria-label="删除任务" title="删除任务" onClick={() => { patch({ steps: draft.steps.filter((_, i) => i !== selected), selected: Math.max(0, selected - 1) }); setNotice('任务已从草稿移除，保存后生效'); }}><Trash2 size={16} /></button></div></div>
+    </aside><section className="wb-inspector" aria-label="单项任务设置">{step ? <><div className="wb-inspector-header"><div><button className="wb-mobile-back" onClick={() => setMobileDetail(false)}><ArrowLeft size={15} />任务列表</button><h2>{taskLabels[step.task.type] || step.task.type}</h2><p>第 {selected + 1} 条任务 · 独立设置</p></div><div className="wb-step-tools"><button className="icon-button" aria-label="上移任务" title="上移任务（Alt ↑）" disabled={selected === 0} onClick={() => reorder(selected, selected - 1)}><ArrowUp size={16} /></button><button className="icon-button" aria-label="下移任务" title="下移任务（Alt ↓）" disabled={selected === draft.steps.length - 1} onClick={() => reorder(selected, selected + 1)}><ArrowDown size={16} /></button><button className="icon-button" aria-label="复制任务" title="复制任务" disabled={draft.steps.length >= 30} onClick={() => duplicateTask(selected)}><Copy size={16} /></button><button className="icon-button danger-hover" aria-label="删除任务" title="删除任务" onClick={() => deleteTask(selected)}><Trash2 size={16} /></button></div></div>
       <div className="wb-field-search"><Search size={15} /><input aria-label="搜索当前任务设置" placeholder="查找当前任务设置" value={fieldSearch} onChange={(event) => setFieldSearch(event.target.value)} />{fieldSearch && <button className="icon-button" aria-label="清除任务设置搜索" onClick={() => setFieldSearch('')}><X size={14} /></button>}</div>
       <fieldset className="wb-fieldset task-fields" disabled={!validJson}>{fieldGroups(step.task.type).map((group) => { const visible = group.fields.filter((field) => (step.task.type !== 'Infrast' || !['filename', 'plan_index'].includes(field.key) || Number(step.task.params.mode) === 10000) && (!fieldSearch || `${field.label} ${field.key} ${field.hint || ''}`.toLowerCase().includes(fieldSearch.toLowerCase()))); return !!visible.length && <FieldSection key={`${step.key}-${group.title}`} title={group.title} expanded={group.expanded || !!fieldSearch} summary={`${group.fields.length} 项设置`}><div className="wb-fields">{visible.map((field) => <TaskParameterField key={step.key + field.key} field={field} params={step.task.params} onChange={setParams} clientType={taskClient} />)}</div>{group.title === '消耗上限' && <p className="wb-helper"><ShieldCheck size={14} />{consumableSummary}</p>}</FieldSection>; })}</fieldset>
       {fieldSearch && !fields[step.task.type]?.some((field) => `${field.label} ${field.key} ${field.hint || ''}`.toLowerCase().includes(fieldSearch.toLowerCase())) && <p className="wb-helper">没有匹配的表单项，可清除搜索或检查高级参数。</p>}
@@ -303,16 +381,16 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
       {step.task.type === 'UserDataUpdate' && <div className="wb-sync-times" aria-label="数据同步状态"><span>设备：{syncDevice?.name || '请绑定或选择设备'}</span><span>干员上次同步：{syncDevice?.dataSync?.operatorsAt ? new Date(syncDevice.dataSync.operatorsAt).toLocaleString('zh-CN') : '暂无成功记录'}</span><span>仓库上次同步：{syncDevice?.dataSync?.depotAt ? new Date(syncDevice.dataSync.depotAt).toLocaleString('zh-CN') : '暂无成功记录'}</span><span>按游戏客户端时区在凌晨 4 点换日，周一换周；已成功同步的项目在本周期内跳过。</span></div>}
       {step.task.type === 'SingleStep' && <p className="wb-helper">在高级参数的 details 配置动作；战斗动作使用 details.actions 数组，完成后仍需观察验证。</p>}
       <details className="wb-advanced advanced-params" open={advanced[step.key] || !validJson} onToggle={(event) => { const open = event.currentTarget.open; setAdvanced((previous) => previous[step.key] === open ? previous : { ...previous, [step.key]: open }); }}><summary>高级参数 <span>完整 MaaCore JSON</span></summary><p>补充未列出的上游字段；保存时完整保留，并校验参数和消耗。</p><label className="field-label" htmlFor="task-json">任务参数 JSON</label><textarea id="task-json" spellCheck={false} value={step.json} onChange={(event) => setJson(event.target.value)} /></details>
-      <p className="wb-inspector-footnote">修改后保存，用于下次执行。</p>
+      <p className="wb-inspector-footnote">修改后自动保存，用于下次执行。</p>
     </> : <div className="wb-empty"><ListChecks size={30} /><h2>添加第一条任务</h2><p>从任务目录选择要执行的能力。</p></div>}</section></div>}
-    {tab === 'settings' && <div className="wb-table-settings" inert={saving} id="wb-panel-settings" role="tabpanel" aria-labelledby="wb-tab-settings"><div className="wb-settings-index"><a href="#wb-basic">基本信息</a><a href="#wb-device">设备绑定</a><a href="#wb-consumption">消耗汇总</a><a href="#wb-manage">任务表管理</a></div><div className="wb-settings-form">
+    {tab === 'settings' && <div className="wb-table-settings" id="wb-panel-settings" role="tabpanel" aria-labelledby="wb-tab-settings"><div className="wb-settings-index"><a href="#wb-basic">基本信息</a><a href="#wb-device">设备绑定</a><a href="#wb-consumption">消耗汇总</a><a href="#wb-manage">任务表管理</a></div><div className="wb-settings-form">
       <section id="wb-basic"><h2>基本信息</h2><div className="wb-fields"><label className="param-field"><span className="field-label">任务表名称</span><input className="text-input" aria-label="任务表名称" maxLength={80} placeholder="例如：晚间日常" value={draft.name} onChange={(event) => patch({ name: event.target.value })} /></label><label className="param-field"><span className="field-label">任务分组</span><select className="text-input" aria-label="任务分组" value={draft.group} onChange={(event) => patch({ group: event.target.value as Group })}><option value="daily">日常</option><option value="specialized">专项任务</option></select></label><label className="param-field wide"><span className="field-label">说明</span><textarea className="text-input wb-description" aria-label="任务表说明" maxLength={500} placeholder="记录这张表的用途" value={draft.description} onChange={(event) => patch({ description: event.target.value })} /></label></div><label className="wb-checkbox-row"><input type="checkbox" checked={draft.enabled} onChange={(event) => patch({ enabled: event.target.checked })} />启用任务表<small>停用后仍保留全部任务和参数</small></label></section>
       <section id="wb-device"><h2>设备绑定</h2><label className="param-field"><span className="field-label">绑定设备</span><select className="text-input" aria-label="绑定设备" value={draft.deviceId || ''} onChange={(event) => patch({ deviceId: event.target.value || null })}><option value="">执行时使用顶部选中的设备</option>{draft.deviceId && !devices.some((device) => device.id === draft.deviceId) && <option value={draft.deviceId}>已绑定设备（当前未发现）</option>}{devices.map((device) => <option key={device.id} value={device.id}>{device.name}{device.state === 'offline' ? ' · 离线' : ''}</option>)}</select></label><p className="wb-helper">绑定只影响这张任务表。游戏客户端在启动／关闭游戏任务中设置，切换顶部设备不会改写绑定。</p></section>
       <section id="wb-consumption"><h2>消耗汇总</h2><p className="wb-helper"><ShieldCheck size={14} />{consumableSummary}</p><p className="wb-helper">上限由本表已启用的自动作战任务分别设置，停用的任务不计入。请在任务编排中调整各项理智药与源石上限；默认均为 0。</p></section>
       <section id="wb-manage"><h2>任务表管理</h2><div className="wb-management-actions"><button className="button secondary" onClick={exportPlan}><FileText size={15} />导出任务表</button><button className="button secondary" disabled={!dirty} onClick={revert}><RotateCcw size={15} />{plan === 'new' ? '恢复初始配置' : '恢复已保存配置'}</button></div></section>
     </div></div>}
-    {tab === 'schedule' && <div className="wb-schedule" inert={saving} id="wb-panel-schedule" role="tabpanel" aria-labelledby="wb-tab-schedule"><CalendarClock size={38} strokeWidth={1.4} /><h2>定时执行尚未接入</h2><p>当前任务表可手动执行。定时规则、设备冲突与休眠恢复将在调度服务接入后启用。</p><button className="button secondary" onClick={() => patch({ tab: 'tasks' })}><ArrowLeft size={15} />返回任务编排</button></div>}
-    {plan === 'new' && tab === 'tasks' && <div className="wb-new-name" inert={saving}><label htmlFor="wb-new-name">任务表名称</label><input id="wb-new-name" className="text-input" value={draft.name} placeholder="先给任务表起一个名字" maxLength={80} onChange={(event) => patch({ name: event.target.value })} /></div>}
+    {tab === 'schedule' && <div className="wb-schedule" id="wb-panel-schedule" role="tabpanel" aria-labelledby="wb-tab-schedule"><CalendarClock size={38} strokeWidth={1.4} /><h2>定时执行尚未接入</h2><p>当前任务表可手动执行。定时规则、设备冲突与休眠恢复将在调度服务接入后启用。</p><button className="button secondary" onClick={() => patch({ tab: 'tasks' })}><ArrowLeft size={15} />返回任务编排</button></div>}
+    {plan === 'new' && tab === 'tasks' && <div className="wb-new-name"><label htmlFor="wb-new-name">任务表名称</label><input id="wb-new-name" className="text-input" value={draft.name} placeholder="先给任务表起一个名字" maxLength={80} onChange={(event) => patch({ name: event.target.value })} /></div>}
   </section>;
 }
 

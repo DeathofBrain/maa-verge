@@ -51,7 +51,7 @@ test('switching the target device allows the same unbound editor plan to start i
   await expect(panel.getByRole('progressbar')).toHaveCount(2);
 });
 
-test('a busy draft binding leaves the saved idle-device start available', async ({ page }) => {
+test('a busy device binding automatically saves and blocks a conflicting start', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   const second = await page.evaluate(async () => {
@@ -68,12 +68,10 @@ test('a busy draft binding leaves the saved idle-device start available', async 
   const wb = page.getByRole('region', { name: '任务表工作台', exact: true });
   await wb.getByRole('tab', { name: '任务表设置', exact: true }).click();
   await wb.getByLabel('绑定设备', { exact: true }).selectOption(second.id);
-  await wb.getByRole('button', { name: '开始日常', exact: true }).click();
-  await expect(wb.getByRole('button', { name: '保存并开始', exact: true })).toBeDisabled();
-  await wb.getByRole('button', { name: '使用已保存配置', exact: true }).click();
+  await expect(wb.getByRole('button', { name: '开始日常', exact: true })).toBeDisabled();
+  await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
   const state = await page.evaluate(async () => (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as { runs: { planId: string; deviceId: string; status: string }[]; plans: { id: string; deviceId: string | null }[] };
-  expect(state.runs).toContainEqual(expect.objectContaining({ planId: 'farm-1-7', deviceId: 'mock-device-1', status: 'running' }));
-  expect(state.plans.find((item) => item.id === 'farm-1-7')?.deviceId).toBe('mock-device-1');
-  await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
+  expect(state.runs.some((run) => run.planId === 'farm-1-7')).toBe(false);
+  expect(state.plans.find((item) => item.id === 'farm-1-7')?.deviceId).toBe(second.id);
   await expect(wb.getByLabel('绑定设备', { exact: true })).toHaveValue(second.id);
 });

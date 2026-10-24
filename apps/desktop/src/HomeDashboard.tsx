@@ -1,3 +1,4 @@
+import { useContextMenu } from './ContextMenu';
 import { Activity, ArrowRight, BookOpen, Bot, CalendarDays, Check, CircleCheck, Clock3, History, LoaderCircle, Monitor, Settings2, ShieldCheck, Square, Terminal } from 'lucide-react';
 import { localizeExecutionMessage, type Run, type Snapshot, type UpdateChannel } from '@maaverge/contracts';
 import './home-dashboard.css';
@@ -21,6 +22,7 @@ const dateTime = (value: string) => new Date(value).toLocaleString('zh-CN', { mo
 export default function HomeDashboard({ snapshot, selectedDevice, stopping, onStopRun, onShowRun, onNavigate, onUpdates }: Props) {
   const now = new Date();
   const today = snapshot.runs.filter((run) => new Date(run.startedAt).toDateString() === now.toDateString());
+  const contextMenu = useContextMenu();
   const activeRuns = snapshot.runs.filter((run) => run.status === 'running');
   const recentRuns = [...snapshot.runs].sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt)).slice(0, 4);
   const currentRun = activeRuns.find((run) => run.deviceId === selectedDevice) || activeRuns[0];
@@ -62,7 +64,10 @@ export default function HomeDashboard({ snapshot, selectedDevice, stopping, onSt
 
           <section className="home-panel home-recent" aria-label="最近执行">
             <div className="home-panel-heading"><h2>最近执行</h2><button className="text-button" onClick={() => onNavigate('history')}>全部记录<ArrowRight size={13} /></button></div>
-            {recentRuns.length ? <div className="home-recent-list">{recentRuns.map((run) => <button className="home-recent-row" key={run.id} aria-label={`查看执行${run.id}`} onClick={() => onShowRun(run)}>
+            {recentRuns.length ? <div className="home-recent-list">{recentRuns.map((run) => <button className="home-recent-row" key={run.id} {...contextMenu('执行记录菜单', [
+              { label: '查看执行详情', action: () => onShowRun(run) },
+              { label: '全部执行记录', action: () => onNavigate('history') },
+            ])} aria-label={`查看执行${run.id}`} onClick={() => onShowRun(run)}>
               <span className={`home-run-icon ${run.status}`}>{run.status === 'completed' ? <Check size={16} /> : run.status === 'running' ? <LoaderCircle size={16} className="spin" /> : <History size={16} />}</span>
               <span className="home-recent-info"><strong>{run.planName || snapshot.plans.find((plan) => plan.id === run.planId)?.name || '已删除的任务表'}</strong><small>{localizeExecutionMessage(run.message)}</small></span>
               <span className="home-recent-status"><span className={`pill ${run.status}`}>{runLabels[run.status]}</span><time>{dateTime(run.startedAt)}</time></span><ArrowRight size={14} />

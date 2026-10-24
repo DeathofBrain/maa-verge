@@ -1,3 +1,4 @@
+import { useContextMenu } from './ContextMenu';
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Info, Layers, LoaderCircle, Monitor, Search, Settings2, Unplug, Wifi } from 'lucide-react';
 import { deviceAddressIdentity, matchingDeviceProfile, rpc, type Device } from '@maaverge/contracts';
@@ -26,6 +27,7 @@ function actualCaptureMethod(device: Device) {
 }
 
 export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction, busy, settingsDeviceId }: SupportPageProps & { settingsDeviceId?: string }) {
+  const contextMenu = useContextMenu();
   const [tab, setTab] = useState<Tab>(settingsDeviceId !== undefined ? 'settings' : 'current');
   const [settingsTarget, setSettingsTarget] = useState(() => {
     const device = snapshot.devices.find(item => item.id === settingsDeviceId);
@@ -155,7 +157,12 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
     setOperation({ kind: 'disconnect', phase: 'complete', message: '设备已断开。' });
     setDiagnostics(['已释放连接，设备记录保留在历史连接中。手动断开后不会立即自动重连。']);
   });
-  const renderDevice = (device: Device) => <article className={`dp-device-card ${selected?.id === device.id ? 'is-selected' : ''}`} key={device.id} aria-label={`设备：${device.name}`}>
+  const renderDevice = (device: Device) => <article className={`dp-device-card ${selected?.id === device.id ? 'is-selected' : ''}`} key={device.id} {...contextMenu('设备菜单', [
+    { label: '选择设备', action: () => onSelectDevice(device.id) },
+    { label: '连接设置', action: () => configure(device) },
+    ...(!profileFor(device) ? [{ label: '保存为多开实例', disabled: disabled || profiles.length >= 32, action: () => saveInstance(device) }] : []),
+    { label: device.state === 'offline' ? '重新连接' : '断开设备', disabled: disabled || device.state === 'running' || isConnecting(device), action: () => { if (device.state === 'offline') void connect(device.address); else void disconnect(device); } },
+  ])} aria-label={`设备：${device.name}`}>
     <button className="sp-device-item" aria-pressed={selected?.id === device.id} onClick={() => onSelectDevice(device.id)}><Monitor size={22} /><span><strong>{device.name}</strong><small>{device.address}</small></span><span className={`sp-state ${device.state}`}>{isConnecting(device) ? '正在连接' : deviceLabels[device.state]}</span></button>
     <div className="dp-card-footer"><span className="sp-help">{profileFor(device)?.name || '使用默认连接配置'}</span><div>
       {!profileFor(device) && <button className="text-button" disabled={disabled || profiles.length >= 32} onClick={() => saveInstance(device)}>保存为多开实例</button>}
@@ -182,7 +189,10 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
           const device = snapshot.devices.find(device => deviceAddressIdentity(device.address) === deviceAddressIdentity(item.address));
           const online = device && device.state !== 'offline';
           const profile = device ? profileFor(device) : matchingDeviceProfile(snapshot.settings, item.address);
-          return <div className="dp-discovered-row" key={item.address}><Monitor size={20} /><span><strong>{item.name}</strong><small>{item.address} · {online ? '已连接' : item.adbState === 'device' ? '可连接' : item.adbState === 'unauthorized' ? '等待 ADB 授权' : item.adbState === 'offline' ? 'ADB 离线' : item.adbState}</small></span><div>{!profile && <button className="button secondary" disabled={disabled || profiles.length >= 32} onClick={() => saveInstance(item)}>保存为多开实例</button>}<button className="button secondary" disabled={disabled || !!online || item.adbState !== 'device'} onClick={() => void connect(item.address)}>{online ? '已连接' : '连接'}</button></div></div>;
+          return <div className="dp-discovered-row" key={item.address} tabIndex={0} {...contextMenu('发现设备菜单', [
+    { label: '连接设备', disabled: disabled || !!online || item.adbState !== 'device', action: () => { void connect(item.address); } },
+    ...(!profile ? [{ label: '保存为多开实例', disabled: disabled || profiles.length >= 32, action: () => saveInstance(item) }] : []),
+  ])}><Monitor size={20} /><span><strong>{item.name}</strong><small>{item.address} · {online ? '已连接' : item.adbState === 'device' ? '可连接' : item.adbState === 'unauthorized' ? '等待 ADB 授权' : item.adbState === 'offline' ? 'ADB 离线' : item.adbState}</small></span><div>{!profile && <button className="button secondary" disabled={disabled || profiles.length >= 32} onClick={() => saveInstance(item)}>保存为多开实例</button>}<button className="button secondary" disabled={disabled || !!online || item.adbState !== 'device'} onClick={() => void connect(item.address)}>{online ? '已连接' : '连接'}</button></div></div>;
         }) : <p className="sp-help">未发现设备。确认模拟器已启动并开启 ADB 调试，或使用下方手动连接。</p>}</section>}
         <section className="sp-section"><div className="sp-section-title"><h2>手动连接</h2><p>适用于自定义端口、网络设备或 USB 序列号。</p></div><form className="sp-connect-form" onSubmit={event => { event.preventDefault(); void connect(address); }}><label htmlFor="manual-device-address">手动连接 ADB 地址</label><div><input id="manual-device-address" className="text-input" placeholder="127.0.0.1:5555 或 USB 序列号" value={address} disabled={disabled} onChange={event => setAddress(event.target.value)} /><button type="submit" className="button secondary" disabled={disabled || !address.trim()}><Wifi size={15} />连接设备</button></div></form></section>
         {!!history.length && <details className="dp-history"><summary><ChevronDown size={16} />历史连接（已断开）<span>{history.length}</span></summary><p className="sp-help">这里只保留曾连接的记录；是否仍在运行，请重新发现设备。</p><div className="dp-device-grid">{history.map(renderDevice)}</div></details>}
