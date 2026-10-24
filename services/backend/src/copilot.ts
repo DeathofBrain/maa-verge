@@ -65,6 +65,12 @@ export function parseCopilotCode(input: string): { target: 'copilot' | 'set'; id
 }
 
 export const defaultCopilotOptions = (): CopilotOptions => ({ loopTimes: 1, formation: false, formationIndex: 0, addTrust: false, ignoreRequirements: false, supportUnitName: '', additionalOperators: [] });
+/** Object field order is transport detail; queue and operator array order remain significant. */
+export function copilotWorkspaceIdentity(workspace: CopilotWorkspace): string {
+  const canonical = JSON.stringify(workspace, (_key, value: unknown) => object(value)
+    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]])) : value);
+  return createHash('sha256').update(canonical).digest('hex');
+}
 interface Version { record: CopilotRecord; stages: string[]; file: string }
 interface PreviewStored { public: CopilotPreview; createdAt: number }
 export interface CopilotContext {
@@ -379,7 +385,7 @@ export class CopilotLibrary {
       support_unit_usage: o.supportUnitName ? 2 : 0, support_unit_name: o.supportUnitName, use_sanity_potion: false });
     const entries: CopilotRunEntry[] = selected.map((entry, index) => ({ id: entry.id, versionId: entry.versionId, title: versions[index]!.record.title, nativeId: index + 1, status: 'waiting', verdict: 'unknown', message: '等待执行，通关未确认' }));
     const name = `${kind === 'Copilot' ? '普通作业' : kind === 'SSSCopilot' ? '保全派驻' : '悖论模拟'} · ${versions[0]!.record.title}`.slice(0, 80);
-    return { name, tasks: [{ type: kind, enabled: true, params }], entries, identity: createHash('sha256').update(JSON.stringify(workspace)).digest('hex'), workspace };
+    return { name, tasks: [{ type: kind, enabled: true, params }], entries, identity: copilotWorkspaceIdentity(workspace), workspace };
   }
   private async request(relative: string, body?: unknown): Promise<any> {
     const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 12_000);
