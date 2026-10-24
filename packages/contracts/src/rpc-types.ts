@@ -55,6 +55,11 @@ export type Model = string;
  * via the `definition` "ToolKind".
  */
 export type ToolKind = 'depot' | 'operators' | 'recruit' | 'inventory' | 'data' | 'games';
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotKind".
+ */
+export type CopilotKind = 'Copilot' | 'SSSCopilot' | 'ParadoxCopilot';
 export type Mode = 'native';
 export type Id1 = string;
 export type Name1 = string;
@@ -65,7 +70,7 @@ export type Resourceversion = string | null;
 export type Devices = Device[];
 export type Plans = Plan[];
 export type Id2 = string;
-export type Planid = string;
+export type Planid = string | null;
 export type Deviceid1 = string;
 export type Status = 'running' | 'completed' | 'failed' | 'stopped';
 export type Progress = number;
@@ -157,6 +162,16 @@ export interface RpcContract {
         message: string;
       };
     };
+    'copilot.list': CopilotListParams;
+    'copilot.get': CopilotIdentityParams;
+    'copilot.export': CopilotExportParams;
+    'copilot.preview': CopilotPreviewParams;
+    'copilot.import': CopilotImportParams;
+    'copilot.delete': IdParams;
+    'copilot.workspace.get': CopilotWorkspaceParams;
+    'copilot.workspace.save': CopilotWorkspaceSaveParams;
+    'copilot.search': CopilotSearchParams;
+    'copilot.start': CopilotStartParams;
   };
   results: {
     'app.snapshot': Snapshot;
@@ -233,6 +248,38 @@ export interface RpcContract {
     'schedule.host': {
       accepted: true;
     };
+    'copilot.list': {
+      /**
+       * @maxItems 1000
+       */
+      items: CopilotRecord[];
+    };
+    'copilot.get': CopilotRecord;
+    'copilot.export': {
+      filename: string;
+      content: string;
+    };
+    'copilot.preview': CopilotPreview;
+    'copilot.import': {
+      /**
+       * @maxItems 100
+       */
+      items: CopilotRecord[];
+      /**
+       * @maxItems 100
+       */
+      errors: {
+        id: string;
+        message: string;
+      }[];
+    };
+    'copilot.delete': {
+      deleted: boolean;
+    };
+    'copilot.workspace.get': CopilotWorkspace;
+    'copilot.workspace.save': CopilotWorkspace;
+    'copilot.search': CopilotSearchResult;
+    'copilot.start': Run;
   };
 }
 /**
@@ -843,6 +890,459 @@ export interface ScheduleOverrideParams {
   id: string;
   mode: 'enable' | 'skip' | 'clear';
 }
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotListParams".
+ */
+export interface CopilotListParams {
+  kind?: CopilotKind;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotIdentityParams".
+ */
+export interface CopilotIdentityParams {
+  id?: string;
+  versionId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotExportParams".
+ */
+export interface CopilotExportParams {
+  versionId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotPreviewParams".
+ */
+export interface CopilotPreviewParams {
+  content?: string;
+  name?: string;
+  code?: string;
+  planId?: string;
+  taskIndex?: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotImportParams".
+ */
+export interface CopilotImportParams {
+  previewId: string;
+  /**
+   * @maxItems 100
+   */
+  entryIds?: string[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotWorkspaceParams".
+ */
+export interface CopilotWorkspaceParams {
+  kind: CopilotKind;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotWorkspaceSaveParams".
+ */
+export interface CopilotWorkspaceSaveParams {
+  workspace: CopilotWorkspace;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotWorkspace".
+ */
+export interface CopilotWorkspace {
+  kind: CopilotKind;
+  /**
+   * @maxItems 100
+   */
+  queue: CopilotQueueEntry[];
+  options: CopilotOptions;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotQueueEntry".
+ */
+export interface CopilotQueueEntry {
+  id: string;
+  versionId: string;
+  enabled: boolean;
+  isRaid: boolean;
+  navName: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotOptions".
+ */
+export interface CopilotOptions {
+  loopTimes: number;
+  formation: boolean;
+  formationIndex: number;
+  addTrust: boolean;
+  ignoreRequirements: boolean;
+  supportUnitName: string;
+  /**
+   * @maxItems 12
+   */
+  additionalOperators:
+    | []
+    | [
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ]
+    | [
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        },
+        {
+          name: string;
+          skill: number;
+        }
+      ];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotSearchParams".
+ */
+export interface CopilotSearchParams {
+  target: 'copilot' | 'set';
+  keyword?: string;
+  page?: number;
+  stage?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotStartParams".
+ */
+export interface CopilotStartParams {
+  kind: CopilotKind;
+  deviceId: string;
+  requestId: string;
+}
 export interface Snapshot {
   mode: Mode;
   devices: Devices;
@@ -897,6 +1397,12 @@ export interface Run {
   finishedAt: Finishedat;
   scheduleId?: string;
   scheduledFor?: string;
+  source?: 'plan' | 'copilot';
+  sourceName?: string;
+  /**
+   * @maxItems 100
+   */
+  copilotEntries?: CopilotRunEntry[];
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -1097,6 +1603,19 @@ export interface RunArtifact {
   capturedAt: string;
   width: number;
   height: number;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "CopilotRunEntry".
+ */
+export interface CopilotRunEntry {
+  id: string;
+  versionId: string;
+  title: string;
+  nativeId: number;
+  status: 'waiting' | 'running' | 'completed' | 'failed' | 'stopped' | 'skipped';
+  verdict: 'unknown' | 'success' | 'failure';
+  message: string;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -1456,6 +1975,598 @@ export interface ScheduleList {
   wake: {
     [k: string]: unknown;
   };
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotRecord".
+ */
+export interface CopilotRecord {
+  id: string;
+  versionId: string;
+  kind: CopilotKind;
+  title: string;
+  stageName: string;
+  author: string;
+  description: string;
+  minimumCoreVersion: string;
+  /**
+   * @maxItems 100
+   */
+  operators: CopilotOperator[];
+  /**
+   * @maxItems 20
+   */
+  videos:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+  source: CopilotSource;
+  createdAt: string;
+  compatibility: CopilotCompatibility;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotOperator".
+ */
+export interface CopilotOperator {
+  name: string;
+  skill?: number;
+  requirements?: {
+    [k: string]: unknown;
+  };
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotSource".
+ */
+export interface CopilotSource {
+  kind: 'local' | 'community' | 'legacy';
+  name: string;
+  url: string;
+  communityId?: string;
+  setId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotCompatibility".
+ */
+export interface CopilotCompatibility {
+  status: 'ready' | 'unverified' | 'unsupported';
+  /**
+   * @maxItems 20
+   */
+  reasons:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotPreview".
+ */
+export interface CopilotPreview {
+  id: string;
+  title: string;
+  /**
+   * @maxItems 100
+   */
+  entries: CopilotPreviewEntry[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotPreviewEntry".
+ */
+export interface CopilotPreviewEntry {
+  id: string;
+  record: CopilotRecord | null;
+  error: string | null;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotSearchResult".
+ */
+export interface CopilotSearchResult {
+  /**
+   * @maxItems 20
+   */
+  items:
+    | []
+    | [CopilotSearchItem]
+    | [CopilotSearchItem, CopilotSearchItem]
+    | [CopilotSearchItem, CopilotSearchItem, CopilotSearchItem]
+    | [CopilotSearchItem, CopilotSearchItem, CopilotSearchItem, CopilotSearchItem]
+    | [CopilotSearchItem, CopilotSearchItem, CopilotSearchItem, CopilotSearchItem, CopilotSearchItem]
+    | [CopilotSearchItem, CopilotSearchItem, CopilotSearchItem, CopilotSearchItem, CopilotSearchItem, CopilotSearchItem]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ]
+    | [
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem,
+        CopilotSearchItem
+      ];
+  page: number;
+  hasNext: boolean;
+  total: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotSearchItem".
+ */
+export interface CopilotSearchItem {
+  id: string;
+  title: string;
+  description: string;
+  author: string;
+  url: string;
+  kind?: CopilotKind;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
