@@ -45,6 +45,14 @@
       }
     ]
   },
+  "mac-notification-sys@0.6.15": {
+    "file": "mac-notification-sys-0.6.15-LICENSE-MIT",
+    "sha256": "1299b4d9d15e9d67e4ac0e7d47ae9404887ca3cf0764aadeec7588d5a6e8e0cc",
+    "source": "https://raw.githubusercontent.com/h4llow3En/mac-notification-sys/deb559683962d314a7693478476bf8d052efa84e/LICENSE-MIT",
+    "commit": "deb559683962d314a7693478476bf8d052efa84e",
+    "selectedLicense": "MIT",
+    "evidence": "https://raw.githubusercontent.com/h4llow3En/mac-notification-sys/deb559683962d314a7693478476bf8d052efa84e/Cargo.toml"
+  },
   "objc2@0.6.5": {
     "commit": "d7d2fa23ceaa5e6096c923b081040e5d81b3b9df",
     "selectedLicense": "MIT",
