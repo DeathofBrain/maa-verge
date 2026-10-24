@@ -119,6 +119,11 @@ test('stage fallback stays loaded during preparation, refresh and installation',
   const stage = page.getByRole('combobox', { name: '作战关卡', exact: true });
   await expect(selector).toContainText(fallbackMessage);
   await stage.selectOption('1-7');
+  // First save replaces the new-table editor; let its catalog finish loading
+  // before holding requests meant to exercise an existing selector's refresh.
+  await expect(page.locator('.wb-save-state')).toHaveText('已保存');
+  await expect(page.getByRole('button', { name: '取消新建', exact: true })).toHaveCount(0);
+  await expect(selector).toContainText(fallbackMessage);
   await page.evaluate(() => { (window as ProbeWindow).gameDataProbe.hold = true; });
   const baseline = await page.evaluate(() => (window as ProbeWindow).gameDataProbe.stages);
   await emitPreparationEvents(page);
