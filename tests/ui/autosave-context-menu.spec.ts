@@ -167,6 +167,8 @@ test('menus support keyboard navigation, viewport edges, and no menu on plain su
   expect(native).toBe(true);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 600, height: 520 });
+  // Let the resize event dismiss the previous menu before opening the edge case.
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   await wb(page).locator('.editor-steps > li').first().evaluate((element) => element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 595, clientY: 515 })));
   await expect.poll(async () => {
     const rect = await menu(page).boundingBox();

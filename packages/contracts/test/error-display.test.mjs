@@ -41,6 +41,19 @@ test('network and filesystem evidence receives readable Chinese guidance', () =>
   ]) assert.match(errorMessage(detail), expected, detail);
 });
 
+test('dynamic module failures preserve the evidence needed for full page reload recovery', () => {
+  for (const message of [
+    'TypeError: Failed to fetch dynamically imported module: http://localhost:15429/core.js',
+    'TypeError: Importing a module script failed.',
+    'TypeError: error loading dynamically imported module: http://localhost:15429/core.js',
+  ]) {
+    const displayed = errorMessage(new RuntimeRequestError(new TypeError(message)));
+    assert.match(displayed, /importing a module script failed|failed to fetch dynamically imported module|error loading dynamically imported module/iu);
+    assert.doesNotMatch(displayed, /网络连接失败/);
+  }
+  assert.match(errorMessage(new RuntimeRequestError(new TypeError('Failed to fetch'))), /网络连接失败/);
+});
+
 test('structured details stay readable without repeated prefixes or object coercion', () => {
   assert.equal(errorMessage({ message: '更新检查失败', data: { message: 'getaddrinfo ENOTFOUND source.invalid' } }), '更新检查失败：无法解析服务器地址，请检查网络、代理设置和服务器地址后重试。');
   assert.equal(errorMessage({ message: 'Error: 自定义具体原因', data: '自定义具体原因' }), '自定义具体原因');

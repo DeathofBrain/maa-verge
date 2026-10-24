@@ -17,6 +17,7 @@ function readable(text: string): string {
   const message = text.trim().replace(/^(?:(?:[A-Za-z]*Error|RpcError):\s*)+/, '');
   if (message === '[object Object]') return '';
   if (hasSpecificChineseReason(message)) return message.slice(0, 1600);
+  if (/importing a module script failed|failed to fetch dynamically imported module|error loading dynamically imported module/iu.test(message)) return message.slice(0, 1600);
   if (/\b(?:ENOSPC|disk full|no space left on device)\b/i.test(message)) return '存储空间不足，请清理目标磁盘后重试。';
   if (/\bEROFS\b|read[- ]only file system/i.test(message)) return '目标目录是只读的，请选择可写的保存目录后重试。';
   if (/\bEBUSY\b|resource busy|sharing violation/i.test(message)) return '所需文件正被其他程序占用，请关闭占用该文件的程序后重试。';
