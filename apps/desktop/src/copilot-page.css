@@ -7,7 +7,8 @@
 .cp-type-bar button.is-selected { background: var(--accent-soft); color: var(--accent); border-bottom-color: var(--accent); }
 .cp-content { padding: 24px var(--cp-gutter) 32px; }
 .cp-workspace { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 24px; align-items: start; }
-.cp-main { min-width: 0; }
+.cp-main { min-width: 0; position: relative; }
+.cp-preview-loading { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; width: max-content; max-width: calc(100% - 24px); margin: 0; padding: 10px 14px; background: var(--surface); color: var(--muted); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 3px 12px #0002; font-size: 12px; z-index: 2; pointer-events: none; }
 .cp-browser,.cp-detail,.cp-preview,.cp-queue { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
 .cp-detail,.cp-preview { margin: 0; padding: 22px; }
 .cp-source-tabs { display: flex; padding: 6px 18px 0; gap: 20px; border-bottom: 1px solid var(--line); }
@@ -46,6 +47,11 @@
 .cp-community-controls { padding: 20px; display: grid; grid-template-columns: minmax(0,1fr) minmax(100px,.5fr); gap: 16px; align-items: end; }
 .cp-community-controls .cp-segmented,.cp-community-controls .sp-help { grid-column: 1/-1; }
 .cp-community-controls .sp-help { margin: 0; }
+.cp-search-actions { grid-column: 1/-1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cp-search-actions .icon-button { flex-shrink: 0; }
+.cp-search-status { min-height: 30px; padding: 0 20px 10px; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.cp-community-results { min-height: 300px; }
+.cp-community-results > .error-banner { margin: 0 20px 20px; }
 .cp-segmented { display: flex; gap: 6px; }
 .cp-segmented button { border: 1px solid var(--line); border-radius: 6px; background: transparent; padding: 6px 16px; color: var(--muted); font-size: 12px; }
 .cp-segmented button[aria-pressed=true] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }

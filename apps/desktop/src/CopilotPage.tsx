@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BookOpen, Check, ChevronRight, Download, ExternalLink, FileJson, FolderOpen, Info, ListOrdered, LoaderCircle, Play, Plus, RefreshCw, Search, Square, ThumbsDown, ThumbsUp, Trash2, Upload, X } from 'lucide-react';
-import { errorMessage, rpc, taskLabels, type CopilotKind, type CopilotOptions, type CopilotPreview, type CopilotRecord, type CopilotWorkspace, type RpcResult } from '@maaverge/contracts';
+import { errorMessage, rpc, RuntimeRequestError, taskLabels, type CopilotKind, type CopilotOptions, type CopilotPreview, type CopilotRecord, type CopilotWorkspace, type RpcResult } from '@maaverge/contracts';
 import type { SupportPageProps } from './SupportPages';
 import { useContextMenu } from './ContextMenu';
 import OperatorBadge from './OperatorBadge';
+import { cachedCommunityPreview, invalidateCopilotPreview, readCopilotPreview, useCommunitySearch } from './copilot-community';
 import './copilot-page.css';
 
 type Props = SupportPageProps & {
@@ -26,6 +27,7 @@ const localSizeLimit = 480 * 1024;
 let lastKind: CopilotKind = 'Copilot';
 const uiSelection = (key: string) => { try { return sessionStorage.getItem('maaverge:copilot:' + key) ?? ''; } catch { return ''; } };
 const saveSelection = (key: string, value: string) => { try { sessionStorage.setItem('maaverge:copilot:' + key, value); } catch { /* Selection is optional when session storage is unavailable. */ } };
+let browseSession = { tab: 'local' as 'local' | 'community', target: 'copilot' as 'copilot' | 'set', keyword: '', stage: '', page: 1, query: '', localPage: 1, scrollTop: 0 };
 
 function downloadJson(filename: string, content: string) {
   const url = URL.createObjectURL(new Blob([content], { type: 'application/json;charset=utf-8' }));
@@ -98,19 +100,23 @@ function useWorkspace(kind: CopilotKind) {
 export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, onAction, onOpenPlan, searchQuery, initialRunId, initialLegacy, onViewRun, onRunSelection }: Props) {
   const contextMenu = useContextMenu();
   const [kind, setKindState] = useState<CopilotKind>(() => kinds.some(item => item.value === uiSelection('kind')) ? uiSelection('kind') as CopilotKind : lastKind);
-  const [tab, setTab] = useState<'local' | 'community'>('local');
-  const [query, setQuery] = useState(searchQuery ?? '');
+  const [tab, setTab] = useState(browseSession.tab);
+  const [query, setQuery] = useState(searchQuery ?? browseSession.query);
   const [library, setLibrary] = useState<CopilotRecord[]>([]);
-  const [localPage, setLocalPage] = useState(1);
+  const [localPage, setLocalPage] = useState(browseSession.localPage);
   const [localPaging, setLocalPaging] = useState({ total: 0, hasNext: false });
   const [selection, setSelection] = useState<CopilotRecord>();
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailOrigin, setDetailOrigin] = useState<'library' | 'preview'>('library');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadedLibrary, setLoadedLibrary] = useState('');
+  const [finishedLibrary, setFinishedLibrary] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [revision, setRevision] = useState(0);
   const [availability, setAvailability] = useState<{ deviceId: string; result?: Availability; error?: string }>();
+  const availabilityRef = useRef(availability); availabilityRef.current = availability;
+  const checkedDevice = useRef('');
   const [checking, setChecking] = useState(false);
   const [code, setCode] = useState('');
   const [json, setJson] = useState('');
@@ -119,13 +125,10 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   const [importing, setImporting] = useState(false);
   const [savingImport, setSavingImport] = useState(false);
   const [importReport, setImportReport] = useState<string[]>([]);
-  const [target, setTarget] = useState<'copilot' | 'set'>('copilot');
-  const [keyword, setKeyword] = useState('');
-  const [stage, setStage] = useState('');
-  const [page, setPage] = useState(1);
-  const [searching, setSearching] = useState(false);
-  const [searchResult, setSearchResult] = useState<RpcResult<'copilot.search'>>();
-  const [searchError, setSearchError] = useState('');
+  const [target, setTarget] = useState(browseSession.target);
+  const [keyword, setKeyword] = useState(browseSession.keyword);
+  const [stage, setStage] = useState(browseSession.stage);
+  const [page, setPage] = useState(browseSession.page);
   const [runId, setRunId] = useState(initialRunId ?? uiSelection('run'));
   const [runDetail, setRunDetail] = useState<Run>();
   const [starting, setStarting] = useState(false);
@@ -134,9 +137,11 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   const fileInput = useRef<HTMLInputElement>(null);
   const importPanel = useRef<HTMLDetailsElement>(null);
   const previewRequest = useRef(0);
+  const previewParams = useRef<import('@maaverge/contracts').RpcParams<'copilot.preview'> | undefined>(undefined);
   const activeKind = useRef(kind); activeKind.current = kind;
   const pageRoot = useRef<HTMLDivElement>(null);
-  const listScroll = useRef(0);
+  const listScroll = useRef(browseSession.scrollTop);
+  const restoreScroll = useRef<number | undefined>(browseSession.scrollTop);
   const detailHeading = useRef<HTMLHeadingElement>(null);
   const detailTrigger = useRef<HTMLElement | null>(null);
   const runPanel = useRef<HTMLElement>(null);
@@ -144,6 +149,9 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   const latestEvent = snapshot.events.at(-1)?.id;
   const device = snapshot.devices.find(item => item.id === selectedDevice);
   const resourceKey = snapshot.updates.filter(channel => channel.id !== 'app').map(channel => channel.currentVersion).join(':');
+  const { result: searchResult, searching, error: searchError, refresh: refreshSearch } = useCommunitySearch({ target, keyword, page, ...(kind === 'Copilot' && target === 'copilot' && stage.trim() ? { stage: stage.trim() } : {}) }, tab === 'community', `${kind}:${resourceKey}`);
+  const libraryKey = `${kind}:${localPage}`;
+  const libraryReady = loadedLibrary === libraryKey;
   const status = availability?.deviceId === selectedDevice ? availability : undefined;
   const liveRuns = snapshot.runs.filter(item => item.source === 'copilot');
   const selectedSummary = liveRuns.find(item => item.id === runId);
@@ -157,6 +165,12 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   const disabledReason = !selectedDevice ? '请选择目标设备' : checking ? '正在检查设备占用' : status?.error ?? (!status?.result?.available ? status?.result?.reason ?? '等待设备检查' : !workspace ? '正在读取队列' : !enabled.length ? '请先添加并勾选作业' : queueChecking ? '正在检查作业版本' : queueProblem ? '队列含不可用作业，请查看原因并移除或取消勾选' : saveError ? '请先重试保存配置' : '');
   const setKind = (value: CopilotKind) => { previewRequest.current++; setImporting(false); lastKind = value; saveSelection('kind', value); setKindState(value); setLocalPage(1); setRunId(''); onRunSelection?.(undefined); setRunDetail(undefined); setDetailOpen(false); setSelection(undefined); setPreview(undefined); setError(''); };
 
+  useEffect(() => { browseSession = { ...browseSession, tab, target, keyword, stage, page, query, localPage }; }, [tab, target, keyword, stage, page, query, localPage]);
+  useLayoutEffect(() => {
+    if (restoreScroll.current === undefined || (tab === 'local' ? !libraryReady : !searchResult)) return;
+    if (pageRoot.current) pageRoot.current.scrollTop = restoreScroll.current;
+    restoreScroll.current = undefined;
+  }, [tab, libraryReady, searchResult]);
   useEffect(() => { if (detailOpen) { detailHeading.current?.focus({ preventScroll: true }); if (pageRoot.current) pageRoot.current.scrollTop = 0; } }, [detailOpen, selection?.id, selection?.versionId]);
   useEffect(() => () => { previewRequest.current++; }, []);
 
@@ -164,13 +178,15 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   useEffect(() => { if (searchQuery !== undefined) setQuery(searchQuery); }, [searchQuery]);
   useEffect(() => {
     let cancelled = false; setLoading(true);
-    void rpc('copilot.list', { kind, page: localPage }).then(value => { if (!cancelled) { setLibrary(value.items); setLocalPaging({ total: value.total, hasNext: value.hasNext }); } }, cause => { if (!cancelled) setError(errorText(cause)); }).finally(() => { if (!cancelled) setLoading(false); });
+    void rpc('copilot.list', { kind, page: localPage }).then(value => { if (!cancelled) { setLibrary(value.items); setLocalPaging({ total: value.total, hasNext: value.hasNext }); setLoadedLibrary(libraryKey); } }, cause => { if (!cancelled) setError(errorText(cause)); }).finally(() => { if (!cancelled) { setLoading(false); setFinishedLibrary(libraryKey); } });
     return () => { cancelled = true; };
   }, [kind, localPage, revision]);
   useEffect(() => {
-    if (!selectedDevice) { setAvailability(undefined); setChecking(false); return; }
-    let cancelled = false; setChecking(true);
-    void rpc('device.availability', { deviceId: selectedDevice }).then(result => { if (!cancelled) setAvailability({ deviceId: selectedDevice, result }); }, cause => { if (!cancelled) setAvailability({ deviceId: selectedDevice, error: errorText(cause) }); }).finally(() => { if (!cancelled) setChecking(false); });
+    if (!selectedDevice) { checkedDevice.current = ''; setAvailability(undefined); setChecking(false); return; }
+    const deviceKey = `${selectedDevice}:${device?.state}`;
+    // Runtime events still refresh ownership, without hiding a known result.
+    let cancelled = false; setChecking(checkedDevice.current !== deviceKey || availabilityRef.current?.deviceId !== selectedDevice);
+    void rpc('device.availability', { deviceId: selectedDevice }).then(result => { if (!cancelled) { checkedDevice.current = deviceKey; setAvailability({ deviceId: selectedDevice, result }); } }, cause => { if (!cancelled) { checkedDevice.current = deviceKey; setAvailability({ deviceId: selectedDevice, error: errorText(cause) }); } }).finally(() => { if (!cancelled) setChecking(false); });
     return () => { cancelled = true; };
   }, [selectedDevice, device?.state, latestEvent, revision]);
   useEffect(() => {
@@ -193,28 +209,25 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
     return () => { cancelled = true; };
   }, [detailId, runId, summary?.progress, summary?.status, latestEvent]);
   useEffect(() => { if (initialRunId) setRunId(initialRunId); }, [initialRunId]);
-  useEffect(() => {
-    if (tab !== 'community') return;
-    let cancelled = false; setSearching(true); setSearchError('');
-    const timer = setTimeout(() => {
-      void rpc('copilot.search', { target, keyword, page, ...(kind === 'Copilot' && target === 'copilot' && stage.trim() ? { stage: stage.trim() } : {}) }).then(result => { if (!cancelled) setSearchResult(result); }, cause => { if (!cancelled) { setSearchError(errorText(cause)); setSearchResult(undefined); } }).finally(() => { if (!cancelled) setSearching(false); });
-    }, 350);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [tab, target, keyword, page, stage, kind]);
-  const requestPreview = useCallback(async (params: import('@maaverge/contracts').RpcParams<'copilot.preview'>, showDetail = false) => {
-    const sequence = ++previewRequest.current; setImporting(true); setError(''); setImportReport([]);
-    detailTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    listScroll.current = pageRoot.current?.scrollTop ?? 0;
+  const requestPreview = useCallback(async (params: import('@maaverge/contracts').RpcParams<'copilot.preview'>, showDetail = false, refresh = false) => {
+    const sequence = ++previewRequest.current;
+    const cached = refresh ? undefined : cachedCommunityPreview(params, resourceKey);
+    setImporting(!cached); setError(''); setImportReport([]);
+    if (!refresh) {
+      detailTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      listScroll.current = pageRoot.current?.scrollTop ?? 0;
+    }
     try {
-      const result = await rpc('copilot.preview', params);
+      const result = cached ?? await readCopilotPreview(params, resourceKey, refresh);
       if (sequence !== previewRequest.current) return;
+      previewParams.current = params;
       setPreview(result); setPreviewSelection(result.entries.filter(entry => entry.record && !entry.error).map(entry => entry.id));
       const record = showDetail && result.entries.length === 1 ? result.entries[0].record : undefined;
       setSelection(record ?? undefined); setDetailOrigin('preview'); setDetailOpen(!!record);
       if (importPanel.current) importPanel.current.open = false;
     } catch (cause) { if (sequence === previewRequest.current) setError(errorText(cause)); }
     finally { if (sequence === previewRequest.current) setImporting(false); }
-  }, []);
+  }, [resourceKey]);
   useEffect(() => {
     if (!initialLegacy || uiSelection('legacy-nonce') === initialLegacy.nonce) return;
     saveSelection('legacy-nonce', initialLegacy.nonce);
@@ -240,12 +253,31 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
     const keepPreview = detailOpen && preview.entries.length > 1 && entryIds.length === 1;
     setImporting(true); setSavingImport(true); setError('');
     try {
-      const result = await rpc('copilot.import', { previewId: preview.id, entryIds });
+      let result: RpcResult<'copilot.import'>;
+      let effectiveEntryIds = entryIds;
+      try { result = await rpc('copilot.import', { previewId: preview.id, entryIds }); }
+      catch (cause) {
+        if (!(cause instanceof RuntimeRequestError) || cause.code !== -32004 || !previewParams.current) throw cause;
+        // A service preview may expire or be evicted while its UI detail is cached.
+        // Re-read it once, importing only if the selected immutable versions match.
+        const fresh = await readCopilotPreview(previewParams.current, resourceKey, true);
+        if (sequence !== previewRequest.current || activeKind.current !== kind) return;
+        const indexes = preview.entries.flatMap((entry, index) => entryIds.includes(entry.id) ? [index] : []);
+        const identity = (record: CopilotRecord | null | undefined) => record ? JSON.stringify([record.versionId, record.source.kind, record.source.communityId, record.source.setId]) : '';
+        const unchanged = indexes.every(index => identity(preview.entries[index].record) && identity(preview.entries[index].record) === identity(fresh.entries[index]?.record) && !fresh.entries[index]?.error);
+        const nextIds = indexes.flatMap(index => fresh.entries[index]?.record && !fresh.entries[index].error ? [fresh.entries[index].id] : []);
+        effectiveEntryIds = nextIds;
+        setPreview(fresh); setPreviewSelection(previewSelection.flatMap(id => { const index = preview.entries.findIndex(entry => entry.id === id); return fresh.entries[index]?.record && !fresh.entries[index].error ? [fresh.entries[index].id] : []; }));
+        const selectedIndex = preview.entries.findIndex(entry => entry.record?.id === selection?.id && entry.record?.versionId === selection?.versionId);
+        if (selectedIndex >= 0) setSelection(fresh.entries[selectedIndex]?.record ?? undefined);
+        if (!unchanged) { setDetailOpen(false); setError('社区作业内容已更新或不可用，请核对新的预览后再导入。'); return; }
+        result = await rpc('copilot.import', { previewId: fresh.id, entryIds: nextIds });
+      }
       if (sequence !== previewRequest.current || activeKind.current !== kind) { setRevision(value => value + 1); return; }
       setImportReport(result.errors.map(item => item.message)); setLocalPage(1); setRevision(value => value + 1); setNotice(`已导入 ${result.items.length} 份作业`);
       if (addToQueue) addRecords(result.items);
       if (!result.errors.length && !keepPreview) { setPreview(undefined); setTab('local'); }
-      if (keepPreview) setPreviewSelection(value => value.filter(id => !entryIds.includes(id)));
+      if (keepPreview) setPreviewSelection(value => value.filter(id => !effectiveEntryIds.includes(id)));
       if (result.items[0]) { if (!addToQueue && result.items[0].kind !== kind) setKind(result.items[0].kind); setSelection(result.items[0]); setDetailOrigin(keepPreview ? 'preview' : 'library'); setDetailOpen(!addToQueue); }
     } catch (cause) { if (sequence === previewRequest.current) setError(errorText(cause)); }
     finally { setSavingImport(false); if (sequence === previewRequest.current) setImporting(false); }
@@ -271,7 +303,7 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
     }, '作业执行已开始');
     setStarting(false);
   };
-  const filtered = library.filter(record => `${record.title} ${record.stageName} ${record.author}`.toLowerCase().includes(query.toLowerCase()));
+  const filtered = (libraryReady ? library : []).filter(record => `${record.title} ${record.stageName} ${record.author}`.toLowerCase().includes(query.toLowerCase()));
   const selectedPreviewRecords = preview?.entries.filter(entry => previewSelection.includes(entry.id)).map(entry => entry.record).filter((record): record is CopilotRecord => !!record) ?? [];
   const legacy = useMemo(() => snapshot.plans.flatMap(plan => plan.tasks.flatMap((task, taskIndex) => ['Copilot', 'SSSCopilot', 'ParadoxCopilot', 'VideoRecognition'].includes(task.type) ? [{ plan, task, taskIndex }] : [])), [snapshot.plans]);
   const current = selection;
@@ -281,7 +313,7 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   const usesNavigation = kind === 'Copilot' && (workspace?.options.loopTimes ?? 1) === 1;
   const startingHint = kind === 'SSSCopilot' ? '在保全关卡详情的「开始部署」界面开始，请先手动编队。' : kind === 'ParadoxCopilot' ? '在所选干员的悖论关卡中手动选择技能，停在有「开始模拟」按钮的界面。' : usesNavigation ? `在作业所在区域的关卡地图开始，队列会自动导航，无需先进入干员选择页。${workspace?.options.formation ? '自动编队会清空并重建当前队伍。' : '请提前配好队伍与技能。'}` : '单份循环请停在有「开始行动」按钮的编队界面；请确认队伍与技能。';
 
-  return <div ref={pageRoot} className="sp-page copilot-page">
+  return <div ref={pageRoot} className="sp-page copilot-page" onScroll={event => { if (!detailOpen && !preview) browseSession.scrollTop = event.currentTarget.scrollTop; }}>
     <header className="sp-page-heading"><div><h1>作业中心</h1><p>找到合适的作业，确认干员要求，再加入队列执行。</p></div><button className="button secondary" disabled={savingImport} onClick={openImport}><Upload size={16} />导入作业</button></header>
     <div className="cp-type-bar" role="tablist" aria-label="作业类型">{kinds.map(item => <button key={item.value} role="tab" aria-selected={kind === item.value} className={kind === item.value ? 'is-selected' : ''} disabled={importing} onClick={() => setKind(item.value)}>{item.label}</button>)}</div>
     <div className="cp-content">
@@ -289,22 +321,23 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
       <summary><Upload size={16} /><strong>导入本地 JSON 或社区代码</strong><span>先预览，再选择要保存的作业</span></summary>
       <div className="cp-import-grid"><div className="cp-file-drop"><FileJson size={25} /><strong>选择或拖入 JSON</strong><p>保留原始内容，每次导入保存独立版本。</p><button className="button secondary" disabled={importing} onClick={() => fileInput.current?.click()}><FolderOpen size={15} />选择 JSON 文件</button><input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={onFile} /></div><form onSubmit={event => { event.preventDefault(); void requestPreview({ code: code.trim() }); }}><label className="cp-field">编号或原站链接<input className="text-input" aria-label="社区作业代码" value={code} maxLength={2048} onChange={event => setCode(event.target.value)} placeholder="12345、s12345、maa://12345" /></label><p className="sp-help">也支持 prts://12345、prts://s12345 和 PRTS Plus 原站链接。</p><button className="button secondary" disabled={importing || !code.trim()}><Search size={15} />解析代码</button><details className="cp-json-input"><summary>粘贴 JSON</summary><textarea className="text-input" aria-label="作业 JSON" rows={5} value={json} onChange={event => setJson(event.target.value)} placeholder='{"stage_name":"main_01-07","actions":[]}'/><button type="button" className="button secondary" disabled={!json.trim() || importing} onClick={() => { if (new TextEncoder().encode(json).byteLength > localSizeLimit) { setError('JSON 超过 480 KiB，请拆分后逐份导入。'); return; } void requestPreview({ content: json, name: '粘贴的作业.json' }); }}>预览 JSON</button></details></form></div>
     </details>
-    {importing && <p className="cp-loading" role="status"><LoaderCircle size={16} className="spin"/>{savingImport ? '正在保存作业…' : '正在读取作业…'}</p>}
+
     {error && <div className="error-banner cp-feedback" role="alert">{error}<button className="icon-button" aria-label="关闭作业错误" onClick={() => setError('')}><X size={15}/></button></div>}
     {notice && <p className="cp-notice" role="status"><Check size={15}/>{notice}</p>}
     {!!importReport.length && <div className="error-banner" role="alert">{importReport.map((message, index) => <p key={index}>{message}</p>)}</div>}
     <div className="cp-workspace"><div className="cp-main">
-    {preview && <section hidden={detailOpen} className="sp-section cp-preview" aria-label="导入预览"><header><div><h2>{preview.title || '导入预览'}</h2><p>{preview.entries.length > 1 ? `共 ${preview.entries.length} 项，按作业集原顺序排列；可逐项查看详情并选择导入。` : '核对类型、要求与异常条目；导入不会开始执行。'}</p></div><button className="icon-button" aria-label="关闭导入预览" onClick={() => { setPreview(undefined); setDetailOpen(false); }}><X size={17}/></button></header>{preview.entries.length > 1 && <div className="cp-preview-selection"><button className="cp-link" onClick={() => setPreviewSelection(preview.entries.filter(entry => entry.record && !entry.error).map(entry => entry.id))}>全选可用作业</button><button className="cp-link" onClick={() => setPreviewSelection([])}>取消全选</button></div>}<div className="cp-preview-list">{preview.entries.map((entry, index) => <div className={`cp-preview-entry ${entry.error ? 'is-error' : ''}`} key={entry.id}><label><input type="checkbox" aria-label={`选择导入 ${index + 1}`} checked={previewSelection.includes(entry.id)} disabled={!entry.record || !!entry.error} onChange={event => setPreviewSelection(value => event.target.checked ? [...value, entry.id] : value.filter(id => id !== entry.id))}/><span className="cp-sequence">{String(index + 1).padStart(2, '0')}</span><strong>{entry.record?.title ?? `无法解析的第 ${index + 1} 项`}</strong></label>{entry.record && <><p>{kindLabel(entry.record.kind)} · {entry.record.stageName || '未标注关卡'} · 作者：{entry.record.author || '未标注'}</p>{entry.record.source.kind === 'community' && <p className="sp-help">上传者：{entry.record.uploader || '未标注'}</p>}<p className="sp-help">{entry.record.description}</p><Compatibility record={entry.record}/><button className="cp-link" onClick={() => openRecord(entry.record!, 'preview')}>查看干员与作业详情</button></>}{entry.error && <p role="alert">{entry.error}</p>}</div>)}</div><div className="cp-preview-actions"><span>{previewSelection.length} / {preview.entries.length} 项已选择</span><button className="button secondary" disabled={importing || !previewSelection.length} onClick={() => void importPreview(false)}>导入到作业库</button><button className="button primary" disabled={importing || !selectedPreviewRecords.length || selectedPreviewRecords.some(record => record.kind !== kind) || (kind === 'SSSCopilot' && (selectedPreviewRecords.length !== 1 || !!workspace?.queue.length)) || !workspace} title={selectedPreviewRecords.some(record => record.kind !== kind) ? `先切换到${kindLabel(selectedPreviewRecords[0].kind)}，或仅导入到库` : undefined} onClick={() => void importPreview(true)}><Plus size={15}/>导入并加入当前队列</button></div></section>}
-    <section className="cp-browser" aria-label="作业库" hidden={detailOpen || !!preview}><div className="cp-source-tabs" role="tablist" aria-label="作业来源"><button role="tab" aria-selected={tab === 'local'} onClick={() => showLibrary('local')}><FolderOpen size={16}/>本地作业<span>{localPaging.total}</span></button><button role="tab" aria-selected={tab === 'community' && target === 'copilot'} onClick={() => { setTarget('copilot'); setPage(1); showLibrary('community'); }}><Search size={16}/>社区搜索</button><button role="tab" aria-selected={tab === 'community' && target === 'set'} onClick={() => { setTarget('set'); setPage(1); showLibrary('community'); }}><BookOpen size={16}/>社区作业集</button></div>
+    {importing && <p className="cp-preview-loading" role="status"><LoaderCircle size={16} className="spin"/>{savingImport ? '正在保存作业…' : '正在读取作业…'}</p>}
+    {preview && <section hidden={detailOpen} className="sp-section cp-preview" aria-label="导入预览"><header><div><h2>{preview.title || '导入预览'}</h2><p>{preview.entries.length > 1 ? `共 ${preview.entries.length} 项，按作业集原顺序排列；可逐项查看详情并选择导入。` : '核对类型、要求与异常条目；导入不会开始执行。'}</p></div>{previewParams.current?.code && <button className="cp-link" disabled={importing} onClick={() => void requestPreview(previewParams.current!, false, true)}><RefreshCw size={14}/>刷新导入预览</button>}<button className="icon-button" aria-label="关闭导入预览" onClick={() => { setPreview(undefined); setDetailOpen(false); }}><X size={17}/></button></header>{preview.entries.length > 1 && <div className="cp-preview-selection"><button className="cp-link" onClick={() => setPreviewSelection(preview.entries.filter(entry => entry.record && !entry.error).map(entry => entry.id))}>全选可用作业</button><button className="cp-link" onClick={() => setPreviewSelection([])}>取消全选</button></div>}<div className="cp-preview-list">{preview.entries.map((entry, index) => <div className={`cp-preview-entry ${entry.error ? 'is-error' : ''}`} key={entry.id}><label><input type="checkbox" aria-label={`选择导入 ${index + 1}`} checked={previewSelection.includes(entry.id)} disabled={!entry.record || !!entry.error} onChange={event => setPreviewSelection(value => event.target.checked ? [...value, entry.id] : value.filter(id => id !== entry.id))}/><span className="cp-sequence">{String(index + 1).padStart(2, '0')}</span><strong>{entry.record?.title ?? `无法解析的第 ${index + 1} 项`}</strong></label>{entry.record && <><p>{kindLabel(entry.record.kind)} · {entry.record.stageName || '未标注关卡'} · 作者：{entry.record.author || '未标注'}</p>{entry.record.source.kind === 'community' && <p className="sp-help">上传者：{entry.record.uploader || '未标注'}</p>}<p className="sp-help">{entry.record.description}</p><Compatibility record={entry.record}/><button className="cp-link" onClick={() => openRecord(entry.record!, 'preview')}>查看干员与作业详情</button></>}{entry.error && <p role="alert">{entry.error}</p>}</div>)}</div><div className="cp-preview-actions"><span>{previewSelection.length} / {preview.entries.length} 项已选择</span><button className="button secondary" disabled={importing || !previewSelection.length} onClick={() => void importPreview(false)}>导入到作业库</button><button className="button primary" disabled={importing || !selectedPreviewRecords.length || selectedPreviewRecords.some(record => record.kind !== kind) || (kind === 'SSSCopilot' && (selectedPreviewRecords.length !== 1 || !!workspace?.queue.length)) || !workspace} title={selectedPreviewRecords.some(record => record.kind !== kind) ? `先切换到${kindLabel(selectedPreviewRecords[0].kind)}，或仅导入到库` : undefined} onClick={() => void importPreview(true)}><Plus size={15}/>导入并加入当前队列</button></div></section>}
+    <section className="cp-browser" aria-label="作业库" hidden={detailOpen || !!preview}><div className="cp-source-tabs" role="tablist" aria-label="作业来源"><button role="tab" aria-selected={tab === 'local'} onClick={() => showLibrary('local')}><FolderOpen size={16}/>本地作业<span>{localPaging.total}</span></button><button role="tab" aria-selected={tab === 'community' && target === 'copilot'} onClick={() => { if (target !== 'copilot') setPage(1); setTarget('copilot'); showLibrary('community'); }}><Search size={16}/>社区搜索</button><button role="tab" aria-selected={tab === 'community' && target === 'set'} onClick={() => { if (target !== 'set') setPage(1); setTarget('set'); showLibrary('community'); }}><BookOpen size={16}/>社区作业集</button></div>
 
-      {tab === 'local' ? <><label className="cp-search"><Search size={16}/><input className="text-input" type="search" aria-label="搜索本地作业" value={query} onChange={event => setQuery(event.target.value)} placeholder="筛选本页标题、关卡或作者"/><button className="icon-button" aria-label="刷新作业库" onClick={() => setRevision(value => value + 1)}><RefreshCw size={15}/></button></label>{loading ? <p className="cp-loading" role="status">正在读取作业库…</p> : filtered.length ? <div className="cp-record-list">{filtered.map(record => <article key={record.id} className="cp-record" tabIndex={0} {...contextMenu('作业菜单', [{ label: '查看作业详情', action: () => openRecord(record) }, { label: '加入执行队列', action: () => addRecords([record]), disabled: !workspace || (kind === 'SSSCopilot' && !!workspace.queue.length) }, { label: '导出原始 JSON', action: () => { void exportRecord(record); } }, { label: '从作业库移除', danger: true, action: () => { void deleteRecord(record); } }])}><button className="cp-record-main" onClick={() => openRecord(record)}><span className="cp-stage">{record.stageName || kindLabel(record.kind)}</span><strong>{record.title}</strong><small>作者：{record.author || '未标注'}{record.source.kind === 'community' && ` · 上传者：${record.uploader || '未标注'}`} · {record.source.kind === 'community' ? 'PRTS Plus' : record.source.kind === 'legacy' ? '旧任务表' : '本地 JSON'}{record.source.setId && ` · 作业集 #${record.source.setId}`}</small></button><button className="button secondary cp-record-add" aria-label={`加入队列 ${record.title}`} title="加入队列，可重复添加" disabled={!workspace || (kind === 'SSSCopilot' && !!workspace.queue.length)} onClick={() => addRecords([record])}><Plus size={15}/>加入队列</button></article>)}</div> : <div className="cp-empty"><BookOpen size={29}/><h3>{query ? '没有匹配的作业' : `还没有${kindLabel(kind)}`}</h3><p>{query ? '当前页没有匹配结果，可翻页或清除搜索。' : '导入本地 JSON，或搜索社区作业。浏览和导入无需连接设备。'}</p>{!query && <div className="cp-empty-actions"><button className="button primary" onClick={() => showLibrary('community')}><Search size={15}/>去社区找作业</button><button className="button secondary" disabled={savingImport} onClick={openImport}><Upload size={15}/>导入本地作业</button></div>}</div>}<div className="cp-pagination"><button className="button secondary" aria-label="本地作业上一页" disabled={localPage <= 1 || loading} onClick={() => setLocalPage(value => value - 1)}>上一页</button><span>第 {localPage} 页 · 共 {localPaging.total} 份</span><button className="button secondary" aria-label="本地作业下一页" disabled={!localPaging.hasNext || loading} onClick={() => setLocalPage(value => value + 1)}>下一页</button></div></> : <><div className="cp-community-controls"><label className="cp-field">关键词<input className="text-input" type="search" aria-label="社区搜索关键词" value={keyword} onChange={event => { setKeyword(event.target.value); setPage(1); }} placeholder={target === 'set' ? '搜索作业集名称或说明' : '搜索标题或说明'}/></label>{kind === 'Copilot' && target === 'copilot' && <label className="cp-field">关卡筛选<input className="text-input" aria-label="社区关卡筛选" value={stage} onChange={event => { setStage(event.target.value); setPage(1); }} placeholder="例如 1-7"/></label>}<p className="sp-help">{target === 'set' ? '点进作业集查看成员，可逐项选择并按原顺序加入队列。' : '默认按最新排序，也可以用编号或链接直接导入。'}</p></div>{searchError ? <div className="error-banner" role="alert">{searchError}<p>已导入的本地作业仍可使用。</p></div> : searching ? <p className="cp-loading" role="status"><LoaderCircle size={15} className="spin"/>正在搜索…</p> : searchResult?.items.length ? <div className="cp-record-list">{searchResult.items.map(item => <article key={item.id} className="cp-record"><button className="cp-record-main" onClick={() => void requestPreview({ code: target === 'set' ? `s${item.id}` : item.id }, true)}><span className="cp-stage">{target === 'set' ? '作业集' : item.kind ? kindLabel(item.kind) : '社区作业'} · #{item.id}</span><strong>{item.title}</strong><small>上传者：{item.uploader || '未标注'} · 作者：{item.author || '未标注'}</small><p>{item.description}</p></button><button className="icon-button" aria-label={`查看详情 ${item.title}`} onClick={() => void requestPreview({ code: target === 'set' ? `s${item.id}` : item.id }, true)}><ChevronRight size={19}/></button></article>)}</div> : <div className="cp-empty"><Search size={26}/><h3>没有匹配结果</h3><p>调整关键词或关卡，或使用编号定位。</p></div>}<div className="cp-pagination"><button className="button secondary" disabled={page <= 1 || searching} onClick={() => setPage(value => value - 1)}>上一页</button><span>第 {page} 页{searchResult ? ` · ${searchResult.total} 条` : ''}</span><button className="button secondary" disabled={!searchResult?.hasNext || searching} onClick={() => setPage(value => value + 1)}>下一页</button></div></>}
+      {tab === 'local' ? <><label className="cp-search"><Search size={16}/><input className="text-input" type="search" aria-label="搜索本地作业" value={query} onChange={event => setQuery(event.target.value)} placeholder="筛选本页标题、关卡或作者"/><button className="icon-button" aria-label="刷新作业库" onClick={() => setRevision(value => value + 1)}><RefreshCw size={15}/></button></label>{!libraryReady && finishedLibrary !== libraryKey ? <p className="cp-loading" role="status">正在读取作业库…</p> : filtered.length ? <div className="cp-record-list">{filtered.map(record => <article key={record.id} className="cp-record" tabIndex={0} {...contextMenu('作业菜单', [{ label: '查看作业详情', action: () => openRecord(record) }, { label: '加入执行队列', action: () => addRecords([record]), disabled: !workspace || (kind === 'SSSCopilot' && !!workspace.queue.length) }, { label: '导出原始 JSON', action: () => { void exportRecord(record); } }, { label: '从作业库移除', danger: true, action: () => { void deleteRecord(record); } }])}><button className="cp-record-main" onClick={() => openRecord(record)}><span className="cp-stage">{record.stageName || kindLabel(record.kind)}</span><strong>{record.title}</strong><small>作者：{record.author || '未标注'}{record.source.kind === 'community' && ` · 上传者：${record.uploader || '未标注'}`} · {record.source.kind === 'community' ? 'PRTS Plus' : record.source.kind === 'legacy' ? '旧任务表' : '本地 JSON'}{record.source.setId && ` · 作业集 #${record.source.setId}`}</small></button><button className="button secondary cp-record-add" aria-label={`加入队列 ${record.title}`} title="加入队列，可重复添加" disabled={!workspace || (kind === 'SSSCopilot' && !!workspace.queue.length)} onClick={() => addRecords([record])}><Plus size={15}/>加入队列</button></article>)}</div> : <div className="cp-empty"><BookOpen size={29}/><h3>{query ? '没有匹配的作业' : `还没有${kindLabel(kind)}`}</h3><p>{query ? '当前页没有匹配结果，可翻页或清除搜索。' : '导入本地 JSON，或搜索社区作业。浏览和导入无需连接设备。'}</p>{!query && <div className="cp-empty-actions"><button className="button primary" onClick={() => showLibrary('community')}><Search size={15}/>去社区找作业</button><button className="button secondary" disabled={savingImport} onClick={openImport}><Upload size={15}/>导入本地作业</button></div>}</div>}<div className="cp-pagination"><button className="button secondary" aria-label="本地作业上一页" disabled={localPage <= 1 || loading} onClick={() => setLocalPage(value => value - 1)}>上一页</button><span>第 {localPage} 页 · 共 {localPaging.total} 份</span><button className="button secondary" aria-label="本地作业下一页" disabled={!localPaging.hasNext || loading} onClick={() => setLocalPage(value => value + 1)}>下一页</button></div></> : <><div className="cp-community-controls"><label className="cp-field">关键词<input className="text-input" type="search" aria-label="社区搜索关键词" value={keyword} onChange={event => { setKeyword(event.target.value); setPage(1); }} placeholder={target === 'set' ? '搜索作业集名称或说明' : '搜索标题或说明'}/></label>{kind === 'Copilot' && target === 'copilot' && <label className="cp-field">关卡筛选<input className="text-input" aria-label="社区关卡筛选" value={stage} onChange={event => { setStage(event.target.value); setPage(1); }} placeholder="例如 1-7"/></label>}<div className="cp-search-actions"><p className="sp-help">{target === 'set' ? '点进作业集查看成员，可逐项选择并按原顺序加入队列。' : '默认按最新排序，也可以用编号或链接直接导入。'}</p><button className="icon-button" aria-label="刷新社区搜索" title="刷新搜索结果" disabled={searching} onClick={refreshSearch}><RefreshCw size={15}/></button></div></div><div className="cp-search-status" role="status">{searching && <><LoaderCircle size={15} className="spin"/>{searchResult ? '正在更新搜索结果…' : '正在搜索…'}</>}</div><div className="cp-community-results" aria-busy={searching}>{searchError && <div className="error-banner" role="alert">{searchError}<p>{searchResult ? '已保留上次搜索结果，可点击刷新重试。' : '可点击刷新重试，已导入的本地作业仍可使用。'}</p></div>}{searchResult?.items.length ? <div className="cp-record-list">{searchResult.items.map(item => <article key={item.id} className="cp-record"><button className="cp-record-main" onClick={() => void requestPreview({ code: target === 'set' ? `s${item.id}` : item.id }, true)}><span className="cp-stage">{target === 'set' ? '作业集' : item.kind ? kindLabel(item.kind) : '社区作业'} · #{item.id}</span><strong>{item.title}</strong><small>上传者：{item.uploader || '未标注'} · 作者：{item.author || '未标注'}</small><p>{item.description}</p></button><button className="icon-button" aria-label={`查看详情 ${item.title}`} onClick={() => void requestPreview({ code: target === 'set' ? `s${item.id}` : item.id }, true)}><ChevronRight size={19}/></button></article>)}</div> : !searching && !searchError ? <div className="cp-empty"><Search size={26}/><h3>没有匹配结果</h3><p>调整关键词或关卡，或使用编号定位。</p></div> : null}</div><div className="cp-pagination"><button className="button secondary" disabled={page <= 1 || searching} onClick={() => setPage(value => value - 1)}>上一页</button><span>第 {page} 页{searchResult ? ` · ${searchResult.total} 条` : ''}</span><button className="button secondary" disabled={!searchResult?.hasNext || searching} onClick={() => setPage(value => value + 1)}>下一页</button></div></>}
       <p className="cp-community-note" aria-label="社区服务与内容归属">社区服务由 <a href="https://prts.plus/" target="_blank" rel="noopener noreferrer">PRTS Plus <ExternalLink size={11}/></a> 提供。作业、说明和视频权利归各权利人；转载请遵循原作者声明，不因导入而改用本项目 AGPL。</p>
     </section>
     {detailOpen && current && <aside className="cp-detail sp-section" aria-label="作业详情">
-      <div className="cp-detail-toolbar"><button className="cp-back cp-link" disabled={importing} onClick={closeDetail}><ArrowLeft size={15}/>{detailOrigin === 'preview' && preview && preview.entries.length > 1 ? '返回导入预览' : '返回作业列表'}</button><span>{isStored ? '已保存到本地' : '社区预览 · 尚未导入'}</span></div>
+      <div className="cp-detail-toolbar"><button className="cp-back cp-link" disabled={importing} onClick={closeDetail}><ArrowLeft size={15}/>{detailOrigin === 'preview' && preview && preview.entries.length > 1 ? '返回导入预览' : '返回作业列表'}</button><span>{isStored ? '已保存到本地' : '社区预览 · 尚未导入'}</span>{detailOrigin === 'preview' && previewParams.current?.code && <button className="cp-link" disabled={importing} onClick={() => void requestPreview(previewParams.current!, preview?.entries.length === 1, true)}><RefreshCw size={14}/>{preview && preview.entries.length > 1 ? '刷新作业集' : '刷新作业详情'}</button>}</div>
       <header className="cp-detail-heading"><span className="cp-stage">{current.stageName || '未标注关卡'} · {kindLabel(current.kind)}</span><h2 ref={detailHeading} tabIndex={-1}>{current.title}</h2><p>作者：{current.author || '未标注'}{current.source.kind === 'community' && ` · 上传者：${current.uploader || '未标注'}`}</p></header>
       <Compatibility record={current}/>
-      {current.source.kind === 'community' && <CopilotRating key={`${current.id}:${current.versionId}`} record={current} refreshKey={`${run?.id}:${run?.status}`}/>}
+      {current.source.kind === 'community' && <CopilotRating key={`${current.id}:${current.versionId}:${preview?.id ?? 'stored'}`} record={current} refreshKey={`${run?.id}:${run?.status}`} onSourceExpired={() => { if (previewParams.current) invalidateCopilotPreview(previewParams.current, resourceKey); }}/>}
       <div className="cp-detail-actions">
         {isStored ? <><button className="button primary" disabled={!canQueue || current.kind !== kind} onClick={() => addRecords([current])}><Plus size={15}/>加入执行队列</button><button className="button secondary" title="同时导出原始 JSON 与来源署名说明" onClick={() => { void exportRecord(current); }}><Download size={15}/>导出 JSON</button></> : currentPreviewEntry && <><button className="button primary" disabled={importing || !canQueue || current.kind !== kind} onClick={() => void importPreview(true, [currentPreviewEntry.id])}><Plus size={15}/>导入并加入当前队列</button><button className="button secondary" disabled={importing} onClick={() => void importPreview(false, [currentPreviewEntry.id])}><Download size={15}/>导入到作业库</button></>}
       </div>
@@ -325,7 +358,7 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   </div>;
 }
 
-function CopilotRating({ record, refreshKey }: { record: CopilotRecord; refreshKey: string }) {
+function CopilotRating({ record, refreshKey, onSourceExpired }: { record: CopilotRecord; refreshKey: string; onSourceExpired: () => void }) {
   const [value, setValue] = useState<RpcResult<'copilot.rating.get'>>();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -336,6 +369,8 @@ function CopilotRating({ record, refreshKey }: { record: CopilotRecord; refreshK
   const mounted = useRef(true);
   const writing = useRef(false);
   const refreshPending = useRef(false);
+  const expired = useRef(onSourceExpired); expired.current = onSourceExpired;
+  const checkSource = (cause: unknown) => { if (cause instanceof RuntimeRequestError && cause.code === -32602 && cause.message.includes('作业来源已过期')) expired.current(); };
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     if (writing.current) { refreshPending.current = true; return; }
@@ -343,7 +378,7 @@ function CopilotRating({ record, refreshKey }: { record: CopilotRecord; refreshK
     setLoading(true); setLoadError('');
     void rpc('copilot.rating.get', { versionId: record.versionId, recordId: record.id }).then(result => {
       if (request === sequence.current) setValue(result);
-    }, cause => { if (request === sequence.current) setLoadError(errorText(cause)); }).finally(() => { if (request === sequence.current) setLoading(false); });
+    }, cause => { if (request === sequence.current) { checkSource(cause); setLoadError(errorText(cause)); } }).finally(() => { if (request === sequence.current) setLoading(false); });
     return () => { sequence.current++; };
   }, [record.versionId, record.id, refreshKey, revision]);
   const rate = async (rating: 'like' | 'dislike') => {
@@ -353,7 +388,7 @@ function CopilotRating({ record, refreshKey }: { record: CopilotRecord; refreshK
     try {
       const result = await rpc('copilot.rating.set', { versionId: record.versionId, recordId: record.id, rating: value?.rating === rating ? 'none' : rating });
       if (mounted.current) setValue(result);
-    } catch (cause) { if (mounted.current) setError(errorText(cause)); }
+    } catch (cause) { if (mounted.current) { checkSource(cause); setError(errorText(cause)); } }
     finally {
       writing.current = false;
       if (mounted.current) { setSubmitting(false); if (refreshPending.current) { refreshPending.current = false; setRevision(previous => previous + 1); } }
