@@ -34,9 +34,9 @@ macOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付�
 
 本地签名可以验证应用包完整性，但没有 Apple 认可的发布者身份与公证。首次安装时，先把应用从 DMG 拖到可写的安装目录，尝试打开，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」。应用需要用户明确放行；CI 不修改全局 Gatekeeper 设置，也不承诺未公证下载可以直接打开。
 
-已发布的 **v0.1.1 macOS 包确有资源封装缺失**，不是单纯的未知开发者提示。2026-10-24 核对 Apple Silicon DMG 的官方 SHA-256 与映像校验均通过，而 `codesign --verify --deep --strict` 返回 `code has no resources but signature indicates they must be present`。修复只进入后续构建，不覆盖既有发行资产。
+已发布的 **v0.1.1 macOS 包确有资源封装缺失**，不是单纯的未知开发者提示。2026-10-24 核对 Apple Silicon DMG 的官方 SHA-256 与映像校验均通过，而 `codesign --verify --deep --strict` 返回 `code has no resources but signature indicates they must be present`。修复已随 [v0.1.2 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2) 发布，两种 macOS 架构均通过最终 DMG 安装、窗口与包内服务启动、退出清理及更新归档一致性检查；既有发行资产保持不变。
 
-对于已经下载的 v0.1.1，先从项目 Release 校验 `SHA256SUMS.txt`，退出应用并复制到安装目录。若仍要临时使用，可以在终端只补签这一个应用，再验证签名；以下路径须替换为实际位置。该命令不使用 `--deep` 重签，保留三个子进程的权限：
+已经下载 v0.1.1 的用户，建议退出旧版并手动安装 v0.1.2 对应架构的 DMG。若仍要临时使用 v0.1.1，先从项目 Release 校验 `SHA256SUMS.txt`，退出应用并复制到安装目录，再在终端只补签这一个应用并验证签名；以下路径须替换为实际位置。该命令不使用 `--deep` 重签，保留三个子进程的权限：
 
 ```sh
 codesign --force --sign - "/Applications/Maa Verge.app"
@@ -49,7 +49,7 @@ codesign --verify --deep --strict "/Applications/Maa Verge.app"
 xattr -dr com.apple.quarantine "/Applications/Maa Verge.app"
 ```
 
-后续构建由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和三个子进程签名。普通 CI 与发行 CI 的两种 macOS 架构还会运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。
+v0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和三个子进程签名。普通 CI 与发行 CI 的两种 macOS 架构还会运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。
 
 发行 CI 额外传入 `--require-updater`，解开最终 `.app.tar.gz`，验证签名及其与原应用的主程序、资源封装和子进程字节一致；任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。
 
@@ -61,11 +61,11 @@ xattr -dr com.apple.quarantine "/Applications/Maa Verge.app"
 
 ## 从 v0.1.0 迁移
 
-[v0.1.0](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.0) 的 GitHub 元数据标记为预发布，包含七个平台安装包及校验文件，没有内置应用更新器，也没有签名更新清单/更新包。用户需要手动安装一次 [v0.1.1 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.1)，之后才能使用应用内更新。保留旧标签与产物，不覆盖重发 v0.1.0。
+[v0.1.0](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.0) 的 GitHub 元数据标记为预发布，包含七个平台安装包及校验文件，没有内置应用更新器，也没有签名更新清单/更新包。用户需要手动安装一次 [v0.1.2 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)，之后才能使用应用内更新。v0.1.1 已内置更新器，可在「设置 → 更新」获取 v0.1.2；macOS 旧版无法启动时请直接安装新版 DMG。保留旧标签与产物，不覆盖重发。
 
 ## 准备新发行版
 
-`.github/workflows/release.yml` 的 **Prepare signed application release** 手动工作流会执行四宿主检查、构建、签名和资产校验，最后创建 GitHub **草稿**；不会自动公开发布。GitHub 要求手动工作流先进入仓库默认分支，之后可选择具体源码 ref。当前应用版本为 `0.1.2`；后续发行仍需先提交新的版本号，并保留既有标签与资产。
+`.github/workflows/release.yml` 的 **Prepare signed application release** 手动工作流会执行四宿主检查、构建、签名和资产校验，最后创建 GitHub **草稿**；不会自动公开发布。GitHub 要求手动工作流先进入仓库默认分支，之后可选择具体源码 ref。当前已发布的正式版为 [v0.1.2](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)；后续发行仍需先提交新的版本号，并保留既有标签与资产。
 
 1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。
 2. 使用 `node tools/app-updater-release.mjs check --tag v版本号` 核对。工作流拒绝覆盖现有 Release，已有标签必须指向选中的源码提交。
