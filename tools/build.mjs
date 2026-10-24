@@ -13,5 +13,6 @@ async function main() {
   await run('node', ['tools/smoke-runtime.mjs']);
   await run('node', ['tools/smoke-desktop-runtime.mjs']);
   await run('pnpm', ['exec', 'tauri', 'build', ...updaterBuildArguments(), '--', '--locked'], { cwd: desktop });
+  if (process.platform === 'darwin') await run('node', ['tools/verify-macos-bundle.mjs']);
 }
 main().catch(fail);

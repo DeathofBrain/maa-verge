@@ -21,7 +21,7 @@ if [ "$mode" = application ]; then
     tools/tests/process-tree.test.mjs tools/tests/dev-mode.test.mjs \
     tools/tests/release-assets.test.mjs tools/tests/app-updater-release.test.mjs \
     tools/tests/runtime-notices.test.mjs tools/tests/setup-aria2.test.mjs \
-    tools/tests/windows-installer.test.mjs
+    tools/tests/windows-installer.test.mjs tools/tests/macos-bundle.test.mjs
   pnpm contracts:check
   pnpm -r check
   node --test packages/contracts/test/validators.test.mjs
