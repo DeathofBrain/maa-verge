@@ -227,9 +227,22 @@ export class CopilotLibrary {
     if (kind === 'SSSCopilot') {
       const levels = list(value.stages, '保全 stages', true);
       if (!levels.length || levels.length > 100 || !object(value.tool_men)) return fail('保全作业缺少 stages 或 tool_men');
+      const roleCounts = (input: unknown) => {
+        if (!object(input) || Object.values(input).some(count => !Number.isInteger(count) || count < 0 || count > 2147483647)) fail('保全工具人数量必须是非负整数');
+      };
+      roleCounts(value.tool_men);
+      if (value.equipment !== undefined && (!Array.isArray(value.equipment) || value.equipment.some((item: unknown) => !['A', 'a', 'B', 'b'].includes(String(item))))) fail('保全 equipment 必须为 A/B 装备列表');
+      for (const field of ['drops', 'blacklist']) if (value[field] !== undefined && (!Array.isArray(value[field]) || value[field].some((item: unknown) => typeof item !== 'string'))) fail(`保全 ${field} 必须是字符串列表`);
       for (const level of levels) {
         if (typeof level.stage_name !== 'string' || !level.stage_name || level.stage_name.length > 200) return fail('保全子关卡名称无效');
-        stages.push(level.stage_name); list(level.strategies, '保全 strategies', true); actions(level.actions, false);
+        if (typeof level.draw_as_possible !== 'boolean') fail('保全子关卡缺少 draw_as_possible 布尔值');
+        stages.push(level.stage_name); actions(level.actions);
+        for (const strategy of list(level.strategies, '保全 strategies', true)) {
+          roleCounts(strategy.tool_men);
+          if (!Array.isArray(strategy.location) || strategy.location.length !== 2 || !strategy.location.every((n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= -2147483648 && n <= 2147483647)) fail('保全策略 location 需要两个整数坐标');
+          if (strategy.core !== undefined && typeof strategy.core !== 'string') fail('保全策略核心干员名称无效');
+          if (strategy.direction !== undefined && typeof strategy.direction !== 'string') fail('保全策略方向无效');
+        }
       }
     } else { actions(value.actions); stages.push(stageName); }
     const operators: CopilotRecord['operators'] = [];
