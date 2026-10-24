@@ -16,11 +16,6 @@ export type Group = 'daily' | 'specialized';
 export type Originium = number;
 export type Medicine = number;
 export type Expedited = number;
-/**
- * @minItems 1
- * @maxItems 30
- */
-export type Tasks = [Task, ...Task[]];
 export type Type =
   | 'StartUp'
   | 'CloseDown'
@@ -43,6 +38,11 @@ export type Type =
   | 'OperProgress'
   | 'UserDataUpdate';
 export type Enabled = boolean;
+/**
+ * @minItems 1
+ * @maxItems 30
+ */
+export type Tasks = Task[];
 export type Schedule = string | null;
 export type Enabled1 = boolean;
 export type Plans = Plan[];
@@ -149,6 +149,7 @@ export interface Run {
    * @maxItems 100
    */
   copilotEntries?: CopilotRunEntry[];
+  copilotKind?: 'Copilot' | 'SSSCopilot' | 'ParadoxCopilot';
 }
 export interface RunTask {
   index: number;
@@ -168,7 +169,7 @@ export interface RunTask {
   /**
    * @maxItems 3
    */
-  artifacts: [] | [RunArtifact] | [RunArtifact, RunArtifact] | [RunArtifact, RunArtifact, RunArtifact];
+  artifacts: RunArtifact[];
 }
 export interface RunDrop {
   itemId: string;
@@ -183,139 +184,7 @@ export interface RunInfrastructure {
   /**
    * @maxItems 20
    */
-  operators:
-    | []
-    | [string]
-    | [string, string]
-    | [string, string, string]
-    | [string, string, string, string]
-    | [string, string, string, string, string]
-    | [string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ];
+  operators: string[];
   /**
    * Latest staffing evidence; configured names are not an independently recognized final roster.
    */
@@ -360,27 +229,7 @@ export interface UpdateChannel {
   /**
    * @maxItems 6
    */
-  resourceActivities?:
-    | []
-    | [ResourceActivityVersion]
-    | [ResourceActivityVersion, ResourceActivityVersion]
-    | [ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion]
-    | [ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion]
-    | [
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion
-      ]
-    | [
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion
-      ];
+  resourceActivities?: ResourceActivityVersion[];
   id: Id3;
   currentVersion: Currentversion;
   latestVersion: Latestversion;
@@ -448,238 +297,7 @@ export interface InfrastructureEstimateProfile {
   /**
    * @maxItems 20
    */
-  lines:
-    | []
-    | [InfrastructureLine]
-    | [InfrastructureLine, InfrastructureLine]
-    | [InfrastructureLine, InfrastructureLine, InfrastructureLine]
-    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
-    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ];
+  lines: InfrastructureLine[];
 }
 export interface InfrastructureLine {
   id: string;

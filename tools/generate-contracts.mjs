@@ -17,6 +17,7 @@ const bannerComment = '/* Generated from packages/contracts/schemas. Run pnpm co
 const typeOptions = {
   bannerComment,
   additionalProperties: false,
+  ignoreMinAndMaxItems: true,
   style: { singleQuote: true, semi: true, tabWidth: 2 },
 };
 const types = await compile(schema, 'Snapshot', typeOptions);
