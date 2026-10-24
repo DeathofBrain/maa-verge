@@ -10,7 +10,7 @@ import { supportsStageNavigation } from './stages';
 import * as validators from '../../../packages/contracts/src/validators.js';
 import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
 
-const MAX_CONTENT = 700_000, MAX_RESPONSE = 3_000_000, MAX_MEMBERS = 100;
+const MAX_CONTENT = 700_000, MAX_RESPONSE = 3_000_000, MAX_MEMBERS = 100, COMMUNITY_CONCURRENCY = 8, PREVIEW_TIMEOUT = 90_000;
 const kinds = new Set(['Copilot', 'SSSCopilot', 'ParadoxCopilot']);
 // MaaCore v6.20.0 CopilotConfig::parse_actions aliases; unknown types would otherwise be silently skipped.
 const actionTypes = new Set(["Deploy", "DEPLOY", "deploy", "部署", "Skill", "SKILL", "skill", "技能", "Retreat", "RETREAT", "retreat", "撤退", "SpeedUp", "SPEEDUP", "Speedup", "speedup", "二倍速", "BulletTime", "BULLETTIME", "Bullettime", "bullettime", "子弹时间", "SkillUsage", "SKILLUSAGE", "Skillusage", "skillusage", "技能用法", "Output", "OUTPUT", "output", "输出", "打印", "SkillDaemon", "skilldaemon", "SKILLDAEMON", "Skilldaemon", "DoNothing", "摆完挂机", "开摆", "MoveCamera", "movecamera", "MOVECAMERA", "Movecamera", "移动镜头", "DrawCard", "drawcard", "DRAWCARD", "Drawcard", "抽卡", "抽牌", "调配", "调配干员", "CheckIfStartOver", "Checkifstartover", "CHECKIFSTARTOVER", "checkifstartover", "检查重开", "ResetStopwatch", "RESETSTOPWATCH", "resetstopwatch", "Resetstopwatch", "重置全局计时器", "Click", "click", "CLICK", "点击", "Swipe", "swipe", "SWIPE", "滑动", "SetUnitLocation", "Setunitlocation", "setunitlocation", "SETUNITLOCATION", "设置单位坐标"]);
@@ -286,18 +286,22 @@ export class CopilotLibrary {
     let title = params.name || '导入作业', entries: CopilotPreview['entries'] = [];
     if (params.content !== undefined) entries = [this.previewEntry(params.content, { kind: 'local', name: params.name || '本地 JSON', url: '' })];
     else if (params.code !== undefined) {
-      const identity = parseCopilotCode(params.code);
-      if (identity.target === 'copilot') entries = [await this.communityEntry(identity.id)];
+      const identity = parseCopilotCode(params.code), deadline = Date.now() + PREVIEW_TIMEOUT;
+      if (identity.target === 'copilot') entries = [await this.communityEntry(identity.id, undefined, deadline)];
       else {
-        const data = await this.request(`/set/get?id=${identity.id}`);
+        const data = await this.request(`/set/get?id=${identity.id}`, undefined, deadline);
         if (!object(data) || !Array.isArray(data.copilot_ids)) fail('作业集响应缺少有序成员列表');
         if (data.copilot_ids.length > MAX_MEMBERS) fail('作业集超过 100 项，请拆分为较小作业集');
         title = text(data.name, 300) || `作业集 ${identity.id}`;
-        // Preserve exact upstream order, duplicates and per-member failures.
-        for (const member of data.copilot_ids) {
-          try { entries.push(await this.communityEntry(normalizeId(member), identity.id)); }
-          catch (cause) { entries.push({ id: identifier('entry'), record: null, error: message(cause) }); }
-        }
+        // Bounded workers preserve exact upstream order, duplicates and every failure.
+        entries = new Array(data.copilot_ids.length); let next = 0;
+        await Promise.all(Array.from({ length: Math.min(COMMUNITY_CONCURRENCY, data.copilot_ids.length) }, async () => {
+          for (;;) {
+            const index = next++; if (index >= data.copilot_ids.length) return;
+            try { entries[index] = await this.communityEntry(normalizeId(data.copilot_ids[index]), identity.id, deadline); }
+            catch (cause) { entries[index] = { id: identifier('entry'), record: null, error: message(cause) }; }
+          }
+        }));
       }
     } else {
       const plan = this.store.get('plan', params.planId!);
@@ -383,25 +387,30 @@ export class CopilotLibrary {
     const name = `${kind === 'Copilot' ? '普通作业' : kind === 'SSSCopilot' ? '保全派驻' : '悖论模拟'} · ${versions[0]!.record.title}`.slice(0, 80);
     return { name, tasks: [{ type: kind, enabled: true, params }], entries, identity: createHash('sha256').update(JSON.stringify(workspace)).digest('hex'), workspace };
   }
-  private async request(relative: string, body?: unknown): Promise<any> {
-    const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 12_000);
+  private async request(relative: string, body?: unknown, deadline = Infinity): Promise<any> {
+    const remaining = Math.min(12_000, deadline - Date.now());
+    if (remaining <= 0) throw new RpcError(-32010, '作业集预览已达到 90 秒时限，请缩小作业集后重试');
+    const controller = new AbortController(); let timeout: ReturnType<typeof setTimeout>;
+    const expired = new Promise<never>((_resolve, reject) => { timeout = setTimeout(() => { controller.abort(); reject(new Error('社区请求超时')); }, remaining); });
     try {
-      const response = await (this.context.http ?? fetch)(`https://prts.maa.plus${relative}`, { method: body === undefined ? 'GET' : 'POST', ...(body === undefined ? {} : { body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }), signal: controller.signal, redirect: 'error' });
-      if (!response.ok) throw new Error(`社区服务 HTTP ${response.status}`);
-      if (Number(response.headers.get('content-length') || 0) > MAX_RESPONSE) throw new Error('社区响应超过允许大小');
-      if (!response.body) throw new Error('社区服务返回空响应');
-      const reader = response.body.getReader(); let size = 0; const chunks: Uint8Array[] = [];
-      try { for (;;) { const part = await reader.read(); if (part.done) break; size += part.value.byteLength; if (size > MAX_RESPONSE) throw new Error('社区响应超过允许大小'); chunks.push(part.value); } }
-      finally { await reader.cancel().catch(() => {}); }
-      let value: any; try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new Error('社区服务返回无效 JSON'); }
-      if (!object(value) || value.status_code !== 200 || !Object.hasOwn(value, 'data')) throw new Error(`社区请求失败：${text(value?.message ?? value?.msg, 500) || '响应状态或结构异常'}`);
-      return value.data;
+      return await Promise.race([expired, (async () => {
+        const response = await (this.context.http ?? fetch)(`https://prts.maa.plus${relative}`, { method: body === undefined ? 'GET' : 'POST', ...(body === undefined ? {} : { body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }), signal: controller.signal, redirect: 'error' });
+        if (!response.ok) throw new Error(`社区服务 HTTP ${response.status}`);
+        if (Number(response.headers.get('content-length') || 0) > MAX_RESPONSE) throw new Error('社区响应超过允许大小');
+        if (!response.body) throw new Error('社区服务返回空响应');
+        const reader = response.body.getReader(); let size = 0; const chunks: Uint8Array[] = [];
+        try { for (;;) { const part = await reader.read(); if (part.done) break; size += part.value.byteLength; if (size > MAX_RESPONSE) throw new Error('社区响应超过允许大小'); chunks.push(part.value); } }
+        finally { await reader.cancel().catch(() => {}); }
+        let value: any; try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new Error('社区服务返回无效 JSON'); }
+        if (!object(value) || value.status_code !== 200 || !Object.hasOwn(value, 'data')) throw new Error(`社区请求失败：${text(value?.message ?? value?.msg, 500) || '响应状态或结构异常'}`);
+        return value.data;
+      })()]);
     } catch (cause) { throw new RpcError(-32010, controller.signal.aborted ? '社区请求超时，请重试；本地作业仍可使用' : message(cause)); }
-    finally { clearTimeout(timeout); }
+    finally { clearTimeout(timeout!); }
   }
-  private async communityEntry(id: string, setId?: string): Promise<CopilotPreview['entries'][number]> {
+  private async communityEntry(id: string, setId?: string, deadline?: number): Promise<CopilotPreview['entries'][number]> {
     try {
-      const data = await this.request(`/copilot/get/${normalizeId(id)}`);
+      const data = await this.request(`/copilot/get/${normalizeId(id)}`, undefined, deadline);
       if (!object(data) || data.available === false || data.status === 'DELETED' || typeof data.content !== 'string') throw new Error('作业已删除、不可用或缺少完整内容');
       const source: CopilotSource = { kind: 'community', name: `PRTS Plus #${id}`, url: `https://prts.plus/copilot/${id}`, communityId: id, ...(setId ? { setId } : {}) };
       const entry = this.previewEntry(data.content, source, undefined, text(data.uploader ?? data.author, 300));
