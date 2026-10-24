@@ -23,6 +23,8 @@ export const validateCopilotWorkspaceParams: Validator<RpcContract['params']['co
 export const validateCopilotWorkspaceSaveParams: Validator<RpcContract['params']['copilot.workspace.save']>;
 export const validateCopilotSearchParams: Validator<RpcContract['params']['copilot.search']>;
 export const validateCopilotStartParams: Validator<RpcContract['params']['copilot.start']>;
+export const validateCopilotRatingParams: Validator<RpcContract['params']['copilot.rating.get']>;
+export const validateCopilotRatingSetParams: Validator<RpcContract['params']['copilot.rating.set']>;
 export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
 export const validateDeviceAvailabilityParams: Validator<RpcContract['params']['device.availability']>;

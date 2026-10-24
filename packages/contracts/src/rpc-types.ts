@@ -60,6 +60,11 @@ export type ToolKind = 'depot' | 'operators' | 'recruit' | 'inventory' | 'data' 
  * via the `definition` "CopilotKind".
  */
 export type CopilotKind = 'Copilot' | 'SSSCopilot' | 'ParadoxCopilot';
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotRatingValue".
+ */
+export type CopilotRatingValue = 'none' | 'like' | 'dislike';
 export type Mode = 'native';
 export type Id1 = string;
 export type Name1 = string;
@@ -172,6 +177,8 @@ export interface RpcContract {
     'copilot.workspace.save': CopilotWorkspaceSaveParams;
     'copilot.search': CopilotSearchParams;
     'copilot.start': CopilotStartParams;
+    'copilot.rating.get': CopilotRatingParams;
+    'copilot.rating.set': CopilotRatingSetParams;
   };
   results: {
     'app.snapshot': Snapshot;
@@ -290,6 +297,8 @@ export interface RpcContract {
     'copilot.workspace.save': CopilotWorkspace;
     'copilot.search': CopilotSearchResult;
     'copilot.start': Run;
+    'copilot.rating.get': CopilotRating;
+    'copilot.rating.set': CopilotRating;
   };
 }
 /**
@@ -767,6 +776,10 @@ export interface CopilotOptions {
     name: string;
     skill: number;
   }[];
+  /**
+   * 默认关闭；仅对启动快照绑定的社区作业，在完整通关确认后自动点赞，永不自动点踩。
+   */
+  autoLikeOnSuccess?: boolean;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -786,6 +799,23 @@ export interface CopilotStartParams {
   kind: CopilotKind;
   deviceId: string;
   requestId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotRatingParams".
+ */
+export interface CopilotRatingParams {
+  versionId: string;
+  recordId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotRatingSetParams".
+ */
+export interface CopilotRatingSetParams {
+  versionId: string;
+  recordId?: string;
+  rating: CopilotRatingValue;
 }
 export interface Snapshot {
   mode: Mode;
@@ -1311,6 +1341,10 @@ export interface CopilotOperator {
   requirements?: {
     [k: string]: unknown;
   };
+  /**
+   * 组内任选一名；缺省表示独立必需干员。
+   */
+  group?: string;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -1386,6 +1420,16 @@ export interface CopilotSearchItem {
   uploader?: string;
   url: string;
   kind?: CopilotKind;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotRating".
+ */
+export interface CopilotRating {
+  communityId: string;
+  likes: number;
+  dislikes: number;
+  rating: CopilotRatingValue;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

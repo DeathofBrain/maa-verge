@@ -41,6 +41,8 @@ const validators = {
   validateCopilotWorkspaceSaveParams: `${rpcSchema.$id}#/$defs/CopilotWorkspaceSaveParams`,
   validateCopilotSearchParams: `${rpcSchema.$id}#/$defs/CopilotSearchParams`,
   validateCopilotStartParams: `${rpcSchema.$id}#/$defs/CopilotStartParams`,
+  validateCopilotRatingParams: `${rpcSchema.$id}#/$defs/CopilotRatingParams`,
+  validateCopilotRatingSetParams: `${rpcSchema.$id}#/$defs/CopilotRatingSetParams`,
   validatePlan: `${schema.$id}#/$defs/Plan`,
   validateSettings: `${schema.$id}#/$defs/Settings`,
   validateDeviceAvailabilityParams: `${rpcSchema.$id}#/properties/params/properties/device.availability`,
@@ -115,6 +117,8 @@ export const validateCopilotWorkspaceParams: Validator<RpcContract['params']['co
 export const validateCopilotWorkspaceSaveParams: Validator<RpcContract['params']['copilot.workspace.save']>;
 export const validateCopilotSearchParams: Validator<RpcContract['params']['copilot.search']>;
 export const validateCopilotStartParams: Validator<RpcContract['params']['copilot.start']>;
+export const validateCopilotRatingParams: Validator<RpcContract['params']['copilot.rating.get']>;
+export const validateCopilotRatingSetParams: Validator<RpcContract['params']['copilot.rating.set']>;
 export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
 export const validateDeviceAvailabilityParams: Validator<RpcContract['params']['device.availability']>;
