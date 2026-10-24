@@ -1,3 +1,4 @@
+import { createCopilotFixture } from './copilot';
 // Deterministic runtime fixture. Loaded only by the Playwright Tauri bridge.
 import type { Device, Event, Plan, Run, RunArtifact, Settings, Snapshot, UpdateChannel } from '../../../packages/contracts/src/types';
 import { taskLabels } from '../../../packages/contracts/src/tasks';
@@ -167,6 +168,8 @@ function activate(channel: UpdateChannel) {
   emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
 }
 
+const copilotFixture = createCopilotFixture({ key, snapshot: () => state, emit, availability: fixtureAvailability, requests: requestRuns, register: (run, tasks) => { executionTasks.set(run.id, clone(tasks)); invalidatePreview(run.deviceId); } });
+
 const timer = globalThis.setInterval(() => {
   let changed = false;
   for (const job of toolData.jobs) {
@@ -202,6 +205,11 @@ const timer = globalThis.setInterval(() => {
         }
       } else if (index === currentIndex) { task.status = 'running'; task.startedAt ||= now(); task.message = `正在执行${taskLabels[task.type]}`; }
     }
+    for (const [index, entry] of (run.copilotEntries || []).entries()) {
+      const position = Math.min((run.copilotEntries?.length || 1) - 1, Math.floor(run.progress / 100 * (run.copilotEntries?.length || 1)));
+      entry.status = run.progress === 100 || index < position ? 'completed' : index === position ? 'running' : 'waiting';
+      entry.message = entry.status === 'completed' ? '核心流程完成；通关未确认' : entry.status === 'running' ? '正在执行；通关未确认' : '等待执行';
+    }
     if (run.progress === 100) {
       executionTasks.delete(run.id);
       run.status = 'completed'; run.finishedAt = now(); run.message = '模拟任务完成，未操作真实游戏';
@@ -236,6 +244,7 @@ function mockAddress(value: unknown): string {
 }
 
 export async function fixtureRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
+  if (method.startsWith('copilot.')) return copilotFixture(method, params);
   switch (method) {
     case 'app.snapshot': return clone({ ...state, toolJobs: toolData.jobs.map(({ result: _result, ...summary }) => summary), runs: state.runs.map(({ tasks: _tasks, ...summary }) => summary) });
     case 'device.availability': return fixtureAvailability(String(params.deviceId));
@@ -389,7 +398,7 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       const existing = requestRuns.get(String(params.requestId));
       if (existing) {
         const run = state.runs.find((item) => item.id === existing)!;
-        if (run.planId !== params.planId || run.deviceId !== params.deviceId) throw new Error('同一请求标识不能用于不同执行');
+        if (run.source === 'copilot' || run.planId !== params.planId || run.deviceId !== params.deviceId) throw new Error('同一请求标识不能用于不同执行');
         return clone(run);
       }
       const plan = state.plans.find((item) => item.id === params.planId);
@@ -422,6 +431,7 @@ export async function fixtureRpc(method: string, params: Record<string, unknown>
       if (!run || run.status !== 'running') throw new Error('任务当前未运行');
       executionTasks.delete(run.id);
       for (const task of run.tasks || []) if (task.status === 'running') { task.status = 'stopped'; task.finishedAt = now(); task.message = '执行已停止'; }
+      for (const entry of run.copilotEntries || []) if (entry.status === 'running' || entry.status === 'waiting') { entry.status = entry.status === 'running' ? 'stopped' : 'skipped'; entry.message = '执行已停止；通关未确认'; }
       run.status = 'stopped'; run.message = '模拟执行已停止'; run.finishedAt = now();
       const device = state.devices.find((item) => item.id === run.deviceId);
       if (device) device.state = 'idle';

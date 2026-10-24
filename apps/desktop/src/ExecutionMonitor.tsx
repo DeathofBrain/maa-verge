@@ -1,3 +1,4 @@
+import { isCopilotRun } from './run-source';
 import { useContextMenu } from './ContextMenu';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Clock3, Layers, ListChecks, LoaderCircle, Monitor, Search, Square, TriangleAlert } from 'lucide-react';
@@ -51,8 +52,9 @@ export default function ExecutionMonitor({ snapshot, selectedRun, pending, onSel
       trigger?.focus({ preventScroll: true });
     }
   }, [selectedRun?.id]);
-  const running = snapshot.runs.filter((run) => run.status === 'running').sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id));
-  const ended = snapshot.runs.filter((run) => run.status !== 'running').sort((a, b) => b.startedAt.localeCompare(a.startedAt) || a.id.localeCompare(b.id));
+  const planRuns = snapshot.runs.filter((run) => !isCopilotRun(run));
+  const running = planRuns.filter((run) => run.status === 'running').sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id));
+  const ended = planRuns.filter((run) => run.status !== 'running').sort((a, b) => b.startedAt.localeCompare(a.startedAt) || a.id.localeCompare(b.id));
   const hasRunning = running.length > 0;
   useEffect(() => {
     if (!hasRunning) return;
@@ -79,7 +81,7 @@ export default function ExecutionMonitor({ snapshot, selectedRun, pending, onSel
   };
   const activeMatches = running.filter(matches), endedMatches = ended.filter(matches);
   const filters = [
-    { id: 'all', label: '全部', count: snapshot.runs.length },
+    { id: 'all', label: '全部', count: planRuns.length },
     { id: 'running', label: '执行中', count: running.length },
     { id: 'failed', label: '执行失败', count: ended.filter((run) => run.status === 'failed').length },
     { id: 'ended', label: '已结束', count: ended.length },
@@ -107,8 +109,8 @@ export default function ExecutionMonitor({ snapshot, selectedRun, pending, onSel
         <div className="monitor-toolbar"><div className="monitor-filters" role="group" aria-label="筛选监控执行">{filters.map((item) => <button key={item.id} aria-label={item.label} aria-pressed={filter === item.id} className={filter === item.id ? 'selected' : ''} onClick={() => setFilter(item.id)}>{item.label}<span>{item.count}</span></button>)}</div><label className="monitor-search"><Search size={15} /><input aria-label="搜索监控执行" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索任务表、设备或结果" /></label></div>
         {activeMatches.length > 0 && <section className="monitor-group" aria-label="正在执行"><div className="monitor-group-heading"><h2><i className="monitor-live-dot" />正在执行<span>{activeMatches.length}</span></h2><small>进度自动更新</small></div><div className="monitor-grid">{activeMatches.map(renderCard)}</div></section>}
         {endedMatches.length > 0 && <section className="monitor-group" aria-label="最近结束"><div className="monitor-group-heading"><h2>最近结束<span>{endedMatches.length}</span></h2><small>保留结果，可随时查看详情</small></div><div className="monitor-grid">{endedMatches.map(renderCard)}</div></section>}
-        {!activeMatches.length && !endedMatches.length && <div className="monitor-empty"><Monitor size={34} /><h2>{snapshot.runs.length ? '没有匹配的执行' : '还没有执行任务表'}</h2><p>{snapshot.runs.length ? '调整筛选条件，或搜索其他任务表、设备。' : '从任务表开始执行，或在「实例启动」为多个设备分别启动任务。'}</p>{snapshot.runs.length ? <button className="button secondary" onClick={() => { setFilter('all'); setQuery(''); }}>清除筛选</button> : <button className="button primary" onClick={() => setView('instances')}><Layers size={15} />选择实例与任务表</button>}</div>}
-        {snapshot.runs.length > 0 && <p className="monitor-footnote">展示本机最近的执行记录。同一张任务表在不同设备上的执行分别显示，停止仅影响对应执行。</p>}
+        {!activeMatches.length && !endedMatches.length && <div className="monitor-empty"><Monitor size={34} /><h2>{planRuns.length ? '没有匹配的执行' : '还没有执行任务表'}</h2><p>{planRuns.length ? '调整筛选条件，或搜索其他任务表、设备。' : '从任务表开始执行，或在「实例启动」为多个设备分别启动任务。'}</p>{planRuns.length ? <button className="button secondary" onClick={() => { setFilter('all'); setQuery(''); }}>清除筛选</button> : <button className="button primary" onClick={() => setView('instances')}><Layers size={15} />选择实例与任务表</button>}</div>}
+        {planRuns.length > 0 && <p className="monitor-footnote">展示本机最近的执行记录。同一张任务表在不同设备上的执行分别显示，停止仅影响对应执行。</p>}
       </div>}
     </div>
   </section>;
