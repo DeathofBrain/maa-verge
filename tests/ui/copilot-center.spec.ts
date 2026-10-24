@@ -12,6 +12,7 @@ async function navigate(page: Page, name: string) {
 }
 async function openCenter(page: Page) {
   await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
   await navigate(page, '作业中心');
   await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
   await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
@@ -80,6 +81,11 @@ test('independent execution stays in the center, fixes its queue snapshot and su
   await current.getByRole('button', { name: '查看运行详情', exact: true }).click();
   await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
   await expect(run).toContainText('独立作业快照');
+  await navigate(page, '任务表执行');
+  const monitor = page.getByRole('region', { name: '任务表执行监控', exact: true });
+  await expect(monitor).not.toHaveClass(/inspecting/u); await expect(monitor.getByRole('article')).toHaveCount(0);
+  await expect(page.getByLabel('执行状态栏', { exact: true })).toHaveClass(/is-running/u);
+  await navigate(page, '作业中心');
   await run.getByRole('button', { name: '停止作业', exact: true }).click();
   await expect(run).toContainText('已停止');
   expect((await call<{ queue: unknown[] }>(page, 'copilot.workspace.get', { kind: 'Copilot' })).queue).toHaveLength(0);
@@ -123,7 +129,7 @@ test('three kinds use separate persisted queues and SSS only allows a single wor
   await openCenter(page); await importJson(page, json('普通独立队列'));
   await page.getByRole('tab', { name: '保全派驻', exact: true }).click();
   await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(0);
-  await importJson(page, json('保全独立队列', { type: 'SSS', stages: [] }));
+  await importJson(page, json('保全独立队列', { type: 'SSS', stages: [{ stage_name: 'main_01-07', draw_as_possible: true, actions: [{ type: 'SpeedUp' }] }] }));
   await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
   await expect(library(page).getByRole('button', { name: '加入队列 保全独立队列', exact: true })).toBeDisabled();
   await expect(queue(page).getByLabel('自动编队', { exact: true })).toHaveCount(0);
@@ -135,7 +141,7 @@ test('three kinds use separate persisted queues and SSS only allows a single wor
   await expect(queue(page)).not.toContainText('保全独立队列');
 });
 
-test('local JSON selection and narrow dark/light layouts provide a return path without horizontal overflow', async ({ page }) => {
+test('local JSON selection and narrow dark/light layouts provide a return path without horizontal overflow', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openCenter(page);
   await page.getByRole('button', { name: '导入作业', exact: true }).click();
@@ -144,12 +150,129 @@ test('local JSON selection and narrow dark/light layouts provide a return path w
   await preview(page).getByRole('button', { name: '导入到作业库', exact: true }).click();
   await page.getByRole('button', { name: '返回作业列表', exact: true }).click();
   await library(page).getByRole('button', { name: /1-7.*窄窗作业|main_01-07.*窄窗作业/u }).click();
-  await expect(page.getByRole('region', { name: '作业详情', exact: true })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: '作业详情', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '返回作业列表', exact: true })).toBeVisible();
   for (const theme of ['light', 'dark']) {
     await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+    await page.screenshot({ path: testInfo.outputPath(`copilot-narrow-${theme}.png`), fullPage: true });
   }
   await page.getByRole('button', { name: '返回作业列表', exact: true }).click();
   await expect(library(page)).toBeVisible();
+});
+
+
+test('an explicitly restored historical selection survives outside the recent snapshot window', async ({ page }) => {
+  await openCenter(page); await importJson(page, json('窗口外的旧作业'));
+  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
+  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
+  const older = (await call<{ runs: { id: string }[] }>(page, 'app.snapshot')).runs[0].id;
+  await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
+  await importJson(page, json('最近窗口内的新作业'));
+  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
+  await navigate(page, '执行记录');
+  await page.locator('.history-table tbody tr').filter({ hasText: '窗口外的旧作业' }).getByRole('button').click();
+  await expect(panel.getByRole('heading', { name: '窗口外的旧作业', exact: true })).toBeVisible();
+  await page.evaluate(older => {
+    const harness = (window as unknown as HarnessWindow).runtimeHarness;
+    const original = harness.call.bind(harness);
+    harness.call = async (method, params) => {
+      const result = await original(method, params);
+      if (method === 'app.snapshot') {
+        const snapshot = result as { runs: { id: string }[] };
+        return { ...snapshot, runs: snapshot.runs.filter(run => run.id !== older) };
+      }
+      return result;
+    };
+  }, older);
+  await navigate(page, '主页'); await navigate(page, '作业中心');
+  await expect(panel.getByRole('heading', { name: '窗口外的旧作业', exact: true })).toBeVisible();
+  await expect.poll(async () => (await call<{ runs: { id: string }[] }>(page, 'app.snapshot')).runs.some(run => run.id === older)).toBe(false);
+  await expect(panel).not.toContainText('最近窗口内的新作业');
+});
+
+test('failed workspace writes retain the editable queue and retry before execution', async ({ page }) => {
+  await openCenter(page);
+  await page.evaluate(() => {
+    const harness = (window as unknown as HarnessWindow).runtimeHarness;
+    const original = harness.call.bind(harness); let failed = false;
+    harness.call = async (method, params) => {
+      if (method === 'copilot.workspace.save' && !failed) { failed = true; throw new Error('合成作业队列保存失败'); }
+      return original(method, params);
+    };
+  });
+  await importJson(page, json('保存失败后重试'));
+  await expect(queue(page).locator('.cp-save-state')).toContainText('合成作业队列保存失败');
+  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeDisabled();
+  await queue(page).getByRole('button', { name: '重试保存', exact: true }).click();
+  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
+  expect((await call<{ queue: unknown[] }>(page, 'copilot.workspace.get', { kind: 'Copilot' })).queue).toHaveLength(1);
+  expect((await call<{ runs: unknown[] }>(page, 'app.snapshot')).runs).toHaveLength(0);
+});
+
+test('starting a newer run updates the selection retained after explicit history navigation', async ({ page }) => {
+  await openCenter(page); await importJson(page, json('历史导航的旧作业'));
+  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
+  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
+  await navigate(page, '执行记录');
+  await page.locator('.history-table tbody tr').filter({ hasText: '历史导航的旧作业' }).getByRole('button').click();
+  await expect(panel.getByRole('heading', { name: '历史导航的旧作业', exact: true })).toBeVisible();
+  await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
+  await importJson(page, json('导航后启动的新作业'));
+  await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  await expect(panel.getByRole('heading', { name: '导航后启动的新作业', exact: true })).toBeVisible();
+  await navigate(page, '主页'); await navigate(page, '作业中心');
+  await expect(panel.getByRole('heading', { name: '导航后启动的新作业', exact: true })).toBeVisible();
+  await expect(panel).not.toContainText('历史导航的旧作业');
+});
+
+test('the local library pages beyond twenty records without changing the execution queue', async ({ page }) => {
+  await openCenter(page);
+  await page.evaluate(async contents => {
+    const harness = (window as unknown as HarnessWindow).runtimeHarness;
+    for (const content of contents) {
+      const result = await harness.call('copilot.preview', { content, name: '分页合成作业.json' }) as { id: string };
+      await harness.call('copilot.import', { previewId: result.id });
+    }
+  }, Array.from({ length: 21 }, (_, index) => json(`分页作业 ${index + 1}`)));
+  await library(page).getByRole('button', { name: '刷新作业库', exact: true }).click();
+  await expect(library(page).locator('.cp-record')).toHaveCount(20);
+  await expect(library(page)).toContainText('共 21 份');
+  await library(page).getByRole('button', { name: '本地作业下一页', exact: true }).click();
+  await expect(library(page).locator('.cp-record')).toHaveCount(1);
+  await expect(library(page)).toContainText('第 2 页');
+  await expect(library(page).getByRole('button', { name: '本地作业下一页', exact: true })).toBeDisabled();
+  await library(page).getByRole('button', { name: '本地作业上一页', exact: true }).click();
+  await expect(library(page).locator('.cp-record')).toHaveCount(20);
+  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(0);
+});
+
+test('a failed draft for another kind does not block the selected saved workspace', async ({ page }) => {
+  await openCenter(page);
+  await page.evaluate(() => {
+    const harness = (window as unknown as HarnessWindow).runtimeHarness;
+    const original = harness.call.bind(harness);
+    harness.call = async (method, params) => {
+      if (method === 'copilot.workspace.save' && (params.workspace as { kind: string }).kind === 'Copilot') throw new Error('普通作业草稿暂时保存失败');
+      return original(method, params);
+    };
+  });
+  await importJson(page, json('保留的普通作业草稿'));
+  await expect(queue(page).locator('.cp-save-state')).toContainText('普通作业草稿暂时保存失败');
+  await page.getByRole('tab', { name: '保全派驻', exact: true }).click();
+  await importJson(page, json('仍可执行的保全作业', { type: 'SSS', stages: [{ stage_name: 'main_01-07', draw_as_possible: true, actions: [{ type: 'SpeedUp' }] }] }));
+  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
+  await expect(queue(page).locator('.cp-save-state')).not.toContainText('普通作业草稿暂时保存失败');
+  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
+  await expect(panel.getByRole('heading', { name: '仍可执行的保全作业', exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
+  await page.getByRole('tab', { name: '普通作业', exact: true }).click();
+  await expect(queue(page)).toContainText('保留的普通作业草稿');
+  await expect(queue(page).locator('.cp-save-state')).toContainText('普通作业草稿暂时保存失败');
 });
