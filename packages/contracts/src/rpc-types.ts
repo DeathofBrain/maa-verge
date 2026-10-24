@@ -261,6 +261,13 @@ export interface RpcContract {
     'copilot.export': {
       filename: string;
       content: string;
+      /**
+       * 可与原始 JSON 一同保存的来源和署名旁文件；不表示已取得转载授权或适用应用许可证。
+       */
+      attribution: {
+        filename: string;
+        content: string;
+      };
     };
     'copilot.preview': CopilotPreview;
     'copilot.import': {
@@ -678,6 +685,10 @@ export interface CopilotIdentityParams {
  */
 export interface CopilotExportParams {
   versionId: string;
+  /**
+   * 选择同一原始 JSON 的具体导入来源，必须与 versionId 匹配；缺省沿用版本最初来源。
+   */
+  id?: string;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -1268,7 +1279,14 @@ export interface CopilotRecord {
   kind: CopilotKind;
   title: string;
   stageName: string;
+  /**
+   * 仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。
+   */
   author: string;
+  /**
+   * 社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。
+   */
+  uploader?: string;
   description: string;
   minimumCoreVersion: string;
   /**
@@ -1358,7 +1376,14 @@ export interface CopilotSearchItem {
   id: string;
   title: string;
   description: string;
+  /**
+   * 仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。
+   */
   author: string;
+  /**
+   * 社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。
+   */
+  uploader?: string;
   url: string;
   kind?: CopilotKind;
 }
