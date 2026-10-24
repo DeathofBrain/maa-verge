@@ -1,5 +1,20 @@
 # 工作树与分支整合记录
 
+## Windows 四个工作树合入 dev（2026-10-24）
+
+基线为 `dev@8a195c5`，核对主目录及三个附加 worktree。主目录先从 `codex/copilot-workspace-redesign` 切换至 `dev`，快进至已提交的作业中心重构与缓存修复；CI 工作树的五个未提交许可文件单独保存后合并。全部来源分支及工作树保留。
+
+| 来源分支 | 保存及整合证据 |
+| --- | --- |
+| `codex/copilot-workspace-redesign` | `0e960e9` 快进合入，包含作业中心布局、详情、作业集、社区评价、单次地图导航及会话缓存 |
+| `codex/copilot-feedback` | `fb23c84` 经 `dccb322` 合入；四笔来源提交的 stable patch-id 与主目录对应提交逐一相等，合并后整树与 `0e960e9` 相同 |
+| `codex/ci-macos-license` | 原 HEAD `36c1a52` 已包含于主目录；五个许可修复文件保存为 `4d881b9`，经 `2924ee1` 合入 |
+| `codex/toolbox-scheduler` | `7ba34df` 已是基线 `dev` 的祖先，工具箱、每日定时及桌面唤醒无需重复应用 |
+
+正常合并仅遇到两处文档冲突：作业中心计划保留较新的队列布局及所有宽度的详情返回路径，状态文档同时保留社区缓存、作业中心重构和 macOS 通知依赖许可的验证段。`2924ee1` 相对 `0e960e9` 精确仅有五个许可相关文件的 `+40/-3` 差异；产品代码、契约、后端及 UI 测试完全一致。四个登记 worktree 的 HEAD 及原主目录功能分支 HEAD 均通过 `merge-base --is-ancestor` 验证。
+
+合并后的检查、构建、界面回归及平台边界见 [STATUS.md](STATUS.md) 的本轮 Windows 整合记录。
+
 ## 全部当前工作树合入 dev（2026-10-24）
 
 基线为 `dev@6097295`，检查主目录及八个附加 worktree。主目录原有 60 个源码、测试与文档改动保存为 `d799f40`；另将三个脏来源的开发文件分别提交，保留来源分支、工作区及原有本地工具链接，不提交 `.tools`、`node_modules` 或 `.git-task-baseline`。
