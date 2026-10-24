@@ -58,6 +58,14 @@ describe('immutable local copilot library', () => {
     library.workspaceSave({ workspace: { kind: 'Copilot', options: defaultCopilotOptions(), queue: [{ id: 'bom', versionId: record.versionId, enabled: true, isRaid: false, navName: '' }] } });
     expect(library.prepare('Copilot').entries).toHaveLength(1);
   });
+  test('local nonstandard content signatures are preserved without inferring uploaders', async () => {
+    const { library } = setup();
+    for (const [fields, author] of [[{ author: 'JSON 署名', doc: { author: '说明署名' } }, 'JSON 署名'], [{ author: 123, doc: { author: '说明署名' } }, '说明署名'], [{ author: {}, doc: { author: false } }, '']] as const) {
+      const raw = ordinary(fields), record = await imported(library, raw);
+      expect(record.author).toBe(author); expect(record.uploader).toBeUndefined();
+      expect(library.get({ id: record.id }).author).toBe(author); expect(library.export({ versionId: record.versionId }).content).toBe(raw);
+    }
+  });
   test('reimport never substitutes selected versions and deleted records retain files and historical detail', async () => {
     const { library, store, root } = setup(), record = await imported(library);
     const draft = { kind: 'Copilot' as const, options: defaultCopilotOptions(), queue: [{ id: 'duplicate-a', versionId: record.versionId, enabled: true, isRaid: false, navName: '' }, { id: 'duplicate-b', versionId: record.versionId, enabled: true, isRaid: true, navName: '1-7' }] };
@@ -221,14 +229,62 @@ describe('fixed-origin community adapter', () => {
       if (String(url).includes('/set/get')) return response({ name: '有序作业集', copilot_ids: [3, 2, 3, 1] });
       if (String(url).endsWith('/2')) return response({ available: false, content: '' });
       if (String(url).endsWith('/1')) return Response.json({ status_code: 404, message: '已删除' });
-      return response({ id: 3, uploader: '作者', available: true, content: ordinary({ doc: { title: '作业三' } }) });
+      return response({ id: 3, uploader: '上传者', available: true, content: ordinary({ doc: { title: '作业三' } }) });
     }) as typeof fetch);
     const preview = await library.preview({ code: 'prts://s9' });
     expect(preview.entries.map(entry => entry.record?.title ?? null)).toEqual(['作业三', null, '作业三', null]);
     expect(preview.entries[0]!.id).not.toBe(preview.entries[2]!.id);
-    const result = library.import({ previewId: preview.id }); expect(result.items).toHaveLength(2); expect(result.errors).toHaveLength(2); expect(result.items[0]!.author).toBe('作者');
+    const result = library.import({ previewId: preview.id }); expect(result.items).toHaveLength(2); expect(result.errors).toHaveLength(2); expect(result.items[0]).toMatchObject({ author: '', uploader: '上传者' });
     expect(store.get('copilot_set', '9').members).toHaveLength(4);
     expect(requests.every(url => url.startsWith('https://prts.maa.plus/'))).toBe(true);
+  });
+  test('community detail separates API uploaders from real content signatures and ignores API author claims', async () => {
+    const variants = [
+      { uploader: '上传者甲', author: 'API 字段不当署名', content: ordinary() },
+      { uploader: '上传者乙', content: ordinary({ author: '内容署名甲' }) },
+      { content: ordinary({ doc: { author: '内容署名乙' } }) },
+    ];
+    const { library } = setup((async (url: any) => response({ available: true, ...variants[Number(String(url).split('/').at(-1)) - 1] })) as typeof fetch);
+    for (const [index, expected] of [{ author: '', uploader: '上传者甲' }, { author: '内容署名甲', uploader: '上传者乙' }, { author: '内容署名乙', uploader: '' }].entries()) {
+      const preview = await library.preview({ code: String(index + 1) }); expect(preview.entries[0]!.record).toMatchObject(expected);
+      const record = library.import({ previewId: preview.id }).items[0]!;
+      expect(library.get({ id: record.id })).toMatchObject(expected); expect(library.list().items.find(item => item.id === record.id)).toMatchObject(expected);
+    }
+  });
+  test('community search labels uploaders and set creators separately from content signatures', async () => {
+    const { library } = setup((async (url: any) => response({ has_next: false, total: 2, data: String(url).includes('/set/query')
+      ? [{ id: 1, name: '作业集', creator: '创建者', author: '非内容署名' }]
+      : [{ id: 1, uploader: '上传者', content: ordinary() }, { id: 2, uploader: '上传者乙', content: ordinary({ doc: { author: '原 JSON 署名' } }) }] })) as typeof fetch);
+    const ordinaryResults = await library.search({ target: 'copilot' });
+    expect(ordinaryResults.items).toMatchObject([{ author: '', uploader: '上传者' }, { author: '原 JSON 署名', uploader: '上传者乙' }]);
+    expect((await library.search({ target: 'set' })).items).toMatchObject([{ author: '', uploader: '创建者' }]);
+  });
+  test('export keeps exact raw JSON while the attribution sidecar follows the selected import source', async () => {
+    const raw = '\ufeff \n' + ordinary({ doc: { title: '原始作业', author: 'JSON 署名', details: '原作者说明与视频 https://example.test/video\n' + '说明'.repeat(2000) + '\n版权及许可原文：另行授权' }, license: '原作业自定义声明，不由应用解释' }) + '\r\n';
+    const { library, root } = setup((async (url: any) => response({ available: true, uploader: `上传者 ${String(url).split('/').at(-1)}`, content: raw })) as typeof fetch);
+    const local = await imported(library, raw), preview = await library.preview({ code: '42' }), record = library.import({ previewId: preview.id }).items[0]!;
+    const exported = library.export({ versionId: record.versionId, id: record.id }), sidecar = JSON.parse(exported.attribution.content);
+    expect(record.versionId).toBe(local.versionId); expect(exported.content).toBe(raw);
+    expect(readFileSync(path.join(root, 'copilot', 'versions', record.versionId + '.json'), 'utf8')).toBe(raw);
+    expect(sidecar).toMatchObject({ formatVersion: 1, contentFile: exported.filename, versionId: record.versionId, author: 'JSON 署名', uploader: '上传者 42', source: { kind: 'community', communityId: '42', url: 'https://prts.plus/copilot/42' }, licenseStatus: 'unverified' });
+    expect(exported.attribution.filename).toBe('原始作业.attribution.json');
+    expect(sidecar.licenseNotice).toContain('未声明的许可视为未知'); expect(sidecar.licenseNotice).toContain('不推定适用'); expect(sidecar.licenseNotice).toContain('不代表已经获得转载'); expect(sidecar.licenseNotice).toContain('doc.details');
+    expect(JSON.parse(library.export({ versionId: record.versionId }).attribution.content).source.kind).toBe('local');
+    const other = await imported(library, ordinary({ doc: { title: '另一个版本' } }));
+    expect(() => library.export({ versionId: other.versionId, id: record.id })).toThrow('不匹配');
+  });
+  test.each([false, true])('old community records recover content signatures without rewriting immutable files (signed=%s)', async signed => {
+    const raw = ordinary(signed ? { doc: { author: '真实内容署名' } } : {});
+    const { library, store, root } = setup((async () => response({ available: true, uploader: '旧上传者', content: raw })) as unknown as typeof fetch);
+    const preview = await library.preview({ code: '1' }), record = library.import({ previewId: preview.id }).items[0]!;
+    const oldRecord = { ...record, author: '旧上传者' }; delete oldRecord.uploader;
+    store.put('copilot', record.id, oldRecord);
+    const oldVersion = store.get('copilot_version', record.versionId); oldVersion.record = oldRecord; store.put('copilot_version', record.versionId, oldVersion);
+    const expected = { author: signed ? '真实内容署名' : '', uploader: '旧上传者' };
+    expect(library.get({ id: record.id })).toMatchObject(expected); expect(library.get({ versionId: record.versionId })).toMatchObject(expected); expect(library.list().items[0]).toMatchObject(expected);
+    const exported = library.export({ versionId: record.versionId, id: record.id }); expect(JSON.parse(exported.attribution.content)).toMatchObject(expected); expect(exported.content).toBe(raw);
+    expect(store.get('copilot', record.id)).toEqual(oldRecord); expect(store.get('copilot_version', record.versionId).record).toEqual(oldRecord);
+    expect(readFileSync(path.join(root, 'copilot', 'versions', record.versionId + '.json'), 'utf8')).toBe(raw);
   });
   test('set members use at most eight requests while completion order cannot reorder duplicates', async () => {
     const members = [3, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], pending: (() => void)[] = [];
