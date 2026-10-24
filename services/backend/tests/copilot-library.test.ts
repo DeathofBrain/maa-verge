@@ -123,6 +123,15 @@ describe('immutable local copilot library', () => {
     await expect(library.preview({ content: ordinary(), code: '123' })).rejects.toThrow('一种来源');
     expect(() => library.export({ versionId: '../../arbitrary' })).toThrow('参数无效');
   });
+  test('invalid click/swipe/unit-location and unknown action types are rejected before native effects', async () => {
+    const { library } = setup();
+    for (const action of [{ type: 'Click' }, { type: 'Click', rect: [1, 2, 0, 4] }, { type: 'Swipe', begin: [1, 2, 3, 4] }, { type: 'SetUnitLocation', name: '干员', location: [1.5, 2] }, { type: 'MoveCamera' }, { type: 'UnknownFutureAction' }, { type: 'Deploy', name: '干员' }]) {
+      const preview = await library.preview({ content: ordinary({ actions: [action] }) });
+      expect(preview.entries[0]!.error).toBeTruthy();
+    }
+    const valid = await library.preview({ content: ordinary({ actions: [{ type: 'Click', rect: [0, 0, 30, 20] }, { type: 'Swipe', begin: [1, 2, 3, 4], end: [2, 3, 4, 5] }, { type: 'SetUnitLocation', name: '装置', location: [0, 0] }] }) });
+    expect(valid.entries[0]!.error).toBeNull();
+  });
   test('zero defaults and source-specific settings reject unsupported combinations', async () => {
     const { library } = setup(), draft = await workspace(library);
     library.workspaceSave({ workspace: draft }); expect(library.prepare('Copilot').tasks[0]!.params).toMatchObject({ loop_times: 1, formation: false, support_unit_usage: 0, use_sanity_potion: false });
