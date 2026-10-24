@@ -7,6 +7,7 @@ import { mockPreviewImage } from '../../fixtures/preview-image';
 import { stagePresets } from '../../../packages/contracts/src/stages';
 import { validateDeviceClickParams, validateDeviceFrameParams } from '../../../packages/contracts/src/validators.js';
 import { homeInfo } from '../../../services/backend/src/home-info';
+import type { RpcResult } from '../../../packages/contracts/src/index';
 
 const workspace = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID || 'browser';
 const key = 'maaverge:test-runtime:v1:' + workspace;
@@ -93,12 +94,32 @@ function restore(): Snapshot {
 }
 
 let state = restore();
+type ToolJob = RpcResult<'tool.get'>;
+type ToolConfig = RpcResult<'tool.config.get'>;
+type Schedule = RpcResult<'schedule.save'>;
+const toolKey = 'maaverge:test-tools:v1:' + workspace;
+const toolData: { jobs: ToolJob[]; configs: Record<string, ToolConfig>; schedules: Schedule[] } = (() => {
+  try { return JSON.parse(localStorage.getItem(toolKey) || 'null') ?? { jobs: [], configs: {}, schedules: [] }; }
+  catch { return { jobs: [], configs: {}, schedules: [] }; }
+})();
+for (const job of toolData.jobs) if (job.status === 'running') { job.status = 'failed'; job.message = '合成页面重启中断'; }
+const toolRequests = new Map<string, ToolJob>();
+const overrides = new Map<string, string>();
+function fixtureAvailability(deviceId: string) {
+  const device = state.devices.find(item => item.id === deviceId);
+  if (!device) throw new Error('设备不存在');
+  const tool = toolData.jobs.find(item => item.deviceId === deviceId && item.status === 'running');
+  const run = state.runs.find(item => item.deviceId === deviceId && item.status === 'running');
+  const owner = tool ? 'tool' : run ? 'run' : 'none';
+  return { deviceId, connected: device.state !== 'offline', available: device.state === 'idle' && owner === 'none', owner, ownerId: tool?.id ?? run?.id ?? null, reason: tool ? '设备正在执行工具，请等待整个操作结束' : run ? '设备正在执行任务表，请等待整个操作结束' : device.state === 'idle' ? '设备空闲，可以使用工具' : '设备尚未连接' };
+}
 let sequence = Math.max(0, ...state.events.map((event) => Number(event.id) || 0));
 function persist() {
   localStorage.setItem(key, JSON.stringify(state));
   localStorage.setItem(recognitionKey, JSON.stringify(recognition));
+  localStorage.setItem(toolKey, JSON.stringify(toolData));
 }
-function collectRecognition(run: Run, task: Plan['tasks'][number], tasks: Plan['tasks']) {
+function collectRecognition(run: Pick<Run, 'id' | 'deviceId'>, task: Plan['tasks'][number], tasks: Plan['tasks']) {
   const clientType = String(task.params.client_type || tasks.find(item => item.type === 'StartUp')?.params.client_type || 'Official');
   const kinds: Recognition['kind'][] = task.type === 'Depot' ? ['depot'] : task.type === 'OperBox' ? ['operators'] : task.type === 'UserDataUpdate'
     ? [...(task.params.depot !== false ? ['depot' as const] : []), ...(task.params.operators !== false ? ['operators' as const] : [])] : [];
@@ -148,6 +169,17 @@ function activate(channel: UpdateChannel) {
 
 const timer = globalThis.setInterval(() => {
   let changed = false;
+  for (const job of toolData.jobs) {
+    if (job.status !== 'running') continue;
+    job.progress = Math.min(100, job.progress + 6);
+    if (job.progress === 100) {
+      const tasks: Plan['tasks'] = job.kind === 'operators' ? [{ type: 'OperBox', params: { client_type: job.clientType } }] : job.kind === 'depot' ? [{ type: 'Depot', params: { client_type: job.clientType } }] : [];
+      for (const task of tasks) collectRecognition(job, task, tasks);
+      job.status = 'completed'; job.finishedAt = now(); job.message = '合成工具完成';
+      const device = state.devices.find(item => item.id === job.deviceId); if (device) device.state = 'idle';
+    }
+    changed = true;
+  }
   for (const run of state.runs) {
     if (run.status !== 'running') continue;
     run.progress = Math.min(100, run.progress + 6);
@@ -205,7 +237,34 @@ function mockAddress(value: unknown): string {
 
 export async function fixtureRpc(method: string, params: Record<string, unknown>): Promise<unknown> {
   switch (method) {
-    case 'app.snapshot': return clone({ ...state, runs: state.runs.map(({ tasks: _tasks, ...summary }) => summary) });
+    case 'app.snapshot': return clone({ ...state, toolJobs: toolData.jobs.map(({ result: _result, ...summary }) => summary), runs: state.runs.map(({ tasks: _tasks, ...summary }) => summary) });
+    case 'device.availability': return fixtureAvailability(String(params.deviceId));
+    case 'tool.config.get': return clone(toolData.configs[JSON.stringify([params.deviceId, params.clientType ?? 'Official', params.kind])] ?? {});
+    case 'tool.config.save': {
+      toolData.configs[JSON.stringify([params.deviceId, params.clientType ?? 'Official', params.kind])] = clone(params.config as ToolConfig); persist(); return clone(params.config);
+    }
+    case 'tool.start': {
+      if (toolRequests.has(String(params.requestId))) return clone(toolRequests.get(String(params.requestId)));
+      const available = fixtureAvailability(String(params.deviceId)); if (!available.available) throw new Error(available.reason);
+      const job: ToolJob = { id: 'tool-' + crypto.randomUUID(), kind: params.kind as ToolJob['kind'], deviceId: String(params.deviceId), clientType: (params.clientType ?? 'Official') as ToolJob['clientType'], status: 'running', progress: 0, message: '合成工具准备中', startedAt: now(), finishedAt: null, result: {} };
+      toolData.jobs.unshift(job); toolRequests.set(String(params.requestId), job); state.devices.find(item => item.id === job.deviceId)!.state = 'running';
+      emit('tool.started', job.message, { job }); return clone(job);
+    }
+    case 'tool.get': case 'tool.stop': {
+      const job = toolData.jobs.find(item => item.id === params.id); if (!job) throw new Error('工具不存在');
+      if (method === 'tool.stop' && job.status === 'running') { job.status = 'stopped'; job.finishedAt = now(); state.devices.find(item => item.id === job.deviceId)!.state = 'idle'; emit('tool.stopped', '工具已停止', { job }); }
+      return clone(job);
+    }
+    case 'tool.catalog': return { tags: ['治疗','医疗干员'], operators: [], games: ['pixelpaint','secretfront'], resourceVersion: 'synthetic-resource', diagnostics: [] };
+    case 'schedule.list': return { schedules: toolData.schedules.map(item => ({ ...item, override: overrides.get(item.id) ?? null, nextAt: new Date(Date.now() + 86400000).toISOString() })), occurrences: [], timezone: 'Asia/Shanghai', wake: { supported: true, status: 'disabled', message: '合成唤醒状态：未注册系统任务' } };
+    case 'schedule.save': {
+      const item = clone(params.schedule as Schedule); item.id ||= 'schedule-' + crypto.randomUUID(); const index = toolData.schedules.findIndex(value => value.id === item.id);
+      if (index >= 0) toolData.schedules[index] = item; else toolData.schedules.push(item);
+      emit('schedule.changed', '合成定时已保存'); return clone(item);
+    }
+    case 'schedule.delete': { toolData.schedules = toolData.schedules.filter(item => item.id !== params.id); emit('schedule.changed', '合成定时已删除'); return { deleted: true }; }
+    case 'schedule.override': { if (params.mode === 'clear') overrides.delete(String(params.id)); else overrides.set(String(params.id), String(params.mode)); emit('schedule.changed', '合成临时启停已修改'); return clone(toolData.schedules.find(item => item.id === params.id)); }
+    case 'schedule.cancel': return { cancelled: true };
     case 'recognition.get': {
       const deviceId = String(params.deviceId), kind = params.kind as Recognition['kind'], clientType = String(params.clientType || 'Official');
       if (!state.devices.some(device => device.id === deviceId)) throw new Error('设备不存在');

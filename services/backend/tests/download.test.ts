@@ -172,6 +172,20 @@ test("download requests reject protocol redirects and use a fixed user agent", a
   }) })).rejects.toThrow("HTTPS");
 });
 
+test("cancellation before the response reader is attached cannot leave an idle stream hanging", async () => {
+  const destination = await temp(), controller = new AbortController();
+  let cancelled = false;
+  await expect(downloadArchive(meta(), destination, () => {}, {
+    engine: "builtin", signal: controller.signal, fetcher: mocked(() => {
+      controller.abort(new Error("关闭服务"));
+      return new Response(new ReadableStream({ cancel() { cancelled = true; } }), {
+        headers: { etag: '"v1"', "content-length": String(payload.length) },
+      });
+    }),
+  })).rejects.toThrow("关闭服务");
+  expect(cancelled).toBe(true);
+});
+
 let executableRoot: string, fakeExecutable: string;
 beforeAll(async () => {
   executableRoot = await mkdtemp(path.join(tmpdir(), "maaverge-aria2-fixture-"));

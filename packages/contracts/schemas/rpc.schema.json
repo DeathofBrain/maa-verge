@@ -7,7 +7,7 @@
   "properties": {
     "params": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "logs.info", "logs.export", "logs.clean", "home.info", "stages.list", "recognition.get", "resources.item", "resources.operator", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot","logs.info","logs.export","logs.clean","home.info","stages.list","recognition.get","resources.item","resources.operator","plan.save","plan.delete","device.discover","device.connect","device.auto_connect","device.disconnect","device.frame","device.click","run.start","run.stop","run.detail","run.artifact","updates.check","updates.prepare","updates.activate","updates.rollback","settings.save","agent.message","device.availability","tool.start","tool.get","tool.stop","tool.config.get","tool.config.save","tool.catalog","schedule.list","schedule.save","schedule.delete","schedule.override","schedule.cancel","schedule.host"],
       "properties": {
         "app.snapshot": { "$ref": "#/$defs/EmptyParams" },
         "logs.info": { "$ref": "#/$defs/EmptyParams" },
@@ -41,12 +41,101 @@
         "agent.message": {
           "type": "object", "additionalProperties": false, "required": ["message"],
           "properties": { "message": { "type": "string", "minLength": 1, "maxLength": 4000 }, "deviceId": { "type": "string" } }
+        },
+        "device.availability": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deviceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "deviceId"
+          ]
+        },
+        "tool.start": {
+          "$ref": "#/$defs/ToolStartParams"
+        },
+        "tool.get": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "tool.stop": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "tool.config.get": {
+          "$ref": "#/$defs/ToolIdentity"
+        },
+        "tool.config.save": {
+          "$ref": "#/$defs/ToolConfigParams"
+        },
+        "tool.catalog": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "clientType": {
+              "$ref": "#/$defs/ClientType"
+            }
+          },
+          "required": []
+        },
+        "schedule.list": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "schedule.save": {
+          "$ref": "#/$defs/ScheduleSaveParams"
+        },
+        "schedule.delete": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "schedule.override": {
+          "$ref": "#/$defs/ScheduleOverrideParams"
+        },
+        "schedule.cancel": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "schedule.host": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "wake"
+          ],
+          "properties": {
+            "wake": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "supported",
+                "status",
+                "message"
+              ],
+              "properties": {
+                "supported": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "enum": [
+                    "disabled",
+                    "registered",
+                    "failed",
+                    "unsupported"
+                  ]
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 1000
+                }
+              }
+            }
+          }
         }
       }
     },
     "results": {
       "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot", "logs.info", "logs.export", "logs.clean", "home.info", "stages.list", "recognition.get", "resources.item", "resources.operator", "plan.save", "plan.delete", "device.discover", "device.connect", "device.auto_connect", "device.disconnect", "device.frame", "device.click", "run.start", "run.stop", "run.detail", "run.artifact", "updates.check", "updates.prepare", "updates.activate", "updates.rollback", "settings.save", "agent.message"],
+      "required": ["app.snapshot","logs.info","logs.export","logs.clean","home.info","stages.list","recognition.get","resources.item","resources.operator","plan.save","plan.delete","device.discover","device.connect","device.auto_connect","device.disconnect","device.frame","device.click","run.start","run.stop","run.detail","run.artifact","updates.check","updates.prepare","updates.activate","updates.rollback","settings.save","agent.message","device.availability","tool.start","tool.get","tool.stop","tool.config.get","tool.config.save","tool.catalog","schedule.list","schedule.save","schedule.delete","schedule.override","schedule.cancel","schedule.host"],
       "properties": {
         "app.snapshot": { "$ref": "./runtime.schema.json" },
         "logs.info": { "type": "object", "additionalProperties": false, "required": ["directory", "retentionDays"], "properties": { "directory": { "type": "string" }, "retentionDays": { "type": "integer", "enum": [0, 7, 14, 30] } } },
@@ -84,6 +173,72 @@
         "agent.message": {
           "type": "object", "additionalProperties": false, "required": ["reply", "requiresConfirmation", "mode"],
           "properties": { "reply": { "type": "string" }, "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" }, "requiresConfirmation": { "type": "boolean" }, "mode": { "type": "string" } }
+        },
+        "device.availability": {
+          "$ref": "#/$defs/DeviceAvailability"
+        },
+        "tool.start": {
+          "$ref": "#/$defs/ToolJob"
+        },
+        "tool.get": {
+          "$ref": "#/$defs/ToolJob"
+        },
+        "tool.stop": {
+          "$ref": "#/$defs/ToolJob"
+        },
+        "tool.config.get": {
+          "$ref": "#/$defs/ToolConfig"
+        },
+        "tool.config.save": {
+          "$ref": "#/$defs/ToolConfig"
+        },
+        "tool.catalog": {
+          "$ref": "#/$defs/ToolCatalog"
+        },
+        "schedule.list": {
+          "$ref": "#/$defs/ScheduleList"
+        },
+        "schedule.save": {
+          "$ref": "#/$defs/Schedule"
+        },
+        "schedule.delete": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "deleted"
+          ]
+        },
+        "schedule.override": {
+          "$ref": "#/$defs/Schedule"
+        },
+        "schedule.cancel": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cancelled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "cancelled"
+          ]
+        },
+        "schedule.host": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "accepted"
+          ],
+          "properties": {
+            "accepted": {
+              "const": true
+            }
+          }
         }
       }
     }
@@ -107,7 +262,14 @@
         "collectedAt": { "type": ["string", "null"], "minLength": 1, "maxLength": 40 },
         "runId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
         "items": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/RecognizedItem" } },
-        "operators": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/RecognizedOperator" } }
+        "operators": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/RecognizedOperator" } },
+        "estimatedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 40
+        }
       }
     },
     "RecognizedItem": {
@@ -115,7 +277,12 @@
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 200 },
         "name": { "type": "string", "minLength": 1, "maxLength": 300 },
-        "quantity": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+        "quantity": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "estimatedQuantity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
       }
     },
     "RecognizedOperator": {
@@ -151,7 +318,12 @@
       "type": "object", "additionalProperties": false, "required": ["name"],
       "properties": {
         "name": { "type": "string", "minLength": 1, "maxLength": 300, "pattern": "^[^\\u0000-\\u001f\\u007f]+$" },
-        "clientType": { "$ref": "#/$defs/ClientType" }
+        "clientType": { "$ref": "#/$defs/ClientType" },
+        "operatorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
       }
     },
     "OperatorResourceResult": {
@@ -313,6 +485,541 @@
     "RpcEvent": {
       "type": "object", "additionalProperties": false, "required": ["jsonrpc", "method", "params"],
       "properties": { "jsonrpc": { "const": "2.0" }, "method": { "const": "runtime.event" }, "params": { "$ref": "./runtime.schema.json#/$defs/Event" } }
+    },
+    "DeviceAvailability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "owner": {
+          "enum": [
+            "none",
+            "run",
+            "tool",
+            "manual",
+            "connecting",
+            "updates",
+            "runtime"
+          ]
+        },
+        "ownerId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "deviceId",
+        "available",
+        "connected",
+        "reason",
+        "owner",
+        "ownerId"
+      ]
+    },
+    "ToolConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "device",
+            "manual"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "targets": {
+          "type": "array",
+          "maxItems": 29,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "stage": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "itemId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "quantity": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "medicine": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "stone": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "id",
+              "stage",
+              "itemId",
+              "quantity",
+              "medicine",
+              "stone"
+            ]
+          }
+        },
+        "updateDepot": {
+          "type": "boolean"
+        },
+        "sortByProgress": {
+          "type": "boolean"
+        },
+        "onlyFirst": {
+          "type": "boolean"
+        },
+        "skipDuringActivity": {
+          "type": "boolean"
+        },
+        "skipDuringResourceCollection": {
+          "type": "boolean"
+        },
+        "autoSeries": {
+          "type": "boolean"
+        },
+        "operators": {
+          "type": "boolean"
+        },
+        "depot": {
+          "type": "boolean"
+        },
+        "game": {
+          "enum": [
+            "pixelpaint",
+            "secretfront"
+          ]
+        },
+        "ending": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ]
+        },
+        "branch": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9_]*$"
+        }
+      },
+      "required": []
+    },
+    "ToolKind": {
+      "enum": [
+        "depot",
+        "operators",
+        "recruit",
+        "inventory",
+        "data",
+        "games"
+      ]
+    },
+    "ToolIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/ToolKind"
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        }
+      },
+      "required": [
+        "deviceId",
+        "kind"
+      ]
+    },
+    "ToolStartParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/ToolKind"
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "config": {
+          "$ref": "#/$defs/ToolConfig"
+        }
+      },
+      "required": [
+        "deviceId",
+        "kind",
+        "requestId"
+      ]
+    },
+    "ToolConfigParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/ToolKind"
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "config": {
+          "$ref": "#/$defs/ToolConfig"
+        }
+      },
+      "required": [
+        "deviceId",
+        "kind",
+        "config"
+      ]
+    },
+    "ToolJob": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/ToolKind"
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "status": {
+          "enum": [
+            "running",
+            "completed",
+            "failed",
+            "stopped"
+          ]
+        },
+        "progress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "startedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "finishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "deviceId",
+        "clientType",
+        "status",
+        "progress",
+        "message",
+        "startedAt",
+        "finishedAt"
+      ]
+    },
+    "Schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "planId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "hour": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "minute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 59
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "override": {
+          "enum": [
+            "enable",
+            "skip",
+            null
+          ]
+        },
+        "nextAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "disabledReason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "planId",
+        "deviceId",
+        "hour",
+        "minute",
+        "enabled"
+      ]
+    },
+    "ScheduleSaveParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schedule": {
+          "$ref": "#/$defs/Schedule"
+        }
+      },
+      "required": [
+        "schedule"
+      ]
+    },
+    "ScheduleOverrideParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "mode": {
+          "enum": [
+            "enable",
+            "skip",
+            "clear"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "mode"
+      ]
+    },
+    "ToolCatalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "operators": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "rarity": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 6
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "rarity",
+              "tags"
+            ]
+          }
+        },
+        "games": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "pixelpaint",
+              "secretfront"
+            ]
+          }
+        },
+        "resourceVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "topOperatorTag": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "tags",
+        "operators",
+        "games",
+        "resourceVersion",
+        "diagnostics"
+      ]
+    },
+    "ScheduleList": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schedules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Schedule"
+          }
+        },
+        "occurrences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "wake": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "schedules",
+        "occurrences",
+        "timezone",
+        "wake"
+      ]
     }
   }
 }

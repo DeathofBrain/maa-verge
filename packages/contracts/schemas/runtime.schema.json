@@ -298,7 +298,7 @@
       "additionalProperties": false,
       "properties": {
         "planName": { "type": "string", "maxLength": 80 },
-        "tasks": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/RunTask" } },
+        "tasks": { "type": "array", "maxItems": 31, "items": { "$ref": "#/$defs/RunTask" } },
         "id": {
           "title": "Id",
           "type": "string"
@@ -346,6 +346,16 @@
           ],
           "default": null,
           "title": "Finishedat"
+        },
+        "scheduleId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "scheduledFor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
         }
       },
       "required": [
@@ -365,7 +375,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["index", "type", "status", "message", "startedAt", "finishedAt", "drops", "infrastructure", "artifacts"],
       "properties": {
-        "index": { "type": "integer", "minimum": 0, "maximum": 29 },
+        "index": { "type": "integer", "minimum": 0, "maximum": 30 },
         "type": { "type": "string", "maxLength": 80 },
         "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] },
         "message": { "type": "string", "maxLength": 1000 },
@@ -497,6 +507,9 @@
         },
         "model": {
           "$ref": "#/$defs/ModelSettings"
+        },
+        "scheduler": {
+          "$ref": "#/$defs/SchedulerSettings"
         }
       },
       "required": [
@@ -639,6 +652,111 @@
       ],
       "title": "UpdateChannel",
       "type": "object"
+    },
+    "SchedulerSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "forceScheduledStart": {
+          "type": "boolean"
+        },
+        "showWindowBeforeForceScheduledStart": {
+          "type": "boolean"
+        },
+        "notifyBeforeScheduledStart": {
+          "type": "boolean"
+        },
+        "notificationMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1439
+        },
+        "scheduledWakeUp": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "forceScheduledStart",
+        "showWindowBeforeForceScheduledStart",
+        "notifyBeforeScheduledStart",
+        "notificationMinutes",
+        "scheduledWakeUp"
+      ]
+    },
+    "ToolJobSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "enum": [
+            "depot",
+            "operators",
+            "recruit",
+            "inventory",
+            "data",
+            "games"
+          ]
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "clientType": {
+          "enum": [
+            "Official",
+            "Bilibili",
+            "YoStarEN",
+            "YoStarJP",
+            "YoStarKR",
+            "txwy"
+          ]
+        },
+        "status": {
+          "enum": [
+            "running",
+            "completed",
+            "failed",
+            "stopped"
+          ]
+        },
+        "progress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "startedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "finishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "deviceId",
+        "clientType",
+        "status",
+        "progress",
+        "message",
+        "startedAt",
+        "finishedAt"
+      ]
     }
   },
   "additionalProperties": false,
@@ -687,6 +805,12 @@
       },
       "title": "Events",
       "type": "array"
+    },
+    "toolJobs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ToolJobSummary"
+      }
     }
   },
   "required": [

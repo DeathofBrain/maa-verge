@@ -571,7 +571,7 @@ test('task-table metadata, device binding and derived zero limits persist togeth
   await expect(wb(page).getByLabel('绑定设备', { exact: true })).toHaveValue('mock-device-1');
   await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
   await tab(page, '定时计划');
-  await expect(wb(page).getByRole('heading', { name: '定时执行尚未接入', exact: true })).toBeVisible();
+  await expect(wb(page).getByRole('heading', { name: '定时计划', exact: true })).toBeVisible();
   await expect(wb(page).getByRole('button', { name: '开始日常', exact: true })).toBeVisible();
 });
 
@@ -659,18 +659,14 @@ test('device connect and disconnect stay deterministic with the test runtime', a
   await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
 });
 
-test('recruitment calculation opens a safe common task configuration', async ({ page }) => {
+test('recruitment calculation is independent and never creates a task table', async ({ page }) => {
   await openWorkspace(page);
   await navigate(page, '工具箱');
+  await page.getByLabel('工具箱设备',{exact:true}).selectOption('mock-device-1');
   await page.getByRole('navigation', { name: '工具分类' }).getByRole('button', { name: '公招计算', exact: true }).click();
-  await page.getByRole('button', { name: '配置只计算任务', exact: true }).click();
-  await expect(wb(page).locator('.editor-steps > li')).toHaveCount(1);
-  await expect(wb(page).getByLabel('招募次数', { exact: true })).toHaveValue('0');
-  for (const star of [3, 4, 5, 6]) await expect(wb(page).getByRole('checkbox', { name: `自动确认 ${star} 星`, exact: true })).not.toBeChecked();
-  await wb(page).locator('.wb-field-section').filter({ has: page.locator('summary', { hasText: '招募策略' }) }).locator('summary').click();
-  await expect(wb(page).getByLabel('自动刷新标签', { exact: true })).not.toBeChecked();
-  await expect(wb(page).getByLabel('自动使用加急许可', { exact: true })).not.toBeChecked();
-  await expect(wb(page).getByLabel('自动使用加急许可', { exact: true })).toBeDisabled();
+  await expect(page.getByText('仅计算，不确认招募、不刷新标签、不使用加急许可。')).toBeVisible();
+  await expect(page.getByRole('button',{name:'开始计算',exact:true})).toBeEnabled();
+  await expect(page.getByRole('button',{name:'配置只计算任务',exact:true})).toHaveCount(0);
   await expect(dock(page)).not.toContainText('执行中');
 });
 

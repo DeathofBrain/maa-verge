@@ -16,6 +16,17 @@ export interface Validator<T> {
 export const validateSnapshot: Validator<Snapshot>;
 export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
+export const validateDeviceAvailabilityParams: Validator<RpcContract['params']['device.availability']>;
+export const validateToolStartParams: Validator<RpcContract['params']['tool.start']>;
+export const validateToolIdentity: Validator<RpcContract['params']['tool.config.get']>;
+export const validateToolConfigParams: Validator<RpcContract['params']['tool.config.save']>;
+export const validateToolConfig: Validator<RpcContract['results']['tool.config.get']>;
+export const validateScheduleSaveParams: Validator<RpcContract['params']['schedule.save']>;
+export const validateScheduleOverrideParams: Validator<RpcContract['params']['schedule.override']>;
+export const validateScheduleHostParams: Validator<RpcContract['params']['schedule.host']>;
+export const validateIdParams: Validator<RpcContract['params']['tool.get']>;
+export const validateEmptyParams: Validator<RpcContract['params']['schedule.list']>;
+export const validateToolCatalogParams: Validator<RpcContract['params']['tool.catalog']>;
 export const validateRpcRequest: Validator<RpcRequest>;
 export const validateRpcEvent: Validator<RpcEvent>;
 export const validateDeviceFrameParams: Validator<RpcContract['params']['device.frame']>;

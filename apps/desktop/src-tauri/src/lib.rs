@@ -1,4 +1,5 @@
 mod app_updater;
+mod desktop_scheduler;
 mod runtime;
 
 use runtime::Runtime;
@@ -198,10 +199,16 @@ fn resolve_window_close(app: tauri::AppHandle, action: String) -> Result<(), Str
 pub fn run() {
     let app = tauri::Builder::default()
         .manage(DesktopLifecycle::default())
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            show_main(app);
+        .manage(desktop_scheduler::DesktopScheduler::default())
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            if desktop_scheduler::is_wake(&args) {
+                desktop_scheduler::keep_awake(app, 600);
+            } else {
+                show_main(app);
+            }
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             runtime::runtime_request,
             resolve_window_close,
@@ -221,6 +228,7 @@ pub fn run() {
             updater.configure(&snapshot["settings"]);
             app.manage(runtime);
             app.manage(updater);
+            desktop_scheduler::start(app.handle().clone());
             app_updater::AppUpdater::check_in_background(app.handle().clone(), false);
             let show = MenuItem::with_id(app, "show", "显示 Maa Verge", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;

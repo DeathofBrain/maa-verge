@@ -4,6 +4,7 @@ import { taskDefaults, defaultDailyTaskTypes, taskEnabled, taskConsumableLimits,
 import TaskParameterField, { type Field } from './TaskParameterField';
 import { useContextMenu } from './ContextMenu';
 import './plan-workbench.css';
+import SchedulePanel from './SchedulePanel';
 
 type Task = Plan['tasks'][number];
 type Step = { key: string; task: Task; json: string };
@@ -389,7 +390,7 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
       <section id="wb-consumption"><h2>消耗汇总</h2><p className="wb-helper"><ShieldCheck size={14} />{consumableSummary}</p><p className="wb-helper">上限由本表已启用的自动作战任务分别设置，停用的任务不计入。请在任务编排中调整各项理智药与源石上限；默认均为 0。</p></section>
       <section id="wb-manage"><h2>任务表管理</h2><div className="wb-management-actions"><button className="button secondary" onClick={exportPlan}><FileText size={15} />导出任务表</button><button className="button secondary" disabled={!dirty} onClick={revert}><RotateCcw size={15} />{plan === 'new' ? '恢复初始配置' : '恢复已保存配置'}</button></div></section>
     </div></div>}
-    {tab === 'schedule' && <div className="wb-schedule" id="wb-panel-schedule" role="tabpanel" aria-labelledby="wb-tab-schedule"><CalendarClock size={38} strokeWidth={1.4} /><h2>定时执行尚未接入</h2><p>当前任务表可手动执行。定时规则、设备冲突与休眠恢复将在调度服务接入后启用。</p><button className="button secondary" onClick={() => patch({ tab: 'tasks' })}><ArrowLeft size={15} />返回任务编排</button></div>}
+    {tab === 'schedule' && <div id="wb-panel-schedule" role="tabpanel" aria-labelledby="wb-tab-schedule"><SchedulePanel planId={plan === 'new' ? undefined : plan.id} devices={devices} settings={settings} /></div>}
     {plan === 'new' && tab === 'tasks' && <div className="wb-new-name"><label htmlFor="wb-new-name">任务表名称</label><input id="wb-new-name" className="text-input" value={draft.name} placeholder="先给任务表起一个名字" maxLength={80} onChange={(event) => patch({ name: event.target.value })} /></div>}
   </section>;
 }

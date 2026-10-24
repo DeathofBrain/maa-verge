@@ -13,8 +13,9 @@ import { seedNativeData } from './test-support/seed-native.mjs';
 
 const require = createRequire(import.meta.url);
 const option = process.argv.indexOf('--executable');
+const scheduledWake = process.argv.includes('--scheduled-wake');
 if (process.argv.includes('--help')) {
-  console.log('node tools/smoke-webview-windows.mjs [--executable <release maaverge.exe>]\nRequires Windows, installed WebView2, pnpm dependencies, and release/runtime binaries.\nUses an isolated native workspace with automatic connection/download disabled and a temporary WebView profile.');
+  console.log('node tools/smoke-webview-windows.mjs [--executable <release maaverge.exe>] [--scheduled-wake]\nRequires Windows, installed WebView2, pnpm dependencies, and release/runtime binaries.\nUses an isolated native workspace with automatic connection/download disabled and a temporary WebView profile.');
   process.exit(0);
 }
 if (process.platform !== 'win32') throw new Error('This native WebView smoke requires Windows; it does not install WebView2.');
@@ -83,7 +84,7 @@ async function start() {
   await new Promise(resolve => server.close(resolve));
   const env = { ...process.env, MAAVERGE_MODE: 'native', MAAVERGE_DATA_DIR: data, MAAVERGE_DEVICE_LOCK_DIR: locks, WEBVIEW2_USER_DATA_FOLDER: profile, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1` };
   for (const key of ['MAAVERGE_BACKEND', 'MAAVERGE_CORE_WORKER_PATH', 'BUN_OPTIONS', 'BUN_BE_BUN', 'NODE_OPTIONS', 'NODE_PATH']) delete env[key];
-  child = spawn(executable, [], { cwd: root, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  child = spawn(executable, scheduledWake ? ['--scheduled-wake', '--schedule-data-root', data] : [], { cwd: root, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout.on('data', chunk => output += chunk);
   child.stderr.on('data', chunk => output += chunk);
   let spawnError;
@@ -156,6 +157,22 @@ try {
   await seedNativeData(data);
   console.log('Starting an isolated Windows release native WebView smoke.');
   await start();
+  if (scheduledWake) {
+    // Only this isolated empty workspace is launched; no system wake or real
+    // device is involved. The duplicate must hand off and exit before UI setup.
+    const second = spawn(executable, ['--scheduled-wake', '--schedule-data-root', data], { cwd: root, env: { ...process.env, MAAVERGE_DATA_DIR: data }, windowsHide: true, stdio: 'ignore' });
+    try {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Scheduled duplicate did not exit')), 15000);
+        second.once('error', error => { clearTimeout(timer); reject(error); });
+        second.once('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`Scheduled duplicate exited ${code}`)); });
+      });
+    } finally {
+      if (second.pid && second.exitCode === null) execFileSync('taskkill.exe', ['/PID', String(second.pid), '/T', '/F'], { windowsHide: true, stdio: 'pipe' });
+    }
+    assert.equal(ownTree().filter(process => process.Name === 'maaverge-runtime.exe').length, 1);
+    report.phases.push({ phase: 'scheduled-wake-single-instance-handoff' });
+  }
   await page.locator('.sidebar').getByRole('button', { name: /^Agent 助手/ }).click();
   await page.getByRole('button', { name: '制定刷 6 次 1-7 的计划', exact: true }).click();
   await page.getByRole('button', { name: '检查并保存计划', exact: true }).click();

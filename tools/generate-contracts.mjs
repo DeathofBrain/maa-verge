@@ -33,6 +33,17 @@ const validators = {
   validateSnapshot: schema.$id,
   validatePlan: `${schema.$id}#/$defs/Plan`,
   validateSettings: `${schema.$id}#/$defs/Settings`,
+  validateDeviceAvailabilityParams: `${rpcSchema.$id}#/properties/params/properties/device.availability`,
+  validateToolStartParams: `${rpcSchema.$id}#/$defs/ToolStartParams`,
+  validateToolIdentity: `${rpcSchema.$id}#/$defs/ToolIdentity`,
+  validateToolConfigParams: `${rpcSchema.$id}#/$defs/ToolConfigParams`,
+  validateToolConfig: `${rpcSchema.$id}#/$defs/ToolConfig`,
+  validateScheduleSaveParams: `${rpcSchema.$id}#/$defs/ScheduleSaveParams`,
+  validateScheduleOverrideParams: `${rpcSchema.$id}#/$defs/ScheduleOverrideParams`,
+  validateScheduleHostParams: `${rpcSchema.$id}#/properties/params/properties/schedule.host`,
+  validateIdParams: `${rpcSchema.$id}#/$defs/IdParams`,
+  validateEmptyParams: `${rpcSchema.$id}#/$defs/EmptyParams`,
+  validateToolCatalogParams: `${rpcSchema.$id}#/properties/params/properties/tool.catalog`,
   validateRpcRequest: `${rpcSchema.$id}#/$defs/RpcRequest`,
   validateRpcEvent: `${rpcSchema.$id}#/$defs/RpcEvent`,
   validateDeviceFrameParams: `${rpcSchema.$id}#/$defs/DeviceFrameParams`,
@@ -87,6 +98,17 @@ export interface Validator<T> {
 export const validateSnapshot: Validator<Snapshot>;
 export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
+export const validateDeviceAvailabilityParams: Validator<RpcContract['params']['device.availability']>;
+export const validateToolStartParams: Validator<RpcContract['params']['tool.start']>;
+export const validateToolIdentity: Validator<RpcContract['params']['tool.config.get']>;
+export const validateToolConfigParams: Validator<RpcContract['params']['tool.config.save']>;
+export const validateToolConfig: Validator<RpcContract['results']['tool.config.get']>;
+export const validateScheduleSaveParams: Validator<RpcContract['params']['schedule.save']>;
+export const validateScheduleOverrideParams: Validator<RpcContract['params']['schedule.override']>;
+export const validateScheduleHostParams: Validator<RpcContract['params']['schedule.host']>;
+export const validateIdParams: Validator<RpcContract['params']['tool.get']>;
+export const validateEmptyParams: Validator<RpcContract['params']['schedule.list']>;
+export const validateToolCatalogParams: Validator<RpcContract['params']['tool.catalog']>;
 export const validateRpcRequest: Validator<RpcRequest>;
 export const validateRpcEvent: Validator<RpcEvent>;
 export const validateDeviceFrameParams: Validator<RpcContract['params']['device.frame']>;
