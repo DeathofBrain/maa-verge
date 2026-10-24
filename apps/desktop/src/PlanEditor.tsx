@@ -52,6 +52,7 @@ type Props = {
   busyDeviceIds?: string[];
   suspended?: boolean; command?: PlanEditorCommand; onCommandHandled?: () => void; onDuplicate?: (plan: Plan) => void;
   onOpenDeviceSettings?: (deviceId?: string) => void;
+  onCopyCopilot?: (planId: string, taskIndex: number) => void;
   onSave: (plan: Plan) => Promise<boolean>; onStart?: (plan: Plan) => Promise<boolean>;
   onDelete?: (plan: Plan) => void; onClose?: () => void; onSaved?: (plan: Plan) => void;
   initialGroup?: Group; defaultName?: string; focusTaskType?: Task['type']; focusTaskIndex?: number; initialParams?: Task['params']; searchQuery?: string;
@@ -159,7 +160,7 @@ function fieldGroups(type: Task['type']): FieldGroup[] {
   return definitions.map(([title, keys, expanded]) => ({ title, fields: keys.flatMap((key) => available.filter((field) => field.key === key)), expanded })).filter((group) => group.fields.length);
 }
 
-export default function PlanEditor({ plan, devices = [], settings, selectedDeviceId, busyDeviceIds = [], suspended = false, command, onCommandHandled, onDuplicate, onOpenDeviceSettings, running = false, unsaved = false, onSave, onStart, onDelete, onClose, onSaved, initialGroup = 'daily', defaultName, focusTaskType, focusTaskIndex, initialParams, searchQuery = '' }: Props) {
+export default function PlanEditor({ plan, devices = [], settings, selectedDeviceId, busyDeviceIds = [], suspended = false, command, onCommandHandled, onDuplicate, onOpenDeviceSettings, onCopyCopilot, running = false, unsaved = false, onSave, onStart, onDelete, onClose, onSaved, initialGroup = 'daily', defaultName, focusTaskType, focusTaskIndex, initialParams, searchQuery = '' }: Props) {
   const contextMenu = useContextMenu();
   const cacheKey = `maaverge.ui.draft.${plan === 'new' ? `new:${initialGroup}:${focusTaskType || 'default'}:${stable(initialParams || {})}` : plan.id}`;
   const [draft, setDraft] = useState<Draft>(() => loadDraft(cacheKey, plan, initialGroup, focusTaskType, initialParams, focusTaskIndex, defaultName));
@@ -203,7 +204,7 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
   const hasSavedPlan = plan !== 'new' && !unsaved;
   const startUnavailable = draftTargetBusy;
   const contentVersion = draftVersion(draft);
-  const filteredTypes = Object.entries(taskLabels).filter(([type, label]) => `${label} ${type} ${taskCategories[type]}`.toLowerCase().includes(typeSearch.toLowerCase()));
+  const filteredTypes = Object.entries(taskLabels).filter(([type]) => !['Copilot', 'SSSCopilot', 'ParadoxCopilot'].includes(type)).filter(([type, label]) => `${label} ${type} ${taskCategories[type]}`.toLowerCase().includes(typeSearch.toLowerCase()));
   const tab = draft.tab;
   const patch = (value: Partial<Draft>) => setDraft((previous) => ({ ...previous, ...value }));
 
@@ -374,6 +375,7 @@ export default function PlanEditor({ plan, devices = [], settings, selectedDevic
       <fieldset className="wb-fieldset task-fields" disabled={!validJson}>{fieldGroups(step.task.type).map((group) => { const visible = group.fields.filter((field) => (step.task.type !== 'Infrast' || !['filename', 'plan_index'].includes(field.key) || Number(step.task.params.mode) === 10000) && (!fieldSearch || `${field.label} ${field.key} ${field.hint || ''}`.toLowerCase().includes(fieldSearch.toLowerCase()))); return !!visible.length && <FieldSection key={`${step.key}-${group.title}`} title={group.title} expanded={group.expanded || !!fieldSearch} summary={`${group.fields.length} 项设置`}><div className="wb-fields">{visible.map((field) => <TaskParameterField key={step.key + field.key} field={field} params={step.task.params} onChange={setParams} clientType={taskClient} />)}</div>{group.title === '消耗上限' && <p className="wb-helper"><ShieldCheck size={14} />{consumableSummary}</p>}</FieldSection>; })}</fieldset>
       {fieldSearch && !fields[step.task.type]?.some((field) => `${field.label} ${field.key} ${field.hint || ''}`.toLowerCase().includes(fieldSearch.toLowerCase())) && <p className="wb-helper">没有匹配的表单项，可清除搜索或检查高级参数。</p>}
       {!validJson && <p role="alert" className="wb-inline-error">请先修正高级参数中的 JSON，再使用表单。</p>}
+      {['Copilot', 'SSSCopilot', 'ParadoxCopilot'].includes(step.task.type) && <div className="wb-task-help"><Info size={17} /><div><p>此旧任务继续兼容。新作业请在作业中心管理，复制不会删除或修改原任务。</p>{plan !== 'new' && !unsaved && onCopyCopilot && <button className="button secondary" disabled={dirty || saving || starting} title={dirty ? '等待自动保存完成后复制' : undefined} onClick={() => onCopyCopilot(draft.id, selected)}>复制到作业库</button>}</div></div>}
       {step.task.type === 'OperProgress' && <div className="wb-task-help"><Info size={17} /><p>干员养成会执行精英化、技能升级与专精并消耗材料。在高级参数的 plans 数组填写目标，执行前逐项核对。</p></div>}
       {!fields[step.task.type]?.length && step.task.type !== 'OperProgress' && <div className="wb-task-help"><FileText size={17} /><p>识别使用核心默认参数。结果可在运行事件中查看；专用结果与导出仍待接入。</p></div>}
       {step.task.type === 'Recruit' && <p className="wb-helper">次数为 0 时仅识别标签。当前核心无法保证加急次数上限，加急请求会被策略拒绝。</p>}

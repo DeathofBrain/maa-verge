@@ -103,3 +103,32 @@ test('automatic multi-instance capture shows each detected type and user edits o
   expect(snapshot.settings.deviceProfiles?.[0]).toMatchObject({ autoDetected: true, capture: { method: 'mumu', autoDetect: true, instanceIndex: 32 } });
   expect(snapshot.settings.deviceProfiles?.[1]).toMatchObject({ autoDetected: false, capture: { method: 'ldplayer', autoDetect: false, instanceIndex: 2 } });
 });
+
+test('stored instance failures show a readable device authorization reason', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await page.evaluate(async () => {
+    const harness = (window as HarnessWindow).runtimeHarness;
+    const original = harness.call;
+    const state = await original('app.snapshot', {}) as Snapshot;
+    await original('settings.save', { settings: { ...state.settings, deviceProfiles: [{
+      id: 'authorization-test', name: '未授权实例', address: '127.0.0.1:5555',
+      connection: { adbPath: 'adb', address: '127.0.0.1:5555', config: 'General', touchMode: 'maatouch', clientType: 'Official' },
+      capture: { method: 'adb', emulatorPath: '', instanceIndex: 0 },
+    }] } });
+    harness.call = async (method, params) => {
+      const result = await original(method, params);
+      if (method === 'app.snapshot') (result as Snapshot).devices = (result as Snapshot).devices.map(device => ({
+        ...device, state: 'offline', connectionProfileId: 'authorization-test', connectionError: 'Error: device unauthorized',
+      }));
+      return result;
+    };
+    await original('settings.save', { settings: (await original('app.snapshot', {}) as Snapshot).settings });
+  });
+  await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await page.getByRole('tab', { name: /^多开管理/ }).click();
+  const instance = page.getByRole('article', { name: '多开实例：未授权实例', exact: true });
+  await expect(instance.getByRole('alert')).toContainText('设备尚未授权 ADB 调试');
+  await expect(instance.getByRole('alert')).toContainText('确认调试授权后重试');
+  await expect(instance.getByRole('button', { name: '连接实例', exact: true })).toBeEnabled();
+});

@@ -28,6 +28,31 @@ Maa Verge 的「启动时检查应用更新」默认开启，仅检查，不自�
 
 自动安装仍要求应用位置可写或安装器获得所需权限。macOS 签名/公证和 Windows Authenticode 发布者签名与下文的更新签名是不同机制，目前没有完成这些系统发行签名的配置与验收。
 
+## macOS 签名与首次放行
+
+macOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付费账号或新增 GitHub Secrets。Tauri 配置显式设置 `bundle.macOS.signingIdentity: "-"`，在生成 DMG、更新归档及更新签名前封装整个 `.app`；Bun 服务、C++ worker 和 aria2c 保留各自的签名与权限。只签主程序或子进程、没有 `.app` 的资源封装，会导致系统报告应用「已损坏」。
+
+本地签名可以验证应用包完整性，但没有 Apple 认可的发布者身份与公证。首次安装时，先把应用从 DMG 拖到可写的安装目录，尝试打开，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」。应用需要用户明确放行；CI 不修改全局 Gatekeeper 设置，也不承诺未公证下载可以直接打开。
+
+已发布的 **v0.1.1 macOS 包确有资源封装缺失**，不是单纯的未知开发者提示。2026-10-24 核对 Apple Silicon DMG 的官方 SHA-256 与映像校验均通过，而 `codesign --verify --deep --strict` 返回 `code has no resources but signature indicates they must be present`。修复只进入后续构建，不覆盖既有发行资产。
+
+对于已经下载的 v0.1.1，先从项目 Release 校验 `SHA256SUMS.txt`，退出应用并复制到安装目录。若仍要临时使用，可以在终端只补签这一个应用，再验证签名；以下路径须替换为实际位置。该命令不使用 `--deep` 重签，保留三个子进程的权限：
+
+```sh
+codesign --force --sign - "/Applications/Maa Verge.app"
+codesign --verify --deep --strict "/Applications/Maa Verge.app"
+```
+
+随后按系统提示放行。如果系统仍阻止此已核验的应用，可仅移除该应用的下载隔离标记，再打开；不关闭系统安全检查：
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Maa Verge.app"
+```
+
+后续构建由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和三个子进程签名。普通 CI 与发行 CI 的两种 macOS 架构还会运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。
+
+发行 CI 额外传入 `--require-updater`，解开最终 `.app.tar.gz`，验证签名及其与原应用的主程序、资源封装和子进程字节一致；任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。
+
 ## 信任与版本边界
 
 应用只从 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge/releases) 查询已发布版本，再读取所选标签自己的 `latest.json`。清单、平台/架构/安装器对应文件名、版本和 GitHub 资产登记必须匹配；包下载只跟随官方 GitHub 附件 CDN 的 HTTPS 重定向。元数据最多 4 MiB，单包最多 1 GiB，下载核对登记大小并限制停滞时间。

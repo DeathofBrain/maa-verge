@@ -24,6 +24,10 @@ for (const [type, params] of Object.entries(taskParams)) {
   policy(`${type} disabled task still rejects malformed parameters`, type, [], -32602, false);
   fixtures.push({ name: `${type} explicit native defaults`, operation: 'native', value: plan(type, { ...params, extension: { keep: true } }) });
 }
+for (const enabled of [true, false]) {
+  fixtures.push({ name: `Fight material targets ${enabled ? 'enabled' : 'disabled'}`, operation: 'native', value: plan('Fight', { drops_enabled: enabled, drops: { '30013': 7 } }) });
+  policy(`Fight material target switch ${enabled} accepted`, 'Fight', { drops_enabled: enabled, drops: { '30013': 7 } });
+}
 const defaulted: Array<[string, string]> = [
   ['Fight', 'times'], ['Fight', 'stage'], ['Fight', 'series'], ['Recruit', 'times'], ['Recruit', 'extra_tags_mode'],
   ['Infrast', 'mode'], ['Infrast', 'drones'], ['Infrast', 'threshold'], ['Roguelike', 'theme'], ['Roguelike', 'mode'],
@@ -39,7 +43,7 @@ for (const key of ['stone', 'medicine', 'expiring_medicine', 'medicine_expire_da
 for (const key of ['Shell', 'ſhell', 'CoMmAnD', 'ſcript', 'AdB']) {
   policy(`nested command ${key} blocked`, 'Fight', { extension: [{ [key]: 'ignored' }] }, -32010);
 }
-for (const key of 'enable start_game_enabled refresh set_time expedite skip_robot report_to_penguin report_to_yituliu DrGrandet replenish dorm_notstationed_enabled dorm_trust_enabled fiammetta_recovery_enabled use_pinus_sylvestris use_perception_information use_worldly_plight use_abyssal_hunter reception_message_board reception_clue_exchange reception_send_clue continue_training visit_friends shopping force_shopping_if_credit_full only_buy_discount reserve_max_credit credit_fight award mail recruit orundum mining specialaccess signinevent formation use_sanity_potion add_trust ignore_requirements clear_store'.split(' ')) {
+for (const key of 'enable drops_enabled start_game_enabled refresh set_time expedite skip_robot report_to_penguin report_to_yituliu DrGrandet replenish dorm_notstationed_enabled dorm_trust_enabled fiammetta_recovery_enabled use_pinus_sylvestris use_perception_information use_worldly_plight use_abyssal_hunter reception_message_board reception_clue_exchange reception_send_clue continue_training visit_friends shopping force_shopping_if_credit_full only_buy_discount reserve_max_credit credit_fight award mail recruit orundum mining specialaccess signinevent formation use_sanity_potion add_trust ignore_requirements clear_store'.split(' ')) {
   policy(`all generic booleans stay strict: ${key}`, 'Fight', { [key]: 'false' }, -32010, false);
 }
 for (const key of 'first_tags preserve_tags buy_first blacklist fiammetta_targets themes task_names tools_to_craft'.split(' ')) {
@@ -144,6 +148,16 @@ test('native defaults retain explicit values and never mutate a saved task', () 
   const before = structuredClone(task), copied = nativeTask(task);
   expect(copied.params.times).toBeNull(); expect(copied.params.report_to_penguin).toBe(true);
   expect(copied.params.medicine).toBe(0); expect(task).toEqual(before);
+});
+test('material target switches affect native parameters without changing saved targets', () => {
+  for (const enabled of [undefined, true, false]) {
+    const task = parsePlan(plan('Fight', { drops: { '30013': 7 }, ...(enabled === undefined ? {} : { drops_enabled: enabled }) })).tasks[0];
+    const before = structuredClone(task);
+    const copied = nativeTask(task);
+    expect(copied.params.drops).toEqual(enabled === false ? {} : { '30013': 7 });
+    expect(copied.params).not.toHaveProperty('drops_enabled');
+    expect(task).toEqual(before);
+  }
 });
 test('non-JSON direct parameters are rejected deterministically', () => {
   for (const value of [NaN, Infinity, -Infinity, undefined, 1n, new Date(), new Map(), () => {}]) {

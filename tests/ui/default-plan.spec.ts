@@ -9,6 +9,9 @@ test('new daily tables have upstream defaults, save immediately and receive unus
   await expect(wb.getByLabel('任务表名称', { exact: true })).toHaveValue('日常表1');
   await expect(wb.locator('.editor-steps > li')).toHaveCount(9);
   await expect(wb.getByRole('checkbox', { name: '指定次数', exact: true })).not.toBeChecked();
+  await expect(wb.getByRole('checkbox', { name: '指定材料', exact: true })).not.toBeChecked();
+  await expect(wb.getByLabel('目标材料', { exact: true })).toBeDisabled();
+  await expect(wb.getByRole('button', { name: '添加材料目标', exact: true })).toBeDisabled();
   await wb.getByRole('button', { name: '设置第 3 条基建换班', exact: true }).click();
   await expect(wb.getByRole('combobox', { name: '无人机用途', exact: true })).toHaveValue('Money');
   for (const checkbox of await wb.getByRole('group', { name: '换班设施与顺序', exact: true }).getByRole('checkbox').all()) await expect(checkbox).toBeChecked();

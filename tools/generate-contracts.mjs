@@ -17,6 +17,7 @@ const bannerComment = '/* Generated from packages/contracts/schemas. Run pnpm co
 const typeOptions = {
   bannerComment,
   additionalProperties: false,
+  ignoreMinAndMaxItems: true,
   style: { singleQuote: true, semi: true, tabWidth: 2 },
 };
 const types = await compile(schema, 'Snapshot', typeOptions);
@@ -31,6 +32,15 @@ ajv.addSchema(rpcSchema);
 ajv.addSchema(workerSchema);
 const validators = {
   validateSnapshot: schema.$id,
+  validateCopilotListParams: `${rpcSchema.$id}#/$defs/CopilotListParams`,
+  validateCopilotIdentityParams: `${rpcSchema.$id}#/$defs/CopilotIdentityParams`,
+  validateCopilotExportParams: `${rpcSchema.$id}#/$defs/CopilotExportParams`,
+  validateCopilotPreviewParams: `${rpcSchema.$id}#/$defs/CopilotPreviewParams`,
+  validateCopilotImportParams: `${rpcSchema.$id}#/$defs/CopilotImportParams`,
+  validateCopilotWorkspaceParams: `${rpcSchema.$id}#/$defs/CopilotWorkspaceParams`,
+  validateCopilotWorkspaceSaveParams: `${rpcSchema.$id}#/$defs/CopilotWorkspaceSaveParams`,
+  validateCopilotSearchParams: `${rpcSchema.$id}#/$defs/CopilotSearchParams`,
+  validateCopilotStartParams: `${rpcSchema.$id}#/$defs/CopilotStartParams`,
   validatePlan: `${schema.$id}#/$defs/Plan`,
   validateSettings: `${schema.$id}#/$defs/Settings`,
   validateDeviceAvailabilityParams: `${rpcSchema.$id}#/properties/params/properties/device.availability`,
@@ -96,6 +106,15 @@ export interface Validator<T> {
   errors: ValidationError[] | null;
 }
 export const validateSnapshot: Validator<Snapshot>;
+export const validateCopilotListParams: Validator<RpcContract['params']['copilot.list']>;
+export const validateCopilotIdentityParams: Validator<RpcContract['params']['copilot.get']>;
+export const validateCopilotExportParams: Validator<RpcContract['params']['copilot.export']>;
+export const validateCopilotPreviewParams: Validator<RpcContract['params']['copilot.preview']>;
+export const validateCopilotImportParams: Validator<RpcContract['params']['copilot.import']>;
+export const validateCopilotWorkspaceParams: Validator<RpcContract['params']['copilot.workspace.get']>;
+export const validateCopilotWorkspaceSaveParams: Validator<RpcContract['params']['copilot.workspace.save']>;
+export const validateCopilotSearchParams: Validator<RpcContract['params']['copilot.search']>;
+export const validateCopilotStartParams: Validator<RpcContract['params']['copilot.start']>;
 export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
 export const validateDeviceAvailabilityParams: Validator<RpcContract['params']['device.availability']>;

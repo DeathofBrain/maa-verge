@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Download, LoaderCircle, X } from 'lucide-react';
-import { rpc, type UpdateChannel } from '@maaverge/contracts';
+import { errorMessage, rpc, type UpdateChannel } from '@maaverge/contracts';
 import './update-notifications.css';
 
 type Notice = { channel: UpdateChannel; visible: boolean };
@@ -47,7 +47,7 @@ export function useComponentDownloads(channels: UpdateChannel[] | undefined, ref
         const next = { ...previous }; delete next[channel.id]; return next;
       });
     } catch (cause) {
-      observe([{ ...channel, status: 'failed', message: cause instanceof Error ? cause.message : String(cause) }], true);
+      observe([{ ...channel, status: 'failed', message: errorMessage(cause) }], true);
     } finally {
       requests.current.delete(channel.id);
       setPreparing(new Set(requests.current));
@@ -71,7 +71,7 @@ export default function UpdateNotifications({ notices, onDismiss }: { notices: N
       <div className="update-notification-heading">{downloading ? <LoaderCircle size={18} className="spin" /> : failed ? <AlertCircle size={18} /> : <Check size={18} />}<strong>{names[channel.id]}</strong><button className="icon-button" aria-label={`关闭${names[channel.id]}下载通知`} onClick={() => onDismiss(channel.id)}><X size={15} /></button></div>
       <div className="update-notification-status"><span>{title}</span>{downloading && <span className="numeric">{progressFor(channel)}%</span>}</div>
       {downloading && <progress aria-label={`${names[channel.id]}下载进度`} max={100} value={progressFor(channel)} />}
-      {channel.message && <p>{channel.message}</p>}
+      {channel.message && <p>{failed ? errorMessage(channel.message) : channel.message}</p>}
       {channel.id === 'app' && channel.status === 'staged' && <p>在“设置 → 更新”中确认安装并重启。</p>}
       {downloading && <small><Download size={12} />可继续使用其他页面</small>}
     </section>;

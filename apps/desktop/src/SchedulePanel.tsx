@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CalendarClock, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { rpc, type Device, type Plan, type Settings, type RpcResult } from '@maaverge/contracts';
+import { errorMessage, rpc, type Device, type Plan, type Settings, type RpcResult } from '@maaverge/contracts';
 import './schedule-panel.css';
 type Schedule = RpcResult<'schedule.save'>;
 export default function SchedulePanel({ planId, devices, settings }: { planId?: string; devices: Device[]; settings?: Settings }) {
@@ -17,12 +17,12 @@ export default function SchedulePanel({ planId, devices, settings }: { planId?: 
   const [options, setOptions] = useState(settings?.scheduler ?? { forceScheduledStart: false, showWindowBeforeForceScheduledStart: false, notifyBeforeScheduledStart: false, notificationMinutes: 5, scheduledWakeUp: false });
   useEffect(() => {
     let cancelled = false;
-    const refresh = () => { void Promise.all([rpc('schedule.list', {}), rpc('app.snapshot', {})]).then(([value, snapshot]) => { if (!cancelled) { setData(value); setPlans(snapshot.plans); setOptions(snapshot.settings.scheduler ?? options); } }, cause => { if (!cancelled) setError(String(cause)); }); };
+    const refresh = () => { void Promise.all([rpc('schedule.list', {}), rpc('app.snapshot', {})]).then(([value, snapshot]) => { if (!cancelled) { setData(value); setPlans(snapshot.plans); setOptions(snapshot.settings.scheduler ?? options); } }, cause => { if (!cancelled) setError(errorMessage(cause)); }); };
     refresh(); const timer = window.setInterval(refresh, 2000);
     return () => { cancelled = true; window.clearInterval(timer); };
   }, [revision]);
   const action = async (call: () => Promise<unknown>) => {
-    setBusy(true); setError(''); try { await call(); setRevision(value => value + 1); } catch (cause) { setError(String(cause)); } finally { setBusy(false); }
+    setBusy(true); setError(''); try { await call(); setRevision(value => value + 1); } catch (cause) { setError(errorMessage(cause)); } finally { setBusy(false); }
   };
   const save = (schedule: Schedule, patch: Partial<Schedule>) => action(() => rpc('schedule.save', { schedule: { ...schedule, ...patch } }));
   const settingsChange = (change: Partial<typeof options>) => { const value = { ...options, ...change }; setOptions(value); void action(async () => { const latest = await rpc('app.snapshot', {}); await rpc('settings.save', { settings: { ...latest.settings, scheduler: value } }); }); };

@@ -13,11 +13,6 @@ export type Group = 'daily' | 'specialized';
 export type Originium = number;
 export type Medicine = number;
 export type Expedited = number;
-/**
- * @minItems 1
- * @maxItems 30
- */
-export type Tasks = [Task, ...Task[]];
 export type Type =
   | 'StartUp'
   | 'CloseDown'
@@ -40,6 +35,11 @@ export type Type =
   | 'OperProgress'
   | 'UserDataUpdate';
 export type Enabled = boolean;
+/**
+ * @minItems 1
+ * @maxItems 30
+ */
+export type Tasks = Task[];
 export type Schedule = string | null;
 export type Enabled1 = boolean;
 export type Autoconnect = boolean;
@@ -55,6 +55,11 @@ export type Model = string;
  * via the `definition` "ToolKind".
  */
 export type ToolKind = 'depot' | 'operators' | 'recruit' | 'inventory' | 'data' | 'games';
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotKind".
+ */
+export type CopilotKind = 'Copilot' | 'SSSCopilot' | 'ParadoxCopilot';
 export type Mode = 'native';
 export type Id1 = string;
 export type Name1 = string;
@@ -65,7 +70,7 @@ export type Resourceversion = string | null;
 export type Devices = Device[];
 export type Plans = Plan[];
 export type Id2 = string;
-export type Planid = string;
+export type Planid = string | null;
 export type Deviceid1 = string;
 export type Status = 'running' | 'completed' | 'failed' | 'stopped';
 export type Progress = number;
@@ -157,6 +162,16 @@ export interface RpcContract {
         message: string;
       };
     };
+    'copilot.list': CopilotListParams;
+    'copilot.get': CopilotIdentityParams;
+    'copilot.export': CopilotExportParams;
+    'copilot.preview': CopilotPreviewParams;
+    'copilot.import': CopilotImportParams;
+    'copilot.delete': IdParams;
+    'copilot.workspace.get': CopilotWorkspaceParams;
+    'copilot.workspace.save': CopilotWorkspaceSaveParams;
+    'copilot.search': CopilotSearchParams;
+    'copilot.start': CopilotStartParams;
   };
   results: {
     'app.snapshot': Snapshot;
@@ -233,6 +248,48 @@ export interface RpcContract {
     'schedule.host': {
       accepted: true;
     };
+    'copilot.list': {
+      /**
+       * @maxItems 20
+       */
+      items: CopilotRecord[];
+      page: number;
+      total: number;
+      hasNext: boolean;
+    };
+    'copilot.get': CopilotRecord;
+    'copilot.export': {
+      filename: string;
+      content: string;
+      /**
+       * 可与原始 JSON 一同保存的来源和署名旁文件；不表示已取得转载授权或适用应用许可证。
+       */
+      attribution: {
+        filename: string;
+        content: string;
+      };
+    };
+    'copilot.preview': CopilotPreview;
+    'copilot.import': {
+      /**
+       * @maxItems 100
+       */
+      items: CopilotRecord[];
+      /**
+       * @maxItems 100
+       */
+      errors: {
+        id: string;
+        message: string;
+      }[];
+    };
+    'copilot.delete': {
+      deleted: boolean;
+    };
+    'copilot.workspace.get': CopilotWorkspace;
+    'copilot.workspace.save': CopilotWorkspace;
+    'copilot.search': CopilotSearchResult;
+    'copilot.start': Run;
   };
 }
 /**
@@ -419,238 +476,7 @@ export interface InfrastructureEstimateProfile {
   /**
    * @maxItems 20
    */
-  lines:
-    | []
-    | [InfrastructureLine]
-    | [InfrastructureLine, InfrastructureLine]
-    | [InfrastructureLine, InfrastructureLine, InfrastructureLine]
-    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
-    | [InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine, InfrastructureLine]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ]
-    | [
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine,
-        InfrastructureLine
-      ];
+  lines: InfrastructureLine[];
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -761,13 +587,7 @@ export interface ToolConfig {
   /**
    * @maxItems 5
    */
-  tags?:
-    | []
-    | [string]
-    | [string, string]
-    | [string, string, string]
-    | [string, string, string, string]
-    | [string, string, string, string, string];
+  tags?: string[];
   /**
    * @maxItems 29
    */
@@ -843,6 +663,130 @@ export interface ScheduleOverrideParams {
   id: string;
   mode: 'enable' | 'skip' | 'clear';
 }
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotListParams".
+ */
+export interface CopilotListParams {
+  kind?: CopilotKind;
+  page?: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotIdentityParams".
+ */
+export interface CopilotIdentityParams {
+  id?: string;
+  versionId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotExportParams".
+ */
+export interface CopilotExportParams {
+  versionId: string;
+  /**
+   * 选择同一原始 JSON 的具体导入来源，必须与 versionId 匹配；缺省沿用版本最初来源。
+   */
+  id?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotPreviewParams".
+ */
+export interface CopilotPreviewParams {
+  content?: string;
+  name?: string;
+  code?: string;
+  planId?: string;
+  taskIndex?: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotImportParams".
+ */
+export interface CopilotImportParams {
+  previewId: string;
+  /**
+   * @maxItems 100
+   */
+  entryIds?: string[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotWorkspaceParams".
+ */
+export interface CopilotWorkspaceParams {
+  kind: CopilotKind;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotWorkspaceSaveParams".
+ */
+export interface CopilotWorkspaceSaveParams {
+  workspace: CopilotWorkspace;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotWorkspace".
+ */
+export interface CopilotWorkspace {
+  kind: CopilotKind;
+  /**
+   * @maxItems 100
+   */
+  queue: CopilotQueueEntry[];
+  options: CopilotOptions;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotQueueEntry".
+ */
+export interface CopilotQueueEntry {
+  id: string;
+  versionId: string;
+  enabled: boolean;
+  isRaid: boolean;
+  navName: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotOptions".
+ */
+export interface CopilotOptions {
+  loopTimes: number;
+  formation: boolean;
+  formationIndex: number;
+  addTrust: boolean;
+  ignoreRequirements: boolean;
+  supportUnitName: string;
+  /**
+   * @maxItems 12
+   */
+  additionalOperators: {
+    name: string;
+    skill: number;
+  }[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotSearchParams".
+ */
+export interface CopilotSearchParams {
+  target: 'copilot' | 'set';
+  keyword?: string;
+  page?: number;
+  stage?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotStartParams".
+ */
+export interface CopilotStartParams {
+  kind: CopilotKind;
+  deviceId: string;
+  requestId: string;
+}
 export interface Snapshot {
   mode: Mode;
   devices: Devices;
@@ -897,6 +841,13 @@ export interface Run {
   finishedAt: Finishedat;
   scheduleId?: string;
   scheduledFor?: string;
+  source?: 'plan' | 'copilot';
+  sourceName?: string;
+  /**
+   * @maxItems 100
+   */
+  copilotEntries?: CopilotRunEntry[];
+  copilotKind?: 'Copilot' | 'SSSCopilot' | 'ParadoxCopilot';
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -920,7 +871,7 @@ export interface RunTask {
   /**
    * @maxItems 3
    */
-  artifacts: [] | [RunArtifact] | [RunArtifact, RunArtifact] | [RunArtifact, RunArtifact, RunArtifact];
+  artifacts: RunArtifact[];
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -943,139 +894,7 @@ export interface RunInfrastructure {
   /**
    * @maxItems 20
    */
-  operators:
-    | []
-    | [string]
-    | [string, string]
-    | [string, string, string]
-    | [string, string, string, string]
-    | [string, string, string, string, string]
-    | [string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
-    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ]
-    | [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string
-      ];
+  operators: string[];
   /**
    * Latest staffing evidence; configured names are not an independently recognized final roster.
    */
@@ -1100,6 +919,19 @@ export interface RunArtifact {
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "CopilotRunEntry".
+ */
+export interface CopilotRunEntry {
+  id: string;
+  versionId: string;
+  title: string;
+  nativeId: number;
+  status: 'waiting' | 'running' | 'completed' | 'failed' | 'stopped' | 'skipped';
+  verdict: 'unknown' | 'success' | 'failure';
+  message: string;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
  * via the `definition` "UpdateChannel".
  */
 export interface UpdateChannel {
@@ -1118,27 +950,7 @@ export interface UpdateChannel {
   /**
    * @maxItems 6
    */
-  resourceActivities?:
-    | []
-    | [ResourceActivityVersion]
-    | [ResourceActivityVersion, ResourceActivityVersion]
-    | [ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion]
-    | [ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion, ResourceActivityVersion]
-    | [
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion
-      ]
-    | [
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion,
-        ResourceActivityVersion
-      ];
+  resourceActivities?: ResourceActivityVersion[];
   id: Id3;
   currentVersion: Currentversion;
   latestVersion: Latestversion;
@@ -1456,6 +1268,124 @@ export interface ScheduleList {
   wake: {
     [k: string]: unknown;
   };
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotRecord".
+ */
+export interface CopilotRecord {
+  id: string;
+  versionId: string;
+  kind: CopilotKind;
+  title: string;
+  stageName: string;
+  /**
+   * 仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。
+   */
+  author: string;
+  /**
+   * 社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。
+   */
+  uploader?: string;
+  description: string;
+  minimumCoreVersion: string;
+  /**
+   * @maxItems 100
+   */
+  operators: CopilotOperator[];
+  /**
+   * @maxItems 20
+   */
+  videos: string[];
+  source: CopilotSource;
+  createdAt: string;
+  compatibility: CopilotCompatibility;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotOperator".
+ */
+export interface CopilotOperator {
+  name: string;
+  skill?: number;
+  requirements?: {
+    [k: string]: unknown;
+  };
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotSource".
+ */
+export interface CopilotSource {
+  kind: 'local' | 'community' | 'legacy';
+  name: string;
+  url: string;
+  communityId?: string;
+  setId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotCompatibility".
+ */
+export interface CopilotCompatibility {
+  status: 'ready' | 'unverified' | 'unsupported';
+  /**
+   * @maxItems 20
+   */
+  reasons: string[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotPreview".
+ */
+export interface CopilotPreview {
+  id: string;
+  title: string;
+  /**
+   * @maxItems 100
+   */
+  entries: CopilotPreviewEntry[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotPreviewEntry".
+ */
+export interface CopilotPreviewEntry {
+  id: string;
+  record: CopilotRecord | null;
+  error: string | null;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotSearchResult".
+ */
+export interface CopilotSearchResult {
+  /**
+   * @maxItems 20
+   */
+  items: CopilotSearchItem[];
+  page: number;
+  hasNext: boolean;
+  total: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotSearchItem".
+ */
+export interface CopilotSearchItem {
+  id: string;
+  title: string;
+  description: string;
+  /**
+   * 仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。
+   */
+  author: string;
+  /**
+   * 社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。
+   */
+  uploader?: string;
+  url: string;
+  kind?: CopilotKind;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

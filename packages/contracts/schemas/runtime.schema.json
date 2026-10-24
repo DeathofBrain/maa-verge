@@ -40,44 +40,166 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "method": { "type": "string", "enum": ["adb", "mumu", "ldplayer"], "default": "adb" },
-        "autoDetect": { "type": "boolean", "description": "连接时自动识别模拟器并配置增强截图；省略时 adb 为自动，已有增强截图为手动。" },
-        "emulatorPath": { "type": "string", "maxLength": 4096, "default": "" },
-        "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 },
-        "mumuTouch": { "type": "boolean", "default": false },
-        "mumuBridge": { "type": "boolean", "default": false }
+        "method": {
+          "type": "string",
+          "enum": [
+            "adb",
+            "mumu",
+            "ldplayer"
+          ],
+          "default": "adb"
+        },
+        "autoDetect": {
+          "type": "boolean",
+          "description": "连接时自动识别模拟器并配置增强截图；省略时 adb 为自动，已有增强截图为手动。"
+        },
+        "emulatorPath": {
+          "type": "string",
+          "maxLength": 4096,
+          "default": ""
+        },
+        "instanceIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": 0
+        },
+        "mumuTouch": {
+          "type": "boolean",
+          "default": false
+        },
+        "mumuBridge": {
+          "type": "boolean",
+          "default": false
+        }
       },
-      "required": ["method", "emulatorPath", "instanceIndex"]
+      "required": [
+        "method",
+        "emulatorPath",
+        "instanceIndex"
+      ]
     },
     "ConnectionSettings": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "adbPath": { "type": "string", "maxLength": 4096, "default": "" },
-        "address": { "type": "string", "maxLength": 128, "default": "" },
-        "config": { "type": "string", "enum": ["General", "BlueStacks", "MuMuEmulator12", "MuMuArm", "LDPlayer", "Nox", "XYAZ", "Compatible", "SecondResolution", "CompatMac", "CompatPOSIXShell", "Waydroid", "AVD", "Androws", "WSA"], "default": "General" },
-        "touchMode": { "type": "string", "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"], "default": "maatouch" },
-        "adbLite": { "type": "boolean", "default": false },
-        "clientType": { "type": "string", "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"], "default": "Official" }
+        "adbPath": {
+          "type": "string",
+          "maxLength": 4096,
+          "default": ""
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 128,
+          "default": ""
+        },
+        "config": {
+          "type": "string",
+          "enum": [
+            "General",
+            "BlueStacks",
+            "MuMuEmulator12",
+            "MuMuArm",
+            "LDPlayer",
+            "Nox",
+            "XYAZ",
+            "Compatible",
+            "SecondResolution",
+            "CompatMac",
+            "CompatPOSIXShell",
+            "Waydroid",
+            "AVD",
+            "Androws",
+            "WSA"
+          ],
+          "default": "General"
+        },
+        "touchMode": {
+          "type": "string",
+          "enum": [
+            "minitouch",
+            "maatouch",
+            "adb",
+            "MaaFwAdb"
+          ],
+          "default": "maatouch"
+        },
+        "adbLite": {
+          "type": "boolean",
+          "default": false
+        },
+        "clientType": {
+          "type": "string",
+          "enum": [
+            "Official",
+            "Bilibili",
+            "YoStarEN",
+            "YoStarJP",
+            "YoStarKR",
+            "txwy"
+          ],
+          "default": "Official"
+        }
       },
-      "required": ["adbPath", "address", "config", "touchMode", "adbLite", "clientType"]
+      "required": [
+        "adbPath",
+        "address",
+        "config",
+        "touchMode",
+        "adbLite",
+        "clientType"
+      ]
     },
     "DeviceConnectionProfile": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "name", "address", "connection", "capture"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "address",
+        "connection",
+        "capture"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[A-Za-z0-9_-]+$" },
-        "autoDetected": { "type": "boolean", "description": "由运行中的模拟器自动发现创建；用户编辑保存后转为手动管理。" },
-        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "address": { "type": "string", "minLength": 1, "maxLength": 128 },
-        "connection": { "$ref": "#/$defs/ConnectionSettings" },
-        "capture": { "$ref": "#/$defs/CaptureSettings" }
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "autoDetected": {
+          "type": "boolean",
+          "description": "由运行中的模拟器自动发现创建；用户编辑保存后转为手动管理。"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "connection": {
+          "$ref": "#/$defs/ConnectionSettings"
+        },
+        "capture": {
+          "$ref": "#/$defs/CaptureSettings"
+        }
       }
     },
     "Device": {
       "additionalProperties": false,
       "properties": {
-        "connectionProfileId": { "type": "string", "maxLength": 80 },
-        "connectionError": { "type": "string", "maxLength": 4096 },
+        "connectionProfileId": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "connectionError": {
+          "type": "string",
+          "maxLength": 4096
+        },
         "id": {
           "title": "Id",
           "type": "string"
@@ -111,8 +233,13 @@
           "default": null,
           "title": "Coreversion"
         },
-        "captureMethod": { "type": "string", "maxLength": 128 },
-        "dataSync": { "$ref": "#/$defs/UserDataSync" },
+        "captureMethod": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "dataSync": {
+          "$ref": "#/$defs/UserDataSync"
+        },
         "resourceVersion": {
           "anyOf": [
             {
@@ -297,15 +424,27 @@
     "Run": {
       "additionalProperties": false,
       "properties": {
-        "planName": { "type": "string", "maxLength": 80 },
-        "tasks": { "type": "array", "maxItems": 31, "items": { "$ref": "#/$defs/RunTask" } },
+        "planName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "tasks": {
+          "type": "array",
+          "maxItems": 31,
+          "items": {
+            "$ref": "#/$defs/RunTask"
+          }
+        },
         "id": {
           "title": "Id",
           "type": "string"
         },
         "planId": {
           "title": "Planid",
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "deviceId": {
           "title": "Deviceid",
@@ -356,6 +495,30 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 80
+        },
+        "source": {
+          "enum": [
+            "plan",
+            "copilot"
+          ]
+        },
+        "sourceName": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "copilotEntries": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/CopilotRunEntry"
+          }
+        },
+        "copilotKind": {
+          "enum": [
+            "Copilot",
+            "SSSCopilot",
+            "ParadoxCopilot"
+          ]
         }
       },
       "required": [
@@ -372,106 +535,409 @@
       "type": "object"
     },
     "RunTask": {
-      "type": "object", "additionalProperties": false,
-      "required": ["index", "type", "status", "message", "startedAt", "finishedAt", "drops", "infrastructure", "artifacts"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "type",
+        "status",
+        "message",
+        "startedAt",
+        "finishedAt",
+        "drops",
+        "infrastructure",
+        "artifacts"
+      ],
       "properties": {
-        "index": { "type": "integer", "minimum": 0, "maximum": 30 },
-        "type": { "type": "string", "maxLength": 80 },
-        "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] },
-        "message": { "type": "string", "maxLength": 1000 },
-        "startedAt": { "type": ["string", "null"] }, "finishedAt": { "type": ["string", "null"] },
-        "drops": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/RunDrop" } },
-        "infrastructure": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/RunInfrastructure" } },
-        "artifacts": { "type": "array", "maxItems": 3, "items": { "$ref": "#/$defs/RunArtifact" } }
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "type": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "status": {
+          "enum": [
+            "waiting",
+            "running",
+            "completed",
+            "failed",
+            "stopped",
+            "skipped"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "startedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finishedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "drops": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/RunDrop"
+          }
+        },
+        "infrastructure": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/RunInfrastructure"
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/RunArtifact"
+          }
+        }
       }
     },
     "RunDrop": {
-      "type": "object", "additionalProperties": false, "required": ["itemId", "name", "quantity", "stage", "at"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemId",
+        "name",
+        "quantity",
+        "stage",
+        "at"
+      ],
       "properties": {
-        "itemId": { "type": "string", "minLength": 1, "maxLength": 200 }, "name": { "type": "string", "maxLength": 200 },
-        "quantity": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
-        "stage": { "type": "string", "maxLength": 200 }, "at": { "type": "string" }
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "stage": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "at": {
+          "type": "string"
+        }
       }
     },
     "RunInfrastructure": {
-      "type": "object", "additionalProperties": false, "required": ["facility", "room", "operators", "product", "message", "at"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "facility",
+        "room",
+        "operators",
+        "product",
+        "message",
+        "at"
+      ],
       "properties": {
-        "facility": { "type": "string", "maxLength": 80 }, "room": { "type": "integer", "minimum": 0, "maximum": 100 },
-        "operators": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 80 } },
-        "staffingStatus": { "description": "Latest staffing evidence; configured names are not an independently recognized final roster.", "enum": ["planned", "confirmed", "unavailable"] },
-        "product": { "type": "string", "maxLength": 200 }, "message": { "type": "string", "maxLength": 500 }, "at": { "type": "string" }
+        "facility": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "room": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "operators": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "staffingStatus": {
+          "description": "Latest staffing evidence; configured names are not an independently recognized final roster.",
+          "enum": [
+            "planned",
+            "confirmed",
+            "unavailable"
+          ]
+        },
+        "product": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "at": {
+          "type": "string"
+        }
       }
     },
     "RunArtifact": {
       "description": "Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.",
-      "type": "object", "additionalProperties": false, "required": ["id", "kind", "label", "capturedAt", "width", "height"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "label",
+        "capturedAt",
+        "width",
+        "height"
+      ],
       "properties": {
-        "id": { "type": "string", "pattern": "^[a-f0-9-]{36}$" }, "kind": { "const": "screenshot" },
-        "label": { "type": "string", "maxLength": 100 }, "capturedAt": { "type": "string" },
-        "width": { "type": "integer", "minimum": 1, "maximum": 8192 }, "height": { "type": "integer", "minimum": 1, "maximum": 8192 }
+        "id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$"
+        },
+        "kind": {
+          "const": "screenshot"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "capturedAt": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        }
       }
     },
     "InfrastructureLine": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "name", "unit", "hourlyRate", "capacity", "lastCollectedAt"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "unit",
+        "hourlyRate",
+        "capacity",
+        "lastCollectedAt"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 100 },
-        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "unit": { "type": "string", "minLength": 1, "maxLength": 20 },
-        "hourlyRate": { "type": "number", "minimum": 0, "maximum": 1000000000 },
-        "capacity": { "type": "number", "exclusiveMinimum": 0, "maximum": 1000000000 },
-        "lastCollectedAt": { "type": "string", "minLength": 20, "maxLength": 40 }
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "hourlyRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "capacity": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000
+        },
+        "lastCollectedAt": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 40
+        }
       }
     },
     "InfrastructureEstimateProfile": {
-      "type": "object", "additionalProperties": false, "required": ["deviceId", "lines"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId",
+        "lines"
+      ],
       "properties": {
-        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "lines": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/InfrastructureLine" } }
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "lines": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/InfrastructureLine"
+          }
+        }
       }
     },
     "ComponentPaths": {
       "description": "Absolute installation/download roots. An empty string restores the application default on settings.save.",
-      "type": "object", "additionalProperties": false, "required": ["core", "resource"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "core",
+        "resource"
+      ],
       "properties": {
-        "core": { "type": "string", "maxLength": 4096 },
-        "resource": { "type": "string", "maxLength": 4096 }
+        "core": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "resource": {
+          "type": "string",
+          "maxLength": 4096
+        }
       }
     },
     "ComponentDownload": {
       "description": "Component download engine; defaults to bundled aria2. Empty aria2Path uses aria2c beside the packaged service, or checkout/.tools/aria2 in development; otherwise use an absolute executable path. Never searches PATH. Changes apply to subsequent downloads.",
-      "type": "object", "additionalProperties": false, "required": ["engine", "aria2Path"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "aria2Path"
+      ],
       "properties": {
-        "engine": { "type": "string", "enum": ["builtin", "aria2"] },
-        "aria2Path": { "type": "string", "maxLength": 4096 }
+        "engine": {
+          "type": "string",
+          "enum": [
+            "builtin",
+            "aria2"
+          ]
+        },
+        "aria2Path": {
+          "type": "string",
+          "maxLength": 4096
+        }
       }
     },
     "ResourceActivityVersion": {
-      "type": "object", "additionalProperties": false, "required": ["clientType", "name", "lastUpdated"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clientType",
+        "name",
+        "lastUpdated"
+      ],
       "properties": {
-        "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
-        "name": { "type": ["string", "null"], "maxLength": 300 },
-        "lastUpdated": { "type": ["string", "null"], "maxLength": 200 }
+        "clientType": {
+          "enum": [
+            "Official",
+            "Bilibili",
+            "YoStarEN",
+            "YoStarJP",
+            "YoStarKR",
+            "txwy"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 300
+        },
+        "lastUpdated": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
       }
     },
     "Settings": {
       "additionalProperties": false,
       "properties": {
-        "componentPaths": { "$ref": "#/$defs/ComponentPaths" },
-        "componentDownload": { "$ref": "#/$defs/ComponentDownload" },
-        "infrastructureEstimates": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/InfrastructureEstimateProfile" } },
-        "capture": { "$ref": "#/$defs/CaptureSettings" },
-        "connection": { "$ref": "#/$defs/ConnectionSettings" },
-        "deviceProfiles": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/DeviceConnectionProfile" } },
-        "logRetentionDays": { "type": "integer", "enum": [0, 7, 14, 30], "default": 7, "description": "Log retention in days; zero disables automatic cleanup." },
+        "componentPaths": {
+          "$ref": "#/$defs/ComponentPaths"
+        },
+        "componentDownload": {
+          "$ref": "#/$defs/ComponentDownload"
+        },
+        "infrastructureEstimates": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/InfrastructureEstimateProfile"
+          }
+        },
+        "capture": {
+          "$ref": "#/$defs/CaptureSettings"
+        },
+        "connection": {
+          "$ref": "#/$defs/ConnectionSettings"
+        },
+        "deviceProfiles": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/DeviceConnectionProfile"
+          }
+        },
+        "logRetentionDays": {
+          "type": "integer",
+          "enum": [
+            0,
+            7,
+            14,
+            30
+          ],
+          "default": 7,
+          "description": "Log retention in days; zero disables automatic cleanup."
+        },
         "autoConnect": {
           "default": true,
           "title": "Autoconnect",
           "type": "boolean"
         },
-        "autoUpdateApp": {"type":"boolean","default":true,"description":"启动时检查应用更新；下载和安装始终由用户确认。"},
-        "appUpdateChannel": {"type":"string","enum":["stable","preview"],"default":"preview"},
-        "coreUpdateChannel": {"type":"string","enum":["stable","preview"],"default":"stable"},
+        "autoUpdateApp": {
+          "type": "boolean",
+          "default": true,
+          "description": "启动时检查应用更新；下载和安装始终由用户确认。"
+        },
+        "appUpdateChannel": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "preview"
+          ],
+          "default": "preview"
+        },
+        "coreUpdateChannel": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "preview"
+          ],
+          "default": "stable"
+        },
         "autoUpdateCore": {
           "default": true,
           "title": "Autoupdatecore",
@@ -528,10 +994,25 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "operatorsAt": { "type": ["string", "null"], "maxLength": 64 },
-        "depotAt": { "type": ["string", "null"], "maxLength": 64 }
+        "operatorsAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "depotAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        }
       },
-      "required": ["operatorsAt", "depotAt"]
+      "required": [
+        "operatorsAt",
+        "depotAt"
+      ]
     },
     "Task": {
       "additionalProperties": false,
@@ -584,11 +1065,52 @@
     "UpdateChannel": {
       "additionalProperties": false,
       "properties": {
-        "checkedAt": {"type":"string","maxLength":64},
-        "appCanInstall": {"type":"boolean","description":"此安装形式是否支持签名自动更新。"},
-        "appRelease": {"type":"object","additionalProperties":false,"required":["url","notes","publishedAt","prerelease"],"properties":{"url":{"type":"string","maxLength":2048},"notes":{"type":"string","maxLength":16384},"publishedAt":{"type":"string","maxLength":64},"prerelease":{"type":"boolean"}}},
-        "installDirectory": { "type": "string", "maxLength": 4096 },
-        "resourceActivities": { "type": "array", "maxItems": 6, "items": { "$ref": "#/$defs/ResourceActivityVersion" } },
+        "checkedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "appCanInstall": {
+          "type": "boolean",
+          "description": "此安装形式是否支持签名自动更新。"
+        },
+        "appRelease": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "notes",
+            "publishedAt",
+            "prerelease"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 16384
+            },
+            "publishedAt": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "prerelease": {
+              "type": "boolean"
+            }
+          }
+        },
+        "installDirectory": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "resourceActivities": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/ResourceActivityVersion"
+          }
+        },
         "id": {
           "enum": [
             "app",
@@ -756,6 +1278,60 @@
         "message",
         "startedAt",
         "finishedAt"
+      ]
+    },
+    "CopilotRunEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "versionId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "nativeId": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "status": {
+          "enum": [
+            "waiting",
+            "running",
+            "completed",
+            "failed",
+            "stopped",
+            "skipped"
+          ]
+        },
+        "verdict": {
+          "enum": [
+            "unknown",
+            "success",
+            "failure"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "id",
+        "versionId",
+        "title",
+        "nativeId",
+        "status",
+        "verdict",
+        "message"
       ]
     }
   },

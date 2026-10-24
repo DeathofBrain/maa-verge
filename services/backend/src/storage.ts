@@ -62,6 +62,8 @@ export class Store {
             // No destination database exists yet; retry overwrites partial files.
             const artifacts = path.join(importFrom, 'run-artifacts');
             if (existsSync(artifacts)) cpSync(artifacts, path.join(root, 'run-artifacts'), { recursive: true });
+            const copilot = path.join(importFrom, 'copilot');
+            if (existsSync(copilot)) cpSync(copilot, path.join(root, 'copilot'), { recursive: true });
             snapshotDatabase(source, file);
           } finally { source.close(); }
         } finally { sourceLease.close(); }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, BookOpen, Database, Gamepad2, HardDrive, ListChecks, LoaderCircle, Play, Plus, RefreshCw, Search, Square, Trash2 } from 'lucide-react';
-import { rpc, type RpcParams, type RpcResult } from '@maaverge/contracts';
+import { errorMessage, rpc, type RpcParams, type RpcResult } from '@maaverge/contracts';
 import type { SupportPageProps } from './SupportPages';
 import RecognitionPanel, { type RecognitionClient } from './RecognitionPanel';
 import OperatorBadge from './OperatorBadge';
@@ -48,7 +48,7 @@ export default function ToolsPage({ snapshot, onAction, onSelectDevice, searchQu
   useEffect(() => {
     if (kind !== 'data' || !deviceId || !status?.value) return;
     let cancelled = false;
-    void Promise.all([rpc('recognition.get', { deviceId, clientType: client, kind: 'depot' }), rpc('recognition.get', { deviceId, clientType: client, kind: 'operators' })]).then(([depot, operators]) => { if (!cancelled) setSources({ key, depot: depot.collectedAt, operators: operators.collectedAt }); }, error => { if (!cancelled) setConfigError(String(error)); });
+    void Promise.all([rpc('recognition.get', { deviceId, clientType: client, kind: 'depot' }), rpc('recognition.get', { deviceId, clientType: client, kind: 'operators' })]).then(([depot, operators]) => { if (!cancelled) setSources({ key, depot: depot.collectedAt, operators: operators.collectedAt }); }, error => { if (!cancelled) setConfigError(errorMessage(error)); });
     return () => { cancelled = true; };
   }, [kind, deviceId, client, key, latestEvent, !!status?.value]);
   useEffect(() => {
@@ -58,25 +58,25 @@ export default function ToolsPage({ snapshot, onAction, onSelectDevice, searchQu
   useEffect(() => {
     if (!deviceId) return;
     let cancelled = false; setChecking(true);
-    void rpc('device.availability', { deviceId }).then(value => { if (!cancelled) setAvailability({ deviceId, value }); }, error => { if (!cancelled) setAvailability({ deviceId, error: String(error) }); }).finally(() => { if (!cancelled) setChecking(false); });
+    void rpc('device.availability', { deviceId }).then(value => { if (!cancelled) setAvailability({ deviceId, value }); }, error => { if (!cancelled) setAvailability({ deviceId, error: errorMessage(error) }); }).finally(() => { if (!cancelled) setChecking(false); });
     return () => { cancelled = true; };
   }, [deviceId, device?.state, latestEvent, revision]);
   useEffect(() => {
     if (!deviceId || !status?.value) return;
     let cancelled = false; setConfigError('');
-    void rpc('tool.config.get', { deviceId, clientType: client, kind }).then(value => { if (!cancelled) setConfigState({ key, value }); }, error => { if (!cancelled) setConfigError(String(error)); });
+    void rpc('tool.config.get', { deviceId, clientType: client, kind }).then(value => { if (!cancelled) setConfigState({ key, value }); }, error => { if (!cancelled) setConfigError(errorMessage(error)); });
     return () => { cancelled = true; };
   }, [key, deviceId, client, kind, revision, accountRevision, !!status?.value]);
   useEffect(() => {
     if (!deviceId || !status?.value) return;
     let cancelled = false;
-    void Promise.all([rpc('tool.catalog', { clientType: client }), rpc('stages.list', { clientType: client })]).then(([nextCatalog, nextStages]) => { if (!cancelled) { setCatalog(nextCatalog); setStages(nextStages); } }, error => { if (!cancelled) setConfigError(String(error)); });
+    void Promise.all([rpc('tool.catalog', { clientType: client }), rpc('stages.list', { clientType: client })]).then(([nextCatalog, nextStages]) => { if (!cancelled) { setCatalog(nextCatalog); setStages(nextStages); } }, error => { if (!cancelled) setConfigError(errorMessage(error)); });
     return () => { cancelled = true; };
   }, [deviceId, client, resourceKey, revision, !!status?.value]);
   useEffect(() => {
     if (!latest) { setJob(undefined); return; }
     let cancelled = false;
-    void rpc('tool.get', { id: latest.id }).then(value => { if (!cancelled) setJob(value); }, error => { if (!cancelled) setConfigError(String(error)); });
+    void rpc('tool.get', { id: latest.id }).then(value => { if (!cancelled) setJob(value); }, error => { if (!cancelled) setConfigError(errorMessage(error)); });
     return () => { cancelled = true; };
   }, [latest?.id, latest?.status, latest?.progress, latestEvent]);
   const selectedTags = (config?.tags ?? []) as string[];
@@ -85,7 +85,7 @@ export default function ToolsPage({ snapshot, onAction, onSelectDevice, searchQu
     const value = { ...config, ...change } as Config; setConfigState({ key, value }); setConfigError('');
     // Valid edits are written immediately; invalid field drafts remain editable.
     if (value.targets?.some(target => !target.stage || !target.itemId || !Number.isInteger(target.quantity) || target.quantity < 1)) { setConfigError('请补全关卡、材料 ID 和正整数目标数量后保存。'); return; }
-    void rpc('tool.config.save', { deviceId, clientType: client, kind, config: value }).catch(error => { if (currentKey.current === key && editRevision.current === edit) setConfigError(String(error)); });
+    void rpc('tool.config.save', { deviceId, clientType: client, kind, config: value }).catch(error => { if (currentKey.current === key && editRevision.current === edit) setConfigError(errorMessage(error)); });
   };
   const start = () => onAction('tool-start-' + deviceId, async () => {
     if (blocked || !config) throw new Error('请先选择空闲设备并等待状态检查完成');
@@ -102,7 +102,7 @@ export default function ToolsPage({ snapshot, onAction, onSelectDevice, searchQu
     </section>
     {!deviceId ? <div className="recognition-empty"><Database size={30} /><h2>先选择目标设备</h2><p>工具配置、执行及保存结果都属于所选设备。</p></div> : <div className="sp-tools-layout"><nav className="sp-category-nav" aria-label="工具分类">{tools.map(({ id, label, icon: Icon }) => <button key={id} aria-current={kind === id ? 'page' : undefined} className={kind === id ? 'is-selected' : ''} onClick={() => setKind(id)}><Icon size={18} />{label}</button>)}</nav><div className="sp-tool-content">
       <h2>{active.label}</h2>
-      {job?.deviceId === deviceId && <section className="sp-section tool-operation" aria-label="工具执行状态"><div><strong>{job.message}</strong><progress max={100} value={job.progress} aria-label="工具执行进度"/><p>{new Date(job.startedAt).toLocaleString('zh-CN')} · {tools.find(tool => tool.id === job.kind)?.label}</p></div>{job.status === 'running' && <button className="button secondary" onClick={() => { void onAction('tool-stop-' + job.id, () => rpc('tool.stop', { id: job.id }), '正在停止工具'); }}><Square size={14} />停止</button>}{job.kind === 'inventory' && Array.isArray(job.result?.targets) && <div className="sp-table-scroll"><table className="sp-table"><thead><tr><th>材料</th><th>当前数量</th><th>目标</th><th>结果</th></tr></thead><tbody>{job.result.targets.map((target: any) => <tr key={target.id}><td>{target.itemId}</td><td>{target.current}</td><td>{target.quantity}</td><td>{target.reached ? '已达标' : '尚未达标'}</td></tr>)}</tbody></table></div>}</section>}
+      {job?.deviceId === deviceId && <section className="sp-section tool-operation" aria-label="工具执行状态"><div><strong>{job.status === 'failed' ? errorMessage(job.message) : job.message}</strong><progress max={100} value={job.progress} aria-label="工具执行进度"/><p>{new Date(job.startedAt).toLocaleString('zh-CN')} · {tools.find(tool => tool.id === job.kind)?.label}</p></div>{job.status === 'running' && <button className="button secondary" onClick={() => { void onAction('tool-stop-' + job.id, () => rpc('tool.stop', { id: job.id }), '正在停止工具'); }}><Square size={14} />停止</button>}{job.kind === 'inventory' && Array.isArray(job.result?.targets) && <div className="sp-table-scroll"><table className="sp-table"><thead><tr><th>材料</th><th>当前数量</th><th>目标</th><th>结果</th></tr></thead><tbody>{job.result.targets.map((target: any) => <tr key={target.id}><td>{target.itemId}</td><td>{target.current}</td><td>{target.quantity}</td><td>{target.reached ? '已达标' : '尚未达标'}</td></tr>)}</tbody></table></div>}</section>}
       {status?.value && (kind === 'depot' || kind === 'operators') && <RecognitionPanel kind={kind} snapshot={snapshot} selectedDevice={deviceId} busy={blocked} onAction={onAction} clientType={client} onClientChange={setClient} />}
       {status?.value && kind !== 'depot' && kind !== 'operators' && <section className="sp-section">
         <label className="tool-field">游戏客户端<select className="text-input" value={client} onChange={event => setClient(event.target.value as RecognitionClient)}>{[['Official','官服'],['Bilibili','B 服'],['YoStarEN','国际服'],['YoStarJP','日服'],['YoStarKR','韩服'],['txwy','繁中服']].map(([value,label]) => <option value={value} key={value}>{label}</option>)}</select></label>

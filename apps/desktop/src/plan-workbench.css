@@ -1142,6 +1142,13 @@
   gap: 12px;
 }
 
+.wb-drop-targets {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .wb-recruit-row,.wb-drop-row {
   display: flex;
   align-items: center;

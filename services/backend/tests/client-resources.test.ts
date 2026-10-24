@@ -198,6 +198,23 @@ process.stdin.resume();
   expect(readFileSync(exited, 'utf8')).toBe('closed');
 });
 
+test('worker initialization errors retain the native cause from stderr without promoting unrelated output', async () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-worker-start-error-')); roots.push(root);
+  for (const [name, diagnostic, expected] of [
+    ['resource', 'maaverge-core-worker: cannot load resource snapshot', '核心资源缺失或加载失败'],
+    ['unknown', 'maaverge-core-worker: synthetic specific initialization failure', 'synthetic specific initialization failure'],
+    ['timeout', 'native timeout in load and initialize; result unknown, do not replay', '核心原生调用超时'],
+    ['unrelated', 'unrelated diagnostic about unauthorized device', '退出码 7'],
+  ]) {
+    const script = path.join(root, name + '.mjs');
+    writeFileSync(script, `process.stdin.once('data', () => { process.stderr.write('x'.repeat(32768) + '\\n' + ${JSON.stringify(diagnostic)} + '\\n', () => process.exit(7)); });`);
+    const userDir = path.join(root, name);
+    await expect(CoreWorker.start({ userDir, lockPath: path.join(root, 'synthetic.lock') }, { command: [process.execPath, script] })).rejects.toThrow(expected);
+    expect(readFileSync(path.join(userDir, 'worker.stderr.log'), 'utf8')).toContain(diagnostic);
+  }
+  await expect(CoreWorker.start({ userDir: path.join(root, 'missing'), lockPath: path.join(root, 'synthetic.lock') }, { command: [path.join(root, 'missing-synthetic-worker')] })).rejects.toThrow('核心工作进程文件不存在');
+});
+
 test('the worker bridge finishes an explicit failed connection promptly and permits a fresh retry', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'maaverge-worker-connect-result-')); roots.push(root);
   const script = path.join(root, 'connection.mjs');

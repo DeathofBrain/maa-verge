@@ -150,6 +150,11 @@ jobs:
       - name: Build unsigned package with standalone TypeScript service and C++ worker
         if: runner.os != 'Linux'
         run: pnpm build
+      - name: Verify macOS bundle regression and installed desktop startup
+        if: runner.os == 'macOS'
+        run: |
+          node --test tools/tests/macos-bundle.test.mjs
+          node tools/smoke-macos-install.mjs
       - name: Verify Windows component uninstall hooks without installing the application
         if: runner.os == 'Windows'
         run: node --test tools/tests/windows-installer.test.mjs
@@ -163,7 +168,9 @@ jobs:
         if: failure()
         with:
           name: native-test-diagnostics-${{ matrix.os }}-${{ matrix.architecture }}
-          path: build/native/Testing/Temporary/
+          path: |
+            build/native/Testing/Temporary/
+            build/macos-install-smoke/
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:

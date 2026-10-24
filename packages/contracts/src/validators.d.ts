@@ -14,6 +14,15 @@ export interface Validator<T> {
   errors: ValidationError[] | null;
 }
 export const validateSnapshot: Validator<Snapshot>;
+export const validateCopilotListParams: Validator<RpcContract['params']['copilot.list']>;
+export const validateCopilotIdentityParams: Validator<RpcContract['params']['copilot.get']>;
+export const validateCopilotExportParams: Validator<RpcContract['params']['copilot.export']>;
+export const validateCopilotPreviewParams: Validator<RpcContract['params']['copilot.preview']>;
+export const validateCopilotImportParams: Validator<RpcContract['params']['copilot.import']>;
+export const validateCopilotWorkspaceParams: Validator<RpcContract['params']['copilot.workspace.get']>;
+export const validateCopilotWorkspaceSaveParams: Validator<RpcContract['params']['copilot.workspace.save']>;
+export const validateCopilotSearchParams: Validator<RpcContract['params']['copilot.search']>;
+export const validateCopilotStartParams: Validator<RpcContract['params']['copilot.start']>;
 export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
 export const validateDeviceAvailabilityParams: Validator<RpcContract['params']['device.availability']>;

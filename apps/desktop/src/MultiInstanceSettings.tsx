@@ -1,6 +1,6 @@
 import { useContextMenu } from './ContextMenu';
 import { useEffect, useState } from 'react';
-import { deviceProfileListError, type Device, type DeviceConnectionProfile, type Event, type Settings } from '@maaverge/contracts';
+import { errorMessage, deviceProfileListError, type Device, type DeviceConnectionProfile, type Event, type Settings } from '@maaverge/contracts';
 import { ConnectionFields, defaultConnectionSettings } from './TaskConnectionSettings';
 import { CaptureFields } from './CaptureSettingsForm';
 import { useSettingsDraft } from './settings-draft';
@@ -49,7 +49,7 @@ export function MultiInstanceSettings({ settings, devices, events, busy, candida
     const disconnecting = device && device.state !== 'offline';
     if (device?.state === 'running') return;
     setPending({ profileId: profile.id, action: disconnecting ? 'disconnect' : 'connect' }); setError('');
-    try { if (disconnecting) await onDisconnect(device); else await onConnect(profile.address); } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
+    try { if (disconnecting) await onDisconnect(device); else await onConnect(profile.address); } catch (failure) { setError(errorMessage(failure)); }
     finally { setPending(undefined); }
   };
   return <section className="sp-section sp-multi-instance" aria-label="模拟器多开实例">
@@ -61,8 +61,8 @@ export function MultiInstanceSettings({ settings, devices, events, busy, candida
       const recentConnection = latest?.type === 'device.connecting' && Date.parse(latest.createdAt) + connectionPendingMs > Date.now();
       const connecting = !online && (pending?.profileId === profile.id && pending.action === 'connect' || recentConnection);
       const disconnecting = pending?.profileId === profile.id && pending.action === 'disconnect';
-      const latestFailure = latest && ['device.failed', 'device.connection_failed'].includes(latest.type) ? String(latest.data.error ?? (latest.data.device as Device | undefined)?.connectionError ?? latest.message) : '';
-      const nativeError = !online && !connecting && latest?.type !== 'device.disconnected' ? device?.connectionError || latestFailure : '';
+      const latestFailure = latest && ['device.failed', 'device.connection_failed'].includes(latest.type) ? errorMessage(latest.data.error ?? (latest.data.device as Device | undefined)?.connectionError ?? latest.message) : '';
+      const nativeError = !online && !connecting && latest?.type !== 'device.disconnected' ? device?.connectionError ? errorMessage(device.connectionError) : latestFailure : '';
       const status = disconnecting ? '正在断开' : device?.state === 'running' ? '执行中' : online ? '已连接' : connecting ? '正在连接' : nativeError ? '连接失败' : '未连接';
       return <article className="sp-instance-card" key={profile.id} {...contextMenu('多开实例菜单', [
         { label: online ? '断开实例' : '连接实例', disabled: busy || !!pending || !!connecting || device?.state === 'running', action: () => { void operate(profile, device); } },
@@ -99,7 +99,7 @@ function InstanceProfileEditor({ profile, profiles, busy, onSave, onCancel }: { 
     if (invalid) { setError(invalid); return; }
     setError('');
     try { if (await onSave(normalized)) sessionStorage.removeItem(`maaverge:settings-draft:device-profile:${profile.id}`); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
+    catch (failure) { setError(errorMessage(failure)); }
   };
   return <form className="sp-instance-editor sp-connection-form" aria-label="多开实例配置" onSubmit={event => { event.preventDefault(); void submit(); }}>
     <h3>实例独立配置</h3>

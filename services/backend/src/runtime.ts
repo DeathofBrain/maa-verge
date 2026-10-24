@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { Store, now } from './storage';
 import { RpcError } from './errors';
+import { connectionError, errorDetail, nativeConnectionError } from './connection-errors';
 import { defaultComponentDownload, defaultConnection, parsePlan, parseSettings, parseSnapshot, type Plan, type Settings } from './models';
 import { automaticCapture } from './auto-capture';
 import { nativeTask, validatePlan } from './task-policy';
@@ -33,15 +34,18 @@ import { operatorResource } from './operator-resources';
 import { Logs } from './logs';
 import { Toolbox, toolJob, toolCatalog } from './toolbox';
 import { Scheduler } from './scheduler';
+import { CopilotLibrary, copilotWorkspaceIdentity } from './copilot';
+import { validateCopilotListParams, validateCopilotIdentityParams, validateCopilotExportParams, validateCopilotPreviewParams, validateCopilotImportParams, validateCopilotWorkspaceParams, validateCopilotWorkspaceSaveParams, validateCopilotSearchParams, validateCopilotStartParams } from '../../../packages/contracts/src/validators.js';
 import { validateDeviceAvailabilityParams, validateToolIdentity, validateToolConfigParams, validateScheduleHostParams, validateIdParams, validateEmptyParams, validateToolCatalogParams } from '../../../packages/contracts/src/validators.js';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 type Worker = Pick<CoreWorker, 'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'> & Partial<Pick<CoreWorker, 'frame' | 'click'>>;
-export interface RuntimeOptions { now?: () => Date; importFrom?: string; applicationDirectory?: string; logExportDirectory?: string; notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
+export interface RuntimeOptions { copilotHttp?: typeof fetch; now?: () => Date; importFrom?: string; applicationDirectory?: string; logExportDirectory?: string; notify?: (message: any) => void; tickSeconds?: number; source?: any; validator?: any; calendar?: ActivityCalendarOptions; adbExecutable?: () => string; emulatorInventory?: () => Promise<EmulatorInventory>; discoverDevices?: typeof autoDiscover; workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker> }
 export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
   readonly toolbox: Toolbox;
+  readonly copilot: CopilotLibrary;
   readonly scheduler: Scheduler;
   readonly logs: Logs;
   // Keep session-used directories protected through disconnect/client-switch shutdown.
@@ -52,10 +56,11 @@ export class Runtime {
   readonly artifacts: RunArtifacts;
   readonly workers = new Map<string, Worker>();
   private workerConfigurations = new Map<string, any>();
+  private connectionErrors = new WeakMap<Worker, string>();
   private clientSwitches = new Map<string, AbortController>();
   private submissions = new Set<Promise<void>>();
   private artifactCaptures = new Map<string, Promise<void>>();
-  private starts = new Map<string, { planId: string; deviceId: string; promise: Promise<any> }>();
+  private starts = new Map<string, { source: 'plan' | 'copilot'; identity: string; deviceId: string; promise: Promise<any> }>();
   private connecting = new Set<string>();
   private connectingAddresses = new Set<string>();
   private suppressed = new Set<string>();
@@ -92,6 +97,7 @@ export class Runtime {
     for (const device of this.store.all('device')) { device.state = 'offline'; this.store.put('device', device.id, device); }
     for (const run of this.executions()) if (run.status === 'running') {
       for (const task of run.tasks ?? []) if (task.status === 'running') Object.assign(task, { status: 'failed', finishedAt: now(), message: '上次运行被中断，结果未知' });
+      for (const entry of run.copilotEntries ?? []) if (['waiting', 'running'].includes(entry.status)) Object.assign(entry, { status: 'failed', verdict: 'unknown', message: '上次运行被中断，结果未知；不会自动重放' });
       Object.assign(run, { status: 'failed', finishedAt: now(), message: '上次运行被中断；请核对设备后重新执行' }); this.putExecution(run.id, run); this.emit('run.interrupted', run.message, { runId: run.id });
     }
     this.updates = new UpdateService(path.join(root, 'components'), this.store, this.emit.bind(this), this.busy.bind(this), {
@@ -99,6 +105,7 @@ export class Runtime {
       beforeActivate: () => this.beforeSwitch(), afterActivate: () => this.afterSwitch(), finishActivate: (error?: string) => this.finishSwitch(error),
       protectedPaths: () => [...this.workerConfigurations.values()].flatMap(config => [config.core, config.resource]),
     });
+    this.copilot = new CopilotLibrary(root, this.store, { coreVersion: () => this.store.get('active', 'combo', {}).core?.version, resourceDirectory: () => this.store.get('active', 'combo', {}).resource?.path, http: options.copilotHttp, changed: (message: string) => this.emit('copilot.changed', message) });
     this.preview = new Preview({
       available: () => this.running && !this.switching,
       device: id => this.store.get('device', id), worker: id => this.workers.get(id),
@@ -111,6 +118,7 @@ export class Runtime {
     }, prepareDevice: id => this.prepareScheduledDevice(id), start: (plan, deviceId, requestId, occurrence) => this.startRun({ planId: plan.id, deviceId, requestId }, plan, occurrence) }, this.options.now);
     this.logs.automatic(settings.logRetentionDays ?? 7);
   }
+  private executionSnapshot(id: string): any { return this.store.get('run_snapshot', id) ?? this.store.get('run_plan', id); }
   private executions(): any[] { return [...this.store.all('run'), ...this.store.all('tool_job')]; }
   private execution(id: string): any { return this.store.get('run', id) ?? this.store.get('tool_job', id); }
   private putExecution(id: string, value: any) { this.store.put(value.toolKind ? 'tool_job' : 'run', id, value); }
@@ -125,7 +133,7 @@ export class Runtime {
     const owner = this.executions().find(item => item.deviceId === deviceId && item.status === 'running');
     if (owner) return result(owner.toolKind ? 'tool' : 'run', '设备正在执行' + owner.planName + '，请等待整个操作结束', owner.id);
     const pending = [...this.starts.values()].find(item => item.deviceId === deviceId);
-    if (pending) return result('run', '设备正在启动任务表');
+    if (pending) return result('run', pending.source === 'copilot' ? '设备正在启动作业' : '设备正在启动任务表');
     const occurrence = this.scheduler?.owner(deviceId);
     if (occurrence && occurrence.id !== ignoreOccurrence) return result('run', '设备正在准备定时执行', occurrence.id);
     if (this.connecting.has(deviceId) || this.clientSwitches.has(deviceId)) return result('connecting', '设备正在连接或切换客户端');
@@ -167,7 +175,7 @@ export class Runtime {
     }
     // Execution details are fetched explicitly; repeated events must not copy
     // every material, facility and image reference into transport or history.
-    if (data.run?.tasks) { const { tasks: _tasks, ...run } = data.run; data = { ...data, run }; }
+    if (data.run?.tasks || data.run?.copilotEntries) { const { tasks: _tasks, copilotEntries: _entries, ...run } = data.run; data = { ...data, run }; }
     const event = this.store.event(type, message, data); this.logs.diagnostics.write('info', type, this.diagnosticEvent(event)); this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event }); return event;
   }
   busy() { return !!this.preview?.busy || this.connecting.size > 0 || this.executions().some(run => run.status === 'running' && !this.store.get('execution', run.id, {}).boundaryWaiting) || [...this.workers.values()].some(worker => !worker.safeIdle); }
@@ -182,14 +190,14 @@ export class Runtime {
     // Retain creation order while keeping long-running executions visible even
     // when other devices have produced more than 100 finished executions.
     const runs = this.store.all('run').reverse().filter(run => run.status === 'running' || endedCount++ < 100).map(run => {
-      const { tasks, ...summary } = run;
+      const { tasks, copilotEntries, ...summary } = run;
       return { finishedAt: null, ...summary };
     });
     let endedTools = 0;
     const toolJobs = this.store.all('tool_job').reverse().filter(item => item.status === 'running' || endedTools++ < 200).map(item => toolJob(item, false));
     return parseSnapshot({ toolJobs, mode: this.mode, devices: this.devices(), plans: this.store.all('plan').map(parsePlan), runs, updates: this.updates.channels(), settings: parseSettings(this.store.get('settings', 'main')), events: this.store.events().map(event => {
-      if (!event.data.run?.tasks) return event;
-      const { tasks: _tasks, ...run } = event.data.run; return { ...event, data: { ...event.data, run } };
+      if (!event.data.run?.tasks && !event.data.run?.copilotEntries) return event;
+      const { tasks: _tasks, copilotEntries: _entries, ...run } = event.data.run; return { ...event, data: { ...event.data, run } };
     }) });
   }
   async handle(method: string, params: any = {}) {
@@ -203,6 +211,16 @@ export class Runtime {
       case 'device.availability':
         if (!validateDeviceAvailabilityParams(params)) throw new RpcError(-32602, '设备状态请求无效');
         return this.availability(params.deviceId);
+      case 'copilot.list': if (!validateCopilotListParams(params)) throw new RpcError(-32602, '作业列表请求无效'); return this.copilot.list(params);
+      case 'copilot.get': if (!validateCopilotIdentityParams(params)) throw new RpcError(-32602, '作业详情请求无效'); return this.copilot.get(params);
+      case 'copilot.export': if (!validateCopilotExportParams(params)) throw new RpcError(-32602, '作业导出请求无效'); return this.copilot.export(params);
+      case 'copilot.preview': if (!validateCopilotPreviewParams(params)) throw new RpcError(-32602, '作业预览请求无效'); return this.copilot.preview(params);
+      case 'copilot.import': if (!validateCopilotImportParams(params)) throw new RpcError(-32602, '作业导入请求无效'); return this.copilot.import(params);
+      case 'copilot.delete': if (!validateIdParams(params)) throw new RpcError(-32602, '作业删除请求无效'); return this.copilot.delete(params);
+      case 'copilot.workspace.get': if (!validateCopilotWorkspaceParams(params)) throw new RpcError(-32602, '作业工作区请求无效'); return this.copilot.workspaceGet(params);
+      case 'copilot.workspace.save': if (!validateCopilotWorkspaceSaveParams(params)) throw new RpcError(-32602, '作业工作区保存请求无效'); return this.copilot.workspaceSave(params);
+      case 'copilot.search': if (!validateCopilotSearchParams(params)) throw new RpcError(-32602, '社区搜索请求无效'); return this.copilot.search(params);
+      case 'copilot.start': return this.startCopilot(params);
       case 'tool.start': return this.toolbox.start(params);
       case 'tool.get': case 'tool.stop': {
         if (!validateIdParams(params)) throw new RpcError(-32602, '工具标识请求无效');
@@ -280,7 +298,7 @@ export class Runtime {
         return { ...homeInfo(settings, params.deviceId, clientType, new Date(activityCatalog.generatedAt)), activityCatalog };
       }
       case 'device.discover':
-        try { const result = await (this.options.discoverDevices ?? autoDiscover)(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); this.emulatorInventory = result.inventory; return result.devices; } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
+        try { const result = await (this.options.discoverDevices ?? autoDiscover)(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); this.emulatorInventory = result.inventory; return result.devices; } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败：' + connectionError(error, 'adb'), String(error)); }
       case 'device.connect': return this.connectDevice(params);
       case 'device.auto_connect': return this.autoConnectDevices();
       case 'device.disconnect': required('id'); return this.disconnectDevice(params.id);
@@ -349,38 +367,69 @@ export class Runtime {
     const token = params.requestId;
     if (typeof token !== 'string' || !token || [...token].length > 200) throw new RpcError(-32602, 'requestId 必须是非空字符串');
     const pending = this.starts.get(token);
-    if (pending) { if (pending.planId !== params.planId || pending.deviceId !== params.deviceId) throw new RpcError(-32011, '同一请求标识不能用于不同执行'); return pending.promise; }
+    if (pending) { if (pending.source !== 'plan' || pending.identity !== params.planId || pending.deviceId !== params.deviceId) throw new RpcError(-32011, '同一请求标识不能用于不同执行'); return pending.promise; }
     const promise = this.startRunInner(params, scheduledPlan, occurrence);
-    this.starts.set(token, { planId: params.planId, deviceId: params.deviceId, promise });
+    this.starts.set(token, { source: 'plan', identity: params.planId, deviceId: params.deviceId, promise });
     try { return await promise; } finally { this.starts.delete(token); }
   }
   private async startRunInner(params: any, scheduledPlan?: any, occurrence?: any) {
-    if (this.switching) throw new RpcError(-32011, '正在切换核心与资源，请稍候');
-    const token = params.requestId;
-    if (typeof token !== 'string' || !token || [...token].length > 200) throw new RpcError(-32602, 'requestId 必须是非空字符串');
-    const existing = this.store.get('request', token);
-    if (existing) { if (existing.planId !== params.planId || existing.deviceId !== params.deviceId) throw new RpcError(-32011, '同一请求标识不能用于不同执行'); return this.execution(existing.runId); }
+    const existing = this.store.get('request', params.requestId);
+    if (existing) { if ((existing.source ?? 'plan') !== 'plan' || existing.planId !== params.planId || existing.deviceId !== params.deviceId) throw new RpcError(-32011, '同一请求标识不能用于不同执行'); return this.execution(existing.runId); }
     const saved = scheduledPlan ?? this.store.get('plan', params.planId); if (!saved) throw new RpcError(-32004, '计划不存在');
     const plan = parsePlan(saved); this.validatePolicy(plan);
     if (plan.deviceId !== null && plan.deviceId !== params.deviceId) throw new RpcError(-32011, '任务表已绑定其他设备，请使用绑定设备执行');
     if (!plan.enabled) throw new RpcError(-32011, '计划已禁用');
     plan.tasks = plan.tasks.filter(task => task.enabled && task.params.enable !== false) as Plan['tasks'];
     if (!plan.tasks.length) throw new RpcError(-32010, '任务表至少需要启用一条任务才能执行');
+    if (occurrence?.force) plan.tasks.unshift({ type: 'CloseDown', params: { client_type: this.store.get('device_client', params.deviceId, 'Official') }, enabled: true });
+    return this.beginExecution(params, { ...plan, source: 'plan', identity: params.planId }, occurrence);
+  }
+  async startCopilot(params: any) {
+    if (!validateCopilotStartParams(params)) throw new RpcError(-32602, '作业启动请求无效');
+    // Idempotent lookup must remain available after disconnect, restart or component removal.
+    const workspace = this.copilot.workspaceGet({ kind: params.kind });
+    const identity = copilotWorkspaceIdentity(workspace);
+    const existing = this.store.get('request', params.requestId);
+    if (existing) {
+      // Before canonical identities, the request hash retained JSON field order.
+      // Verify that old hash against its immutable snapshot before comparing semantics.
+      const snapshot = existing.identity === identity ? undefined : this.store.get('run_snapshot', existing.runId);
+      const legacyMatch = snapshot?.workspace && snapshot.source === 'copilot'
+        && existing.identity === createHash('sha256').update(JSON.stringify(snapshot.workspace)).digest('hex')
+        && copilotWorkspaceIdentity(snapshot.workspace) === identity;
+      if (existing.source !== 'copilot' || (existing.identity !== identity && !legacyMatch) || existing.kind !== params.kind || existing.deviceId !== params.deviceId) throw new RpcError(-32011, '同一请求标识不能用于不同来源、设备或作业配置');
+      return this.execution(existing.runId);
+    }
+    const pending = this.starts.get(params.requestId);
+    if (pending) { if (pending.source !== 'copilot' || pending.identity !== identity || pending.deviceId !== params.deviceId) throw new RpcError(-32011, '同一请求标识不能用于不同执行'); return pending.promise; }
+    const clientType = this.deviceClient(params.deviceId);
+    const prepared = this.copilot.prepare(params.kind, clientType);
+    this.validatePolicy(parsePlan({ name: prepared.name, tasks: prepared.tasks }));
+    const promise = this.beginExecution(params, { ...prepared, source: 'copilot', kind: params.kind, clientType });
+    this.starts.set(params.requestId, { source: 'copilot', identity, deviceId: params.deviceId, promise });
+    try { return await promise; } finally { this.starts.delete(params.requestId); }
+  }
+  /** No await before occupancy validation and durable registration: every source shares this gate. */
+  private async beginExecution(params: any, snapshot: any, occurrence?: any) {
     const device = this.devices().find(d => d.id === params.deviceId); if (!device) throw new RpcError(-32004, '设备不存在');
     const availability = this.availability(device.id, occurrence?.id);
     if (!availability.available) throw new RpcError(-32011, availability.reason);
-    if (occurrence?.force) plan.tasks.unshift({ type: 'CloseDown', params: { client_type: this.store.get('device_client', device.id, 'Official') }, enabled: true });
-    if (this.preview.isClicking(device.id)) throw new RpcError(-32011, '正在发送手动点击，请稍后启动计划');
-    if (device.state !== 'idle') throw new RpcError(-32011, '设备已有控制者');
-    if (this.executions().some(r => r.deviceId === device.id && r.status === 'running')) throw new RpcError(-32011, '该设备已有尚未结束的计划');
     this.preview.invalidate(device.id);
     const worker = this.workers.get(device.id);
     if (!worker?.connected || !worker.safeIdle) throw new RpcError(-32011, '核心尚未连接或异步操作未结束');
-    if (!this.running || this.switching) throw new RpcError(-32011, '应用运行时正在退出或切换');
-    const id = ident('run'), run = { ...(occurrence ? { scheduleId: occurrence.scheduleId, scheduledFor: occurrence.scheduledFor } : {}), id, planId: params.planId, planName: plan.name, deviceId: device.id, status: 'running', progress: 0, message: '正在提交首个任务', startedAt: now(), finishedAt: null,
-      tasks: plan.tasks.map((task, index) => ({ index, type: task.type, status: 'waiting', message: '等待执行', startedAt: null, finishedAt: null, drops: [], infrastructure: [], artifacts: [] })) };
-    // Persist deduplication and the execution snapshot before any native effect.
-    this.store.transaction(() => { this.putExecution(id, run); this.store.put('run_plan', id, plan); this.store.put('request', token, { runId: id, planId: params.planId, deviceId: device.id }); });
+    if (!this.running || this.appUpdating || this.switching) throw new RpcError(-32011, '应用运行时正在退出、安装更新或切换');
+    const isCopilot = snapshot.source === 'copilot', id = ident('run');
+    const run: any = { ...(occurrence ? { scheduleId: occurrence.scheduleId, scheduledFor: occurrence.scheduledFor } : {}), id, source: snapshot.source, sourceName: snapshot.name,
+      planId: isCopilot ? null : params.planId, planName: snapshot.name, deviceId: device.id, status: 'running', progress: 0, message: '正在提交首个任务', startedAt: now(), finishedAt: null,
+      ...(isCopilot ? { copilotKind: snapshot.kind, copilotEntries: structuredClone(snapshot.entries) } : {}),
+      tasks: snapshot.tasks.map((task: any, index: number) => ({ index, type: task.type, status: 'waiting', message: '等待执行', startedAt: null, finishedAt: null, drops: [], infrastructure: [], artifacts: [] })) };
+    // Persist deduplication and immutable execution inputs before any native effect.
+    this.store.transaction(() => {
+      this.putExecution(id, run);
+      if (isCopilot) this.store.put('run_snapshot', id, structuredClone(snapshot));
+      else this.store.put('run_plan', id, snapshot);
+      this.store.put('request', params.requestId, { runId: id, source: snapshot.source, planId: run.planId, kind: snapshot.kind, identity: snapshot.identity, deviceId: device.id });
+    });
     this.emit('run.started', run.message, { run });
     device.state = 'running'; this.store.put('device', device.id, device); await this.submitNativeTask(run, 0); return this.execution(id);
   }
@@ -394,11 +443,11 @@ export class Runtime {
       const worker = this.workers.get(run.deviceId);
       if (worker) {
         const execution = this.store.get('execution', id, {}); execution.stopRequested = Date.now(); this.store.put('execution', id, execution);
-        run.message = '正在停止并等待核心与异步调用结束，原计划保留'; this.putExecution(id, run);
+        run.message = '正在停止并等待核心与异步调用结束，保存的配置保留'; this.putExecution(id, run);
         try { await worker.stop(); return this.execution(id); }
         catch { await worker.close(); this.workers.delete(run.deviceId); this.workerConfigurations.delete(run.deviceId); }
       }
-      this.finishNativeRun(run, 'stopped', '工作进程已结束，请核对设备现场，原计划保留');
+      this.finishNativeRun(run, 'stopped', '工作进程已结束，请核对设备现场，保存的配置保留');
     }
     return run;
   }
@@ -498,7 +547,7 @@ export class Runtime {
       this.workerConfigurations.set(id!, structuredClone(config));
       const device = { id, name: String(params.name || profile?.name || address).slice(0, 80), address, state: 'offline', ...(profile ? { connectionProfileId: profile.id } : {}), coreVersion: combo.core.version, resourceVersion: combo.resource.version };
       this.store.put('device', id!, device); this.emit('device.connecting', '正在异步连接设备', { device }); return device;
-    } catch (error) { if (worker && !this.workers.has(id!)) await worker.close(); if (profileId) this.emit('device.connection_failed', '多开实例连接失败', { profileId, address: attemptedAddress, error: String(error) }); if (error instanceof RpcError) throw error; throw new RpcError(-32040, '设备连接失败', String(error)); }
+    } catch (error) { if (worker && !this.workers.has(id!)) await worker.close(); const reason = connectionError(error); if (profileId) this.emit('device.connection_failed', '多开实例连接失败：' + reason, { profileId, address: attemptedAddress, error: reason, detail: String(error) }); if (error instanceof RpcError) throw error; throw new RpcError(-32040, '设备连接失败：' + reason, String(error)); }
     finally { if (reserved) this.connecting.delete(id!); if (reservedAddress) this.connectingAddresses.delete(reservedAddress); }
   }
   async autoConnectDevices(automatic = false): Promise<any> {
@@ -514,7 +563,7 @@ export class Runtime {
       let inventory: EmulatorInventory;
       if (!configuredOnly) {
         try { const result = await (this.options.discoverDevices ?? autoDiscover)(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); discovered = result.devices; diagnostics = result.diagnostics; inventory = result.inventory; }
-        catch (error) { throw new RpcError(-32040, '模拟器自动发现失败', String(error)); }
+        catch (error) { throw new RpcError(-32040, '模拟器自动发现失败：' + connectionError(error, 'adb'), String(error)); }
       } else { inventory = await this.readEmulatorInventory(); diagnostics = [...inventory.diagnostics]; }
       this.emulatorInventory = inventory;
       // Explicit multi-instance profiles use their own ADB executables and SDK
@@ -531,7 +580,7 @@ export class Runtime {
           const previous = [...this.workers.keys()].map(id => this.store.get('device', id)).find(d => this.lockAddress(d.address) === key);
           if (previous) { const worker = this.workers.get(previous.id)!; if (worker.connected || !worker.safeIdle) { devices.push(previous); continue; } await this.disconnectDevice(previous.id, true); }
           devices.push(await this.connectDevice(candidate, false, automatic, inventory));
-        } catch (error) { diagnostics.push(candidate.address + '：' + (error instanceof RpcError && error.data !== undefined ? `${error.message}：${String(error.data)}` : error instanceof Error ? error.message : String(error))); }
+        } catch (error) { diagnostics.push(candidate.address + '：' + connectionError(error)); }
       }
       if (!devices.length) diagnostics.push('未连接到可用模拟器；请启动模拟器并开启 ADB 调试，或手动填写地址');
       if (!automatic || JSON.stringify(diagnostics) !== JSON.stringify(this.lastDiagnostics)) this.emit('device.auto_connect', '模拟器自动连接检查完成', { requested: devices.length, diagnostics });
@@ -541,7 +590,7 @@ export class Runtime {
   async automaticConnections() {
     if (!this.running || this.appUpdating || !parseSettings(this.store.get('settings', 'main')).autoConnect || Date.now() < this.nextAutoConnect || this.switching || this.busy()) return;
     this.nextAutoConnect = Date.now() + 30_000; if (!this.store.get('active', 'combo', {}).core) return;
-    try { await this.autoConnectDevices(true); } catch (error) { const diagnostics = [String(error)]; if (this.running && JSON.stringify(diagnostics) !== JSON.stringify(this.lastDiagnostics)) this.emit('device.auto_connect_failed', '模拟器自动发现失败', { detail: String(error) }); this.lastDiagnostics = diagnostics; }
+    try { await this.autoConnectDevices(true); } catch (error) { const reason = connectionError(error), diagnostics = [reason]; if (this.running && JSON.stringify(diagnostics) !== JSON.stringify(this.lastDiagnostics)) this.emit('device.auto_connect_failed', '模拟器自动发现失败：' + reason, { detail: String(error) }); this.lastDiagnostics = diagnostics; }
   }
   async disconnectDevice(id: string, internal = false) {
     if (this.switching && !internal) throw new RpcError(-32011, '正在切换核心与资源，暂不能断开设备');
@@ -576,13 +625,17 @@ export class Runtime {
     this.reconnect = []; this.switching = false;
   }
   private taskClient(run: any, index: number): string {
-    const tasks = this.store.get('run_plan', run.id).tasks;
+    const snapshot = this.executionSnapshot(run.id), tasks = snapshot.tasks;
+    if (snapshot.source === 'copilot' && snapshot.clientType) return snapshot.clientType;
     if (typeof tasks[index].params.client_type === 'string' && tasks[index].params.client_type) return tasks[index].params.client_type;
     if (['StartUp', 'CloseDown'].includes(tasks[index].type) && !('client_type' in tasks[index].params)) return 'Official';
     for (let previous = index - 1; previous >= 0; previous--) if (tasks[previous].type === 'StartUp') return tasks[previous].params.client_type || 'Official';
-    const settings = parseSettings(this.store.get('settings', 'main')), device = this.store.get('device', run.deviceId);
+    return this.deviceClient(run.deviceId);
+  }
+  private deviceClient(deviceId: string): NonNullable<RpcContract['params']['stages.list']['clientType']> {
+    const settings = parseSettings(this.store.get('settings', 'main')), device = this.store.get('device', deviceId);
     const profile = device && (settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address));
-    return this.store.get('device_client', run.deviceId) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';
+    return this.store.get('device_client', deviceId) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';
   }
   private syncHistory(deviceId: string, clientType: string): { operatorsAt?: string | null; depotAt?: string | null } {
     const synced = this.store.get('user_data_sync', deviceId, {});
@@ -712,7 +765,7 @@ export class Runtime {
     const current = this.execution(run.id);
     if (!this.running || this.switching || current?.status !== 'running' || this.store.get('execution', run.id, {}).stopRequested) return;
     if (run.toolKind && !this.toolbox.beforeTask(run, index)) { this.updateRunTask(run, index, task => { Object.assign(task, { status: 'skipped', finishedAt: now(), message: '库存已达标或仅执行首个不足项' }); }); await this.advanceNativeTask(run, index + 1); return; }
-    const plan = this.store.get('run_plan', run.id), configuredTask = plan.tasks[index], clientType = this.taskClient(run, index);
+    const plan = this.executionSnapshot(run.id), configuredTask = plan.tasks[index], clientType = this.taskClient(run, index);
     if (configuredTask.type === 'UserDataUpdate') {
       syncSteps ??= userDataSteps(configuredTask.params, this.syncHistory(run.deviceId, clientType), new Date(), clientType);
       if (!syncSteps.length) {
@@ -733,13 +786,17 @@ export class Runtime {
       if (configuredTask.params.visit_friends_once_a_day && visited?.clientType === clientType && !syncDue(visited.visitedAt, 'daily', new Date(), clientType)) task.params.visit_friends = false;
       state.mallVisitEnabled = task.params.visit_friends !== false;
     }
+    if (run.source === 'copilot' && run.copilotEntries?.length === 1) {
+      state.currentCopilotIndex = 0;
+      Object.assign(run.copilotEntries[0], { status: 'running', message: '正在执行；通关结果未确认' }); this.putExecution(run.id, run);
+    }
     this.store.put('execution', run.id, state);
     this.updateRunTask(run, index, item => { Object.assign(item, { status: 'running', startedAt: item.startedAt ?? now(), message: '正在准备' + (taskLabels[configuredTask.type] ?? configuredTask.type) }); });
     try {
       const worker = await this.workerForClient(run, clientType);
       if (!worker || !this.canSubmit(run.id)) {
         Object.assign(state, this.store.get('execution', run.id, {}), { submitting: false }); this.store.put('execution', run.id, state);
-        if (this.execution(run.id)?.status === 'running' && (state.stopRequested || !this.running)) this.finishNativeRun(run, 'stopped', '执行已停止，未执行计划保留');
+        if (this.execution(run.id)?.status === 'running' && (state.stopRequested || !this.running)) this.finishNativeRun(run, 'stopped', '执行已停止，保存的配置及未执行项保留');
         return;
       }
       if (this.updates.channels().some(channel => channel.status === 'waiting_idle')) {
@@ -755,11 +812,11 @@ export class Runtime {
       const device = this.store.get('device', run.deviceId); device.state = 'running'; this.store.put('device', device.id, device); this.emit('run.progress', run.message, { run });
     } catch (error) {
       Object.assign(state, this.store.get('execution', run.id, {}), { submitting: false }); this.store.put('execution', run.id, state);
-      if (this.execution(run.id)?.status === 'running') this.finishNativeRun(run, state.stopRequested ? 'stopped' : 'failed', state.stopRequested ? '执行已停止，未执行计划保留' : '任务提交失败或结果未知: ' + String(error));
+      if (this.execution(run.id)?.status === 'running') this.finishNativeRun(run, state.stopRequested ? 'stopped' : 'failed', state.stopRequested ? '执行已停止，保存的配置及未执行项保留' : '任务提交失败或结果未知: ' + String(error));
     }
   }
   private async advanceNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
-    const plan = this.store.get('run_plan', run.id);
+    const plan = this.executionSnapshot(run.id);
     if (index >= plan.tasks.length) this.finishNativeRun(run, 'completed', '所有任务链均报告成功且核心已空闲');
     else if (this.updates.channels().some(c => c.status === 'waiting_idle')) {
       const state = this.store.get('execution', run.id, {});
@@ -777,8 +834,66 @@ export class Runtime {
     });
     else await pending;
   }
+  /** List IDs are local queue occurrence IDs, never community document IDs. */
+  private recordCopilotCallback(run: any, state: any, message: number, details: any): boolean {
+    if (run.source !== 'copilot' || !Array.isArray(run.copilotEntries) || details.taskid !== state.taskId || state.stopRequested || state.failed || state.completed || state.queueEnded) return false;
+    const entries = run.copilotEntries;
+    if (message === 20003 && details.what === 'CopilotListLoadTaskFileSuccess') {
+      const loaded = details.details;
+      if (!loaded || !Number.isInteger(loaded.id) || typeof loaded.file_name !== 'string') return false;
+      const index = entries.findIndex((item: any) => item.nativeId === loaded.id);
+      if (index < 0 || index < (state.currentCopilotIndex ?? -1)) return false;
+      const snapshot = this.executionSnapshot(run.id), params = snapshot.tasks[0].params;
+      const files = params.copilot_list ?? params.list;
+      const expected = Array.isArray(files) ? files.find((item: any) => item.id === loaded.id)?.filename : params.filename;
+      if (typeof expected !== 'string' || path.resolve(loaded.file_name) !== path.resolve(expected)) return false;
+      if (state.currentCopilotIndex !== undefined && state.currentCopilotIndex !== index) {
+        const previous = entries[state.currentCopilotIndex];
+        if (previous?.status === 'running') Object.assign(previous, { status: 'completed', message: previous.verdict === 'success' ? '已收到三星结算识别，开始下一项' : '核心已开始下一项；本项通关结果未确认' });
+      }
+      if (state.currentCopilotIndex !== index) state.copilotBattleStarted = false;
+      state.currentCopilotIndex = index;
+      Object.assign(entries[index], { status: 'running', message: '作业文件已加载；通关结果未确认' });
+      run.progress = Math.floor(index * 100 / entries.length); run.message = `正在执行 ${index + 1}/${entries.length}：${entries[index].title}`;
+      this.putExecution(run.id, run); this.emit('run.copilot_entry', run.message, { runId: run.id, entryId: entries[index].id, nativeId: loaded.id });
+      return false;
+    }
+    const entry = entries[state.currentCopilotIndex ?? -1];
+    // Fixed-core ProcessTask errors identify their configured root, not an invented
+    // sanity/non-three-star result. Both roots are fatal in native CopilotTask.
+    if (entry && message === 20000 && details.subtask === 'ProcessTask' && Array.isArray(details.first)) {
+      const settlement = details.first.includes('Copilot@WaitUntilEndOfAction');
+      const starting = details.first.includes('BattleStartAll');
+      if (settlement || starting) {
+        state.failed = true;
+        state.copilotFailureMessage = settlement ? '核心未通过三星结算检查，停止后续队列；通关结果未确认' : '未能进入战斗，请检查理智及游戏界面；停止后续队列';
+        Object.assign(entry, { verdict: 'unknown', message: state.copilotFailureMessage });
+        this.putExecution(run.id, run); this.emit('run.copilot_result', entry.message, { runId: run.id, entryId: entry.id, verdict: entry.verdict });
+        return true;
+      }
+    }
+    if (entry && message === 20001 && details.subtask === 'BattleProcessTask') state.copilotBattleStarted = true;
+    const action = details.details?.task;
+    if (!entry || typeof action !== 'string' || message !== 20002 || details.subtask !== 'ProcessTask') return false;
+    const victory = state.copilotBattleStarted && run.copilotKind !== 'SSSCopilot' && ['Copilot@StageDrops-Stars-3', 'Copilot@StageDrops-Stars-Adverse'].includes(action);
+    const failure = ['Copilot@FightMissionFailed', 'Copilot@FightMissionFailed-Bypass'].includes(action);
+    if (!victory && !failure) return false;
+    const confirmsAll = (this.executionSnapshot(run.id).workspace?.options.loopTimes ?? 1) === 1;
+    Object.assign(entry, { verdict: failure ? 'failure' : confirmsAll ? 'success' : 'unknown', message: failure ? '已识别战斗失败，停止后续队列' : confirmsAll ? '已识别三星结算' : '已识别单次三星结算；整个循环结果未确认' });
+    state.copilotBattleStarted = false;
+    if (failure) { state.failed = true; state.copilotFailureMessage = entry.message; }
+    this.putExecution(run.id, run); this.emit('run.copilot_result', entry.message, { runId: run.id, entryId: entry.id, verdict: entry.verdict });
+    return failure;
+  }
   finishNativeRun(run: any, status: string, message: string) {
     Object.assign(run, this.execution(run.id));
+    if (run.source === 'copilot') {
+      for (const entry of run.copilotEntries ?? []) {
+        if (entry.status === 'running') Object.assign(entry, { status, message: status === 'completed' ? entry.verdict === 'success' ? '已识别三星结算，核心已空闲' : '核心流程结束且已空闲；通关结果未确认' : message.slice(0, 1000) });
+        else if (entry.status === 'waiting') Object.assign(entry, { status: 'skipped', message: status === 'completed' ? '核心未报告该条目执行；通关结果未确认' : '本项尚未执行，队列配置保留' });
+      }
+      if (status === 'completed' && run.copilotEntries?.some((entry: any) => entry.verdict === 'unknown')) message = '核心流程已结束并确认空闲；部分作业通关结果未确认';
+    }
     for (const task of run.tasks ?? []) if (task.status === 'running' && status !== 'completed') Object.assign(task, { status, message: message.slice(0, 1000), finishedAt: now() });
     Object.assign(run, { status, message, finishedAt: now() }); if (run.toolKind) this.toolbox.finish(run, status); if (status === 'completed') run.progress = 100; this.putExecution(run.id, run);
     this.scheduler.runFinished(run);
@@ -795,7 +910,7 @@ export class Runtime {
         const event = worker.events.shift(), state = run ? this.store.get('execution', run.id, {}) : {};
         if (['exit', 'protocol_error'].includes(event.type)) {
           worker.connected = false; if (run) this.finishNativeRun(run, 'failed', '核心工作进程异常，执行结果未知；不会自动重放'); run = undefined;
-          const d = this.store.get('device', id); d.state = 'offline'; d.connectionError = '核心工作进程异常退出，请查看本地日志后重连'; this.store.put('device', id, d); await worker.close(); this.workers.delete(id); this.workerConfigurations.delete(id); break;
+          const d = this.store.get('device', id); d.state = 'offline'; d.connectionError = event.error ? String(event.error).slice(0, 4096) : '核心工作进程异常退出，请重新连接；若仍失败可在设置中导出诊断日志'; this.store.put('device', id, d); await worker.close(); this.workers.delete(id); this.workerConfigurations.delete(id); break;
         }
         if (event.type === 'callback') {
           const { message, details } = event;
@@ -803,7 +918,23 @@ export class Runtime {
             const d = this.store.get('device', id); d.captureMethod = details.details.method; this.store.put('device', id, d);
             this.emit('device.capture', '核心实际截图方式：' + d.captureMethod, { deviceId: id, method: d.captureMethod, cost: details.details.cost });
           }
-          if (message === 4 && details.what === 'Connect') { worker.connected = !!details.details?.ret; const d = this.store.get('device', id); d.state = worker.connected ? (this.hasExecution(id) ? 'running' : 'idle') : 'offline'; if (worker.connected) delete d.connectionError; else d.connectionError = String(details.details?.error || '请查看本地核心日志').slice(0, 4096); this.store.put('device', id, d); this.emit(worker.connected ? 'device.connected' : 'device.failed', worker.connected ? '设备已连接' : '核心设备连接失败：' + d.connectionError, { device: d }); }
+          if (message === 2) {
+            const reason = nativeConnectionError(details);
+            if (reason) {
+              this.connectionErrors.set(worker, reason);
+              this.emit('device.connection_diagnostic', reason, { deviceId: id, what: details.what, why: String(details.why ?? '').slice(0, 4096), rawOutput: String(details.details?.raw_output ?? '').slice(0, 4096) });
+            }
+          }
+          if (message === 4 && details.what === 'Connect') {
+            worker.connected = !!details.details?.ret;
+            const d = this.store.get('device', id); d.state = worker.connected ? (this.hasExecution(id) ? 'running' : 'idle') : 'offline';
+            const reported = details.details?.error, translated = reported ? connectionError(reported) : undefined;
+            if (worker.connected) delete d.connectionError;
+            else d.connectionError = (reported && translated !== errorDetail(reported).slice(0, 4096) ? translated : undefined) || this.connectionErrors.get(worker) || translated || '设备连接失败，核心未返回具体原因；请确认模拟器已启动、ADB 调试已开启，并核对连接地址';
+            this.connectionErrors.delete(worker);
+            this.store.put('device', id, d);
+            this.emit(worker.connected ? 'device.connected' : 'device.failed', worker.connected ? '设备已连接' : '核心设备连接失败：' + d.connectionError, { device: d, ...(details.details?.error ? { detail: String(details.details.error).slice(0, 4096) } : {}) });
+          }
           if (message === 2 && ['Disconnect', 'ResolutionChanged'].includes(details.what)) {
             worker.connected = false;
             const d = this.store.get('device', id); d.state = 'offline'; delete d.captureMethod; this.store.put('device', id, d);
@@ -814,6 +945,13 @@ export class Runtime {
           }
           if (run) {
             const matches = details.taskid === state.taskId;
+            const stopCopilot = this.recordCopilotCallback(run, state, message, details);
+            if (stopCopilot) {
+              state.copilotStopRequested = Date.now(); this.store.put('execution', run.id, state);
+              this.captureRunArtifact(run, state, worker, '作业异常反馈画面');
+              try { await worker.stop(); }
+              catch { await worker.close(); worker.connected = false; this.workers.delete(id); this.workerConfigurations.delete(id); this.finishNativeRun(run, 'failed', '作业异常且停止未获确认，已结束工作进程；请核对设备现场'); }
+            } else if (matches && message === 20002 && details.subtask === 'ProcessTask' && ['Copilot@StageDrops-Stars-3', 'Copilot@StageDrops-Stars-Adverse'].includes(details.details?.task)) this.captureRunArtifact(run, state, worker, '作业结算反馈画面');
             if ([0, 1].includes(message) || (message === 10000 && matches) || (message === 10004 && matches)) state.failed = true;
             if (message === 10002 && matches) state.completed = true;
             if (message === 3 && (matches || (!('taskid' in details) && (!Array.isArray(details.finished_tasks) || details.finished_tasks.includes(state.taskId))))) state.queueEnded = true;
@@ -831,8 +969,8 @@ export class Runtime {
               // SubTaskCompleted ends one internal step, never the configured task.
               // After TaskChainCompleted, late step callbacks must not undo the idle wait.
               if (message === 10002 || (!state.completed && [10001, 20001].includes(message))) {
-                const action = details.details?.task ?? details.subtask ?? details.taskchain ?? this.store.get('run_plan', run.id)?.tasks[state.index]?.type ?? '';
-                const taskType = state.syncSteps?.[state.syncIndex]?.type ?? this.store.get('run_plan', run.id)?.tasks[state.index]?.type;
+                const action = details.details?.task ?? details.subtask ?? details.taskchain ?? this.executionSnapshot(run.id)?.tasks[state.index]?.type ?? '';
+                const taskType = state.syncSteps?.[state.syncIndex]?.type ?? this.executionSnapshot(run.id)?.tasks[state.index]?.type;
                 const taskLabel = taskLabels[taskType] ?? '当前任务', localized = localizeExecutionMessage(String(action));
                 const namedStep = typeof details.details?.task === 'string' && localized !== action && !/[A-Za-z]/.test(localized) && !taskLabels[action] && !['Start', 'ProcessTask'].includes(action);
                 const messageText = message === 10002 ? taskLabel + '流程结束，正在确认核心空闲'
@@ -864,7 +1002,7 @@ export class Runtime {
       if (!run) continue;
       const state = this.store.get('execution', run.id, {});
       if (state.boundaryWaiting && !state.stopRequested) { if (worker.connected && worker.safeIdle && !this.updates.channels().some(c => c.status === 'waiting_idle') && !this.switching) await this.continueNativeTask(run, state.nextIndex, state.nextSyncSteps, state.nextSyncIndex); }
-      else if (state.stopRequested && Date.now() - state.stopRequested > 15_000) { await worker.close(); this.workers.delete(id); this.workerConfigurations.delete(id); this.finishNativeRun(run, 'stopped', '核心停止超时，已结束工作进程；请核对设备现场'); }
+      else if ((state.stopRequested || state.copilotStopRequested) && Date.now() - (state.stopRequested || state.copilotStopRequested) > 15_000) { await worker.close(); this.workers.delete(id); this.workerConfigurations.delete(id); this.finishNativeRun(run, state.stopRequested ? 'stopped' : 'failed', '核心停止超时，已结束工作进程；请核对设备现场'); }
       else if (state.idleAfterEnd && worker.safeIdle) {
         await this.finishRunArtifact(run.id, state.index);
         // Stop can arrive while the final feedback image is being read.
@@ -873,13 +1011,13 @@ export class Runtime {
           this.store.put('mall_visit', run.deviceId, { visitedAt: state.mallVisitedAt, clientType: state.clientType });
           this.emit('device.friends_visited', '好友访问已获专用成功回调确认', { deviceId: run.deviceId, runId: run.id, visitedAt: state.mallVisitedAt });
         }
-        if (state.stopRequested) this.finishNativeRun(run, 'stopped', '执行已停止，未执行计划保留');
-        else if (state.failed || !state.completed) this.finishNativeRun(run, 'failed', '核心任务失败或缺少成功证据；不会继续后续任务');
+        if (state.stopRequested) this.finishNativeRun(run, 'stopped', '执行已停止，保存的配置及未执行项保留');
+        else if (state.failed || !state.completed) this.finishNativeRun(run, 'failed', state.copilotFailureMessage || '核心任务失败或缺少成功证据；不会继续后续任务');
         else if (run.toolKind === 'recruit' && !state.toolResult) this.finishNativeRun(run, 'failed', '缺少有效公招计算结果，未报告计算成功');
         else if (state.recognitionType && !state.recognitionResultAt) this.finishNativeRun(run, 'failed', '识别任务已结束但缺少有效的最终识别结果，结果未知；未记录同步成功');
         else {
           if (run.toolKind === 'recruit') { run.result = state.toolResult; this.putExecution(run.id, run); }
-          const configured = this.store.get('run_plan', run.id).tasks[state.index];
+          const configured = this.executionSnapshot(run.id).tasks[state.index];
           if (configured.type === 'StartUp') this.rememberClient(run, configured.params);
           const step: SyncStep | undefined = state.syncSteps?.[state.syncIndex] ?? (configured.type === 'OperBox' ? { type: 'OperBox', key: 'operatorsAt' } : configured.type === 'Depot' ? { type: 'Depot', key: 'depotAt' } : undefined);
           if (step) {

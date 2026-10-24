@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Check, ChevronDown, Circle, Clock3, ImageIcon, Layers, ListChecks, LoaderCircle, Monitor, Package, Square, Terminal, TriangleAlert } from 'lucide-react';
-import { localizeExecutionMessage, rpc, taskLabels, type Plan, type Run, type RunArtifact, type RunTask, type Snapshot } from '@maaverge/contracts';
+import { errorMessage, localizeExecutionMessage, rpc, taskLabels, type Plan, type Run, type RunArtifact, type RunTask, type Snapshot } from '@maaverge/contracts';
 import MaterialIcon from './MaterialIcon';
 import OperatorBadge from './OperatorBadge';
 import './execution-page.css';
@@ -53,7 +53,7 @@ export default function ExecutionPage({ snapshot, run: summary, pending, onRunUp
         if (value.status === 'running') timer = window.setTimeout(() => { void poll(); }, 1000);
       } catch (cause) {
         if (cancelled) return;
-        setLoadError(cause instanceof Error ? cause.message : String(cause));
+        setLoadError(errorMessage(cause));
         timer = window.setTimeout(() => { void poll(); }, 5000);
       }
     };
@@ -122,7 +122,7 @@ function ResultImages({ runId, artifacts }: { runId: string; artifacts: (RunArti
     if (!artifact) return;
     let cancelled = false;
     const id = artifact.id;
-    void rpc('run.artifact', { runId, artifactId: id }).then((result) => { if (!cancelled) setData({ id, src: `data:${result.mimeType};base64,${result.data}` }); }).catch((cause: unknown) => { if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause)); });
+    void rpc('run.artifact', { runId, artifactId: id }).then((result) => { if (!cancelled) setData({ id, src: `data:${result.mimeType};base64,${result.data}` }); }).catch((cause: unknown) => { if (!cancelled) setError(errorMessage(cause)); });
     return () => { cancelled = true; };
   }, [runId, artifact?.id, retry]);
   if (!artifact) return <div className="exec-no-capture"><ImageIcon size={32} /><strong>暂无参考截图</strong><p>收到任务反馈并成功取帧后，画面会保存在这里。</p></div>;

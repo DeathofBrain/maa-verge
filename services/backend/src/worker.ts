@@ -1,11 +1,13 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { closeSync, mkdirSync, openSync, writeSync } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { StringDecoder } from 'node:string_decoder';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { childEnvironment, nativeEnvironment } from './config';
 import { nativeWorkerPath } from './native-path';
 import { stringifyWireJson } from './wire-json';
+import { nativeStartupError } from './connection-errors';
 
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 export class CoreWorker {
@@ -20,6 +22,8 @@ export class CoreWorker {
   private child!: ChildProcessWithoutNullStreams;
   private finished!: Promise<void>;
   private log?: number;
+  private stderrTail = '';
+  private stderrDecoder = new StringDecoder('utf8');
   get safeIdle() { return !this.running && !this.pending && !this.exited && !this.closed; }
   static async start(config: any, options: { leaseOnly?: boolean; command?: string[]; signal?: AbortSignal } = {}): Promise<CoreWorker> {
     const worker = new CoreWorker();
@@ -33,18 +37,24 @@ export class CoreWorker {
     const command = options.command || [nativeWorkerPath(), ...(options.leaseOnly ? ['--lease-only'] : ['--worker'])];
     const env = config.core ? nativeEnvironment(config.core) : childEnvironment();
     this.child = spawn(command[0]!, command.slice(1), { env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-    this.child.stderr.on('data', bytes => { if (this.log !== undefined) { try { writeSync(this.log, bytes); } catch { /* process is unwinding */ } } });
+    this.child.stderr.on('data', bytes => {
+      this.stderrTail = (this.stderrTail + this.stderrDecoder.write(bytes)).slice(-16 * 1024);
+      if (this.log !== undefined) { try { writeSync(this.log, bytes); } catch { /* process is unwinding */ } }
+    });
     let resolveReady!: () => void, rejectReady!: (error: Error) => void;
     const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
     const timer = setTimeout(() => rejectReady(new Error('核心工作进程启动超时')), 45_000);
-    this.finished = new Promise(resolve => this.child.once('close', () => {
+    this.finished = new Promise(resolve => this.child.once('close', (code, signal) => {
       this.exited = true; this.connected = false;
+      this.stderrTail = (this.stderrTail + this.stderrDecoder.end()).slice(-16 * 1024);
       if (this.log !== undefined) { closeSync(this.log); this.log = undefined; }
-      rejectReady(new Error('核心工作进程已退出，请查看本地日志'));
-      for (const item of this.requests.values()) { clearTimeout(item.timer); item.reject(new Error('核心工作进程已退出，操作结果未知')); }
-      this.requests.clear(); this.events.push({ type: 'exit' }); resolve();
+      const diagnostic = this.stderrTail.match(/(?:^|\n)(?:maaverge-core-worker: [^\r\n]+|native timeout in [^\r\n]+; result unknown, do not replay)/g)?.at(-1)?.replace(/^\n?(?:maaverge-core-worker: )?/, '');
+      const reason = diagnostic ? nativeStartupError(diagnostic) : `核心工作进程已退出（${signal ? `信号 ${signal}` : `退出码 ${code ?? '未知'}`}），请重新连接；若仍失败可在设置中导出诊断日志`;
+      rejectReady(new Error(reason));
+      for (const item of this.requests.values()) { clearTimeout(item.timer); item.reject(new Error(reason + '；操作结果未知，请核对设备现场')); }
+      this.requests.clear(); this.events.push({ type: 'exit', error: reason, ...(diagnostic ? { detail: diagnostic } : {}) }); resolve();
     }));
-    this.child.once('error', rejectReady);
+    this.child.once('error', error => rejectReady(new Error(nativeStartupError(error))));
     this.child.stdin.on('error', error => { rejectReady(error); });
     const reader = createInterface({ input: this.child.stdout, crlfDelay: Infinity });
     reader.on('line', line => {

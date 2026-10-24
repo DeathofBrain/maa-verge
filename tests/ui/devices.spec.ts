@@ -11,6 +11,7 @@ type DeviceHarness = {
   readyDeviceIds: string[];
   connectionErrors: Record<string, string>;
   errorSnapshots: number;
+  rejections: Record<string, unknown>;
   releaseDiscovery: () => void;
   releaseConnection: () => void;
 };
@@ -38,7 +39,7 @@ async function installDeviceHarness(page: Page) {
     let subscribed = false;
     const target = window as unknown as HarnessWindow & { __TAURI_INTERNALS__: unknown; __TAURI_EVENT_PLUGIN_INTERNALS__: unknown };
     const harness: DeviceHarness = {
-      calls: [], holdDiscovery: false, holdConnection: false, discovery: 'normal', connection: 'normal', native: false, waiting: false, readyDeviceIds: [], connectionErrors: {}, errorSnapshots: 0,
+      calls: [], holdDiscovery: false, holdConnection: false, discovery: 'normal', connection: 'normal', native: false, waiting: false, readyDeviceIds: [], connectionErrors: {}, errorSnapshots: 0, rejections: {},
       releaseDiscovery: () => { harness.holdDiscovery = false; held.splice(0).forEach((release) => release()); },
       releaseConnection: () => { harness.holdConnection = false; heldConnections.splice(0).forEach((release) => release()); },
     };
@@ -62,6 +63,7 @@ async function installDeviceHarness(page: Page) {
           const method = String(args.method);
           const mock = await loadMock();
           harness.calls.push(method);
+          if (method in harness.rejections) throw harness.rejections[method];
           if (method === 'device.discover') {
             if (harness.holdDiscovery) await new Promise<void>((resolve) => held.push(resolve));
             if (harness.discovery === 'error') throw new Error('发现失败，请检查模拟器连接设置');
@@ -134,7 +136,7 @@ test('discovery shows progress, prevents duplicate requests and clears old resul
   await page.evaluate(() => { (window as HarnessWindow).deviceHarness.discovery = 'error'; });
   await page.getByRole('button', { name: '发现设备', exact: true }).click();
   await expect(result(page)).toHaveAttribute('role', 'alert');
-  await expect(result(page)).toContainText('发现设备失败，请查看下方连接诊断。');
+  await expect(result(page)).toContainText('发现设备失败：发现失败，请检查模拟器连接设置');
   await expect(page.locator('.connection-diagnostics')).toContainText('发现失败，请检查模拟器连接设置');
   await expect(page.locator('.connection-diagnostics')).not.toContainText('暂无演示设备');
   await page.evaluate(() => { (window as HarnessWindow).deviceHarness.discovery = 'normal'; });
@@ -163,7 +165,7 @@ test('auto connection waits for ready devices and reports an empty result or con
   await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connection = 'error'; });
   await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
   await expect(result(page)).toHaveAttribute('role', 'alert');
-  await expect(result(page)).toContainText('连接设备失败，请查看下方连接诊断。');
+  await expect(result(page)).toContainText('连接设备失败：连接失败，请先安装并启用核心');
   await expect(page.locator('.connection-diagnostics')).toContainText('请先安装并启用核心');
   await expect(page.locator('.connection-diagnostics')).not.toContainText('未检测到已启动的模拟器');
 });
@@ -220,7 +222,7 @@ test('an explicit asynchronous connection failure finishes promptly and permits 
   await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
   await expect(result(page)).toHaveText('正在等待设备连接就绪（0/1）…');
   await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connectionErrors['mock-device-1'] = '合成核心连接失败：ADB 地址不可达'; });
-  await expect(result(page)).toHaveText('连接结果：0 台已就绪，1 台连接失败。', { timeout: 5000 });
+  await expect(result(page)).toHaveText('连接结果：0 台已就绪，1 台连接失败。合成核心连接失败：ADB 地址不可达', { timeout: 5000 });
   await expect(result(page)).toHaveAttribute('role', 'alert');
   await expect(page.locator('.connection-diagnostics')).toContainText('合成核心连接失败：ADB 地址不可达');
   await expect(page.locator('.connection-diagnostics')).not.toContainText('尚未就绪');
@@ -245,9 +247,45 @@ test('one failed instance leaves other pending instances waiting until their own
   await expect(page.getByRole('button', { name: '正在连接…', exact: true })).toBeDisabled();
   await expect(result(page)).toHaveAttribute('aria-busy', 'true');
   await page.evaluate((id) => { (window as HarnessWindow).deviceHarness.readyDeviceIds = [id]; }, secondId);
-  await expect(result(page)).toHaveText('连接结果：1 台已就绪，1 台连接失败。', { timeout: 5000 });
+  await expect(result(page)).toHaveText('连接结果：1 台已就绪，1 台连接失败。合成第一实例连接失败', { timeout: 5000 });
   await expect(page.locator('.connection-diagnostics')).toContainText('合成第一实例连接失败');
   await expect(page.locator('.connection-diagnostics')).not.toContainText('尚未就绪');
   await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeEnabled();
   await expect(page.getByLabel('选择设备', { exact: true })).toHaveValue(secondId);
+});
+
+test('a structured bridge failure shows the concrete ADB cause in the page and toast', async ({ page }) => {
+  await openDevices(page);
+  await page.evaluate(() => {
+    (window as HarnessWindow).deviceHarness.rejections['device.auto_connect'] = JSON.stringify({ code: -32040, message: '设备连接失败', data: { error: 'Error: 未找到 ADB；请在连接设置选择模拟器内置 ADB' } });
+  });
+  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+  await expect(result(page)).toContainText('未找到 ADB；请在连接设置选择模拟器内置 ADB');
+  await expect(page.locator('.toast.error')).toContainText('未找到 ADB');
+  await expect(page.locator('.connection-diagnostics')).toContainText('未找到 ADB');
+  await expect(result(page)).not.toContainText('[object Object]');
+  await expect(result(page)).not.toContainText('请查看');
+});
+
+test('asynchronous ADB authorization failures are explained before retrying', async ({ page }) => {
+  await openDevices(page);
+  await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connection = 'delayed'; });
+  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+  await expect(result(page)).toHaveText('正在等待设备连接就绪（0/1）…');
+  await page.evaluate(() => { (window as HarnessWindow).deviceHarness.connectionErrors['mock-device-1'] = 'error: device unauthorized'; });
+  await expect(result(page)).toContainText('设备尚未授权 ADB 调试');
+  await expect(result(page)).toContainText('确认调试授权后重试');
+  await expect(page.locator('.connection-diagnostics')).toContainText('设备尚未授权 ADB 调试');
+  await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeEnabled();
+});
+
+test('an unknown connection cause is retained without claiming that ADB is disabled', async ({ page }) => {
+  await openDevices(page);
+  await page.evaluate(() => {
+    (window as HarnessWindow).deviceHarness.rejections['device.auto_connect'] = { code: -32040, message: '设备连接失败', data: { reason: '合成未知连接故障 723' } };
+  });
+  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+  await expect(result(page)).toContainText('合成未知连接故障 723');
+  await expect(result(page)).not.toContainText('ADB 未开启');
+  await expect(result(page)).not.toContainText('模拟器未启动');
 });

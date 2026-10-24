@@ -7,7 +7,7 @@ const CLIENTS = new Set(['', 'Official', 'Bilibili', 'txwy', 'YoStarEN', 'YoStar
 const FACILITIES = new Set(['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Recycle', 'Dorm', 'Processing', 'Training', 'AssistantChange']);
 const DRONES = new Set(['_NotUse', 'Money', 'SyntheticJade', 'CombatRecord', 'PureGold', 'OriginStone', 'Chip']);
 const COMMANDS = new Set(['shell', 'command', 'script', 'adb']);
-const BOOLEANS = new Set('enable start_game_enabled refresh set_time expedite skip_robot report_to_penguin report_to_yituliu DrGrandet replenish dorm_notstationed_enabled dorm_trust_enabled fiammetta_recovery_enabled use_pinus_sylvestris use_perception_information use_worldly_plight use_abyssal_hunter reception_message_board reception_clue_exchange reception_send_clue continue_training visit_friends visit_friends_once_a_day shopping force_shopping_if_credit_full only_buy_discount reserve_max_credit credit_fight award mail recruit orundum mining specialaccess signinevent formation use_sanity_potion add_trust ignore_requirements clear_store'.split(' '));
+const BOOLEANS = new Set('enable drops_enabled start_game_enabled refresh set_time expedite skip_robot report_to_penguin report_to_yituliu DrGrandet replenish dorm_notstationed_enabled dorm_trust_enabled fiammetta_recovery_enabled use_pinus_sylvestris use_perception_information use_worldly_plight use_abyssal_hunter reception_message_board reception_clue_exchange reception_send_clue continue_training visit_friends visit_friends_once_a_day shopping force_shopping_if_credit_full only_buy_discount reserve_max_credit credit_fight award mail recruit orundum mining specialaccess signinevent formation use_sanity_potion add_trust ignore_requirements clear_store'.split(' '));
 const STRING_LISTS = new Set('first_tags preserve_tags buy_first blacklist fiammetta_targets themes task_names tools_to_craft'.split(' '));
 function reject(message: string): never { throw new RpcError(-32010, message); }
 function integer(value: any, name: string, minimum = 0, maximum = 2147483647): number {
@@ -136,7 +136,11 @@ export function nativeTask(task: Task): Task {
   const defaults = (values: Record<string, any>) => { for (const [key, value] of Object.entries(values)) if (!(key in p)) p[key] = value; };
   if (['StartUp', 'CloseDown'].includes(task.type)) defaults({ client_type: 'Official' });
   if (task.type === 'StartUp') defaults({ start_game_enabled: true });
-  if (task.type === 'Fight') defaults({ medicine: 0, stone: 0, expiring_medicine: 0, medicine_expire_days: 0, times: 1 });
+  if (task.type === 'Fight') {
+    defaults({ medicine: 0, stone: 0, expiring_medicine: 0, medicine_expire_days: 0, times: 1 });
+    if (p.drops_enabled === false) p.drops = {};
+    delete p.drops_enabled;
+  }
   if (['Fight', 'Recruit', 'Roguelike'].includes(task.type)) defaults({ report_to_penguin: false, report_to_yituliu: false });
   if (task.type === 'Recruit') defaults({ expedite: false, expedite_times: 0, select: [3, 4, 5], confirm: [3, 4] });
   if (task.type === 'Infrast') defaults({ facility: ['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Dorm'], drones: '_NotUse', threshold: 0.3 });
