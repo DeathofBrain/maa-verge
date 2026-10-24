@@ -23,7 +23,7 @@ test('legacy settings keep ADB and capture settings validate without accepting a
 
 test('connection settings reject unsupported native options and normalize legacy settings without adding defaults', () => {
   expect(parseSettings().connection).toBeUndefined();
-  expect(parseSettings({ connection: {} }).connection?.touchMode).toBe('minitouch');
+  expect(parseSettings({ connection: {} }).connection?.touchMode).toBe('maatouch');
   for (const connection of [null, { config: 'arbitrary' }, { touchMode: 'shell' }, { adbLite: 'yes' }, { command: 'unsafe' }]) expect(() => parseSettings({ connection })).toThrow();
   expect(() => parseSettings({ capture: { method: 'adb', mumuTouch: true } })).toThrow('MuMu');
   expect(() => parseSettings({ capture: { method: 'ldplayer', mumuBridge: true } })).toThrow('MuMu');

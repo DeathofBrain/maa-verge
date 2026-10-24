@@ -122,7 +122,7 @@
             "adb",
             "MaaFwAdb"
           ],
-          "default": "minitouch"
+          "default": "maatouch"
         },
         "adbLite": {
           "type": "boolean",

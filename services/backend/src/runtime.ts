@@ -487,7 +487,7 @@ export class Runtime {
       const adb = await this.adbExecutable(selected);
       if (!this.running || this.switching && !internal) throw new RpcError(-32011, '正在退出或切换核心，连接已取消');
       if (automatic) this.validateAutomatic(address);
-      const connection = selected.connection ? (({ config, touchMode, adbLite, clientType }) => ({ config, touchMode, adbLite, clientType }))(selected.connection) : undefined;
+      const connection = (({ config, touchMode, adbLite, clientType }) => ({ config, touchMode, adbLite, clientType }))(selected.connection ?? defaultConnection());
       const { mumuTouch, mumuBridge, autoDetect: _autoDetect, ...plainCapture } = capture;
       const workerCapture = capture.method === 'adb' ? { method: 'adb' } : capture.method === 'mumu' ? { ...plainCapture, ...(mumuTouch !== undefined ? { mumuTouch } : {}), ...(mumuBridge !== undefined ? { mumuBridge } : {}) } : plainCapture;
       const config = { core: combo.core.path, resource: combo.resource.path, adb, address, capture: workerCapture, ...(connection ? { connection } : {}), userDir: path.join(this.root, 'workers', id!), lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical) };
@@ -677,7 +677,7 @@ export class Runtime {
     const abort = () => { void replacement?.close().catch(() => {}); };
     controller.signal.addEventListener('abort', abort, { once: true });
     try {
-      const config = { ...structuredClone(saved), connection: { config: 'General', touchMode: 'minitouch', adbLite: false, ...saved.connection, clientType } };
+      const config = { ...structuredClone(saved), connection: { config: 'General', touchMode: 'maatouch', adbLite: false, ...saved.connection, clientType } };
       this.workers.delete(id); this.workerConfigurations.delete(id);
       await previous.close();
       if (cancelled()) return;

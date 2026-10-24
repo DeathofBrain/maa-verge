@@ -8,7 +8,7 @@ export type { Plan, Settings, Task, Snapshot };
 export type { DeviceConnectionProfile } from '../../../packages/contracts/src/types';
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
 export const defaultCapture = () => ({ method: 'adb' as const, emulatorPath: '', instanceIndex: 0 });
-export const defaultConnection = () => ({ adbPath: '', address: '', config: 'General' as const, touchMode: 'minitouch' as const, adbLite: false, clientType: 'Official' as const });
+export const defaultConnection = () => ({ adbPath: '', address: '', config: 'General' as const, touchMode: 'maatouch' as const, adbLite: false, clientType: 'Official' as const });
 export const defaultComponentDownload = (): ComponentDownload => ({ engine: 'aria2', aria2Path: '' });
 function record(value: any): value is Record<string, any> { return value !== null && typeof value === 'object' && [Object.prototype, null].includes(Object.getPrototypeOf(value)); }
 // Preserve the Python model's documented scalar coercions at the RPC boundary;
