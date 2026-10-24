@@ -110,8 +110,20 @@ describe('immutable local copilot library', () => {
     draft.queue.push({ ...draft.queue[0]!, id: 'second-entry', isRaid: true, navName: '1-7' }); library.workspaceSave({ workspace: draft });
     const execution = library.prepare('Copilot');
     expect(execution.tasks).toHaveLength(1); expect(execution.tasks[0]!.params.filename).toBeUndefined();
-    expect(execution.tasks[0]!.params.copilot_list).toMatchObject([{ id: 1, is_raid: false, nav_name_override: null }, { id: 2, is_raid: true, nav_name_override: '1-7' }]);
+    expect(execution.tasks[0]!.params.copilot_list).toMatchObject([{ id: 1, is_raid: false }, { id: 2, is_raid: true, nav_name_override: '1-7' }]);
+    expect((execution.tasks[0]!.params.copilot_list as Record<string, unknown>[])[0]).not.toHaveProperty('nav_name_override');
     expect(execution.entries.map(entry => [entry.id, entry.nativeId])).toEqual([['queue-0', 1], ['second-entry', 2]]);
+  });
+  test('default navigation omits the optional native string for single and multiple entries', async () => {
+    const { library } = setup(), draft = await workspace(library);
+    for (const count of [1, 2]) {
+      draft.queue = Array.from({ length: count }, (_, index) => ({ ...draft.queue[0]!, id: `entry-${index}` }));
+      library.workspaceSave({ workspace: draft });
+      const list = library.prepare('Copilot').tasks[0]!.params.copilot_list as Record<string, unknown>[];
+      expect(list).toHaveLength(count);
+      for (const entry of list) expect(entry).not.toHaveProperty('nav_name_override');
+      expect(library.workspaceGet({ kind: 'Copilot' }).queue.every(entry => entry.navName === '')).toBe(true);
+    }
   });
   test('one normal entry navigates from the map with optional formation, while repeated execution keeps filename semantics', async () => {
     const { library } = setup(), draft = await workspace(library);

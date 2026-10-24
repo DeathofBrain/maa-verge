@@ -28,6 +28,7 @@ for (const enabled of [true, false]) {
   fixtures.push({ name: `Fight material targets ${enabled ? 'enabled' : 'disabled'}`, operation: 'native', value: plan('Fight', { drops_enabled: enabled, drops: { '30013': 7 } }) });
   policy(`Fight material target switch ${enabled} accepted`, 'Fight', { drops_enabled: enabled, drops: { '30013': 7 } });
 }
+for (const override of [null, '', '1-7']) fixtures.push({ name: `Copilot native navigation override ${JSON.stringify(override)}`, operation: 'native', value: plan('Copilot', { copilot_list: [{ filename: 'task.json', id: 1, nav_name_override: override }] }) });
 const defaulted: Array<[string, string]> = [
   ['Fight', 'times'], ['Fight', 'stage'], ['Fight', 'series'], ['Recruit', 'times'], ['Recruit', 'extra_tags_mode'],
   ['Infrast', 'mode'], ['Infrast', 'drones'], ['Infrast', 'threshold'], ['Roguelike', 'theme'], ['Roguelike', 'mode'],
@@ -158,6 +159,23 @@ test('material target switches affect native parameters without changing saved t
     expect(copied.params).not.toHaveProperty('drops_enabled');
     expect(task).toEqual(before);
   }
+});
+
+test('native copilot navigation normalizes only legacy null overrides without mutating saved parameters', () => {
+  const task = parsePlan(plan('Copilot', { copilot_list: [
+    { filename: 'default.json', id: 1, nav_name_override: null, extension: { keep: null } },
+    { filename: 'override.json', id: 2, is_raid: true, nav_name_override: '1-7' },
+    { filename: 'absent.json', id: 3 },
+    { filename: 'empty.json', id: 4, nav_name_override: '' },
+  ], extension: { nav_name_override: null } })).tasks[0];
+  const before = structuredClone(task), copied = nativeTask(task);
+  expect(copied.params.copilot_list).toEqual([
+    { filename: 'default.json', id: 1, extension: { keep: null } },
+    { filename: 'override.json', id: 2, is_raid: true, nav_name_override: '1-7' },
+    { filename: 'absent.json', id: 3 },
+    { filename: 'empty.json', id: 4, nav_name_override: '' },
+  ]);
+  expect(copied.params.extension).toEqual({ nav_name_override: null }); expect(task).toEqual(before);
 });
 test('non-JSON direct parameters are rejected deterministically', () => {
   for (const value of [NaN, Infinity, -Infinity, undefined, 1n, new Date(), new Map(), () => {}]) {

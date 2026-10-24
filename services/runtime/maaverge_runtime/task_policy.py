@@ -371,4 +371,9 @@ def native_task(task: dict) -> dict:
         p.setdefault("threshold", 0.3)
     if task["type"] == "Copilot":
         p.setdefault("use_sanity_potion", False)
+        # Legacy null overrides must be absent for MaaCore's optional string.
+        if isinstance(p.get("copilot_list"), list):
+            for entry in p["copilot_list"]:
+                if isinstance(entry, dict) and entry.get("nav_name_override") is None:
+                    entry.pop("nav_name_override", None)
     return task

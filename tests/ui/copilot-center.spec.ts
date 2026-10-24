@@ -143,6 +143,134 @@ test('three kinds use separate persisted queues and SSS only allows a single wor
   await expect(queue(page)).not.toContainText('保全独立队列');
 });
 
+test('switching workspaces keeps the running panel, expanded logs and stop control', async ({ page }) => {
+  await openCenter(page); await importJson(page, json('切换时持续执行的普通作业'));
+  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
+  await panel.locator('.cp-run-logs > summary').click();
+  const originalPanel = await panel.elementHandle();
+  const initialProgress = await panel.getByLabel('作业执行进度').getAttribute('value');
+  for (const name of ['保全派驻', '悖论模拟']) {
+    await page.getByRole('tab', { name, exact: true }).click();
+    await expect(panel.getByRole('heading', { name: '切换时持续执行的普通作业', exact: true })).toBeVisible();
+    await expect(panel.locator('.cp-run-logs')).toHaveAttribute('open', '');
+    expect(await originalPanel!.evaluate(element => element.isConnected)).toBe(true);
+  }
+  await expect(panel.getByLabel('作业执行进度')).not.toHaveAttribute('value', initialProgress!);
+  await expect(page.getByRole('tab', { name: '悖论模拟', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
+  await expect(panel).toContainText('已停止');
+  await expect(page.getByRole('tab', { name: '悖论模拟', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await navigate(page, '主页'); await navigate(page, '作业中心');
+  await expect(panel.getByRole('heading', { name: '切换时持续执行的普通作业', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '悖论模拟', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await navigate(page, '执行记录');
+  await page.locator('.history-table tbody tr').filter({ hasText: '切换时持续执行的普通作业' }).getByRole('button').click();
+  await expect(page.getByRole('tab', { name: '普通作业', exact: true })).toHaveAttribute('aria-selected', 'true');
+});
+
+test('cached workspaces render their own queue and library without flashing during delayed reads', async ({ page }) => {
+  await openCenter(page); await importJson(page, json('普通切换缓存'));
+  await page.getByRole('tab', { name: '保全派驻', exact: true }).click();
+  await importJson(page, json('保全切换缓存', { type: 'SSS', stages: [{ stage_name: 'main_01-07', actions: [] }] }));
+  await page.getByRole('tab', { name: '悖论模拟', exact: true }).click();
+  await importJson(page, json('悖论切换缓存', { type: 'Paradox', stage_name: 'mem_amiya_1' }));
+  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
+  await page.evaluate(() => {
+    const harness = (window as unknown as HarnessWindow).runtimeHarness;
+    const original = harness.call.bind(harness);
+    harness.call = async (method, params) => {
+      if (['copilot.list', 'copilot.get', 'copilot.workspace.get'].includes(method)) await new Promise(resolve => setTimeout(resolve, 350));
+      return original(method, params);
+    };
+    document.querySelector('.copilot-page')!.scrollTop = 0;
+  });
+  const positions: number[][] = [];
+  for (const [name, title] of [['普通作业', '普通切换缓存'], ['保全派驻', '保全切换缓存'], ['悖论模拟', '悖论切换缓存']]) {
+    await page.getByRole('tab', { name, exact: true }).click();
+    const frames = await page.evaluate(async () => {
+      const frames = [];
+      for (let index = 0; index < 12; index++) {
+        await new Promise(requestAnimationFrame);
+        frames.push({
+          queue: document.querySelector('.cp-queue-list')?.textContent ?? '',
+          library: document.querySelector('.cp-record-list')?.textContent ?? '',
+          loading: !!document.querySelector('.cp-browser > .cp-loading'),
+          positions: ['.cp-type-bar', '.cp-source-tabs'].map(selector => document.querySelector(selector)!.getBoundingClientRect().top),
+        });
+      }
+      return frames;
+    });
+    for (const frame of frames) {
+      expect(frame.queue).toContain(title);
+      expect(frame.queue).not.toContain('作业版本不可用');
+      expect(frame.library).toContain(title);
+      expect(frame.loading).toBe(false);
+      positions.push(frame.positions);
+    }
+  }
+  expect(positions.every(position => position.every((value, index) => Math.abs(value - positions[0][index]) < 1))).toBe(true);
+});
+
+test('a persisted queue distinguishes a pending version read from a confirmed unavailable version', async ({ page }) => {
+  await openCenter(page);
+  const parsed = await call<{ id: string }>(page, 'copilot.preview', { content: json('首次读取的悖论作业', { type: 'Paradox', stage_name: 'mem_amiya_1' }), name: 'paradox.json' });
+  const imported = await call<{ items: { versionId: string }[] }>(page, 'copilot.import', { previewId: parsed.id });
+  const workspace = await call<Record<string, unknown>>(page, 'copilot.workspace.get', { kind: 'ParadoxCopilot' });
+  await call(page, 'copilot.workspace.save', { workspace: { ...workspace, queue: [{ id: 'first-paradox-entry', versionId: imported.items[0].versionId, enabled: true, isRaid: false, navName: '' }] } });
+  await page.evaluate(() => {
+    const harness = (window as unknown as HarnessWindow).runtimeHarness;
+    const original = harness.call.bind(harness); let reads = 0;
+    harness.call = async (method, params) => {
+      if (method === 'copilot.get') {
+        if (++reads === 1) await new Promise<void>(resolve => { (window as unknown as { releaseVersionRead: () => void }).releaseVersionRead = resolve; });
+        else throw new Error('合成作业版本已损坏');
+      }
+      return original(method, params);
+    };
+  });
+  await page.getByRole('tab', { name: '悖论模拟', exact: true }).click();
+  await expect(queue(page).locator('.cp-queue-title')).toContainText('正在读取作业…');
+  await expect(queue(page)).not.toContainText('作业版本不可用');
+  await expect(queue(page)).not.toContainText('请移除或取消勾选');
+  await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeDisabled();
+  await page.evaluate(() => (window as unknown as { releaseVersionRead: () => void }).releaseVersionRead());
+  await expect(queue(page).locator('.cp-queue-title')).toContainText('首次读取的悖论作业');
+  await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeEnabled();
+  await library(page).getByRole('button', { name: '刷新作业库', exact: true }).click();
+  await expect(queue(page)).toContainText('作业版本不可用');
+  await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeDisabled();
+});
+
+test('desktop queue has room for multiple entries and only its list scrolls', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openCenter(page); await importJson(page, json('可排序的长队列作业'));
+  for (let index = 0; index < 7; index++) await library(page).getByRole('button', { name: '加入队列 可排序的长队列作业', exact: true }).click();
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    const metrics = await queue(page).evaluate(element => {
+      const list = element.querySelector('.cp-queue-list')!;
+      const editor = element.querySelector('.cp-queue-editor')!;
+      return { width: element.getBoundingClientRect().width, height: list.clientHeight, scrollable: list.scrollHeight > list.clientHeight, editorScrolls: editor.scrollHeight > editor.clientHeight };
+    });
+    expect(metrics.width).toBeGreaterThanOrEqual(360);
+    expect(metrics.height).toBeGreaterThanOrEqual(280);
+    expect(metrics.scrollable).toBe(true);
+    expect(metrics.editorScrolls).toBe(false);
+    await page.evaluate(() => { document.querySelector('.copilot-page')!.scrollTop = 0; });
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+      await page.screenshot({ path: testInfo.outputPath(`copilot-queue-${viewport.width}-${theme}.png`), fullPage: true });
+    }
+  }
+  await queue(page).getByRole('button', { name: '上移作业 8', exact: true }).click();
+  await expect(queue(page).getByLabel('执行队列 8', { exact: true })).toBeVisible();
+  for (const width of [960, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+});
+
 test('local JSON selection and narrow dark/light layouts provide a return path without horizontal overflow', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openCenter(page);

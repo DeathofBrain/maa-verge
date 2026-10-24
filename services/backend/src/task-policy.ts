@@ -144,7 +144,13 @@ export function nativeTask(task: Task): Task {
   if (['Fight', 'Recruit', 'Roguelike'].includes(task.type)) defaults({ report_to_penguin: false, report_to_yituliu: false });
   if (task.type === 'Recruit') defaults({ expedite: false, expedite_times: 0, select: [3, 4, 5], confirm: [3, 4] });
   if (task.type === 'Infrast') defaults({ facility: ['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Dorm'], drones: '_NotUse', threshold: 0.3 });
-  if (task.type === 'Copilot') defaults({ use_sanity_potion: false });
+  if (task.type === 'Copilot') {
+    defaults({ use_sanity_potion: false });
+    // Older saved lists used null for no override; MaaCore requires an absent field.
+    if (Array.isArray(p.copilot_list)) for (const entry of p.copilot_list) {
+      if (object(entry) && entry.nav_name_override === null) delete entry.nav_name_override;
+    }
+  }
   if (task.type === 'Mall') delete p.visit_friends_once_a_day;
   return result;
 }

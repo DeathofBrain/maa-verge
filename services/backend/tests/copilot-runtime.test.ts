@@ -14,7 +14,13 @@ class Worker {
   connected = true; safeIdle = true; events: any[] = []; tasks: any[] = []; stops = 0;
   async connect() { this.connected = true; return { asyncId: 1 }; }
   async waitConnected() { return true; }
-  async task(task: any) { this.tasks.push(structuredClone(task)); this.safeIdle = false; return { taskId: this.tasks.length }; }
+  async task(task: any) {
+    // MaaCore v6.20.0 MultiCopilotConfig accepts an absent override, but not null.
+    if (task.type === 'Copilot') for (const entry of task.params.copilot_list ?? []) {
+      if (Object.hasOwn(entry, 'nav_name_override') && typeof entry.nav_name_override !== 'string') throw new Error('Type error: cannot convert to string, expected=string, type=null');
+    }
+    this.tasks.push(structuredClone(task)); this.safeIdle = false; return { taskId: this.tasks.length };
+  }
   async stop() { this.stops++; return { stopping: true }; }
   async close() { this.connected = false; this.safeIdle = true; }
   async frame() { return { ...mockPreviewImage, canControl: true }; }
@@ -66,6 +72,7 @@ test('independent single run creates no task table and keeps missing victory evi
   expect(run).toMatchObject({ source: 'copilot', planId: null, copilotKind: 'Copilot' });
   expect(worker.tasks).toHaveLength(1); expect(worker.tasks[0]).toMatchObject({ type: 'Copilot', params: { formation: true, formation_index: 2, add_trust: true, use_sanity_potion: false, support_unit_name: '合成干员', support_unit_usage: 2, user_additional: [{ name: '合成干员', skill: 1 }] } });
   expect(worker.tasks[0].params.filename).toBeUndefined(); expect(worker.tasks[0].params.copilot_list).toHaveLength(1);
+  expect((await detail(run.id)).status).toBe('running'); expect(worker.tasks[0].params.copilot_list[0]).not.toHaveProperty('nav_name_override');
   worker.load(0); await r.tick(true); expect((await detail(run.id)).copilotEntries[0].status).toBe('running');
   worker.complete([19]); await r.tick(true); expect((await detail(run.id)).status).toBe('running');
   worker.idle(); await r.tick(true);
@@ -81,6 +88,7 @@ test('native multi-file navigation preserves duplicate occurrences and rejects s
   const run = await start(); const task = worker.tasks[0];
   expect(worker.tasks).toHaveLength(1); expect(task.params.filename).toBeUndefined();
   expect(task.params.copilot_list).toHaveLength(2); expect(task.params.copilot_list[0].id).not.toBe(task.params.copilot_list[1].id);
+  expect((await detail(run.id)).status).toBe('running'); expect(task.params.copilot_list[0]).not.toHaveProperty('nav_name_override');
   expect(task.params.copilot_list[1]).toMatchObject({ is_raid: true, nav_name_override: '1-7' });
   worker.load(0); await r.tick(true); expect((await detail(run.id)).copilotEntries[0]).toMatchObject({ status: 'running', verdict: 'unknown' });
   worker.callback(20003, { taskid: 999, what: 'CopilotListLoadTaskFileSuccess', details: { id: task.params.copilot_list[1].id, file_name: task.params.copilot_list[1].filename } });
@@ -267,6 +275,16 @@ test('a delayed callback from an older task cannot update the next run on the sa
   worker.callback(10002, { taskid: 1 }); worker.callback(3, { taskid: 1 }); worker.idle(); await r.tick(true);
   expect((await detail(old.id)).status).toBe('completed'); expect((await detail(next.id)).status).toBe('running'); expect((await detail(next.id)).copilotEntries[0].verdict).toBe('unknown');
   worker.battle('Copilot@StageDrops-Stars-3'); worker.complete(); await r.tick(true); expect((await detail(next.id)).copilotEntries[0].verdict).toBe('success');
+});
+
+test('legacy null navigation reaches the native worker without changing the saved plan or run snapshot', async () => {
+  const { r, root, worker, device, imported, detail } = await fixture(), item = await imported();
+  await r.handle('plan.save', { plan: { id: 'legacy', name: '旧作业任务表', tasks: [{ type: 'Copilot', params: { copilot_list: [{ filename: path.join(root, 'copilot', 'versions', item.versionId + '.json'), id: 1, nav_name_override: null }] } }] } });
+  const run = await r.startRun({ planId: 'legacy', deviceId: device.id, requestId: 'legacy-null-navigation' });
+  expect((await detail(run.id)).status).toBe('running'); expect(worker.tasks).toHaveLength(1);
+  expect(worker.tasks[0].params.copilot_list[0]).not.toHaveProperty('nav_name_override');
+  expect(r.store.get('plan', 'legacy').tasks[0].params.copilot_list[0].nav_name_override).toBeNull();
+  expect(r.store.get('run_plan', run.id).tasks[0].params.copilot_list[0].nav_name_override).toBeNull();
 });
 
 test('legacy request records and run_plan snapshots remain readable after the shared execution refactor', async () => {

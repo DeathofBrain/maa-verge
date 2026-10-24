@@ -37,9 +37,7 @@ function downloadJson(filename: string, content: string) {
 
 /** Keep each type's edits ordered, including edits flushed while leaving the page. */
 function useWorkspace(kind: CopilotKind) {
-  const [workspace, setWorkspace] = useState<CopilotWorkspace>();
-  const [saveState, setSaveState] = useState('');
-  const [error, setError] = useState('');
+  const [, render] = useState(0);
   const currentKind = useRef(kind); currentKind.current = kind;
   const cache = useRef(new Map<CopilotKind, CopilotWorkspace>());
   const pending = useRef(new Map<CopilotKind, CopilotWorkspace>());
@@ -49,7 +47,7 @@ function useWorkspace(kind: CopilotKind) {
   const mounted = useRef(true);
   const status = useCallback((target: CopilotKind, state: string, message = '') => {
     states.current.set(target, { state, error: message });
-    if (mounted.current && currentKind.current === target) { setSaveState(state); setError(message); }
+    if (mounted.current && currentKind.current === target) render(value => value + 1);
   }, []);
   const flush = useCallback(async (target?: CopilotKind) => {
     if (!target) clearTimeout(timer.current);
@@ -79,22 +77,21 @@ function useWorkspace(kind: CopilotKind) {
   }, [flush]);
   useEffect(() => {
     let cancelled = false;
-    const local = cache.current.get(kind); setWorkspace(local);
-    const saved = states.current.get(kind); setSaveState(saved?.state ?? ''); setError(saved?.error ?? '');
-    if (local) return;
+    if (cache.current.has(kind)) return;
     void rpc('copilot.workspace.get', { kind }).then(value => {
       if (cancelled) return;
-      cache.current.set(kind, value); setWorkspace(value); status(kind, '已保存');
+      cache.current.set(kind, value); status(kind, '已保存');
     }, cause => { if (!cancelled) status(kind, '读取失败', errorText(cause)); });
     return () => { cancelled = true; };
   }, [kind, status]);
   const edit = (update: (value: CopilotWorkspace) => CopilotWorkspace) => {
     const value = cache.current.get(currentKind.current); if (!value) return;
     const next = update(value);
-    cache.current.set(next.kind, next); pending.current.set(next.kind, next); setWorkspace(next); status(next.kind, '等待保存');
+    cache.current.set(next.kind, next); pending.current.set(next.kind, next); status(next.kind, '等待保存');
     clearTimeout(timer.current); timer.current = setTimeout(() => { void flush().catch(() => {}); }, 400);
   };
-  return { workspace, edit, flush, saveState, saveError: error };
+  const saved = states.current.get(kind);
+  return { workspace: cache.current.get(kind), edit, flush, saveState: saved?.state ?? '', saveError: saved?.error ?? '' };
 }
 
 export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, onAction, onOpenPlan, searchQuery, initialRunId, initialLegacy, onViewRun, onRunSelection }: Props) {
@@ -102,14 +99,12 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   const [kind, setKindState] = useState<CopilotKind>(() => kinds.some(item => item.value === uiSelection('kind')) ? uiSelection('kind') as CopilotKind : lastKind);
   const [tab, setTab] = useState(browseSession.tab);
   const [query, setQuery] = useState(searchQuery ?? browseSession.query);
-  const [library, setLibrary] = useState<CopilotRecord[]>([]);
+  const [libraries, setLibraries] = useState<Record<string, RpcResult<'copilot.list'>>>({});
   const [localPage, setLocalPage] = useState(browseSession.localPage);
-  const [localPaging, setLocalPaging] = useState({ total: 0, hasNext: false });
   const [selection, setSelection] = useState<CopilotRecord>();
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailOrigin, setDetailOrigin] = useState<'library' | 'preview'>('library');
   const [loading, setLoading] = useState(true);
-  const [loadedLibrary, setLoadedLibrary] = useState('');
   const [finishedLibrary, setFinishedLibrary] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -131,9 +126,11 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   const [page, setPage] = useState(browseSession.page);
   const [runId, setRunId] = useState(initialRunId ?? uiSelection('run'));
   const [runDetail, setRunDetail] = useState<Run>();
+  const runNavigation = useRef(initialRunId ?? '');
   const [starting, setStarting] = useState(false);
-  const [queueChecking, setQueueChecking] = useState(false);
-  const [queueRecords, setQueueRecords] = useState<Record<string, CopilotRecord>>({});
+  const [checkingQueue, setQueueChecking] = useState(false);
+  // Missing keys are pending reads; null records have failed validation.
+  const [queueRecords, setQueueRecords] = useState<Record<string, CopilotRecord | null>>({});
   const fileInput = useRef<HTMLInputElement>(null);
   const importPanel = useRef<HTMLDetailsElement>(null);
   const previewRequest = useRef(0);
@@ -151,19 +148,28 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   const resourceKey = snapshot.updates.filter(channel => channel.id !== 'app').map(channel => channel.currentVersion).join(':');
   const { result: searchResult, searching, error: searchError, refresh: refreshSearch } = useCommunitySearch({ target, keyword, page, ...(kind === 'Copilot' && target === 'copilot' && stage.trim() ? { stage: stage.trim() } : {}) }, tab === 'community', `${kind}:${resourceKey}`);
   const libraryKey = `${kind}:${localPage}`;
-  const libraryReady = loadedLibrary === libraryKey;
+  const localResult = libraries[libraryKey];
+  const library = localResult?.items ?? [];
+  const localPaging = localResult ?? { total: 0, hasNext: false };
+  const libraryReady = !!localResult;
   const status = availability?.deviceId === selectedDevice ? availability : undefined;
   const liveRuns = snapshot.runs.filter(item => item.source === 'copilot');
   const selectedSummary = liveRuns.find(item => item.id === runId);
-  const matchingSummary = liveRuns.find(item => item.copilotKind === kind && item.status === 'running') ?? liveRuns.find(item => item.copilotKind === kind);
+  const matchingSummary = liveRuns.find(item => item.status === 'running') ?? liveRuns[0];
   const summary = runId ? selectedSummary : matchingSummary;
   const detailId = runId || matchingSummary?.id;
-  const run = runDetail && runDetail.id === detailId && runDetail.copilotKind === kind ? runDetail : summary;
+  const run = runDetail?.id === detailId ? runDetail : summary;
   const events = snapshot.events.filter(event => event.data.runId === run?.id).slice(-60);
   const enabled = workspace?.queue.filter(entry => entry.enabled) ?? [];
-  const queueProblem = enabled.find(entry => !queueRecords[entry.versionId] || queueRecords[entry.versionId].compatibility.status !== 'ready');
+  const queueChecking = checkingQueue || !!workspace?.queue.some(entry => queueRecords[entry.versionId] === undefined);
+  const queueProblem = enabled.find(entry => queueRecords[entry.versionId]?.compatibility.status !== 'ready');
   const disabledReason = !selectedDevice ? '请选择目标设备' : checking ? '正在检查设备占用' : status?.error ?? (!status?.result?.available ? status?.result?.reason ?? '等待设备检查' : !workspace ? '正在读取队列' : !enabled.length ? '请先添加并勾选作业' : queueChecking ? '正在检查作业版本' : queueProblem ? '队列含不可用作业，请查看原因并移除或取消勾选' : saveError ? '请先重试保存配置' : '');
-  const setKind = (value: CopilotKind) => { previewRequest.current++; setImporting(false); lastKind = value; saveSelection('kind', value); setKindState(value); setLocalPage(1); setRunId(''); onRunSelection?.(undefined); setRunDetail(undefined); setDetailOpen(false); setSelection(undefined); setPreview(undefined); setError(''); };
+  const setKind = (value: CopilotKind) => {
+    if (value === kind) return;
+    // Consume external navigation without clearing the monitored runId.
+    runNavigation.current = ''; onRunSelection?.(undefined);
+    previewRequest.current++; setImporting(false); lastKind = value; saveSelection('kind', value); setKindState(value); setLocalPage(1); setDetailOpen(false); setSelection(undefined); setPreview(undefined); setError('');
+  };
 
   useEffect(() => { browseSession = { ...browseSession, tab, target, keyword, stage, page, query, localPage }; }, [tab, target, keyword, stage, page, query, localPage]);
   useLayoutEffect(() => {
@@ -178,7 +184,7 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
   useEffect(() => { if (searchQuery !== undefined) setQuery(searchQuery); }, [searchQuery]);
   useEffect(() => {
     let cancelled = false; setLoading(true);
-    void rpc('copilot.list', { kind, page: localPage }).then(value => { if (!cancelled) { setLibrary(value.items); setLocalPaging({ total: value.total, hasNext: value.hasNext }); setLoadedLibrary(libraryKey); } }, cause => { if (!cancelled) setError(errorText(cause)); }).finally(() => { if (!cancelled) { setLoading(false); setFinishedLibrary(libraryKey); } });
+    void rpc('copilot.list', { kind, page: localPage }).then(value => { if (!cancelled) setLibraries(current => ({ ...current, [libraryKey]: value })); }, cause => { if (!cancelled) setError(errorText(cause)); }).finally(() => { if (!cancelled) { setLoading(false); setFinishedLibrary(libraryKey); } });
     return () => { cancelled = true; };
   }, [kind, localPage, revision]);
   useEffect(() => {
@@ -193,10 +199,17 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
     let cancelled = false; setQueueChecking(true);
     const versions = [...new Set(workspace?.queue.map(item => item.versionId) ?? [])];
     void Promise.all(versions.map(async versionId => { try { return await rpc('copilot.get', { versionId }); } catch { return undefined; } })).then(records => {
-      if (!cancelled) { setQueueRecords(Object.fromEntries(records.filter((record): record is CopilotRecord => !!record).map(record => [record.versionId, record]))); setQueueChecking(false); }
+      if (!cancelled) {
+        setQueueRecords(current => {
+          const next = { ...current };
+          versions.forEach((versionId, index) => { next[versionId] = records[index] ?? null; });
+          return next;
+        });
+        setQueueChecking(false);
+      }
     });
     return () => { cancelled = true; };
-  }, [workspace?.queue.map(entry => entry.versionId).join(','), revision]);
+  }, [workspace?.queue.map(entry => entry.versionId).join(','), resourceKey, revision]);
   useEffect(() => {
     if (!detailId) { setRunDetail(undefined); return; }
     let cancelled = false;
@@ -204,11 +217,14 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
       if (cancelled) return;
       setRunDetail(value);
       // An explicit selection can be older than the snapshot's recent-run window.
-      if (runId && value.copilotKind) { lastKind = value.copilotKind; saveSelection('kind', value.copilotKind); setKindState(value.copilotKind); }
+      if (runNavigation.current === value.id) {
+        runNavigation.current = '';
+        if (value.copilotKind) { lastKind = value.copilotKind; saveSelection('kind', value.copilotKind); setKindState(value.copilotKind); setLocalPage(1); }
+      }
     }, cause => { if (!cancelled) setError(errorText(cause)); });
     return () => { cancelled = true; };
   }, [detailId, runId, summary?.progress, summary?.status, latestEvent]);
-  useEffect(() => { if (initialRunId) setRunId(initialRunId); }, [initialRunId]);
+  useEffect(() => { if (initialRunId && initialRunId !== runId) { runNavigation.current = initialRunId; setRunId(initialRunId); } }, [initialRunId]);
   const requestPreview = useCallback(async (params: import('@maaverge/contracts').RpcParams<'copilot.preview'>, showDetail = false, refresh = false) => {
     const sequence = ++previewRequest.current;
     const cached = refresh ? undefined : cachedCommunityPreview(params, resourceKey);
@@ -348,11 +364,11 @@ export default function CopilotPage({ snapshot, selectedDevice, onSelectDevice, 
       <div className="cp-detail-links">{current.source.setId && <button className="cp-link" disabled={importing} onClick={() => void requestPreview({ code: `s${current.source.setId}` })}><BookOpen size={14}/>查看所属作业集 #{current.source.setId}</button>}{safeLink(current.source.url) && <a href={safeLink(current.source.url)} target="_blank" rel="noopener noreferrer"><ExternalLink size={14}/>查看原站</a>}{current.videos.map((video, index) => safeLink(video) && <a key={video} href={safeLink(video)} target="_blank" rel="noopener noreferrer"><ExternalLink size={14}/>参考视频{index + 1}</a>)}</div>
     </aside>}
     </div>
-    <section className="cp-queue sp-section" aria-label="作业执行队列"><div className="cp-queue-editor"><header><div><h2><ListOrdered size={18}/>{kindLabel(kind)}队列 <span>{enabled.length} / {workspace?.queue.length ?? 0}</span></h2><p>每项独立排序，可重复添加；修改只影响下次执行。</p></div><button className="cp-link" aria-label="清除未勾选项" disabled={!workspace?.queue.some(entry => !entry.enabled)} onClick={() => edit(value => ({ ...value, queue: value.queue.filter(entry => entry.enabled) }))}>清除未选</button></header>{!workspace ? <p role="status">正在读取队列…</p> : !workspace.queue.length ? <div className="cp-queue-empty"><ListOrdered size={26}/><strong>还没有待执行的作业</strong><p>先在左侧查看作业和干员要求，<br/>再加入这里，按顺序执行。</p><button className="cp-link" disabled={savingImport} onClick={() => showLibrary('community')}>去社区找作业<ArrowRight size={14}/></button></div> : <ol className="cp-queue-list">{workspace.queue.map((entry, index) => { const record = queueRecords[entry.versionId]; return <li key={entry.id} className={!entry.enabled ? 'is-disabled' : ''} tabIndex={0} {...contextMenu('队列条目菜单', [{ label: entry.enabled ? '取消勾选' : '勾选执行', action: () => queueChange(entry.id, { enabled: !entry.enabled }) }, { label: '上移', action: () => move(entry.id, -1), disabled: index === 0 }, { label: '下移', action: () => move(entry.id, 1), disabled: index === workspace.queue.length - 1 }, { label: '重复添加', action: () => record && addRecords([record]), disabled: !record || kind === 'SSSCopilot' }, { label: '移除条目', action: () => remove(entry.id), danger: true }])}><div className="cp-queue-row"><input type="checkbox" aria-label={`执行队列 ${index + 1}`} checked={entry.enabled} onChange={event => queueChange(entry.id, { enabled: event.target.checked })}/><span className="cp-sequence">{String(index + 1).padStart(2, '0')}</span><button className="cp-queue-title" disabled={!record} onClick={() => record && openRecord(record)}><strong>{record?.title ?? '作业版本不可用'}</strong><small>{record?.stageName || entry.versionId.slice(0, 12)}</small></button><div className="cp-queue-actions"><button className="icon-button" aria-label={`上移作业 ${index + 1}`} disabled={index === 0} onClick={() => move(entry.id, -1)}><ArrowUp size={14}/></button><button className="icon-button" aria-label={`下移作业 ${index + 1}`} disabled={index === workspace.queue.length - 1} onClick={() => move(entry.id, 1)}><ArrowDown size={14}/></button><button className="icon-button" aria-label={`移除作业 ${index + 1}`} onClick={() => remove(entry.id)}><X size={15}/></button></div></div>{usesNavigation && <div className="cp-entry-options">{<label><input type="checkbox" checked={entry.isRaid} onChange={event => queueChange(entry.id, { isRaid: event.target.checked })}/>突袭</label>}{<label>导航关卡<input className="text-input" aria-label={`导航关卡 ${index + 1}`} value={entry.navName} onChange={event => queueChange(entry.id, { navName: event.target.value })} placeholder="沿用作业关卡" maxLength={200}/></label>}</div>}{record && record.compatibility.status !== 'ready' && <p className="cp-error-text">{record.compatibility.reasons.join('；')}</p>}{!record && <p className="cp-error-text">请移除或取消勾选此项后再执行。</p>}</li>; })}</ol>}
+    <section className="cp-queue sp-section" aria-label="作业执行队列"><div className="cp-queue-editor"><header><div><h2><ListOrdered size={18}/>{kindLabel(kind)}队列 <span>{enabled.length} / {workspace?.queue.length ?? 0}</span></h2><p>每项独立排序，可重复添加；修改只影响下次执行。</p></div><button className="cp-link" aria-label="清除未勾选项" disabled={!workspace?.queue.some(entry => !entry.enabled)} onClick={() => edit(value => ({ ...value, queue: value.queue.filter(entry => entry.enabled) }))}>清除未选</button></header>{!workspace ? <p role="status">正在读取队列…</p> : !workspace.queue.length ? <div className="cp-queue-empty"><ListOrdered size={26}/><strong>还没有待执行的作业</strong><p>先在左侧查看作业和干员要求，<br/>再加入这里，按顺序执行。</p><button className="cp-link" disabled={savingImport} onClick={() => showLibrary('community')}>去社区找作业<ArrowRight size={14}/></button></div> : <ol className="cp-queue-list">{workspace.queue.map((entry, index) => { const record = queueRecords[entry.versionId]; return <li key={entry.id} className={!entry.enabled ? 'is-disabled' : ''} tabIndex={0} {...contextMenu('队列条目菜单', [{ label: entry.enabled ? '取消勾选' : '勾选执行', action: () => queueChange(entry.id, { enabled: !entry.enabled }) }, { label: '上移', action: () => move(entry.id, -1), disabled: index === 0 }, { label: '下移', action: () => move(entry.id, 1), disabled: index === workspace.queue.length - 1 }, { label: '重复添加', action: () => record && addRecords([record]), disabled: !record || kind === 'SSSCopilot' }, { label: '移除条目', action: () => remove(entry.id), danger: true }])}><div className="cp-queue-row"><input type="checkbox" aria-label={`执行队列 ${index + 1}`} checked={entry.enabled} onChange={event => queueChange(entry.id, { enabled: event.target.checked })}/><span className="cp-sequence">{String(index + 1).padStart(2, '0')}</span><button className="cp-queue-title" disabled={!record} onClick={() => record && openRecord(record)}><strong>{record?.title ?? (record === null ? '作业版本不可用' : '正在读取作业…')}</strong><small>{record?.stageName || entry.versionId.slice(0, 12)}</small></button><div className="cp-queue-actions"><button className="icon-button" aria-label={`上移作业 ${index + 1}`} disabled={index === 0} onClick={() => move(entry.id, -1)}><ArrowUp size={14}/></button><button className="icon-button" aria-label={`下移作业 ${index + 1}`} disabled={index === workspace.queue.length - 1} onClick={() => move(entry.id, 1)}><ArrowDown size={14}/></button><button className="icon-button" aria-label={`移除作业 ${index + 1}`} onClick={() => remove(entry.id)}><X size={15}/></button></div></div>{usesNavigation && <div className="cp-entry-options">{<label><input type="checkbox" checked={entry.isRaid} onChange={event => queueChange(entry.id, { isRaid: event.target.checked })}/>突袭</label>}{<label>导航关卡<input className="text-input" aria-label={`导航关卡 ${index + 1}`} value={entry.navName} onChange={event => queueChange(entry.id, { navName: event.target.value })} placeholder="沿用作业关卡" maxLength={200}/></label>}</div>}{record && record.compatibility.status !== 'ready' && <p className="cp-error-text">{record.compatibility.reasons.join('；')}</p>}{record === null && <p className="cp-error-text">请移除或取消勾选此项后再执行。</p>}</li>; })}</ol>}
       {workspace && <><CopilotSettings kind={kind} count={enabled.length} options={workspace.options} change={options}/><div className="cp-save-state" role="status">{saveState}{saveError && <><span className="cp-error-text">{saveError}</span><button className="cp-link" onClick={() => void flush().catch(() => {})}>重试保存</button></>}</div></>}
       </div><div className="cp-launch"><label className="cp-field">目标设备<select className="text-input" aria-label="作业目标设备" value={selectedDevice} onChange={event => onSelectDevice(event.target.value)}><option value="">请选择空闲设备</option>{snapshot.devices.map(item => <option key={item.id} value={item.id}>{item.name} · {item.state === 'offline' ? '离线' : item.state === 'running' ? '执行中' : '已连接'}</option>)}</select></label><div className="cp-device-status" role="status">{checking && <LoaderCircle size={14} className="spin"/>}<span>{selectedDevice ? status?.error ?? status?.result?.reason ?? '正在检查设备…' : '浏览和导入无需连接设备'}</span>{status?.result?.ownerId && onViewRun && snapshot.runs.some(item => item.id === status.result?.ownerId) && <button className="cp-link" onClick={() => onViewRun(status.result!.ownerId!)}>查看占用</button>}</div><p className="cp-start-hint"><Info size={15}/>{startingHint}</p>{kind === 'Copilot' && <details className="cp-game-help"><summary>游戏内准备与说明</summary><p className="sp-help">队列在当前区域内按关卡导航，不支持跨区域；普通与突袭由队列条目选择。单份循环、演习请在游戏内选好关卡与模式。助战限制以核心反馈为准，不使用理智药或源石。</p></details>}<button className="button primary cp-start" disabled={!!disabledReason || starting} title={disabledReason || '使用已保存的队列与选项开始执行'} onClick={() => void start()}>{starting ? <LoaderCircle className="spin" size={16}/> : <Play size={16}/>}开始作业</button>{disabledReason && <p className="sp-help">{disabledReason}</p>}</div>
     </section></div>
-    {run && <section ref={runPanel} className="sp-section cp-run" aria-label="作业运行状态"><header><div><span className="cp-stage">{snapshot.devices.find(item => item.id === run.deviceId)?.name ?? run.deviceId}</span><h2>{run.sourceName || run.planName || '作业执行'}</h2><p>{run.message}</p></div>{run.status === 'running' && <button className="button secondary" onClick={() => { void onAction('stop-' + run.id, () => rpc('run.stop', { id: run.id }), '正在停止作业'); }}><Square size={15}/>停止作业</button>}</header><progress max={100} value={run.progress} aria-label="作业执行进度"/><p className="sp-help">{new Date(run.startedAt).toLocaleString('zh-CN')} · {run.status === 'running' ? '运行中' : run.status === 'completed' ? '核心流程结束' : run.status === 'stopped' ? '已停止' : '执行失败'}。停止会清空核心队列，本机配置和未执行项保留。</p>{run.copilotEntries && <ol className="cp-run-entries">{run.copilotEntries.map((entry, index) => <li key={entry.id}><span className="cp-sequence">{String(index + 1).padStart(2, '0')}</span><strong>{entry.title}</strong><span className={`cp-verdict ${entry.verdict === 'failure' ? 'is-error' : ''}`}>{entry.verdict === 'success' ? '通关已确认' : entry.verdict === 'failure' ? '战斗失败' : '通关未确认'}</span><small>{entry.message || ({ waiting: '等待执行', running: '执行中', completed: '核心流程结束', failed: '失败', stopped: '已停止', skipped: '未执行' }[entry.status])}</small></li>)}</ol>}<details className="cp-run-logs"><summary>本次运行日志（{events.length}）</summary>{events.length ? <ol>{events.map(event => <li key={event.id}><time>{new Date(event.createdAt).toLocaleTimeString('zh-CN')}</time><span>{event.message}</span></li>)}</ol> : <p className="sp-help">等待本次运行事件。</p>}</details></section>}
+    {run && <section ref={runPanel} className="sp-section cp-run" aria-label="作业运行状态"><header><div><span className="cp-stage">{run.copilotKind && `${kindLabel(run.copilotKind)} · `}{snapshot.devices.find(item => item.id === run.deviceId)?.name ?? run.deviceId}</span><h2>{run.sourceName || run.planName || '作业执行'}</h2><p>{run.message}</p></div>{run.status === 'running' && <button className="button secondary" onClick={() => { void onAction('stop-' + run.id, () => rpc('run.stop', { id: run.id }), '正在停止作业'); }}><Square size={15}/>停止作业</button>}</header><progress max={100} value={run.progress} aria-label="作业执行进度"/><p className="sp-help">{new Date(run.startedAt).toLocaleString('zh-CN')} · {run.status === 'running' ? '运行中' : run.status === 'completed' ? '核心流程结束' : run.status === 'stopped' ? '已停止' : '执行失败'}。停止会清空核心队列，本机配置和未执行项保留。</p>{run.copilotEntries && <ol className="cp-run-entries">{run.copilotEntries.map((entry, index) => <li key={entry.id}><span className="cp-sequence">{String(index + 1).padStart(2, '0')}</span><strong>{entry.title}</strong><span className={`cp-verdict ${entry.verdict === 'failure' ? 'is-error' : ''}`}>{entry.verdict === 'success' ? '通关已确认' : entry.verdict === 'failure' ? '战斗失败' : '通关未确认'}</span><small>{entry.message || ({ waiting: '等待执行', running: '执行中', completed: '核心流程结束', failed: '失败', stopped: '已停止', skipped: '未执行' }[entry.status])}</small></li>)}</ol>}<details className="cp-run-logs"><summary>本次运行日志（{events.length}）</summary>{events.length ? <ol>{events.map(event => <li key={event.id}><time>{new Date(event.createdAt).toLocaleTimeString('zh-CN')}</time><span>{event.message}</span></li>)}</ol> : <p className="sp-help">等待本次运行事件。</p>}</details></section>}
     {!!legacy.length && <details className="sp-section cp-legacy"><summary>旧任务表作业 · {legacy.length} 项</summary><p className="sp-help">原配置保持可编辑与执行。复制会先解析预览，不删除或迁移原任务。视频识别继续使用旧入口。</p>{legacy.map(({ plan, task, taskIndex }) => <div key={`${plan.id}:${taskIndex}`} className="cp-legacy-row" tabIndex={0} {...contextMenu('旧作业配置菜单', [{ label: '编辑作业配置', action: () => onOpenPlan(plan, task.type, taskIndex) }, { label: '复制到作业库', disabled: task.type === 'VideoRecognition', action: () => { void requestPreview({ planId: plan.id, taskIndex }); } }])}><div><strong>{plan.name}</strong><span>{taskLabels[task.type]} · 第 {taskIndex + 1} 条任务</span><small>{String(task.params.filename ?? '作业列表')}</small></div><button className="cp-link" onClick={() => onOpenPlan(plan, task.type, taskIndex)}>编辑原配置</button>{task.type !== 'VideoRecognition' && <button className="button secondary" onClick={() => void requestPreview({ planId: plan.id, taskIndex })}>复制到作业库</button>}</div>)}</details>}
     </div>
   </div>;

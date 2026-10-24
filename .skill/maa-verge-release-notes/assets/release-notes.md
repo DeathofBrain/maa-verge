@@ -4,15 +4,24 @@
 
 > **重要提示**：本版通道、升级注意事项及实际签名状态。
 
+<!-- 仅有重要变化时保留亮点；每项一句，不重复下方条目。 -->
+
 ### 本版亮点 | Highlights
 
-#### 亮点标题
-
-说明用户现在能做什么，以及适用条件。
+* 一句话概括本版最重要的变化。
 
 ### 下载与安装
 
-按系统和架构填写实际安装包直链、校验清单和系统要求。
+| 平台 | 架构 | 安装包 |
+| --- | --- | --- |
+| Windows | x64 | [EXE（推荐）](<windows-exe-url>) / [MSI](<windows-msi-url>) |
+| macOS | Apple Silicon（arm64） | [DMG](<macos-arm64-dmg-url>) |
+| macOS | Intel（x64） | [DMG](<macos-x64-dmg-url>) |
+| Linux | x64 | [AppImage](<linux-appimage-url>) / [DEB](<linux-deb-url>) / [RPM](<linux-rpm-url>) |
+
+校验清单：[SHA256SUMS.txt](<checksums-url>)。按本版实际资产填写，删除未提供的平台或格式。
+
+简要注明最低系统目标、必要系统依赖与 Source code 的用途。
 
 ### 升级说明
 
@@ -27,19 +36,21 @@
 ---
 
 <details open>
-<summary><b><tag>（YYYY-MM-DD）详细更新</b></summary>
+<summary><b><tag>（YYYY-MM-DD）更新内容</b></summary>
+
+<!-- 每项一句短句，合并相关变化并省略空分类；外部 PR 的条目末尾附 PR 与作者链接，没有对应贡献记录时删除署名占位。 -->
 
 ### 新增 | New
 
-* 说明新增功能的实际使用效果。
+* 新增某项功能（[#<pr-number>](https://github.com/DeathofBrain/maa-verge/pull/<pr-number>)） [@<github-login>](https://github.com/<github-login>)
 
 ### 改进 | Improved
 
-* 说明已有功能改善了什么。
+* 优化某项功能的使用体验。
 
 ### 修复 | Fix
 
-* 说明在什么情况下会出现的问题及修复后的行为。
+* 修复某种情况下出现的某个问题（[#<pr-number>](https://github.com/DeathofBrain/maa-verge/pull/<pr-number>)） [@<github-login>](https://github.com/<github-login>)
 
 </details>
 

@@ -439,7 +439,8 @@ export class CopilotLibrary {
     }
     const o = workspace.options;
     const params: Record<string, unknown> = {};
-    if (navigate) params.copilot_list = selected.map((entry, index) => ({ filename: path.join(this.directory, entry.versionId + '.json'), id: index + 1, is_raid: entry.isRaid, nav_name_override: entry.navName || null }));
+    // MaaCore's optional string must be absent to use the map's default navigation.
+    if (navigate) params.copilot_list = selected.map((entry, index) => ({ filename: path.join(this.directory, entry.versionId + '.json'), id: index + 1, is_raid: entry.isRaid, ...(entry.navName ? { nav_name_override: entry.navName } : {}) }));
     else if (selected.length === 1) { params.filename = path.join(this.directory, selected[0]!.versionId + '.json'); if (kind !== 'ParadoxCopilot') params.loop_times = o.loopTimes; }
     else if (kind === 'ParadoxCopilot') params.list = selected.map((entry, index) => ({ filename: path.join(this.directory, entry.versionId + '.json'), id: index + 1 }));
     else fail('保全派驻不支持多作业队列');
