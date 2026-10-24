@@ -88,6 +88,8 @@ test('operator recognition exports owned progress and isolates devices and clien
   await page.clock.runFor(12_600);
   const amiya = operators(page).getByRole('row').filter({ hasText: '阿米娅' });
   await expect(amiya).toContainText('5 星');
+  await amiya.scrollIntoViewIfNeeded();
+  await page.clock.runFor(100);
   const portrait=amiya.getByRole('img',{name:'阿米娅头像'});await expect(portrait).toBeVisible();
   await expect.poll(()=>portrait.evaluate((image:HTMLImageElement)=>image.complete&&image.naturalWidth>0)).toBe(true);
   await expect(amiya).toContainText('精英 2');

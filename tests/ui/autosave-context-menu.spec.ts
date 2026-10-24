@@ -168,6 +168,10 @@ test('menus support keyboard navigation, viewport edges, and no menu on plain su
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 600, height: 520 });
   await wb(page).locator('.editor-steps > li').first().evaluate((element) => element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 595, clientY: 515 })));
+  await expect.poll(async () => {
+    const rect = await menu(page).boundingBox();
+    return !!rect && rect.x + rect.width <= 600 && rect.y + rect.height <= 520;
+  }).toBe(true);
   const rect = await menu(page).boundingBox(); expect(rect!.x).toBeGreaterThan(300); expect(rect!.x + rect!.width).toBeLessThanOrEqual(600); expect(rect!.y + rect!.height).toBeLessThanOrEqual(520);
   await page.screenshot({ path: testInfo.outputPath('context-menu-narrow.png'), animations: 'disabled' });
   await page.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
