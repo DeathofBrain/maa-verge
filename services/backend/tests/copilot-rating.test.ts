@@ -23,11 +23,11 @@ async function fixture() {
   const directory = path.join(root, 'generation', 'resource', 'Arknights-Tile-Pos'); mkdirSync(directory, { recursive: true });
   writeFileSync(path.join(directory, 'overview.json'), JSON.stringify({ main: { stageId: 'main_01-07', code: '1-7', filename: 'map.json' } })); writeFileSync(path.join(directory, 'map.json'), '{}');
   const requests: { url: string; method: string; body?: any; headers?: HeadersInit }[] = [], ratings = new Map<string, number>();
-  const upstream = { content, fail: false, malformed: false, ignoreWrites: false, beforeGet: undefined as (() => Promise<void>) | undefined };
+  const upstream = { content, fail: false, malformed: false, ignoreWrites: false, beforeGet: undefined as (() => Promise<void>) | undefined, beforePost: undefined as ((body: { rating: string }) => Promise<void>) | undefined };
   const http = (async (url: any, init?: RequestInit) => {
     const address = String(url), request = { url: address, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : undefined, headers: init?.headers }; requests.push(request);
     if (upstream.fail) throw new Error('合成社区离线');
-    if (address.endsWith('/copilot/rating')) { const value = request.body; if (!upstream.ignoreWrites) ratings.set(String(value.id), { Like: 1, Dislike: 2, None: 0 }[value.rating as 'Like']); return Response.json({ status_code: 200, data: '评分成功' }); }
+    if (address.endsWith('/copilot/rating')) { const value = request.body; await upstream.beforePost?.(value); if (!upstream.ignoreWrites) ratings.set(String(value.id), { Like: 1, Dislike: 2, None: 0 }[value.rating as 'Like']); return Response.json({ status_code: 200, data: '评分成功' }); }
     const id = /\/copilot\/get\/(\d+)$/.exec(address)?.[1];
     if (!id) throw new Error('测试禁止访问未知社区地址');
     await upstream.beforeGet?.();
@@ -175,4 +175,55 @@ test('a successful write response without confirmed rating never reports an auto
   const { r, queue, start, finish, upstream, posts } = await fixture(); await queue({ autoLikeOnSuccess: true }); await start(); upstream.ignoreWrites = true; await finish();
   expect(posts()).toHaveLength(1); expect(r.store.get('copilot_auto_rating', '123').status).toBe('failed');
   expect(r.snapshot().events.some(event => event.message.includes('尚未确认点赞结果'))).toBe(true);
+});
+
+test('older completed positive feedback cannot erase a newer failed manual dislike intent', async () => {
+  const { r, identity, upstream, ratings, queue, start, finish, posts } = await fixture();
+  let arrived!: () => void, release!: () => void;
+  const posting = new Promise<void>(resolve => { arrived = resolve; }), gate = new Promise<void>(resolve => { release = resolve; });
+  upstream.beforePost = async body => { if (body.rating === 'Like') { arrived(); await gate; } else if (body.rating === 'Dislike') throw new Error('合成点踩网络失败'); };
+  const like = r.handle('copilot.rating.set', { ...identity, rating: 'like' }); await posting;
+  const dislike = r.handle('copilot.rating.set', { ...identity, rating: 'dislike' });
+  const rejectedDislike = dislike.then(() => undefined, (cause: Error) => cause);
+  release(); await like; expect((await rejectedDislike)?.message).toContain('合成点踩网络失败');
+  expect(r.store.get('copilot_manual_rating', '123').rating).toBe('dislike');
+  ratings.set('123', 0); upstream.beforePost = undefined; const before = posts().length;
+  await queue({ autoLikeOnSuccess: true }); await start(); await finish(); expect(posts()).toHaveLength(before);
+});
+
+test.each(['GET', 'POST'] as const)('shutdown aborts stalled automatic %s and skips queued feedback promptly', async stage => {
+  const { r, root, identity, upstream, queue, start, worker, posts } = await fixture(); await queue({ autoLikeOnSuccess: true }); const run = await start();
+  let arrived!: () => void, release!: () => void;
+  const waiting = new Promise<void>(resolve => { arrived = resolve; }), gate = new Promise<void>(resolve => { release = resolve; });
+  const stall = async () => { arrived(); await gate; };
+  if (stage === 'GET') upstream.beforeGet = stall; else upstream.beforePost = stall;
+  worker.victory(); worker.complete(); await r.tick(true); await waiting;
+  const snapshot = r.store.get('run_snapshot', run.id), ended = await r.handle('run.detail', { id: run.id });
+  const queued = r.handle('copilot.rating.set', { ...identity, rating: 'dislike' });
+  const cancelled = queued.then(() => undefined, (cause: Error) => cause);
+  const before = performance.now(); await r.close(); expect(performance.now() - before).toBeLessThan(1000); expect((await cancelled)?.message).toContain('退出');
+  expect(posts()).toHaveLength(stage === 'POST' ? 1 : 0);
+  await expect(r.handle('copilot.rating.get', identity)).rejects.toThrow('退出');
+  await expect(r.handle('copilot.rating.set', { ...identity, rating: 'like' })).rejects.toThrow('退出');
+  release(); // A client ignoring AbortSignal cannot change the closed business store later.
+  runtimes.splice(runtimes.indexOf(r), 1);
+  let replayed = false;
+  const reopened = new Runtime(root, { calendar: { fetcher: null }, copilotHttp: (async () => { replayed = true; throw new Error('禁止重放未知评价'); }) as unknown as typeof fetch }); runtimes.push(reopened);
+  expect(reopened.store.get('copilot_auto_rating', '123').status).toBe('unknown');
+  expect(reopened.store.get('copilot_manual_rating', '123').rating).toBe('dislike');
+  reopened.copilot.autoLikeConfirmed(run.id, snapshot, ended.copilotEntries); await reopened.copilot.drainFeedback(); expect(replayed).toBe(false);
+});
+
+test('shutdown cancels an automatic like still queued behind a rating read without replaying its pending intent', async () => {
+  const { r, root, identity, upstream, queue, start, worker, posts } = await fixture(); await queue({ autoLikeOnSuccess: true }); await start();
+  let arrived!: () => void, release!: () => void;
+  const waiting = new Promise<void>(resolve => { arrived = resolve; }), gate = new Promise<void>(resolve => { release = resolve; });
+  upstream.beforeGet = async () => { arrived(); await gate; };
+  const reading = r.handle('copilot.rating.get', identity).then(() => undefined, (cause: Error) => cause); await waiting;
+  worker.victory(); worker.complete(); await r.tick(true);
+  expect(r.store.get('copilot_auto_rating', '123').status).toBe('pending');
+  const before = performance.now(); await r.close(); expect(performance.now() - before).toBeLessThan(1000); expect((await reading)?.message).toContain('退出'); expect(posts()).toHaveLength(0);
+  release(); runtimes.splice(runtimes.indexOf(r), 1);
+  const reopened = new Runtime(root, { calendar: { fetcher: null } }); runtimes.push(reopened);
+  expect(reopened.store.get('copilot_auto_rating', '123').status).toBe('pending');
 });

@@ -1063,6 +1063,7 @@ export class Runtime {
   cancelPendingClientSwitches() { for (const controller of this.clientSwitches.values()) controller.abort(); }
   private async closeInner() {
     this.running = false;
+    this.copilot.beginClose();
     this.scheduler.close();
     this.toolbox.close();
     this.cancelPendingClientSwitches();
@@ -1073,7 +1074,7 @@ export class Runtime {
     await Promise.all([...this.workers.values()].map(worker => worker.close())); this.workers.clear(); this.workerConfigurations.clear();
     await Promise.allSettled([...this.submissions, ...[...this.starts.values()].map(start => start.promise)]);
     await Promise.allSettled([...this.artifactCaptures.values()]);
-    await this.copilot.drainFeedback();
+    await this.copilot.drainFeedback(1000);
     this.logs.diagnostics.write('info', 'runtime.stopped');
     this.store.close();
   }

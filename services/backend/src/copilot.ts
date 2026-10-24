@@ -96,6 +96,8 @@ export class CopilotLibrary {
   private navigationCache = new Map<string, Record<string, unknown>>();
   private feedbackChains = new Map<string, Promise<unknown>>();
   private feedbackTasks = new Set<Promise<unknown>>();
+  private communityControllers = new Set<AbortController>();
+  private closing = false;
   constructor(readonly root: string, readonly store: Store, private context: CopilotContext) {
     this.directory = path.join(root, 'copilot', 'versions'); mkdirSync(this.directory, { recursive: true });
   }
@@ -483,22 +485,30 @@ export class CopilotLibrary {
     return { communityId: id, likes: data.like, dislikes: data.dislike, rating: data.rating_type === 1 ? 'like' : data.rating_type === 2 ? 'dislike' : 'none' };
   }
   private feedbackSerial<T>(id: string, action: () => Promise<T>): Promise<T> {
-    const promise = (this.feedbackChains.get(id) ?? Promise.resolve()).catch(() => {}).then(action);
+    if (this.closing) return Promise.reject(new RpcError(-32011, '应用正在退出，社区评价已关闭'));
+    const promise = (this.feedbackChains.get(id) ?? Promise.resolve()).catch(() => {}).then(() => {
+      if (this.closing) throw new RpcError(-32011, '应用正在退出，已取消排队的社区评价');
+      return action();
+    });
     this.feedbackChains.set(id, promise); this.feedbackTasks.add(promise);
     void promise.finally(() => { if (this.feedbackChains.get(id) === promise) this.feedbackChains.delete(id); this.feedbackTasks.delete(promise); }).catch(() => {});
     return promise;
   }
   async ratingGet(input: RpcContract['params']['copilot.rating.get']): Promise<CopilotRating> {
+    if (this.closing) throw new RpcError(-32011, '应用正在退出，社区评价已关闭');
     const params = validate(validators.validateCopilotRatingParams, input), id = this.ratingIdentity(params);
     return this.feedbackSerial(id, () => this.readRating(id));
   }
   async ratingSet(input: RpcContract['params']['copilot.rating.set']): Promise<CopilotRating> {
+    if (this.closing) throw new RpcError(-32011, '应用正在退出，社区评价已关闭');
     const params = validate(validators.validateCopilotRatingSetParams, input), id = this.ratingIdentity(params);
+    const intent = { requestId: randomUUID(), rating: params.rating, updatedAt: now() };
+    this.store.put('copilot_manual_intent', id, intent);
     // Preserve a manual negative preference even when its network request fails.
-    if (params.rating === 'dislike') this.store.put('copilot_manual_rating', id, { rating: 'dislike', updatedAt: now() });
+    if (params.rating === 'dislike') this.store.put('copilot_manual_rating', id, intent);
     return this.feedbackSerial(id, async () => {
       const result = await this.writeRating(id, params.rating);
-      this.store.put('copilot_manual_rating', id, { rating: params.rating, updatedAt: now() });
+      if (this.store.get('copilot_manual_intent', id, {}).requestId === intent.requestId) this.store.put('copilot_manual_rating', id, intent);
       this.context.changed?.('社区评价已更新'); return result;
     });
   }
@@ -510,7 +520,7 @@ export class CopilotLibrary {
   }
   /** Called only after the runtime has finalized confirmed per-entry evidence. */
   autoLikeConfirmed(runId: string, snapshot: { workspace?: CopilotWorkspace; feedbackSources?: FeedbackSource[] }, entries: CopilotRunEntry[]) {
-    if (snapshot.workspace?.options.autoLikeOnSuccess !== true) return;
+    if (this.closing || snapshot.workspace?.options.autoLikeOnSuccess !== true) return;
     for (const source of snapshot.feedbackSources ?? []) {
       if (!entries.some(entry => entry.id === source.entryId && entry.versionId === source.versionId && entry.status === 'completed' && entry.verdict === 'success')) continue;
       const id = normalizeId(source.communityId);
@@ -532,21 +542,37 @@ export class CopilotLibrary {
           this.store.put('copilot_auto_rating', id, { runId, status: 'completed', finishedAt: now() });
           this.context.changed?.(`作业 #${id} 通关已确认，已自动点赞`);
         } catch (cause) {
-          this.store.put('copilot_auto_rating', id, { runId, status: 'failed', error: message(cause) });
-          this.context.changed?.(`作业 #${id} 自动点赞失败：${message(cause)}；通关结果保持不变，可在详情中手动重试`);
+          this.store.put('copilot_auto_rating', id, { runId, status: this.closing ? 'unknown' : 'failed', error: message(cause) });
+          if (!this.closing) this.context.changed?.(`作业 #${id} 自动点赞失败：${message(cause)}；通关结果保持不变，可在详情中手动重试`);
         }
       }).catch(() => {});
     }
   }
-  async drainFeedback() { await Promise.allSettled([...this.feedbackTasks]); }
+  beginClose() {
+    this.closing = true;
+    for (const controller of this.communityControllers) controller.abort();
+  }
+  async drainFeedback(maximumMs?: number) {
+    const pending = Promise.allSettled([...this.feedbackTasks]);
+    if (maximumMs === undefined) { await pending; return; }
+    let timer: ReturnType<typeof setTimeout>;
+    try { await Promise.race([pending, new Promise<void>(resolve => { timer = setTimeout(resolve, maximumMs); })]); }
+    finally { clearTimeout(timer!); }
+  }
   private async request(relative: string, body?: unknown, deadline = Infinity): Promise<any> {
+    if (this.closing) throw new RpcError(-32011, '应用正在退出，社区请求已取消');
     const remaining = Math.min(12_000, deadline - Date.now());
     if (remaining <= 0) throw new RpcError(-32010, '作业集预览已达到 90 秒时限，请缩小作业集后重试');
     const controller = new AbortController(); let timeout: ReturnType<typeof setTimeout>;
+    this.communityControllers.add(controller);
+    let rejectAborted!: () => void;
+    const aborted = new Promise<never>((_resolve, reject) => { rejectAborted = () => reject(new Error(this.closing ? '应用退出，社区请求已取消' : '社区请求已取消')); });
+    controller.signal.addEventListener('abort', rejectAborted, { once: true });
     const expired = new Promise<never>((_resolve, reject) => { timeout = setTimeout(() => { controller.abort(); reject(new Error('社区请求超时')); }, remaining); });
     try {
-      return await Promise.race([expired, (async () => {
+      return await Promise.race([expired, aborted, (async () => {
         const response = await (this.context.http ?? fetch)(`https://prts.maa.plus${relative}`, { method: body === undefined ? 'GET' : 'POST', ...(body === undefined ? {} : { body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }), signal: controller.signal, redirect: 'error' });
+        if (controller.signal.aborted) { await response.body?.cancel().catch(() => {}); throw new Error('社区请求已取消'); }
         if (!response.ok) throw new Error(`社区服务 HTTP ${response.status}`);
         if (Number(response.headers.get('content-length') || 0) > MAX_RESPONSE) throw new Error('社区响应超过允许大小');
         if (!response.body) throw new Error('社区服务返回空响应');
@@ -557,8 +583,8 @@ export class CopilotLibrary {
         if (!object(value) || value.status_code !== 200 || !Object.hasOwn(value, 'data')) throw new Error(`社区请求失败：${text(value?.message ?? value?.msg, 500) || '响应状态或结构异常'}`);
         return value.data;
       })()]);
-    } catch (cause) { throw new RpcError(-32010, controller.signal.aborted ? '社区请求超时，请重试；本地作业仍可使用' : message(cause)); }
-    finally { clearTimeout(timeout!); }
+    } catch (cause) { throw new RpcError(this.closing ? -32011 : -32010, this.closing ? '应用正在退出，社区请求已取消；已提交评价的结果可能未知，不会自动重放' : controller.signal.aborted ? '社区请求超时，请重试；本地作业仍可使用' : message(cause)); }
+    finally { clearTimeout(timeout!); controller.signal.removeEventListener('abort', rejectAborted); this.communityControllers.delete(controller); }
   }
   private async communityEntry(id: string, setId?: string, deadline?: number): Promise<CopilotPreview['entries'][number]> {
     try {
