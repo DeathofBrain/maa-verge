@@ -11,6 +11,8 @@ import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
 
 const MAX_CONTENT = 700_000, MAX_RESPONSE = 3_000_000, MAX_MEMBERS = 100;
 const kinds = new Set(['Copilot', 'SSSCopilot', 'ParadoxCopilot']);
+// MaaCore v6.20.0 CopilotConfig::parse_actions aliases; unknown types would otherwise be silently skipped.
+const actionTypes = new Set(["Deploy", "DEPLOY", "deploy", "部署", "Skill", "SKILL", "skill", "技能", "Retreat", "RETREAT", "retreat", "撤退", "SpeedUp", "SPEEDUP", "Speedup", "speedup", "二倍速", "BulletTime", "BULLETTIME", "Bullettime", "bullettime", "子弹时间", "SkillUsage", "SKILLUSAGE", "Skillusage", "skillusage", "技能用法", "Output", "OUTPUT", "output", "输出", "打印", "SkillDaemon", "skilldaemon", "SKILLDAEMON", "Skilldaemon", "DoNothing", "摆完挂机", "开摆", "MoveCamera", "movecamera", "MOVECAMERA", "Movecamera", "移动镜头", "DrawCard", "drawcard", "DRAWCARD", "Drawcard", "抽卡", "抽牌", "调配", "调配干员", "CheckIfStartOver", "Checkifstartover", "CHECKIFSTARTOVER", "checkifstartover", "检查重开", "ResetStopwatch", "RESETSTOPWATCH", "resetstopwatch", "Resetstopwatch", "重置全局计时器", "Click", "click", "CLICK", "点击", "Swipe", "swipe", "SWIPE", "滑动", "SetUnitLocation", "Setunitlocation", "setunitlocation", "SETUNITLOCATION", "设置单位坐标"]);
 const object = (value: unknown): value is Record<string, any> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const text = (value: unknown, limit = 300) => typeof value === 'string' ? value.slice(0, limit) : '';
 const identifier = (prefix: string) => `${prefix}-${randomUUID()}`;
@@ -170,7 +172,20 @@ export class CopilotLibrary {
       for (const item of list(input, 'actions', required)) {
         if (item.type !== undefined && typeof item.type !== 'string') fail('动作 type 必须是字符串');
         if (item.name !== undefined && typeof item.name !== 'string') fail('动作 name 必须是字符串');
+        const type = item.type ?? 'Deploy';
+        if (!actionTypes.has(type)) fail(`当前协议不支持动作类型：${String(type).slice(0, 100)}`);
         for (const field of ['location', 'distance', 'rect', 'begin', 'end']) if (item[field] !== undefined && (!Array.isArray(item[field]) || !item[field].every((n: unknown) => typeof n === 'number' && Number.isFinite(n)))) fail(`动作 ${field} 坐标无效`);
+        const point = (value: unknown) => Array.isArray(value) && value.length === 2 && value.every(n => Number.isInteger(n) && n >= -2147483648 && n <= 2147483647);
+        const rect = (value: unknown) => Array.isArray(value) && value.length === 4 && value.every(n => Number.isInteger(n) && n >= -2147483648 && n <= 2147483647) && value[2] > 0 && value[3] > 0;
+        if (item.location !== undefined && !point(item.location)) fail('动作 location 需要两个整数坐标');
+        const normalized = type.toLowerCase();
+        if (['click', '点击'].includes(normalized) && (item.rect !== undefined ? !rect(item.rect) : !point(item.location))) fail('点击动作需要有效 rect 或 location');
+        if (['swipe', '滑动'].includes(normalized) && (!rect(item.begin) || !rect(item.end))) fail('滑动动作需要有效的 begin 和 end 矩形');
+        if (['setunitlocation', '设置单位坐标'].includes(normalized) && (!item.name || !point(item.location))) fail('设置单位坐标需要干员名称和整数 location');
+        if (['movecamera', '移动镜头'].includes(normalized) && (!Array.isArray(item.distance) || item.distance.length !== 2)) fail('移动镜头动作需要两个 distance 分量');
+        if (['deploy', '部署'].includes(normalized) && (!item.name || !point(item.location) || typeof item.direction !== 'string')) fail('部署动作需要干员名称、位置和方向');
+        for (const field of ['kills', 'cost_changes', 'costs', 'cooling', 'pre_delay', 'post_delay', 'rear_delay', 'timeout', 'skill_usage', 'skill_times', 'duration']) if (item[field] !== undefined && (!Number.isInteger(item[field]) || item[field] < -2147483648 || item[field] > 2147483647)) fail(`动作 ${field} 必须是有效整数`);
+
       }
     };
     const stages: string[] = [];
