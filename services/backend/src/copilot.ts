@@ -432,14 +432,15 @@ export class CopilotLibrary {
       if (record.compatibility.status !== 'ready') throw new RpcError(-32010, record.compatibility.reasons.join('；'));
       this.readVersion(version);
     }
-    if (kind === 'Copilot' && selected.length > 1) {
+    const navigate = kind === 'Copilot' && workspace.options.loopTimes === 1;
+    if (navigate) {
       const tasks = this.navigation(clientType);
       for (const entry of selected) if (entry.navName && !supportsStageNavigation(tasks, entry.navName)) throw new RpcError(-32010, `当前资源不支持导航关卡：${entry.navName}；请更新资源或修改导航覆盖`);
     }
     const o = workspace.options;
     const params: Record<string, unknown> = {};
-    if (selected.length === 1) { params.filename = path.join(this.directory, selected[0]!.versionId + '.json'); if (kind !== 'ParadoxCopilot') params.loop_times = o.loopTimes; }
-    else if (kind === 'Copilot') params.copilot_list = selected.map((entry, index) => ({ filename: path.join(this.directory, entry.versionId + '.json'), id: index + 1, is_raid: entry.isRaid, nav_name_override: entry.navName || null }));
+    if (navigate) params.copilot_list = selected.map((entry, index) => ({ filename: path.join(this.directory, entry.versionId + '.json'), id: index + 1, is_raid: entry.isRaid, nav_name_override: entry.navName || null }));
+    else if (selected.length === 1) { params.filename = path.join(this.directory, selected[0]!.versionId + '.json'); if (kind !== 'ParadoxCopilot') params.loop_times = o.loopTimes; }
     else if (kind === 'ParadoxCopilot') params.list = selected.map((entry, index) => ({ filename: path.join(this.directory, entry.versionId + '.json'), id: index + 1 }));
     else fail('保全派驻不支持多作业队列');
     if (kind === 'Copilot') Object.assign(params, { formation: o.formation, formation_index: o.formationIndex, add_trust: o.addTrust, ignore_requirements: o.ignoreRequirements, user_additional: o.additionalOperators,

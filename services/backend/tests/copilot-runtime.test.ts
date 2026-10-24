@@ -65,7 +65,8 @@ test('independent single run creates no task table and keeps missing victory evi
   expect(r.store.get('run_snapshot', run.id).source).toBe('copilot');
   expect(run).toMatchObject({ source: 'copilot', planId: null, copilotKind: 'Copilot' });
   expect(worker.tasks).toHaveLength(1); expect(worker.tasks[0]).toMatchObject({ type: 'Copilot', params: { formation: true, formation_index: 2, add_trust: true, use_sanity_potion: false, support_unit_name: '合成干员', support_unit_usage: 2, user_additional: [{ name: '合成干员', skill: 1 }] } });
-  expect(worker.tasks[0].params.filename).toBeString(); expect(worker.tasks[0].params.copilot_list).toBeUndefined();
+  expect(worker.tasks[0].params.filename).toBeUndefined(); expect(worker.tasks[0].params.copilot_list).toHaveLength(1);
+  worker.load(0); await r.tick(true); expect((await detail(run.id)).copilotEntries[0].status).toBe('running');
   worker.complete([19]); await r.tick(true); expect((await detail(run.id)).status).toBe('running');
   worker.idle(); await r.tick(true);
   const finished = await detail(run.id); expect(finished.status).toBe('completed'); expect(finished.copilotEntries[0]).toMatchObject({ status: 'completed', verdict: 'unknown' }); expect(finished.message).toContain('未确认');
@@ -114,7 +115,7 @@ test('individual settlement callbacks cannot prove every iteration of a native l
 
 test('workspace edits, reimport and deleting a library record cannot change an active native snapshot', async () => {
   const { r, worker, imported, queue, start, detail } = await fixture(); const item = await imported(); await queue([item.versionId]);
-  const run = await start('fixed-snapshot'), snapshot = r.store.get('run_snapshot', run.id), file = worker.tasks[0].params.filename, bytes = readFileSync(file, 'utf8');
+  const run = await start('fixed-snapshot'), snapshot = r.store.get('run_snapshot', run.id), file = worker.tasks[0].params.copilot_list[0].filename, bytes = readFileSync(file, 'utf8');
   const changed = await imported({ stage_name: 'main_01-07', opers: [], actions: [{ type: 'SpeedUp' }, { type: 'Output', doc: '另一版本' }], doc: { title: '另一作业' } });
   await queue([changed.versionId]); await r.handle('copilot.delete', { id: item.id });
   expect(r.store.get('run_snapshot', run.id)).toEqual(snapshot); expect(readFileSync(file, 'utf8')).toBe(bytes);

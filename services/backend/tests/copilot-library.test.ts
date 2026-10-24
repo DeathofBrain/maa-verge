@@ -113,6 +113,18 @@ describe('immutable local copilot library', () => {
     expect(execution.tasks[0]!.params.copilot_list).toMatchObject([{ id: 1, is_raid: false, nav_name_override: null }, { id: 2, is_raid: true, nav_name_override: '1-7' }]);
     expect(execution.entries.map(entry => [entry.id, entry.nativeId])).toEqual([['queue-0', 1], ['second-entry', 2]]);
   });
+  test('one normal entry navigates from the map with optional formation, while repeated execution keeps filename semantics', async () => {
+    const { library } = setup(), draft = await workspace(library);
+    for (const formation of [false, true]) {
+      draft.options.formation = formation; draft.queue[0]!.navName = '1-7'; draft.queue[0]!.isRaid = true;
+      library.workspaceSave({ workspace: draft }); const params = library.prepare('Copilot').tasks[0]!.params;
+      expect(params.filename).toBeUndefined(); expect(params.loop_times).toBeUndefined();
+      expect(params.copilot_list).toMatchObject([{ id: 1, nav_name_override: '1-7', is_raid: true }]); expect(params.formation).toBe(formation);
+    }
+    draft.queue[0]!.navName = 'Unknown-Stage'; library.workspaceSave({ workspace: draft }); expect(() => library.prepare('Copilot')).toThrow('不支持导航关卡');
+    draft.options.loopTimes = 2; library.workspaceSave({ workspace: draft }); const repeated = library.prepare('Copilot').tasks[0]!.params;
+    expect(repeated.filename).toMatch(/\.json$/); expect(repeated.loop_times).toBe(2); expect(repeated.copilot_list).toBeUndefined();
+  });
   test('navigation overrides require activated navigation tasks with split-layout support', async () => {
     const { library, state, root } = setup(), draft = await workspace(library);
     draft.queue.push({ ...draft.queue[0]!, id: 'second', navName: 'Unknown-Stage' }); library.workspaceSave({ workspace: draft });
@@ -127,7 +139,9 @@ describe('immutable local copilot library', () => {
     const { library } = setup();
     for (const [kind, raw] of [['Copilot', ordinary()], ['ParadoxCopilot', paradox()], ['SSSCopilot', sss()]] as const) {
       const draft = await workspace(library, [raw], kind); library.workspaceSave({ workspace: draft });
-      const execution = library.prepare(kind); expect(execution.tasks[0]!.type).toBe(kind); expect(execution.tasks[0]!.params.filename).toMatch(/\.json$/);
+      const execution = library.prepare(kind); expect(execution.tasks[0]!.type).toBe(kind);
+      if (kind === 'Copilot') expect(execution.tasks[0]!.params.copilot_list).toMatchObject([{ id: 1, is_raid: false }]);
+      else expect(execution.tasks[0]!.params.filename).toMatch(/\.json$/);
       expect(execution.entries[0]!.verdict).toBe('unknown');
     }
   });
@@ -179,7 +193,7 @@ describe('immutable local copilot library', () => {
   });
   test('zero defaults and source-specific settings reject unsupported combinations', async () => {
     const { library } = setup(), draft = await workspace(library);
-    library.workspaceSave({ workspace: draft }); expect(library.prepare('Copilot').tasks[0]!.params).toMatchObject({ loop_times: 1, formation: false, support_unit_usage: 0, use_sanity_potion: false });
+    library.workspaceSave({ workspace: draft }); expect(library.prepare('Copilot').tasks[0]!.params).toMatchObject({ formation: false, support_unit_usage: 0, use_sanity_potion: false });
     draft.options.supportUnitName = '助战'; expect(() => library.workspaceSave({ workspace: draft })).toThrow('自动编队');
     draft.options.formation = true; draft.options.additionalOperators.push({ name: '追加干员', skill: 3 }); library.workspaceSave({ workspace: draft });
     expect(library.prepare('Copilot').tasks[0]!.params).toMatchObject({ support_unit_usage: 2, support_unit_name: '助战', user_additional: [{ name: '追加干员', skill: 3 }] });
