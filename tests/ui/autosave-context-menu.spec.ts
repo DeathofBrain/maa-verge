@@ -216,7 +216,8 @@ test('copilot context editing opens the exact task among duplicate types', async
     ] } });
   });
   await nav(page, '作业中心');
-  await page.locator('.sp-table tbody tr').filter({ hasText: '/synthetic/second.json' }).click({ button: 'right' });
+  await page.locator('details.cp-legacy summary').click();
+  await page.locator('.cp-legacy-row').filter({ hasText: '/synthetic/second.json' }).click({ button: 'right' });
   await menu(page).getByRole('menuitem', { name: '编辑作业配置', exact: true }).click();
   await expect(wb(page).getByLabel('作业文件路径', { exact: true })).toHaveValue('/synthetic/second.json');
 });

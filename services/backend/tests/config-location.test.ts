@@ -32,7 +32,7 @@ test('default config follows the program directory, while explicit roots disable
   expect(deviceLockPath('synthetic-device')).toBe(sharedLock);
 });
 
-test('import preserves committed WAL, sparse rowids, events, request deduplication and screenshots', () => {
+test('import preserves committed WAL, sparse rowids, events, request deduplication, screenshots and immutable copilot versions', () => {
   const source = path.join(temporary(), 'native'), target = path.join(temporary(), 'config/native');
   const initial = open(source);
   initial.put('settings', 'main', { theme: 'dark', budgets: { medicine: 0 } });
@@ -51,12 +51,16 @@ test('import preserves committed WAL, sparse rowids, events, request deduplicati
   const artifact = path.join('run-artifacts', 'run-123456789abc', 'synthetic.png');
   mkdirSync(path.dirname(path.join(source, artifact)), { recursive: true });
   writeFileSync(path.join(source, artifact), 'synthetic screenshot');
+  const version = path.join('copilot', 'versions', 'a'.repeat(64) + '.json');
+  mkdirSync(path.dirname(path.join(source, version)), { recursive: true });
+  writeFileSync(path.join(source, version), '{"stage_name":"synthetic","actions":[]}');
   const destination = open(target, source);
   expect(destination.db.query('SELECT rowid,* FROM objects ORDER BY rowid').all()).toEqual(before);
   expect(destination.all('plan').map(item => item.id)).toEqual(['second', 'third', 'wal-plan']);
   expect(destination.get('request', 'persistent-key')).toEqual({ runId: 'historical-run' });
   expect(destination.events()[0].message).toBe('保留事件');
   expect(readFileSync(path.join(target, artifact), 'utf8')).toBe('synthetic screenshot');
+  expect(readFileSync(path.join(target, version), 'utf8')).toBe(readFileSync(path.join(source, version), 'utf8'));
   expect(existsSync(path.join(target, 'pre-typescript.sqlite3'))).toBe(true);
   expect(existsSync(path.join(source, '.runtime-lock.sqlite3'))).toBe(true);
   expect(sourceDb.query('SELECT rowid,* FROM objects ORDER BY rowid').all()).toEqual(before);

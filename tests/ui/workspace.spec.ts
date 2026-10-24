@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import type { Plan } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 
 const wb = (page: Page) => page.getByRole('region', { name: '任务表工作台', exact: true });
@@ -263,7 +264,7 @@ test('mobile navigation and all primary pages fit the viewport', async ({ page }
 test('task tables preserve duplicate tasks, order, switches and advanced parameters', async ({ page }) => {
   await openWorkspace(page);
   await createPlan(page, '多步骤配置');
-  await expect(wb(page).getByLabel('添加任务类型').locator('option')).toHaveCount(20);
+  await expect(wb(page).getByLabel('添加任务类型').locator('option')).toHaveCount(17);
   await wb(page).getByRole('button', { name: '添加任务', exact: true }).click();
   await wb(page).locator('.advanced-params summary').click();
   await wb(page).getByLabel('任务参数 JSON').fill(JSON.stringify({ stage: '2-4', times: 2, medicine: 0, stone: 0, drops: { '30012': 3 }, custom_future: { preserve: true } }));
@@ -508,10 +509,10 @@ test('Fight consumption limits save directly and all-disabled execution is rejec
   await expect(page.locator('.toast.error')).toContainText('至少需要启用一条任务');
 });
 
-test('all upstream task entries can be configured and restored', async ({ page }) => {
+test('new task entries exclude copilot while legacy task settings remain editable', async ({ page }) => {
   await openWorkspace(page);
   await createPlan(page, '上游任务参数');
-  const options = ['StartUp', 'CloseDown', 'Fight', 'Recruit', 'Infrast', 'Mall', 'Award', 'SwitchTheme', 'Roguelike', 'Copilot', 'SSSCopilot', 'ParadoxCopilot', 'Depot', 'OperBox', 'Reclamation', 'Custom', 'SingleStep', 'VideoRecognition', 'OperProgress'];
+  const options = ['StartUp', 'CloseDown', 'Fight', 'Recruit', 'Infrast', 'Mall', 'Award', 'SwitchTheme', 'Roguelike', 'Depot', 'OperBox', 'Reclamation', 'Custom', 'SingleStep', 'VideoRecognition', 'OperProgress'];
   const paths: Record<string, string> = { Copilot: '作业文件路径', SSSCopilot: '保全作业文件路径', ParadoxCopilot: '悖论作业文件路径', VideoRecognition: '视频文件路径' };
   for (const type of options) {
     await wb(page).getByLabel('添加任务类型').selectOption(type);
@@ -521,9 +522,21 @@ test('all upstream task entries can be configured and restored', async ({ page }
   }
   await savePlan(page);
   await reloadWorkspace(page, '上游任务参数');
-  await expect(wb(page).locator('.editor-steps > li')).toHaveCount(28);
-  await wb(page).getByRole('button', { name: '设置第 19 条自动作业', exact: true }).click();
-  await expect(wb(page).getByLabel('作业文件路径', { exact: true })).toHaveValue('/synthetic/Copilot.json');
+  await expect(wb(page).locator('.editor-steps > li')).toHaveCount(25);
+  for (const type of ['Copilot', 'SSSCopilot', 'ParadoxCopilot']) await expect(wb(page).getByLabel('添加任务类型').locator(`option[value="${type}"]`)).toHaveCount(0);
+  await page.evaluate(async () => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const snapshot = await api.call('app.snapshot', {}) as { plans: Plan[] };
+    const plan = snapshot.plans.find(item => item.name === '上游任务参数')!;
+    plan.tasks.push(...(['Copilot', 'SSSCopilot', 'ParadoxCopilot'] as const).map(type => ({ type, enabled: true, params: { filename: `/synthetic/${type}.json` } })));
+    await api.call('plan.save', { plan });
+  });
+  await reloadWorkspace(page, '上游任务参数');
+  for (const [index, label, type] of [[26, '自动作业', 'Copilot'], [27, '保全派驻', 'SSSCopilot'], [28, '悖论模拟', 'ParadoxCopilot']] as const) {
+    await wb(page).getByRole('button', { name: `设置第 ${index} 条${label}`, exact: true }).click();
+    await expect(wb(page).getByLabel(paths[type], { exact: true })).toHaveValue(`/synthetic/${type}.json`);
+    await expect(wb(page).getByRole('button', { name: '复制到作业库', exact: true })).toBeVisible();
+  }
 });
 
 test('consumption settings live in task tables and the home shortcut opens the editor', async ({ page }) => {
@@ -686,19 +699,22 @@ test('model drafts survive settings category changes without saving prematurely'
 
 test('copilot entries focus the exact task when a table contains duplicate task types', async ({ page }) => {
   await openWorkspace(page);
-  await createPlan(page, '双作业');
-  for (const filename of ['/synthetic/first.json', '/synthetic/second.json']) {
-    await wb(page).getByLabel('添加任务类型').selectOption('Copilot');
-    await wb(page).getByRole('button', { name: '添加任务', exact: true }).click();
-    await wb(page).getByLabel('作业文件路径', { exact: true }).fill(filename);
-  }
-  await savePlan(page);
+  // Seed a pre-existing task table: new作业 belong to the independent center.
+  await page.evaluate(async () => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const state = await api.call('app.snapshot', {}) as { plans: { tasks: unknown[] }[] };
+    await api.call('plan.save', { plan: { ...state.plans[0], id: 'legacy-double-copilot', name: '双作业', tasks: [
+      ...state.plans[0].tasks,
+      { type: 'Copilot', enabled: true, params: { filename: '/synthetic/first.json' } },
+      { type: 'Copilot', enabled: true, params: { filename: '/synthetic/second.json' } },
+    ] } });
+  });
   await navigate(page, '作业中心');
-  await page.getByRole('button', { name: '/synthetic/second.json', exact: true }).click();
-  await page.getByRole('button', { name: '编辑作业配置', exact: true }).click();
+  await page.locator('details.cp-legacy summary').click();
+  await page.locator('.cp-legacy-row').filter({ hasText: '/synthetic/second.json' }).getByRole('button', { name: '编辑原配置', exact: true }).click();
   await expect(wb(page).getByRole('heading', { name: '双作业', exact: true })).toBeVisible();
   await expect(wb(page).getByLabel('作业文件路径', { exact: true })).toHaveValue('/synthetic/second.json');
-  await expect(wb(page).getByText('第 11 条任务 · 独立设置', { exact: true })).toBeVisible();
+  await expect(wb(page).getByText('第 7 条任务 · 独立设置', { exact: true })).toBeVisible();
 });
 
 test('moving a table to specialized tasks preserves its editor entry while reload returns home', async ({ page }) => {
