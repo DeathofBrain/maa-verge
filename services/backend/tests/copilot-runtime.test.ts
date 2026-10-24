@@ -9,7 +9,7 @@ import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 const roots: string[] = [], runtimes: Runtime[] = [];
 class Worker {
   connected = true; safeIdle = true; events: any[] = []; tasks: any[] = []; stops = 0;
-  async connect() { return { asyncId: 1 }; }
+  async connect() { this.connected = true; return { asyncId: 1 }; }
   async waitConnected() { return true; }
   async task(task: any) { this.tasks.push(structuredClone(task)); this.safeIdle = false; return { taskId: this.tasks.length }; }
   async stop() { this.stops++; return { stopping: true }; }
@@ -33,6 +33,7 @@ async function fixture() {
   const resource = path.join(root, 'generation', 'resource', 'Arknights-Tile-Pos'); mkdirSync(resource, { recursive: true });
   writeFileSync(path.join(resource, 'overview.json'), JSON.stringify({ main: { stageId: 'main_01-07', levelId: 'main_01-07', code: '1-7', name: '合成关卡', filename: 'main.json' }, paradox: { stageId: 'mem_test', levelId: 'mem_test', code: 'mem_test', name: '合成悖论', filename: 'paradox.json' }, sss: { stageId: 'sss_stage', levelId: 'sss_stage', code: 'sss_stage', name: '合成保全', filename: 'sss.json' } }));
   for (const file of ['main.json', 'paradox.json', 'sss.json']) writeFileSync(path.join(resource, file), '{}');
+  writeFileSync(path.join(resource, '..', 'tasks.json'), JSON.stringify({ Episode1: {} }));
   const worker = new Worker(), r = open(root, worker);
   r.store.put('active', 'combo', { core: { path: 'fixture-core', version: 'v6.20.0' }, resource: { path: path.join(root, 'generation'), version: 'fixture-resource' } });
   const connect = async (port = 5555) => { const device = await r.connectDevice({ address: `127.0.0.1:${port}`, name: '合成设备' }); device.state = 'idle'; r.store.put('device', device.id, device); return device; };
@@ -143,6 +144,11 @@ test('task-table, tool, update, manual-click and worker idle gates share copilot
   worker.click = async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; };
   const click = r.preview.click({ deviceId: device.id, frameId: frame.frameId, requestId: 'manual', x: 10, y: 10 });
   await Promise.resolve(); await expect(start('manual-race')).rejects.toThrow('人工控制'); acknowledge(); await click;
+  const resource = r.updates.channel('resource'); r.store.put('update', 'resource', { ...resource, status: 'waiting_idle' });
+  await expect(start('resource-switch')).rejects.toThrow('切换'); r.store.put('update', 'resource', resource);
+  r.running = false; await expect(start('shutdown')).rejects.toThrow('退出'); r.running = true;
+  await r.beforeSwitch(); await expect(start('core-switch')).rejects.toThrow('切换'); await r.finishSwitch();
+  expect(worker.tasks).toHaveLength(1);
 });
 
 test('stop keeps workspace and unexecuted entries; stale callbacks cannot turn it into success', async () => {
@@ -160,6 +166,32 @@ test('battle failure clears the native queue and never begins or confirms later 
   expect(failed.status).toBe('failed'); expect(failed.copilotEntries[0]).toMatchObject({ status: 'failed', verdict: 'failure' }); expect(failed.copilotEntries[1].status).toBe('skipped');
 });
 
+for (const first of ['Copilot@WaitUntilEndOfAction', 'BattleStartAll']) test(`${first} errors stop later entries and cannot be overwritten by completion callbacks`, async () => {
+  const { r, worker, imported, queue, start, detail } = await fixture(); const item = await imported(); await queue([item.versionId, item.versionId]); const run = await start(); worker.load(0);
+  worker.callback(20000, { taskid: 999, subtask: 'ProcessTask', first: [first] }); await r.tick(true); expect(worker.stops).toBe(0);
+  worker.callback(20000, { subtask: 'ProcessTask', first: [first] }); worker.load(1); worker.complete(); await r.tick(true);
+  const failed = await detail(run.id); expect(worker.stops).toBe(1); expect(failed.status).toBe('failed');
+  expect(failed.copilotEntries[0]).toMatchObject({ status: 'failed', verdict: 'unknown' }); expect(failed.copilotEntries[1].status).toBe('skipped');
+  expect(failed.message).toContain(first === 'BattleStartAll' ? '理智' : '三星');
+});
+
+test('a failed failure-stop closes the worker and keeps later work unexecuted', async () => {
+  const { r, worker, device, imported, queue, start, detail } = await fixture(); const item = await imported(); await queue([item.versionId, item.versionId]); const run = await start();
+  worker.stop = async () => { throw new Error('合成停止失败'); };
+  worker.load(0); worker.battle('Copilot@FightMissionFailed'); await r.tick(true);
+  expect(r.workers.has(device.id)).toBe(false); expect((await detail(run.id)).status).toBe('failed');
+  expect((await detail(run.id)).copilotEntries[1].status).toBe('skipped');
+});
+
+test('copilot navigation uses the selected device client and preserves it in the execution snapshot', async () => {
+  const { r, root, worker, device, imported, queue, start } = await fixture(); const item = await imported(); const workspace = await queue([item.versionId, item.versionId]);
+  workspace.queue[1].navName = 'Fixture-JP'; await r.handle('copilot.workspace.save', { workspace });
+  const jp = path.join(root, 'generation', 'resource', 'global', 'YoStarJP', 'resource'); mkdirSync(jp, { recursive: true }); writeFileSync(path.join(jp, 'tasks.json'), JSON.stringify({ 'Fixture-JP': {} }));
+  r.store.put('device_client', device.id, 'YoStarJP');
+  const run = await start(); expect(worker.tasks).toHaveLength(1); expect(r.store.get('run_snapshot', run.id).clientType).toBe('YoStarJP');
+  r.store.put('device_client', device.id, 'Official'); expect(r.store.get('execution', run.id).clientType).toBe('YoStarJP');
+});
+
 test('disconnect and restart interrupt uncertain copilot work without replaying native effects', async () => {
   const { r, root, worker, imported, queue, start, detail } = await fixture(); const item = await imported(); await queue([item.versionId]); const run = await start('disconnect');
   worker.callback(2, { what: 'Disconnect' }); await r.tick(true); expect((await detail(run.id))).toMatchObject({ status: 'failed', copilotEntries: [{ verdict: 'unknown' }] });
@@ -173,7 +205,7 @@ test('disconnect and restart interrupt uncertain copilot work without replaying 
 
 test('SSS uses one native file with loops while paradox keeps its dedicated list and occurrence IDs', async () => {
   const { r, worker, imported, queue, start, detail } = await fixture();
-  const sss = await imported({ type: 'SSS', stage_name: '合成保全地图', tool_men: {}, stages: [{ stage_name: 'sss_stage', strategies: [] }] });
+  const sss = await imported({ type: 'SSS', stage_name: '合成保全地图', tool_men: {}, stages: [{ stage_name: 'sss_stage', strategies: [], draw_as_possible: true, actions: [] }] });
   await queue([sss.versionId], 'SSSCopilot', { loopTimes: 2 }); const sssRun = await start('sss', 'SSSCopilot');
   expect(worker.tasks[0]).toMatchObject({ type: 'SSSCopilot', params: { loop_times: 2 } }); expect(Object.keys(worker.tasks[0].params).sort()).toEqual(['filename', 'loop_times']);
   worker.complete(); await r.tick(true); expect((await detail(sssRun.id)).copilotEntries[0].verdict).toBe('unknown');
