@@ -179,12 +179,24 @@ describe('immutable local copilot library', () => {
     draft.options.loopTimes = 1; draft.queue[1]!.id = draft.queue[0]!.id; expect(() => library.workspaceSave({ workspace: draft })).toThrow('重复');
   });
   test('explicit legacy copy preserves original task and filename precedence, reports each missing file', async () => {
-    const { library, store, root } = setup(), filename = path.join(root, 'legacy.json'); writeFileSync(filename, ordinary());
-    const plan = { id: 'legacy', name: '旧表', tasks: [{ type: 'Copilot', params: { filename, copilot_list: [{ filename: 'missing.json' }] }, enabled: true }, { type: 'ParadoxCopilot', params: { list: [filename, 'missing.json'] }, enabled: true }] };
+    const { library, store, root } = setup(), filename = path.join(root, 'legacy.json'), paradoxFile = path.join(root, 'paradox.json'); writeFileSync(filename, ordinary()); writeFileSync(paradoxFile, paradox());
+    const plan = { id: 'legacy', name: '旧表', tasks: [{ type: 'Copilot', params: { filename, copilot_list: [{ filename: 'missing.json' }] }, enabled: true }, { type: 'ParadoxCopilot', params: { list: [paradoxFile, 'missing.json'] }, enabled: true }] };
     store.put('plan', plan.id, plan);
     const single = await library.preview({ planId: plan.id, taskIndex: 0 }); expect(single.entries).toHaveLength(1); expect(single.entries[0]!.error).toBeNull();
     const list = await library.preview({ planId: plan.id, taskIndex: 1 }); expect(list.entries).toHaveLength(2); expect(list.entries[0]!.record?.kind).toBe('ParadoxCopilot'); expect(list.entries[1]!.error).toBeTruthy();
     expect(store.get('plan', plan.id)).toEqual(plan); expect(store.all('plan')).toHaveLength(1);
+  });
+  test.each(['Copilot', 'ParadoxCopilot'] as const)('same JSON cannot change its immutable %s kind through legacy context', async firstKind => {
+    const { library, store, root } = setup(), filename = path.join(root, 'ambiguous.json'), raw = ordinary({ stage_name: '合成悖论' }); writeFileSync(filename, raw);
+    store.put('plan', 'legacy', { id: 'legacy', name: '悖论旧表', tasks: [{ type: 'ParadoxCopilot', params: { filename }, enabled: true }] });
+    const first = await library.preview(firstKind === 'Copilot' ? { content: raw } : { planId: 'legacy', taskIndex: 0 });
+    const record = library.import({ previewId: first.id }).items[0]!; expect(record.kind).toBe(firstKind);
+    const conflicting = await library.preview(firstKind === 'Copilot' ? { planId: 'legacy', taskIndex: 0 } : { content: raw });
+    expect(conflicting.entries[0]!.record).toBeNull(); expect(conflicting.entries[0]!.error).toContain('类型不一致');
+    expect(library.import({ previewId: conflicting.id })).toMatchObject({ items: [], errors: [{ id: conflicting.entries[0]!.id }] });
+    expect(library.list().items).toHaveLength(1); expect(library.get({ versionId: record.versionId }).kind).toBe(firstKind);
+    library.workspaceSave({ workspace: { kind: firstKind, options: defaultCopilotOptions(), queue: [{ id: 'original', versionId: record.versionId, enabled: true, isRaid: false, navName: '' }] } });
+    expect(library.prepare(firstKind).entries).toHaveLength(1);
   });
 });
 

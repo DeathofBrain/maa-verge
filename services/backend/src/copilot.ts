@@ -198,6 +198,9 @@ export class CopilotLibrary {
       if (expectedKind === 'ParadoxCopilot' && kind === 'Copilot') kind = expectedKind;
       else return fail('作业类型与来源任务不一致');
     }
+    const versionId = createHash('sha256').update(raw).digest('hex');
+    const existing = this.store.get<Version | undefined>('copilot_version', versionId);
+    if (existing && existing.record.kind !== kind) return fail(`相同 JSON 已按 ${existing.record.kind} 保存，与本次 ${kind} 类型不一致，请检查来源任务类型`);
     const list = (input: unknown, label: string, required = false): any[] => {
       if (input === undefined && !required) return [];
       if (!Array.isArray(input) || input.length > 20_000 || !input.every(object)) return fail(`${label} 必须是有界对象列表`);
@@ -259,7 +262,6 @@ export class CopilotLibrary {
     if (operators.length > 100) return fail('作业干员要求超过 100 项');
     const doc = object(value.doc) ? value.doc : {};
     const details = text(doc.details, 3000), videos = [...new Set((details.match(/https?:\/\/[^\s<>"）)]+/g) ?? []).map(safeUrl).filter(Boolean))].slice(0, 20);
-    const versionId = createHash('sha256').update(raw).digest('hex');
     const record: CopilotRecord = { id: identifier('copilot'), versionId, kind, title: text(doc.title || source.name || stageName, 300), stageName, author: text(author || value.author || '', 300), description: details,
       minimumCoreVersion: text(value.minimum_required, 80), operators, videos, source: clone(source), createdAt: now(), compatibility: { status: 'unverified', reasons: [] } };
     record.compatibility = this.compatibility(record, stages);
@@ -270,7 +272,7 @@ export class CopilotLibrary {
       const fd = openSync(filename, 'wx', 0o600);
       try { writeFileSync(fd, raw); fsyncSync(fd); } finally { closeSync(fd); }
     }
-    if (!this.store.get('copilot_version', versionId)) this.store.put('copilot_version', versionId, { record, stages, file: filename } satisfies Version);
+    if (!existing) this.store.put('copilot_version', versionId, { record, stages, file: filename } satisfies Version);
     return record;
   }
   private previewEntry(content: string, source: CopilotSource, expectedKind?: CopilotKind, author = ''): CopilotPreview['entries'][number] {
