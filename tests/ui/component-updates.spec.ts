@@ -183,6 +183,7 @@ test('aria2 download preference saves together and survives navigation and reloa
   await page.getByText('高级选项：自定义 aria2c 路径', { exact: true }).click();
   await page.getByLabel('aria2c 路径', { exact: true }).fill('C:\\Tools\\aria2\\aria2c.exe');
   await page.getByRole('button', { name: '保存下载器', exact: true }).click();
+  await expect(page.locator('.sp-model-form .sp-form-actions > .sp-help')).toHaveText('已保存');
   await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
   const preference = await page.evaluate(async () => {
     const snapshot = await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}) as Snapshot;
@@ -196,6 +197,7 @@ test('aria2 download preference saves together and survives navigation and reloa
   await expect(page.getByLabel('aria2c 路径', { exact: true })).toHaveValue('C:\\Tools\\aria2\\aria2c.exe');
   await page.getByLabel('aria2c 路径', { exact: true }).fill('');
   await page.getByRole('button', { name: '保存下载器', exact: true }).click();
+  await expect(page.locator('.sp-model-form .sp-form-actions > .sp-help')).toHaveText('已保存');
   await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
   await page.reload();
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
@@ -204,6 +206,7 @@ test('aria2 download preference saves together and survives navigation and reloa
   await expect(page.getByLabel('aria2c 路径', { exact: true })).toHaveValue('');
   await page.getByLabel('组件下载器', { exact: true }).selectOption('builtin');
   await page.getByRole('button', { name: '保存下载器', exact: true }).click();
+  await expect(page.locator('.sp-model-form .sp-form-actions > .sp-help')).toHaveText('已保存');
   await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
   await page.reload();
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();

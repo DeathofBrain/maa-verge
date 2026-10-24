@@ -30,6 +30,7 @@ test('multi-instance profiles keep independent capture and connection fields acr
   await expect(editor.getByLabel('触控模式', { exact: true })).toHaveValue('maatouch');
   await editor.getByLabel('模拟器实例索引', { exact: true }).fill('2');
   await editor.getByRole('button', { name: '保存实例配置', exact: true }).click();
+  await expect(editor).toHaveCount(0);
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
   await page.getByRole('tab', { name: /^多开管理/ }).click();
