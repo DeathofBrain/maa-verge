@@ -105,7 +105,7 @@ test('app download survives navigation and installation requires explicit confir
   await settingsCategory(page, '更新');
   const app = appSection(page);
   await app.getByRole('button', { name: '检查更新', exact: true }).click();
-  expect(await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.checks)).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.checks)).toBe(1);
   await expect(app).toContainText('上次检查：');
   await expect(app).not.toContainText('尚未检查');
   await app.locator('summary').click();
