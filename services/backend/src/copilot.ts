@@ -1,11 +1,12 @@
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import type { CopilotCompatibility, CopilotKind, CopilotOptions, CopilotPreview, CopilotRecord, CopilotSearchResult, CopilotSource, CopilotWorkspace } from '../../../packages/contracts/src/rpc-types';
 import type { CopilotRunEntry, Task } from '../../../packages/contracts/src/types';
 import { Store, now } from './storage';
 import { RpcError } from './errors';
 import { compareReleaseVersions, releaseVersion } from './release-version';
+import { supportsStageNavigation } from './stages';
 import * as validators from '../../../packages/contracts/src/validators.js';
 import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
 
@@ -77,6 +78,7 @@ export class CopilotLibrary {
   private readonly directory: string;
   private readonly previews = new Map<string, PreviewStored>();
   private resourceCache?: { root: string; aliases: Map<string, string> };
+  private navigationCache = new Map<string, Record<string, unknown>>();
   constructor(readonly root: string, readonly store: Store, private context: CopilotContext) {
     this.directory = path.join(root, 'copilot', 'versions'); mkdirSync(this.directory, { recursive: true });
   }
@@ -103,6 +105,38 @@ export class CopilotLibrary {
     } catch { /* Missing or invalid index is reported as unverified below. */ }
     this.resourceCache = { root: generation, aliases }; return aliases;
   }
+  /** Same fixed resource paths and shallow override order as stageCatalog. */
+  private navigation(clientType: NonNullable<RpcContract['params']['stages.list']['clientType']>): Record<string, unknown> {
+    const generation = this.context.resourceDirectory();
+    if (!generation) return {};
+    const cacheKey = `${generation}\n${clientType}`, cached = this.navigationCache.get(cacheKey);
+    if (cached) return cached;
+    const root = path.join(generation, 'resource'), tasks: Record<string, unknown> = Object.create(null);
+    let remaining = 32 * 1024 * 1024;
+    const read = (filename: string, maximum: number) => {
+      const bytes = statSync(filename).size;
+      if (bytes > remaining) throw new RpcError(-32010, '关卡导航资源超过读取限制，请更新资源');
+      remaining -= bytes; return boundedJson(filename, maximum);
+    };
+    const merge = (value: unknown) => {
+      if (!object(value)) return;
+      for (const [key, item] of Object.entries(value)) tasks[key] = object(tasks[key]) && object(item) ? { ...tasks[key], ...item } : item;
+    };
+    const roots = ['Official', 'Bilibili'].includes(clientType) ? [''] : ['', path.join('global', clientType, 'resource')];
+    for (const selected of roots) {
+      for (const relative of ['tasks.json', path.join('tasks', 'tasks.json')]) {
+        try { merge(read(path.join(root, selected, relative), 8 * 1024 * 1024)); } catch (cause) { if (cause instanceof RpcError) throw cause; /* Fixed resources may use the split layout. */ }
+      }
+      try {
+        const directory = path.join(root, selected, 'tasks', 'Stages'), entries = readdirSync(directory, { withFileTypes: true });
+        if (entries.length > 512) throw new RpcError(-32010, '关卡导航资源数量超过限制，请更新资源');
+        for (const entry of entries.filter(item => item.isFile() && item.name.endsWith('.json')).sort((a, b) => a.name.localeCompare(b.name))) merge(read(path.join(directory, entry.name), 2 * 1024 * 1024));
+      } catch (cause) { if (cause instanceof RpcError) throw cause; }
+    }
+    // Generations are immutable. Bound old cache retention when components switch.
+    if (this.navigationCache.size >= 12) this.navigationCache.delete(this.navigationCache.keys().next().value!);
+    this.navigationCache.set(cacheKey, tasks); return tasks;
+  }
   private compatibility(record: Pick<CopilotRecord, 'minimumCoreVersion'>, stages: string[]): CopilotCompatibility {
     const reasons: string[] = [], current = this.context.coreVersion(); let unsupported = false;
     if (!current || !releaseVersion(current)) reasons.push('尚未启用可识别版本的 MaaCore，请先安装核心');
@@ -124,9 +158,10 @@ export class CopilotLibrary {
   private record(version: Version): CopilotRecord { return { ...clone(version.record), compatibility: this.compatibility(version.record, version.stages) }; }
   list(input: RpcContract['params']['copilot.list'] = {}): RpcContract['results']['copilot.list'] {
     const params = validate(validators.validateCopilotListParams, input);
-    const items = this.store.all<CopilotRecord>('copilot').filter(item => !params.kind || item.kind === params.kind);
-    if (items.length > 1000) throw new RpcError(-32010, '本地作业超过 1000 份，请按类型筛选或清理后重试');
-    return { items: items.map(item => ({ ...item, compatibility: this.record(this.version(item.versionId)).compatibility })) };
+    const items = this.store.all<CopilotRecord>('copilot').filter(item => !params.kind || item.kind === params.kind), page = params.page ?? 1;
+    const result = { items: items.slice((page - 1) * 20, page * 20).map(item => ({ ...item, compatibility: this.record(this.version(item.versionId)).compatibility })), page, total: items.length, hasNext: page * 20 < items.length };
+    if (Buffer.byteLength(JSON.stringify(result)) > MAX_RESPONSE) throw new RpcError(-32010, '本页作业元数据超过通信限制，请按类型筛选或清理异常作业');
+    return result;
   }
   get(input: RpcContract['params']['copilot.get']): CopilotRecord {
     const params = validate(validators.validateCopilotIdentityParams, input);
@@ -307,7 +342,7 @@ export class CopilotLibrary {
     if (workspace.options.supportUnitName && (!workspace.options.formation || workspace.options.loopTimes !== 1)) fail('助战需要自动编队且只能单次执行');
     this.store.put('copilot_workspace', workspace.kind, workspace); this.context.changed?.('作业队列与选项已保存'); return workspace;
   }
-  prepare(kind: CopilotKind): { name: string; tasks: Task[]; entries: CopilotRunEntry[]; identity: string; workspace: CopilotWorkspace } {
+  prepare(kind: CopilotKind, clientType: NonNullable<RpcContract['params']['stages.list']['clientType']> = 'Official'): { name: string; tasks: Task[]; entries: CopilotRunEntry[]; identity: string; workspace: CopilotWorkspace } {
     const workspace = this.workspaceSave({ workspace: this.workspaceGet({ kind }) });
     const selected = workspace.queue.filter(entry => entry.enabled);
     if (!selected.length) fail('请先勾选至少一份作业');
@@ -316,6 +351,10 @@ export class CopilotLibrary {
       const record = this.record(version);
       if (record.compatibility.status !== 'ready') throw new RpcError(-32010, record.compatibility.reasons.join('；'));
       this.readVersion(version);
+    }
+    if (kind === 'Copilot' && selected.length > 1) {
+      const tasks = this.navigation(clientType);
+      for (const entry of selected) if (entry.navName && !supportsStageNavigation(tasks, entry.navName)) throw new RpcError(-32010, `当前资源不支持导航关卡：${entry.navName}；请更新资源或修改导航覆盖`);
     }
     const o = workspace.options;
     const params: Record<string, unknown> = {};

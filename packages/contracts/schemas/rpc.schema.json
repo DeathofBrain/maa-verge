@@ -708,14 +708,30 @@
           "properties": {
             "items": {
               "type": "array",
-              "maxItems": 1000,
+              "maxItems": 20,
               "items": {
                 "$ref": "#/$defs/CopilotRecord"
               }
+            },
+            "page": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "hasNext": {
+              "type": "boolean"
             }
           },
           "required": [
-            "items"
+            "items",
+            "page",
+            "total",
+            "hasNext"
           ]
         },
         "copilot.get": {
@@ -2723,6 +2739,11 @@
       "properties": {
         "kind": {
           "$ref": "#/$defs/CopilotKind"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
         }
       },
       "required": []
