@@ -133,7 +133,7 @@ pnpm build
 
 ## 许可、对应源码与重新构建
 
-`tools/runtime-notices.mjs` 随发行目录收集应用 AGPL、[Bun/JSC 声明](../services/backend/BUN-LICENSE.md)、[nlohmann/json 声明](../services/native/THIRD_PARTY_NOTICES.md)、Unicode、前后端 JavaScript 生产依赖，以及当前目标平台的 Rust 运行依赖和标准库许可。工作区内的 contracts 继续遍历其依赖；Cargo 使用锁文件与目标平台解析，排除构建依赖、开发依赖及过程宏。少数上游 crate 未随包提供许可正文，使用 [固定版本补充](../tools/licenses/README.md)并核对原始字节哈希；其他缺失正文会阻止打包。MaaCore 归档中的许可另随核心 generation 保留。发布时应关联应用提交、锁文件、Bun tag、第三方来源与本地修改，保留可用于重新构建的源码和步骤。
+`tools/runtime-notices.mjs` 随发行目录收集应用 AGPL、[NOTICE](../NOTICE.md)及[社区作业来源与版权说明](copilot-attribution.md)、[Bun/JSC 声明](../services/backend/BUN-LICENSE.md)、[nlohmann/json 声明](../services/native/THIRD_PARTY_NOTICES.md)、Unicode、前后端 JavaScript 生产依赖，以及当前目标平台的 Rust 运行依赖和标准库许可。社区作业、说明与视频按各自权利人的授权使用，不自动适用应用 AGPL；声明保留在 `runtime/licenses/NOTICE.md` 与 `runtime/licenses/docs/copilot-attribution.md`。工作区内的 contracts 继续遍历其依赖；Cargo 使用锁文件与目标平台解析，排除构建依赖、开发依赖及过程宏。少数上游 crate 未随包提供许可正文，使用 [固定版本补充](../tools/licenses/README.md)并核对原始字节哈希；其他缺失正文会阻止打包。MaaCore 归档中的许可另随核心 generation 保留。发布时应关联应用提交、锁文件、Bun tag、第三方来源与本地修改，保留可用于重新构建的源码和步骤。
 
 Bun 自身为 MIT；其 JavaScriptCore/WebKit 包含 LGPL 组件，官方声明提供了修改 JSC 后重新链接 Bun 的方法。固定来源为 [Bun bun-v1.4.3](https://github.com/oven-sh/bun/tree/bun-v1.4.3) 与该版本使用的 [WebKit 0c06faadf65bf8e8c8ad3a5a8aca83e1e9ed653f](https://github.com/oven-sh/WebKit/tree/0c06faadf65bf8e8c8ad3a5a8aca83e1e9ed653f)。按固定 [bun-v1.4.3 的 CONTRIBUTING.md](https://github.com/oven-sh/bun/blob/bun-v1.4.3/CONTRIBUTING.md) 准备该版本要求的工具，Windows 另见其 [构建指南](https://bun.com/docs/project/building-windows)。在独立 Bun 源码 checkout 中执行上游步骤：
 
