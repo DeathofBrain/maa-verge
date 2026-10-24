@@ -199,7 +199,7 @@ test('preserves all declared fallback files and the selected license branch', (t
   for (const value of [body, declaration.source, declaration.sha256, override.source, override.sha256, 'Selected license: MIT', 'Authors: Fixture Author']) assert.ok(text.includes(value), value);
 });
 
-test('collects verified fallback text for every locked objc2 family crate on both macOS architectures', (t) => {
+test('collects verified fallback text for locked macOS notification and objc2 crates on both architectures', (t) => {
   const f = rustFixture(t);
   const licenseDirectory = new URL('../licenses/', import.meta.url);
   const overrides = JSON.parse(readFileSync(new URL('rust-overrides.json', licenseDirectory), 'utf8'));
@@ -213,9 +213,10 @@ test('collects verified fallback text for every locked objc2 family crate on bot
   const crates = lock.split('[[package]]').flatMap(section => {
     const name = /^name = "([^"]+)"$/mu.exec(section)?.[1];
     const version = /^version = "([^"]+)"$/mu.exec(section)?.[1];
-    return name && /^(?:objc2(?:-|$)|block2$|dispatch2$)/u.test(name) ? [{ name, version }] : [];
+    return name && /^(?:objc2(?:-|$)|block2$|dispatch2$|mac-notification-sys$)/u.test(name) ? [{ name, version }] : [];
   });
   assert.ok(crates.some(({ name }) => name === 'objc2-osa-kit'), 'the updater dependency must be included');
+  assert.ok(crates.some(({ name }) => name === 'mac-notification-sys'), 'the notification dependency must be included');
   for (const { name, version } of crates) f.dependency('fixture-root', f.crate(name, version, { notices: {} }));
   for (const target of ['aarch64-apple-darwin', 'x86_64-apple-darwin']) {
     const output = path.join(f.output, target);
@@ -224,7 +225,7 @@ test('collects verified fallback text for every locked objc2 family crate on bot
       const identity = `${name}@${version}`, override = overrides[identity];
       const text = readFileSync(path.join(output, `rust-${identity}.txt`), 'utf8');
       for (const value of [identity, `Build target: ${target}`, 'Selected license: MIT', override.commit, override.evidence]) assert.ok(text.includes(value), value);
-      for (const notice of override.files) {
+      for (const notice of override.files || [override]) {
         for (const value of [notice.source, notice.sha256, readFileSync(new URL(notice.file, licenseDirectory), 'utf8')]) assert.ok(text.includes(value), `${identity}: ${notice.file}`);
       }
     }
