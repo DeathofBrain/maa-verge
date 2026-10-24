@@ -35,7 +35,7 @@ import { Logs } from './logs';
 import { Toolbox, toolJob, toolCatalog } from './toolbox';
 import { Scheduler } from './scheduler';
 import { CopilotLibrary, copilotWorkspaceIdentity } from './copilot';
-import { validateCopilotListParams, validateCopilotIdentityParams, validateCopilotExportParams, validateCopilotPreviewParams, validateCopilotImportParams, validateCopilotWorkspaceParams, validateCopilotWorkspaceSaveParams, validateCopilotSearchParams, validateCopilotStartParams } from '../../../packages/contracts/src/validators.js';
+import { validateCopilotListParams, validateCopilotIdentityParams, validateCopilotExportParams, validateCopilotPreviewParams, validateCopilotImportParams, validateCopilotWorkspaceParams, validateCopilotWorkspaceSaveParams, validateCopilotSearchParams, validateCopilotStartParams, validateCopilotRatingParams, validateCopilotRatingSetParams } from '../../../packages/contracts/src/validators.js';
 import { validateDeviceAvailabilityParams, validateToolIdentity, validateToolConfigParams, validateScheduleHostParams, validateIdParams, validateEmptyParams, validateToolCatalogParams } from '../../../packages/contracts/src/validators.js';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
@@ -220,6 +220,8 @@ export class Runtime {
       case 'copilot.workspace.get': if (!validateCopilotWorkspaceParams(params)) throw new RpcError(-32602, '作业工作区请求无效'); return this.copilot.workspaceGet(params);
       case 'copilot.workspace.save': if (!validateCopilotWorkspaceSaveParams(params)) throw new RpcError(-32602, '作业工作区保存请求无效'); return this.copilot.workspaceSave(params);
       case 'copilot.search': if (!validateCopilotSearchParams(params)) throw new RpcError(-32602, '社区搜索请求无效'); return this.copilot.search(params);
+      case 'copilot.rating.get': if (!validateCopilotRatingParams(params)) throw new RpcError(-32602, '社区评价请求无效'); return this.copilot.ratingGet(params);
+      case 'copilot.rating.set': if (!validateCopilotRatingSetParams(params)) throw new RpcError(-32602, '社区评价请求无效'); return this.copilot.ratingSet(params);
       case 'copilot.start': return this.startCopilot(params);
       case 'tool.start': return this.toolbox.start(params);
       case 'tool.get': case 'tool.stop': {
@@ -900,6 +902,7 @@ export class Runtime {
     const device = this.store.get('device', run.deviceId), worker = this.workers.get(run.deviceId);
     if (device) { device.state = worker?.connected && worker.safeIdle ? 'idle' : 'offline'; this.store.put('device', device.id, device); }
     this.emit('run.' + status, run.message, { run });
+    if (status === 'completed' && run.source === 'copilot') this.copilot.autoLikeConfirmed(run.id, this.executionSnapshot(run.id), run.copilotEntries ?? []);
   }
   async pollNativeWorkers() {
     for (const [id, worker] of [...this.workers.entries()]) {
@@ -1070,6 +1073,7 @@ export class Runtime {
     await Promise.all([...this.workers.values()].map(worker => worker.close())); this.workers.clear(); this.workerConfigurations.clear();
     await Promise.allSettled([...this.submissions, ...[...this.starts.values()].map(start => start.promise)]);
     await Promise.allSettled([...this.artifactCaptures.values()]);
+    await this.copilot.drainFeedback();
     this.logs.diagnostics.write('info', 'runtime.stopped');
     this.store.close();
   }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { validateCopilotPreviewParams, validateCopilotStartParams, validateCopilotWorkspaceSaveParams, validateSnapshot } from '../src/validators.js';
+import { validateCopilotPreviewParams, validateCopilotStartParams, validateCopilotWorkspaceSaveParams, validateCopilotRatingParams, validateCopilotRatingSetParams, validateSnapshot } from '../src/validators.js';
 
 const options = () => ({ loopTimes: 1, formation: false, formationIndex: 1, addTrust: false, ignoreRequirements: false, supportUnitName: '', additionalOperators: [] });
 test('copilot workspace bounds queues and prevents extra consumable switches', () => {
@@ -10,6 +10,17 @@ test('copilot workspace bounds queues and prevents extra consumable switches', (
   assert.equal(validateCopilotWorkspaceSaveParams({ workspace: { ...workspace, queue: Array.from({ length: 101 }, () => workspace.queue[0]) } }), false);
   assert.equal(validateCopilotWorkspaceSaveParams({ workspace: { ...workspace, kind: 'VideoRecognition' } }), false);
   assert.equal(validateCopilotWorkspaceSaveParams({ workspace: { ...workspace, queue: [{ ...workspace.queue[0], versionId: '../../arbitrary' }] } }), false);
+  assert.equal(validateCopilotWorkspaceSaveParams({ workspace: { ...workspace, options: { ...workspace.options, autoLikeOnSuccess: true } } }), true);
+  assert.equal(validateCopilotWorkspaceSaveParams({ workspace: { ...workspace, options: { ...workspace.options, autoLikeOnSuccess: 'true' } } }), false);
+});
+
+test('ratings accept verified record versions and explicit like, dislike or cancellation only', () => {
+  const identity = { versionId: 'a'.repeat(64), recordId: 'verified-preview-record' };
+  assert.equal(validateCopilotRatingParams(identity), true);
+  for (const rating of ['none', 'like', 'dislike']) assert.equal(validateCopilotRatingSetParams({ ...identity, rating }), true);
+  assert.equal(validateCopilotRatingSetParams({ ...identity, rating: 'auto-dislike' }), false);
+  assert.equal(validateCopilotRatingSetParams({ ...identity, rating: 'like', communityId: '123' }), false);
+  assert.equal(validateCopilotRatingSetParams({ ...identity, versionId: '../../file', rating: 'like' }), false);
 });
 
 test('preview accepts bounded content or source identity and start never accepts native parameters', () => {

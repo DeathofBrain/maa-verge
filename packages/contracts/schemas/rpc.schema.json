@@ -63,7 +63,9 @@
         "copilot.workspace.get",
         "copilot.workspace.save",
         "copilot.search",
-        "copilot.start"
+        "copilot.start",
+        "copilot.rating.get",
+        "copilot.rating.set"
       ],
       "properties": {
         "app.snapshot": {
@@ -349,6 +351,12 @@
         },
         "copilot.start": {
           "$ref": "#/$defs/CopilotStartParams"
+        },
+        "copilot.rating.get": {
+          "$ref": "#/$defs/CopilotRatingParams"
+        },
+        "copilot.rating.set": {
+          "$ref": "#/$defs/CopilotRatingSetParams"
         }
       }
     },
@@ -405,7 +413,9 @@
         "copilot.workspace.get",
         "copilot.workspace.save",
         "copilot.search",
-        "copilot.start"
+        "copilot.start",
+        "copilot.rating.get",
+        "copilot.rating.set"
       ],
       "properties": {
         "app.snapshot": {
@@ -841,6 +851,12 @@
         },
         "copilot.start": {
           "$ref": "./runtime.schema.json#/$defs/Run"
+        },
+        "copilot.rating.get": {
+          "$ref": "#/$defs/CopilotRating"
+        },
+        "copilot.rating.set": {
+          "$ref": "#/$defs/CopilotRating"
         }
       }
     }
@@ -2423,6 +2439,11 @@
         "requirements": {
           "type": "object",
           "additionalProperties": true
+        },
+        "group": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "组内任选一名；缺省表示独立必需干员。"
         }
       },
       "required": [
@@ -2594,6 +2615,11 @@
               "skill"
             ]
           }
+        },
+        "autoLikeOnSuccess": {
+          "type": "boolean",
+          "default": false,
+          "description": "默认关闭；仅对启动快照绑定的社区作业，在完整通关确认后自动点赞，永不自动点踩。"
         }
       },
       "required": [
@@ -2941,6 +2967,81 @@
         "kind",
         "deviceId",
         "requestId"
+      ]
+    },
+    "CopilotRatingParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "versionId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "recordId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "versionId"
+      ]
+    },
+    "CopilotRatingValue": {
+      "type": "string",
+      "enum": [
+        "none",
+        "like",
+        "dislike"
+      ]
+    },
+    "CopilotRatingSetParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "versionId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "recordId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "rating": {
+          "$ref": "#/$defs/CopilotRatingValue"
+        }
+      },
+      "required": [
+        "versionId",
+        "rating"
+      ]
+    },
+    "CopilotRating": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "communityId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,14}$"
+        },
+        "likes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dislikes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rating": {
+          "$ref": "#/$defs/CopilotRatingValue"
+        }
+      },
+      "required": [
+        "communityId",
+        "likes",
+        "dislikes",
+        "rating"
       ]
     }
   }

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
-import type { CopilotCompatibility, CopilotKind, CopilotOptions, CopilotPreview, CopilotRecord, CopilotSearchResult, CopilotSource, CopilotWorkspace } from '../../../packages/contracts/src/rpc-types';
+import type { CopilotCompatibility, CopilotKind, CopilotOptions, CopilotPreview, CopilotRating, CopilotRatingValue, CopilotRecord, CopilotSearchResult, CopilotSource, CopilotWorkspace } from '../../../packages/contracts/src/rpc-types';
 import type { CopilotRunEntry, Task } from '../../../packages/contracts/src/types';
 import { Store, now } from './storage';
 import { RpcError } from './errors';
@@ -70,15 +70,18 @@ export function parseCopilotCode(input: string): { target: 'copilot' | 'set'; id
   return { target: match![1] ? 'set' : 'copilot', id: match![2]! };
 }
 
-export const defaultCopilotOptions = (): CopilotOptions => ({ loopTimes: 1, formation: false, formationIndex: 0, addTrust: false, ignoreRequirements: false, supportUnitName: '', additionalOperators: [] });
+export const defaultCopilotOptions = (): CopilotOptions => ({ loopTimes: 1, formation: false, formationIndex: 0, addTrust: false, ignoreRequirements: false, supportUnitName: '', additionalOperators: [], autoLikeOnSuccess: false });
 /** Object field order is transport detail; queue and operator array order remain significant. */
 export function copilotWorkspaceIdentity(workspace: CopilotWorkspace): string {
-  const canonical = JSON.stringify(workspace, (_key, value: unknown) => object(value)
+  // Absence and the new opt-out default preserve historical request identities.
+  const options = { ...workspace.options }; if (!options.autoLikeOnSuccess) delete options.autoLikeOnSuccess;
+  const canonical = JSON.stringify({ ...workspace, options }, (_key, value: unknown) => object(value)
     ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]])) : value);
   return createHash('sha256').update(canonical).digest('hex');
 }
 interface Version { record: CopilotRecord; stages: string[]; file: string }
 interface PreviewStored { public: CopilotPreview; createdAt: number }
+interface FeedbackSource { entryId: string; versionId: string; communityId: string }
 export interface CopilotContext {
   coreVersion: () => string | undefined;
   resourceDirectory: () => string | undefined;
@@ -91,6 +94,8 @@ export class CopilotLibrary {
   private readonly previews = new Map<string, PreviewStored>();
   private resourceCache?: { root: string; aliases: Map<string, string> };
   private navigationCache = new Map<string, Record<string, unknown>>();
+  private feedbackChains = new Map<string, Promise<unknown>>();
+  private feedbackTasks = new Set<Promise<unknown>>();
   constructor(readonly root: string, readonly store: Store, private context: CopilotContext) {
     this.directory = path.join(root, 'copilot', 'versions'); mkdirSync(this.directory, { recursive: true });
   }
@@ -169,6 +174,20 @@ export class CopilotLibrary {
   }
   private record(version: Version, stored = version.record): CopilotRecord {
     const record = clone(stored);
+    if (record.operators.length && !record.operators.some(operator => operator.group !== undefined)) {
+      // Older metadata flattened alternatives into mandatory operators. Recover
+      // groups from exact immutable content without rewriting historical data.
+      try {
+        const value = JSON.parse(this.readVersion(version).replace(/^\ufeff/, ''));
+        let index = Array.isArray(value.opers) ? value.opers.length : 0;
+        for (const group of Array.isArray(value.groups) ? value.groups : []) {
+          for (const operator of Array.isArray(group.opers) ? group.opers : []) {
+            if (record.operators[index]?.name === operator.name && typeof group.name === 'string' && group.name.trim() && group.name.length <= 100) record.operators[index]!.group = group.name;
+            index++;
+          }
+        }
+      } catch { /* Missing or invalid content cannot substantiate group metadata. */ }
+    }
     if (record.source.kind === 'community' && record.uploader === undefined) {
       // Older community records stored the API uploader in author. Recover display metadata
       // from verified immutable content without rewriting the version or business record.
@@ -281,16 +300,16 @@ export class CopilotLibrary {
       }
     } else { actions(value.actions); stages.push(stageName); }
     const operators: CopilotRecord['operators'] = [];
-    const operator = (item: any) => {
+    const operator = (item: any, group?: string) => {
       if (typeof item.name !== 'string' || !item.name || item.name.length > 100) return fail('干员名称无效');
       if (item.skill !== undefined && (!Number.isInteger(item.skill) || item.skill < 0 || item.skill > 3)) return fail('干员技能序号无效');
       const requirements: Record<string, number> = {};
       if (item.requirements !== undefined && !object(item.requirements)) return fail('干员练度要求无效');
       for (const [key, requirement] of Object.entries(item.requirements ?? {})) if (typeof requirement === 'number' && Number.isFinite(requirement) && key.length <= 80) requirements[key] = requirement;
-      operators.push({ name: item.name, ...(item.skill ? { skill: item.skill } : {}), ...(Object.keys(requirements).length ? { requirements } : {}) });
+      operators.push({ name: item.name, ...(group !== undefined ? { group } : {}), ...(item.skill ? { skill: item.skill } : {}), ...(Object.keys(requirements).length ? { requirements } : {}) });
     };
     for (const item of list(value.opers, 'opers')) operator(item);
-    for (const group of list(value.groups, 'groups')) { if (typeof group.name !== 'string') fail('干员编组名称无效'); for (const item of list(group.opers, 'groups.opers', true)) operator(item); }
+    for (const group of list(value.groups, 'groups')) { if (typeof group.name !== 'string' || !group.name.trim() || group.name.length > 100) fail('干员编组名称无效'); for (const item of list(group.opers, 'groups.opers', true)) operator(item, group.name); }
     if (operators.length > 100) return fail('作业干员要求超过 100 项');
     const doc = object(value.doc) ? value.doc : {};
     const details = text(doc.details, 3000), videos = [...new Set((details.match(/https?:\/\/[^\s<>"）)]+/g) ?? []).map(safeUrl).filter(Boolean))].slice(0, 20);
@@ -305,6 +324,12 @@ export class CopilotLibrary {
       try { writeFileSync(fd, raw); fsyncSync(fd); } finally { closeSync(fd); }
     }
     if (!existing) this.store.put('copilot_version', versionId, { record, stages, file: filename } satisfies Version);
+    if (source.kind === 'community' && source.communityId) {
+      // A content hash can belong to multiple uploads. Remember ambiguity instead
+      // of silently crediting whichever upload happens to be displayed later.
+      const ids = this.store.get<string[]>('copilot_origins', versionId, []);
+      if (!ids.includes(source.communityId) && ids.length < 2) this.store.put('copilot_origins', versionId, [...ids, source.communityId]);
+    } else this.store.put('copilot_noncommunity_origin', versionId, true);
     return record;
   }
   private previewEntry(content: string, source: CopilotSource, expectedKind?: CopilotKind, uploader?: string): CopilotPreview['entries'][number] {
@@ -380,10 +405,12 @@ export class CopilotLibrary {
   }
   workspaceGet(input: RpcContract['params']['copilot.workspace.get']): CopilotWorkspace {
     const params = validate(validators.validateCopilotWorkspaceParams, input);
-    return clone(this.store.get<CopilotWorkspace>('copilot_workspace', params.kind, { kind: params.kind, queue: [], options: defaultCopilotOptions() }));
+    const workspace = clone(this.store.get<CopilotWorkspace>('copilot_workspace', params.kind, { kind: params.kind, queue: [], options: defaultCopilotOptions() }));
+    workspace.options.autoLikeOnSuccess ??= false; return workspace;
   }
   workspaceSave(input: RpcContract['params']['copilot.workspace.save']): CopilotWorkspace {
     const params = validate(validators.validateCopilotWorkspaceSaveParams, input), workspace = clone(params.workspace);
+    workspace.options.autoLikeOnSuccess ??= false;
     if (new Set(workspace.queue.map(entry => entry.id)).size !== workspace.queue.length) fail('重复的队列条目标识');
     for (const entry of workspace.queue) if (this.version(entry.versionId).record.kind !== workspace.kind) fail('三种作业类型不能混入同一队列');
     if (workspace.kind === 'SSSCopilot' && workspace.queue.filter(entry => entry.enabled).length > 1) fail('保全派驻仅支持一份启用作业');
@@ -393,7 +420,7 @@ export class CopilotLibrary {
     if (workspace.options.supportUnitName && (!workspace.options.formation || workspace.options.loopTimes !== 1)) fail('助战需要自动编队且只能单次执行');
     this.store.put('copilot_workspace', workspace.kind, workspace); this.context.changed?.('作业队列与选项已保存'); return workspace;
   }
-  prepare(kind: CopilotKind, clientType: NonNullable<RpcContract['params']['stages.list']['clientType']> = 'Official'): { name: string; tasks: Task[]; entries: CopilotRunEntry[]; identity: string; workspace: CopilotWorkspace } {
+  prepare(kind: CopilotKind, clientType: NonNullable<RpcContract['params']['stages.list']['clientType']> = 'Official'): { name: string; tasks: Task[]; entries: CopilotRunEntry[]; identity: string; workspace: CopilotWorkspace; feedbackSources: FeedbackSource[] } {
     const workspace = this.workspaceSave({ workspace: this.workspaceGet({ kind }) });
     const selected = workspace.queue.filter(entry => entry.enabled);
     if (!selected.length) fail('请先勾选至少一份作业');
@@ -417,8 +444,100 @@ export class CopilotLibrary {
       support_unit_usage: o.supportUnitName ? 2 : 0, support_unit_name: o.supportUnitName, use_sanity_potion: false });
     const entries: CopilotRunEntry[] = selected.map((entry, index) => ({ id: entry.id, versionId: entry.versionId, title: versions[index]!.record.title, nativeId: index + 1, status: 'waiting', verdict: 'unknown', message: '等待执行，通关未确认' }));
     const name = `${kind === 'Copilot' ? '普通作业' : kind === 'SSSCopilot' ? '保全派驻' : '悖论模拟'} · ${versions[0]!.record.title}`.slice(0, 80);
-    return { name, tasks: [{ type: kind, enabled: true, params }], entries, identity: copilotWorkspaceIdentity(workspace), workspace };
+    const feedbackSources = selected.flatMap(entry => {
+      const ids = this.communityIds(entry.versionId), first = this.version(entry.versionId).record.source;
+      const localOrigin = first.kind !== 'community' || this.store.get('copilot_noncommunity_origin', entry.versionId, false)
+        || this.store.all<CopilotRecord>('copilot').some(record => record.versionId === entry.versionId && record.source.kind !== 'community');
+      return !localOrigin && ids.length === 1 ? [{ entryId: entry.id, versionId: entry.versionId, communityId: ids[0]! }] : [];
+    });
+    return { name, tasks: [{ type: kind, enabled: true, params }], entries, identity: copilotWorkspaceIdentity(workspace), workspace, feedbackSources };
   }
+  private communityIds(versionId: string): string[] {
+    const source = this.version(versionId).record.source;
+    return [...new Set([...this.store.get<string[]>('copilot_origins', versionId, []),
+      ...(source.kind === 'community' && source.communityId ? [source.communityId] : []),
+      ...this.store.all<CopilotRecord>('copilot').filter(record => record.versionId === versionId && record.source.kind === 'community').map(record => record.source.communityId!).filter(Boolean)])];
+  }
+  private ratingIdentity(params: RpcContract['params']['copilot.rating.get']): string {
+    this.version(params.versionId);
+    if (params.recordId) {
+      let record = this.store.get<CopilotRecord | undefined>('copilot', params.recordId);
+      if (!record) for (const preview of this.previews.values()) {
+        if (Date.now() - preview.createdAt > 3_600_000) continue;
+        record = preview.public.entries.find(entry => entry.record?.id === params.recordId)?.record ?? undefined;
+        if (record) break;
+      }
+      if (!record || record.versionId !== params.versionId) return fail('作业来源已过期或与版本不匹配，请重新打开详情');
+      if (record.source.kind !== 'community' || !record.source.communityId) fail('仅社区作业支持在线评价');
+      return normalizeId(record.source.communityId);
+    }
+    const ids = this.communityIds(params.versionId);
+    if (ids.length !== 1) fail(ids.length ? '同一内容存在多个社区来源，请从指定作业详情评价' : '仅社区作业支持在线评价');
+    return normalizeId(ids[0]);
+  }
+  private async readRating(id: string): Promise<CopilotRating> {
+    const data = await this.request(`/copilot/get/${id}`);
+    if (!object(data) || data.available === false || data.status === 'DELETED' || normalizeId(data.id) !== id
+      || !Number.isSafeInteger(data.like) || data.like < 0 || !Number.isSafeInteger(data.dislike) || data.dislike < 0 || ![0, 1, 2].includes(data.rating_type)) throw new RpcError(-32010, '社区评价响应无效，无法确认当前评价');
+    return { communityId: id, likes: data.like, dislikes: data.dislike, rating: data.rating_type === 1 ? 'like' : data.rating_type === 2 ? 'dislike' : 'none' };
+  }
+  private feedbackSerial<T>(id: string, action: () => Promise<T>): Promise<T> {
+    const promise = (this.feedbackChains.get(id) ?? Promise.resolve()).catch(() => {}).then(action);
+    this.feedbackChains.set(id, promise); this.feedbackTasks.add(promise);
+    void promise.finally(() => { if (this.feedbackChains.get(id) === promise) this.feedbackChains.delete(id); this.feedbackTasks.delete(promise); }).catch(() => {});
+    return promise;
+  }
+  async ratingGet(input: RpcContract['params']['copilot.rating.get']): Promise<CopilotRating> {
+    const params = validate(validators.validateCopilotRatingParams, input), id = this.ratingIdentity(params);
+    return this.feedbackSerial(id, () => this.readRating(id));
+  }
+  async ratingSet(input: RpcContract['params']['copilot.rating.set']): Promise<CopilotRating> {
+    const params = validate(validators.validateCopilotRatingSetParams, input), id = this.ratingIdentity(params);
+    // Preserve a manual negative preference even when its network request fails.
+    if (params.rating === 'dislike') this.store.put('copilot_manual_rating', id, { rating: 'dislike', updatedAt: now() });
+    return this.feedbackSerial(id, async () => {
+      const result = await this.writeRating(id, params.rating);
+      this.store.put('copilot_manual_rating', id, { rating: params.rating, updatedAt: now() });
+      this.context.changed?.('社区评价已更新'); return result;
+    });
+  }
+  private async writeRating(id: string, rating: CopilotRatingValue, current?: CopilotRating): Promise<CopilotRating> {
+    current ??= await this.readRating(id);
+    if (current.rating !== rating) await this.request('/copilot/rating', { id: Number(id), rating: { none: 'None', like: 'Like', dislike: 'Dislike' }[rating] });
+    // Re-read real upstream counts; never manufacture statistics after a write.
+    return current.rating === rating ? current : this.readRating(id);
+  }
+  /** Called only after the runtime has finalized confirmed per-entry evidence. */
+  autoLikeConfirmed(runId: string, snapshot: { workspace?: CopilotWorkspace; feedbackSources?: FeedbackSource[] }, entries: CopilotRunEntry[]) {
+    if (snapshot.workspace?.options.autoLikeOnSuccess !== true) return;
+    for (const source of snapshot.feedbackSources ?? []) {
+      if (!entries.some(entry => entry.id === source.entryId && entry.versionId === source.versionId && entry.status === 'completed' && entry.verdict === 'success')) continue;
+      const id = normalizeId(source.communityId);
+      if (this.store.get('copilot_auto_rating', id)) continue;
+      // Persist before networking. A timeout or restart cannot blindly re-post.
+      this.store.put('copilot_auto_rating', id, { runId, entryId: source.entryId, status: 'pending', attemptedAt: now() });
+      void this.feedbackSerial(id, async () => {
+        try {
+          if (this.store.get('copilot_manual_rating', id, {}).rating === 'dislike') {
+            this.store.put('copilot_auto_rating', id, { runId, status: 'skipped', reason: 'manual-dislike' }); return;
+          }
+          const current = await this.readRating(id);
+          // Manual intent can arrive while this GET is in flight.
+          if (current.rating !== 'none' || this.store.get('copilot_manual_rating', id, {}).rating === 'dislike') {
+            this.store.put('copilot_auto_rating', id, { runId, status: 'skipped', reason: 'existing-rating' }); return;
+          }
+          const result = await this.writeRating(id, 'like', current);
+          if (result.rating !== 'like') throw new RpcError(-32010, '评价已提交，但社区尚未确认点赞结果；不会自动重试');
+          this.store.put('copilot_auto_rating', id, { runId, status: 'completed', finishedAt: now() });
+          this.context.changed?.(`作业 #${id} 通关已确认，已自动点赞`);
+        } catch (cause) {
+          this.store.put('copilot_auto_rating', id, { runId, status: 'failed', error: message(cause) });
+          this.context.changed?.(`作业 #${id} 自动点赞失败：${message(cause)}；通关结果保持不变，可在详情中手动重试`);
+        }
+      }).catch(() => {});
+    }
+  }
+  async drainFeedback() { await Promise.allSettled([...this.feedbackTasks]); }
   private async request(relative: string, body?: unknown, deadline = Infinity): Promise<any> {
     const remaining = Math.min(12_000, deadline - Date.now());
     if (remaining <= 0) throw new RpcError(-32010, '作业集预览已达到 90 秒时限，请缩小作业集后重试');
