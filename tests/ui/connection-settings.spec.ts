@@ -11,12 +11,14 @@ test('shared connection settings persist native profile, ADB, touch and bridge p
   await page.getByLabel('触控模式', { exact: true }).selectOption('maatouch');
   await page.getByRole('checkbox', { name: '启用 ADB Lite', exact: true }).check();
   await page.getByRole('button', { name: '保存连接配置', exact: true }).click();
+  await expect(page.locator('.sp-connection-form .sp-form-actions > .sp-help')).toHaveText('已保存');
   await page.getByLabel('截图协议', { exact: true }).selectOption('mumu');
   await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\MuMu');
   await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
   await page.getByRole('checkbox', { name: '启用 MuMu 触控增强（实验性）', exact: true }).check();
   await page.getByRole('checkbox', { name: 'MuMu 网络桥接模式', exact: true }).check();
   await page.getByRole('button', { name: '保存截图配置', exact: true }).click();
+  await expect(page.locator('.sp-capture-form .sp-form-actions > .sp-help')).toHaveText('已保存');
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
   await page.getByRole('tab', { name: '连接设置', exact: true }).click();
@@ -47,6 +49,7 @@ test('automatic capture is the default and manual ADB remains an explicit saved 
   await expect(protocol).toHaveValue('auto');
   await protocol.selectOption('adb');
   await save.click();
+  await expect(page.locator('.sp-capture-form .sp-form-actions > .sp-help')).toHaveText('已保存');
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
   await page.getByRole('tab', { name: '连接设置', exact: true }).click();
@@ -58,6 +61,7 @@ test('automatic capture is the default and manual ADB remains an explicit saved 
   await protocol.selectOption('auto');
   await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveCount(0);
   await save.click();
+  await expect(page.locator('.sp-capture-form .sp-form-actions > .sp-help')).toHaveText('已保存');
   const snapshot = await page.evaluate(() => (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot;
   expect(snapshot.settings.capture).toMatchObject({ method: 'adb', autoDetect: true, mumuTouch: false, mumuBridge: false });
   await page.reload();

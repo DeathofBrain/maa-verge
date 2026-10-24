@@ -81,6 +81,7 @@ test('log retention remains a draft until saved and survives reload', async ({ p
   await expect(retention).toHaveValue('7');
   await retention.selectOption('0');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await expect(page.locator('.log-retention-form .sp-form-actions > .sp-help')).toHaveText('已保存');
   await expect(page.getByRole('button', { name: '保存设置', exact: true })).toBeDisabled();
   expect(await page.evaluate(async () => ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot).settings.logRetentionDays)).toBe(0);
   await page.reload();
