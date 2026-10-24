@@ -250,9 +250,12 @@ export interface RpcContract {
     };
     'copilot.list': {
       /**
-       * @maxItems 1000
+       * @maxItems 20
        */
       items: CopilotRecord[];
+      page: number;
+      total: number;
+      hasNext: boolean;
     };
     'copilot.get': CopilotRecord;
     'copilot.export': {
@@ -659,6 +662,7 @@ export interface ScheduleOverrideParams {
  */
 export interface CopilotListParams {
   kind?: CopilotKind;
+  page?: number;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
