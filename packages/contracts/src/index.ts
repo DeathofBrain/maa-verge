@@ -13,3 +13,5 @@ export { taskEnabled, taskConsumableLimits } from './task-policy';
 export { localizeExecutionMessage } from './execution';
 export { desktopPlatform, minimizeWindow, toggleMaximizeWindow, closeWindow, syncWindowTheme, subscribeWindowMaximized, type DesktopPlatform } from './desktop-window';
 export { resolveWindowClose, acknowledgeDesktopExit, subscribeDesktopLifecycle, type DesktopLifecycle, type WindowCloseAction } from './desktop-window';
+
+export type { CopilotKind, CopilotRecord, CopilotSource, CopilotOperator, CopilotCompatibility, CopilotWorkspace, CopilotQueueEntry, CopilotOptions, CopilotPreview, CopilotPreviewEntry, CopilotSearchItem, CopilotSearchResult } from './rpc-types';

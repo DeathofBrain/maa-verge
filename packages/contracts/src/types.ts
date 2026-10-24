@@ -47,7 +47,7 @@ export type Schedule = string | null;
 export type Enabled1 = boolean;
 export type Plans = Plan[];
 export type Id2 = string;
-export type Planid = string;
+export type Planid = string | null;
 export type Deviceid1 = string;
 export type Status = 'running' | 'completed' | 'failed' | 'stopped';
 export type Progress = number;
@@ -143,6 +143,12 @@ export interface Run {
   finishedAt: Finishedat;
   scheduleId?: string;
   scheduledFor?: string;
+  source?: 'plan' | 'copilot';
+  sourceName?: string;
+  /**
+   * @maxItems 100
+   */
+  copilotEntries?: CopilotRunEntry[];
 }
 export interface RunTask {
   index: number;
@@ -328,6 +334,15 @@ export interface RunArtifact {
   capturedAt: string;
   width: number;
   height: number;
+}
+export interface CopilotRunEntry {
+  id: string;
+  versionId: string;
+  title: string;
+  nativeId: number;
+  status: 'waiting' | 'running' | 'completed' | 'failed' | 'stopped' | 'skipped';
+  verdict: 'unknown' | 'success' | 'failure';
+  message: string;
 }
 export interface UpdateChannel {
   checkedAt?: string;

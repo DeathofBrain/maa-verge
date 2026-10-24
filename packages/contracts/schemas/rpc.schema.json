@@ -3,44 +3,233 @@
   "$id": "https://maaverge.local/contracts/rpc.schema.json",
   "$comment": "Public NDJSON JSON-RPC method parameter/result maps. Requests and runtime events use the envelope definitions below.",
   "title": "RpcContract",
-  "type": "object", "additionalProperties": false, "required": ["params", "results"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "params",
+    "results"
+  ],
   "properties": {
     "params": {
-      "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot","logs.info","logs.export","logs.clean","home.info","stages.list","recognition.get","resources.item","resources.operator","plan.save","plan.delete","device.discover","device.connect","device.auto_connect","device.disconnect","device.frame","device.click","run.start","run.stop","run.detail","run.artifact","updates.check","updates.prepare","updates.activate","updates.rollback","settings.save","agent.message","device.availability","tool.start","tool.get","tool.stop","tool.config.get","tool.config.save","tool.catalog","schedule.list","schedule.save","schedule.delete","schedule.override","schedule.cancel","schedule.host"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app.snapshot",
+        "logs.info",
+        "logs.export",
+        "logs.clean",
+        "home.info",
+        "stages.list",
+        "recognition.get",
+        "resources.item",
+        "resources.operator",
+        "plan.save",
+        "plan.delete",
+        "device.discover",
+        "device.connect",
+        "device.auto_connect",
+        "device.disconnect",
+        "device.frame",
+        "device.click",
+        "run.start",
+        "run.stop",
+        "run.detail",
+        "run.artifact",
+        "updates.check",
+        "updates.prepare",
+        "updates.activate",
+        "updates.rollback",
+        "settings.save",
+        "agent.message",
+        "device.availability",
+        "tool.start",
+        "tool.get",
+        "tool.stop",
+        "tool.config.get",
+        "tool.config.save",
+        "tool.catalog",
+        "schedule.list",
+        "schedule.save",
+        "schedule.delete",
+        "schedule.override",
+        "schedule.cancel",
+        "schedule.host",
+        "copilot.list",
+        "copilot.get",
+        "copilot.export",
+        "copilot.preview",
+        "copilot.import",
+        "copilot.delete",
+        "copilot.workspace.get",
+        "copilot.workspace.save",
+        "copilot.search",
+        "copilot.start"
+      ],
       "properties": {
-        "app.snapshot": { "$ref": "#/$defs/EmptyParams" },
-        "logs.info": { "$ref": "#/$defs/EmptyParams" },
-        "logs.export": { "$ref": "#/$defs/EmptyParams" },
-        "logs.clean": { "$ref": "#/$defs/EmptyParams" },
-        "home.info": { "type": "object", "additionalProperties": false, "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "refresh": { "type": "boolean" } } },
-        "stages.list": { "$ref": "#/$defs/StageListParams" },
-        "recognition.get": { "$ref": "#/$defs/RecognitionParams" },
-        "resources.item": { "$ref": "#/$defs/ItemResourceParams" },
-        "resources.operator": { "$ref": "#/$defs/OperatorResourceParams" },
-        "plan.save": { "type": "object", "additionalProperties": false, "required": ["plan"], "properties": { "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" } } },
-        "plan.delete": { "$ref": "#/$defs/IdParams" },
-        "device.discover": { "$ref": "#/$defs/EmptyParams" },
-        "device.connect": { "type": "object", "additionalProperties": false, "required": ["address"], "properties": { "address": { "type": "string" }, "name": { "type": "string" } } },
-        "device.auto_connect": { "$ref": "#/$defs/EmptyParams" },
-        "device.disconnect": { "$ref": "#/$defs/IdParams" },
-        "device.frame": { "$ref": "#/$defs/DeviceFrameParams" },
-        "device.click": { "$ref": "#/$defs/DeviceClickParams" },
-        "run.start": {
-          "type": "object", "additionalProperties": false, "required": ["planId", "deviceId", "requestId"],
-          "properties": { "planId": { "type": "string" }, "deviceId": { "type": "string" }, "requestId": { "type": "string", "minLength": 1, "maxLength": 200 } }
+        "app.snapshot": {
+          "$ref": "#/$defs/EmptyParams"
         },
-        "run.stop": { "$ref": "#/$defs/IdParams" },
-        "run.detail": { "$ref": "#/$defs/IdParams" },
-        "run.artifact": { "$ref": "#/$defs/RunArtifactParams" },
-        "updates.check": { "$ref": "#/$defs/ChannelParams" },
-        "updates.prepare": { "$ref": "#/$defs/ChannelParams" },
-        "updates.activate": { "$ref": "#/$defs/ChannelParams" },
-        "updates.rollback": { "$ref": "#/$defs/ChannelParams" },
-        "settings.save": { "type": "object", "additionalProperties": false, "required": ["settings"], "properties": { "settings": { "$ref": "./runtime.schema.json#/$defs/Settings" } } },
+        "logs.info": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "logs.export": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "logs.clean": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "home.info": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deviceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "clientType": {
+              "enum": [
+                "Official",
+                "Bilibili",
+                "YoStarEN",
+                "YoStarJP",
+                "YoStarKR",
+                "txwy"
+              ]
+            },
+            "refresh": {
+              "type": "boolean"
+            }
+          }
+        },
+        "stages.list": {
+          "$ref": "#/$defs/StageListParams"
+        },
+        "recognition.get": {
+          "$ref": "#/$defs/RecognitionParams"
+        },
+        "resources.item": {
+          "$ref": "#/$defs/ItemResourceParams"
+        },
+        "resources.operator": {
+          "$ref": "#/$defs/OperatorResourceParams"
+        },
+        "plan.save": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "plan"
+          ],
+          "properties": {
+            "plan": {
+              "$ref": "./runtime.schema.json#/$defs/Plan"
+            }
+          }
+        },
+        "plan.delete": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "device.discover": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "device.connect": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        },
+        "device.auto_connect": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "device.disconnect": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "device.frame": {
+          "$ref": "#/$defs/DeviceFrameParams"
+        },
+        "device.click": {
+          "$ref": "#/$defs/DeviceClickParams"
+        },
+        "run.start": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "planId",
+            "deviceId",
+            "requestId"
+          ],
+          "properties": {
+            "planId": {
+              "type": "string"
+            },
+            "deviceId": {
+              "type": "string"
+            },
+            "requestId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        },
+        "run.stop": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "run.detail": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "run.artifact": {
+          "$ref": "#/$defs/RunArtifactParams"
+        },
+        "updates.check": {
+          "$ref": "#/$defs/ChannelParams"
+        },
+        "updates.prepare": {
+          "$ref": "#/$defs/ChannelParams"
+        },
+        "updates.activate": {
+          "$ref": "#/$defs/ChannelParams"
+        },
+        "updates.rollback": {
+          "$ref": "#/$defs/ChannelParams"
+        },
+        "settings.save": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "settings"
+          ],
+          "properties": {
+            "settings": {
+              "$ref": "./runtime.schema.json#/$defs/Settings"
+            }
+          }
+        },
         "agent.message": {
-          "type": "object", "additionalProperties": false, "required": ["message"],
-          "properties": { "message": { "type": "string", "minLength": 1, "maxLength": 4000 }, "deviceId": { "type": "string" } }
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "message"
+          ],
+          "properties": {
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "deviceId": {
+              "type": "string"
+            }
+          }
         },
         "device.availability": {
           "type": "object",
@@ -130,49 +319,322 @@
               }
             }
           }
+        },
+        "copilot.list": {
+          "$ref": "#/$defs/CopilotListParams"
+        },
+        "copilot.get": {
+          "$ref": "#/$defs/CopilotIdentityParams"
+        },
+        "copilot.export": {
+          "$ref": "#/$defs/CopilotExportParams"
+        },
+        "copilot.preview": {
+          "$ref": "#/$defs/CopilotPreviewParams"
+        },
+        "copilot.import": {
+          "$ref": "#/$defs/CopilotImportParams"
+        },
+        "copilot.delete": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "copilot.workspace.get": {
+          "$ref": "#/$defs/CopilotWorkspaceParams"
+        },
+        "copilot.workspace.save": {
+          "$ref": "#/$defs/CopilotWorkspaceSaveParams"
+        },
+        "copilot.search": {
+          "$ref": "#/$defs/CopilotSearchParams"
+        },
+        "copilot.start": {
+          "$ref": "#/$defs/CopilotStartParams"
         }
       }
     },
     "results": {
-      "type": "object", "additionalProperties": false,
-      "required": ["app.snapshot","logs.info","logs.export","logs.clean","home.info","stages.list","recognition.get","resources.item","resources.operator","plan.save","plan.delete","device.discover","device.connect","device.auto_connect","device.disconnect","device.frame","device.click","run.start","run.stop","run.detail","run.artifact","updates.check","updates.prepare","updates.activate","updates.rollback","settings.save","agent.message","device.availability","tool.start","tool.get","tool.stop","tool.config.get","tool.config.save","tool.catalog","schedule.list","schedule.save","schedule.delete","schedule.override","schedule.cancel","schedule.host"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app.snapshot",
+        "logs.info",
+        "logs.export",
+        "logs.clean",
+        "home.info",
+        "stages.list",
+        "recognition.get",
+        "resources.item",
+        "resources.operator",
+        "plan.save",
+        "plan.delete",
+        "device.discover",
+        "device.connect",
+        "device.auto_connect",
+        "device.disconnect",
+        "device.frame",
+        "device.click",
+        "run.start",
+        "run.stop",
+        "run.detail",
+        "run.artifact",
+        "updates.check",
+        "updates.prepare",
+        "updates.activate",
+        "updates.rollback",
+        "settings.save",
+        "agent.message",
+        "device.availability",
+        "tool.start",
+        "tool.get",
+        "tool.stop",
+        "tool.config.get",
+        "tool.config.save",
+        "tool.catalog",
+        "schedule.list",
+        "schedule.save",
+        "schedule.delete",
+        "schedule.override",
+        "schedule.cancel",
+        "schedule.host",
+        "copilot.list",
+        "copilot.get",
+        "copilot.export",
+        "copilot.preview",
+        "copilot.import",
+        "copilot.delete",
+        "copilot.workspace.get",
+        "copilot.workspace.save",
+        "copilot.search",
+        "copilot.start"
+      ],
       "properties": {
-        "app.snapshot": { "$ref": "./runtime.schema.json" },
-        "logs.info": { "type": "object", "additionalProperties": false, "required": ["directory", "retentionDays"], "properties": { "directory": { "type": "string" }, "retentionDays": { "type": "integer", "enum": [0, 7, 14, 30] } } },
-        "logs.export": { "type": "object", "additionalProperties": false, "required": ["directory", "path", "bytes", "warnings"], "properties": { "directory": { "type": "string" }, "path": { "type": "string" }, "bytes": { "type": "integer", "minimum": 0 }, "warnings": { "type": "array", "items": { "type": "string" } } } },
-        "logs.clean": { "type": "object", "additionalProperties": false, "required": ["removedFiles", "removedBytes", "skippedFiles", "warnings"], "properties": { "removedFiles": { "type": "integer", "minimum": 0 }, "removedBytes": { "type": "integer", "minimum": 0 }, "skippedFiles": { "type": "integer", "minimum": 0 }, "warnings": { "type": "array", "items": { "type": "string" } } } },
-        "home.info": { "$ref": "#/$defs/HomeInfo" },
-        "stages.list": { "$ref": "#/$defs/StageListResult" },
-        "recognition.get": { "$ref": "#/$defs/RecognitionResult" },
-        "resources.item": { "$ref": "#/$defs/ItemResourceResult" },
-        "resources.operator": { "$ref": "#/$defs/OperatorResourceResult" },
-        "plan.save": { "$ref": "./runtime.schema.json#/$defs/Plan" },
-        "plan.delete": { "type": "object", "additionalProperties": false, "required": ["deleted"], "properties": { "deleted": { "type": "boolean" } } },
-        "device.discover": { "type": "array", "items": { "$ref": "#/$defs/DiscoveredDevice" } },
-        "device.connect": { "$ref": "./runtime.schema.json#/$defs/Device" },
-        "device.auto_connect": {
-          "type": "object", "additionalProperties": false, "required": ["devices", "discovered", "diagnostics"],
+        "app.snapshot": {
+          "$ref": "./runtime.schema.json"
+        },
+        "logs.info": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "directory",
+            "retentionDays"
+          ],
           "properties": {
-            "devices": { "type": "array", "items": { "$ref": "./runtime.schema.json#/$defs/Device" } },
-            "discovered": { "type": "array", "items": { "$ref": "#/$defs/DiscoveredDevice" } },
-            "diagnostics": { "type": "array", "items": { "type": "string" } }
+            "directory": {
+              "type": "string"
+            },
+            "retentionDays": {
+              "type": "integer",
+              "enum": [
+                0,
+                7,
+                14,
+                30
+              ]
+            }
           }
         },
-        "device.disconnect": { "type": "object", "additionalProperties": false, "required": ["disconnected"], "properties": { "disconnected": { "type": "boolean" } } },
-        "device.frame": { "$ref": "#/$defs/ScreenFrame" },
-        "device.click": { "type": "object", "additionalProperties": false, "required": ["accepted"], "properties": { "accepted": { "const": true } } },
-        "run.start": { "$ref": "./runtime.schema.json#/$defs/Run" },
-        "run.stop": { "$ref": "./runtime.schema.json#/$defs/Run" },
-        "run.detail": { "$ref": "./runtime.schema.json#/$defs/Run" },
-        "run.artifact": { "$ref": "#/$defs/RunArtifactImage" },
-        "updates.check": { "$ref": "./runtime.schema.json#/$defs/UpdateChannel" },
-        "updates.prepare": { "$ref": "./runtime.schema.json#/$defs/UpdateChannel" },
-        "updates.activate": { "$ref": "./runtime.schema.json#/$defs/UpdateChannel" },
-        "updates.rollback": { "$ref": "./runtime.schema.json#/$defs/UpdateChannel" },
-        "settings.save": { "$ref": "./runtime.schema.json#/$defs/Settings" },
+        "logs.export": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "directory",
+            "path",
+            "bytes",
+            "warnings"
+          ],
+          "properties": {
+            "directory": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "logs.clean": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "removedFiles",
+            "removedBytes",
+            "skippedFiles",
+            "warnings"
+          ],
+          "properties": {
+            "removedFiles": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "removedBytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "skippedFiles": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "home.info": {
+          "$ref": "#/$defs/HomeInfo"
+        },
+        "stages.list": {
+          "$ref": "#/$defs/StageListResult"
+        },
+        "recognition.get": {
+          "$ref": "#/$defs/RecognitionResult"
+        },
+        "resources.item": {
+          "$ref": "#/$defs/ItemResourceResult"
+        },
+        "resources.operator": {
+          "$ref": "#/$defs/OperatorResourceResult"
+        },
+        "plan.save": {
+          "$ref": "./runtime.schema.json#/$defs/Plan"
+        },
+        "plan.delete": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "deleted"
+          ],
+          "properties": {
+            "deleted": {
+              "type": "boolean"
+            }
+          }
+        },
+        "device.discover": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DiscoveredDevice"
+          }
+        },
+        "device.connect": {
+          "$ref": "./runtime.schema.json#/$defs/Device"
+        },
+        "device.auto_connect": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "devices",
+            "discovered",
+            "diagnostics"
+          ],
+          "properties": {
+            "devices": {
+              "type": "array",
+              "items": {
+                "$ref": "./runtime.schema.json#/$defs/Device"
+              }
+            },
+            "discovered": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/DiscoveredDevice"
+              }
+            },
+            "diagnostics": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "device.disconnect": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "disconnected"
+          ],
+          "properties": {
+            "disconnected": {
+              "type": "boolean"
+            }
+          }
+        },
+        "device.frame": {
+          "$ref": "#/$defs/ScreenFrame"
+        },
+        "device.click": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "accepted"
+          ],
+          "properties": {
+            "accepted": {
+              "const": true
+            }
+          }
+        },
+        "run.start": {
+          "$ref": "./runtime.schema.json#/$defs/Run"
+        },
+        "run.stop": {
+          "$ref": "./runtime.schema.json#/$defs/Run"
+        },
+        "run.detail": {
+          "$ref": "./runtime.schema.json#/$defs/Run"
+        },
+        "run.artifact": {
+          "$ref": "#/$defs/RunArtifactImage"
+        },
+        "updates.check": {
+          "$ref": "./runtime.schema.json#/$defs/UpdateChannel"
+        },
+        "updates.prepare": {
+          "$ref": "./runtime.schema.json#/$defs/UpdateChannel"
+        },
+        "updates.activate": {
+          "$ref": "./runtime.schema.json#/$defs/UpdateChannel"
+        },
+        "updates.rollback": {
+          "$ref": "./runtime.schema.json#/$defs/UpdateChannel"
+        },
+        "settings.save": {
+          "$ref": "./runtime.schema.json#/$defs/Settings"
+        },
         "agent.message": {
-          "type": "object", "additionalProperties": false, "required": ["reply", "requiresConfirmation", "mode"],
-          "properties": { "reply": { "type": "string" }, "plan": { "$ref": "./runtime.schema.json#/$defs/Plan" }, "requiresConfirmation": { "type": "boolean" }, "mode": { "type": "string" } }
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reply",
+            "requiresConfirmation",
+            "mode"
+          ],
+          "properties": {
+            "reply": {
+              "type": "string"
+            },
+            "plan": {
+              "$ref": "./runtime.schema.json#/$defs/Plan"
+            },
+            "requiresConfirmation": {
+              "type": "boolean"
+            },
+            "mode": {
+              "type": "string"
+            }
+          }
         },
         "device.availability": {
           "$ref": "#/$defs/DeviceAvailability"
@@ -239,30 +701,196 @@
               "const": true
             }
           }
+        },
+        "copilot.list": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "type": "array",
+              "maxItems": 1000,
+              "items": {
+                "$ref": "#/$defs/CopilotRecord"
+              }
+            }
+          },
+          "required": [
+            "items"
+          ]
+        },
+        "copilot.get": {
+          "$ref": "#/$defs/CopilotRecord"
+        },
+        "copilot.export": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "filename": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "content": {
+              "type": "string",
+              "maxLength": 700000
+            }
+          },
+          "required": [
+            "filename",
+            "content"
+          ]
+        },
+        "copilot.preview": {
+          "$ref": "#/$defs/CopilotPreview"
+        },
+        "copilot.import": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "type": "array",
+              "maxItems": 100,
+              "items": {
+                "$ref": "#/$defs/CopilotRecord"
+              }
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 100,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "id",
+                  "message"
+                ]
+              }
+            }
+          },
+          "required": [
+            "items",
+            "errors"
+          ]
+        },
+        "copilot.delete": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "deleted"
+          ]
+        },
+        "copilot.workspace.get": {
+          "$ref": "#/$defs/CopilotWorkspace"
+        },
+        "copilot.workspace.save": {
+          "$ref": "#/$defs/CopilotWorkspace"
+        },
+        "copilot.search": {
+          "$ref": "#/$defs/CopilotSearchResult"
+        },
+        "copilot.start": {
+          "$ref": "./runtime.schema.json#/$defs/Run"
         }
       }
     }
   },
   "$defs": {
     "RecognitionParams": {
-      "type": "object", "additionalProperties": false, "required": ["deviceId", "kind"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId",
+        "kind"
+      ],
       "properties": {
-        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "kind": { "enum": ["depot", "operators"] },
-        "clientType": { "$ref": "#/$defs/ClientType" }
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "enum": [
+            "depot",
+            "operators"
+          ]
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        }
       }
     },
     "RecognitionResult": {
-      "type": "object", "additionalProperties": false,
-      "required": ["deviceId", "kind", "clientType", "collectedAt", "runId", "items", "operators"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId",
+        "kind",
+        "clientType",
+        "collectedAt",
+        "runId",
+        "items",
+        "operators"
+      ],
       "properties": {
-        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "kind": { "enum": ["depot", "operators"] },
-        "clientType": { "$ref": "#/$defs/ClientType" },
-        "collectedAt": { "type": ["string", "null"], "minLength": 1, "maxLength": 40 },
-        "runId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
-        "items": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/RecognizedItem" } },
-        "operators": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/RecognizedOperator" } },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "enum": [
+            "depot",
+            "operators"
+          ]
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "collectedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "runId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "$ref": "#/$defs/RecognizedItem"
+          }
+        },
+        "operators": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "$ref": "#/$defs/RecognizedOperator"
+          }
+        },
         "estimatedAt": {
           "type": [
             "string",
@@ -273,11 +901,29 @@
       }
     },
     "RecognizedItem": {
-      "type": "object", "additionalProperties": false, "required": ["id", "name", "quantity"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "quantity"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "name": { "type": "string", "minLength": 1, "maxLength": 300 },
-        "quantity": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
         "estimatedQuantity": {
           "type": "integer",
           "minimum": 0,
@@ -286,39 +932,134 @@
       }
     },
     "RecognizedOperator": {
-      "type": "object", "additionalProperties": false, "required": ["id", "name", "own", "elite", "level", "potential", "rarity"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "own",
+        "elite",
+        "level",
+        "potential",
+        "rarity"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "name": { "type": "string", "minLength": 1, "maxLength": 300 },
-        "own": { "type": "boolean" },
-        "elite": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
-        "level": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
-        "potential": { "description": "MaaCore potential: 1-based; negative values preserve unknown results.", "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
-        "rarity": { "description": "MaaCore rarity: 1-based star count; negative values preserve unknown results.", "type": "integer", "minimum": -2147483648, "maximum": 2147483647 }
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "own": {
+          "type": "boolean"
+        },
+        "elite": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "level": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "potential": {
+          "description": "MaaCore potential: 1-based; negative values preserve unknown results.",
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "rarity": {
+          "description": "MaaCore rarity: 1-based star count; negative values preserve unknown results.",
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        }
       }
     },
     "ItemResourceParams": {
-      "type": "object", "additionalProperties": false, "required": ["itemId"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemId"
+      ],
       "properties": {
-        "itemId": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9_-]+$" },
-        "clientType": { "$ref": "#/$defs/ClientType" }
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        }
       }
     },
     "ItemResourceResult": {
-      "type": "object", "additionalProperties": false, "required": ["itemId", "name", "mimeType", "data", "resourceVersion"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemId",
+        "name",
+        "mimeType",
+        "data",
+        "resourceVersion"
+      ],
       "properties": {
-        "itemId": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "name": { "type": ["string", "null"], "maxLength": 300 },
-        "mimeType": { "enum": ["image/png", null] },
-        "data": { "type": ["string", "null"], "maxLength": 1398104 },
-        "resourceVersion": { "type": ["string", "null"], "maxLength": 200 }
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 300
+        },
+        "mimeType": {
+          "enum": [
+            "image/png",
+            null
+          ]
+        },
+        "data": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 1398104
+        },
+        "resourceVersion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
       }
     },
     "OperatorResourceParams": {
-      "type": "object", "additionalProperties": false, "required": ["name"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
       "properties": {
-        "name": { "type": "string", "minLength": 1, "maxLength": 300, "pattern": "^[^\\u0000-\\u001f\\u007f]+$" },
-        "clientType": { "$ref": "#/$defs/ClientType" },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
         "operatorId": {
           "type": "string",
           "minLength": 1,
@@ -328,163 +1069,704 @@
     },
     "OperatorResourceResult": {
       "description": "Bounded artwork and metadata from the active installed MaaResource; missing or ambiguous names keep text and known rarity without guessing an avatar.",
-      "type": "object", "additionalProperties": false, "required": ["name", "id", "rarity", "mimeType", "data", "resourceVersion"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "id",
+        "rarity",
+        "mimeType",
+        "data",
+        "resourceVersion"
+      ],
       "properties": {
-        "name": { "type": "string", "minLength": 1, "maxLength": 300 },
-        "id": { "type": ["string", "null"], "maxLength": 200 },
-        "rarity": { "description": "1-based star count; null means unknown or conflicting candidates.", "type": ["integer", "null"], "minimum": 1, "maximum": 6 },
-        "mimeType": { "enum": ["image/png", null] },
-        "data": { "type": ["string", "null"], "maxLength": 699052 },
-        "resourceVersion": { "type": ["string", "null"], "maxLength": 200 }
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "rarity": {
+          "description": "1-based star count; null means unknown or conflicting candidates.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 6
+        },
+        "mimeType": {
+          "enum": [
+            "image/png",
+            null
+          ]
+        },
+        "data": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 699052
+        },
+        "resourceVersion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
       }
     },
     "RunArtifactParams": {
-      "type": "object", "additionalProperties": false, "required": ["runId", "artifactId"],
-      "properties": { "runId": { "type": "string", "minLength": 1, "maxLength": 200 }, "artifactId": { "type": "string", "pattern": "^[a-f0-9-]{36}$" } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "artifactId"
+      ],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "artifactId": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$"
+        }
+      }
     },
     "RunArtifactImage": {
-      "type": "object", "additionalProperties": false, "required": ["mimeType", "data"],
-      "properties": { "mimeType": { "const": "image/png" }, "data": { "type": "string", "minLength": 1, "maxLength": 4183384 } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mimeType",
+        "data"
+      ],
+      "properties": {
+        "mimeType": {
+          "const": "image/png"
+        },
+        "data": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4183384
+        }
+      }
     },
     "HomeInfo": {
-      "type": "object", "additionalProperties": false,
-      "required": ["generatedAt", "clientType", "gameDate", "weekday", "nextDailyResetAt", "nextWeeklyResetAt", "annihilation", "infrastructure", "activityCatalog"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generatedAt",
+        "clientType",
+        "gameDate",
+        "weekday",
+        "nextDailyResetAt",
+        "nextWeeklyResetAt",
+        "annihilation",
+        "infrastructure",
+        "activityCatalog"
+      ],
       "properties": {
-        "generatedAt": { "type": "string" },
-        "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
-        "gameDate": { "type": "string" },
-        "weekday": { "type": "integer", "minimum": 0, "maximum": 6 },
-        "nextDailyResetAt": { "type": "string" },
-        "nextWeeklyResetAt": { "type": "string" },
-        "activityCatalog": { "$ref": "#/$defs/StageListResult" },
+        "generatedAt": {
+          "type": "string"
+        },
+        "clientType": {
+          "enum": [
+            "Official",
+            "Bilibili",
+            "YoStarEN",
+            "YoStarJP",
+            "YoStarKR",
+            "txwy"
+          ]
+        },
+        "gameDate": {
+          "type": "string"
+        },
+        "weekday": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "nextDailyResetAt": {
+          "type": "string"
+        },
+        "nextWeeklyResetAt": {
+          "type": "string"
+        },
+        "activityCatalog": {
+          "$ref": "#/$defs/StageListResult"
+        },
         "annihilation": {
-          "type": "object", "additionalProperties": false, "required": ["kind", "message"],
-          "properties": { "kind": { "enum": ["weekly-reset", "weekly-last-day", "weekly"] }, "message": { "type": "string" } }
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "message"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "weekly-reset",
+                "weekly-last-day",
+                "weekly"
+              ]
+            },
+            "message": {
+              "type": "string"
+            }
+          }
         },
         "infrastructure": {
-          "type": "object", "additionalProperties": false, "required": ["deviceId", "message", "lines"],
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "deviceId",
+            "message",
+            "lines"
+          ],
           "properties": {
-            "deviceId": { "type": ["string", "null"] }, "message": { "type": "string" },
-            "lines": { "type": "array", "items": { "$ref": "#/$defs/InfrastructureEstimate" } }
+            "deviceId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "type": "string"
+            },
+            "lines": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/InfrastructureEstimate"
+              }
+            }
           }
         }
       }
     },
     "InfrastructureEstimate": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "name", "unit", "estimatedQuantity", "capacity", "hourlyRate", "lastCollectedAt", "full", "fullAt", "error"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "unit",
+        "estimatedQuantity",
+        "capacity",
+        "hourlyRate",
+        "lastCollectedAt",
+        "full",
+        "fullAt",
+        "error"
+      ],
       "properties": {
-        "id": { "type": "string" }, "name": { "type": "string" }, "unit": { "type": "string" },
-        "estimatedQuantity": { "type": ["number", "null"], "minimum": 0 },
-        "capacity": { "type": "number", "exclusiveMinimum": 0 },
-        "hourlyRate": { "type": "number", "minimum": 0 },
-        "lastCollectedAt": { "type": "string" }, "full": { "type": "boolean" },
-        "fullAt": { "type": ["string", "null"] }, "error": { "type": ["string", "null"] }
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "estimatedQuantity": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "capacity": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "hourlyRate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "lastCollectedAt": {
+          "type": "string"
+        },
+        "full": {
+          "type": "boolean"
+        },
+        "fullAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
-    "ClientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] },
+    "ClientType": {
+      "enum": [
+        "Official",
+        "Bilibili",
+        "YoStarEN",
+        "YoStarJP",
+        "YoStarKR",
+        "txwy"
+      ]
+    },
     "StageListParams": {
-      "type": "object", "additionalProperties": false,
-      "properties": { "clientType": { "$ref": "#/$defs/ClientType" }, "refresh": { "type": "boolean" } }
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "refresh": {
+          "type": "boolean"
+        }
+      }
     },
     "StageOption": {
-      "type": "object", "additionalProperties": false,
-      "required": ["value", "label", "category", "available"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "label",
+        "category",
+        "available"
+      ],
       "properties": {
-        "value": { "type": "string", "maxLength": 200 },
-        "label": { "type": "string", "minLength": 1, "maxLength": 300 },
-        "category": { "enum": ["default", "activity", "permanent"] },
-        "available": { "type": "boolean" },
-        "tip": { "type": "string", "maxLength": 1000 },
-        "activityId": { "type": "string", "maxLength": 200 }
+        "value": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "category": {
+          "enum": [
+            "default",
+            "activity",
+            "permanent"
+          ]
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "tip": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "activityId": {
+          "type": "string",
+          "maxLength": 200
+        }
       }
     },
     "StageActivity": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "name", "startAt", "endAt", "clientType", "status", "source"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "startAt",
+        "endAt",
+        "clientType",
+        "status",
+        "source"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "name": { "type": "string", "minLength": 1, "maxLength": 300 },
-        "startAt": { "type": ["string", "null"], "maxLength": 40 },
-        "endAt": { "type": ["string", "null"], "maxLength": 40 },
-        "clientType": { "$ref": "#/$defs/ClientType" },
-        "status": { "enum": ["active", "upcoming", "unknown"] },
-        "source": { "enum": ["official-calendar", "activity-metadata", "resource-version"] }
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "startAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 40
+        },
+        "endAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 40
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "upcoming",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "official-calendar",
+            "activity-metadata",
+            "resource-version"
+          ]
+        }
       }
     },
     "CalendarStatus": {
-      "type": "object", "additionalProperties": false,
-      "required": ["source", "url", "fetchedAt", "checkedAt", "nextRefreshAt", "stale", "refreshing", "error"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "url",
+        "fetchedAt",
+        "checkedAt",
+        "nextRefreshAt",
+        "stale",
+        "refreshing",
+        "error"
+      ],
       "properties": {
-        "source": { "enum": ["official-cache", "installed", "unavailable"] },
-        "url": { "type": ["string", "null"], "maxLength": 300 },
-        "fetchedAt": { "type": ["string", "null"], "maxLength": 40 },
-        "checkedAt": { "type": ["string", "null"], "maxLength": 40 },
-        "nextRefreshAt": { "type": ["string", "null"], "maxLength": 40 },
-        "stale": { "type": "boolean" },
-        "refreshing": { "type": "boolean" },
-        "error": { "type": ["string", "null"], "maxLength": 1000 }
+        "source": {
+          "enum": [
+            "official-cache",
+            "installed",
+            "unavailable"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 300
+        },
+        "fetchedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 40
+        },
+        "checkedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 40
+        },
+        "nextRefreshAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 40
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "refreshing": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 1000
+        }
       }
     },
     "StageListResult": {
-      "type": "object", "additionalProperties": false,
-      "required": ["clientType", "resourceVersion", "source", "generatedAt", "stages", "activities", "calendar", "message", "diagnostics"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clientType",
+        "resourceVersion",
+        "source",
+        "generatedAt",
+        "stages",
+        "activities",
+        "calendar",
+        "message",
+        "diagnostics"
+      ],
       "properties": {
-        "clientType": { "$ref": "#/$defs/ClientType" },
-        "resourceVersion": { "type": ["string", "null"], "maxLength": 200 },
-        "source": { "enum": ["installed", "builtin"] },
-        "generatedAt": { "type": "string", "maxLength": 40 },
-        "stages": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/StageOption" } },
-        "activities": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/StageActivity" } },
-        "calendar": { "$ref": "#/$defs/CalendarStatus" },
-        "message": { "type": "string", "maxLength": 1000 },
-        "diagnostics": { "type": "array", "items": { "type": "string", "maxLength": 1000 } }
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "resourceVersion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "source": {
+          "enum": [
+            "installed",
+            "builtin"
+          ]
+        },
+        "generatedAt": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "stages": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "$ref": "#/$defs/StageOption"
+          }
+        },
+        "activities": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/StageActivity"
+          }
+        },
+        "calendar": {
+          "$ref": "#/$defs/CalendarStatus"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
       }
     },
     "DeviceFrameParams": {
-      "type": "object", "additionalProperties": false, "required": ["deviceId"],
-      "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId"
+      ],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
     },
     "DeviceClickParams": {
-      "type": "object", "additionalProperties": false, "required": ["deviceId", "frameId", "x", "y", "requestId"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId",
+        "frameId",
+        "x",
+        "y",
+        "requestId"
+      ],
       "properties": {
-        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "frameId": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "x": { "type": "integer", "minimum": 0, "maximum": 8191 },
-        "y": { "type": "integer", "minimum": 0, "maximum": 8191 },
-        "requestId": { "type": "string", "minLength": 1, "maxLength": 200 }
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
       }
     },
     "ScreenFrame": {
       "description": "Transient MaaCore preview PNG. Its width/height are the click coordinate space; image bytes never enter snapshots or persistence.",
-      "type": "object", "additionalProperties": false,
-      "required": ["deviceId", "frameId", "capturedAt", "width", "height", "mimeType", "data", "canControl", "latencyMs"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId",
+        "frameId",
+        "capturedAt",
+        "width",
+        "height",
+        "mimeType",
+        "data",
+        "canControl",
+        "latencyMs"
+      ],
       "properties": {
-        "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "frameId": { "type": "string", "minLength": 1, "maxLength": 200 },
-        "capturedAt": { "type": "string", "minLength": 1, "maxLength": 40 },
-        "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
-        "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
-        "mimeType": { "const": "image/png" },
-        "data": { "type": "string", "minLength": 1, "maxLength": 4183384 },
-        "canControl": { "type": "boolean" },
-        "latencyMs": { "type": "number", "minimum": 0 }
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "capturedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "mimeType": {
+          "const": "image/png"
+        },
+        "data": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4183384
+        },
+        "canControl": {
+          "type": "boolean"
+        },
+        "latencyMs": {
+          "type": "number",
+          "minimum": 0
+        }
       }
     },
-    "EmptyParams": { "type": "object", "additionalProperties": false },
-    "IdParams": { "type": "object", "additionalProperties": false, "required": ["id"], "properties": { "id": { "type": "string" } } },
-    "ChannelParams": { "type": "object", "additionalProperties": false, "required": ["channel"], "properties": { "channel": { "enum": ["app", "core", "resource"] } } },
+    "EmptyParams": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "IdParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "ChannelParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel"
+      ],
+      "properties": {
+        "channel": {
+          "enum": [
+            "app",
+            "core",
+            "resource"
+          ]
+        }
+      }
+    },
     "DiscoveredDevice": {
-      "type": "object", "additionalProperties": false, "required": ["address", "name", "adbState"],
-      "properties": { "address": { "type": "string" }, "name": { "type": "string" }, "adbState": { "type": "string" } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "address",
+        "name",
+        "adbState"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "adbState": {
+          "type": "string"
+        }
+      }
     },
     "RpcRequest": {
-      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "method"],
-      "properties": { "jsonrpc": { "const": "2.0" }, "method": { "type": "string" }, "id": { "type": ["string", "integer", "null"] }, "params": { "type": "object", "additionalProperties": true } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jsonrpc",
+        "method"
+      ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "method": {
+          "type": "string"
+        },
+        "id": {
+          "type": [
+            "string",
+            "integer",
+            "null"
+          ]
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
     },
     "RpcEvent": {
-      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "method", "params"],
-      "properties": { "jsonrpc": { "const": "2.0" }, "method": { "const": "runtime.event" }, "params": { "$ref": "./runtime.schema.json#/$defs/Event" } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jsonrpc",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "method": {
+          "const": "runtime.event"
+        },
+        "params": {
+          "$ref": "./runtime.schema.json#/$defs/Event"
+        }
+      }
     },
     "DeviceAvailability": {
       "type": "object",
@@ -1019,6 +2301,591 @@
         "occurrences",
         "timezone",
         "wake"
+      ]
+    },
+    "CopilotKind": {
+      "enum": [
+        "Copilot",
+        "SSSCopilot",
+        "ParadoxCopilot"
+      ]
+    },
+    "CopilotCompatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "ready",
+            "unverified",
+            "unsupported"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "required": [
+        "status",
+        "reasons"
+      ]
+    },
+    "CopilotSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "local",
+            "community",
+            "legacy"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "communityId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "setId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "url"
+      ]
+    },
+    "CopilotOperator": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "skill": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "CopilotRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "versionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/CopilotKind"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "stageName": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 16000
+        },
+        "minimumCoreVersion": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "operators": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/CopilotOperator"
+          }
+        },
+        "videos": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "source": {
+          "$ref": "#/$defs/CopilotSource"
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "compatibility": {
+          "$ref": "#/$defs/CopilotCompatibility"
+        }
+      },
+      "required": [
+        "id",
+        "versionId",
+        "kind",
+        "title",
+        "stageName",
+        "author",
+        "description",
+        "minimumCoreVersion",
+        "operators",
+        "videos",
+        "source",
+        "createdAt",
+        "compatibility"
+      ]
+    },
+    "CopilotQueueEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "versionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "isRaid": {
+          "type": "boolean"
+        },
+        "navName": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "id",
+        "versionId",
+        "enabled",
+        "isRaid",
+        "navName"
+      ]
+    },
+    "CopilotOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "loopTimes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999
+        },
+        "formation": {
+          "type": "boolean"
+        },
+        "formationIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "addTrust": {
+          "type": "boolean"
+        },
+        "ignoreRequirements": {
+          "type": "boolean"
+        },
+        "supportUnitName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "additionalOperators": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 100
+              },
+              "skill": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              }
+            },
+            "required": [
+              "name",
+              "skill"
+            ]
+          }
+        }
+      },
+      "required": [
+        "loopTimes",
+        "formation",
+        "formationIndex",
+        "addTrust",
+        "ignoreRequirements",
+        "supportUnitName",
+        "additionalOperators"
+      ]
+    },
+    "CopilotWorkspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CopilotKind"
+        },
+        "queue": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/CopilotQueueEntry"
+          }
+        },
+        "options": {
+          "$ref": "#/$defs/CopilotOptions"
+        }
+      },
+      "required": [
+        "kind",
+        "queue",
+        "options"
+      ]
+    },
+    "CopilotPreviewEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "record": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CopilotRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "id",
+        "record",
+        "error"
+      ]
+    },
+    "CopilotPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/CopilotPreviewEntry"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "entries"
+      ]
+    },
+    "CopilotSearchItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 16000
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "kind": {
+          "$ref": "#/$defs/CopilotKind"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "author",
+        "url"
+      ]
+    },
+    "CopilotSearchResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/CopilotSearchItem"
+          }
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "hasNext": {
+          "type": "boolean"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "items",
+        "page",
+        "hasNext",
+        "total"
+      ]
+    },
+    "CopilotListParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CopilotKind"
+        }
+      },
+      "required": []
+    },
+    "CopilotIdentityParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "versionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": []
+    },
+    "CopilotExportParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "versionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "versionId"
+      ]
+    },
+    "CopilotPreviewParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "type": "string",
+          "maxLength": 700000
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "planId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "taskIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        }
+      },
+      "required": []
+    },
+    "CopilotImportParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "previewId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "entryIds": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      },
+      "required": [
+        "previewId"
+      ]
+    },
+    "CopilotWorkspaceParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CopilotKind"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "CopilotWorkspaceSaveParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "workspace": {
+          "$ref": "#/$defs/CopilotWorkspace"
+        }
+      },
+      "required": [
+        "workspace"
+      ]
+    },
+    "CopilotSearchParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "enum": [
+            "copilot",
+            "set"
+          ]
+        },
+        "keyword": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "stage": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "target"
+      ]
+    },
+    "CopilotStartParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CopilotKind"
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "kind",
+        "deviceId",
+        "requestId"
       ]
     }
   }

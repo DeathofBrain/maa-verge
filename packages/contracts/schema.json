@@ -441,7 +441,10 @@
         },
         "planId": {
           "title": "Planid",
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "deviceId": {
           "title": "Deviceid",
@@ -492,6 +495,23 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 80
+        },
+        "source": {
+          "enum": [
+            "plan",
+            "copilot"
+          ]
+        },
+        "sourceName": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "copilotEntries": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/CopilotRunEntry"
+          }
         }
       },
       "required": [
@@ -1251,6 +1271,61 @@
         "message",
         "startedAt",
         "finishedAt"
+      ]
+    },
+    "CopilotRunEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "versionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "nativeId": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "status": {
+          "enum": [
+            "waiting",
+            "running",
+            "completed",
+            "failed",
+            "stopped",
+            "skipped"
+          ]
+        },
+        "verdict": {
+          "enum": [
+            "unknown",
+            "success",
+            "failure"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "id",
+        "versionId",
+        "title",
+        "nativeId",
+        "status",
+        "verdict",
+        "message"
       ]
     }
   },
