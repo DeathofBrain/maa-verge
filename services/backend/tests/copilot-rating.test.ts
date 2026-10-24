@@ -23,7 +23,7 @@ async function fixture() {
   const directory = path.join(root, 'generation', 'resource', 'Arknights-Tile-Pos'); mkdirSync(directory, { recursive: true });
   writeFileSync(path.join(directory, 'overview.json'), JSON.stringify({ main: { stageId: 'main_01-07', code: '1-7', filename: 'map.json' } })); writeFileSync(path.join(directory, 'map.json'), '{}');
   const requests: { url: string; method: string; body?: any; headers?: HeadersInit }[] = [], ratings = new Map<string, number>();
-  const upstream = { fail: false, malformed: false, ignoreWrites: false, beforeGet: undefined as (() => Promise<void>) | undefined };
+  const upstream = { content, fail: false, malformed: false, ignoreWrites: false, beforeGet: undefined as (() => Promise<void>) | undefined };
   const http = (async (url: any, init?: RequestInit) => {
     const address = String(url), request = { url: address, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : undefined, headers: init?.headers }; requests.push(request);
     if (upstream.fail) throw new Error('合成社区离线');
@@ -31,7 +31,7 @@ async function fixture() {
     const id = /\/copilot\/get\/(\d+)$/.exec(address)?.[1];
     if (!id) throw new Error('测试禁止访问未知社区地址');
     await upstream.beforeGet?.();
-    return Response.json({ status_code: 200, data: { id: Number(id), content, uploader: '合成上传者', like: upstream.malformed ? '99%' : 12, dislike: 3, rating_type: ratings.get(id) ?? 0 } });
+    return Response.json({ status_code: 200, data: { id: Number(id), content: upstream.content, uploader: '合成上传者', like: upstream.malformed ? '99%' : 12, dislike: 3, rating_type: ratings.get(id) ?? 0 } });
   }) as typeof fetch;
   const worker = new Worker();
   const r = new Runtime(root, { copilotHttp: http, workerFactory: async () => worker, validator: async () => {}, adbExecutable: () => 'synthetic-adb', calendar: { fetcher: null } }); runtimes.push(r);
@@ -61,6 +61,19 @@ test('unimported preview supports real anonymous rating semantics and exact sour
   expect(posts().map(item => item.body)).toEqual([{ id: 123, rating: 'Like' }, { id: 123, rating: 'Dislike' }, { id: 123, rating: 'None' }]);
   expect(requests.every(item => !new Headers(item.headers).has('Authorization') && !new Headers(item.headers).has('X-Forwarded-For'))).toBe(true);
   expect(record.operators.map((item: any) => [item.name, item.group])).toEqual([['阿米娅', undefined], ['芬', '先锋任选'], ['香草', '先锋任选']]);
+});
+
+test('a newer unimported community preview remains rateable beside an older imported version', async () => {
+  const { r, preview, record, upstream, posts } = await fixture();
+  await r.handle('copilot.import', { previewId: preview.id });
+  upstream.content = JSON.stringify({ ...JSON.parse(content), doc: { title: '社区作业新版本' } });
+  const next = await r.handle('copilot.preview', { code: '123' }), latest = next.entries[0].record;
+  expect(latest.versionId).not.toBe(record.versionId);
+  const identity = { versionId: latest.versionId, recordId: latest.id };
+  expect((await r.handle('copilot.rating.get', identity)).rating).toBe('none');
+  expect((await r.handle('copilot.rating.set', { ...identity, rating: 'like' })).rating).toBe('like');
+  expect(posts().map(item => item.body)).toEqual([{ id: 123, rating: 'Like' }]);
+  expect(r.copilot.list().items.every(item => item.versionId === record.versionId)).toBe(true);
 });
 
 test('ratings reject arbitrary sources, local uploads, mismatched records and malformed real statistics', async () => {
