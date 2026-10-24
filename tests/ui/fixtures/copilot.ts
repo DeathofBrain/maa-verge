@@ -13,7 +13,7 @@ const clone = <T>(value: T): T => structuredClone(value);
 const now = () => new Date().toISOString();
 const kinds: CopilotKind[] = ['Copilot', 'SSSCopilot', 'ParadoxCopilot'];
 const defaultOptions = (): CopilotOptions => ({ loopTimes: 1, formation: false, formationIndex: 0, addTrust: false, ignoreRequirements: false, supportUnitName: '', additionalOperators: [] });
-const synthetic = (id: string) => ({ stage_name: 'main_01-07', minimum_required: 'v6.0.0', doc: { title: `合成社区作业 ${id}`, details: '仅供界面验证的本地夹具，不访问社区', author: '合成作者' }, opers: [{ name: '阿米娅', skill: 1 }], actions: [{ type: 'SpeedUp' }] });
+const synthetic = (id: string) => ({ stage_name: 'main_01-07', minimum_required: 'v6.0.0', doc: { title: `合成社区作业 ${id}`, details: '仅供界面验证的本地夹具，不访问社区', ...(id === '103' ? {} : { author: '合成作者' }) }, opers: [{ name: '阿米娅', skill: 1 }], actions: [{ type: 'SpeedUp' }] });
 
 export function createCopilotFixture(context: Context) {
   const storageKey = context.key + ':copilot';
@@ -28,7 +28,7 @@ export function createCopilotFixture(context: Context) {
     if (!json || typeof json !== 'object' || Array.isArray(json) || !Array.isArray(json.actions) && !Array.isArray(json.stages)) throw new Error('无法识别作业内容，需要 actions 或 stages');
     const kind: CopilotKind = json.type === 'SSS' || Array.isArray(json.stages) ? 'SSSCopilot' : json.type === 'Paradox' || /^mem_/u.test(json.stage_name || '') ? 'ParadoxCopilot' : 'Copilot';
     const versionId = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content)))].map(value => value.toString(16).padStart(2, '0')).join('');
-    return { id: source.communityId ? `community-${source.communityId}` : versionId, versionId, kind, title: json.doc?.title || name || json.stage_name || '未命名作业', stageName: json.stage_name || json.stage_name_override || '保全派驻', author: String(json.doc?.author || ''), description: String(json.doc?.details || ''), minimumCoreVersion: json.minimum_required || '', operators: json.opers || [], videos: [], source, createdAt: now(), compatibility: { status: 'ready', reasons: [] } };
+    return { id: source.communityId ? `community-${source.communityId}` : versionId, versionId, kind, title: json.doc?.title || name || json.stage_name || '未命名作业', stageName: json.stage_name || json.stage_name_override || '保全派驻', author: typeof json.author === 'string' ? json.author : typeof json.doc?.author === 'string' ? json.doc.author : '', ...(source.kind === 'community' ? { uploader: '合成上传者' } : {}), description: String(json.doc?.details || ''), minimumCoreVersion: json.minimum_required || '', operators: json.opers || [], videos: [], source, createdAt: now(), compatibility: { status: 'ready', reasons: [] } };
   }
   return async function copilotRpc(method: string, params: Record<string, any>): Promise<unknown> {
     const state = context.snapshot();
@@ -45,7 +45,10 @@ export function createCopilotFixture(context: Context) {
       case 'copilot.export': {
         const value = data.versions[params.versionId];
         if (!value) throw new Error('作业版本不存在');
-        return { filename: value.record.title + '.json', content: value.content };
+        const record = params.id ? data.items.find(item => item.id === params.id && item.versionId === params.versionId) : value.record;
+        if (!record) throw new Error('作业与版本不匹配');
+        const attribution = { formatVersion: 1, contentFile: record.title + '.json', versionId: record.versionId, title: record.title, author: record.author, ...(record.uploader !== undefined ? { uploader: record.uploader } : {}), source: record.source, licenseStatus: 'unverified', licenseNotice: '未发现已核实的统一内容许可；未声明的许可视为未知，不推定适用 Maa Verge 的 AGPL-3.0-only。具体版权与许可文字以原始 JSON（包括 doc.details）中的声明为准。此来源记录不代表已经获得转载或再分发许可。' };
+        return { filename: record.title + '.json', content: value.content, attribution: { filename: record.title + '.attribution.json', content: JSON.stringify(attribution, null, 2) + '\n' } };
       }
       case 'copilot.delete': data.items = data.items.filter(item => item.id !== params.id); persist(); context.emit('copilot.changed', '作业已从库中移除，已引用的版本保留'); return { deleted: true };
       case 'copilot.workspace.get': return workspace(params.kind);
@@ -58,7 +61,7 @@ export function createCopilotFixture(context: Context) {
       case 'copilot.search': {
         const page = Number(params.page || 1);
         const target = params.target === 'set' ? 'set' : 'copilot';
-        return { items: [{ id: target === 'set' ? '12' : String(page * 100 + 1), title: target === 'set' ? '合成有序作业集' : `合成社区作业 ${page}`, description: '此结果来自测试夹具', author: '合成作者', url: `https://prts.plus/${target === 'set' ? 'set' : 'copilot'}/${target === 'set' ? 12 : page * 100 + 1}`, kind: 'Copilot' }], page, hasNext: page < 2, total: 2 };
+        return { items: [{ id: target === 'set' ? '12' : String(page * 100 + 1), title: target === 'set' ? '合成有序作业集' : `合成社区作业 ${page}`, description: '此结果来自测试夹具', author: '', uploader: '合成上传者', url: `https://prts.plus/${target === 'set' ? 'set' : 'copilot'}/${target === 'set' ? 12 : page * 100 + 1}`, kind: 'Copilot' }], page, hasNext: page < 2, total: 2 };
       }
       case 'copilot.preview': {
         const preview: CopilotPreview = { id: crypto.randomUUID(), title: '导入预览', entries: [] };
