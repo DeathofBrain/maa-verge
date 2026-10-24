@@ -169,13 +169,22 @@ export function writeAria2Notices(output, { aria2Directory = path.dirname(aria2E
   return info;
 }
 
+export function writeApplicationNotices(output, { projectRoot = root } = {}) {
+  mkdirSync(output, { recursive: true });
+  for (const [source, target] of [
+    ['LICENSE', 'MAAVERGE-LICENSE'], ['NOTICE.md', 'NOTICE.md'],
+    ['docs/copilot-attribution.md', 'docs/copilot-attribution.md'], ['services/native/THIRD_PARTY_NOTICES.md', 'native-worker-notices.md'],
+    ['services/backend/UNICODE-LICENSE.txt', 'UNICODE-LICENSE.txt'], ['services/backend/BUN-LICENSE.md', 'BUN-LICENSE.md'],
+  ]) {
+    mkdirSync(path.dirname(path.join(output, target)), { recursive: true });
+    copyFileSync(path.join(projectRoot, source), path.join(output, target));
+  }
+}
+
 export function writeRuntimeNotices(destination, options = {}) {
   const projectRoot = options.projectRoot || root;
-  const output = path.join(destination, 'licenses'); mkdirSync(output, { recursive: true });
-  for (const [source, target] of [
-    ['LICENSE', 'MAAVERGE-LICENSE'], ['services/native/THIRD_PARTY_NOTICES.md', 'native-worker-notices.md'],
-    ['services/backend/UNICODE-LICENSE.txt', 'UNICODE-LICENSE.txt'], ['services/backend/BUN-LICENSE.md', 'BUN-LICENSE.md'],
-  ]) copyFileSync(path.join(projectRoot, source), path.join(output, target));
+  const output = path.join(destination, 'licenses');
+  writeApplicationNotices(output, { projectRoot });
   const javascript = writeJavaScriptNotices(output, { projectRoot });
   const rust = loadRustNoticeMetadata({ ...options, projectRoot });
   const crates = writeRustNotices(output, { ...rust, projectRoot });

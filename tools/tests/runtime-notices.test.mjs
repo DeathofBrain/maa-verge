@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { loadRustNoticeMetadata, writeAria2Notices, writeJavaScriptNotices, writeRustNotices } from '../runtime-notices.mjs';
+import { loadRustNoticeMetadata, writeApplicationNotices, writeAria2Notices, writeJavaScriptNotices, writeRustNotices } from '../runtime-notices.mjs';
 import { aria2Assets, aria2RecipeSha256 } from '../setup-aria2.mjs';
 
 function fixture(t) {
@@ -21,6 +21,20 @@ function write(file, text) {
 function json(file, value) {
   write(file, JSON.stringify(value));
 }
+
+test('bundles application and community notices and rejects missing source attribution', (t) => {
+  const projectRoot = fixture(t), output = path.join(projectRoot, 'output');
+  const files = [
+    ['LICENSE', 'MAAVERGE-LICENSE'], ['NOTICE.md', 'NOTICE.md'],
+    ['docs/copilot-attribution.md', 'docs/copilot-attribution.md'], ['services/native/THIRD_PARTY_NOTICES.md', 'native-worker-notices.md'],
+    ['services/backend/UNICODE-LICENSE.txt', 'UNICODE-LICENSE.txt'], ['services/backend/BUN-LICENSE.md', 'BUN-LICENSE.md'],
+  ];
+  for (const [source] of files) write(path.join(projectRoot, source), `original notice: ${source}`);
+  writeApplicationNotices(output, { projectRoot });
+  for (const [source, target] of files) assert.equal(readFileSync(path.join(output, target), 'utf8'), `original notice: ${source}`);
+  rmSync(path.join(projectRoot, 'NOTICE.md'));
+  assert.throws(() => writeApplicationNotices(output, { projectRoot }), /NOTICE\.md/);
+});
 
 test('carries verified bundled aria2 sources, licenses and build provenance into runtime notices', (t) => {
   const directory = fixture(t), aria2Directory = path.join(directory, 'tool'), output = path.join(directory, 'output');
