@@ -1,5 +1,25 @@
 # 工作树与分支整合记录
 
+## 全部当前工作树合入 dev（2026-10-24）
+
+基线为 `dev@6097295`，检查主目录及八个附加 worktree。主目录原有 60 个源码、测试与文档改动保存为 `d799f40`；另将三个脏来源的开发文件分别提交，保留来源分支、工作区及原有本地工具链接，不提交 `.tools`、`node_modules` 或 `.git-task-baseline`。
+
+| 来源分支 | 保存及整合证据 |
+| --- | --- |
+| `codex/copilot-center` | 原 HEAD `3c96a2b`，主目录改动保存为 `d799f40`，经 `0177742` 合入；解决 CopilotPage、SupportPages 与作业样式三处旧实现冲突，合并结果整树与 `d799f40` 相同 |
+| `codex/copilot-attribution` | `97e8810` 独有提交均补丁等价，经 `f5176ef` 记录关系 |
+| `codex/copilot-attribution-ui` | `24a3540` 独有提交均补丁等价，经 `4e3e44e` 记录关系 |
+| `codex/copilot-library` | `d35d197` 独有提交均补丁等价，经 `de9f6a3` 记录关系 |
+| `codex/copilot-runtime` | `9ea25b7` 工作区规范散列、旧请求去重兼容及两项回归已由 `d9e4fec` 覆盖；其余提交补丁等价，经 `0ffde9a` 记录关系 |
+| `codex/copilot-ui` | 原 HEAD `6d20eb3`，两个未提交文件保存为 `e30c9fe`；队列、历史、分页实现及回归已在主目录，主目录另有署名与错误提示改进，经 `b53d7a8` 记录关系 |
+| `codex/friendly-errors` | 25 个暂存文件保存为 `0beef8e`；20 文件与主目录完全相同，其余保留主目录后续作业、材料和检查入口改进，runtime 错误诊断补丁相同，经 `3d4d2ef` 记录关系 |
+| `codex/macos-bundle-signing` | `ef94caf` 的 12 个改动文件已在主目录；10 文件字节一致，STATUS 与 check 叠加其他任务，经 `dcb47bd` 记录关系 |
+| `codex/plugin-marketplace-research` | 原 HEAD `d9e4fec` 已在主目录祖先链，三文档保存为 `2c18328`；主目录已包含全部内容并更新为后续开发目标，经 `980cf13` 记录关系 |
+
+八个重复来源先核对补丁、文件内容及后续实现，再用 `ours` 记录合并关系；该阶段没有改写已整合的主目录文件树。四笔保存提交及全部九个 worktree 的 HEAD 均为 `dev` 祖先。按合并前清单复核八个来源的 3,306 个文件，SHA-256 全部不变，未发现新增或未提交源码。审计清单与验证日志保存在本机忽略目录 `.planning/2026-10-24-merge-all-worktrees/`。
+
+验证及集成修复见 [STATUS.md](STATUS.md) 的本轮整合记录；仅在本机 macOS arm64 使用隔离数据与合成夹具，不推送远端、不操作真实设备或发布。
+
 ## 全部工作树与用户 README 合入 dev（2026-10-23）
 
 基线为 `dev@8e7a71d`，检查主区及八个附加 worktree。主区 20 个改动路径先保存为 `86ac38d`，其完整文件树与原始 Git 快照 `710e2aa` 一致；保留用户对 README、skill 和设计说明删除的调整。三个脏来源的已跟踪及未跟踪文件均保存为独立快照提交，未改变原工作树索引或文件。快照清单位于本机 `.git/integration-snapshots/20261023-221300/manifest.json`，四份快照分支使用 `codex/pre-integration-20261023-221300-` 前缀，分别对应 `dev`、`app-release-source`、`app-update-ui` 和 `remove-github-packages`。
