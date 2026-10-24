@@ -462,9 +462,10 @@ export class CopilotLibrary {
     this.version(params.versionId);
     if (params.recordId) {
       let record = this.store.get<CopilotRecord | undefined>('copilot', params.recordId);
+      if (record?.versionId !== params.versionId) record = undefined;
       if (!record) for (const preview of this.previews.values()) {
         if (Date.now() - preview.createdAt > 3_600_000) continue;
-        record = preview.public.entries.find(entry => entry.record?.id === params.recordId)?.record ?? undefined;
+        record = preview.public.entries.find(entry => entry.record?.id === params.recordId && entry.record?.versionId === params.versionId)?.record ?? undefined;
         if (record) break;
       }
       if (!record || record.versionId !== params.versionId) return fail('作业来源已过期或与版本不匹配，请重新打开详情');
