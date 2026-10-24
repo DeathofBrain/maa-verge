@@ -230,6 +230,56 @@ describe('fixed-origin community adapter', () => {
     expect(store.get('copilot_set', '9').members).toHaveLength(4);
     expect(requests.every(url => url.startsWith('https://prts.maa.plus/'))).toBe(true);
   });
+  test('set members use at most eight requests while completion order cannot reorder duplicates', async () => {
+    const members = [3, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], pending: (() => void)[] = [];
+    let active = 0, peak = 0, started = 0, firstReady!: () => void, allReady!: () => void;
+    const firstBatch = new Promise<void>(resolve => { firstReady = resolve; }), allStarted = new Promise<void>(resolve => { allReady = resolve; });
+    const { library } = setup((async (url: any) => {
+      if (String(url).includes('/set/get')) return response({ name: '并发合成作业集', copilot_ids: members });
+      const id = Number(String(url).split('/').at(-1)); active++; peak = Math.max(peak, active); started++;
+      const result = new Promise<Response>(resolve => { pending.push(() => { active--; resolve(response({ available: true, content: ordinary({ doc: { title: `作业 ${id}` } }) })); }); });
+      if (started === 8) firstReady(); if (started === members.length) allReady(); return result;
+    }) as typeof fetch);
+    const result = library.preview({ code: 's1' }); await firstBatch;
+    expect(started).toBe(8); expect(active).toBe(8);
+    pending.splice(0).reverse().forEach(finish => finish()); await allStarted;
+    pending.splice(0).reverse().forEach(finish => finish());
+    const preview = await result;
+    expect(peak).toBe(8); expect(active).toBe(0);
+    expect(preview.entries.map(entry => entry.record?.title)).toEqual(members.map(id => `作业 ${id}`));
+    expect(preview.entries[0]!.id).not.toBe(preview.entries[2]!.id);
+  });
+  test('set preview includes detail lookup in its 90 second deadline and keeps queued timeout entries', async () => {
+    const originalNow = Date.now, timer = globalThis.setTimeout, clear = globalThis.clearTimeout;
+    const timers = new Map<number, { at: number; callback: () => void }>(), waits: { count: number; resolve: () => void }[] = [];
+    let clock = originalNow(), sequence = 0, started = 0, aborted = 0;
+    const beginning = clock;
+    const ready = (count: number) => started >= count ? Promise.resolve() : new Promise<void>(resolve => { waits.push({ count, resolve }); });
+    const { library } = setup((async (url: any, init?: RequestInit) => {
+      if (String(url).includes('/set/get')) { clock += 10_000; return response({ name: '超时合成作业集', copilot_ids: Array.from({ length: 100 }, (_, index) => index + 1) }); }
+      started++; for (const wait of waits) if (started >= wait.count) wait.resolve();
+      return new Promise<Response>((_resolve, reject) => { init?.signal?.addEventListener('abort', () => { aborted++; reject(new Error('aborted')); }, { once: true }); });
+    }) as typeof fetch);
+    try {
+      Date.now = () => clock;
+      globalThis.setTimeout = ((callback: (...arguments_: any[]) => void, milliseconds = 0, ...arguments_: any[]) => { const id = --sequence; timers.set(id, { at: clock + milliseconds, callback: () => callback(...arguments_) }); return id; }) as typeof setTimeout;
+      globalThis.clearTimeout = ((id: ReturnType<typeof setTimeout>) => { if (!timers.delete(Number(id))) clear(id); }) as typeof clearTimeout;
+      const result = library.preview({ code: 's1' }); await ready(8);
+      for (let wave = 1; wave <= 7; wave++) {
+        clock = Math.min(...[...timers.values()].map(entry => entry.at));
+        const due = [...timers.entries()].filter(([, entry]) => entry.at <= clock);
+        for (const [id, entry] of due) { timers.delete(id); entry.callback(); }
+        if (wave < 7) await ready((wave + 1) * 8);
+      }
+      const preview = await result;
+      expect(clock - beginning).toBe(90_000); expect(started).toBe(56); expect(aborted).toBe(56);
+      expect(preview.entries).toHaveLength(100); expect(new Set(preview.entries.map(entry => entry.id)).size).toBe(100);
+      expect(preview.entries.every(entry => entry.record === null && !!entry.error)).toBe(true);
+      expect(preview.entries[56]!.error).toContain('90 秒'); expect(preview.entries[99]!.error).toContain('#100');
+      expect(library.import({ previewId: preview.id })).toMatchObject({ items: [], errors: expect.any(Array) });
+      expect(timers.size).toBe(0);
+    } finally { Date.now = originalNow; globalThis.setTimeout = timer; globalThis.clearTimeout = clear; }
+  });
   test('HTTP, business status and malformed/large content never become importable entries', async () => {
     for (const reply of [new Response('bad', { status: 500 }), new Response('not JSON'), Response.json({ status_code: 403, message: 'denied' }), response({ content: 'invalid JSON' }), response({ content: 'x'.repeat(700001) })]) {
       const { library } = setup((async () => reply) as unknown as typeof fetch), preview = await library.preview({ code: '1' });
