@@ -2404,8 +2404,7 @@
         },
         "versionId": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "pattern": "^[a-f0-9]{64}$"
         },
         "kind": {
           "$ref": "#/$defs/CopilotKind"
@@ -2483,8 +2482,7 @@
         },
         "versionId": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "pattern": "^[a-f0-9]{64}$"
         },
         "enabled": {
           "type": "boolean"
@@ -2740,8 +2738,7 @@
         },
         "versionId": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "pattern": "^[a-f0-9]{64}$"
         }
       },
       "required": []
@@ -2752,8 +2749,7 @@
       "properties": {
         "versionId": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "pattern": "^[a-f0-9]{64}$"
         }
       },
       "required": [

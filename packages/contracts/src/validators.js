@@ -36,7 +36,7 @@ var require_ucs2length = __commonJS({
 
 // validators.generated.js
 var validateSnapshot = validate10;
-var schema11 = { "$schema": "http://json-schema.org/draft-07/schema#", "$id": "https://maaverge.local/contracts/runtime.schema.json", "$comment": "Authoritative runtime contract. Edit this source, then run pnpm contracts:generate. Defaults are applied by the application models, not validators.", "$defs": { "Budgets": { "additionalProperties": false, "properties": { "originium": { "default": 0, "maximum": 100, "minimum": 0, "title": "Originium", "type": "integer" }, "medicine": { "default": 0, "maximum": 100, "minimum": 0, "title": "Medicine", "type": "integer" }, "expedited": { "default": 0, "maximum": 100, "minimum": 0, "title": "Expedited", "type": "integer" } }, "required": ["originium", "medicine", "expedited"], "title": "Budgets", "type": "object" }, "CaptureSettings": { "type": "object", "additionalProperties": false, "properties": { "method": { "type": "string", "enum": ["adb", "mumu", "ldplayer"], "default": "adb" }, "autoDetect": { "type": "boolean", "description": "\u8FDE\u63A5\u65F6\u81EA\u52A8\u8BC6\u522B\u6A21\u62DF\u5668\u5E76\u914D\u7F6E\u589E\u5F3A\u622A\u56FE\uFF1B\u7701\u7565\u65F6 adb \u4E3A\u81EA\u52A8\uFF0C\u5DF2\u6709\u589E\u5F3A\u622A\u56FE\u4E3A\u624B\u52A8\u3002" }, "emulatorPath": { "type": "string", "maxLength": 4096, "default": "" }, "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 }, "mumuTouch": { "type": "boolean", "default": false }, "mumuBridge": { "type": "boolean", "default": false } }, "required": ["method", "emulatorPath", "instanceIndex"] }, "ConnectionSettings": { "type": "object", "additionalProperties": false, "properties": { "adbPath": { "type": "string", "maxLength": 4096, "default": "" }, "address": { "type": "string", "maxLength": 128, "default": "" }, "config": { "type": "string", "enum": ["General", "BlueStacks", "MuMuEmulator12", "MuMuArm", "LDPlayer", "Nox", "XYAZ", "Compatible", "SecondResolution", "CompatMac", "CompatPOSIXShell", "Waydroid", "AVD", "Androws", "WSA"], "default": "General" }, "touchMode": { "type": "string", "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"], "default": "maatouch" }, "adbLite": { "type": "boolean", "default": false }, "clientType": { "type": "string", "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"], "default": "Official" } }, "required": ["adbPath", "address", "config", "touchMode", "adbLite", "clientType"] }, "DeviceConnectionProfile": { "type": "object", "additionalProperties": false, "required": ["id", "name", "address", "connection", "capture"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[A-Za-z0-9_-]+$" }, "autoDetected": { "type": "boolean", "description": "\u7531\u8FD0\u884C\u4E2D\u7684\u6A21\u62DF\u5668\u81EA\u52A8\u53D1\u73B0\u521B\u5EFA\uFF1B\u7528\u6237\u7F16\u8F91\u4FDD\u5B58\u540E\u8F6C\u4E3A\u624B\u52A8\u7BA1\u7406\u3002" }, "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "address": { "type": "string", "minLength": 1, "maxLength": 128 }, "connection": { "$ref": "#/$defs/ConnectionSettings" }, "capture": { "$ref": "#/$defs/CaptureSettings" } } }, "Device": { "additionalProperties": false, "properties": { "connectionProfileId": { "type": "string", "maxLength": 80 }, "connectionError": { "type": "string", "maxLength": 4096 }, "id": { "title": "Id", "type": "string" }, "name": { "title": "Name", "type": "string" }, "address": { "title": "Address", "type": "string" }, "state": { "enum": ["idle", "running", "offline"], "title": "State", "type": "string" }, "coreVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Coreversion" }, "captureMethod": { "type": "string", "maxLength": 128 }, "dataSync": { "$ref": "#/$defs/UserDataSync" }, "resourceVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Resourceversion" } }, "required": ["id", "name", "address", "state", "coreVersion", "resourceVersion"], "title": "Device", "type": "object" }, "Event": { "additionalProperties": false, "properties": { "id": { "title": "Id", "type": "integer" }, "type": { "title": "Type", "type": "string" }, "message": { "title": "Message", "type": "string" }, "createdAt": { "title": "Createdat", "type": "string" }, "data": { "additionalProperties": true, "title": "Data", "type": "object" } }, "required": ["id", "type", "message", "createdAt", "data"], "title": "Event", "type": "object" }, "ModelSettings": { "additionalProperties": false, "properties": { "provider": { "default": "none", "title": "Provider", "type": "string" }, "baseUrl": { "default": "", "title": "Baseurl", "type": "string" }, "model": { "default": "", "title": "Model", "type": "string" } }, "required": ["provider", "baseUrl", "model"], "title": "ModelSettings", "type": "object" }, "Plan": { "additionalProperties": false, "properties": { "id": { "default": "", "title": "Id", "type": "string" }, "name": { "maxLength": 80, "minLength": 1, "title": "Name", "type": "string" }, "description": { "default": "", "maxLength": 500, "title": "Description", "type": "string" }, "deviceId": { "anyOf": [{ "maxLength": 200, "minLength": 1, "type": "string" }, { "type": "null" }], "default": null, "title": "Deviceid" }, "group": { "default": "daily", "enum": ["daily", "specialized"], "title": "Group", "type": "string" }, "budgets": { "anyOf": [{ "$ref": "#/$defs/Budgets" }, { "type": "null" }], "default": null }, "tasks": { "items": { "$ref": "#/$defs/Task" }, "maxItems": 30, "minItems": 1, "title": "Tasks", "type": "array" }, "schedule": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Schedule" }, "enabled": { "default": true, "title": "Enabled", "type": "boolean" } }, "required": ["id", "name", "description", "deviceId", "group", "budgets", "tasks", "schedule", "enabled"], "title": "Plan", "type": "object" }, "Run": { "additionalProperties": false, "properties": { "planName": { "type": "string", "maxLength": 80 }, "tasks": { "type": "array", "maxItems": 31, "items": { "$ref": "#/$defs/RunTask" } }, "id": { "title": "Id", "type": "string" }, "planId": { "title": "Planid", "type": ["string", "null"] }, "deviceId": { "title": "Deviceid", "type": "string" }, "status": { "enum": ["running", "completed", "failed", "stopped"], "title": "Status", "type": "string" }, "progress": { "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "title": "Message", "type": "string" }, "startedAt": { "title": "Startedat", "type": "string" }, "finishedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Finishedat" }, "scheduleId": { "type": "string", "minLength": 1, "maxLength": 200 }, "scheduledFor": { "type": "string", "minLength": 1, "maxLength": 80 }, "source": { "enum": ["plan", "copilot"] }, "sourceName": { "type": "string", "maxLength": 300 }, "copilotEntries": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/CopilotRunEntry" } } }, "required": ["id", "planId", "deviceId", "status", "progress", "message", "startedAt", "finishedAt"], "title": "Run", "type": "object" }, "RunTask": { "type": "object", "additionalProperties": false, "required": ["index", "type", "status", "message", "startedAt", "finishedAt", "drops", "infrastructure", "artifacts"], "properties": { "index": { "type": "integer", "minimum": 0, "maximum": 30 }, "type": { "type": "string", "maxLength": 80 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": ["string", "null"] }, "finishedAt": { "type": ["string", "null"] }, "drops": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/RunDrop" } }, "infrastructure": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/RunInfrastructure" } }, "artifacts": { "type": "array", "maxItems": 3, "items": { "$ref": "#/$defs/RunArtifact" } } } }, "RunDrop": { "type": "object", "additionalProperties": false, "required": ["itemId", "name", "quantity", "stage", "at"], "properties": { "itemId": { "type": "string", "minLength": 1, "maxLength": 200 }, "name": { "type": "string", "maxLength": 200 }, "quantity": { "type": "integer", "minimum": 0, "maximum": 2147483647 }, "stage": { "type": "string", "maxLength": 200 }, "at": { "type": "string" } } }, "RunInfrastructure": { "type": "object", "additionalProperties": false, "required": ["facility", "room", "operators", "product", "message", "at"], "properties": { "facility": { "type": "string", "maxLength": 80 }, "room": { "type": "integer", "minimum": 0, "maximum": 100 }, "operators": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 80 } }, "staffingStatus": { "description": "Latest staffing evidence; configured names are not an independently recognized final roster.", "enum": ["planned", "confirmed", "unavailable"] }, "product": { "type": "string", "maxLength": 200 }, "message": { "type": "string", "maxLength": 500 }, "at": { "type": "string" } } }, "RunArtifact": { "description": "Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.", "type": "object", "additionalProperties": false, "required": ["id", "kind", "label", "capturedAt", "width", "height"], "properties": { "id": { "type": "string", "pattern": "^[a-f0-9-]{36}$" }, "kind": { "const": "screenshot" }, "label": { "type": "string", "maxLength": 100 }, "capturedAt": { "type": "string" }, "width": { "type": "integer", "minimum": 1, "maximum": 8192 }, "height": { "type": "integer", "minimum": 1, "maximum": 8192 } } }, "InfrastructureLine": { "type": "object", "additionalProperties": false, "required": ["id", "name", "unit", "hourlyRate", "capacity", "lastCollectedAt"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 100 }, "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "unit": { "type": "string", "minLength": 1, "maxLength": 20 }, "hourlyRate": { "type": "number", "minimum": 0, "maximum": 1e9 }, "capacity": { "type": "number", "exclusiveMinimum": 0, "maximum": 1e9 }, "lastCollectedAt": { "type": "string", "minLength": 20, "maxLength": 40 } } }, "InfrastructureEstimateProfile": { "type": "object", "additionalProperties": false, "required": ["deviceId", "lines"], "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "lines": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/InfrastructureLine" } } } }, "ComponentPaths": { "description": "Absolute installation/download roots. An empty string restores the application default on settings.save.", "type": "object", "additionalProperties": false, "required": ["core", "resource"], "properties": { "core": { "type": "string", "maxLength": 4096 }, "resource": { "type": "string", "maxLength": 4096 } } }, "ComponentDownload": { "description": "Component download engine; defaults to bundled aria2. Empty aria2Path uses aria2c beside the packaged service, or checkout/.tools/aria2 in development; otherwise use an absolute executable path. Never searches PATH. Changes apply to subsequent downloads.", "type": "object", "additionalProperties": false, "required": ["engine", "aria2Path"], "properties": { "engine": { "type": "string", "enum": ["builtin", "aria2"] }, "aria2Path": { "type": "string", "maxLength": 4096 } } }, "ResourceActivityVersion": { "type": "object", "additionalProperties": false, "required": ["clientType", "name", "lastUpdated"], "properties": { "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "name": { "type": ["string", "null"], "maxLength": 300 }, "lastUpdated": { "type": ["string", "null"], "maxLength": 200 } } }, "Settings": { "additionalProperties": false, "properties": { "componentPaths": { "$ref": "#/$defs/ComponentPaths" }, "componentDownload": { "$ref": "#/$defs/ComponentDownload" }, "infrastructureEstimates": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/InfrastructureEstimateProfile" } }, "capture": { "$ref": "#/$defs/CaptureSettings" }, "connection": { "$ref": "#/$defs/ConnectionSettings" }, "deviceProfiles": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/DeviceConnectionProfile" } }, "logRetentionDays": { "type": "integer", "enum": [0, 7, 14, 30], "default": 7, "description": "Log retention in days; zero disables automatic cleanup." }, "autoConnect": { "default": true, "title": "Autoconnect", "type": "boolean" }, "autoUpdateApp": { "type": "boolean", "default": true, "description": "\u542F\u52A8\u65F6\u68C0\u67E5\u5E94\u7528\u66F4\u65B0\uFF1B\u4E0B\u8F7D\u548C\u5B89\u88C5\u59CB\u7EC8\u7531\u7528\u6237\u786E\u8BA4\u3002" }, "appUpdateChannel": { "type": "string", "enum": ["stable", "preview"], "default": "preview" }, "coreUpdateChannel": { "type": "string", "enum": ["stable", "preview"], "default": "stable" }, "autoUpdateCore": { "default": true, "title": "Autoupdatecore", "type": "boolean" }, "autoUpdateResource": { "default": true, "title": "Autoupdateresource", "type": "boolean" }, "minimizeToTray": { "default": true, "title": "Minimizetotray", "type": "boolean" }, "rememberCloseAction": { "type": "boolean", "default": false, "description": "\u8BB0\u4F4F minimizeToTray \u6307\u5B9A\u7684\u5173\u95ED\u65B9\u5F0F\uFF1B\u7F3A\u5931\u6216 false \u65F6\u6BCF\u6B21\u5173\u95ED\u7A97\u53E3\u5747\u8BE2\u95EE\u3002" }, "theme": { "default": "system", "enum": ["dark", "light", "system"], "title": "Theme", "type": "string" }, "budgets": { "$ref": "#/$defs/Budgets" }, "model": { "$ref": "#/$defs/ModelSettings" }, "scheduler": { "$ref": "#/$defs/SchedulerSettings" } }, "required": ["autoConnect", "autoUpdateCore", "autoUpdateResource", "minimizeToTray", "theme", "budgets", "model"], "title": "Settings", "type": "object" }, "UserDataSync": { "type": "object", "additionalProperties": false, "properties": { "operatorsAt": { "type": ["string", "null"], "maxLength": 64 }, "depotAt": { "type": ["string", "null"], "maxLength": 64 } }, "required": ["operatorsAt", "depotAt"] }, "Task": { "additionalProperties": false, "properties": { "type": { "enum": ["StartUp", "CloseDown", "Fight", "Recruit", "Infrast", "Mall", "Award", "SwitchTheme", "Roguelike", "Copilot", "SSSCopilot", "ParadoxCopilot", "Depot", "OperBox", "Reclamation", "Custom", "SingleStep", "VideoRecognition", "OperProgress", "UserDataUpdate"], "title": "Type", "type": "string" }, "params": { "additionalProperties": true, "title": "Params", "type": "object" }, "enabled": { "default": true, "title": "Enabled", "type": "boolean" } }, "required": ["type", "params", "enabled"], "title": "Task", "type": "object" }, "UpdateChannel": { "additionalProperties": false, "properties": { "checkedAt": { "type": "string", "maxLength": 64 }, "appCanInstall": { "type": "boolean", "description": "\u6B64\u5B89\u88C5\u5F62\u5F0F\u662F\u5426\u652F\u6301\u7B7E\u540D\u81EA\u52A8\u66F4\u65B0\u3002" }, "appRelease": { "type": "object", "additionalProperties": false, "required": ["url", "notes", "publishedAt", "prerelease"], "properties": { "url": { "type": "string", "maxLength": 2048 }, "notes": { "type": "string", "maxLength": 16384 }, "publishedAt": { "type": "string", "maxLength": 64 }, "prerelease": { "type": "boolean" } } }, "installDirectory": { "type": "string", "maxLength": 4096 }, "resourceActivities": { "type": "array", "maxItems": 6, "items": { "$ref": "#/$defs/ResourceActivityVersion" } }, "id": { "enum": ["app", "core", "resource"], "title": "Id", "type": "string" }, "currentVersion": { "title": "Currentversion", "type": "string" }, "latestVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Latestversion" }, "status": { "default": "idle", "enum": ["idle", "checking", "available", "downloading", "staged", "waiting_idle", "active", "failed"], "title": "Status", "type": "string" }, "progress": { "default": 0, "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "default": "", "title": "Message", "type": "string" } }, "required": ["id", "currentVersion", "latestVersion", "status", "progress", "message"], "title": "UpdateChannel", "type": "object" }, "SchedulerSettings": { "type": "object", "additionalProperties": false, "properties": { "forceScheduledStart": { "type": "boolean" }, "showWindowBeforeForceScheduledStart": { "type": "boolean" }, "notifyBeforeScheduledStart": { "type": "boolean" }, "notificationMinutes": { "type": "integer", "minimum": 1, "maximum": 1439 }, "scheduledWakeUp": { "type": "boolean" } }, "required": ["forceScheduledStart", "showWindowBeforeForceScheduledStart", "notifyBeforeScheduledStart", "notificationMinutes", "scheduledWakeUp"] }, "ToolJobSummary": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "kind": { "enum": ["depot", "operators", "recruit", "inventory", "data", "games"] }, "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "status": { "enum": ["running", "completed", "failed", "stopped"] }, "progress": { "type": "integer", "minimum": 0, "maximum": 100 }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": "string", "minLength": 1, "maxLength": 40 }, "finishedAt": { "type": ["string", "null"] } }, "required": ["id", "kind", "deviceId", "clientType", "status", "progress", "message", "startedAt", "finishedAt"] }, "CopilotRunEntry": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "versionId": { "type": "string", "minLength": 1, "maxLength": 200 }, "title": { "type": "string", "maxLength": 300 }, "nativeId": { "type": "integer", "minimum": 1, "maximum": 100 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "verdict": { "enum": ["unknown", "success", "failure"] }, "message": { "type": "string", "maxLength": 1e3 } }, "required": ["id", "versionId", "title", "nativeId", "status", "verdict", "message"] } }, "additionalProperties": false, "properties": { "mode": { "enum": ["native"], "title": "Mode", "type": "string" }, "devices": { "items": { "$ref": "#/$defs/Device" }, "title": "Devices", "type": "array" }, "plans": { "items": { "$ref": "#/$defs/Plan" }, "title": "Plans", "type": "array" }, "runs": { "items": { "$ref": "#/$defs/Run" }, "title": "Runs", "type": "array" }, "updates": { "items": { "$ref": "#/$defs/UpdateChannel" }, "title": "Updates", "type": "array" }, "settings": { "$ref": "#/$defs/Settings" }, "events": { "items": { "$ref": "#/$defs/Event" }, "title": "Events", "type": "array" }, "toolJobs": { "type": "array", "items": { "$ref": "#/$defs/ToolJobSummary" } } }, "required": ["mode", "devices", "plans", "runs", "updates", "settings", "events"], "title": "Snapshot", "type": "object" };
+var schema11 = { "$schema": "http://json-schema.org/draft-07/schema#", "$id": "https://maaverge.local/contracts/runtime.schema.json", "$comment": "Authoritative runtime contract. Edit this source, then run pnpm contracts:generate. Defaults are applied by the application models, not validators.", "$defs": { "Budgets": { "additionalProperties": false, "properties": { "originium": { "default": 0, "maximum": 100, "minimum": 0, "title": "Originium", "type": "integer" }, "medicine": { "default": 0, "maximum": 100, "minimum": 0, "title": "Medicine", "type": "integer" }, "expedited": { "default": 0, "maximum": 100, "minimum": 0, "title": "Expedited", "type": "integer" } }, "required": ["originium", "medicine", "expedited"], "title": "Budgets", "type": "object" }, "CaptureSettings": { "type": "object", "additionalProperties": false, "properties": { "method": { "type": "string", "enum": ["adb", "mumu", "ldplayer"], "default": "adb" }, "autoDetect": { "type": "boolean", "description": "\u8FDE\u63A5\u65F6\u81EA\u52A8\u8BC6\u522B\u6A21\u62DF\u5668\u5E76\u914D\u7F6E\u589E\u5F3A\u622A\u56FE\uFF1B\u7701\u7565\u65F6 adb \u4E3A\u81EA\u52A8\uFF0C\u5DF2\u6709\u589E\u5F3A\u622A\u56FE\u4E3A\u624B\u52A8\u3002" }, "emulatorPath": { "type": "string", "maxLength": 4096, "default": "" }, "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 }, "mumuTouch": { "type": "boolean", "default": false }, "mumuBridge": { "type": "boolean", "default": false } }, "required": ["method", "emulatorPath", "instanceIndex"] }, "ConnectionSettings": { "type": "object", "additionalProperties": false, "properties": { "adbPath": { "type": "string", "maxLength": 4096, "default": "" }, "address": { "type": "string", "maxLength": 128, "default": "" }, "config": { "type": "string", "enum": ["General", "BlueStacks", "MuMuEmulator12", "MuMuArm", "LDPlayer", "Nox", "XYAZ", "Compatible", "SecondResolution", "CompatMac", "CompatPOSIXShell", "Waydroid", "AVD", "Androws", "WSA"], "default": "General" }, "touchMode": { "type": "string", "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"], "default": "maatouch" }, "adbLite": { "type": "boolean", "default": false }, "clientType": { "type": "string", "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"], "default": "Official" } }, "required": ["adbPath", "address", "config", "touchMode", "adbLite", "clientType"] }, "DeviceConnectionProfile": { "type": "object", "additionalProperties": false, "required": ["id", "name", "address", "connection", "capture"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[A-Za-z0-9_-]+$" }, "autoDetected": { "type": "boolean", "description": "\u7531\u8FD0\u884C\u4E2D\u7684\u6A21\u62DF\u5668\u81EA\u52A8\u53D1\u73B0\u521B\u5EFA\uFF1B\u7528\u6237\u7F16\u8F91\u4FDD\u5B58\u540E\u8F6C\u4E3A\u624B\u52A8\u7BA1\u7406\u3002" }, "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "address": { "type": "string", "minLength": 1, "maxLength": 128 }, "connection": { "$ref": "#/$defs/ConnectionSettings" }, "capture": { "$ref": "#/$defs/CaptureSettings" } } }, "Device": { "additionalProperties": false, "properties": { "connectionProfileId": { "type": "string", "maxLength": 80 }, "connectionError": { "type": "string", "maxLength": 4096 }, "id": { "title": "Id", "type": "string" }, "name": { "title": "Name", "type": "string" }, "address": { "title": "Address", "type": "string" }, "state": { "enum": ["idle", "running", "offline"], "title": "State", "type": "string" }, "coreVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Coreversion" }, "captureMethod": { "type": "string", "maxLength": 128 }, "dataSync": { "$ref": "#/$defs/UserDataSync" }, "resourceVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Resourceversion" } }, "required": ["id", "name", "address", "state", "coreVersion", "resourceVersion"], "title": "Device", "type": "object" }, "Event": { "additionalProperties": false, "properties": { "id": { "title": "Id", "type": "integer" }, "type": { "title": "Type", "type": "string" }, "message": { "title": "Message", "type": "string" }, "createdAt": { "title": "Createdat", "type": "string" }, "data": { "additionalProperties": true, "title": "Data", "type": "object" } }, "required": ["id", "type", "message", "createdAt", "data"], "title": "Event", "type": "object" }, "ModelSettings": { "additionalProperties": false, "properties": { "provider": { "default": "none", "title": "Provider", "type": "string" }, "baseUrl": { "default": "", "title": "Baseurl", "type": "string" }, "model": { "default": "", "title": "Model", "type": "string" } }, "required": ["provider", "baseUrl", "model"], "title": "ModelSettings", "type": "object" }, "Plan": { "additionalProperties": false, "properties": { "id": { "default": "", "title": "Id", "type": "string" }, "name": { "maxLength": 80, "minLength": 1, "title": "Name", "type": "string" }, "description": { "default": "", "maxLength": 500, "title": "Description", "type": "string" }, "deviceId": { "anyOf": [{ "maxLength": 200, "minLength": 1, "type": "string" }, { "type": "null" }], "default": null, "title": "Deviceid" }, "group": { "default": "daily", "enum": ["daily", "specialized"], "title": "Group", "type": "string" }, "budgets": { "anyOf": [{ "$ref": "#/$defs/Budgets" }, { "type": "null" }], "default": null }, "tasks": { "items": { "$ref": "#/$defs/Task" }, "maxItems": 30, "minItems": 1, "title": "Tasks", "type": "array" }, "schedule": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Schedule" }, "enabled": { "default": true, "title": "Enabled", "type": "boolean" } }, "required": ["id", "name", "description", "deviceId", "group", "budgets", "tasks", "schedule", "enabled"], "title": "Plan", "type": "object" }, "Run": { "additionalProperties": false, "properties": { "planName": { "type": "string", "maxLength": 80 }, "tasks": { "type": "array", "maxItems": 31, "items": { "$ref": "#/$defs/RunTask" } }, "id": { "title": "Id", "type": "string" }, "planId": { "title": "Planid", "type": ["string", "null"] }, "deviceId": { "title": "Deviceid", "type": "string" }, "status": { "enum": ["running", "completed", "failed", "stopped"], "title": "Status", "type": "string" }, "progress": { "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "title": "Message", "type": "string" }, "startedAt": { "title": "Startedat", "type": "string" }, "finishedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Finishedat" }, "scheduleId": { "type": "string", "minLength": 1, "maxLength": 200 }, "scheduledFor": { "type": "string", "minLength": 1, "maxLength": 80 }, "source": { "enum": ["plan", "copilot"] }, "sourceName": { "type": "string", "maxLength": 300 }, "copilotEntries": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/CopilotRunEntry" } }, "copilotKind": { "enum": ["Copilot", "SSSCopilot", "ParadoxCopilot"] } }, "required": ["id", "planId", "deviceId", "status", "progress", "message", "startedAt", "finishedAt"], "title": "Run", "type": "object" }, "RunTask": { "type": "object", "additionalProperties": false, "required": ["index", "type", "status", "message", "startedAt", "finishedAt", "drops", "infrastructure", "artifacts"], "properties": { "index": { "type": "integer", "minimum": 0, "maximum": 30 }, "type": { "type": "string", "maxLength": 80 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": ["string", "null"] }, "finishedAt": { "type": ["string", "null"] }, "drops": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/RunDrop" } }, "infrastructure": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/RunInfrastructure" } }, "artifacts": { "type": "array", "maxItems": 3, "items": { "$ref": "#/$defs/RunArtifact" } } } }, "RunDrop": { "type": "object", "additionalProperties": false, "required": ["itemId", "name", "quantity", "stage", "at"], "properties": { "itemId": { "type": "string", "minLength": 1, "maxLength": 200 }, "name": { "type": "string", "maxLength": 200 }, "quantity": { "type": "integer", "minimum": 0, "maximum": 2147483647 }, "stage": { "type": "string", "maxLength": 200 }, "at": { "type": "string" } } }, "RunInfrastructure": { "type": "object", "additionalProperties": false, "required": ["facility", "room", "operators", "product", "message", "at"], "properties": { "facility": { "type": "string", "maxLength": 80 }, "room": { "type": "integer", "minimum": 0, "maximum": 100 }, "operators": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 80 } }, "staffingStatus": { "description": "Latest staffing evidence; configured names are not an independently recognized final roster.", "enum": ["planned", "confirmed", "unavailable"] }, "product": { "type": "string", "maxLength": 200 }, "message": { "type": "string", "maxLength": 500 }, "at": { "type": "string" } } }, "RunArtifact": { "description": "Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.", "type": "object", "additionalProperties": false, "required": ["id", "kind", "label", "capturedAt", "width", "height"], "properties": { "id": { "type": "string", "pattern": "^[a-f0-9-]{36}$" }, "kind": { "const": "screenshot" }, "label": { "type": "string", "maxLength": 100 }, "capturedAt": { "type": "string" }, "width": { "type": "integer", "minimum": 1, "maximum": 8192 }, "height": { "type": "integer", "minimum": 1, "maximum": 8192 } } }, "InfrastructureLine": { "type": "object", "additionalProperties": false, "required": ["id", "name", "unit", "hourlyRate", "capacity", "lastCollectedAt"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 100 }, "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "unit": { "type": "string", "minLength": 1, "maxLength": 20 }, "hourlyRate": { "type": "number", "minimum": 0, "maximum": 1e9 }, "capacity": { "type": "number", "exclusiveMinimum": 0, "maximum": 1e9 }, "lastCollectedAt": { "type": "string", "minLength": 20, "maxLength": 40 } } }, "InfrastructureEstimateProfile": { "type": "object", "additionalProperties": false, "required": ["deviceId", "lines"], "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "lines": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/InfrastructureLine" } } } }, "ComponentPaths": { "description": "Absolute installation/download roots. An empty string restores the application default on settings.save.", "type": "object", "additionalProperties": false, "required": ["core", "resource"], "properties": { "core": { "type": "string", "maxLength": 4096 }, "resource": { "type": "string", "maxLength": 4096 } } }, "ComponentDownload": { "description": "Component download engine; defaults to bundled aria2. Empty aria2Path uses aria2c beside the packaged service, or checkout/.tools/aria2 in development; otherwise use an absolute executable path. Never searches PATH. Changes apply to subsequent downloads.", "type": "object", "additionalProperties": false, "required": ["engine", "aria2Path"], "properties": { "engine": { "type": "string", "enum": ["builtin", "aria2"] }, "aria2Path": { "type": "string", "maxLength": 4096 } } }, "ResourceActivityVersion": { "type": "object", "additionalProperties": false, "required": ["clientType", "name", "lastUpdated"], "properties": { "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "name": { "type": ["string", "null"], "maxLength": 300 }, "lastUpdated": { "type": ["string", "null"], "maxLength": 200 } } }, "Settings": { "additionalProperties": false, "properties": { "componentPaths": { "$ref": "#/$defs/ComponentPaths" }, "componentDownload": { "$ref": "#/$defs/ComponentDownload" }, "infrastructureEstimates": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/InfrastructureEstimateProfile" } }, "capture": { "$ref": "#/$defs/CaptureSettings" }, "connection": { "$ref": "#/$defs/ConnectionSettings" }, "deviceProfiles": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/DeviceConnectionProfile" } }, "logRetentionDays": { "type": "integer", "enum": [0, 7, 14, 30], "default": 7, "description": "Log retention in days; zero disables automatic cleanup." }, "autoConnect": { "default": true, "title": "Autoconnect", "type": "boolean" }, "autoUpdateApp": { "type": "boolean", "default": true, "description": "\u542F\u52A8\u65F6\u68C0\u67E5\u5E94\u7528\u66F4\u65B0\uFF1B\u4E0B\u8F7D\u548C\u5B89\u88C5\u59CB\u7EC8\u7531\u7528\u6237\u786E\u8BA4\u3002" }, "appUpdateChannel": { "type": "string", "enum": ["stable", "preview"], "default": "preview" }, "coreUpdateChannel": { "type": "string", "enum": ["stable", "preview"], "default": "stable" }, "autoUpdateCore": { "default": true, "title": "Autoupdatecore", "type": "boolean" }, "autoUpdateResource": { "default": true, "title": "Autoupdateresource", "type": "boolean" }, "minimizeToTray": { "default": true, "title": "Minimizetotray", "type": "boolean" }, "rememberCloseAction": { "type": "boolean", "default": false, "description": "\u8BB0\u4F4F minimizeToTray \u6307\u5B9A\u7684\u5173\u95ED\u65B9\u5F0F\uFF1B\u7F3A\u5931\u6216 false \u65F6\u6BCF\u6B21\u5173\u95ED\u7A97\u53E3\u5747\u8BE2\u95EE\u3002" }, "theme": { "default": "system", "enum": ["dark", "light", "system"], "title": "Theme", "type": "string" }, "budgets": { "$ref": "#/$defs/Budgets" }, "model": { "$ref": "#/$defs/ModelSettings" }, "scheduler": { "$ref": "#/$defs/SchedulerSettings" } }, "required": ["autoConnect", "autoUpdateCore", "autoUpdateResource", "minimizeToTray", "theme", "budgets", "model"], "title": "Settings", "type": "object" }, "UserDataSync": { "type": "object", "additionalProperties": false, "properties": { "operatorsAt": { "type": ["string", "null"], "maxLength": 64 }, "depotAt": { "type": ["string", "null"], "maxLength": 64 } }, "required": ["operatorsAt", "depotAt"] }, "Task": { "additionalProperties": false, "properties": { "type": { "enum": ["StartUp", "CloseDown", "Fight", "Recruit", "Infrast", "Mall", "Award", "SwitchTheme", "Roguelike", "Copilot", "SSSCopilot", "ParadoxCopilot", "Depot", "OperBox", "Reclamation", "Custom", "SingleStep", "VideoRecognition", "OperProgress", "UserDataUpdate"], "title": "Type", "type": "string" }, "params": { "additionalProperties": true, "title": "Params", "type": "object" }, "enabled": { "default": true, "title": "Enabled", "type": "boolean" } }, "required": ["type", "params", "enabled"], "title": "Task", "type": "object" }, "UpdateChannel": { "additionalProperties": false, "properties": { "checkedAt": { "type": "string", "maxLength": 64 }, "appCanInstall": { "type": "boolean", "description": "\u6B64\u5B89\u88C5\u5F62\u5F0F\u662F\u5426\u652F\u6301\u7B7E\u540D\u81EA\u52A8\u66F4\u65B0\u3002" }, "appRelease": { "type": "object", "additionalProperties": false, "required": ["url", "notes", "publishedAt", "prerelease"], "properties": { "url": { "type": "string", "maxLength": 2048 }, "notes": { "type": "string", "maxLength": 16384 }, "publishedAt": { "type": "string", "maxLength": 64 }, "prerelease": { "type": "boolean" } } }, "installDirectory": { "type": "string", "maxLength": 4096 }, "resourceActivities": { "type": "array", "maxItems": 6, "items": { "$ref": "#/$defs/ResourceActivityVersion" } }, "id": { "enum": ["app", "core", "resource"], "title": "Id", "type": "string" }, "currentVersion": { "title": "Currentversion", "type": "string" }, "latestVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Latestversion" }, "status": { "default": "idle", "enum": ["idle", "checking", "available", "downloading", "staged", "waiting_idle", "active", "failed"], "title": "Status", "type": "string" }, "progress": { "default": 0, "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "default": "", "title": "Message", "type": "string" } }, "required": ["id", "currentVersion", "latestVersion", "status", "progress", "message"], "title": "UpdateChannel", "type": "object" }, "SchedulerSettings": { "type": "object", "additionalProperties": false, "properties": { "forceScheduledStart": { "type": "boolean" }, "showWindowBeforeForceScheduledStart": { "type": "boolean" }, "notifyBeforeScheduledStart": { "type": "boolean" }, "notificationMinutes": { "type": "integer", "minimum": 1, "maximum": 1439 }, "scheduledWakeUp": { "type": "boolean" } }, "required": ["forceScheduledStart", "showWindowBeforeForceScheduledStart", "notifyBeforeScheduledStart", "notificationMinutes", "scheduledWakeUp"] }, "ToolJobSummary": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "kind": { "enum": ["depot", "operators", "recruit", "inventory", "data", "games"] }, "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "status": { "enum": ["running", "completed", "failed", "stopped"] }, "progress": { "type": "integer", "minimum": 0, "maximum": 100 }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": "string", "minLength": 1, "maxLength": 40 }, "finishedAt": { "type": ["string", "null"] } }, "required": ["id", "kind", "deviceId", "clientType", "status", "progress", "message", "startedAt", "finishedAt"] }, "CopilotRunEntry": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "versionId": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "title": { "type": "string", "maxLength": 300 }, "nativeId": { "type": "integer", "minimum": 1, "maximum": 100 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "verdict": { "enum": ["unknown", "success", "failure"] }, "message": { "type": "string", "maxLength": 1e3 } }, "required": ["id", "versionId", "title", "nativeId", "status", "verdict", "message"] } }, "additionalProperties": false, "properties": { "mode": { "enum": ["native"], "title": "Mode", "type": "string" }, "devices": { "items": { "$ref": "#/$defs/Device" }, "title": "Devices", "type": "array" }, "plans": { "items": { "$ref": "#/$defs/Plan" }, "title": "Plans", "type": "array" }, "runs": { "items": { "$ref": "#/$defs/Run" }, "title": "Runs", "type": "array" }, "updates": { "items": { "$ref": "#/$defs/UpdateChannel" }, "title": "Updates", "type": "array" }, "settings": { "$ref": "#/$defs/Settings" }, "events": { "items": { "$ref": "#/$defs/Event" }, "title": "Events", "type": "array" }, "toolJobs": { "type": "array", "items": { "$ref": "#/$defs/ToolJobSummary" } } }, "required": ["mode", "devices", "plans", "runs", "updates", "settings", "events"], "title": "Snapshot", "type": "object" };
 var schema39 = { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "kind": { "enum": ["depot", "operators", "recruit", "inventory", "data", "games"] }, "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "status": { "enum": ["running", "completed", "failed", "stopped"] }, "progress": { "type": "integer", "minimum": 0, "maximum": 100 }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": "string", "minLength": 1, "maxLength": 40 }, "finishedAt": { "type": ["string", "null"] } }, "required": ["id", "kind", "deviceId", "clientType", "status", "progress", "message", "startedAt", "finishedAt"] };
 var schema12 = { "additionalProperties": false, "properties": { "connectionProfileId": { "type": "string", "maxLength": 80 }, "connectionError": { "type": "string", "maxLength": 4096 }, "id": { "title": "Id", "type": "string" }, "name": { "title": "Name", "type": "string" }, "address": { "title": "Address", "type": "string" }, "state": { "enum": ["idle", "running", "offline"], "title": "State", "type": "string" }, "coreVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Coreversion" }, "captureMethod": { "type": "string", "maxLength": 128 }, "dataSync": { "$ref": "#/$defs/UserDataSync" }, "resourceVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Resourceversion" } }, "required": ["id", "name", "address", "state", "coreVersion", "resourceVersion"], "title": "Device", "type": "object" };
 var schema13 = { "type": "object", "additionalProperties": false, "properties": { "operatorsAt": { "type": ["string", "null"], "maxLength": 64 }, "depotAt": { "type": ["string", "null"], "maxLength": 64 } }, "required": ["operatorsAt", "depotAt"] };
@@ -1064,8 +1064,8 @@ function validate13(data, { instancePath = "", parentData, parentDataProperty, r
   validate13.errors = vErrors;
   return errors === 0;
 }
-var schema17 = { "additionalProperties": false, "properties": { "planName": { "type": "string", "maxLength": 80 }, "tasks": { "type": "array", "maxItems": 31, "items": { "$ref": "#/$defs/RunTask" } }, "id": { "title": "Id", "type": "string" }, "planId": { "title": "Planid", "type": ["string", "null"] }, "deviceId": { "title": "Deviceid", "type": "string" }, "status": { "enum": ["running", "completed", "failed", "stopped"], "title": "Status", "type": "string" }, "progress": { "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "title": "Message", "type": "string" }, "startedAt": { "title": "Startedat", "type": "string" }, "finishedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Finishedat" }, "scheduleId": { "type": "string", "minLength": 1, "maxLength": 200 }, "scheduledFor": { "type": "string", "minLength": 1, "maxLength": 80 }, "source": { "enum": ["plan", "copilot"] }, "sourceName": { "type": "string", "maxLength": 300 }, "copilotEntries": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/CopilotRunEntry" } } }, "required": ["id", "planId", "deviceId", "status", "progress", "message", "startedAt", "finishedAt"], "title": "Run", "type": "object" };
-var schema22 = { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "versionId": { "type": "string", "minLength": 1, "maxLength": 200 }, "title": { "type": "string", "maxLength": 300 }, "nativeId": { "type": "integer", "minimum": 1, "maximum": 100 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "verdict": { "enum": ["unknown", "success", "failure"] }, "message": { "type": "string", "maxLength": 1e3 } }, "required": ["id", "versionId", "title", "nativeId", "status", "verdict", "message"] };
+var schema17 = { "additionalProperties": false, "properties": { "planName": { "type": "string", "maxLength": 80 }, "tasks": { "type": "array", "maxItems": 31, "items": { "$ref": "#/$defs/RunTask" } }, "id": { "title": "Id", "type": "string" }, "planId": { "title": "Planid", "type": ["string", "null"] }, "deviceId": { "title": "Deviceid", "type": "string" }, "status": { "enum": ["running", "completed", "failed", "stopped"], "title": "Status", "type": "string" }, "progress": { "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "title": "Message", "type": "string" }, "startedAt": { "title": "Startedat", "type": "string" }, "finishedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Finishedat" }, "scheduleId": { "type": "string", "minLength": 1, "maxLength": 200 }, "scheduledFor": { "type": "string", "minLength": 1, "maxLength": 80 }, "source": { "enum": ["plan", "copilot"] }, "sourceName": { "type": "string", "maxLength": 300 }, "copilotEntries": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/CopilotRunEntry" } }, "copilotKind": { "enum": ["Copilot", "SSSCopilot", "ParadoxCopilot"] } }, "required": ["id", "planId", "deviceId", "status", "progress", "message", "startedAt", "finishedAt"], "title": "Run", "type": "object" };
+var schema22 = { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "versionId": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "title": { "type": "string", "maxLength": 300 }, "nativeId": { "type": "integer", "minimum": 1, "maximum": 100 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "verdict": { "enum": ["unknown", "success", "failure"] }, "message": { "type": "string", "maxLength": 1e3 } }, "required": ["id", "versionId", "title", "nativeId", "status", "verdict", "message"] };
 var schema18 = { "type": "object", "additionalProperties": false, "required": ["index", "type", "status", "message", "startedAt", "finishedAt", "drops", "infrastructure", "artifacts"], "properties": { "index": { "type": "integer", "minimum": 0, "maximum": 30 }, "type": { "type": "string", "maxLength": 80 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": ["string", "null"] }, "finishedAt": { "type": ["string", "null"] }, "drops": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/RunDrop" } }, "infrastructure": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/RunInfrastructure" } }, "artifacts": { "type": "array", "maxItems": 3, "items": { "$ref": "#/$defs/RunArtifact" } } } };
 var schema20 = { "type": "object", "additionalProperties": false, "required": ["facility", "room", "operators", "product", "message", "at"], "properties": { "facility": { "type": "string", "maxLength": 80 }, "room": { "type": "integer", "minimum": 0, "maximum": 100 }, "operators": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 80 } }, "staffingStatus": { "description": "Latest staffing evidence; configured names are not an independently recognized final roster.", "enum": ["planned", "confirmed", "unavailable"] }, "product": { "type": "string", "maxLength": 200 }, "message": { "type": "string", "maxLength": 500 }, "at": { "type": "string" } } };
 var pattern0 = new RegExp("^[a-f0-9-]{36}$", "u");
@@ -1997,6 +1997,7 @@ function validate16(data, { instancePath = "", parentData, parentDataProperty, r
   validate16.errors = vErrors;
   return errors === 0;
 }
+var pattern1 = new RegExp("^[a-f0-9]{64}$", "u");
 function validate15(data, { instancePath = "", parentData, parentDataProperty, rootData = data } = {}) {
   let vErrors = null;
   let errors = 0;
@@ -2513,8 +2514,8 @@ function validate15(data, { instancePath = "", parentData, parentDataProperty, r
             if (data16.versionId !== void 0) {
               let data18 = data16.versionId;
               if (typeof data18 === "string") {
-                if (func3(data18) > 200) {
-                  const err47 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/versionId", schemaPath: "#/$defs/CopilotRunEntry/properties/versionId/maxLength", keyword: "maxLength", params: { limit: 200 }, message: "must NOT have more than 200 characters" };
+                if (!pattern1.test(data18)) {
+                  const err47 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/versionId", schemaPath: "#/$defs/CopilotRunEntry/properties/versionId/pattern", keyword: "pattern", params: { pattern: "^[a-f0-9]{64}$" }, message: 'must match pattern "^[a-f0-9]{64}$"' };
                   if (vErrors === null) {
                     vErrors = [err47];
                   } else {
@@ -2522,21 +2523,12 @@ function validate15(data, { instancePath = "", parentData, parentDataProperty, r
                   }
                   errors++;
                 }
-                if (func3(data18) < 1) {
-                  const err48 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/versionId", schemaPath: "#/$defs/CopilotRunEntry/properties/versionId/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-                  if (vErrors === null) {
-                    vErrors = [err48];
-                  } else {
-                    vErrors.push(err48);
-                  }
-                  errors++;
-                }
               } else {
-                const err49 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/versionId", schemaPath: "#/$defs/CopilotRunEntry/properties/versionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                const err48 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/versionId", schemaPath: "#/$defs/CopilotRunEntry/properties/versionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                 if (vErrors === null) {
-                  vErrors = [err49];
+                  vErrors = [err48];
                 } else {
-                  vErrors.push(err49);
+                  vErrors.push(err48);
                 }
                 errors++;
               }
@@ -2545,20 +2537,20 @@ function validate15(data, { instancePath = "", parentData, parentDataProperty, r
               let data19 = data16.title;
               if (typeof data19 === "string") {
                 if (func3(data19) > 300) {
-                  const err50 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/title", schemaPath: "#/$defs/CopilotRunEntry/properties/title/maxLength", keyword: "maxLength", params: { limit: 300 }, message: "must NOT have more than 300 characters" };
+                  const err49 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/title", schemaPath: "#/$defs/CopilotRunEntry/properties/title/maxLength", keyword: "maxLength", params: { limit: 300 }, message: "must NOT have more than 300 characters" };
                   if (vErrors === null) {
-                    vErrors = [err50];
+                    vErrors = [err49];
                   } else {
-                    vErrors.push(err50);
+                    vErrors.push(err49);
                   }
                   errors++;
                 }
               } else {
-                const err51 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/title", schemaPath: "#/$defs/CopilotRunEntry/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                const err50 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/title", schemaPath: "#/$defs/CopilotRunEntry/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                 if (vErrors === null) {
-                  vErrors = [err51];
+                  vErrors = [err50];
                 } else {
-                  vErrors.push(err51);
+                  vErrors.push(err50);
                 }
                 errors++;
               }
@@ -2566,30 +2558,30 @@ function validate15(data, { instancePath = "", parentData, parentDataProperty, r
             if (data16.nativeId !== void 0) {
               let data20 = data16.nativeId;
               if (!(typeof data20 == "number" && (!(data20 % 1) && !isNaN(data20)) && isFinite(data20))) {
-                const err52 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/nativeId", schemaPath: "#/$defs/CopilotRunEntry/properties/nativeId/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+                const err51 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/nativeId", schemaPath: "#/$defs/CopilotRunEntry/properties/nativeId/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
                 if (vErrors === null) {
-                  vErrors = [err52];
+                  vErrors = [err51];
                 } else {
-                  vErrors.push(err52);
+                  vErrors.push(err51);
                 }
                 errors++;
               }
               if (typeof data20 == "number" && isFinite(data20)) {
                 if (data20 > 100 || isNaN(data20)) {
-                  const err53 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/nativeId", schemaPath: "#/$defs/CopilotRunEntry/properties/nativeId/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
+                  const err52 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/nativeId", schemaPath: "#/$defs/CopilotRunEntry/properties/nativeId/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
                   if (vErrors === null) {
-                    vErrors = [err53];
+                    vErrors = [err52];
                   } else {
-                    vErrors.push(err53);
+                    vErrors.push(err52);
                   }
                   errors++;
                 }
                 if (data20 < 1 || isNaN(data20)) {
-                  const err54 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/nativeId", schemaPath: "#/$defs/CopilotRunEntry/properties/nativeId/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" };
+                  const err53 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/nativeId", schemaPath: "#/$defs/CopilotRunEntry/properties/nativeId/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" };
                   if (vErrors === null) {
-                    vErrors = [err54];
+                    vErrors = [err53];
                   } else {
-                    vErrors.push(err54);
+                    vErrors.push(err53);
                   }
                   errors++;
                 }
@@ -2598,7 +2590,19 @@ function validate15(data, { instancePath = "", parentData, parentDataProperty, r
             if (data16.status !== void 0) {
               let data21 = data16.status;
               if (!(data21 === "waiting" || data21 === "running" || data21 === "completed" || data21 === "failed" || data21 === "stopped" || data21 === "skipped")) {
-                const err55 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/status", schemaPath: "#/$defs/CopilotRunEntry/properties/status/enum", keyword: "enum", params: { allowedValues: schema22.properties.status.enum }, message: "must be equal to one of the allowed values" };
+                const err54 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/status", schemaPath: "#/$defs/CopilotRunEntry/properties/status/enum", keyword: "enum", params: { allowedValues: schema22.properties.status.enum }, message: "must be equal to one of the allowed values" };
+                if (vErrors === null) {
+                  vErrors = [err54];
+                } else {
+                  vErrors.push(err54);
+                }
+                errors++;
+              }
+            }
+            if (data16.verdict !== void 0) {
+              let data22 = data16.verdict;
+              if (!(data22 === "unknown" || data22 === "success" || data22 === "failure")) {
+                const err55 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/verdict", schemaPath: "#/$defs/CopilotRunEntry/properties/verdict/enum", keyword: "enum", params: { allowedValues: schema22.properties.verdict.enum }, message: "must be equal to one of the allowed values" };
                 if (vErrors === null) {
                   vErrors = [err55];
                 } else {
@@ -2607,52 +2611,52 @@ function validate15(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-            if (data16.verdict !== void 0) {
-              let data22 = data16.verdict;
-              if (!(data22 === "unknown" || data22 === "success" || data22 === "failure")) {
-                const err56 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/verdict", schemaPath: "#/$defs/CopilotRunEntry/properties/verdict/enum", keyword: "enum", params: { allowedValues: schema22.properties.verdict.enum }, message: "must be equal to one of the allowed values" };
-                if (vErrors === null) {
-                  vErrors = [err56];
-                } else {
-                  vErrors.push(err56);
-                }
-                errors++;
-              }
-            }
             if (data16.message !== void 0) {
               let data23 = data16.message;
               if (typeof data23 === "string") {
                 if (func3(data23) > 1e3) {
-                  const err57 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/message", schemaPath: "#/$defs/CopilotRunEntry/properties/message/maxLength", keyword: "maxLength", params: { limit: 1e3 }, message: "must NOT have more than 1000 characters" };
+                  const err56 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/message", schemaPath: "#/$defs/CopilotRunEntry/properties/message/maxLength", keyword: "maxLength", params: { limit: 1e3 }, message: "must NOT have more than 1000 characters" };
                   if (vErrors === null) {
-                    vErrors = [err57];
+                    vErrors = [err56];
                   } else {
-                    vErrors.push(err57);
+                    vErrors.push(err56);
                   }
                   errors++;
                 }
               } else {
-                const err58 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/message", schemaPath: "#/$defs/CopilotRunEntry/properties/message/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                const err57 = { instancePath: instancePath + "/copilotEntries/" + i1 + "/message", schemaPath: "#/$defs/CopilotRunEntry/properties/message/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                 if (vErrors === null) {
-                  vErrors = [err58];
+                  vErrors = [err57];
                 } else {
-                  vErrors.push(err58);
+                  vErrors.push(err57);
                 }
                 errors++;
               }
             }
           } else {
-            const err59 = { instancePath: instancePath + "/copilotEntries/" + i1, schemaPath: "#/$defs/CopilotRunEntry/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+            const err58 = { instancePath: instancePath + "/copilotEntries/" + i1, schemaPath: "#/$defs/CopilotRunEntry/type", keyword: "type", params: { type: "object" }, message: "must be object" };
             if (vErrors === null) {
-              vErrors = [err59];
+              vErrors = [err58];
             } else {
-              vErrors.push(err59);
+              vErrors.push(err58);
             }
             errors++;
           }
         }
       } else {
-        const err60 = { instancePath: instancePath + "/copilotEntries", schemaPath: "#/properties/copilotEntries/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+        const err59 = { instancePath: instancePath + "/copilotEntries", schemaPath: "#/properties/copilotEntries/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+        if (vErrors === null) {
+          vErrors = [err59];
+        } else {
+          vErrors.push(err59);
+        }
+        errors++;
+      }
+    }
+    if (data.copilotKind !== void 0) {
+      let data24 = data.copilotKind;
+      if (!(data24 === "Copilot" || data24 === "SSSCopilot" || data24 === "ParadoxCopilot")) {
+        const err60 = { instancePath: instancePath + "/copilotKind", schemaPath: "#/properties/copilotKind/enum", keyword: "enum", params: { allowedValues: schema17.properties.copilotKind.enum }, message: "must be equal to one of the allowed values" };
         if (vErrors === null) {
           vErrors = [err60];
         } else {
@@ -3592,7 +3596,7 @@ function validate22(data, { instancePath = "", parentData, parentDataProperty, r
   validate22.errors = vErrors;
   return errors === 0;
 }
-var pattern1 = new RegExp("^[A-Za-z0-9_-]+$", "u");
+var pattern2 = new RegExp("^[A-Za-z0-9_-]+$", "u");
 function validate24(data, { instancePath = "", parentData, parentDataProperty, rootData = data } = {}) {
   let vErrors = null;
   let errors = 0;
@@ -3674,7 +3678,7 @@ function validate24(data, { instancePath = "", parentData, parentDataProperty, r
           }
           errors++;
         }
-        if (!pattern1.test(data0)) {
+        if (!pattern2.test(data0)) {
           const err8 = { instancePath: instancePath + "/id", schemaPath: "#/properties/id/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9_-]+$" }, message: 'must match pattern "^[A-Za-z0-9_-]+$"' };
           if (vErrors === null) {
             vErrors = [err8];
@@ -6077,8 +6081,8 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
     if (data.versionId !== void 0) {
       let data1 = data.versionId;
       if (typeof data1 === "string") {
-        if (func3(data1) > 200) {
-          const err4 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/maxLength", keyword: "maxLength", params: { limit: 200 }, message: "must NOT have more than 200 characters" };
+        if (!pattern1.test(data1)) {
+          const err4 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/pattern", keyword: "pattern", params: { pattern: "^[a-f0-9]{64}$" }, message: 'must match pattern "^[a-f0-9]{64}$"' };
           if (vErrors === null) {
             vErrors = [err4];
           } else {
@@ -6086,31 +6090,22 @@ function validate109(data, { instancePath = "", parentData, parentDataProperty, 
           }
           errors++;
         }
-        if (func3(data1) < 1) {
-          const err5 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-          if (vErrors === null) {
-            vErrors = [err5];
-          } else {
-            vErrors.push(err5);
-          }
-          errors++;
-        }
       } else {
-        const err6 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+        const err5 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
-          vErrors = [err6];
+          vErrors = [err5];
         } else {
-          vErrors.push(err6);
+          vErrors.push(err5);
         }
         errors++;
       }
     }
   } else {
-    const err7 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err6 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err7];
+      vErrors = [err6];
     } else {
-      vErrors.push(err7);
+      vErrors.push(err6);
     }
     errors++;
   }
@@ -6145,8 +6140,8 @@ function validate110(data, { instancePath = "", parentData, parentDataProperty, 
     if (data.versionId !== void 0) {
       let data0 = data.versionId;
       if (typeof data0 === "string") {
-        if (func3(data0) > 200) {
-          const err2 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/maxLength", keyword: "maxLength", params: { limit: 200 }, message: "must NOT have more than 200 characters" };
+        if (!pattern1.test(data0)) {
+          const err2 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/pattern", keyword: "pattern", params: { pattern: "^[a-f0-9]{64}$" }, message: 'must match pattern "^[a-f0-9]{64}$"' };
           if (vErrors === null) {
             vErrors = [err2];
           } else {
@@ -6154,31 +6149,22 @@ function validate110(data, { instancePath = "", parentData, parentDataProperty, 
           }
           errors++;
         }
-        if (func3(data0) < 1) {
-          const err3 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-          if (vErrors === null) {
-            vErrors = [err3];
-          } else {
-            vErrors.push(err3);
-          }
-          errors++;
-        }
       } else {
-        const err4 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+        const err3 = { instancePath: instancePath + "/versionId", schemaPath: "#/properties/versionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
-          vErrors = [err4];
+          vErrors = [err3];
         } else {
-          vErrors.push(err4);
+          vErrors.push(err3);
         }
         errors++;
       }
     }
   } else {
-    const err5 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err4 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err5];
+      vErrors = [err4];
     } else {
-      vErrors.push(err5);
+      vErrors.push(err4);
     }
     errors++;
   }
@@ -6674,8 +6660,8 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
             if (data2.versionId !== void 0) {
               let data4 = data2.versionId;
               if (typeof data4 === "string") {
-                if (func3(data4) > 200) {
-                  const err15 = { instancePath: instancePath + "/queue/" + i0 + "/versionId", schemaPath: "#/$defs/CopilotQueueEntry/properties/versionId/maxLength", keyword: "maxLength", params: { limit: 200 }, message: "must NOT have more than 200 characters" };
+                if (!pattern1.test(data4)) {
+                  const err15 = { instancePath: instancePath + "/queue/" + i0 + "/versionId", schemaPath: "#/$defs/CopilotQueueEntry/properties/versionId/pattern", keyword: "pattern", params: { pattern: "^[a-f0-9]{64}$" }, message: 'must match pattern "^[a-f0-9]{64}$"' };
                   if (vErrors === null) {
                     vErrors = [err15];
                   } else {
@@ -6683,17 +6669,19 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
                   }
                   errors++;
                 }
-                if (func3(data4) < 1) {
-                  const err16 = { instancePath: instancePath + "/queue/" + i0 + "/versionId", schemaPath: "#/$defs/CopilotQueueEntry/properties/versionId/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-                  if (vErrors === null) {
-                    vErrors = [err16];
-                  } else {
-                    vErrors.push(err16);
-                  }
-                  errors++;
-                }
               } else {
-                const err17 = { instancePath: instancePath + "/queue/" + i0 + "/versionId", schemaPath: "#/$defs/CopilotQueueEntry/properties/versionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                const err16 = { instancePath: instancePath + "/queue/" + i0 + "/versionId", schemaPath: "#/$defs/CopilotQueueEntry/properties/versionId/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                if (vErrors === null) {
+                  vErrors = [err16];
+                } else {
+                  vErrors.push(err16);
+                }
+                errors++;
+              }
+            }
+            if (data2.enabled !== void 0) {
+              if (typeof data2.enabled !== "boolean") {
+                const err17 = { instancePath: instancePath + "/queue/" + i0 + "/enabled", schemaPath: "#/$defs/CopilotQueueEntry/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
                 if (vErrors === null) {
                   vErrors = [err17];
                 } else {
@@ -6702,9 +6690,9 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-            if (data2.enabled !== void 0) {
-              if (typeof data2.enabled !== "boolean") {
-                const err18 = { instancePath: instancePath + "/queue/" + i0 + "/enabled", schemaPath: "#/$defs/CopilotQueueEntry/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+            if (data2.isRaid !== void 0) {
+              if (typeof data2.isRaid !== "boolean") {
+                const err18 = { instancePath: instancePath + "/queue/" + i0 + "/isRaid", schemaPath: "#/$defs/CopilotQueueEntry/properties/isRaid/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
                 if (vErrors === null) {
                   vErrors = [err18];
                 } else {
@@ -6713,55 +6701,44 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
                 errors++;
               }
             }
-            if (data2.isRaid !== void 0) {
-              if (typeof data2.isRaid !== "boolean") {
-                const err19 = { instancePath: instancePath + "/queue/" + i0 + "/isRaid", schemaPath: "#/$defs/CopilotQueueEntry/properties/isRaid/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
-                if (vErrors === null) {
-                  vErrors = [err19];
-                } else {
-                  vErrors.push(err19);
-                }
-                errors++;
-              }
-            }
             if (data2.navName !== void 0) {
               let data7 = data2.navName;
               if (typeof data7 === "string") {
                 if (func3(data7) > 200) {
-                  const err20 = { instancePath: instancePath + "/queue/" + i0 + "/navName", schemaPath: "#/$defs/CopilotQueueEntry/properties/navName/maxLength", keyword: "maxLength", params: { limit: 200 }, message: "must NOT have more than 200 characters" };
+                  const err19 = { instancePath: instancePath + "/queue/" + i0 + "/navName", schemaPath: "#/$defs/CopilotQueueEntry/properties/navName/maxLength", keyword: "maxLength", params: { limit: 200 }, message: "must NOT have more than 200 characters" };
                   if (vErrors === null) {
-                    vErrors = [err20];
+                    vErrors = [err19];
                   } else {
-                    vErrors.push(err20);
+                    vErrors.push(err19);
                   }
                   errors++;
                 }
               } else {
-                const err21 = { instancePath: instancePath + "/queue/" + i0 + "/navName", schemaPath: "#/$defs/CopilotQueueEntry/properties/navName/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                const err20 = { instancePath: instancePath + "/queue/" + i0 + "/navName", schemaPath: "#/$defs/CopilotQueueEntry/properties/navName/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                 if (vErrors === null) {
-                  vErrors = [err21];
+                  vErrors = [err20];
                 } else {
-                  vErrors.push(err21);
+                  vErrors.push(err20);
                 }
                 errors++;
               }
             }
           } else {
-            const err22 = { instancePath: instancePath + "/queue/" + i0, schemaPath: "#/$defs/CopilotQueueEntry/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+            const err21 = { instancePath: instancePath + "/queue/" + i0, schemaPath: "#/$defs/CopilotQueueEntry/type", keyword: "type", params: { type: "object" }, message: "must be object" };
             if (vErrors === null) {
-              vErrors = [err22];
+              vErrors = [err21];
             } else {
-              vErrors.push(err22);
+              vErrors.push(err21);
             }
             errors++;
           }
         }
       } else {
-        const err23 = { instancePath: instancePath + "/queue", schemaPath: "#/properties/queue/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+        const err22 = { instancePath: instancePath + "/queue", schemaPath: "#/properties/queue/type", keyword: "type", params: { type: "array" }, message: "must be array" };
         if (vErrors === null) {
-          vErrors = [err23];
+          vErrors = [err22];
         } else {
-          vErrors.push(err23);
+          vErrors.push(err22);
         }
         errors++;
       }
@@ -6770,7 +6747,16 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
       let data8 = data.options;
       if (data8 && typeof data8 == "object" && !Array.isArray(data8)) {
         if (data8.loopTimes === void 0) {
-          const err24 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "loopTimes" }, message: "must have required property 'loopTimes'" };
+          const err23 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "loopTimes" }, message: "must have required property 'loopTimes'" };
+          if (vErrors === null) {
+            vErrors = [err23];
+          } else {
+            vErrors.push(err23);
+          }
+          errors++;
+        }
+        if (data8.formation === void 0) {
+          const err24 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "formation" }, message: "must have required property 'formation'" };
           if (vErrors === null) {
             vErrors = [err24];
           } else {
@@ -6778,8 +6764,8 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
           }
           errors++;
         }
-        if (data8.formation === void 0) {
-          const err25 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "formation" }, message: "must have required property 'formation'" };
+        if (data8.formationIndex === void 0) {
+          const err25 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "formationIndex" }, message: "must have required property 'formationIndex'" };
           if (vErrors === null) {
             vErrors = [err25];
           } else {
@@ -6787,8 +6773,8 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
           }
           errors++;
         }
-        if (data8.formationIndex === void 0) {
-          const err26 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "formationIndex" }, message: "must have required property 'formationIndex'" };
+        if (data8.addTrust === void 0) {
+          const err26 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "addTrust" }, message: "must have required property 'addTrust'" };
           if (vErrors === null) {
             vErrors = [err26];
           } else {
@@ -6796,8 +6782,8 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
           }
           errors++;
         }
-        if (data8.addTrust === void 0) {
-          const err27 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "addTrust" }, message: "must have required property 'addTrust'" };
+        if (data8.ignoreRequirements === void 0) {
+          const err27 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "ignoreRequirements" }, message: "must have required property 'ignoreRequirements'" };
           if (vErrors === null) {
             vErrors = [err27];
           } else {
@@ -6805,8 +6791,8 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
           }
           errors++;
         }
-        if (data8.ignoreRequirements === void 0) {
-          const err28 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "ignoreRequirements" }, message: "must have required property 'ignoreRequirements'" };
+        if (data8.supportUnitName === void 0) {
+          const err28 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "supportUnitName" }, message: "must have required property 'supportUnitName'" };
           if (vErrors === null) {
             vErrors = [err28];
           } else {
@@ -6814,8 +6800,8 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
           }
           errors++;
         }
-        if (data8.supportUnitName === void 0) {
-          const err29 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "supportUnitName" }, message: "must have required property 'supportUnitName'" };
+        if (data8.additionalOperators === void 0) {
+          const err29 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "additionalOperators" }, message: "must have required property 'additionalOperators'" };
           if (vErrors === null) {
             vErrors = [err29];
           } else {
@@ -6823,22 +6809,13 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
           }
           errors++;
         }
-        if (data8.additionalOperators === void 0) {
-          const err30 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/required", keyword: "required", params: { missingProperty: "additionalOperators" }, message: "must have required property 'additionalOperators'" };
-          if (vErrors === null) {
-            vErrors = [err30];
-          } else {
-            vErrors.push(err30);
-          }
-          errors++;
-        }
         for (const key2 in data8) {
           if (!(key2 === "loopTimes" || key2 === "formation" || key2 === "formationIndex" || key2 === "addTrust" || key2 === "ignoreRequirements" || key2 === "supportUnitName" || key2 === "additionalOperators")) {
-            const err31 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" };
+            const err30 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" };
             if (vErrors === null) {
-              vErrors = [err31];
+              vErrors = [err30];
             } else {
-              vErrors.push(err31);
+              vErrors.push(err30);
             }
             errors++;
           }
@@ -6846,17 +6823,26 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
         if (data8.loopTimes !== void 0) {
           let data9 = data8.loopTimes;
           if (!(typeof data9 == "number" && (!(data9 % 1) && !isNaN(data9)) && isFinite(data9))) {
-            const err32 = { instancePath: instancePath + "/options/loopTimes", schemaPath: "#/$defs/CopilotOptions/properties/loopTimes/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+            const err31 = { instancePath: instancePath + "/options/loopTimes", schemaPath: "#/$defs/CopilotOptions/properties/loopTimes/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
             if (vErrors === null) {
-              vErrors = [err32];
+              vErrors = [err31];
             } else {
-              vErrors.push(err32);
+              vErrors.push(err31);
             }
             errors++;
           }
           if (typeof data9 == "number" && isFinite(data9)) {
             if (data9 > 999 || isNaN(data9)) {
-              const err33 = { instancePath: instancePath + "/options/loopTimes", schemaPath: "#/$defs/CopilotOptions/properties/loopTimes/maximum", keyword: "maximum", params: { comparison: "<=", limit: 999 }, message: "must be <= 999" };
+              const err32 = { instancePath: instancePath + "/options/loopTimes", schemaPath: "#/$defs/CopilotOptions/properties/loopTimes/maximum", keyword: "maximum", params: { comparison: "<=", limit: 999 }, message: "must be <= 999" };
+              if (vErrors === null) {
+                vErrors = [err32];
+              } else {
+                vErrors.push(err32);
+              }
+              errors++;
+            }
+            if (data9 < 1 || isNaN(data9)) {
+              const err33 = { instancePath: instancePath + "/options/loopTimes", schemaPath: "#/$defs/CopilotOptions/properties/loopTimes/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" };
               if (vErrors === null) {
                 vErrors = [err33];
               } else {
@@ -6864,24 +6850,15 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
               }
               errors++;
             }
-            if (data9 < 1 || isNaN(data9)) {
-              const err34 = { instancePath: instancePath + "/options/loopTimes", schemaPath: "#/$defs/CopilotOptions/properties/loopTimes/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" };
-              if (vErrors === null) {
-                vErrors = [err34];
-              } else {
-                vErrors.push(err34);
-              }
-              errors++;
-            }
           }
         }
         if (data8.formation !== void 0) {
           if (typeof data8.formation !== "boolean") {
-            const err35 = { instancePath: instancePath + "/options/formation", schemaPath: "#/$defs/CopilotOptions/properties/formation/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+            const err34 = { instancePath: instancePath + "/options/formation", schemaPath: "#/$defs/CopilotOptions/properties/formation/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
             if (vErrors === null) {
-              vErrors = [err35];
+              vErrors = [err34];
             } else {
-              vErrors.push(err35);
+              vErrors.push(err34);
             }
             errors++;
           }
@@ -6889,17 +6866,26 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
         if (data8.formationIndex !== void 0) {
           let data11 = data8.formationIndex;
           if (!(typeof data11 == "number" && (!(data11 % 1) && !isNaN(data11)) && isFinite(data11))) {
-            const err36 = { instancePath: instancePath + "/options/formationIndex", schemaPath: "#/$defs/CopilotOptions/properties/formationIndex/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+            const err35 = { instancePath: instancePath + "/options/formationIndex", schemaPath: "#/$defs/CopilotOptions/properties/formationIndex/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
             if (vErrors === null) {
-              vErrors = [err36];
+              vErrors = [err35];
             } else {
-              vErrors.push(err36);
+              vErrors.push(err35);
             }
             errors++;
           }
           if (typeof data11 == "number" && isFinite(data11)) {
             if (data11 > 4 || isNaN(data11)) {
-              const err37 = { instancePath: instancePath + "/options/formationIndex", schemaPath: "#/$defs/CopilotOptions/properties/formationIndex/maximum", keyword: "maximum", params: { comparison: "<=", limit: 4 }, message: "must be <= 4" };
+              const err36 = { instancePath: instancePath + "/options/formationIndex", schemaPath: "#/$defs/CopilotOptions/properties/formationIndex/maximum", keyword: "maximum", params: { comparison: "<=", limit: 4 }, message: "must be <= 4" };
+              if (vErrors === null) {
+                vErrors = [err36];
+              } else {
+                vErrors.push(err36);
+              }
+              errors++;
+            }
+            if (data11 < 0 || isNaN(data11)) {
+              const err37 = { instancePath: instancePath + "/options/formationIndex", schemaPath: "#/$defs/CopilotOptions/properties/formationIndex/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
               if (vErrors === null) {
                 vErrors = [err37];
               } else {
@@ -6907,20 +6893,22 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
               }
               errors++;
             }
-            if (data11 < 0 || isNaN(data11)) {
-              const err38 = { instancePath: instancePath + "/options/formationIndex", schemaPath: "#/$defs/CopilotOptions/properties/formationIndex/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
-              if (vErrors === null) {
-                vErrors = [err38];
-              } else {
-                vErrors.push(err38);
-              }
-              errors++;
-            }
           }
         }
         if (data8.addTrust !== void 0) {
           if (typeof data8.addTrust !== "boolean") {
-            const err39 = { instancePath: instancePath + "/options/addTrust", schemaPath: "#/$defs/CopilotOptions/properties/addTrust/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+            const err38 = { instancePath: instancePath + "/options/addTrust", schemaPath: "#/$defs/CopilotOptions/properties/addTrust/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+            if (vErrors === null) {
+              vErrors = [err38];
+            } else {
+              vErrors.push(err38);
+            }
+            errors++;
+          }
+        }
+        if (data8.ignoreRequirements !== void 0) {
+          if (typeof data8.ignoreRequirements !== "boolean") {
+            const err39 = { instancePath: instancePath + "/options/ignoreRequirements", schemaPath: "#/$defs/CopilotOptions/properties/ignoreRequirements/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
             if (vErrors === null) {
               vErrors = [err39];
             } else {
@@ -6929,35 +6917,24 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
             errors++;
           }
         }
-        if (data8.ignoreRequirements !== void 0) {
-          if (typeof data8.ignoreRequirements !== "boolean") {
-            const err40 = { instancePath: instancePath + "/options/ignoreRequirements", schemaPath: "#/$defs/CopilotOptions/properties/ignoreRequirements/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
-            if (vErrors === null) {
-              vErrors = [err40];
-            } else {
-              vErrors.push(err40);
-            }
-            errors++;
-          }
-        }
         if (data8.supportUnitName !== void 0) {
           let data14 = data8.supportUnitName;
           if (typeof data14 === "string") {
             if (func3(data14) > 100) {
-              const err41 = { instancePath: instancePath + "/options/supportUnitName", schemaPath: "#/$defs/CopilotOptions/properties/supportUnitName/maxLength", keyword: "maxLength", params: { limit: 100 }, message: "must NOT have more than 100 characters" };
+              const err40 = { instancePath: instancePath + "/options/supportUnitName", schemaPath: "#/$defs/CopilotOptions/properties/supportUnitName/maxLength", keyword: "maxLength", params: { limit: 100 }, message: "must NOT have more than 100 characters" };
               if (vErrors === null) {
-                vErrors = [err41];
+                vErrors = [err40];
               } else {
-                vErrors.push(err41);
+                vErrors.push(err40);
               }
               errors++;
             }
           } else {
-            const err42 = { instancePath: instancePath + "/options/supportUnitName", schemaPath: "#/$defs/CopilotOptions/properties/supportUnitName/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+            const err41 = { instancePath: instancePath + "/options/supportUnitName", schemaPath: "#/$defs/CopilotOptions/properties/supportUnitName/type", keyword: "type", params: { type: "string" }, message: "must be string" };
             if (vErrors === null) {
-              vErrors = [err42];
+              vErrors = [err41];
             } else {
-              vErrors.push(err42);
+              vErrors.push(err41);
             }
             errors++;
           }
@@ -6966,11 +6943,11 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
           let data15 = data8.additionalOperators;
           if (Array.isArray(data15)) {
             if (data15.length > 12) {
-              const err43 = { instancePath: instancePath + "/options/additionalOperators", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/maxItems", keyword: "maxItems", params: { limit: 12 }, message: "must NOT have more than 12 items" };
+              const err42 = { instancePath: instancePath + "/options/additionalOperators", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/maxItems", keyword: "maxItems", params: { limit: 12 }, message: "must NOT have more than 12 items" };
               if (vErrors === null) {
-                vErrors = [err43];
+                vErrors = [err42];
               } else {
-                vErrors.push(err43);
+                vErrors.push(err42);
               }
               errors++;
             }
@@ -6979,7 +6956,16 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
               let data16 = data15[i1];
               if (data16 && typeof data16 == "object" && !Array.isArray(data16)) {
                 if (data16.name === void 0) {
-                  const err44 = { instancePath: instancePath + "/options/additionalOperators/" + i1, schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/required", keyword: "required", params: { missingProperty: "name" }, message: "must have required property 'name'" };
+                  const err43 = { instancePath: instancePath + "/options/additionalOperators/" + i1, schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/required", keyword: "required", params: { missingProperty: "name" }, message: "must have required property 'name'" };
+                  if (vErrors === null) {
+                    vErrors = [err43];
+                  } else {
+                    vErrors.push(err43);
+                  }
+                  errors++;
+                }
+                if (data16.skill === void 0) {
+                  const err44 = { instancePath: instancePath + "/options/additionalOperators/" + i1, schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/required", keyword: "required", params: { missingProperty: "skill" }, message: "must have required property 'skill'" };
                   if (vErrors === null) {
                     vErrors = [err44];
                   } else {
@@ -6987,22 +6973,13 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
                   }
                   errors++;
                 }
-                if (data16.skill === void 0) {
-                  const err45 = { instancePath: instancePath + "/options/additionalOperators/" + i1, schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/required", keyword: "required", params: { missingProperty: "skill" }, message: "must have required property 'skill'" };
-                  if (vErrors === null) {
-                    vErrors = [err45];
-                  } else {
-                    vErrors.push(err45);
-                  }
-                  errors++;
-                }
                 for (const key3 in data16) {
                   if (!(key3 === "name" || key3 === "skill")) {
-                    const err46 = { instancePath: instancePath + "/options/additionalOperators/" + i1, schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key3 }, message: "must NOT have additional properties" };
+                    const err45 = { instancePath: instancePath + "/options/additionalOperators/" + i1, schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key3 }, message: "must NOT have additional properties" };
                     if (vErrors === null) {
-                      vErrors = [err46];
+                      vErrors = [err45];
                     } else {
-                      vErrors.push(err46);
+                      vErrors.push(err45);
                     }
                     errors++;
                   }
@@ -7011,20 +6988,20 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
                   let data17 = data16.name;
                   if (typeof data17 === "string") {
                     if (func3(data17) > 100) {
-                      const err47 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/name", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/name/maxLength", keyword: "maxLength", params: { limit: 100 }, message: "must NOT have more than 100 characters" };
+                      const err46 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/name", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/name/maxLength", keyword: "maxLength", params: { limit: 100 }, message: "must NOT have more than 100 characters" };
                       if (vErrors === null) {
-                        vErrors = [err47];
+                        vErrors = [err46];
                       } else {
-                        vErrors.push(err47);
+                        vErrors.push(err46);
                       }
                       errors++;
                     }
                   } else {
-                    const err48 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/name", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/name/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                    const err47 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/name", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/name/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                     if (vErrors === null) {
-                      vErrors = [err48];
+                      vErrors = [err47];
                     } else {
-                      vErrors.push(err48);
+                      vErrors.push(err47);
                     }
                     errors++;
                   }
@@ -7032,17 +7009,26 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
                 if (data16.skill !== void 0) {
                   let data18 = data16.skill;
                   if (!(typeof data18 == "number" && (!(data18 % 1) && !isNaN(data18)) && isFinite(data18))) {
-                    const err49 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/skill", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/skill/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+                    const err48 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/skill", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/skill/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
                     if (vErrors === null) {
-                      vErrors = [err49];
+                      vErrors = [err48];
                     } else {
-                      vErrors.push(err49);
+                      vErrors.push(err48);
                     }
                     errors++;
                   }
                   if (typeof data18 == "number" && isFinite(data18)) {
                     if (data18 > 3 || isNaN(data18)) {
-                      const err50 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/skill", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/skill/maximum", keyword: "maximum", params: { comparison: "<=", limit: 3 }, message: "must be <= 3" };
+                      const err49 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/skill", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/skill/maximum", keyword: "maximum", params: { comparison: "<=", limit: 3 }, message: "must be <= 3" };
+                      if (vErrors === null) {
+                        vErrors = [err49];
+                      } else {
+                        vErrors.push(err49);
+                      }
+                      errors++;
+                    }
+                    if (data18 < 1 || isNaN(data18)) {
+                      const err50 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/skill", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/skill/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" };
                       if (vErrors === null) {
                         vErrors = [err50];
                       } else {
@@ -7050,53 +7036,44 @@ function validate55(data, { instancePath = "", parentData, parentDataProperty, r
                       }
                       errors++;
                     }
-                    if (data18 < 1 || isNaN(data18)) {
-                      const err51 = { instancePath: instancePath + "/options/additionalOperators/" + i1 + "/skill", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/properties/skill/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" };
-                      if (vErrors === null) {
-                        vErrors = [err51];
-                      } else {
-                        vErrors.push(err51);
-                      }
-                      errors++;
-                    }
                   }
                 }
               } else {
-                const err52 = { instancePath: instancePath + "/options/additionalOperators/" + i1, schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+                const err51 = { instancePath: instancePath + "/options/additionalOperators/" + i1, schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/items/type", keyword: "type", params: { type: "object" }, message: "must be object" };
                 if (vErrors === null) {
-                  vErrors = [err52];
+                  vErrors = [err51];
                 } else {
-                  vErrors.push(err52);
+                  vErrors.push(err51);
                 }
                 errors++;
               }
             }
           } else {
-            const err53 = { instancePath: instancePath + "/options/additionalOperators", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+            const err52 = { instancePath: instancePath + "/options/additionalOperators", schemaPath: "#/$defs/CopilotOptions/properties/additionalOperators/type", keyword: "type", params: { type: "array" }, message: "must be array" };
             if (vErrors === null) {
-              vErrors = [err53];
+              vErrors = [err52];
             } else {
-              vErrors.push(err53);
+              vErrors.push(err52);
             }
             errors++;
           }
         }
       } else {
-        const err54 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+        const err53 = { instancePath: instancePath + "/options", schemaPath: "#/$defs/CopilotOptions/type", keyword: "type", params: { type: "object" }, message: "must be object" };
         if (vErrors === null) {
-          vErrors = [err54];
+          vErrors = [err53];
         } else {
-          vErrors.push(err54);
+          vErrors.push(err53);
         }
         errors++;
       }
     }
   } else {
-    const err55 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err54 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err55];
+      vErrors = [err54];
     } else {
-      vErrors.push(err55);
+      vErrors.push(err54);
     }
     errors++;
   }
@@ -9307,7 +9284,7 @@ var validateToolStartParams = validate123;
 var schema78 = { "enum": ["depot", "operators", "recruit", "inventory", "data", "games"] };
 var schema46 = { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] };
 var schema80 = { "type": "object", "additionalProperties": false, "properties": { "mode": { "enum": ["device", "manual"] }, "tags": { "type": "array", "maxItems": 5, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 80 } }, "targets": { "type": "array", "maxItems": 29, "items": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "stage": { "type": "string", "minLength": 1, "maxLength": 200 }, "itemId": { "type": "string", "minLength": 1, "maxLength": 200 }, "quantity": { "type": "integer", "minimum": 1, "maximum": 2147483647 }, "medicine": { "type": "integer", "minimum": 0, "maximum": 100 }, "stone": { "type": "integer", "minimum": 0, "maximum": 100 } }, "required": ["id", "stage", "itemId", "quantity", "medicine", "stone"] } }, "updateDepot": { "type": "boolean" }, "sortByProgress": { "type": "boolean" }, "onlyFirst": { "type": "boolean" }, "skipDuringActivity": { "type": "boolean" }, "skipDuringResourceCollection": { "type": "boolean" }, "autoSeries": { "type": "boolean" }, "operators": { "type": "boolean" }, "depot": { "type": "boolean" }, "game": { "enum": ["pixelpaint", "secretfront"] }, "ending": { "enum": ["A", "B", "C", "D", "E"] }, "branch": { "type": "string", "maxLength": 80, "pattern": "^[A-Za-z0-9_]*$" } }, "required": [] };
-var pattern5 = new RegExp("^[A-Za-z0-9_]*$", "u");
+var pattern6 = new RegExp("^[A-Za-z0-9_]*$", "u");
 function validate123(data, { instancePath = "", parentData, parentDataProperty, rootData = data } = {}) {
   let vErrors = null;
   let errors = 0;
@@ -9953,7 +9930,7 @@ function validate123(data, { instancePath = "", parentData, parentDataProperty, 
               }
               errors++;
             }
-            if (!pattern5.test(data26)) {
+            if (!pattern6.test(data26)) {
               const err59 = { instancePath: instancePath + "/config/branch", schemaPath: "#/$defs/ToolConfig/properties/branch/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9_]*$" }, message: 'must match pattern "^[A-Za-z0-9_]*$"' };
               if (vErrors === null) {
                 vErrors = [err59];
@@ -10710,7 +10687,7 @@ function validate125(data, { instancePath = "", parentData, parentDataProperty, 
               }
               errors++;
             }
-            if (!pattern5.test(data25)) {
+            if (!pattern6.test(data25)) {
               const err56 = { instancePath: instancePath + "/config/branch", schemaPath: "#/$defs/ToolConfig/properties/branch/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9_]*$" }, message: 'must match pattern "^[A-Za-z0-9_]*$"' };
               if (vErrors === null) {
                 vErrors = [err56];
@@ -11270,7 +11247,7 @@ function validate126(data, { instancePath = "", parentData, parentDataProperty, 
           }
           errors++;
         }
-        if (!pattern5.test(data21)) {
+        if (!pattern6.test(data21)) {
           const err47 = { instancePath: instancePath + "/branch", schemaPath: "#/properties/branch/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9_]*$" }, message: 'must match pattern "^[A-Za-z0-9_]*$"' };
           if (vErrors === null) {
             vErrors = [err47];
@@ -14552,7 +14529,7 @@ function validate143(data, { instancePath = "", parentData, parentDataProperty, 
           }
           errors++;
         }
-        if (!pattern1.test(data0)) {
+        if (!pattern2.test(data0)) {
           const err4 = { instancePath: instancePath + "/itemId", schemaPath: "#/properties/itemId/pattern", keyword: "pattern", params: { pattern: "^[A-Za-z0-9_-]+$" }, message: 'must match pattern "^[A-Za-z0-9_-]+$"' };
           if (vErrors === null) {
             vErrors = [err4];
@@ -14782,7 +14759,7 @@ function validate144(data, { instancePath = "", parentData, parentDataProperty, 
   return errors === 0;
 }
 var validateOperatorResourceParams = validate145;
-var pattern3 = new RegExp("^[^\\u0000-\\u001f\\u007f]+$", "u");
+var pattern4 = new RegExp("^[^\\u0000-\\u001f\\u007f]+$", "u");
 function validate145(data, { instancePath = "", parentData, parentDataProperty, rootData = data } = {}) {
   let vErrors = null;
   let errors = 0;
@@ -14828,7 +14805,7 @@ function validate145(data, { instancePath = "", parentData, parentDataProperty, 
           }
           errors++;
         }
-        if (!pattern3.test(data0)) {
+        if (!pattern4.test(data0)) {
           const err4 = { instancePath: instancePath + "/name", schemaPath: "#/properties/name/pattern", keyword: "pattern", params: { pattern: "^[^\\u0000-\\u001f\\u007f]+$" }, message: 'must match pattern "^[^\\u0000-\\u001f\\u007f]+$"' };
           if (vErrors === null) {
             vErrors = [err4];

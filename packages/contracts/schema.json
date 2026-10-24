@@ -512,6 +512,13 @@
           "items": {
             "$ref": "#/$defs/CopilotRunEntry"
           }
+        },
+        "copilotKind": {
+          "enum": [
+            "Copilot",
+            "SSSCopilot",
+            "ParadoxCopilot"
+          ]
         }
       },
       "required": [
@@ -1284,8 +1291,7 @@
         },
         "versionId": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "pattern": "^[a-f0-9]{64}$"
         },
         "title": {
           "type": "string",
