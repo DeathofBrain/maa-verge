@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Database, Download, LoaderCircle, Play, RefreshCw, Search } from 'lucide-react';
-import { rpc, type RpcParams, type RpcResult } from '@maaverge/contracts';
+import { errorMessage, rpc, type RpcParams, type RpcResult } from '@maaverge/contracts';
 import type { SupportPageProps } from './SupportPages';
 import MaterialIcon from './MaterialIcon';
 import OperatorBadge from './OperatorBadge';
@@ -40,7 +40,7 @@ export default function RecognitionPanel({ kind, snapshot, selectedDevice, busy,
     void rpc('recognition.get', { deviceId: selectedDevice, kind, clientType }).then((value) => {
       if (!cancelled) setLoaded({ identity, result: value });
     }, (cause: unknown) => {
-      if (!cancelled) setLoaded({ identity, error: cause instanceof Error ? cause.message : String(cause) });
+      if (!cancelled) setLoaded({ identity, error: errorMessage(cause) });
     }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [identity, selectedDevice, kind, clientType, revision, syncedAt, runRevision, resourceKey]);

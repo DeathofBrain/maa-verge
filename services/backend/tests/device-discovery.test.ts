@@ -27,7 +27,8 @@ test('device RPC preserves ADB setup diagnostics and releases the automatic disc
     expect(response.id).toBe(method);
     expect(response.error.code).toBe(-32040);
     expect(response.error.data).toContain('请配置 MAAVERGE_ADB_PATH');
-    expect(response.error.message).toBe(method === 'device.discover' ? 'ADB 设备发现失败' : '模拟器自动发现失败');
+    expect(response.error.message).toStartWith(method === 'device.discover' ? 'ADB 设备发现失败：' : '模拟器自动发现失败：');
+    expect(response.error.message).toContain('未找到 ADB');
   }
   expect(attempts).toBe(3); expect(instance.workers.size).toBe(0);
 });
@@ -37,7 +38,7 @@ test('device auto-connect preserves ADB execution failures through JSON-RPC', as
   const instance = runtime(() => path.join(instance.root, 'missing-synthetic-adb'));
   const response = await request(instance, 'device.auto_connect');
   expect(response.error.code).toBe(-32040);
-  expect(response.error.message).toBe('模拟器自动发现失败');
+  expect(response.error.message).toContain('找不到 ADB 可执行文件');
   expect(response.error.data).toContain('missing-synthetic-adb');
   expect(instance.workers.size).toBe(0);
 });

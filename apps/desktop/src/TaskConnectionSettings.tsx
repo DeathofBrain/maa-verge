@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { rpc, type Settings, type ScreenFrame } from '@maaverge/contracts';
+import { errorMessage, rpc, type Settings, type ScreenFrame } from '@maaverge/contracts';
 import { CaptureForm } from './CaptureSettingsForm';
 import { useSettingsDraft } from './settings-draft';
 import './support-pages.css';
@@ -45,7 +45,7 @@ function ConnectionSettingsBody({ settings: globalSettings, onSaveSettings: save
   };
   const operate = async (action: () => Promise<void>) => {
     setPending(true); setResult('');
-    try { await action(); } catch (error) { setResult(error instanceof Error ? error.message : String(error)); }
+    try { await action(); } catch (error) { setResult(errorMessage(error)); }
     finally { setPending(false); }
   };
   return <div className="task-connection-settings">

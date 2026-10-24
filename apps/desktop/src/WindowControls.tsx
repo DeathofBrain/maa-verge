@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Copy, Minus, Square, X } from 'lucide-react';
-import { closeWindow, desktopPlatform, minimizeWindow, subscribeWindowMaximized, toggleMaximizeWindow } from '@maaverge/contracts';
+import { errorMessage, closeWindow, desktopPlatform, minimizeWindow, subscribeWindowMaximized, toggleMaximizeWindow } from '@maaverge/contracts';
 
 export default function WindowControls() {
   const platform = desktopPlatform();
   const [maximized, setMaximized] = useState(false);
   const [error, setError] = useState('');
-  const showError = (cause: unknown) => setError(`窗口操作失败：${cause instanceof Error ? cause.message : String(cause)}`);
+  const showError = (cause: unknown) => setError(`窗口操作失败：${errorMessage(cause)}`);
   useEffect(() => {
     if (!platform || platform === 'macos') return;
     return subscribeWindowMaximized(setMaximized, showError);

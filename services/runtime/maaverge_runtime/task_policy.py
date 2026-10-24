@@ -29,6 +29,7 @@ FACILITIES = {
 DRONES = {"_NotUse", "Money", "SyntheticJade", "CombatRecord", "PureGold", "OriginStone", "Chip"}
 COMMAND_KEYS = {"shell", "command", "script", "adb"}
 BOOLEAN_KEYS = {
+    "drops_enabled",
     "enable",
     "start_game_enabled",
     "refresh",
@@ -352,6 +353,8 @@ def native_task(task: dict) -> dict:
         for key in ("medicine", "stone", "expiring_medicine", "medicine_expire_days"):
             p.setdefault(key, 0)
         p.setdefault("times", 1)
+        if p.pop("drops_enabled", None) is False:
+            p["drops"] = {}
     if task["type"] in {"Fight", "Recruit", "Roguelike"}:
         p.setdefault("report_to_penguin", False)
         p.setdefault("report_to_yituliu", False)

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CalendarClock, Factory, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { rpc, subscribe, type Device, type Settings, type RpcResult } from '@maaverge/contracts';
+import { errorMessage, rpc, subscribe, type Device, type Settings, type RpcResult } from '@maaverge/contracts';
 import { gameDataChanged } from './update-display';
 import './game-info.css';
 
@@ -36,7 +36,7 @@ export default function GameInfoPanel({ device, settings }: { device?: Device; s
         if (!active) return;
         setResult({ key: contextKey, info: next, error: '' });
       } catch (cause) {
-        if (active) setResult(previous => ({ key: contextKey, info: previous?.key === contextKey ? previous.info : null, error: cause instanceof Error ? cause.message : String(cause) }));
+        if (active) setResult(previous => ({ key: contextKey, info: previous?.key === contextKey ? previous.info : null, error: errorMessage(cause) }));
       }
       finally { busy = false; if (active) setLoading(false); }
     };
@@ -97,7 +97,7 @@ function InfrastructureEditor({ deviceId, settings, onSaved }: { deviceId: strin
     try {
       await rpc('settings.save', { settings: { ...settings, infrastructureEstimates: [...(settings.infrastructureEstimates || []).filter(profile => profile.deviceId !== deviceId), { deviceId, lines: values as Lines }] } });
       setMessage('此设备的估算配置已保存'); onSaved();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+    } catch (cause) { setError(errorMessage(cause)); }
     finally { setPending(false); }
   };
   return <details className="game-estimate-editor"><summary>配置此设备的产线估算</summary><p>从上次收取后的空仓开始，按固定速率累积并在容量处封顶。干员心情、加成、订单完成和停工都会使实际结果不同；收取后请手动更新基准时间。</p><fieldset disabled={pending}>

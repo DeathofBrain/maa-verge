@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Check, Download, ExternalLink, FileJson, FolderOpen, Info, ListOrdered, LoaderCircle, Play, Plus, RefreshCw, Search, Square, Trash2, Upload, X } from 'lucide-react';
-import { rpc, taskLabels, type CopilotKind, type CopilotOptions, type CopilotPreview, type CopilotRecord, type CopilotWorkspace, type RpcResult } from '@maaverge/contracts';
+import { errorMessage, rpc, taskLabels, type CopilotKind, type CopilotOptions, type CopilotPreview, type CopilotRecord, type CopilotWorkspace, type RpcResult } from '@maaverge/contracts';
 import type { SupportPageProps } from './SupportPages';
 import { useContextMenu } from './ContextMenu';
 import './copilot-page.css';
@@ -19,7 +19,7 @@ const kinds: { value: CopilotKind; label: string; short: string }[] = [
   { value: 'ParadoxCopilot', label: '悖论模拟', short: '悖论' },
 ];
 const kindLabel = (kind: CopilotKind) => kinds.find(item => item.value === kind)?.label ?? kind;
-const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
+const errorText = errorMessage;
 const safeLink = (input: string) => { try { const url = new URL(input); return ['https:', 'http:'].includes(url.protocol) ? url.href : undefined; } catch { return undefined; } };
 const localSizeLimit = 480 * 1024;
 let lastKind: CopilotKind = 'Copilot';

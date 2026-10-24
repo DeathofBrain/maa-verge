@@ -268,6 +268,7 @@ test('task tables preserve duplicate tasks, order, switches and advanced paramet
   await wb(page).getByRole('button', { name: '添加任务', exact: true }).click();
   await wb(page).locator('.advanced-params summary').click();
   await wb(page).getByLabel('任务参数 JSON').fill(JSON.stringify({ stage: '2-4', times: 2, medicine: 0, stone: 0, drops: { '30012': 3 }, custom_future: { preserve: true } }));
+  await expect(wb(page).getByRole('checkbox', { name: '指定材料', exact: true })).toBeChecked();
   await wb(page).getByLabel('作战次数').fill('5');
   await wb(page).getByRole('button', { name: '上移任务', exact: true }).click();
   await wb(page).getByLabel('启用第 2 条任务').uncheck();
@@ -313,6 +314,7 @@ test('routine fight settings preserve targets, multiplier and unlimited count af
   await expect(wb(page).getByLabel('作战关卡', { exact: true })).toHaveValue('CE-6');
   await wb(page).getByRole('checkbox', { name: '指定次数', exact: true }).uncheck();
   await wb(page).getByLabel('代理倍率', { exact: true }).selectOption('0');
+  await wb(page).getByRole('checkbox', { name: '指定材料', exact: true }).check();
   await wb(page).getByLabel('目标材料', { exact: true }).selectOption('30013');
   await wb(page).getByRole('button', { name: '添加材料目标', exact: true }).click();
   await wb(page).getByLabel('固源岩组目标数量', { exact: true }).fill('7');
@@ -326,6 +328,26 @@ test('routine fight settings preserve targets, multiplier and unlimited count af
   expect(params).toMatchObject({ stage: 'CE-6', series: 0, times: 2147483647, drops: { '30013': 7 }, medicine: 0, stone: 0 });
   await wb(page).getByLabel('代理倍率', { exact: true }).selectOption('-1');
   expect(JSON.parse(await wb(page).getByLabel('任务参数 JSON').inputValue()).series).toBe(-1);
+  await wb(page).getByRole('checkbox', { name: '指定材料', exact: true }).uncheck();
+  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toBeDisabled();
+  await expect(wb(page).getByRole('button', { name: '添加材料目标', exact: true })).toBeDisabled();
+  await expect(wb(page).getByRole('button', { name: '移除材料 30013', exact: true })).toBeDisabled();
+  await savePlan(page);
+  const saved = await page.evaluate(async () => {
+    const snapshot = await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}) as { plans: Plan[] };
+    return snapshot.plans.find((plan) => plan.id === 'farm-1-7')!.tasks[0].params;
+  });
+  expect(saved).toMatchObject({ drops_enabled: false, drops: { '30013': 7 } });
+  await reloadWorkspace(page, '固源岩补给');
+  await expect(wb(page).getByRole('checkbox', { name: '指定材料', exact: true })).not.toBeChecked();
+  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toHaveValue('7');
+  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toBeDisabled();
+  await wb(page).getByRole('checkbox', { name: '指定材料', exact: true }).check();
+  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toBeEnabled();
+  await savePlan(page);
+  await reloadWorkspace(page, '固源岩补给');
+  await expect(wb(page).getByRole('checkbox', { name: '指定材料', exact: true })).toBeChecked();
+  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toHaveValue('7');
 });
 
 test('all eleven base facilities and credit clue actions map to core parameters', async ({ page }) => {

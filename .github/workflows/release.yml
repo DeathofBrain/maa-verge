@@ -139,6 +139,16 @@ jobs:
         run: |
           node -e "if (!process.env.TAURI_SIGNING_PRIVATE_KEY?.trim()) throw new Error('TAURI_SIGNING_PRIVATE_KEY secret is required')"
           pnpm build
+      - name: Verify final macOS installer, updater archive and installed desktop
+        if: runner.os == 'macOS'
+        run: node tools/smoke-macos-install.mjs --require-updater
+      - name: Save macOS installation diagnostics
+        if: failure() && runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-install-diagnostics-${{ matrix.target }}
+          path: build/macos-install-smoke/
+          if-no-files-found: ignore
       - name: Verify and collect updater artifacts
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}

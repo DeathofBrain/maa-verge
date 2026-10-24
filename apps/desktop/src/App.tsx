@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, ArrowRight, BookOpen, Bot, Check, ChevronDown, ChevronRight, ChevronUp, Clock3, Copy, FileJson, History, House, Layers, ListChecks, LoaderCircle, Menu, Monitor, Plus, Search, Send, Settings2, ShieldCheck, Square, Terminal, Trash2, Wifi, Wrench, X } from 'lucide-react';
-import { desktopPlatform, syncWindowTheme, rpc, subscribe, localizeExecutionMessage, taskEnabled, taskLabels, nextPlanName, type Plan, type Run, type Snapshot, type Task } from '@maaverge/contracts';
+import { errorMessage, desktopPlatform, syncWindowTheme, rpc, subscribe, localizeExecutionMessage, taskEnabled, taskLabels, nextPlanName, type Plan, type Run, type Snapshot, type Task } from '@maaverge/contracts';
 import { DevicesPage } from './DevicesPage';
 import PlanEditor, { discardPlanDraft, taskFieldSearch, type PlanEditorCommand } from './PlanEditor';
 import { useContextMenu } from './ContextMenu';
@@ -75,7 +75,7 @@ export default function App() {
       setSnapshot(next);
       setSelectedDevice((previous) => next.devices.some((item) => item.id === previous) ? previous : next.devices.find((item) => item.state !== 'offline')?.id || next.devices[0]?.id || '');
       setError('');
-    } catch (cause) { if (sequence === refreshSequence.current) setError(cause instanceof Error ? cause.message : String(cause)); }
+    } catch (cause) { if (sequence === refreshSequence.current) setError(errorMessage(cause)); }
   }, []);
   const downloads = useComponentDownloads(snapshot?.updates, refresh);
   useEffect(() => {
@@ -92,7 +92,7 @@ export default function App() {
     const apply = () => {
       const theme = preference === 'system' ? media.matches ? 'dark' : 'light' : preference;
       document.documentElement.dataset.theme = theme;
-      void syncWindowTheme(theme).catch((cause: unknown) => setToast({ text: `无法同步窗口背景：${cause instanceof Error ? cause.message : String(cause)}`, error: true }));
+      void syncWindowTheme(theme).catch((cause: unknown) => setToast({ text: `无法同步窗口背景：${errorMessage(cause)}`, error: true }));
     };
     apply(); media.addEventListener('change', apply); return () => media.removeEventListener('change', apply);
   }, [snapshot?.settings.theme]);
@@ -108,7 +108,7 @@ export default function App() {
     setToast(null);
     pendingRef.current.add(key); setPending(new Set(pendingRef.current));
     try { await call(); await refresh(); if (success) setToast({ text: success }); return true; }
-    catch (cause) { await refresh(); setToast({ text: cause instanceof Error ? cause.message : String(cause), error: true }); return false; }
+    catch (cause) { await refresh(); setToast({ text: errorMessage(cause), error: true }); return false; }
     finally { pendingRef.current.delete(key); setPending(new Set(pendingRef.current)); }
   }, [refresh]);
   const navigate = (next: Page) => { setDeviceSettingsEntry(undefined); navigationRevision.current++; setPage(next); setSidebarOpen(false); setPageSearch(''); setSearchOpen(false); };
@@ -138,7 +138,7 @@ export default function App() {
     try {
       await mutatePlan(plan.id, () => rpc('plan.save', { plan }));
       await refresh(); return !deletedPlans.current.has(plan.id);
-    } catch (cause) { setToast({ text: cause instanceof Error ? cause.message : String(cause), error: true }); return false; }
+    } catch (cause) { setToast({ text: errorMessage(cause), error: true }); return false; }
   };
   const startPlan = (plan: Plan, requestedDeviceId?: string, navigationToken = navigationRevision.current) => action(`start-plan-${plan.deviceId || requestedDeviceId || selectedDevice}`, async () => {
     const startRevision = navigationToken;

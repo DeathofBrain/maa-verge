@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { LoaderCircle, MonitorDown, X } from 'lucide-react';
-import { acknowledgeDesktopExit, desktopPlatform, resolveWindowClose, rpc, subscribeDesktopLifecycle, type DesktopLifecycle, type WindowCloseAction } from '@maaverge/contracts';
+import { errorMessage, acknowledgeDesktopExit, desktopPlatform, resolveWindowClose, rpc, subscribeDesktopLifecycle, type DesktopLifecycle, type WindowCloseAction } from '@maaverge/contracts';
 
 export default function DesktopLifecycleDialog() {
   const [phase, setPhase] = useState<DesktopLifecycle>('running');
@@ -11,7 +11,7 @@ export default function DesktopLifecycleDialog() {
   const pending = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
-  const showError = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
+  const showError = (cause: unknown) => setError(errorMessage(cause));
   const isExiting = () => phaseRef.current === 'exiting';
 
   useEffect(() => subscribeDesktopLifecycle((next) => {

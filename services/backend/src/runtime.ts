@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { Store, now } from './storage';
 import { RpcError } from './errors';
+import { connectionError, errorDetail, nativeConnectionError } from './connection-errors';
 import { defaultComponentDownload, defaultConnection, parsePlan, parseSettings, parseSnapshot, type Plan, type Settings } from './models';
 import { automaticCapture } from './auto-capture';
 import { nativeTask, validatePlan } from './task-policy';
@@ -55,6 +56,7 @@ export class Runtime {
   readonly artifacts: RunArtifacts;
   readonly workers = new Map<string, Worker>();
   private workerConfigurations = new Map<string, any>();
+  private connectionErrors = new WeakMap<Worker, string>();
   private clientSwitches = new Map<string, AbortController>();
   private submissions = new Set<Promise<void>>();
   private artifactCaptures = new Map<string, Promise<void>>();
@@ -296,7 +298,7 @@ export class Runtime {
         return { ...homeInfo(settings, params.deviceId, clientType, new Date(activityCatalog.generatedAt)), activityCatalog };
       }
       case 'device.discover':
-        try { const result = await (this.options.discoverDevices ?? autoDiscover)(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); this.emulatorInventory = result.inventory; return result.devices; } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败', String(error)); }
+        try { const result = await (this.options.discoverDevices ?? autoDiscover)(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); this.emulatorInventory = result.inventory; return result.devices; } catch (error) { throw new RpcError(-32040, 'ADB 设备发现失败：' + connectionError(error, 'adb'), String(error)); }
       case 'device.connect': return this.connectDevice(params);
       case 'device.auto_connect': return this.autoConnectDevices();
       case 'device.disconnect': required('id'); return this.disconnectDevice(params.id);
@@ -545,7 +547,7 @@ export class Runtime {
       this.workerConfigurations.set(id!, structuredClone(config));
       const device = { id, name: String(params.name || profile?.name || address).slice(0, 80), address, state: 'offline', ...(profile ? { connectionProfileId: profile.id } : {}), coreVersion: combo.core.version, resourceVersion: combo.resource.version };
       this.store.put('device', id!, device); this.emit('device.connecting', '正在异步连接设备', { device }); return device;
-    } catch (error) { if (worker && !this.workers.has(id!)) await worker.close(); if (profileId) this.emit('device.connection_failed', '多开实例连接失败', { profileId, address: attemptedAddress, error: String(error) }); if (error instanceof RpcError) throw error; throw new RpcError(-32040, '设备连接失败', String(error)); }
+    } catch (error) { if (worker && !this.workers.has(id!)) await worker.close(); const reason = connectionError(error); if (profileId) this.emit('device.connection_failed', '多开实例连接失败：' + reason, { profileId, address: attemptedAddress, error: reason, detail: String(error) }); if (error instanceof RpcError) throw error; throw new RpcError(-32040, '设备连接失败：' + reason, String(error)); }
     finally { if (reserved) this.connecting.delete(id!); if (reservedAddress) this.connectingAddresses.delete(reservedAddress); }
   }
   async autoConnectDevices(automatic = false): Promise<any> {
@@ -561,7 +563,7 @@ export class Runtime {
       let inventory: EmulatorInventory;
       if (!configuredOnly) {
         try { const result = await (this.options.discoverDevices ?? autoDiscover)(await this.adbExecutable(), { inventory: () => this.readEmulatorInventory() }); discovered = result.devices; diagnostics = result.diagnostics; inventory = result.inventory; }
-        catch (error) { throw new RpcError(-32040, '模拟器自动发现失败', String(error)); }
+        catch (error) { throw new RpcError(-32040, '模拟器自动发现失败：' + connectionError(error, 'adb'), String(error)); }
       } else { inventory = await this.readEmulatorInventory(); diagnostics = [...inventory.diagnostics]; }
       this.emulatorInventory = inventory;
       // Explicit multi-instance profiles use their own ADB executables and SDK
@@ -578,7 +580,7 @@ export class Runtime {
           const previous = [...this.workers.keys()].map(id => this.store.get('device', id)).find(d => this.lockAddress(d.address) === key);
           if (previous) { const worker = this.workers.get(previous.id)!; if (worker.connected || !worker.safeIdle) { devices.push(previous); continue; } await this.disconnectDevice(previous.id, true); }
           devices.push(await this.connectDevice(candidate, false, automatic, inventory));
-        } catch (error) { diagnostics.push(candidate.address + '：' + (error instanceof RpcError && error.data !== undefined ? `${error.message}：${String(error.data)}` : error instanceof Error ? error.message : String(error))); }
+        } catch (error) { diagnostics.push(candidate.address + '：' + connectionError(error)); }
       }
       if (!devices.length) diagnostics.push('未连接到可用模拟器；请启动模拟器并开启 ADB 调试，或手动填写地址');
       if (!automatic || JSON.stringify(diagnostics) !== JSON.stringify(this.lastDiagnostics)) this.emit('device.auto_connect', '模拟器自动连接检查完成', { requested: devices.length, diagnostics });
@@ -588,7 +590,7 @@ export class Runtime {
   async automaticConnections() {
     if (!this.running || this.appUpdating || !parseSettings(this.store.get('settings', 'main')).autoConnect || Date.now() < this.nextAutoConnect || this.switching || this.busy()) return;
     this.nextAutoConnect = Date.now() + 30_000; if (!this.store.get('active', 'combo', {}).core) return;
-    try { await this.autoConnectDevices(true); } catch (error) { const diagnostics = [String(error)]; if (this.running && JSON.stringify(diagnostics) !== JSON.stringify(this.lastDiagnostics)) this.emit('device.auto_connect_failed', '模拟器自动发现失败', { detail: String(error) }); this.lastDiagnostics = diagnostics; }
+    try { await this.autoConnectDevices(true); } catch (error) { const reason = connectionError(error), diagnostics = [reason]; if (this.running && JSON.stringify(diagnostics) !== JSON.stringify(this.lastDiagnostics)) this.emit('device.auto_connect_failed', '模拟器自动发现失败：' + reason, { detail: String(error) }); this.lastDiagnostics = diagnostics; }
   }
   async disconnectDevice(id: string, internal = false) {
     if (this.switching && !internal) throw new RpcError(-32011, '正在切换核心与资源，暂不能断开设备');
@@ -908,7 +910,7 @@ export class Runtime {
         const event = worker.events.shift(), state = run ? this.store.get('execution', run.id, {}) : {};
         if (['exit', 'protocol_error'].includes(event.type)) {
           worker.connected = false; if (run) this.finishNativeRun(run, 'failed', '核心工作进程异常，执行结果未知；不会自动重放'); run = undefined;
-          const d = this.store.get('device', id); d.state = 'offline'; d.connectionError = '核心工作进程异常退出，请查看本地日志后重连'; this.store.put('device', id, d); await worker.close(); this.workers.delete(id); this.workerConfigurations.delete(id); break;
+          const d = this.store.get('device', id); d.state = 'offline'; d.connectionError = event.error ? String(event.error).slice(0, 4096) : '核心工作进程异常退出，请重新连接；若仍失败可在设置中导出诊断日志'; this.store.put('device', id, d); await worker.close(); this.workers.delete(id); this.workerConfigurations.delete(id); break;
         }
         if (event.type === 'callback') {
           const { message, details } = event;
@@ -916,7 +918,23 @@ export class Runtime {
             const d = this.store.get('device', id); d.captureMethod = details.details.method; this.store.put('device', id, d);
             this.emit('device.capture', '核心实际截图方式：' + d.captureMethod, { deviceId: id, method: d.captureMethod, cost: details.details.cost });
           }
-          if (message === 4 && details.what === 'Connect') { worker.connected = !!details.details?.ret; const d = this.store.get('device', id); d.state = worker.connected ? (this.hasExecution(id) ? 'running' : 'idle') : 'offline'; if (worker.connected) delete d.connectionError; else d.connectionError = String(details.details?.error || '请查看本地核心日志').slice(0, 4096); this.store.put('device', id, d); this.emit(worker.connected ? 'device.connected' : 'device.failed', worker.connected ? '设备已连接' : '核心设备连接失败：' + d.connectionError, { device: d }); }
+          if (message === 2) {
+            const reason = nativeConnectionError(details);
+            if (reason) {
+              this.connectionErrors.set(worker, reason);
+              this.emit('device.connection_diagnostic', reason, { deviceId: id, what: details.what, why: String(details.why ?? '').slice(0, 4096), rawOutput: String(details.details?.raw_output ?? '').slice(0, 4096) });
+            }
+          }
+          if (message === 4 && details.what === 'Connect') {
+            worker.connected = !!details.details?.ret;
+            const d = this.store.get('device', id); d.state = worker.connected ? (this.hasExecution(id) ? 'running' : 'idle') : 'offline';
+            const reported = details.details?.error, translated = reported ? connectionError(reported) : undefined;
+            if (worker.connected) delete d.connectionError;
+            else d.connectionError = (reported && translated !== errorDetail(reported).slice(0, 4096) ? translated : undefined) || this.connectionErrors.get(worker) || translated || '设备连接失败，核心未返回具体原因；请确认模拟器已启动、ADB 调试已开启，并核对连接地址';
+            this.connectionErrors.delete(worker);
+            this.store.put('device', id, d);
+            this.emit(worker.connected ? 'device.connected' : 'device.failed', worker.connected ? '设备已连接' : '核心设备连接失败：' + d.connectionError, { device: d, ...(details.details?.error ? { detail: String(details.details.error).slice(0, 4096) } : {}) });
+          }
           if (message === 2 && ['Disconnect', 'ResolutionChanged'].includes(details.what)) {
             worker.connected = false;
             const d = this.store.get('device', id); d.state = 'offline'; delete d.captureMethod; this.store.put('device', id, d);

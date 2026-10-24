@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { AlertCircle, LoaderCircle, Monitor, MousePointer2, Pause, Play, RefreshCw } from 'lucide-react';
-import { rpc, type Device, type RpcResult } from '@maaverge/contracts';
+import { errorMessage, rpc, type Device, type RpcResult } from '@maaverge/contracts';
 import './device-preview.css';
 
 type Frame = RpcResult<'device.frame'>;
@@ -18,7 +18,7 @@ const readRefreshRate = (): RefreshRate => {
 const maxFrameAgeMs = 2000;
 // A quick drawer reopen must wait for its previous, non-cancellable RPC to finish.
 const pendingFrames = new Map<string, Promise<void>>();
-const messageOf = (cause: unknown) => cause instanceof Error ? cause.message : String(cause);
+const messageOf = errorMessage;
 function frameUrl(frame: Frame): string {
   const binary = atob(frame.data);
   const bytes = new Uint8Array(binary.length);

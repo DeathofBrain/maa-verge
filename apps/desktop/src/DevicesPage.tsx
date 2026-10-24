@@ -1,7 +1,7 @@
 import { useContextMenu } from './ContextMenu';
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Info, Layers, LoaderCircle, Monitor, Search, Settings2, Unplug, Wifi } from 'lucide-react';
-import { deviceAddressIdentity, matchingDeviceProfile, rpc, type Device } from '@maaverge/contracts';
+import { errorMessage, deviceAddressIdentity, matchingDeviceProfile, rpc, type Device } from '@maaverge/contracts';
 import type { SupportPageProps } from './SupportPages';
 import { TaskConnectionSettings } from './TaskConnectionSettings';
 import { MultiInstanceSettings } from './MultiInstanceSettings';
@@ -87,9 +87,9 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
       return await onAction('device-operation', async () => {
         try { await call(); }
         catch (cause) {
-          const detail = cause instanceof Error ? cause.message : String(cause);
+          const detail = errorMessage(cause);
           setDiagnostics(previous => [...previous, detail]);
-          setOperation({ kind, phase: 'error', message: `${kind === 'discover' ? '发现设备' : kind === 'disconnect' ? '断开设备' : '连接设备'}失败，请查看下方连接诊断。` });
+          setOperation({ kind, phase: 'error', message: `${kind === 'discover' ? '发现设备' : kind === 'disconnect' ? '断开设备' : '连接设备'}失败：${detail}` });
           throw cause;
         }
       });
@@ -116,10 +116,10 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
     if (!mounted.current) return false;
     if (selectionRevision.current === operationSelectionRevision.current && (ready[0] || devices[0])) onSelectDevice((ready[0] || devices[0]).id);
     const pending = ids.size - ready.length - failed.length;
-    if (failed.length) setDiagnostics(previous => [...previous, ...failed.map(device => `${device.name}（${device.address}）：${device.connectionError}`)]);
+    if (failed.length) setDiagnostics(previous => [...previous, ...failed.map(device => `${device.name}（${device.address}）：${errorMessage(device.connectionError)}`)]);
     if (pending) setDiagnostics(previous => [...previous, `${pending} 台设备的连接尚未就绪。请确认模拟器已启动并开启 ADB 调试，稍后重试。`]);
     const incomplete = [failed.length ? `${failed.length} 台连接失败` : '', pending ? `${pending} 台尚未就绪` : ''].filter(Boolean);
-    setOperation({ kind, phase: failed.length ? 'error' : pending ? 'empty' : 'complete', message: incomplete.length ? `连接结果：${ready.length} 台已就绪，${incomplete.join('，')}。` : `连接完成：${ready.length} 台设备已就绪。` });
+    setOperation({ kind, phase: failed.length ? 'error' : pending ? 'empty' : 'complete', message: incomplete.length ? `连接结果：${ready.length} 台已就绪，${incomplete.join('，')}。${failed.length === 1 ? errorMessage(failed[0].connectionError) : ''}` : `连接完成：${ready.length} 台设备已就绪。` });
     return ready.length === ids.size;
   };
 
@@ -134,7 +134,7 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
   };
   const autoConnect = () => runDeviceOperation('auto-connect', hasManualProfiles ? '正在连接已保存实例…' : '正在发现并连接模拟器…', async () => {
     const result = await rpc('device.auto_connect', {});
-    setDiagnostics(result.diagnostics);
+    setDiagnostics(result.diagnostics.map(errorMessage));
     setDiscovered(result.discovered);
     if (!result.devices.length) {
       setOperation({ kind: 'auto-connect', phase: 'empty', message: '自动连接完成：没有连接到可用设备。' });
@@ -204,7 +204,7 @@ export function DevicesPage({ snapshot, selectedDevice, onSelectDevice, onAction
         <TaskConnectionSettings settings={snapshot.settings} selectedDeviceId={settingsDevice?.id || ''} deviceProfileId={settingsProfile?.id} busy={disabled} showAutomatic={false} onSaveSettings={settings => onAction('settings', () => rpc('settings.save', { settings }), '连接配置已保存，请断开设备后重新连接生效')} />
       </>}
     </div>
-    {detailDevice && tab !== 'instances' && <section className="sp-section sp-device-detail" aria-label="所选设备详情">{detailDevice.state === 'offline' && !isConnecting(detailDevice) && <div className="sp-section-title"><h2>历史设备详情</h2><p>保留的连接记录，不代表设备目前仍在运行。</p></div>}<div className="sp-device-detail-heading"><Monitor size={26} /><div><h3>{detailDevice.name}</h3><span className={`sp-state ${detailDevice.state}`}>{isConnecting(detailDevice) ? '正在连接' : deviceLabels[detailDevice.state]}</span></div><button className="button secondary" disabled={disabled || detailDevice.state !== 'idle'} title={detailDevice.state === 'running' ? '请先停止此设备的任务' : undefined} onClick={() => void disconnect(detailDevice)}><Unplug size={15} />断开设备</button></div><dl className="sp-description-list"><div><dt>连接地址</dt><dd>{detailDevice.address}</dd></div><div><dt>实际截图方式</dt><dd aria-label="实际截图方式">{actualCaptureMethod(detailDevice)}</dd></div><div><dt>核心版本</dt><dd>{detailDevice.coreVersion || '尚未加载'}</dd></div><div><dt>资源版本</dt><dd>{detailDevice.resourceVersion || '尚未加载'}</dd></div></dl>{detailDevice.connectionError && <p className="sp-instance-error" role="alert">{detailDevice.connectionError}</p>}{detailDevice.state === 'running' && <p className="sp-help">请先停止执行，再断开设备。可通过底部运行栏停止。</p>}</section>}
+    {detailDevice && tab !== 'instances' && <section className="sp-section sp-device-detail" aria-label="所选设备详情">{detailDevice.state === 'offline' && !isConnecting(detailDevice) && <div className="sp-section-title"><h2>历史设备详情</h2><p>保留的连接记录，不代表设备目前仍在运行。</p></div>}<div className="sp-device-detail-heading"><Monitor size={26} /><div><h3>{detailDevice.name}</h3><span className={`sp-state ${detailDevice.state}`}>{isConnecting(detailDevice) ? '正在连接' : deviceLabels[detailDevice.state]}</span></div><button className="button secondary" disabled={disabled || detailDevice.state !== 'idle'} title={detailDevice.state === 'running' ? '请先停止此设备的任务' : undefined} onClick={() => void disconnect(detailDevice)}><Unplug size={15} />断开设备</button></div><dl className="sp-description-list"><div><dt>连接地址</dt><dd>{detailDevice.address}</dd></div><div><dt>实际截图方式</dt><dd aria-label="实际截图方式">{actualCaptureMethod(detailDevice)}</dd></div><div><dt>核心版本</dt><dd>{detailDevice.coreVersion || '尚未加载'}</dd></div><div><dt>资源版本</dt><dd>{detailDevice.resourceVersion || '尚未加载'}</dd></div></dl>{detailDevice.connectionError && <p className="sp-instance-error" role="alert">{errorMessage(detailDevice.connectionError)}</p>}{detailDevice.state === 'running' && <p className="sp-help">请先停止执行，再断开设备。可通过底部运行栏停止。</p>}</section>}
     {!!diagnostics.length && <section className="sp-section" aria-label="连接诊断"><div className="sp-section-title"><h2>连接诊断</h2></div><div className="connection-diagnostics sp-diagnostics" role="status">{diagnostics.map((message, index) => <p key={index}>{message}</p>)}</div></section>}
   </div>;
 }

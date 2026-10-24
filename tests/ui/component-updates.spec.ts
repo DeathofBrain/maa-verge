@@ -278,3 +278,31 @@ test('component roots save independently and installed resource versions use eac
   await resource.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('component-updates.png'), fullPage: true });
 });
+
+test('stored update failures explain disk exhaustion in settings and the global notification', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  await page.evaluate(async () => {
+    const harness = (window as HarnessWindow).runtimeHarness;
+    const original = harness.call;
+    harness.call = async (method, params) => {
+      const result = await original(method, params);
+      if (method === 'app.snapshot') {
+        const snapshot = result as Snapshot;
+        snapshot.updates = snapshot.updates.map(channel => channel.id === 'core'
+          ? { ...channel, latestVersion: 'v6.20.0', status: 'failed', message: 'ENOSPC: no space left on device, write' }
+          : channel);
+      }
+      return result;
+    };
+    const state = await original('app.snapshot', {}) as Snapshot;
+    await original('settings.save', { settings: state.settings });
+  });
+  const failure = page.getByRole('alert', { name: 'MaaCore 核心下载通知', exact: true });
+  await expect(failure).toContainText('存储空间不足，请清理目标磁盘后重试');
+  await updatesPage(page);
+  const core = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+  await expect(core.locator('.sp-channel-message')).toContainText('存储空间不足');
+  await expect(core.locator('.sp-channel-message')).not.toContainText('ENOSPC');
+  await expect(core.getByRole('button', { name: '重试下载', exact: true })).toBeEnabled();
+});

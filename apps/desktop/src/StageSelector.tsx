@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { rpc, stagePresets, subscribe, type RpcParams, type RpcResult } from '@maaverge/contracts';
+import { errorMessage, rpc, stagePresets, subscribe, type RpcParams, type RpcResult } from '@maaverge/contracts';
 import { gameDataChanged } from './update-display';
 import './stage-selector.css';
 
@@ -43,7 +43,7 @@ export default function StageSelector({ id, label = '作战关卡', value, onCha
     void rpc('stages.list', { clientType, ...(force ? { refresh: true } : {}) }).then(result => {
       if (!cancelled) { setCatalog(result); setLoadedClient(clientType); setFailure(null); setLoading(false); }
     }).catch(cause => {
-      if (!cancelled) { setLoadedClient(clientType); setFailure({ client: clientType, message: cause instanceof Error ? cause.message : String(cause) }); setLoading(false); }
+      if (!cancelled) { setLoadedClient(clientType); setFailure({ client: clientType, message: errorMessage(cause) }); setLoading(false); }
     });
     return () => { cancelled = true; };
   }, [clientType, refresh]);

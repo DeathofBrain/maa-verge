@@ -90,6 +90,42 @@ test('one configured connection failure does not block another instance and asyn
   expect(runtime.snapshot().devices[0]!.connectionError).toBe('synthetic native connection error');
 });
 
+test('connection setup RPC errors expose the specific cause and retain raw diagnostic data', async () => {
+  const runtime = instance({ adbExecutable: () => { throw new Error('未找到 ADB；请选择模拟器内置 ADB'); } });
+  try { await runtime.connectDevice({ address: '127.0.0.1:5555' }); throw new Error('expected rejection'); }
+  catch (error: any) {
+    expect(error.code).toBe(-32040); expect(error.message).toContain('未找到 ADB');
+    expect(error.data).toContain('未找到 ADB');
+  }
+  await expect(runtime.autoConnectDevices()).rejects.toThrow('未找到 ADB');
+  runtime.store.delete('active', 'combo');
+  await expect(runtime.connectDevice({ address: '127.0.0.1:5555' })).rejects.toThrow('安装并启用核心');
+});
+
+test('connection diagnostics persist across polls, stay per worker and clear on success', async () => {
+  const workers: ReturnType<typeof fakeWorker>[] = [];
+  const runtime = instance({ adbExecutable: () => 'synthetic-adb', workerFactory: async () => { const worker = fakeWorker(); workers.push(worker); return worker; } });
+  const first = await runtime.connectDevice({ address: '127.0.0.1:5555' }), second = await runtime.connectDevice({ address: '127.0.0.1:5557' });
+  await runtime.pollNativeWorkers();
+  workers[0]!.events.push({ type: 'callback', message: 2, details: { what: 'ConnectFailed', why: 'Uuid command failed to exec', details: { raw_output: 'error: device unauthorized.' } } });
+  await runtime.pollNativeWorkers();
+  workers[0]!.events.push({ type: 'callback', message: 4, details: { what: 'Connect', details: { ret: false } } });
+  workers[1]!.events.push({ type: 'callback', message: 4, details: { what: 'Connect', details: { ret: false, error: 'error: device offline' } } });
+  await runtime.pollNativeWorkers();
+  expect(runtime.store.get('device', first.id).connectionError).toContain('尚未授权');
+  expect(runtime.store.get('device', second.id).connectionError).toContain('已离线');
+  expect(runtime.snapshot().events.find(event => event.type === 'device.connection_diagnostic')?.data.rawOutput).toBe('error: device unauthorized.');
+  workers[0]!.events.push({ type: 'callback', message: 4, details: { what: 'Connect', details: { ret: true } } });
+  await runtime.pollNativeWorkers(); expect(runtime.store.get('device', first.id).connectionError).toBeUndefined();
+  workers[0]!.events.push({ type: 'callback', message: 4, details: { what: 'Connect', details: { ret: false } } });
+  await runtime.pollNativeWorkers();
+  expect(runtime.store.get('device', first.id).connectionError).toContain('未返回具体原因');
+  expect(runtime.store.get('device', first.id).connectionError).not.toContain('尚未授权');
+  workers[0]!.events.push({ type: 'callback', message: 2, details: { what: 'ConnectFailed', why: 'Connection command failed to exec' } });
+  workers[0]!.events.push({ type: 'callback', message: 4, details: { what: 'Connect', details: { ret: false, error: 'error: device unauthorized.' } } });
+  await runtime.pollNativeWorkers(); expect(runtime.store.get('device', first.id).connectionError).toContain('尚未授权');
+});
+
 for (const enhanced of [false, true]) test(`configured instance preserves probe diagnostics when its connection ${enhanced ? 'fails' : 'succeeds'}`, async () => {
   const selected = profile(0, enhanced), configs: any[] = [];
   if (enhanced) selected.capture.autoDetect = true;

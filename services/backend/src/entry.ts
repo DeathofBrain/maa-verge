@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { Runtime } from './runtime';
-import { RpcError } from './errors';
+import { RpcError, systemErrorMessage } from './errors';
 import { dataRoot, legacyDataRoot } from './config';
 import { runUpdateJobStdio } from './updates';
 import { isWireFloat, parseWireJson, stringifyWireJson } from './wire-json';
@@ -21,6 +21,8 @@ export async function processRequest(runtime: Pick<Runtime, 'handle'> & Partial<
       return { jsonrpc: '2.0', id, error: error.asDict() };
     }
     console.error('本地运行时请求失败:', error);
+    const message = systemErrorMessage(error);
+    if (message) return { jsonrpc: '2.0', id, error: { code: -32603, message, data: error instanceof Error ? error.message : String(error) } };
     return { jsonrpc: '2.0', id, error: { code: -32603, message: '本地运行时内部错误' } };
   }
 }

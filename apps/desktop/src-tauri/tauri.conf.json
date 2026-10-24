@@ -43,6 +43,7 @@
     },
     "macOS": {
       "minimumSystemVersion": "13.5",
+      "signingIdentity": "-",
       "entitlements": "Entitlements.plist"
     },
     "windows": {

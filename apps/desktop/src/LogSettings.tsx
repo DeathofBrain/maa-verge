@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Download, LoaderCircle, Trash2, X } from 'lucide-react';
-import { rpc, type RpcResult, type Settings } from '@maaverge/contracts';
+import { errorMessage, rpc, type RpcResult, type Settings } from '@maaverge/contracts';
 import { useSettingsDraft } from './settings-draft';
 import './log-settings.css';
 
@@ -45,7 +45,7 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
   useEffect(() => {
     let active = true;
     setInfoError('');
-    void rpc('logs.info', {}).then((result) => { if (active) setInfo(result); }).catch((error: unknown) => { if (active) setInfoError(error instanceof Error ? error.message : String(error)); });
+    void rpc('logs.info', {}).then((result) => { if (active) setInfo(result); }).catch((error: unknown) => { if (active) setInfoError(errorMessage(error)); });
     return () => { active = false; };
   }, [infoRevision]);
 
