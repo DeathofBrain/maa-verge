@@ -304,6 +304,11 @@ export class UpdateService {
   private closing = false;
   private pending = 0;
   get pendingOperations(): number { return this.pending; }
+  async drain(): Promise<void> {
+    // A completing operation can already have queued its follow-up. Wait for
+    // the whole queue without closing the source or interrupting native work.
+    do { await this.queue; } while (this.pending);
+  }
   constructor(readonly root: string, private readonly store: UpdateStore,
     private readonly emit: (kind: string, text: string, data: any) => void,
     private readonly busy: () => boolean, options: UpdateOptions = {}) {
@@ -349,12 +354,15 @@ export class UpdateService {
     await pruneGenerations(roots, [...this.snapshots().map(snapshot => snapshot.path), ...this.protectedPaths()]);
     for (const root of roots) await rmdir(path.join(root, 'downloads')).catch(() => {});
   }
-  private async reconcileCurrent(): Promise<void> {
+  private async reconcileCurrent(activeOnly = false): Promise<void> {
     // Inventory checks yield to execution polling. Only initial startup scans
     // synchronously, before any workers or RPC requests can run.
     const missing = new Set<string>();
     const seen = new Set<string>();
-    for (const snapshot of this.snapshots()) {
+    // Version checks need the active payload's health. Candidates and rollback
+    // payloads are fully verified before preparation, activation and rollback.
+    const snapshots = activeOnly ? Object.values(this.store.get('active', 'combo', {})) : this.snapshots();
+    for (const snapshot of snapshots as any[]) {
       if (seen.has(snapshot.path)) continue;
       seen.add(snapshot.path);
       try {
@@ -494,8 +502,7 @@ export class UpdateService {
   }
   check(channel: string): Promise<any> { return this.serial(() => this.checkCurrent(channel)); }
   private async checkCurrent(channel: string): Promise<any> {
-    await this.reconcileCurrent();
-    await this.pruneVersions();
+    await this.reconcileCurrent(true);
     const current = this.channel(channel);
     if (["downloading", "staged", "waiting_idle"].includes(current.status)) return current;
     if (channel === "app") return this.change(channel, { status: "idle", message: "请在桌面应用中检查签名更新" });
@@ -645,8 +652,8 @@ export class UpdateService {
       await this.finishActivate(); throw new Error(`候选版本重连失败，已恢复原版本: ${message(error)}`);
     }
   }
-  async activatePending(): Promise<void> {
-    for (const channel of this.channels()) if (channel.status === "waiting_idle" && !this.busy()) {
+  async activatePending(available: () => boolean = () => true): Promise<void> {
+    for (const channel of this.channels()) if (available() && channel.status === "waiting_idle" && !this.busy()) {
       try { await this.activate(channel.id); } catch (error) { if (!(error instanceof RpcError)) throw error; }
     }
   }

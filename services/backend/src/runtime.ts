@@ -74,6 +74,8 @@ export class Runtime {
   private lastTick = Date.now();
   private ticking = false;
   private closing?: Promise<void>;
+  private appUpdatePreparation?: symbol;
+  get appUpdatePreparing() { return this.appUpdatePreparation !== undefined; }
   running = true;
   appUpdating = false;
   constructor(readonly root: string, private options: RuntimeOptions = {}) {
@@ -128,7 +130,7 @@ export class Runtime {
     if (!device) throw new RpcError(-32004, '设备不存在');
     const connected = !!worker?.connected;
     const result = (owner: RpcContract['results']['device.availability']['owner'], reason: string, ownerId: string | null = null) => ({ deviceId, connected, available: owner === 'none' && connected && device.state === 'idle' && !!worker?.safeIdle, owner, ownerId, reason });
-    if (!this.running || this.appUpdating) return result('runtime', '应用正在退出或安装更新');
+    if (!this.running || this.appUpdating || this.appUpdatePreparing) return result('runtime', '应用正在退出或安装更新');
     if (this.switching || this.updates?.channels().some(item => item.status === 'waiting_idle')) return result('updates', '正在准备切换核心与资源');
     const owner = this.executions().find(item => item.deviceId === deviceId && item.status === 'running');
     if (owner) return result(owner.toolKind ? 'tool' : 'run', '设备正在执行' + owner.planName + '，请等待整个操作结束', owner.id);
@@ -179,6 +181,32 @@ export class Runtime {
     const event = this.store.event(type, message, data); this.logs.diagnostics.write('info', type, this.diagnosticEvent(event)); this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event }); return event;
   }
   busy() { return !!this.preview?.busy || this.connecting.size > 0 || this.executions().some(run => run.status === 'running' && !this.store.get('execution', run.id, {}).boundaryWaiting) || [...this.workers.values()].some(worker => !worker.safeIdle); }
+  private assertAppUpdateIdle() {
+    const reasons: string[] = [];
+    if (this.executions().some(run => run.status === 'running')) reasons.push('任务或工具仍在执行');
+    if (this.preview.busy) reasons.push('人工点击尚未结束');
+    if (this.connecting.size || this.connectingAddresses.size || this.autoConnecting) reasons.push('设备连接或自动发现尚未结束');
+    if (this.switching) reasons.push('核心与资源正在切换');
+    if (this.starts.size) reasons.push('任务正在启动');
+    if (this.clientSwitches.size) reasons.push('正在切换客户端');
+    if (this.artifactCaptures.size) reasons.push('正在保存执行反馈画面');
+    if ([...this.workers.values()].some(worker => !worker.safeIdle)) reasons.push('核心或异步操作尚未结束');
+    if (reasons.length) throw new RpcError(-32021, '请空闲后安装应用更新：' + reasons.join('；'), { reasons });
+  }
+  private async prepareAppUpdate() {
+    // Pause new work synchronously, but allow an existing component operation
+    // to finish its internal reconnect before taking the final installation gate.
+    this.assertAppUpdateIdle();
+    const preparation = Symbol('app-update'); this.appUpdatePreparation = preparation;
+    try {
+      await this.updates.drain();
+      if (this.appUpdatePreparation !== preparation) throw new RpcError(-32011, '应用更新安装准备已取消');
+      if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
+      this.assertAppUpdateIdle();
+      this.appUpdating = true;
+      return { ...this.updates.channel('app'), status: 'staged', message: '已暂停新操作，准备退出安装应用更新' };
+    } finally { if (this.appUpdatePreparation === preparation) this.appUpdatePreparation = undefined; }
+  }
   devices(): any[] {
     return this.store.all('device').map(device => {
       const synced = this.syncHistory(device.id, this.store.get('device_client', device.id, 'Official'));
@@ -204,7 +232,7 @@ export class Runtime {
     if (params === null) params = {};
     if (typeof params !== 'object' || Array.isArray(params)) throw new RpcError(-32602, 'params 必须是对象');
     if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
-    if (this.appUpdating && method !== 'app.snapshot' && !(method === 'updates.rollback' && params.channel === 'app')) throw new RpcError(-32011, '应用正在准备安装更新，请稍后重启');
+    if ((this.appUpdating || this.appUpdatePreparing) && method !== 'app.snapshot' && !(method === 'updates.rollback' && params.channel === 'app')) throw new RpcError(-32011, '应用正在准备安装更新，请稍后重试');
     const required = (...keys: string[]) => { if (keys.some(key => !(key in params))) throw new RpcError(-32602, '请求参数无效'); };
     switch (method) {
       case 'app.snapshot': return this.snapshot();
@@ -343,14 +371,10 @@ export class Runtime {
         if (!('channel' in params)) throw new RpcError(-32602, '缺少更新通道');
         const operation = method.slice(8) as 'check' | 'prepare' | 'activate' | 'rollback';
         if (params.channel === 'app' && operation === 'activate') {
-          // This decision and the gate are synchronous: background discovery or
-          // update timers cannot start between the idle check and the gate.
-          if (this.busy() || this.connectingAddresses.size || this.autoConnecting || this.switching || this.starts.size || this.clientSwitches.size || this.artifactCaptures.size
-            || this.updates.pendingOperations || this.executions().some(run => run.status === 'running')) throw new RpcError(-32021, '任务、连接或组件更新仍在进行，请空闲后安装应用更新');
-          this.appUpdating = true;
-          return { ...this.updates.channel('app'), status: 'staged', message: '已暂停新操作，准备退出安装应用更新' };
+          return this.prepareAppUpdate();
         }
         if (params.channel === 'app' && operation === 'rollback') {
+          this.appUpdatePreparation = undefined;
           this.appUpdating = false;
           return { ...this.updates.channel('app'), message: '已取消安装准备，可以继续使用' };
         }
@@ -419,7 +443,7 @@ export class Runtime {
     this.preview.invalidate(device.id);
     const worker = this.workers.get(device.id);
     if (!worker?.connected || !worker.safeIdle) throw new RpcError(-32011, '核心尚未连接或异步操作未结束');
-    if (!this.running || this.appUpdating || this.switching) throw new RpcError(-32011, '应用运行时正在退出、安装更新或切换');
+    if (!this.running || this.appUpdating || this.appUpdatePreparing || this.switching) throw new RpcError(-32011, '应用运行时正在退出、安装更新或切换');
     const isCopilot = snapshot.source === 'copilot', id = ident('run');
     const run: any = { ...(occurrence ? { scheduleId: occurrence.scheduleId, scheduledFor: occurrence.scheduledFor } : {}), id, source: snapshot.source, sourceName: snapshot.name,
       planId: isCopilot ? null : params.planId, planName: snapshot.name, deviceId: device.id, status: 'running', progress: 0, message: '正在提交首个任务', startedAt: now(), finishedAt: null,
@@ -485,7 +509,7 @@ export class Runtime {
     let id: string | undefined, reservedAddress: string | undefined, profileId: string | undefined, attemptedAddress: string | undefined, reserved = false, worker: Worker | undefined;
     try {
       if (this.switching && !internal) throw new RpcError(-32011, '正在切换核心与资源，暂不能连接设备');
-      if (!this.running || this.appUpdating) throw new RpcError(-32011, '应用运行时正在退出或安装更新');
+      if (!this.running || this.appUpdating || this.appUpdatePreparing && !internal) throw new RpcError(-32011, '应用运行时正在退出或安装更新');
       const address = validateAddress(params.address);
       attemptedAddress = address;
       if (automatic) this.validateAutomatic(address);
@@ -494,7 +518,7 @@ export class Runtime {
       if (this.connectingAddresses.has(address)) throw new RpcError(-32011, '该设备正在建立连接');
       this.connectingAddresses.add(address); reservedAddress = address;
       this.emulatorInventory = inventory ?? await this.readEmulatorInventory();
-      if (!this.running || this.appUpdating || this.switching && !internal) throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
+      if (!this.running || this.appUpdating || (this.appUpdatePreparing || this.switching) && !internal) throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
       const settings = parseSettings(this.store.get('settings', 'main'));
       let profile = findDeviceProfile(settings, address) ?? settings.deviceProfiles?.find(profile => this.profileLockAddress(profile) === this.lockAddress(address)); profileId = profile?.id;
       let selected = profile ? { capture: profile.capture, connection: profile.connection } : settings;
@@ -502,7 +526,7 @@ export class Runtime {
       if (detected) selected = { ...selected, capture: detected.capture, ...(detected.config ? { connection: { ...defaultConnection(), ...selected.connection, config: detected.config } } : {}) };
       const knownInstance = emulatorInstanceForAddress(address, this.emulatorInventory) ?? (selected.capture?.mumuBridge ? this.sdkInstance(selected.capture) : undefined);
       const capture = await connectionCapture(selected.capture, address, process.platform, knownInstance);
-      if (!this.running || this.appUpdating || this.switching && !internal) throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
+      if (!this.running || this.appUpdating || (this.appUpdatePreparing || this.switching) && !internal) throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
       if (detected?.instance && detected.capture.method !== 'adb') {
         const current = parseSettings(this.store.get('settings', 'main'));
         const profiles = current.deviceProfiles ?? [];
@@ -556,7 +580,7 @@ export class Runtime {
     if (this.autoConnecting) throw new RpcError(-32011, '模拟器自动连接正在进行');
     this.autoConnecting = true;
     try {
-      if (!this.running || this.appUpdating || this.switching) throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，请稍后重试');
+      if (!this.running || this.appUpdating || this.appUpdatePreparing || this.switching) throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，请稍后重试');
       if (!automatic) this.suppressed.clear();
       if (!this.store.get('active', 'combo', {}).core) throw new RpcError(-32040, '请先在更新中心安装并启用核心，再自动连接模拟器');
       const profiles = parseSettings(this.store.get('settings', 'main')).deviceProfiles ?? [];
@@ -590,7 +614,7 @@ export class Runtime {
     } finally { this.autoConnecting = false; }
   }
   async automaticConnections() {
-    if (!this.running || this.appUpdating || !parseSettings(this.store.get('settings', 'main')).autoConnect || Date.now() < this.nextAutoConnect || this.switching || this.busy()) return;
+    if (!this.running || this.appUpdating || this.appUpdatePreparing || !parseSettings(this.store.get('settings', 'main')).autoConnect || Date.now() < this.nextAutoConnect || this.switching || this.busy()) return;
     this.nextAutoConnect = Date.now() + 30_000; if (!this.store.get('active', 'combo', {}).core) return;
     try { await this.autoConnectDevices(true); } catch (error) { const reason = connectionError(error), diagnostics = [reason]; if (this.running && JSON.stringify(diagnostics) !== JSON.stringify(this.lastDiagnostics)) this.emit('device.auto_connect_failed', '模拟器自动发现失败：' + reason, { detail: String(error) }); this.lastDiagnostics = diagnostics; }
   }
@@ -1050,12 +1074,13 @@ export class Runtime {
     } finally { this.ticking = false; }
   }
   async automaticUpdates() {
-    if (!this.running || this.appUpdating) return;
+    if (!this.running || this.appUpdating || this.appUpdatePreparing) return;
     const settings = parseSettings(this.store.get('settings', 'main'));
     for (const [channel, interval] of [['core', 86400], ['resource', 21600]] as const) {
+      if (!this.running || this.appUpdating || this.appUpdatePreparing) return;
       if (!(channel === 'core' ? settings.autoUpdateCore : settings.autoUpdateResource) || Date.now() < this.nextChecks[channel]!) continue;
       this.nextChecks[channel] = Date.now() + interval * 1000;
-      try { const state = await this.updates.check(channel); if (!this.running) return; if ((this.updates.channel('core').currentVersion !== '未安装' || channel === 'core') && state.status === 'available') { await this.updates.prepare(channel); if (this.running) await this.updates.activate(channel); } }
+      try { const state = await this.updates.check(channel); if (!this.running || this.appUpdating || this.appUpdatePreparing) return; if ((this.updates.channel('core').currentVersion !== '未安装' || channel === 'core') && state.status === 'available') { await this.updates.prepare(channel); if (this.running && !this.appUpdating && !this.appUpdatePreparing) await this.updates.activate(channel); } }
       catch { this.nextChecks[channel] = Date.now() + 300_000; }
     }
   }

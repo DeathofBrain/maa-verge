@@ -21,6 +21,8 @@ async function payload(root: string) {
 
 test('payload integrity is stable across enumeration order and excludes only the top-level manifest', async () => {
   const root = await temp(); await payload(root);
+  // Existing manifests must remain valid after changing disk-read concurrency.
+  expect((await snapshotIntegrity(root)).installedHash).toBe('5bb414fe8b76933ca73d1c97b18e44106a9fab4bfdd62f1c1a11192967ce55f7');
   await writeFile(path.join(root, 'manifest.json'), 'installation metadata');
   await writeFile(path.join(root, 'resource', 'manifest.json'), 'payload metadata');
   const initial = await snapshotIntegrity(root);
@@ -32,6 +34,17 @@ test('payload integrity is stable across enumeration order and excludes only the
   expect(await snapshotIntegrity(root)).toEqual(initial);
   await writeFile(path.join(root, 'resource', 'manifest.json'), 'changed payload metadata');
   expect((await snapshotIntegrity(root)).installedHash).not.toBe(initial.installedHash);
+});
+
+test('failed concurrent verification closes every opened file before candidate cleanup', async () => {
+  const root = await temp(), files: string[] = [];
+  for (let index = 0; index < 16; index++) {
+    const name = 'model-' + index; files.push(name);
+    await writeFile(path.join(root, name), Buffer.alloc(256 * 1024, index));
+  }
+  await expect(snapshotIntegrity(root, ['000-missing', ...files])).rejects.toThrow();
+  // Windows refuses this cleanup if verification still owns open file handles.
+  await rm(root, { recursive: true });
 });
 
 test.each(['same-size', 'empty', 'larger'])('saved payload hashes detect %s content damage', async kind => {

@@ -48,7 +48,7 @@ export async function main() {
   const track = (promise: Promise<unknown>) => { inflight.add(promise); void promise.catch(error => console.error(error)).finally(() => inflight.delete(promise)); };
   const timers = [
     setInterval(() => track(runtime.tick()), 100),
-    setInterval(() => { if (!updateBusy && !stopped && !runtime.appUpdating) { updateBusy = true; track((async () => { try { await runtime.automaticUpdates(); if (!runtime.appUpdating) await runtime.updates.activatePending(); } finally { updateBusy = false; } })()); } }, 1000),
+    setInterval(() => { const available = () => !stopped && !runtime.appUpdating && !runtime.appUpdatePreparing; if (!updateBusy && available()) { updateBusy = true; track((async () => { try { await runtime.automaticUpdates(); if (available()) await runtime.updates.activatePending(available); } finally { updateBusy = false; } })()); } }, 1000),
     setInterval(() => { if (!connectionBusy && !stopped) { connectionBusy = true; track(runtime.automaticConnections().finally(() => { connectionBusy = false; })); } }, 1000),
   ];
   const dispatch = (bytes: Buffer) => {

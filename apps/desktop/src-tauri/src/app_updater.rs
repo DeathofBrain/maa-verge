@@ -690,10 +690,22 @@ impl AppUpdater {
             .map_err(|error| format!("安装前签名复核失败：{error}"))?;
         let snapshot = runtime.request("app.snapshot".into(), json!({})).await?;
         ensure_idle(&snapshot)?;
-        // This is a synchronous state transition in Bun, not an installer call.
-        runtime
+        self.change(generation, |state| {
+            state.value["message"] = json!("正在等待后台组件操作结束并确认安装状态");
+        })?;
+        // Bun pauses new work, drains existing component operations and checks
+        // native safety again before acquiring the final installation gate.
+        if let Err(error) = runtime
             .request("updates.activate".into(), json!({ "channel": "app" }))
-            .await?;
+            .await
+        {
+            self.change(generation, |state| {
+                state.value["message"] = json!(format!(
+                    "安装准备未完成：{error}；已验证的更新包保留，可重试"
+                ));
+            })?;
+            return Err(error);
+        }
         runtime.mark_updating();
         self.change(generation, |state| {
             state.value["status"] = json!("staged");
@@ -728,28 +740,24 @@ fn ensure_idle(snapshot: &Value) -> Result<(), String> {
         .get("devices")
         .and_then(Value::as_array)
         .ok_or("无法确认设备状态，请稍后重试")?;
-    let updates = snapshot
-        .get("updates")
+    let tools = snapshot
+        .get("toolJobs")
         .and_then(Value::as_array)
-        .ok_or("无法确认组件更新状态，请稍后重试")?;
+        .ok_or("无法确认工具执行状态，请稍后重试")?;
     if runs
         .iter()
         .any(|run| run.get("status").and_then(Value::as_str) == Some("running"))
+        || tools
+            .iter()
+            .any(|job| job.get("status").and_then(Value::as_str) == Some("running"))
         || devices.iter().any(|device| {
             !matches!(
                 device.get("state").and_then(Value::as_str),
                 Some("idle" | "offline")
             )
         })
-        || updates.iter().any(|update| {
-            update.get("id").and_then(Value::as_str) != Some("app")
-                && matches!(
-                    update.get("status").and_then(Value::as_str),
-                    Some("checking" | "downloading" | "waiting_idle")
-                )
-        })
     {
-        return Err("任务、设备连接或组件更新仍在进行；请等待空闲后再退出并安装应用更新".into());
+        return Err("任务、工具或设备连接仍在进行；请等待空闲后再退出并安装应用更新".into());
     }
     Ok(())
 }
@@ -942,8 +950,8 @@ mod tests {
     }
 
     #[test]
-    fn activation_requires_all_runs_and_components_to_be_idle() {
-        let idle = json!({ "runs": [], "devices": [{ "state": "idle" }, { "state": "offline" }],
+    fn activation_requires_idle_devices_and_executions_but_defers_component_work_to_backend() {
+        let idle = json!({ "runs": [], "toolJobs": [], "devices": [{ "state": "idle" }, { "state": "offline" }],
             "updates": [{ "id": "app", "status": "staged" }, { "id": "core", "status": "active" }] });
         assert!(ensure_idle(&idle).is_ok());
         let mut busy = idle.clone();
@@ -952,10 +960,13 @@ mod tests {
         busy = idle.clone();
         busy["devices"][0]["state"] = json!("running");
         assert!(ensure_idle(&busy).is_err());
+        busy = idle.clone();
+        busy["toolJobs"] = json!([{ "status": "running" }]);
+        assert!(ensure_idle(&busy).is_err());
         for status in ["checking", "downloading", "waiting_idle"] {
             busy = idle.clone();
             busy["updates"][1]["status"] = json!(status);
-            assert!(ensure_idle(&busy).is_err());
+            assert!(ensure_idle(&busy).is_ok());
         }
         assert!(ensure_idle(&json!({})).is_err());
     }
