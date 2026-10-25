@@ -24,7 +24,7 @@ if [ "$mode" = application ]; then
     tools/tests/windows-installer.test.mjs tools/tests/macos-bundle.test.mjs
   pnpm contracts:check
   pnpm -r check
-  node --test packages/contracts/test/validators.test.mjs
+  node --test packages/contracts/test/validators.test.mjs packages/contracts/test/copilot-search.test.mjs
   pnpm test:runtime
   uv run --frozen ruff check services/runtime
   for platform in linux darwin win32; do
