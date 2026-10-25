@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
-import { AIMessage } from '@langchain/core/messages';
+import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { AgentInputError } from '../src';
 import { AgentBudgetError, AgentOutputError, createLangChainProposer } from '../src/langchain';
 import { SyntheticChatModel, syntheticProposal } from './support/synthetic-model';
+import type { MaaToolSet } from '../tools/types';
 
 function outputModel(output: Record<string, unknown>) {
   return new SyntheticChatModel(({ toolNames, call }) => new AIMessage({
@@ -39,6 +40,36 @@ test('default model budget is zero and prevents all model and host calls', async
   await expect(proposer.propose('做日常')).rejects.toBeInstanceOf(AgentBudgetError);
   expect(model.calls).toHaveLength(0);
   expect(preparations).toBe(0);
+});
+
+test('optional host tools participate in the proposer loop while the final plan remains a draft', async () => {
+  let toolCalls = 0;
+  const maaTools: MaaToolSet = {
+    definitions: [{ name: 'maa_test_status', description: '合成状态', effect: 'read',
+      schema: { type: 'object', properties: {}, additionalProperties: false } }],
+    async invoke(name, input, invocation) {
+      expect({ name, input, callId: invocation.callId }).toEqual({ name: 'maa_test_status', input: {}, callId: 'observe-1' });
+      toolCalls++;
+      return { content: { state: 'idle' }, artifact: { data: 'private-local-evidence' } };
+    },
+  };
+  const model = new SyntheticChatModel(({ call, messages, toolNames }) => {
+    expect(toolNames).toEqual(['maa_test_status', 'AgentPlanProposal']);
+    if (call === 1) return new AIMessage({ content: '', tool_calls: [
+      { name: 'maa_test_status', id: 'observe-1', type: 'tool_call', args: {} },
+    ] });
+    const observation = messages.find(message => message instanceof ToolMessage);
+    expect(observation?.content).toBe('{"state":"idle"}');
+    expect(JSON.stringify(observation?.content)).not.toContain('private-local-evidence');
+    return new AIMessage({ content: '', tool_calls: [
+      { name: 'AgentPlanProposal', id: 'proposal-1', type: 'tool_call', args: structuredClone(syntheticProposal) },
+    ] });
+  });
+  const proposer = createLangChainProposer({ model, maaTools, maxModelCalls: 2, preparePlan: draft => draft });
+  const proposal = await proposer.propose('查询状态后生成草稿');
+  expect(toolCalls).toBe(1);
+  expect(model.calls).toHaveLength(2);
+  expect(proposal).toMatchObject({ mode: 'langchain', requiresConfirmation: true, plan: syntheticProposal.plan });
 });
 
 test('invalid input is rejected before model invocation even with an authorized call budget', async () => {

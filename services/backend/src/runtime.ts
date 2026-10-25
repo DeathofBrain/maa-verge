@@ -679,7 +679,7 @@ export class Runtime {
     for (let previous = index - 1; previous >= 0; previous--) if (tasks[previous].type === 'StartUp') return tasks[previous].params.client_type || 'Official';
     return this.deviceClient(run.deviceId);
   }
-  private deviceClient(deviceId: string): NonNullable<RpcContract['params']['stages.list']['clientType']> {
+  deviceClient(deviceId: string): NonNullable<RpcContract['params']['stages.list']['clientType']> {
     const settings = parseSettings(this.store.get('settings', 'main')), device = this.store.get('device', deviceId);
     const profile = device && (settings.deviceProfiles?.find(item => item.id === device.connectionProfileId) || findDeviceProfile(settings, device.address));
     return this.store.get('device_client', deviceId) ?? profile?.connection.clientType ?? settings.connection?.clientType ?? 'Official';

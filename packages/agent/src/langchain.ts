@@ -1,9 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { ensureConfig } from '@langchain/core/runnables';
 import { createAgent, modelCallLimitMiddleware, toolStrategy } from 'langchain';
+import { createLangChainMaaTools } from '../tools/langchain';
+import type { MaaToolSet } from '../tools/types';
 import { validateAgentMessage } from './input';
 import { proposalSchema } from './proposal-schema';
 import { assertZeroConsumableProposal } from './proposal-policy';
-import { assertAgentTracingDisabled } from './tracing';
+import { assertAgentCallbacksLocal } from './tracing';
 import type { AgentProposal, PreparePlan } from './types';
 
 export { AgentConfigurationError } from './tracing';
@@ -14,6 +17,8 @@ export interface LangChainProposerOptions<TPlan> {
   model: BaseChatModel;
   /** Must normalize the draft and enforce the same policy as the plan editor. */
   preparePlan: PreparePlan<TPlan>;
+  /** Optional host-scoped tools. Their independent authorization still applies. */
+  maaTools?: MaaToolSet;
   /** Zero by default. Counts agent calls, not provider-internal retries or cost. */
   maxModelCalls?: number;
   timeoutMs?: number;
@@ -38,8 +43,8 @@ export function createLangChainProposer<TPlan>(options: LangChainProposerOptions
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300000) throw new RangeError('timeoutMs must be an integer from 1 to 300000');
   const agent = createAgent({
     model,
-    tools: [],
-    systemPrompt: '你是 Maa Verge 的计划草稿助手。只生成简体中文说明和待审阅的任务表，不声称已执行。只使用任务契约中的类型；源石、理智药和加急许可默认额度均为 0，不申请任何消耗，不指定设备或定时。无法可靠规划时应说明原因，不虚构结果。',
+    tools: options.maaTools ? createLangChainMaaTools(options.maaTools) : [],
+    systemPrompt: '你是 Maa Verge 的助手，输出简体中文说明和待审阅的任务表草稿。仅在宿主提供的工具范围内读取状态或申请操作，授权由宿主决定；草稿不自动保存或执行。只使用任务契约中的类型；源石、理智药和加急许可额度均为 0，不申请任何消耗，不指定设备或定时。提交、点击接受或任务处理完成均不证明动作成功或作业通关，应根据工具证据描述实际状态；无法可靠规划时说明原因，不虚构结果。',
     responseFormat: toolStrategy(proposalSchema, { handleError: false }),
     middleware: [modelCallLimitMiddleware({ runLimit: maxModelCalls, exitBehavior: 'error' })],
   });
@@ -48,7 +53,7 @@ export function createLangChainProposer<TPlan>(options: LangChainProposerOptions
     async propose(message: unknown, invocation: { signal?: AbortSignal } = {}): Promise<AgentProposal<TPlan, 'langchain'>> {
       const text = validateAgentMessage(message);
       if (maxModelCalls === 0) throw new AgentBudgetError();
-      assertAgentTracingDisabled();
+      assertAgentCallbacksLocal(ensureConfig().callbacks, model.callbacks);
       const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(invocation.signal ? [invocation.signal] : [])]);
       signal.throwIfAborted();
       const result = await agent.invoke({ messages: [{ role: 'user', content: text }] }, { signal, recursionLimit: maxModelCalls * 4 + 4 });

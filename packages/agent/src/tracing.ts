@@ -1,4 +1,6 @@
 import { getCurrentRunTree } from 'langsmith/traceable';
+import { CallbackManager, type Callbacks } from '@langchain/core/callbacks/manager';
+import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 
 const tracingFlags = ['LANGSMITH_TRACING', 'LANGSMITH_TRACING_V2', 'LANGCHAIN_TRACING_V2'] as const;
 
@@ -20,4 +22,21 @@ export function assertAgentTracingDisabled(): void {
   if (process.env.LANGCHAIN_TRACING) throw new AgentConfigurationError();
   const context = getCurrentRunTree(true);
   if (context && context.tracingEnabled !== false) throw new AgentConfigurationError();
+}
+
+/** Inspect explicit/inherited SDK callbacks before they can receive any input. */
+export function assertAgentCallbacksLocal(callbacks?: Callbacks, localCallbacks?: Callbacks): void {
+  assertAgentTracingDisabled();
+  const isTracer = (handler: unknown) => handler instanceof LangChainTracer
+    || (handler !== null && typeof handler === 'object' && 'name' in handler && handler.name === 'langchain_tracer');
+  for (const candidate of [callbacks, localCallbacks]) {
+    const handlers = Array.isArray(candidate) ? candidate : candidate?.handlers;
+    if (handlers?.some(isTracer)) throw new AgentConfigurationError();
+  }
+  // configure() resolves inherited handlers and SDK configure hooks without
+  // dispatching a run. Normal application callbacks remain usable locally.
+  const manager = CallbackManager.configure(callbacks, localCallbacks);
+  if (manager?.handlers.some(isTracer)) {
+    throw new AgentConfigurationError();
+  }
 }

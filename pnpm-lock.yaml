@@ -66,6 +66,9 @@ importers:
 
   packages/agent:
     dependencies:
+      '@cfworker/json-schema':
+        specifier: 4.1.1
+        version: 4.1.1
       '@langchain/core':
         specifier: 1.3.0
         version: 1.3.0

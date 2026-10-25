@@ -38,3 +38,9 @@ test('an inherited tracing context rejects even with tracing environment switche
 test('an explicitly disabled parent context permits the offline proposal without changing environment', () => {
   expect(probe('context-disabled')).toEqual({ rejected: false, configurationError: false, fetches: 0, calls: 1, preparations: 1, environmentUnchanged: true });
 });
+
+test('model and inherited runnable LangChainTracer callbacks reject before seeing proposal inputs', () => {
+  for (const scenario of ['model-tracer', 'implicit-tracer']) expect(probe(scenario)).toEqual({
+    rejected: true, configurationError: true, fetches: 0, calls: 0, preparations: 0, tracedRuns: 0, environmentUnchanged: true,
+  });
+});
