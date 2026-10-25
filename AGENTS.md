@@ -19,7 +19,7 @@ Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, l
 ## Collaboration
 
 - Inspect existing changes before editing. Own a narrow subsystem; do not overwrite another contributor's work.
-- Use feature branches/worktrees for parallel work. Local data and ports must be isolated per checkout; device locks are shared across local instances.
+- Develop only in the existing primary repository checkout using ordinary branches. Do not create, check out, or switch to additional Git worktrees, including through tools, automation, or subagents. Parallel contributors share the checkout and must own non-overlapping files; inspect and preserve local changes before switching branches. Isolate test data and ports; device locks remain shared across local instances.
 - Default saved configuration and business data to the program directory's config folder (checkout/config in development), with configurable roots. Keep device leases in the shared standard user-data path; never hardcode a developer's drive, username or ADB location.
 - Do not commit credentials, local databases, screenshots of real accounts, native downloads, virtual environments or build output.
 - Commit dependency lockfiles. Update contracts and documentation with interface changes. Generated files must be regenerated from their source.

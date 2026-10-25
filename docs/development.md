@@ -91,13 +91,15 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 
 窗口关闭默认进入托盘；关闭设置中的“关闭窗口时最小化到托盘”后，关闭窗口会完全退出。托盘的“退出”始终完全退出。无系统托盘的 Linux 桌面不属于已验证交互环境，需后续实机确认。
 
-## 多 checkout 与配置
+## 开发目录、分支与配置
 
-开发数据默认保存在各 checkout 的 `config/`（已加入 Git 忽略），实际数据库为 `config/native/maaverge.sqlite3`，不同工作树自然隔离。开发端口和单实例 ID 仍对 checkout 绝对路径计算哈希。
+后续开发统一在现有主工作目录中使用普通分支，不创建、签出或切换到额外 Git worktree；工具、自动化和子 Agent 同样遵守。并行任务按文件边界分工，不各自切换共享分支；修改和切换分支前先检查并保留已有改动。
+
+开发数据默认保存在当前 checkout 的 `config/`（已加入 Git 忽略），实际数据库为 `config/native/maaverge.sqlite3`。切换普通分支不会隔离该目录；测试继续使用独立临时数据根和端口。开发端口和单实例 ID 仍对 checkout 绝对路径计算哈希。
 
 安装版默认使用程序目录下的 `config/`；macOS 指 `.app` 所在目录，Linux AppImage 指 AppImage 所在目录。默认 TypeScript 后端首次启动且新库不存在时，从原标准用户目录 `MAAVerge/native` 导入；开发版导入原 `MAAVerge-dev/<checkout-hash>/native`。迁移保留旧文件，需先退出旧服务；已有新库或显式覆盖数据根时不导入。Python debug 参考遇到待迁移旧库会提示先启动默认后端，避免创建空库阻断迁移。具体范围见 [运行时说明](runtime-migration.md#数据交接与回退)。
 
-`MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各自的 worktree。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
+`MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各次测试的独立数据目录。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
 
 同一 checkout 同时启动界面测试与桌面时，应分别设置不同的 `MAAVERGE_DEV_PORT`。Vite 的预构建缓存按实际端口存放在 `apps/desktop/node_modules/.vite/port-<port>`，避免多个实例覆盖彼此的 Tauri 模块。若旧窗口出现 `Importing a module script failed` 等组件加载错误，点击「重新加载界面」；更新脚本后应先完全退出旧开发窗口与命令，再重新运行 `pnpm dev`。普通服务连接失败仍使用「重新连接」。
 
@@ -106,6 +108,8 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 `pnpm run doctor` 检查固定工具版本、所有工作区的直接依赖和本地环境，不连接设备、不发模型请求、不输出密钥；显式写 `run` 可避免调用 pnpm 自带的同名命令。`pnpm run doctor --native` 将原生依赖设为必需。`pnpm build` 与默认 TypeScript 桌面 `pnpm dev` 在编译前执行原生诊断；构建、检查和运行入口若发现工作区依赖缺失，会直接提示冻结同步命令，避免到 Bun 打包时才出现 `Could not resolve tar/yauzl` 或缺少 Bun 类型。设备发现也会查找模拟器内置 ADB，非标准安装需配置路径。可选 ADB 的缺失不阻断界面测试。真实设备测试由用户明确选择，且必须记录核心、资源、平台及设备标识的脱敏值。
 
 ## 清理 Codex worktree 与分支
+
+本节仅用于清理遗留 worktree；当前开发规则禁止新增 worktree。只清理工作树而保留分支时使用 `--worktrees-only`。
 
 VS Code 中显示的 `codex/...` 条目可能是本地分支，删除 worktree 后这些分支仍会保留。`python tools/clean-codex-worktrees.py` 会先清理关联 `codex/*` 分支的额外 worktree，再单独查找和清理本地 `codex/*` 分支。默认只删除已合入 `main` 的分支，按提交可达性核验，不依赖 upstream 设置；经过 squash/cherry-pick 的分支可能仍被判定为未合并。
 
