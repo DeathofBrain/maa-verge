@@ -146,6 +146,17 @@ describe('structured recognition results', () => {
   });
 });
 
+test('same-name owned forms do not erase explicit unowned operators from a completed scan', () => {
+  const owned = { ...operator, id: 'char_owned_form_1', name: '合成多形态干员' };
+  const missing = { id: 'char_missing', name: '合成未拥有干员', rarity: 6, own: false };
+  const all = [owned, { ...owned, id: 'char_owned_form_2' }, missing, { ...owned, id: 'char_owned_form_3' }];
+  const callback = (all_opers: unknown[]) => ({ taskchain: 'OperBox', what: 'OperBoxInfo', details: { done: true, own_opers: [owned], all_opers } });
+  expect(parseRecognition('OperBox', callback(all))).toEqual({ items: [], operators: [owned, { ...missing, elite: -1, level: -1, potential: -1 }] });
+  for (const invalid of [[...all, missing], [...all, { arbitrary: true }]]) {
+    expect(parseRecognition('OperBox', callback(invalid))).toEqual({ items: [], operators: [owned] });
+  }
+});
+
 test('recognition parser rejects malformed or oversized callback data and duplicate operator identities', () => {
   const callback = (type: 'Depot' | 'OperBox', details: any) => ({ taskchain: type, what: type === 'Depot' ? 'DepotInfo' : 'OperBoxInfo', details });
   for (const data of ['null', '[]', '{}', '{"30012":0}', '{"30012":2147483648}', '{"30012":1.5}', '{"30012":true}', 'invalid', JSON.stringify({ ['x'.repeat(201)]: 1 }), ' '.repeat(1024 * 1024 + 1)]) {

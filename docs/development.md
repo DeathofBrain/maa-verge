@@ -91,13 +91,15 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 
 窗口关闭默认进入托盘；关闭设置中的“关闭窗口时最小化到托盘”后，关闭窗口会完全退出。托盘的“退出”始终完全退出。无系统托盘的 Linux 桌面不属于已验证交互环境，需后续实机确认。
 
-## 多 checkout 与配置
+## 开发目录、分支与配置
 
-开发数据默认保存在各 checkout 的 `config/`（已加入 Git 忽略），实际数据库为 `config/native/maaverge.sqlite3`，不同工作树自然隔离。开发端口和单实例 ID 仍对 checkout 绝对路径计算哈希。
+开发可在现有主工作目录中使用普通分支，也允许创建、签出和切换到额外 Git worktree。额外 worktree 只能放在主项目根目录的 `.worktree/<任务名>/` 下，不得使用仓库外目录或其他位置；工具、自动化和子 Agent 同样遵守。并行任务按文件边界分工，共用 checkout 时不各自切换分支；修改和切换分支前先检查并保留已有改动。
+
+开发数据默认保存在当前 checkout 的 `config/`（已加入 Git 忽略），实际数据库为 `config/native/maaverge.sqlite3`。切换普通分支不会隔离该目录；测试继续使用独立临时数据根和端口。开发端口和单实例 ID 仍对 checkout 绝对路径计算哈希。
 
 安装版默认使用程序目录下的 `config/`；macOS 指 `.app` 所在目录，Linux AppImage 指 AppImage 所在目录。默认 TypeScript 后端首次启动且新库不存在时，从原标准用户目录 `MAAVerge/native` 导入；开发版导入原 `MAAVerge-dev/<checkout-hash>/native`。迁移保留旧文件，需先退出旧服务；已有新库或显式覆盖数据根时不导入。Python debug 参考遇到待迁移旧库会提示先启动默认后端，避免创建空库阻断迁移。具体范围见 [运行时说明](runtime-migration.md#数据交接与回退)。
 
-`MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各自的 worktree。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
+`MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各次测试的独立数据目录。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
 
 同一 checkout 同时启动界面测试与桌面时，应分别设置不同的 `MAAVERGE_DEV_PORT`。Vite 的预构建缓存按实际端口存放在 `apps/desktop/node_modules/.vite/port-<port>`，避免多个实例覆盖彼此的 Tauri 模块。若旧窗口出现 `Importing a module script failed` 等组件加载错误，点击「重新加载界面」；更新脚本后应先完全退出旧开发窗口与命令，再重新运行 `pnpm dev`。普通服务连接失败仍使用「重新连接」。
 
@@ -107,6 +109,10 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 
 ## 清理 Codex worktree 与分支
 
+任务合并后必须清理对应 worktree：先将必要文件和未提交工作保存到安全位置，停止该任务的开发服务、测试及其他进程，再回到主工作目录，使用 `git worktree remove .worktree/<任务名>` 移除签出，并用 `git branch -d <任务分支>` 删除已合并的临时本地分支；必要时运行 `git worktree prune` 清理失效登记。删除前核对实际路径与合并状态，不得清理其他任务或未合并工作。
+
+以下脚本可辅助批量清理已有 Codex worktree 与分支；先用 `--dry-run` 核对目标，并遵守上述清理边界。只清理工作树而保留分支时使用 `--worktrees-only`。
+
 VS Code 中显示的 `codex/...` 条目可能是本地分支，删除 worktree 后这些分支仍会保留。`python tools/clean-codex-worktrees.py` 会先清理关联 `codex/*` 分支的额外 worktree，再单独查找和清理本地 `codex/*` 分支。默认只删除已合入 `main` 的分支，按提交可达性核验，不依赖 upstream 设置；经过 squash/cherry-pick 的分支可能仍被判定为未合并。
 
 脚本保留主工作区、当前工作区，以及仍被任意 worktree 占用的分支；默认保留含未提交改动、未跟踪文件或锁定的 worktree，删除失败时返回非零退出码。所有删除均通过 Git 执行，范围限定于本地 `codex/*`，不扫描其他目录或操作远程分支。
@@ -114,8 +120,6 @@ VS Code 中显示的 `codex/...` 条目可能是本地分支，删除 worktree �
 ```powershell
 python tools/clean-codex-worktrees.py --dry-run         # 预览 worktree 和本地分支
 python tools/clean-codex-worktrees.py                   # 清理干净的 worktree 和已合并分支
-python tools/clean-codex-worktrees.py --dry-run --force # 预览包括未合并分支的全部目标
-python tools/clean-codex-worktrees.py --force           # 允许删除脏 worktree 和未合并分支
 ```
 
 `--worktrees-only` 仅清理 worktree、保留全部分支；`--repo <仓库路径>` 可指定其他仓库。脚本不删除 detached worktree 或已经脱离 Git 登记的目录。非强制模式要求仓库存在 `main`，缺失时保留所有分支。

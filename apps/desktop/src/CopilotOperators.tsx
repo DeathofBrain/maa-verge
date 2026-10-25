@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useId, useRef, useState, type RefObject } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { matchingDeviceProfile, rpc, type Snapshot } from '@maaverge/contracts';
 import OperatorBadge, { readOperator } from './OperatorBadge';
 import { assessOperator, requirementLabels, type OperatorAssessment, type OperatorRequirement, type OperatorRoster } from './copilot-operators';
+import './copilot-operator-groups.css';
 
 export function useCopilotRoster(snapshot: Snapshot, deviceId?: string) {
   const device = snapshot.devices.find(item => item.id === deviceId);
@@ -12,17 +14,24 @@ export function useCopilotRoster(snapshot: Snapshot, deviceId?: string) {
   const jobs = snapshot.toolJobs?.filter(job => job.deviceId === deviceId).map(job => `${job.id}:${job.status}`).join(',');
   const key = JSON.stringify([deviceId, profile?.connection?.clientType, snapshot.settings.connection?.clientType, accountEvent]);
   const revision = JSON.stringify([device?.dataSync?.operatorsAt, syncEvent, runs, jobs]);
-  const [loaded, setLoaded] = useState<{ key: string; roster: OperatorRoster }>();
+  const [loaded, setLoaded] = useState<{ key: string; roster?: OperatorRoster; failed?: boolean }>();
   useEffect(() => {
     let cancelled = false;
     if (!deviceId) return;
     // Let the service resolve the device's current client, including account switches.
     void rpc('recognition.get', { deviceId, kind: 'operators' }).then(roster => {
       if (!cancelled && roster.deviceId === deviceId && roster.kind === 'operators') setLoaded({ key, roster });
-    }, () => { if (!cancelled) setLoaded(undefined); });
+    }, () => { if (!cancelled) setLoaded({ key, failed: true }); });
     return () => { cancelled = true; };
   }, [deviceId, key, revision]);
-  return loaded?.key === key && loaded.roster.collectedAt && loaded.roster.operators.length ? loaded.roster : undefined;
+  const current = loaded?.key === key ? loaded : undefined;
+  const roster = current?.roster?.collectedAt && current.roster.operators.length ? current.roster : undefined;
+  const hint = !deviceId ? '选择目标设备后可核对本地干员。'
+    : !current ? '正在读取所选设备的干员识别结果…'
+    : current.failed ? '干员数据读取失败，持有状态未核验；请重试或在工具箱执行干员识别。'
+    : !roster ? '尚无所选设备的干员识别数据，请在工具箱执行「干员识别」；仓库识别仅更新材料。'
+    : `本地干员数据：${new Date(roster.collectedAt!).toLocaleString('zh-CN')}；名单缺项仍需重新识别核对。`;
+  return { roster, hint };
 }
 
 function useAssessments(operators: OperatorRequirement[], resourceKey: string, roster: OperatorRoster | undefined, element: RefObject<HTMLDivElement | null>) {
@@ -54,16 +63,18 @@ function Operator({ operator, resourceKey, roster, compact, assessment }: { oper
   const requirements = requirementLabels(operator.requirements);
   const skill = operator.skill ? `技能 ${operator.skill}` : '未指定技能';
   return <li className={compact ? 'cp-operator-tag' : 'cp-operator-card'} data-status={assessment.status} title={`${operator.name} · ${skill}${requirements.length ? ` · ${requirements.join(' · ')}` : ''}\n${assessment.detail}`}>
-    {compact ? <><strong>{operator.name}</strong>{assessment.label && <small>{assessment.label}</small>}</> : <>
+    {compact ? <strong>{operator.name}</strong> : <>
       <OperatorBadge name={operator.name} resourceKey={resourceKey} clientType={roster?.clientType}/>
       <div className="cp-operator-requirement"><span className="cp-skill">{skill}</span><p>{requirements.length ? requirements.join(' · ') : '未声明练度要求'}</p></div>
-      {roster && <small className="cp-operator-state">{assessment.detail}</small>}
+      <small className="cp-operator-state">{assessment.detail}</small>
     </>}
   </li>;
 }
 
-export default function CopilotOperators({ operators, resourceKey, roster, compact }: { operators?: OperatorRequirement[]; resourceKey: string; roster?: OperatorRoster; compact?: boolean }) {
+export default function CopilotOperators({ operators, resourceKey, roster, rosterHint, compact }: { operators?: OperatorRequirement[]; resourceKey: string; roster?: OperatorRoster; rosterHint?: string; compact?: boolean }) {
   const element = useRef<HTMLDivElement>(null);
+  const groupId = useId();
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const assessments = useAssessments(operators ?? [], resourceKey, roster, element);
   if (!operators?.length) return <p className="sp-help">{operators ? '作业未声明干员要求。' : '干员信息未提供，查看详情核对。'}</p>;
   const groups = new Map<string, number[]>();
@@ -71,11 +82,38 @@ export default function CopilotOperators({ operators, resourceKey, roster, compa
     const group = operator.group ?? '';
     groups.set(group, [...(groups.get(group) ?? []), index]);
   }
-  return <div ref={element} className={compact ? 'cp-operator-summary' : 'cp-operator-groups'} aria-label="作业干员">{[...groups].map(([group, members]) => {
-    const selected = compact && group ? members.filter(index => assessments[index].eligible).slice(0, 1) : members;
+  const renderOperator = (index: number) => <Operator key={`${operators[index].name}-${index}`} operator={operators[index]} assessment={assessments[index]} resourceKey={resourceKey} roster={roster} compact={compact}/>;
+  if (compact) {
+    const alternatives = [...groups].filter(([group]) => group).map(([group, members], order) => {
+      const verified = members.filter(index => assessments[index].eligible);
+      const pending = members.filter(index => assessments[index].status === 'owned' && !assessments[index].eligible);
+      const selected = [...verified, ...pending].slice(0, 3);
+      const status: OperatorAssessment['status'] = selected.length ? 'owned'
+        : members.some(index => assessments[index].status === 'unknown') ? 'unknown'
+        : members.some(index => assessments[index].status === 'insufficient') ? 'insufficient' : 'missing';
+      const hint = verified.length ? '有已确认满足要求的候选' : pending.length ? '有已拥有候选，部分练度待核验'
+        : status === 'missing' ? '本地明确未拥有本组候选'
+        : status === 'insufficient' ? '暂无符合已知要求的干员' : '尚未确认可用干员';
+      return { group, members, selected, status, hint, panelId: `${groupId}-${order}` };
+    });
+    return <div ref={element} className="cp-operator-summary" aria-label="作业干员">
+      {!roster && <p className="cp-roster-hint">{rosterHint ?? '尚无干员识别数据，请在工具箱执行干员识别。'}</p>}
+      <ul className="cp-operator-tags cp-requirement-tags">
+        {(groups.get('') ?? []).map(renderOperator)}
+        {alternatives.map(({ group, status, hint, panelId }) => <li key={group} className="cp-group-option">
+          <button type="button" className="cp-operator-tag cp-group-toggle" data-status={status} title={`${group} · 组内任选一位\n${hint}`} aria-expanded={expandedGroup === group} aria-controls={panelId} onClick={() => setExpandedGroup(value => value === group ? null : group)}>{group}<ChevronDown size={12} aria-hidden="true"/></button>
+        </li>)}
+      </ul>
+      {alternatives.map(({ group, members, selected, hint, panelId }) => <section key={group} id={panelId} className="cp-group-panel" aria-label={`${group}备选干员`} hidden={expandedGroup !== group}>
+        <h4>{group}<span>组内任选一位</span></h4>
+        {selected.length ? <ul className="cp-operator-tags">{selected.map(renderOperator)}</ul> : <p className="cp-group-unverified">{members.length} 位备选 · {hint}，查看详情</p>}
+      </section>)}
+    </div>;
+  }
+  return <div ref={element} className="cp-operator-groups" aria-label="作业干员">{[...groups].map(([group, members]) => {
     return <div key={group}>
     {group && <h4>{group}<span>组内任选一位</span></h4>}
-    {selected.length ? <ul className={compact ? 'cp-operator-tags' : 'cp-operator-grid'}>{selected.map(index => <Operator key={`${operators[index].name}-${index}`} operator={operators[index]} assessment={assessments[index]} resourceKey={resourceKey} roster={roster} compact={compact}/>)}</ul> : <p className="cp-group-unverified">{members.length} 位备选 · {roster && members.every(index => ['missing', 'insufficient'].includes(assessments[index].status)) ? '暂无符合已知要求的干员' : '尚未确认可用干员'}，查看详情</p>}
+    <ul className="cp-operator-grid">{members.map(renderOperator)}</ul>
   </div>;
   })}</div>;
 }

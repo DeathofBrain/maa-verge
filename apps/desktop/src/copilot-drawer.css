@@ -1,0 +1,11 @@
+.cp-drawer-layer { --cp-warning: #966800; position: fixed; inset: 0; z-index: 160; display: flex; justify-content: flex-end; }
+:root[data-theme=dark] .cp-drawer-layer { --cp-warning: #edc65c; }
+.cp-drawer-layer [hidden] { display: none !important; }
+.cp-drawer-backdrop { position: absolute; inset: 0; border: 0; border-radius: 0; background: #10182780; backdrop-filter: blur(1px); cursor: default; }
+.cp-drawer-panel { position: relative; width: min(760px,calc(100% - 96px)); height: 100%; overflow-y: auto; overscroll-behavior: contain; background: var(--surface); box-shadow: -12px 0 40px #0003; animation: cp-drawer-enter 160ms ease-out; }
+.cp-drawer-panel .cp-detail { min-height: 100%; border: 0; border-radius: 0; padding: 28px; }
+.cp-drawer-panel .cp-station-nav { position: sticky; top: -28px; z-index: 1; margin: -28px -28px 22px; padding: 20px 28px; background: var(--surface); }
+.cp-drawer-category { max-width: 280px; margin: 24px 0; }
+@keyframes cp-drawer-enter { from { transform: translateX(36px); opacity: .65; } to { transform: translateX(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cp-drawer-panel { animation: none; } }
+@media (max-width: 640px) { .cp-drawer-panel { width: calc(100% - 20px); } .cp-drawer-panel .cp-detail { padding: 20px; } .cp-drawer-panel .cp-station-nav { top: -20px; margin: -20px -20px 18px; padding: 16px 20px; } }

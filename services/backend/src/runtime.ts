@@ -240,6 +240,10 @@ export class Runtime {
         if (!validateDeviceAvailabilityParams(params)) throw new RpcError(-32602, '设备状态请求无效');
         return this.availability(params.deviceId);
       case 'copilot.list': if (!validateCopilotListParams(params)) throw new RpcError(-32602, '作业列表请求无效'); return this.copilot.list(params);
+      case 'copilot.category.list': return this.copilot.categoryList(params);
+      case 'copilot.category.save': return this.copilot.categorySave(params);
+      case 'copilot.category.delete': return this.copilot.categoryDelete(params);
+      case 'copilot.category.assign': return this.copilot.categoryAssign(params);
       case 'copilot.get': if (!validateCopilotIdentityParams(params)) throw new RpcError(-32602, '作业详情请求无效'); return this.copilot.get(params);
       case 'copilot.export': if (!validateCopilotExportParams(params)) throw new RpcError(-32602, '作业导出请求无效'); return this.copilot.export(params);
       case 'copilot.preview': if (!validateCopilotPreviewParams(params)) throw new RpcError(-32602, '作业预览请求无效'); return this.copilot.preview(params);

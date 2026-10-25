@@ -1,0 +1,11 @@
+.cp-record:has(> .cp-set-operators) { flex-wrap: wrap; }
+.cp-set-operators { flex-basis: 100%; min-width: 0; order: 3; margin-top: 8px; color: var(--muted); font-size: 11px; }
+.cp-set-operators > summary { cursor: pointer; width: fit-content; padding: 4px 0; color: var(--accent); }
+.cp-set-operators > summary span { margin-left: 10px; color: var(--muted); }
+.cp-set-operator-content { padding-top: 5px; }
+.cp-set-operator-note,.cp-set-operator-stage,.cp-set-operator-error { margin: 4px 0 8px; line-height: 1.7; overflow-wrap: anywhere; }
+.cp-set-operator-member { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
+.cp-set-operator-member > h4 { margin: 0 0 4px; color: var(--text); font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+.cp-set-operator-member .cp-operator-summary { margin-top: 4px; }
+.cp-set-operator-error { color: var(--danger); }
+.cp-set-operator-more { margin-top: 10px; }

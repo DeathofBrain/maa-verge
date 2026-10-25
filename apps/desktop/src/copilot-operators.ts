@@ -6,9 +6,16 @@ export type OperatorAssessment = { status: 'unknown' | 'owned' | 'missing' | 'in
 const eliteNames = ['精零', '精一', '精二'];
 const moduleNames = ['不使用模组', 'X模', 'Y模', 'A模', 'D模', 'B模'];
 const numerals = ['零', '一', '二', '三'];
-const numericRequirements = (requirements: OperatorRequirement['requirements']): Record<string, number> => Object.fromEntries(
-  Object.entries(requirements ?? {}).filter((entry): entry is [string, number] => typeof entry[1] === 'number' && Number.isFinite(entry[1])),
-);
+const numericRequirements = (requirements: OperatorRequirement['requirements']): Record<string, number> => {
+  const result: Record<string, number> = Object.create(null);
+  for (const [key, value] of Object.entries(requirements ?? {})) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+    const field = key === 'potentiality' ? 'potential' : key;
+    // Keep the stricter requirement if an older file also declares the alias.
+    result[field] = Math.max(result[field] ?? -Infinity, value);
+  }
+  return result;
+};
 
 /** MAA copilot requirements encode mastery as skill levels 8–10 and module type separately from module level. */
 export function requirementLabels(requirements: OperatorRequirement['requirements']): string[] {
@@ -27,10 +34,10 @@ export function requirementLabels(requirements: OperatorRequirement['requirement
 }
 
 export function assessOperator(operator: OperatorRequirement, roster?: OperatorRoster, operatorId?: string | null): OperatorAssessment {
-  const unknown = (detail: string): OperatorAssessment => ({ status: 'unknown', label: '', detail, eligible: false });
-  if (!roster?.collectedAt || !roster.operators.length) return unknown('暂无本地干员数据');
+  const unknown = (detail: string): OperatorAssessment => ({ status: 'unknown', label: '未核验', detail, eligible: false });
+  if (!roster?.collectedAt || !roster.operators.length) return unknown('尚无干员识别数据，请在工具箱执行干员识别');
   const matches = roster.operators.filter(item => operatorId ? item.id === operatorId : item.name === operator.name);
-  if (matches.length !== 1) return unknown('本地未识别到此干员，持有与练度未核验');
+  if (matches.length !== 1) return unknown(matches.length ? '本地存在同名或多形态记录，持有与练度待核对' : '本地名单未识别到此干员，持有未核验；可重新执行干员识别');
   const local = matches[0];
   if (!local.own) return { status: 'missing', label: '未拥有', detail: '本地识别结果：未拥有', eligible: false };
   const requirements = numericRequirements(operator.requirements);
@@ -56,5 +63,5 @@ export function assessOperator(operator: OperatorRequirement, roster?: OperatorR
   const unchecked = unverified.length ? `；${[...new Set(unverified)].join('、')}未核验` : '';
   return missing.length
     ? { status: 'insufficient', label: '缺少练度', detail: `缺少练度：${missing.join('；')}${unchecked}`, eligible: false }
-    : { status: 'owned', label: '已拥有', detail: `已拥有${unchecked}`, eligible: !unverified.length };
+    : { status: 'owned', label: unverified.length ? '已拥有 · 待核验' : '已拥有', detail: `已拥有${unchecked}`, eligible: !unverified.length };
 }

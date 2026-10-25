@@ -1,5 +1,5 @@
 // Browser-only deterministic adapter. Product code never imports this module.
-import type { CopilotKind, CopilotOptions, CopilotPreview, CopilotRecord, CopilotWorkspace, Run, Snapshot, Task } from '../../../packages/contracts/src/index';
+import type { CopilotCategory, CopilotKind, CopilotOptions, CopilotPreview, CopilotRecord, CopilotWorkspace, Run, Snapshot, Task } from '../../../packages/contracts/src/index';
 
 type Context = {
   key: string;
@@ -13,12 +13,34 @@ const clone = <T>(value: T): T => structuredClone(value);
 const now = () => new Date().toISOString();
 const kinds: CopilotKind[] = ['Copilot', 'SSSCopilot', 'ParadoxCopilot'];
 const defaultOptions = (): CopilotOptions => ({ loopTimes: 1, formation: false, formationIndex: 0, addTrust: false, ignoreRequirements: false, supportUnitName: '', additionalOperators: [], autoLikeOnSuccess: false });
-const synthetic = (id: string) => ({ stage_name: 'main_01-07', minimum_required: 'v6.0.0', doc: { title: `合成社区作业 ${id}`, details: '仅供界面验证的本地夹具，不访问社区', ...(id === '103' ? {} : { author: '合成作者' }) }, opers: [{ name: '阿米娅', skill: 1, requirements: { elite: 2, level: 80 } }], groups: [{ name: '输出备选', opers: [{ name: '能天使', skill: 3 }, { name: '合成六星干员', skill: 2 }] }], actions: [{ type: 'SpeedUp' }] });
+const synthetic = (id: string) => ({ stage_name: 'main_01-07', difficulty: id === '102' ? 2 : 1, minimum_required: 'v6.0.0', doc: { title: `合成社区作业 ${id}`, details: '仅供界面验证的本地夹具，不访问社区', ...(id === '103' ? {} : { author: '合成作者' }) }, opers: [{ name: '阿米娅', skill: 1, requirements: { elite: 2, level: 80 } }], groups: [{ name: '输出备选', opers: [{ name: '能天使', skill: 3 }, { name: '合成六星干员', skill: 2 }] }], actions: [{ type: 'SpeedUp' }] });
+type FixtureData = {
+  items: CopilotRecord[];
+  versions: Record<string, { record: CopilotRecord; content: string }>;
+  workspaces: Partial<Record<CopilotKind, CopilotWorkspace>>;
+  categories: CopilotCategory[];
+  setCategories: Record<string, string>;
+};
+const categoryName = (name: string) => name.trim().toLowerCase();
+function setCategory(data: FixtureData, setId: string, title: string) {
+  const previous = data.setCategories[setId];
+  if (data.categories.some(category => category.id === previous)) return previous;
+  const name = title.replace(/[\u0000-\u001f\u007f]/gu, ' ').trim() || `作业集 ${setId}`;
+  let category = data.categories.find(item => categoryName(item.name) === categoryName(name));
+  if (!category) {
+    if (data.categories.length >= 500) throw new Error('本地分类已达 500 个上限，请先整理分类');
+    const timestamp = now();
+    category = { id: crypto.randomUUID(), name, createdAt: timestamp, updatedAt: timestamp };
+    data.categories.push(category);
+  }
+  data.setCategories[setId] = category.id;
+  return category.id;
+}
 
 export function createCopilotFixture(context: Context) {
   const storageKey = context.key + ':copilot';
   const restored = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch { return null; } })();
-  const data: { items: CopilotRecord[]; versions: Record<string, { record: CopilotRecord; content: string }>; workspaces: Partial<Record<CopilotKind, CopilotWorkspace>> } = restored ?? { items: [], versions: {}, workspaces: {} };
+  const data: FixtureData = { items: [], versions: {}, workspaces: {}, ...restored, categories: restored?.categories ?? [], setCategories: restored?.setCategories ?? {} };
   const previews = new Map<string, { preview: CopilotPreview; content: Map<string, string> }>();
   const ratings = new Map<string, { communityId: string; likes: number; dislikes: number; rating: 'none' | 'like' | 'dislike' }>();
   const persist = () => localStorage.setItem(storageKey, JSON.stringify(data));
@@ -29,14 +51,43 @@ export function createCopilotFixture(context: Context) {
     if (!json || typeof json !== 'object' || Array.isArray(json) || !Array.isArray(json.actions) && !Array.isArray(json.stages)) throw new Error('无法识别作业内容，需要 actions 或 stages');
     const kind: CopilotKind = json.type === 'SSS' || Array.isArray(json.stages) ? 'SSSCopilot' : json.type === 'Paradox' || /^mem_/u.test(json.stage_name || '') ? 'ParadoxCopilot' : 'Copilot';
     const versionId = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content)))].map(value => value.toString(16).padStart(2, '0')).join('');
-    return { id: source.communityId ? `community-${source.communityId}` : versionId, versionId, kind, title: json.doc?.title || name || json.stage_name || '未命名作业', stageName: json.stage_name || json.stage_name_override || '保全派驻', author: typeof json.author === 'string' ? json.author : typeof json.doc?.author === 'string' ? json.doc.author : '', ...(source.kind === 'community' ? { uploader: '合成上传者' } : {}), description: String(json.doc?.details || ''), minimumCoreVersion: json.minimum_required || '', operators: [...(json.opers || []), ...(json.groups || []).flatMap((group: { name: string; opers: object[] }) => group.opers.map(operator => ({ ...operator, group: group.name })))], videos: [], source, createdAt: now(), compatibility: { status: 'ready', reasons: [] } };
+    return { ...([0, 1, 2, 3].includes(json.difficulty) ? { difficulty: json.difficulty } : {}), id: source.communityId ? `community-${source.communityId}` : versionId, versionId, kind, title: json.doc?.title || name || json.stage_name || '未命名作业', stageName: json.stage_name || json.stage_name_override || '保全派驻', author: typeof json.author === 'string' ? json.author : typeof json.doc?.author === 'string' ? json.doc.author : '', ...(source.kind === 'community' ? { uploader: '合成上传者' } : {}), description: String(json.doc?.details || ''), minimumCoreVersion: json.minimum_required || '', operators: [...(json.opers || []), ...(json.groups || []).flatMap((group: { name: string; opers: object[] }) => group.opers.map(operator => ({ ...operator, group: group.name })))], videos: [], source, createdAt: now(), compatibility: { status: 'ready', reasons: [] } };
   }
   return async function copilotRpc(method: string, params: Record<string, any>): Promise<unknown> {
     const state = context.snapshot();
     switch (method) {
       case 'copilot.list': {
-        const items = data.items.filter(item => !params.kind || item.kind === params.kind), page = Number(params.page || 1);
+        const items = data.items.filter(item => (!params.kind || item.kind === params.kind)
+          && (params.categoryId === undefined || (item.categoryId ?? null) === params.categoryId)), page = Number(params.page || 1);
         return { items: clone(items.slice((page - 1) * 20, page * 20)), page, total: items.length, hasNext: page * 20 < items.length };
+      }
+      case 'copilot.category.list': return { items: clone(data.categories) };
+      case 'copilot.category.save': {
+        if (typeof params.name !== 'string' || params.name.length > 300 || !params.name.trim() || /[\u0000-\u001f\u007f]/u.test(params.name)) throw new Error('分类名称不能为空或含控制字符');
+        const name = params.name.trim();
+        const existing = params.id ? data.categories.find(item => item.id === params.id) : undefined;
+        if (params.id && !existing) throw new Error('分类不存在，请刷新后重试');
+        if (data.categories.some(item => item.id !== existing?.id && categoryName(item.name) === categoryName(name))) throw new Error('分类名称已存在');
+        if (!existing && data.categories.length >= 500) throw new Error('本地分类已达 500 个上限，请先整理分类');
+        const timestamp = now();
+        const category = { id: existing?.id ?? crypto.randomUUID(), name, createdAt: existing?.createdAt ?? timestamp, updatedAt: timestamp };
+        if (existing) data.categories = data.categories.map(item => item.id === existing.id ? category : item);
+        else data.categories.push(category);
+        persist(); context.emit('copilot.changed', existing ? '作业分类已重命名' : '作业分类已创建'); return clone(category);
+      }
+      case 'copilot.category.delete': {
+        const deleted = data.categories.some(item => item.id === params.id);
+        data.items = data.items.map(item => item.categoryId === params.id ? { ...item, categoryId: null } : item);
+        data.setCategories = Object.fromEntries(Object.entries(data.setCategories).filter(([, id]) => id !== params.id));
+        data.categories = data.categories.filter(item => item.id !== params.id);
+        persist(); context.emit('copilot.changed', '分类已删除，作业保留在未分类中'); return { deleted };
+      }
+      case 'copilot.category.assign': {
+        if (!Array.isArray(params.ids) || !params.ids.length || params.ids.length > 100 || new Set(params.ids).size !== params.ids.length) throw new Error('作业分类请求无效');
+        if (params.categoryId !== null && !data.categories.some(item => item.id === params.categoryId)) throw new Error('分类不存在，请刷新后重试');
+        if (params.ids.some((id: string) => !data.items.some(item => item.id === id))) throw new Error('部分作业已删除，分类未修改，请刷新后重试');
+        data.items = data.items.map(item => params.ids.includes(item.id) ? { ...item, categoryId: params.categoryId } : item);
+        persist(); context.emit('copilot.changed', '作业分类已更新'); return { updated: params.ids.length };
       }
       case 'copilot.get': {
         const value = params.versionId ? data.versions[params.versionId]?.record : data.items.find(item => item.id === params.id);
@@ -78,7 +129,7 @@ export function createCopilotFixture(context: Context) {
       case 'copilot.search': {
         const page = Number(params.page || 1);
         const target = params.target === 'set' ? 'set' : 'copilot';
-        return { items: [{ id: target === 'set' ? '12' : String(page * 100 + 1), title: target === 'set' ? '合成有序作业集' : `合成社区作业 ${page}`, description: '此结果来自测试夹具', author: '', uploader: '合成上传者', url: `https://prts.plus/${target === 'set' ? 'set' : 'copilot'}/${target === 'set' ? 12 : page * 100 + 1}`, kind: 'Copilot', ...(target === 'copilot' ? { operators: [...synthetic(String(page * 100 + 1)).opers, ...synthetic(String(page * 100 + 1)).groups.flatMap(group => group.opers.map(operator => ({ ...operator, group: group.name })))] } : {}) }], page, hasNext: page < 2, total: 2 };
+        return { items: [{ id: target === 'set' ? '12' : String(page * 100 + 1), title: target === 'set' ? '合成有序作业集' : `合成社区作业 ${page}`, description: '此结果来自测试夹具', author: '', uploader: '合成上传者', url: `https://prts.plus/${target === 'set' ? 'set' : 'copilot'}/${target === 'set' ? 12 : page * 100 + 1}`, kind: 'Copilot', ...(target === 'copilot' ? { difficulty: synthetic(String(page * 100 + 1)).difficulty } : {}), ...(target === 'copilot' ? { operators: [...synthetic(String(page * 100 + 1)).opers, ...synthetic(String(page * 100 + 1)).groups.flatMap(group => group.opers.map(operator => ({ ...operator, group: group.name })))] } : {}) }], page, hasNext: page < 2, total: 2 };
       }
       case 'copilot.preview': {
         const preview: CopilotPreview = { id: crypto.randomUUID(), title: '导入预览', entries: [] };
@@ -118,12 +169,17 @@ export function createCopilotFixture(context: Context) {
         if (!preview) throw new Error('预览已失效，请重新解析');
         const entries = preview.preview.entries.filter(item => !params.entryIds || params.entryIds.includes(item.id));
         const items: CopilotRecord[] = [], errors: { id: string; message: string }[] = [];
+        const next = { ...data, items: [...data.items], versions: { ...data.versions }, categories: clone(data.categories), setCategories: { ...data.setCategories } };
         for (const entry of entries) {
           if (!entry.record) { errors.push({ id: entry.id, message: entry.error || '作业无效' }); continue; }
           const value = clone(entry.record);
-          data.versions[value.versionId] = { record: value, content: preview.content.get(entry.id)! };
-          data.items = data.items.filter(item => item.id !== value.id); data.items.push(value); items.push(value);
+          const existing = next.items.find(item => item.id === value.id);
+          next.versions[value.versionId] = { record: clone(value), content: preview.content.get(entry.id)! };
+          if (existing && Object.hasOwn(existing, 'categoryId')) value.categoryId = existing.categoryId;
+          else if (value.source.kind === 'community' && value.source.setId) value.categoryId = setCategory(next, value.source.setId, preview.preview.title);
+          next.items = next.items.filter(item => item.id !== value.id); next.items.push(value); items.push(value);
         }
+        Object.assign(data, next);
         persist(); context.emit('copilot.changed', '作业已导入'); return { items, errors };
       }
       case 'copilot.start': {

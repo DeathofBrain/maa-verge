@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CopilotLibrary, defaultCopilotOptions, parseCopilotCode } from '../src/copilot';
 import { Store } from '../src/storage';
-import type { CopilotKind, CopilotWorkspace } from '../../../packages/contracts/src/rpc-types';
+import type { CopilotDifficulty, CopilotKind, CopilotWorkspace } from '../../../packages/contracts/src/rpc-types';
 
 const roots: string[] = [], stores: Store[] = [];
 function setup(http?: typeof fetch) {
@@ -234,6 +234,197 @@ describe('immutable local copilot library', () => {
   });
 });
 
+describe('local copilot categories', () => {
+  test('category assignment filters before pagination, persists through restart and keeps uncategorized legacy entries', async () => {
+    const { library, root, store, state } = setup();
+    const category = library.categorySave({ name: '  活动主线  ' });
+    expect(category.name).toBe('活动主线');
+    const records = [];
+    for (let index = 0; index < 23; index++) records.push(await imported(library, ordinary({ doc: { title: `分类作业 ${index}` } })));
+    expect(library.categoryAssign({ ids: records.slice(0, 22).map(record => record.id), categoryId: category.id })).toEqual({ updated: 22 });
+    expect(library.list({ categoryId: category.id })).toMatchObject({ total: 22, hasNext: true });
+    expect(library.list({ categoryId: category.id, page: 2 }).items).toHaveLength(2);
+    expect(library.list({ categoryId: null }).items.map(record => record.id)).toEqual([records[22]!.id]);
+    const renamed = library.categorySave({ id: category.id, name: '已重命名' });
+    expect(renamed.id).toBe(category.id); expect(renamed.createdAt).toBe(category.createdAt);
+    store.close(); stores.splice(stores.indexOf(store), 1);
+    const reopened = new Store(root); stores.push(reopened);
+    const replacement = new CopilotLibrary(root, reopened, { coreVersion: () => state.core, resourceDirectory: () => state.resource });
+    expect(replacement.categoryList().items).toEqual([renamed]);
+    expect(replacement.list({ categoryId: category.id, page: 2 }).items).toHaveLength(2);
+    expect(replacement.get({ id: records[0]!.id }).categoryId).toBe(category.id);
+  });
+  test('deleting a category preserves jobs, queue snapshots and exact exported JSON', async () => {
+    const { library } = setup(), raw = ordinary(), record = await imported(library, raw);
+    const category = library.categorySave({ name: '可删除分类' });
+    library.categoryAssign({ ids: [record.id], categoryId: category.id });
+    const draft = { kind: 'Copilot' as const, options: defaultCopilotOptions(), queue: [{ id: 'queued', versionId: record.versionId, enabled: true, isRaid: false, navName: '' }] };
+    library.workspaceSave({ workspace: draft });
+    expect(library.categoryDelete({ id: category.id })).toEqual({ deleted: true });
+    expect(library.categoryDelete({ id: category.id })).toEqual({ deleted: false });
+    expect(library.get({ id: record.id }).categoryId).toBeNull();
+    expect(library.list({ categoryId: null }).items).toHaveLength(1);
+    expect(library.workspaceGet({ kind: 'Copilot' })).toEqual(draft);
+    expect(library.export({ versionId: record.versionId }).content).toBe(raw);
+  });
+  test('invalid names and assignments fail without partially moving existing records', async () => {
+    const { library } = setup(), record = await imported(library);
+    const category = library.categorySave({ name: '分类甲' });
+    for (const name of ['', '   ', 'x'.repeat(301), '坏\n名称']) expect(() => library.categorySave({ name })).toThrow();
+    expect(() => library.categorySave({ name: ' 分类甲 ' })).toThrow('已存在');
+    expect(() => library.categorySave({ id: 'unknown', name: '不存在' })).toThrow('不存在');
+    expect(() => library.categoryAssign({ ids: [record.id, 'deleted'], categoryId: category.id })).toThrow('分类未修改');
+    expect(() => library.categoryAssign({ ids: [record.id], categoryId: 'deleted-category' })).toThrow('分类不存在');
+    expect(() => library.categoryAssign({ ids: [record.id, record.id], categoryId: category.id })).toThrow('参数无效');
+    expect(library.get({ id: record.id }).categoryId).toBeUndefined();
+    expect(library.categoryAssign({ ids: [record.id], categoryId: null })).toEqual({ updated: 1 });
+    expect(library.get({ id: record.id }).categoryId).toBeNull();
+  });
+  test('set imports create named categories only on selected success and reuse renamed categories across previews', async () => {
+    let title = '合成活动作业集';
+    const { library, store } = setup((async (url: any) => {
+      if (String(url).includes('/set/get')) return response({ name: title, copilot_ids: [1, 2, 1] });
+      return String(url).endsWith('/2') ? response({ available: false }) : response({ available: true, content: ordinary() });
+    }) as typeof fetch);
+    const preview = await library.preview({ code: 's9' });
+    expect(library.categoryList().items).toEqual([]);
+    expect(library.import({ previewId: preview.id, entryIds: [] }).items).toEqual([]);
+    expect(library.categoryList().items).toEqual([]);
+    const result = library.import({ previewId: preview.id });
+    expect(result.items).toHaveLength(2); expect(result.errors).toHaveLength(1);
+    const category = library.categoryList().items[0]!;
+    expect(category.name).toBe(title); expect(result.items.every(record => record.categoryId === category.id)).toBe(true);
+    const manual = library.categorySave({ name: '手动整理' });
+    library.categoryAssign({ ids: [result.items[0]!.id], categoryId: manual.id });
+    library.categoryAssign({ ids: [result.items[1]!.id], categoryId: null });
+    expect(library.import({ previewId: preview.id }).items.map(record => record.categoryId)).toEqual([manual.id, null]);
+    library.categorySave({ id: category.id, name: '用户重命名' }); title = '社区后来改名';
+    const next = await library.preview({ code: 's9' });
+    expect(library.import({ previewId: next.id }).items.every(record => record.categoryId === category.id)).toBe(true);
+    expect(library.categoryList().items.map(item => item.name)).toEqual(['用户重命名', '手动整理']);
+    expect(store.all('plan')).toEqual([]); expect(store.all('run')).toEqual([]);
+    expect(library.workspaceGet({ kind: 'Copilot' }).queue).toEqual([]);
+  });
+  test('equal set names reuse categories and deleted categories leave old records uncategorized on retries', async () => {
+    const { library } = setup((async (url: any) => String(url).includes('/set/get')
+      ? response({ name: '同名分类', copilot_ids: [1] }) : response({ available: true, content: ordinary() })) as typeof fetch);
+    const manual = library.categorySave({ name: '同名分类' });
+    const first = await library.preview({ code: 's1' }), second = await library.preview({ code: 's2' });
+    const record = library.import({ previewId: first.id }).items[0]!;
+    expect(library.import({ previewId: second.id }).items[0]!.categoryId).toBe(manual.id);
+    expect(library.categoryList().items).toHaveLength(1);
+    library.categoryDelete({ id: manual.id });
+    expect(library.import({ previewId: first.id }).items[0]!.categoryId).toBeNull();
+    expect(library.categoryList().items).toHaveLength(0);
+    const fresh = await library.preview({ code: 's1' });
+    const renewed = library.import({ previewId: fresh.id }).items[0]!.categoryId;
+    expect(renewed).not.toBe(manual.id); expect(renewed).toBeTruthy();
+    expect(library.get({ id: record.id }).categoryId).toBeNull();
+    const local = await imported(library, ordinary({ doc: { title: '同名分类' } }));
+    expect(local.categoryId).toBeUndefined();
+  });
+  test('an import exceeding category capacity rolls back without replacing manually categorized records', async () => {
+    const { library } = setup((async (url: any) => String(url).includes('/set/get')
+      ? response({ name: '尚无分类的作业集', copilot_ids: [1] }) : response({ available: true, content: ordinary() })) as typeof fetch);
+    const record = await imported(library), category = library.categorySave({ name: '保留分类' });
+    library.categoryAssign({ ids: [record.id], categoryId: category.id });
+    for (let index = 1; index < 500; index++) library.categorySave({ name: `分类 ${index}` });
+    const before = library.list().items;
+    const preview = await library.preview({ code: 's1' });
+    expect(() => library.import({ previewId: preview.id })).toThrow('500');
+    expect(library.categoryList().items).toHaveLength(500); expect(library.list().items).toEqual(before);
+    expect(library.get({ id: record.id }).categoryId).toBe(category.id);
+    expect(() => library.categorySave({ name: '超过上限' })).toThrow('500');
+  });
+});
+
+describe('installed stage display codes', () => {
+  test('preview, search and local reads use exact installed codes and refresh from original stage identity', async () => {
+    const raw = ordinary({ stage_name: 'main_01-07' });
+    const { library, root, store, state } = setup((async (_url: any) => response({ has_next: false, total: 1, data: [{ id: 1, content: raw }] })) as typeof fetch);
+    const originalResource = state.resource;
+    const preview = await library.preview({ content: raw });
+    expect(preview.entries[0]!.record?.stageName).toBe('1-7');
+    const record = library.import({ previewId: preview.id }).items[0]!;
+    expect(library.get({ id: record.id }).stageName).toBe('1-7');
+    expect(library.list().items[0]!.stageName).toBe('1-7');
+    expect((await library.search({ target: 'copilot' })).items[0]!.stageName).toBe('1-7');
+    expect(store.get('copilot_version', record.versionId).stages).toEqual(['main_01-07']);
+    const directory = path.join(root, 'next-resource', 'resource', 'Arknights-Tile-Pos'); mkdirSync(directory, { recursive: true });
+    writeFileSync(path.join(directory, 'overview.json'), JSON.stringify({ event: { stageId: 'main_01-07', levelId: 'obt/main/level_main_01-07', code: 'NEW-EX-8', filename: 'event.json' } }));
+    writeFileSync(path.join(directory, 'event.json'), '{}'); state.resource = path.join(root, 'next-resource');
+    expect(library.get({ id: record.id }).stageName).toBe('NEW-EX-8');
+    expect((await library.search({ target: 'copilot' })).items[0]!.stageName).toBe('NEW-EX-8');
+    state.resource = undefined;
+    expect(library.get({ id: record.id }).stageName).toBe('main_01-07');
+    state.resource = originalResource;
+    expect(library.get({ id: record.id }).stageName).toBe('1-7');
+    expect(library.export({ versionId: record.versionId }).content).toBe(raw);
+  });
+  test('unknown maps, missing installed files and conflicting resource aliases keep the supplied identity', async () => {
+    const { library, directory } = setup();
+    writeFileSync(path.join(directory, 'overview.json'), JSON.stringify({
+      a: { stageId: 'known', levelId: 'shared', code: 'A-1', filename: '1-7.json' },
+      b: { stageId: 'second', levelId: 'shared', code: 'B-2', filename: '1-7.json' },
+      absent: { stageId: 'absent', code: 'NOT-INSTALLED', filename: 'missing.json' },
+    }));
+    for (const stage_name of ['shared', 'absent', 'act52side_ex08']) expect((await imported(library, ordinary({ stage_name }))).stageName).toBe(stage_name);
+    expect((await imported(library, ordinary({ stage_name: 'known' }))).stageName).toBe('A-1');
+  });
+  test('real-shaped compound overview keys map event IDs in community cards and set member previews', async () => {
+    const content = ordinary({ stage_name: 'act52side_ex08' });
+    const { library, directory } = setup((async (url: any) => {
+      if (String(url).includes('/set/get')) return response({ name: '活动作业集', copilot_ids: [1] });
+      if (String(url).includes('/copilot/query')) return response({ has_next: false, total: 1, data: [{ id: 1, content }] });
+      return response({ available: true, content });
+    }) as typeof fetch);
+    const entries = ['', '#f#'].map(suffix => ({ stageId: `act52side_ex08${suffix}`, levelId: 'activities/act52side/level_act52side_ex08', code: 'YW-EX-8', name: '合成活动关卡', filename: `event${suffix ? '-raid' : ''}.json` }));
+    writeFileSync(path.join(directory, 'overview.json'), JSON.stringify(Object.fromEntries(entries.map(entry => [`${entry.stageId}-${entry.levelId}`, entry]))));
+    for (const entry of entries) writeFileSync(path.join(directory, entry.filename), '{}');
+    expect((await library.search({ target: 'copilot' })).items[0]!.stageName).toBe('YW-EX-8');
+    const preview = await library.preview({ code: 's1' });
+    expect(preview.entries[0]!.record?.stageName).toBe('YW-EX-8');
+    const record = library.import({ previewId: preview.id }).items[0]!;
+    expect(library.list().items[0]!.stageName).toBe('YW-EX-8');
+    expect(library.get({ id: record.id }).stageName).toBe('YW-EX-8');
+    expect(library.export({ versionId: record.versionId }).content).toBe(content);
+  });
+});
+
+describe('declared copilot difficulty support', () => {
+  test('preview import and search preserve normal raid and both declarations without inferring missing or invalid values', async () => {
+    const declarations: unknown[] = [undefined, 0, 1, 2, 3, 4, -1, '3', null, 1.5, true];
+    const contents = declarations.map(difficulty => ordinary({ difficulty }));
+    const { library } = setup((async (_url: any) => response({ has_next: false, total: contents.length, data: contents.map((content, index) => ({ id: index + 1, content })) })) as typeof fetch);
+    const results = await library.search({ target: 'copilot' });
+    for (const [index, raw] of contents.entries()) {
+      const expected = ([0, 1, 2, 3].includes(declarations[index] as number) ? declarations[index] : undefined) as CopilotDifficulty | undefined;
+      expect(results.items[index]!.difficulty).toBe(expected);
+      const preview = await library.preview({ content: raw });
+      expect(preview.entries[0]!.record?.difficulty).toBe(expected);
+      const record = library.import({ previewId: preview.id }).items[0]!;
+      expect(library.get({ id: record.id }).difficulty).toBe(expected);
+      expect(library.export({ versionId: record.versionId }).content).toBe(raw);
+    }
+    // Set summaries have no member-level support information, even if an unexpected content field is supplied.
+    expect((await library.search({ target: 'set' })).items.every(item => item.difficulty === undefined)).toBe(true);
+  });
+  test('old metadata recovers declared support from immutable JSON without rewriting stored data or execution choices', async () => {
+    const { library, store } = setup(), raw = '\ufeff\n' + ordinary({ difficulty: 3 }) + '\n';
+    const record = await imported(library, raw), oldRecord = { ...record }; delete oldRecord.difficulty;
+    const oldVersion = store.get('copilot_version', record.versionId); delete oldVersion.record.difficulty;
+    store.put('copilot', record.id, oldRecord); store.put('copilot_version', record.versionId, oldVersion);
+    expect(library.get({ id: record.id }).difficulty).toBe(3);
+    expect(library.get({ versionId: record.versionId }).difficulty).toBe(3);
+    expect(library.list().items[0]!.difficulty).toBe(3);
+    expect(store.get('copilot', record.id)).toEqual(oldRecord);
+    expect(store.get('copilot_version', record.versionId)).toEqual(oldVersion);
+    library.workspaceSave({ workspace: { kind: 'Copilot', options: defaultCopilotOptions(), queue: [{ id: 'normal-selected', versionId: record.versionId, enabled: true, isRaid: false, navName: '' }] } });
+    expect((library.prepare('Copilot').tasks[0]!.params.copilot_list as { is_raid: boolean }[])[0]!.is_raid).toBe(false);
+    expect(library.export({ versionId: record.versionId }).content).toBe(raw);
+  });
+});
+
 describe('fixed-origin community adapter', () => {
   test.each(['123', 'maa://123', 'prts://123', 'https://prts.plus/copilot/123'])('%s parses to a copilot identity', code => { expect(parseCopilotCode(code)).toEqual({ target: 'copilot', id: '123' }); });
   test.each(['s123', 'prts://s123', 'https://prts.plus/set/123'])('%s parses to a set identity', code => { expect(parseCopilotCode(code)).toEqual({ target: 'set', id: '123' }); });
@@ -302,8 +493,35 @@ describe('fixed-origin community adapter', () => {
     expect(readdirSync(path.join(root, 'copilot', 'versions'))).toEqual([]);
     expect((await library.search({ target: 'set' })).items[0]!.operators).toBeUndefined();
   });
+  test('large alternative groups retain every candidate through search preview import and export', async () => {
+    const counts = [11, 8, 27, 6, 17, 4, 14, 10, 6];
+    const groups = counts.map((count, index) => ({ name: `备选组${index}`, opers: Array.from({ length: count }, (_, candidate) => ({ name: `候选${index}-${candidate}`, skill: 1, requirements: { potentiality: 1 } })) }));
+    const raw = ordinary({ groups });
+    const { library, store } = setup((async (_url: any) => response({ has_next: false, total: 1, data: [{ id: 1, content: raw }] })) as typeof fetch);
+    const search = await library.search({ target: 'copilot' });
+    expect(search.items[0]!.operators).toHaveLength(104);
+    expect(store.all('copilot')).toEqual([]);
+    const preview = await library.preview({ content: raw });
+    expect(preview.entries[0]!.error).toBeNull();
+    expect(preview.entries[0]!.record!.operators).toEqual(search.items[0]!.operators!);
+    const imported = library.import({ previewId: preview.id });
+    expect(imported.errors).toEqual([]);
+    const record = library.get({ id: imported.items[0]!.id });
+    expect(record.operators).toHaveLength(104);
+    for (const [index, count] of counts.entries()) expect(record.operators.filter(operator => operator.group === `备选组${index}`)).toHaveLength(count);
+    expect(library.export({ versionId: record.versionId }).content).toBe(raw);
+  });
+  test('candidate metadata remains bounded at 2000 across alternative groups', async () => {
+    const { library } = setup();
+    const candidates = Array.from({ length: 2000 }, (_, index) => ({ name: `候选${index}` }));
+    const valid = await library.preview({ content: ordinary({ opers: [], groups: [{ name: '大备选组', opers: candidates }] }) });
+    expect(valid.entries[0]!.record!.operators).toHaveLength(2000);
+    const invalid = await library.preview({ content: ordinary({ groups: [{ name: '大备选组', opers: candidates }] }) });
+    expect(invalid.entries[0]!.record).toBeNull();
+    expect(invalid.entries[0]!.error).toContain('2000');
+  });
   test('search omits malformed or oversized operator metadata while retaining the searchable summary', async () => {
-    const malformed: unknown[] = [undefined, '{', '[]', JSON.stringify({ opers: [null] }), JSON.stringify({ opers: [{ name: '合法' }, { name: '错误技能', skill: 4 }] }), JSON.stringify({ opers: [{ name: '错误要求', requirements: [] }] }), JSON.stringify({ groups: [{ name: ' ', opers: [{ name: '备选' }] }] }), JSON.stringify({ opers: Array.from({ length: 101 }, () => ({ name: '过多干员' })) }), JSON.stringify({ opers: [{ name: '过长'.repeat(51) }] }), ' '.repeat(700_001)];
+    const malformed: unknown[] = [undefined, '{', '[]', JSON.stringify({ opers: [null] }), JSON.stringify({ opers: [{ name: '合法' }, { name: '错误技能', skill: 4 }] }), JSON.stringify({ opers: [{ name: '错误要求', requirements: [] }] }), JSON.stringify({ groups: [{ name: ' ', opers: [{ name: '备选' }] }] }), JSON.stringify({ opers: Array.from({ length: 2001 }, () => ({ name: '过多干员' })) }), JSON.stringify({ opers: [{ name: '过长'.repeat(51) }] }), ' '.repeat(700_001)];
     const { library } = setup((async (_url: any) => response({ has_next: false, total: malformed.length + 1, data: [...malformed.map((content, index) => ({ id: index + 1, title: `可搜索 ${index + 1}`, content })), { id: 99, content: JSON.stringify({ doc: { title: '无声明干员' } }) }] })) as typeof fetch);
     const result = await library.search({ target: 'copilot' });
     expect(result.items).toHaveLength(malformed.length + 1);

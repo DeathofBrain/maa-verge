@@ -49,6 +49,7 @@ test('searches and details are cached across source changes, pagination and leav
   await expect(work).toBeVisible();
   await work.click();
   await expect(detail(page).getByRole('button', { name: '点赞作业', exact: true })).toBeEnabled();
+  await detail(page).getByRole('button', { name: '返回作业列表', exact: true }).click();
   await navigate(page, '主页');
   await navigate(page, '作业中心');
   await expect(work).toBeVisible();
@@ -170,8 +171,9 @@ test('reading a detail does not move the workspace and duplicate requests share 
       return original(method, params);
     };
   });
-  const before = await queue(page).boundingBox();
   const work = library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true });
+  await work.scrollIntoViewIfNeeded();
+  const before = await queue(page).boundingBox();
   await work.click();
   await expect(page.getByText('正在读取作业…', { exact: true })).toBeVisible();
   expect(await queue(page).boundingBox()).toEqual(before);

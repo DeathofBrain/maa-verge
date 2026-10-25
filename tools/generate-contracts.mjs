@@ -33,6 +33,8 @@ ajv.addSchema(workerSchema);
 const validators = {
   validateSnapshot: schema.$id,
   validateCopilotListParams: `${rpcSchema.$id}#/$defs/CopilotListParams`,
+  validateCopilotCategorySaveParams: `${rpcSchema.$id}#/$defs/CopilotCategorySaveParams`,
+  validateCopilotCategoryAssignParams: `${rpcSchema.$id}#/$defs/CopilotCategoryAssignParams`,
   validateCopilotIdentityParams: `${rpcSchema.$id}#/$defs/CopilotIdentityParams`,
   validateCopilotExportParams: `${rpcSchema.$id}#/$defs/CopilotExportParams`,
   validateCopilotPreviewParams: `${rpcSchema.$id}#/$defs/CopilotPreviewParams`,
@@ -109,6 +111,8 @@ export interface Validator<T> {
 }
 export const validateSnapshot: Validator<Snapshot>;
 export const validateCopilotListParams: Validator<RpcContract['params']['copilot.list']>;
+export const validateCopilotCategorySaveParams: Validator<RpcContract['params']['copilot.category.save']>;
+export const validateCopilotCategoryAssignParams: Validator<RpcContract['params']['copilot.category.assign']>;
 export const validateCopilotIdentityParams: Validator<RpcContract['params']['copilot.get']>;
 export const validateCopilotExportParams: Validator<RpcContract['params']['copilot.export']>;
 export const validateCopilotPreviewParams: Validator<RpcContract['params']['copilot.preview']>;
