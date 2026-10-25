@@ -446,6 +446,27 @@ test('a candidate modified after validation is rejected without replacing the wo
   await updates.close();
 });
 
+test('version checks defer inactive payload hashes until activation or rollback', async () => {
+  const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
+  const updates = fixtureUpdates(root, store, () => false, source);
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  source.coreVersion = 'v6.20.1';
+  await updates.check('core'); await updates.prepare('core'); await updates.activate('core');
+  const previous = store.get('previous', 'combo'), active = store.get('active', 'combo');
+  source.coreVersion = 'v6.20.2'; await updates.check('core'); await updates.prepare('core');
+  const candidate = store.get('staged', 'core');
+  await writeFile(path.join(previous.core.path, 'MaaUtils.dll'), 'broken previous payload');
+  await writeFile(path.join(candidate.path, 'MaaUtils.dll'), 'broken candidate payload');
+  await updates.check('resource');
+  expect(store.get('previous', 'combo')).toEqual(previous);
+  expect(store.get('staged', 'core')).toEqual(candidate);
+  expect(store.get('active', 'combo')).toEqual(active);
+  await expect(updates.activate('core')).rejects.toThrow('完整性校验未通过');
+  await expect(updates.rollback('core')).rejects.toThrow('没有可回滚');
+  expect(store.get('active', 'combo')).toEqual(active);
+  await updates.close();
+});
+
 test('missing independent resources fall back to bundled resources and reinstall the same commit', async () => {
   const root = await temp(), store = new MemoryStore(), source = new FixtureSource();
   const initial = fixtureUpdates(root, store, () => false, source);

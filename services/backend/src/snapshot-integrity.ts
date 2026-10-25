@@ -32,15 +32,17 @@ function payloadFiles(files: string[]): string[] {
  * All disk reads yield; no file contents are buffered or read synchronously.
  */
 export async function snapshotIntegrity(root: string, files?: string[]): Promise<SnapshotIntegrity> {
-  const directory = path.resolve(root), checked = new Set<string>();
-  const plainDirectory = async (current: string): Promise<void> => {
+  const directory = path.resolve(root), checked = new Map<string, Promise<void>>();
+  const plainDirectory = (current: string): Promise<void> => {
     const key = pathKey(current);
-    if (checked.has(key)) return;
-    const parent = path.dirname(current);
-    if (parent !== current) await plainDirectory(parent);
-    const info = await lstat(current);
-    if (!info.isDirectory() || info.isSymbolicLink()) throw invalid('目录不能是链接或特殊文件');
-    checked.add(key);
+    const previous = checked.get(key); if (previous) return previous;
+    const checking = (async () => {
+      const parent = path.dirname(current);
+      if (parent !== current) await plainDirectory(parent);
+      const info = await lstat(current);
+      if (!info.isDirectory() || info.isSymbolicLink()) throw invalid('目录不能是链接或特殊文件');
+    })();
+    checked.set(key, checking); return checking;
   };
   await plainDirectory(directory);
 
@@ -64,8 +66,7 @@ export async function snapshotIntegrity(root: string, files?: string[]): Promise
     installedFiles = payloadFiles(collected);
   }
 
-  const digest = createHash('sha256');
-  for (const relative of installedFiles) {
+  const hashFile = async (relative: string): Promise<string> => {
     const filename = path.join(directory, ...relative.split('/'));
     await plainDirectory(path.dirname(filename));
     const before = await lstat(filename);
@@ -95,8 +96,24 @@ export async function snapshotIntegrity(root: string, files?: string[]): Promise
       await plainPath();
       // JSON framing preserves path and size boundaries, including Unicode and
       // newlines in legal filenames. Each file's bytes have their own SHA-256.
-      digest.update(JSON.stringify([relative, opened.size, content.digest('hex')]) + '\n');
+      return JSON.stringify([relative, opened.size, content.digest('hex')]) + '\n';
     } finally { await file.close(); }
-  }
+  };
+  // Resource snapshots contain thousands of small files. Bound disk work and
+  // open handles, then fold hashes in the original deterministic path order.
+  const entries = new Array<string>(installedFiles.length);
+  let next = 0, failed = false;
+  const workers = await Promise.allSettled(Array.from({ length: Math.min(8, installedFiles.length) }, async () => {
+    while (!failed && next < installedFiles.length) {
+      const index = next++;
+      try { entries[index] = await hashFile(installedFiles[index]!); }
+      catch (error) { failed = true; throw error; }
+    }
+  }));
+  // Settle every open file before returning a failure to callers that may
+  // immediately remove the rejected candidate (notably on Windows).
+  for (const worker of workers) if (worker.status === 'rejected') throw worker.reason;
+  const digest = createHash('sha256');
+  for (const entry of entries) digest.update(entry);
   return { installedFiles, installedHash: digest.digest('hex') };
 }
