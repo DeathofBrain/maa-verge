@@ -2749,6 +2749,14 @@
         },
         "kind": {
           "$ref": "#/$defs/CopilotKind"
+        },
+        "operators": {
+          "type": "array",
+          "maxItems": 100,
+          "description": "从社区搜索摘要解析的干员及编组要求；摘要不可解析或作业集条目时省略，不额外请求详情。",
+          "items": {
+            "$ref": "#/$defs/CopilotOperator"
+          }
         }
       },
       "required": [

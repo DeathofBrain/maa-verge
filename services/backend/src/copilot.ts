@@ -26,6 +26,29 @@ function contentAuthor(value: unknown): string {
   const author = [value.author, object(value.doc) ? value.doc.author : undefined].find(item => typeof item === 'string' && item.trim());
   return text(author, 300);
 }
+/** Metadata only: search summaries need not contain executable actions. */
+function contentOperators(value: Record<string, any>): CopilotRecord['operators'] {
+  const operators: CopilotRecord['operators'] = [];
+  const list = (input: unknown, label: string, required = false): Record<string, any>[] => {
+    if (input === undefined && !required) return [];
+    if (!Array.isArray(input) || input.length > 20_000 || !input.every(object)) return fail(`${label} 必须是有界对象列表`);
+    return input;
+  };
+  const operator = (item: Record<string, any>, group?: string) => {
+    if (typeof item.name !== 'string' || !item.name || item.name.length > 100) return fail('干员名称无效');
+    if (item.skill !== undefined && (!Number.isInteger(item.skill) || item.skill < 0 || item.skill > 3)) return fail('干员技能序号无效');
+    if (item.requirements !== undefined && !object(item.requirements)) return fail('干员练度要求无效');
+    const requirements = Object.fromEntries(Object.entries(item.requirements ?? {}).filter(([key, requirement]) => typeof requirement === 'number' && Number.isFinite(requirement) && key.length <= 80));
+    operators.push({ name: item.name, ...(group !== undefined ? { group } : {}), ...(item.skill ? { skill: item.skill } : {}), ...(Object.keys(requirements).length ? { requirements } : {}) });
+    if (operators.length > 100) return fail('作业干员要求超过 100 项');
+  };
+  for (const item of list(value.opers, 'opers')) operator(item);
+  for (const group of list(value.groups, 'groups')) {
+    if (typeof group.name !== 'string' || !group.name.trim() || group.name.length > 100) fail('干员编组名称无效');
+    for (const item of list(group.opers, 'groups.opers', true)) operator(item, group.name);
+  }
+  return operators;
+}
 function validate<T>(validator: (value: unknown) => value is T, input: unknown): T {
   if (!validator(input)) fail('作业请求参数无效'); return input as T;
 }
@@ -301,18 +324,7 @@ export class CopilotLibrary {
         }
       }
     } else { actions(value.actions); stages.push(stageName); }
-    const operators: CopilotRecord['operators'] = [];
-    const operator = (item: any, group?: string) => {
-      if (typeof item.name !== 'string' || !item.name || item.name.length > 100) return fail('干员名称无效');
-      if (item.skill !== undefined && (!Number.isInteger(item.skill) || item.skill < 0 || item.skill > 3)) return fail('干员技能序号无效');
-      const requirements: Record<string, number> = {};
-      if (item.requirements !== undefined && !object(item.requirements)) return fail('干员练度要求无效');
-      for (const [key, requirement] of Object.entries(item.requirements ?? {})) if (typeof requirement === 'number' && Number.isFinite(requirement) && key.length <= 80) requirements[key] = requirement;
-      operators.push({ name: item.name, ...(group !== undefined ? { group } : {}), ...(item.skill ? { skill: item.skill } : {}), ...(Object.keys(requirements).length ? { requirements } : {}) });
-    };
-    for (const item of list(value.opers, 'opers')) operator(item);
-    for (const group of list(value.groups, 'groups')) { if (typeof group.name !== 'string' || !group.name.trim() || group.name.length > 100) fail('干员编组名称无效'); for (const item of list(group.opers, 'groups.opers', true)) operator(item, group.name); }
-    if (operators.length > 100) return fail('作业干员要求超过 100 项');
+    const operators = contentOperators(value);
     const doc = object(value.doc) ? value.doc : {};
     const details = text(doc.details, 3000), videos = [...new Set((details.match(/https?:\/\/[^\s<>"）)]+/g) ?? []).map(safeUrl).filter(Boolean))].slice(0, 20);
     const record: CopilotRecord = { id: identifier('copilot'), versionId, kind, title: text(doc.title || source.name || stageName, 300), stageName, author: contentAuthor(value), ...(uploader !== undefined ? { uploader: text(uploader, 300) } : {}), description: details,
@@ -614,10 +626,14 @@ export class CopilotLibrary {
     const items: CopilotSearchResult['items'] = data.data.map((entry: unknown) => {
       if (!object(entry)) return fail('社区搜索条目结构异常');
       const id = normalizeId(entry.id); let content: Record<string, any> = {};
-      if (typeof entry.content === 'string' && Buffer.byteLength(entry.content) <= MAX_CONTENT) { try { const parsed = JSON.parse(entry.content); if (object(parsed)) content = parsed; } catch { /* A malformed summary cannot be imported; detail lookup reports its error. */ } }
+      let operators: CopilotRecord['operators'] | undefined;
+      if (typeof entry.content === 'string' && Buffer.byteLength(entry.content) <= MAX_CONTENT) {
+        try { const parsed = JSON.parse(entry.content); if (object(parsed)) { content = parsed; operators = contentOperators(content); } }
+        catch { /* A malformed summary cannot be imported; detail lookup reports its error. */ }
+      }
       const doc = object(content.doc) ? content.doc : {};
       return { id, title: text(params.target === 'set' ? entry.name : doc.title || entry.title || `作业 #${id}`, 300), description: text(params.target === 'set' ? entry.description : doc.details, 3000), author: params.target === 'set' ? '' : contentAuthor(content), uploader: text(params.target === 'set' ? entry.creator ?? entry.uploader : entry.uploader ?? entry.creator, 300), url: `https://prts.plus/${params.target === 'set' ? 'set' : 'copilot'}/${id}`,
-        ...(params.target === 'set' ? {} : { kind: content.type === 'SSS' ? 'SSSCopilot' : /^(?:mem_|mem-|paradox)/i.test(String(content.stage_name)) ? 'ParadoxCopilot' : 'Copilot' as CopilotKind }) };
+        ...(params.target === 'set' ? {} : { kind: content.type === 'SSS' ? 'SSSCopilot' : /^(?:mem_|mem-|paradox)/i.test(String(content.stage_name)) ? 'ParadoxCopilot' : 'Copilot' as CopilotKind, ...(operators !== undefined ? { operators } : {}) }) };
     });
     // data.page is total pages for sets: preserve the requested page explicitly.
     return { items, page, hasNext: data.has_next, total: data.total };

@@ -1420,6 +1420,12 @@ export interface CopilotSearchItem {
   uploader?: string;
   url: string;
   kind?: CopilotKind;
+  /**
+   * 从社区搜索摘要解析的干员及编组要求；摘要不可解析或作业集条目时省略，不额外请求详情。
+   *
+   * @maxItems 100
+   */
+  operators?: CopilotOperator[];
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
