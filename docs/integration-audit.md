@@ -1,5 +1,22 @@
 # 工作树与分支整合记录
 
+## 排除 Agent 工作树后合入 dev（Windows，2026-10-25）
+
+基线为 `dev@d448b7f`，核对七个登记 worktree，仅整合四个非 Agent 来源。当前工作树切到 `dev` 执行整合；来源分支与其他工作树保留，不修改 `main`。
+
+| 来源分支 | 保存及整合证据 |
+| --- | --- |
+| `codex/copilot-operator-readiness` | `5348cd6` 快进合入，包含社区／本地作业的干员持有、练度标注、单一合规备选与详情完整编组 |
+| `codex/copilot-operator-search` | `ab24bf4` 经 `5321c80` 正常合并，保留搜索元数据来源历史 |
+| `codex/copilot-readiness-tests` | `5a1fa14` 经 `08cc47b` 正常合并，保留干员界面回归来源历史 |
+| `codex/fix-update-idle-gate` | 主目录原有 11 个未提交文件保存为 `5f0fa3c`，经 `a2902c6` 合入；整合审查补修 `e7099e8` 经 `7bff4d2` 合入，安装准备请求失败／超时后显式取消后端准备，取消不能确认时提示重启 |
+
+搜索来源 `ab24bf4` 与主分支已有 `88ae493` 的补丁逐字节相同，stable patch-id 均为 `e586a5bca0b99fe17cb2923184f1cc1c1662d846`；测试来源 `5a1fa14` 与 `a408add` 同样逐字节相同，patch-id 均为 `1fcbed5c40ff8349ddabd1c4033d08dbbaae8313`。测试文件 add/add 冲突保留当前完善版本，包含全部十项干员专项；这两次来源关系合并前后整树均为 `2e1583f4088482c7894ec50e239f05926290e988`。门禁来源仅在 `docs/STATUS.md` 的新增验证段冲突，同时保留作业标注与更新门禁记录，以及双方已实现表格内容。
+
+`beafed6` 将新增搜索契约测试加入本地常规检查与 application CI，防止接口扩展只在专项验证中运行。整合后的检查、构建、完整界面回归及平台边界见 [STATUS.md](STATUS.md) 的本次非 Agent 工作树整合记录。
+
+明确排除 `codex/agent-knowledge`、`codex/agent-product-data@68ad6d9` 和 `codex/agent-resource-data@502b103`，本轮整合不保存、合并或改写这些工作树的文件及索引。knowledge 工作树由其自身任务将 22 份改动继续完善并保存为 `a0f1f4b`，父提交仍为原 `785be76`，目前干净；其中 13 份文件与整合前快照相同，9 份由该任务继续修改，未作还原。product／resource 两树的 HEAD、干净状态及全部文件 SHA-256 清单均与整合前相同。最终只读复核确认四个非 Agent 来源 HEAD 均为 `dev` 祖先，三个 Agent 当前 HEAD、knowledge 原 HEAD 及共享 Agent 提交 `0b6a4b4` 均非其祖先；七个工作树全部保留。
+
 ## Windows 两个工作树合入 dev（2026-10-25）
 
 基线为 `dev@7cb85d0`，核对主目录及工具箱附加 worktree，两边原 HEAD 均为基线。分别保存全部已跟踪的未提交改动，没有未跟踪开发文件；保留来源分支、工作树与本地配置。
