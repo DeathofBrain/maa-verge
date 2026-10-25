@@ -6,6 +6,7 @@ use reqwest::{Client, Url};
 use semver::Version;
 use serde_json::{json, Value};
 use std::cmp::Ordering;
+use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -695,9 +696,10 @@ impl AppUpdater {
         })?;
         // Bun pauses new work, drains existing component operations and checks
         // native safety again before acquiring the final installation gate.
-        if let Err(error) = runtime
-            .request("updates.activate".into(), json!({ "channel": "app" }))
-            .await
+        if let Err(error) = prepare_backend_installation(|method| {
+            runtime.request(method.into(), json!({ "channel": "app" }))
+        })
+        .await
         {
             self.change(generation, |state| {
                 state.value["message"] = json!(format!(
@@ -729,6 +731,32 @@ impl AppUpdater {
     pub fn rollback(&self) -> Result<Value, String> {
         Err("应用安装不支持在线回滚；可从官方发行页重新安装旧版本，业务数据将保留".into())
     }
+}
+
+async fn prepare_backend_installation<Request, Response>(mut request: Request) -> Result<(), String>
+where
+    Request: FnMut(&'static str) -> Response,
+    Response: Future<Output = Result<Value, String>>,
+{
+    if let Err(error) = request("updates.activate").await {
+        // A transport timeout does not cancel the Bun request. Invalidate its
+        // preparation token before a late component drain can acquire the gate.
+        // Confirmation is bounded even if the service no longer responds.
+        let recovery = match tokio::time::timeout(
+            Duration::from_secs(10),
+            request("updates.rollback"),
+        )
+        .await
+        {
+            Ok(Ok(_)) => "已取消安装准备，可以继续使用".into(),
+            Ok(Err(cancel_error)) => format!(
+                "取消安装准备失败：{cancel_error}；无法确认本地服务已解除暂停，请重启应用后重试"
+            ),
+            Err(_) => "取消安装准备确认超时；无法确认本地服务已解除暂停，请重启应用后重试".into(),
+        };
+        return Err(format!("{error}；{recovery}"));
+    }
+    Ok(())
 }
 
 fn ensure_idle(snapshot: &Value) -> Result<(), String> {
@@ -969,6 +997,99 @@ mod tests {
             assert!(ensure_idle(&busy).is_ok());
         }
         assert!(ensure_idle(&json!({})).is_err());
+    }
+
+    #[test]
+    fn successful_installation_preparation_preserves_the_backend_gate() {
+        tauri::async_runtime::block_on(async {
+            let calls = Arc::new(Mutex::new(Vec::new()));
+            let result = prepare_backend_installation(|method| {
+                calls.lock().unwrap().push(method);
+                async { Ok(json!({ "status": "staged" })) }
+            })
+            .await;
+            assert!(result.is_ok());
+            assert_eq!(*calls.lock().unwrap(), vec!["updates.activate"]);
+        });
+    }
+
+    #[test]
+    fn timed_out_preparation_is_cancelled_before_a_late_drain_can_acquire_the_gate() {
+        tauri::async_runtime::block_on(async {
+            #[derive(Default)]
+            struct PendingPreparation {
+                preparing: bool,
+                updating: bool,
+                calls: Vec<&'static str>,
+            }
+            let backend = Arc::new(Mutex::new(PendingPreparation::default()));
+            let (finish_drain, drained) = tokio::sync::oneshot::channel::<()>();
+            let pending_backend = backend.clone();
+            // The server keeps working after the host stops awaiting its reply.
+            let late_preparation = tokio::spawn(async move {
+                drained.await.unwrap();
+                let mut state = pending_backend.lock().unwrap();
+                if state.preparing {
+                    state.updating = true;
+                }
+            });
+            let result = prepare_backend_installation(|method| {
+                let backend = backend.clone();
+                async move {
+                    let mut state = backend.lock().unwrap();
+                    state.calls.push(method);
+                    match method {
+                        "updates.activate" => {
+                            state.preparing = true;
+                            Err("本地服务响应超时；操作结果可能未知".into())
+                        }
+                        "updates.rollback" => {
+                            state.preparing = false;
+                            state.updating = false;
+                            Ok(json!({ "message": "已取消安装准备" }))
+                        }
+                        _ => panic!("unexpected backend request"),
+                    }
+                }
+            })
+            .await;
+            let error = result.unwrap_err();
+            assert!(error.contains("本地服务响应超时"));
+            assert!(error.contains("已取消安装准备，可以继续使用"));
+            finish_drain.send(()).unwrap();
+            late_preparation.await.unwrap();
+            let state = backend.lock().unwrap();
+            assert_eq!(state.calls, vec!["updates.activate", "updates.rollback"]);
+            assert!(!state.preparing);
+            assert!(!state.updating);
+        });
+    }
+
+    #[test]
+    fn failed_preparation_cancellation_preserves_both_errors_without_claiming_recovery() {
+        tauri::async_runtime::block_on(async {
+            let calls = Arc::new(Mutex::new(Vec::new()));
+            let result = prepare_backend_installation(|method| {
+                calls.lock().unwrap().push(method);
+                async move {
+                    Err(if method == "updates.activate" {
+                        "原安装准备响应已中断".into()
+                    } else {
+                        "取消请求连接中断".into()
+                    })
+                }
+            })
+            .await;
+            let error = result.unwrap_err();
+            assert_eq!(
+                *calls.lock().unwrap(),
+                vec!["updates.activate", "updates.rollback"]
+            );
+            assert!(error.contains("原安装准备响应已中断"));
+            assert!(error.contains("取消请求连接中断"));
+            assert!(error.contains("无法确认本地服务已解除暂停，请重启应用后重试"));
+            assert!(!error.contains("可以继续使用"));
+        });
     }
 
     #[test]
