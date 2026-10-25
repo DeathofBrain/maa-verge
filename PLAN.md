@@ -44,7 +44,7 @@
 | 页面 | React、TypeScript、Vite | 共用桌面页面、任务表单、Agent 交互和执行可视化 |
 | 样式组件 | Tailwind CSS、shadcn/ui | 明暗主题、键盘操作、响应式布局与统一组件 |
 | 本地应用服务 | TypeScript、固定 Bun 1.4.3 | 设备、计划、策略、数据与独立更新服务；调度继续按里程碑交付 |
-| Agent | TypeScript harness | 当前为确定性 mock 提案；云模型、持久化编排和调用预算待接入 |
+| Agent | 独立 TypeScript 模块 / LangChain | 本地规则提案与可注入模型的结构化提案基础；产品云模型、持久化编排和费用预算待接入 |
 | 自动化核心 | 独立 C++20 worker、MaaCore C API | 原生加载、回调复制、设备锁和调用超时；复用 MAA 任务 |
 | 视觉控制 | 固定 ADB 操作、本地 OCR/视觉适配（后续） | 截图、点击、滑动、观察与动作验证 |
 | 持久化 | bun:sqlite、SQLite WAL | 业务记录、事件、请求去重；后续 Agent checkpoint 使用同一存储边界 |
@@ -107,6 +107,8 @@ flowchart TD
 - 登录、验证码、支付等敏感页面进入人工接管点。
 
 ### 2.3 Agent 三种模式
+
+[Agent 独立模块与 LangChain 接入](docs/agent-module.md)已提供独立包、模型注入、结构化草稿、零消耗门禁及离线核验入口。当前产品仍使用本地规则提案，真实供应商、凭据、费用预算、知识工具与持久编排按阶段接入。
 
 数据集第一阶段已提供五类公共资源的增量索引、静态产品能力/文档知识以及本机识别历史快照，构建、查询、来源和边界见 [Agent 数据集](docs/agent-knowledge.md)。该底座提供类型化查询，Agent 对话接入、向量检索和目标规划仍按下述路线继续推进。
 
