@@ -2,6 +2,7 @@ node_modules/
 .pnpm-store/
 .venv/
 .tools/
+/.worktree/
 .bun-cache/
 .cache/ci/
 __pycache__/

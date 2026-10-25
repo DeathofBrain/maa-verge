@@ -17,7 +17,7 @@ async function openCenter(page: Page) {
   await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
   await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
 }
-async function importJson(page: Page, content: string, add = true) {
+async function importJson(page: Page, content: string, add = true, waitForClose = true) {
   const panel = page.locator('details.cp-import');
   if (!await panel.getAttribute('open').then(value => value !== null)) await page.getByRole('button', { name: '导入作业', exact: true }).click();
   const input = page.getByLabel('作业 JSON', { exact: true });
@@ -25,8 +25,8 @@ async function importJson(page: Page, content: string, add = true) {
   await input.fill(content);
   await page.getByRole('button', { name: '预览 JSON', exact: true }).click();
   await expect(preview(page)).toBeVisible();
-  await preview(page).getByRole('button', { name: add ? '导入并加入当前队列' : '导入到作业库', exact: true }).click();
-  await expect(preview(page)).toHaveCount(0);
+  await preview(page).getByRole('button', { name: add ? '所选导入并加入队列' : '导入到作业库', exact: true }).click();
+  if (waitForClose) await expect(preview(page)).toHaveCount(0);
 }
 async function call<T>(page: Page, method: string, params: Record<string, unknown> = {}): Promise<T> {
   return page.evaluate(async ({ method, params }) => (window as unknown as HarnessWindow).runtimeHarness.call(method, params), { method, params }) as Promise<T>;
@@ -121,7 +121,7 @@ test('community pagination and set preview retain member order and explicitly sh
   await expect(preview(page)).toContainText('作业 404 已删除');
   await expect(preview(page).getByLabel('选择导入 3', { exact: true })).toBeDisabled();
   await expect(preview(page).getByLabel('选择导入 1', { exact: true })).toBeChecked();
-  await preview(page).getByRole('button', { name: '导入并加入当前队列', exact: true }).click();
+  await preview(page).getByRole('button', { name: '所选导入并加入队列', exact: true }).click();
   await expect(queue(page).locator('.cp-queue-title strong')).toHaveText(['合成社区作业 101', '合成社区作业 102']);
   expect((await call<{ plans: unknown[] }>(page, 'app.snapshot')).plans).toHaveLength(2);
 });
@@ -243,6 +243,7 @@ test('a persisted queue distinguishes a pending version read from a confirmed un
 });
 
 test('desktop queue has room for multiple entries and only its list scrolls', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await openCenter(page); await importJson(page, json('可排序的长队列作业'));
   for (let index = 0; index < 7; index++) await library(page).getByRole('button', { name: '加入队列 可排序的长队列作业', exact: true }).click();
@@ -272,6 +273,7 @@ test('desktop queue has room for multiple entries and only its list scrolls', as
 });
 
 test('local JSON selection and narrow dark/light layouts provide a return path without horizontal overflow', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 390, height: 844 });
   await openCenter(page);
   await page.getByRole('button', { name: '导入作业', exact: true }).click();
@@ -320,7 +322,8 @@ test('an explicitly restored historical selection survives outside the recent sn
   await navigate(page, '主页'); await navigate(page, '作业中心');
   await expect(panel.getByRole('heading', { name: '窗口外的旧作业', exact: true })).toBeVisible();
   await expect.poll(async () => (await call<{ runs: { id: string }[] }>(page, 'app.snapshot')).runs.some(run => run.id === older)).toBe(false);
-  await expect(panel).not.toContainText('最近窗口内的新作业');
+  await expect(panel.locator('.cp-run-summary')).not.toContainText('最近窗口内的新作业');
+  await expect(panel.locator('.cp-run-entries')).not.toContainText('最近窗口内的新作业');
 });
 
 test('failed workspace writes retain the editable queue and retry before execution', async ({ page }) => {
@@ -333,7 +336,8 @@ test('failed workspace writes retain the editable queue and retry before executi
       return original(method, params);
     };
   });
-  await importJson(page, json('保存失败后重试'));
+  await importJson(page, json('保存失败后重试'), true, false);
+  await expect(page.getByRole('alert')).toContainText('已保存 1 份到作业库');
   await expect(queue(page).locator('.cp-save-state')).toContainText('合成作业队列保存失败');
   await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
   await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeDisabled();
@@ -358,7 +362,8 @@ test('starting a newer run updates the selection retained after explicit history
   await expect(panel.getByRole('heading', { name: '导航后启动的新作业', exact: true })).toBeVisible();
   await navigate(page, '主页'); await navigate(page, '作业中心');
   await expect(panel.getByRole('heading', { name: '导航后启动的新作业', exact: true })).toBeVisible();
-  await expect(panel).not.toContainText('历史导航的旧作业');
+  await expect(panel.locator('.cp-run-summary')).not.toContainText('历史导航的旧作业');
+  await expect(panel.locator('.cp-run-entries')).not.toContainText('历史导航的旧作业');
 });
 
 test('the local library pages beyond twenty records without changing the execution queue', async ({ page }) => {
@@ -392,7 +397,7 @@ test('a failed draft for another kind does not block the selected saved workspac
       return original(method, params);
     };
   });
-  await importJson(page, json('保留的普通作业草稿'));
+  await importJson(page, json('保留的普通作业草稿'), true, false);
   await expect(queue(page).locator('.cp-save-state')).toContainText('普通作业草稿暂时保存失败');
   await page.getByRole('tab', { name: '保全派驻', exact: true }).click();
   await importJson(page, json('仍可执行的保全作业', { type: 'SSS', stages: [{ stage_name: 'main_01-07', draw_as_possible: true, actions: [{ type: 'SpeedUp' }] }] }));

@@ -1,5 +1,6 @@
 mod app_updater;
 mod desktop_scheduler;
+mod external_links;
 mod runtime;
 
 use runtime::Runtime;
@@ -209,8 +210,14 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![
             runtime::runtime_request,
+            external_links::open_external_url,
             resolve_window_close,
             get_desktop_lifecycle,
             exit_ui_ready

@@ -20,7 +20,9 @@ async function communityDetail(page: Page) {
 test('community works open full details with portraits and grouped requirements before importing', async ({ page }) => {
   await openCenter(page);
   await communityDetail(page);
-  await expect(library(page)).not.toBeVisible();
+  await expect(page.locator('.cp-browser')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '作业详情弹窗', exact: true })).toBeVisible();
+  expect(await page.locator('#root').evaluate(value => (value as HTMLElement).inert)).toBe(true);
   await expect(detail(page).getByRole('heading', { name: '合成社区作业 101', exact: true })).toBeFocused();
   await detail(page).locator('.operator-badge').filter({ hasText: '阿米娅' }).scrollIntoViewIfNeeded();
   await expect(detail(page).getByRole('img', { name: '阿米娅头像', exact: true })).toBeVisible();
@@ -119,7 +121,7 @@ test('a run refresh does not swallow a pending manual rating failure', async ({ 
   await communityDetail(page);
   await detail(page).getByRole('button', { name: '导入到作业库', exact: true }).click();
   await detail(page).getByRole('button', { name: '加入执行队列', exact: true }).click();
-  await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeEnabled();
+  await expect.poll(async () => page.evaluate(async () => ((await (window as unknown as HarnessWindow).runtimeHarness.call('copilot.workspace.get', { kind: 'Copilot' })) as { queue: unknown[] }).queue.length)).toBe(1);
   await page.evaluate(() => {
     const harness = (window as unknown as HarnessWindow).runtimeHarness;
     const original = harness.call.bind(harness);
@@ -135,8 +137,7 @@ test('a run refresh does not swallow a pending manual rating failure', async ({ 
   await expect(like).toBeEnabled();
   await like.click();
   await expect.poll(() => page.evaluate(() => (window as unknown as HarnessWindow).runtimeHarness.commands)).toContain('rating-pending');
-  await page.getByRole('button', { name: '开始作业', exact: true }).click();
-  await expect(page.getByRole('region', { name: '作业运行状态', exact: true })).toBeVisible();
+  await page.evaluate(() => (window as unknown as HarnessWindow).runtimeHarness.call('copilot.start', { kind: 'Copilot', deviceId: 'mock-device-1', requestId: 'drawer-rating-refresh' }));
   await page.evaluate(() => (window as unknown as { rejectRating: () => void }).rejectRating());
   await expect(detail(page).getByRole('alert')).toContainText('运行刷新期间评价失败');
   await expect(like).toBeEnabled();
@@ -167,9 +168,9 @@ test('sets have a direct entry, allow selecting members, and retain a path back 
   const preview = page.getByRole('region', { name: '导入预览', exact: true });
   await expect(preview).toContainText('按作业集原顺序排列');
   await preview.getByRole('button', { name: '取消全选', exact: true }).click();
-  await expect(preview.getByRole('button', { name: '导入并加入当前队列', exact: true })).toBeDisabled();
+  await expect(preview.getByRole('button', { name: '所选导入并加入队列', exact: true })).toBeDisabled();
   await preview.getByLabel('选择导入 2', { exact: true }).check();
-  await preview.getByRole('button', { name: '导入并加入当前队列', exact: true }).click();
+  await preview.getByRole('button', { name: '所选导入并加入队列', exact: true }).click();
   await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
   await expect(queue(page).locator('.cp-queue-title')).toContainText('合成社区作业 102');
   await expect(library(page)).toContainText('作业集 #12');
@@ -198,15 +199,18 @@ test('a single queued work uses map navigation while an explicit loop explains i
   await expect(queue(page).locator('.cp-start-hint')).toContainText('队列会自动导航');
 });
 
-test('the workspace uses two areas and replaces the list with details at desktop and narrow widths', async ({ page }, testInfo) => {
+test('the workspace keeps its two areas beneath a side drawer at desktop and narrow widths', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1360, height: 900 });
   await openCenter(page);
   const title = await page.locator('.copilot-page h1').boundingBox();
-  const tabs = await page.getByRole('tablist', { name: '作业类型', exact: true }).boundingBox();
-  const firstTab = await page.getByRole('tab', { name: '普通作业', exact: true }).boundingBox();
-  expect(firstTab!.x).toBeGreaterThan(tabs!.x);
-  expect(firstTab!.x).toBe(title!.x);
+  const station = await library(page).boundingBox();
+  const queueBox = await queue(page).boundingBox();
+  const tabs = await queue(page).getByRole('tablist', { name: '队列类型', exact: true }).boundingBox();
+  expect(tabs!.x).toBeGreaterThan(queueBox!.x);
+  expect(tabs!.x + tabs!.width).toBeLessThan(queueBox!.x + queueBox!.width);
+  expect(station!.x).toBe(title!.x);
+  expect(station!.y).toBe(queueBox!.y);
   await page.screenshot({ path: testInfo.outputPath('copilot-empty-desktop.png') });
   await communityDetail(page);
   for (const viewport of [{ width: 1360, height: 900 }, { width: 1050, height: 800 }, { width: 390, height: 844 }]) {
@@ -214,7 +218,9 @@ test('the workspace uses two areas and replaces the list with details at desktop
     for (const theme of ['light', 'dark']) {
       await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
       await expect(detail(page)).toBeVisible();
-      await expect(library(page)).not.toBeVisible();
+      await expect(page.locator('.cp-browser')).toBeVisible();
+      await expect(page.getByRole('dialog', { name: '作业详情弹窗', exact: true })).toBeVisible();
+      expect(await page.locator('.cp-drawer-panel').evaluate(element => element.getBoundingClientRect().left)).toBeGreaterThan(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
       await page.locator('.copilot-page').evaluate(element => { element.scrollTop = 0; });
       await page.screenshot({ path: testInfo.outputPath(`copilot-detail-${viewport.width}-${theme}.png`) });

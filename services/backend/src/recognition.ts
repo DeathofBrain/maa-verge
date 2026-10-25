@@ -34,7 +34,9 @@ export function parseRecognition(type: 'OperBox' | 'Depot', callback: any): Reco
         if (!object(oper) || !text(oper.id, 200) || !text(oper.name, 300) || typeof oper.own !== 'boolean' || !int32(oper.rarity) || allIds.has(oper.id)) { missing.length = 0; break; }
         allIds.add(oper.id);
         if (ids.has(oper.id)) continue;
-        if (oper.own) { missing.length = 0; break; }
+        // MaaCore marks all forms owned by name, but own_opers contains only one
+        // detailed ID per name. Unobserved forms must not erase other missing IDs.
+        if (oper.own) continue;
         missing.push({ id: oper.id, name: oper.name, rarity: oper.rarity, own: false, elite: -1, level: -1, potential: -1 });
       }
       operators.push(...missing);

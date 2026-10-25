@@ -102,6 +102,13 @@ export type Type1 = string;
 export type Message2 = string;
 export type Createdat = string;
 export type Events = Event[];
+/**
+ * 原始作业 difficulty 位标志：0 未设置，1 普通，2 突袭，3 均支持；缺省或无效值不得推断支持难度。
+ *
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotDifficulty".
+ */
+export type CopilotDifficulty = 0 | 1 | 2 | 3;
 
 export interface RpcContract {
   params: {
@@ -189,6 +196,10 @@ export interface RpcContract {
     'knowledge.search': KnowledgeSearchParams;
     'account.snapshot.get': AccountSnapshotParams;
     'account.snapshot.list': AccountSnapshotListParams;
+    'copilot.category.list': EmptyParams;
+    'copilot.category.save': CopilotCategorySaveParams;
+    'copilot.category.delete': IdParams;
+    'copilot.category.assign': CopilotCategoryAssignParams;
   };
   results: {
     'app.snapshot': Snapshot;
@@ -313,6 +324,19 @@ export interface RpcContract {
     'knowledge.search': KnowledgeSearchResult;
     'account.snapshot.get': AccountKnowledgeSnapshot | null;
     'account.snapshot.list': AccountSnapshotListResult;
+    'copilot.category.list': {
+      /**
+       * @maxItems 500
+       */
+      items: CopilotCategory[];
+    };
+    'copilot.category.save': CopilotCategory;
+    'copilot.category.delete': {
+      deleted: boolean;
+    };
+    'copilot.category.assign': {
+      updated: number;
+    };
   };
 }
 /**
@@ -693,6 +717,10 @@ export interface ScheduleOverrideParams {
 export interface CopilotListParams {
   kind?: CopilotKind;
   page?: number;
+  /**
+   * 缺省列出全部分类，null 仅未分类，字符串按分类筛选；筛选先于分页。
+   */
+  categoryId?: string | null;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -870,6 +898,26 @@ export interface AccountSnapshotListParams {
   kind?: 'depot' | 'operators';
   offset?: number;
   limit?: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotCategorySaveParams".
+ */
+export interface CopilotCategorySaveParams {
+  id?: string;
+  name: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotCategoryAssignParams".
+ */
+export interface CopilotCategoryAssignParams {
+  /**
+   * @minItems 1
+   * @maxItems 100
+   */
+  ids: string[];
+  categoryId: string | null;
 }
 export interface Snapshot {
   mode: Mode;
@@ -1374,7 +1422,7 @@ export interface CopilotRecord {
   description: string;
   minimumCoreVersion: string;
   /**
-   * @maxItems 100
+   * @maxItems 2000
    */
   operators: CopilotOperator[];
   /**
@@ -1384,6 +1432,11 @@ export interface CopilotRecord {
   source: CopilotSource;
   createdAt: string;
   compatibility: CopilotCompatibility;
+  /**
+   * 本地库分类；缺省或 null 为未分类，不写入原始作业 JSON。
+   */
+  categoryId?: string | null;
+  difficulty?: CopilotDifficulty;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -1477,9 +1530,14 @@ export interface CopilotSearchItem {
   /**
    * 从社区搜索摘要解析的干员及编组要求；摘要不可解析或作业集条目时省略，不额外请求详情。
    *
-   * @maxItems 100
+   * @maxItems 2000
    */
   operators?: CopilotOperator[];
+  /**
+   * 作业关卡标识；当前已安装资源可精确映射时展示关卡编号，否则保留原值。
+   */
+  stageName?: string;
+  difficulty?: CopilotDifficulty;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -1667,6 +1725,16 @@ export interface AccountSnapshotSummary {
    * @maxItems 20
    */
   unknownFields: string[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotCategory".
+ */
+export interface CopilotCategory {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

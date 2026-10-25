@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
-import type { CopilotCompatibility, CopilotKind, CopilotOptions, CopilotPreview, CopilotRating, CopilotRatingValue, CopilotRecord, CopilotSearchResult, CopilotSource, CopilotWorkspace } from '../../../packages/contracts/src/rpc-types';
+import type { CopilotCategory, CopilotCompatibility, CopilotKind, CopilotOptions, CopilotPreview, CopilotRating, CopilotRatingValue, CopilotRecord, CopilotSearchResult, CopilotSource, CopilotWorkspace } from '../../../packages/contracts/src/rpc-types';
 import type { CopilotRunEntry, Task } from '../../../packages/contracts/src/types';
 import { Store, now } from './storage';
 import { RpcError } from './errors';
@@ -10,7 +10,7 @@ import { supportsStageNavigation } from './stages';
 import * as validators from '../../../packages/contracts/src/validators.js';
 import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
 
-const MAX_CONTENT = 700_000, MAX_RESPONSE = 3_000_000, MAX_MEMBERS = 100, COMMUNITY_CONCURRENCY = 8, PREVIEW_TIMEOUT = 90_000;
+const MAX_CONTENT = 700_000, MAX_RESPONSE = 3_000_000, MAX_MEMBERS = 100, MAX_OPERATOR_CANDIDATES = 2000, COMMUNITY_CONCURRENCY = 8, PREVIEW_TIMEOUT = 90_000;
 const kinds = new Set(['Copilot', 'SSSCopilot', 'ParadoxCopilot']);
 // MaaCore v6.20.0 CopilotConfig::parse_actions aliases; unknown types would otherwise be silently skipped.
 const actionTypes = new Set(["Deploy", "DEPLOY", "deploy", "部署", "Skill", "SKILL", "skill", "技能", "Retreat", "RETREAT", "retreat", "撤退", "SpeedUp", "SPEEDUP", "Speedup", "speedup", "二倍速", "BulletTime", "BULLETTIME", "Bullettime", "bullettime", "子弹时间", "SkillUsage", "SKILLUSAGE", "Skillusage", "skillusage", "技能用法", "Output", "OUTPUT", "output", "输出", "打印", "SkillDaemon", "skilldaemon", "SKILLDAEMON", "Skilldaemon", "DoNothing", "摆完挂机", "开摆", "MoveCamera", "movecamera", "MOVECAMERA", "Movecamera", "移动镜头", "DrawCard", "drawcard", "DRAWCARD", "Drawcard", "抽卡", "抽牌", "调配", "调配干员", "CheckIfStartOver", "Checkifstartover", "CHECKIFSTARTOVER", "checkifstartover", "检查重开", "ResetStopwatch", "RESETSTOPWATCH", "resetstopwatch", "Resetstopwatch", "重置全局计时器", "Click", "click", "CLICK", "点击", "Swipe", "swipe", "SWIPE", "滑动", "SetUnitLocation", "Setunitlocation", "setunitlocation", "SETUNITLOCATION", "设置单位坐标"]);
@@ -20,6 +20,9 @@ const identifier = (prefix: string) => `${prefix}-${randomUUID()}`;
 const fail = (message: string): never => { throw new RpcError(-32602, message); };
 const message = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause)).slice(0, 1000);
 const clone = <T>(value: T): T => structuredClone(value);
+const categoryName = (value: string) => value.trim().toLowerCase();
+/** Difficulty is declared support, independent of the queue's selected execution mode. */
+const contentDifficulty = (value: unknown): CopilotRecord['difficulty'] => typeof value === 'number' && [0, 1, 2, 3].includes(value) ? value as CopilotRecord['difficulty'] : undefined;
 /** These nonstandard fields are content signatures, not the API's uploader identity. */
 function contentAuthor(value: unknown): string {
   if (!object(value)) return '';
@@ -40,7 +43,7 @@ function contentOperators(value: Record<string, any>): CopilotRecord['operators'
     if (item.requirements !== undefined && !object(item.requirements)) return fail('干员练度要求无效');
     const requirements = Object.fromEntries(Object.entries(item.requirements ?? {}).filter(([key, requirement]) => typeof requirement === 'number' && Number.isFinite(requirement) && key.length <= 80));
     operators.push({ name: item.name, ...(group !== undefined ? { group } : {}), ...(item.skill ? { skill: item.skill } : {}), ...(Object.keys(requirements).length ? { requirements } : {}) });
-    if (operators.length > 100) return fail('作业干员要求超过 100 项');
+    if (operators.length > MAX_OPERATOR_CANDIDATES) return fail(`作业干员候选超过 ${MAX_OPERATOR_CANDIDATES} 项`);
   };
   for (const item of list(value.opers, 'opers')) operator(item);
   for (const group of list(value.groups, 'groups')) {
@@ -115,7 +118,7 @@ export interface CopilotContext {
 export class CopilotLibrary {
   private readonly directory: string;
   private readonly previews = new Map<string, PreviewStored>();
-  private resourceCache?: { root: string; aliases: Map<string, string> };
+  private resourceCache?: { root: string; aliases: Map<string, string>; displayNames: Map<string, string | null> };
   private navigationCache = new Map<string, Record<string, unknown>>();
   private feedbackChains = new Map<string, Promise<unknown>>();
   private feedbackTasks = new Set<Promise<unknown>>();
@@ -126,9 +129,10 @@ export class CopilotLibrary {
   }
   private aliases(): Map<string, string> {
     const generation = this.context.resourceDirectory();
-    if (!generation) return new Map();
+    if (!generation) { this.resourceCache = undefined; return new Map(); }
     if (this.resourceCache?.root === generation) return this.resourceCache.aliases;
     const aliases = new Map<string, string>();
+    const displayNames = new Map<string, string | null>();
     const directory = path.join(generation, 'resource', 'Arknights-Tile-Pos');
     try {
       const overview = boundedJson(path.join(directory, 'overview.json'), 16 * 1024 * 1024);
@@ -142,10 +146,18 @@ export class CopilotLibrary {
           const names = [entry.stageId, entry.levelId, entry.code, entry.name].filter(item => typeof item === 'string' && item.length > 0 && item.length <= 200) as string[];
           const baseId = text(entry.stageId, 200).split('#')[0]!;
           for (const name of names) aliases.set(name, baseId || text(entry.stageId ?? entry.levelId, 200));
+          const code = typeof entry.code === 'string' && entry.code.trim() && entry.code.length <= 200 ? entry.code : undefined;
+          if (code) for (const name of new Set([...names, ...(baseId ? [baseId] : [])])) {
+            // Conflicting resource aliases cannot substantiate a display code.
+            displayNames.set(name, displayNames.has(name) && displayNames.get(name) !== code ? null : code);
+          }
         } catch { /* A summary without its map file is not an installed map. */ }
       }
     } catch { /* Missing or invalid index is reported as unverified below. */ }
-    this.resourceCache = { root: generation, aliases }; return aliases;
+    this.resourceCache = { root: generation, aliases, displayNames }; return aliases;
+  }
+  private displayStage(stage: string): string {
+    this.aliases(); return this.resourceCache?.displayNames.get(stage) || stage;
   }
   /** Same fixed resource paths and shallow override order as stageCatalog. */
   private navigation(clientType: NonNullable<RpcContract['params']['stages.list']['clientType']>): Record<string, unknown> {
@@ -199,6 +211,12 @@ export class CopilotLibrary {
   }
   private record(version: Version, stored = version.record): CopilotRecord {
     const record = clone(stored);
+    if (record.difficulty === undefined) {
+      try {
+        const difficulty = contentDifficulty(JSON.parse(this.readVersion(version).replace(/^\ufeff/, '')).difficulty);
+        if (difficulty !== undefined) record.difficulty = difficulty;
+      } catch { /* An unreadable immutable file cannot substantiate difficulty support. */ }
+    }
     if (record.operators.length && !record.operators.some(operator => operator.group !== undefined)) {
       // Older metadata flattened alternatives into mandatory operators. Recover
       // groups from exact immutable content without rewriting historical data.
@@ -221,14 +239,63 @@ export class CopilotLibrary {
       if (record.author && record.author !== author) record.uploader = record.author;
       record.author = author;
     }
-    return { ...record, compatibility: this.compatibility(version.record, version.stages) };
+    return { ...record, stageName: this.displayStage(version.record.stageName), compatibility: this.compatibility(version.record, version.stages) };
   }
   list(input: RpcContract['params']['copilot.list'] = {}): RpcContract['results']['copilot.list'] {
     const params = validate(validators.validateCopilotListParams, input);
-    const items = this.store.all<CopilotRecord>('copilot').filter(item => !params.kind || item.kind === params.kind), page = params.page ?? 1;
+    const items = this.store.all<CopilotRecord>('copilot').filter(item => (!params.kind || item.kind === params.kind)
+      && (params.categoryId === undefined || (item.categoryId ?? null) === params.categoryId)), page = params.page ?? 1;
     const result = { items: items.slice((page - 1) * 20, page * 20).map(item => this.record(this.version(item.versionId), item)), page, total: items.length, hasNext: page * 20 < items.length };
     if (Buffer.byteLength(JSON.stringify(result)) > MAX_RESPONSE) throw new RpcError(-32010, '本页作业元数据超过通信限制，请按类型筛选或清理异常作业');
     return result;
+  }
+  categoryList(input: RpcContract['params']['copilot.category.list'] = {}): RpcContract['results']['copilot.category.list'] {
+    validate(validators.validateEmptyParams, input);
+    return { items: this.store.all<CopilotCategory>('copilot_category') };
+  }
+  categorySave(input: RpcContract['params']['copilot.category.save']): CopilotCategory {
+    const params = validate(validators.validateCopilotCategorySaveParams, input), name = params.name.trim();
+    if (!name || /[\u0000-\u001f\u007f]/u.test(name)) return fail('分类名称不能为空或含控制字符');
+    const categories = this.categoryList().items, existing = params.id ? categories.find(item => item.id === params.id) : undefined;
+    if (params.id && !existing) throw new RpcError(-32004, '分类不存在，请刷新后重试');
+    if (categories.some(item => item.id !== existing?.id && categoryName(item.name) === categoryName(name))) return fail('分类名称已存在');
+    if (!existing && categories.length >= 500) return fail('本地分类已达 500 个上限，请先整理分类');
+    const timestamp = now(), category = { id: existing?.id ?? identifier('category'), name, createdAt: existing?.createdAt ?? timestamp, updatedAt: timestamp };
+    this.store.put('copilot_category', category.id, category);
+    this.context.changed?.(existing ? '作业分类已重命名' : '作业分类已创建'); return category;
+  }
+  categoryDelete(input: RpcContract['params']['copilot.category.delete']): RpcContract['results']['copilot.category.delete'] {
+    const params = validate(validators.validateIdParams, input);
+    const existed = !!this.store.get('copilot_category', params.id);
+    this.store.transaction(() => {
+      for (const record of this.store.all<CopilotRecord>('copilot')) if (record.categoryId === params.id) this.store.put('copilot', record.id, { ...record, categoryId: null });
+      for (const source of this.store.all<{ id: string; categoryId: string }>('copilot_set_category')) if (source.categoryId === params.id) this.store.delete('copilot_set_category', source.id);
+      this.store.delete('copilot_category', params.id);
+    });
+    this.context.changed?.('分类已删除，作业保留在未分类中'); return { deleted: existed };
+  }
+  categoryAssign(input: RpcContract['params']['copilot.category.assign']): RpcContract['results']['copilot.category.assign'] {
+    const params = validate(validators.validateCopilotCategoryAssignParams, input);
+    if (params.categoryId !== null && !this.store.get('copilot_category', params.categoryId)) throw new RpcError(-32004, '分类不存在，请刷新后重试');
+    this.store.transaction(() => {
+      const records = params.ids.map(id => this.store.get<CopilotRecord | undefined>('copilot', id));
+      if (records.some(record => !record)) throw new RpcError(-32004, '部分作业已删除，分类未修改，请刷新后重试');
+      for (const record of records) this.store.put('copilot', record!.id, { ...record, categoryId: params.categoryId });
+    });
+    this.context.changed?.('作业分类已更新'); return { updated: params.ids.length };
+  }
+  private setCategory(setId: string, title: string): string {
+    const source = this.store.get<{ categoryId: string } | undefined>('copilot_set_category', setId);
+    if (source && this.store.get('copilot_category', source.categoryId)) return source.categoryId;
+    const name = title.replace(/[\u0000-\u001f\u007f]/gu, ' ').trim() || `作业集 ${setId}`;
+    const categories = this.categoryList().items;
+    let category = categories.find(item => categoryName(item.name) === categoryName(name));
+    if (!category) {
+      if (categories.length >= 500) return fail('本地分类已达 500 个上限，请先整理分类');
+      const timestamp = now(); category = { id: identifier('category'), name, createdAt: timestamp, updatedAt: timestamp };
+      this.store.put('copilot_category', category.id, category);
+    }
+    this.store.put('copilot_set_category', setId, { id: setId, categoryId: category.id }); return category.id;
   }
   get(input: RpcContract['params']['copilot.get']): CopilotRecord {
     const params = validate(validators.validateCopilotIdentityParams, input);
@@ -326,9 +393,10 @@ export class CopilotLibrary {
     } else { actions(value.actions); stages.push(stageName); }
     const operators = contentOperators(value);
     const doc = object(value.doc) ? value.doc : {};
+    const difficulty = contentDifficulty(value.difficulty);
     const details = text(doc.details, 3000), videos = [...new Set((details.match(/https?:\/\/[^\s<>"）)]+/g) ?? []).map(safeUrl).filter(Boolean))].slice(0, 20);
     const record: CopilotRecord = { id: identifier('copilot'), versionId, kind, title: text(doc.title || source.name || stageName, 300), stageName, author: contentAuthor(value), ...(uploader !== undefined ? { uploader: text(uploader, 300) } : {}), description: details,
-      minimumCoreVersion: text(value.minimum_required, 80), operators, videos, source: clone(source), createdAt: now(), compatibility: { status: 'unverified', reasons: [] } };
+      minimumCoreVersion: text(value.minimum_required, 80), operators, videos, source: clone(source), createdAt: now(), compatibility: { status: 'unverified', reasons: [] }, ...(difficulty !== undefined ? { difficulty } : {}) };
     record.compatibility = this.compatibility(record, stages);
     const filename = path.join(this.directory, versionId + '.json');
     if (existsSync(filename)) {
@@ -344,7 +412,7 @@ export class CopilotLibrary {
       const ids = this.store.get<string[]>('copilot_origins', versionId, []);
       if (!ids.includes(source.communityId) && ids.length < 2) this.store.put('copilot_origins', versionId, [...ids, source.communityId]);
     } else this.store.put('copilot_noncommunity_origin', versionId, true);
-    return record;
+    return { ...record, stageName: this.displayStage(stageName) };
   }
   private previewEntry(content: string, source: CopilotSource, expectedKind?: CopilotKind, uploader?: string): CopilotPreview['entries'][number] {
     try { return { id: identifier('entry'), record: this.stage(content, source, expectedKind, uploader), error: null }; }
@@ -405,6 +473,10 @@ export class CopilotLibrary {
       for (const entry of preview.public.entries) if (selected.has(entry.id)) {
         if (!entry.record || entry.error) { errors.push({ id: entry.id, message: entry.error || '作业解析失败' }); continue; }
         const record = this.record(this.version(entry.record.versionId), entry.record);
+        const existing = this.store.get<CopilotRecord | undefined>('copilot', record.id);
+        // Retrying a preview must preserve a user's manual category, including explicit uncategorization.
+        if (existing && Object.hasOwn(existing, 'categoryId')) record.categoryId = existing.categoryId;
+        else if (record.source.kind === 'community' && record.source.setId) record.categoryId = this.setCategory(record.source.setId, preview.public.title);
         this.store.put('copilot', record.id, record); items.push(record);
       }
     });
@@ -632,8 +704,9 @@ export class CopilotLibrary {
         catch { /* A malformed summary cannot be imported; detail lookup reports its error. */ }
       }
       const doc = object(content.doc) ? content.doc : {};
+      const difficulty = contentDifficulty(content.difficulty);
       return { id, title: text(params.target === 'set' ? entry.name : doc.title || entry.title || `作业 #${id}`, 300), description: text(params.target === 'set' ? entry.description : doc.details, 3000), author: params.target === 'set' ? '' : contentAuthor(content), uploader: text(params.target === 'set' ? entry.creator ?? entry.uploader : entry.uploader ?? entry.creator, 300), url: `https://prts.plus/${params.target === 'set' ? 'set' : 'copilot'}/${id}`,
-        ...(params.target === 'set' ? {} : { kind: content.type === 'SSS' ? 'SSSCopilot' : /^(?:mem_|mem-|paradox)/i.test(String(content.stage_name)) ? 'ParadoxCopilot' : 'Copilot' as CopilotKind, ...(operators !== undefined ? { operators } : {}) }) };
+        ...(params.target === 'set' ? {} : { kind: content.type === 'SSS' ? 'SSSCopilot' : /^(?:mem_|mem-|paradox)/i.test(String(content.stage_name)) ? 'ParadoxCopilot' : 'Copilot' as CopilotKind, ...(typeof content.stage_name === 'string' && content.stage_name.length <= 200 ? { stageName: this.displayStage(content.stage_name) } : {}), ...(operators !== undefined ? { operators } : {}), ...(difficulty !== undefined ? { difficulty } : {}) }) };
     });
     // data.page is total pages for sets: preserve the requested page explicitly.
     return { items, page, hasNext: data.has_next, total: data.total };

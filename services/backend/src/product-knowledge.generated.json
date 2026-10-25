@@ -40,7 +40,7 @@
     },
     {
       "file": "packages/contracts/schemas/rpc.schema.json",
-      "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+      "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
     },
     {
       "file": "packages/contracts/schemas/runtime.schema.json",
@@ -1137,7 +1137,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -1226,7 +1226,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -1306,7 +1306,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/agent.message",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -1602,7 +1602,273 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/app.snapshot",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:rpc:copilot.category.assign",
+      "kind": "capability",
+      "id": "rpc:copilot.category.assign",
+      "name": "copilot.category.assign",
+      "aliases": [
+        "copilot",
+        "接口",
+        "参数",
+        "返回结果"
+      ],
+      "text": "copilot.category.assign\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n参数：{\"$ref\":\"#/$defs/CopilotCategoryAssignParams\"}\n返回结果：{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"updated\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":100}},\"required\":[\"updated\"]}",
+      "data": {
+        "category": "rpc",
+        "method": "copilot.category.assign",
+        "params": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/params/properties/copilot.category.assign"
+        },
+        "results": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/results/properties/copilot.category.assign"
+        },
+        "reachableSchemas": [
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotCategoryAssignParams"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/params/properties/copilot.category.assign"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/results/properties/copilot.category.assign"
+          }
+        ],
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategoryAssignParams"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.assign"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.assign"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.category.assign",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:rpc:copilot.category.delete",
+      "kind": "capability",
+      "id": "rpc:copilot.category.delete",
+      "name": "copilot.category.delete",
+      "aliases": [
+        "copilot",
+        "接口",
+        "参数",
+        "返回结果"
+      ],
+      "text": "copilot.category.delete\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n参数：{\"$ref\":\"#/$defs/IdParams\"}\n返回结果：{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"deleted\":{\"type\":\"boolean\"}},\"required\":[\"deleted\"]}",
+      "data": {
+        "category": "rpc",
+        "method": "copilot.category.delete",
+        "params": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/params/properties/copilot.category.delete"
+        },
+        "results": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/results/properties/copilot.category.delete"
+        },
+        "reachableSchemas": [
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/IdParams"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/params/properties/copilot.category.delete"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/results/properties/copilot.category.delete"
+          }
+        ],
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/IdParams"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.delete"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.delete"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.category.delete",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:rpc:copilot.category.list",
+      "kind": "capability",
+      "id": "rpc:copilot.category.list",
+      "name": "copilot.category.list",
+      "aliases": [
+        "copilot",
+        "接口",
+        "参数",
+        "返回结果"
+      ],
+      "text": "copilot.category.list\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n参数：{\"$ref\":\"#/$defs/EmptyParams\"}\n返回结果：{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"items\":{\"type\":\"array\",\"maxItems\":500,\"items\":{\"$ref\":\"#/$defs/CopilotCategory\"}}},\"required\":[\"items\"]}",
+      "data": {
+        "category": "rpc",
+        "method": "copilot.category.list",
+        "params": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/params/properties/copilot.category.list"
+        },
+        "results": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/results/properties/copilot.category.list"
+        },
+        "reachableSchemas": [
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotCategory"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/EmptyParams"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/params/properties/copilot.category.list"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/results/properties/copilot.category.list"
+          }
+        ],
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategory"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/EmptyParams"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.list"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.list"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.category.list",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:rpc:copilot.category.save",
+      "kind": "capability",
+      "id": "rpc:copilot.category.save",
+      "name": "copilot.category.save",
+      "aliases": [
+        "copilot",
+        "接口",
+        "参数",
+        "返回结果"
+      ],
+      "text": "copilot.category.save\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n参数：{\"$ref\":\"#/$defs/CopilotCategorySaveParams\"}\n返回结果：{\"$ref\":\"#/$defs/CopilotCategory\"}",
+      "data": {
+        "category": "rpc",
+        "method": "copilot.category.save",
+        "params": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/params/properties/copilot.category.save"
+        },
+        "results": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/results/properties/copilot.category.save"
+        },
+        "reachableSchemas": [
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotCategory"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotCategorySaveParams"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/params/properties/copilot.category.save"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/results/properties/copilot.category.save"
+          }
+        ],
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategory"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategorySaveParams"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.save"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.save"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.category.save",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -1664,7 +1930,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.delete",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -1726,7 +1992,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.export",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -1756,6 +2022,10 @@
           {
             "file": "packages/contracts/schemas/rpc.schema.json",
             "pointer": "#/$defs/CopilotCompatibility"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotDifficulty"
           },
           {
             "file": "packages/contracts/schemas/rpc.schema.json",
@@ -1797,6 +2067,11 @@
         {
           "predicate": "defined-by",
           "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotDifficulty"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
           "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotIdentityParams"
         },
         {
@@ -1833,7 +2108,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -1863,6 +2138,10 @@
           {
             "file": "packages/contracts/schemas/rpc.schema.json",
             "pointer": "#/$defs/CopilotCompatibility"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotDifficulty"
           },
           {
             "file": "packages/contracts/schemas/rpc.schema.json",
@@ -1904,6 +2183,11 @@
         {
           "predicate": "defined-by",
           "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotDifficulty"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
           "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotImportParams"
         },
         {
@@ -1940,7 +2224,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.import",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -1970,6 +2254,10 @@
           {
             "file": "packages/contracts/schemas/rpc.schema.json",
             "pointer": "#/$defs/CopilotCompatibility"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotDifficulty"
           },
           {
             "file": "packages/contracts/schemas/rpc.schema.json",
@@ -2011,6 +2299,11 @@
         {
           "predicate": "defined-by",
           "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotDifficulty"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
           "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotKind"
         },
         {
@@ -2047,7 +2340,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2077,6 +2370,10 @@
           {
             "file": "packages/contracts/schemas/rpc.schema.json",
             "pointer": "#/$defs/CopilotCompatibility"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotDifficulty"
           },
           {
             "file": "packages/contracts/schemas/rpc.schema.json",
@@ -2122,6 +2419,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCompatibility"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotDifficulty"
         },
         {
           "predicate": "defined-by",
@@ -2172,7 +2474,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.preview",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2252,7 +2554,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2332,7 +2634,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.set",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2359,6 +2661,10 @@
           "pointer": "#/properties/results/properties/copilot.search"
         },
         "reachableSchemas": [
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotDifficulty"
+          },
           {
             "file": "packages/contracts/schemas/rpc.schema.json",
             "pointer": "#/$defs/CopilotKind"
@@ -2391,6 +2697,11 @@
         "verification": "schema-only"
       },
       "relations": [
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotDifficulty"
+        },
         {
           "predicate": "defined-by",
           "targetKind": "document",
@@ -2430,7 +2741,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.search",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2555,7 +2866,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.start",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2653,7 +2964,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2751,7 +3062,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2840,7 +3151,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.auto_connect",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2902,7 +3213,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.availability",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -2964,7 +3275,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.click",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3035,7 +3346,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.connect",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3097,7 +3408,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.disconnect",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3168,7 +3479,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.discover",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3239,7 +3550,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.frame",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3355,7 +3666,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/home.info",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3453,7 +3764,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.search",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3542,7 +3853,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.status",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3604,7 +3915,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.clean",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3666,7 +3977,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.export",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3728,7 +4039,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.info",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3790,7 +4101,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.delete",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3870,7 +4181,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -3968,7 +4279,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/recognition.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4048,7 +4359,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.item",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4128,7 +4439,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.operator",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4199,7 +4510,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.artifact",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4315,7 +4626,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.detail",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4422,7 +4733,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.start",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4538,7 +4849,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.stop",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4600,7 +4911,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.cancel",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4662,7 +4973,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.delete",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4715,7 +5026,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.host",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4795,7 +5106,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4866,7 +5177,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.override",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -4937,7 +5248,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5089,7 +5400,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/settings.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5196,7 +5507,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/stages.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5267,7 +5578,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.catalog",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5356,7 +5667,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5445,7 +5756,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5534,7 +5845,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5632,7 +5943,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.start",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5721,7 +6032,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.stop",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5801,7 +6112,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.activate",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5881,7 +6192,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.check",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -5961,7 +6272,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.prepare",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6041,7 +6352,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.rollback",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6313,7 +6624,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountKnowledgeSnapshot",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6375,7 +6686,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotListParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6498,7 +6809,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotListResult",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6555,7 +6866,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6715,7 +7026,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotSummary",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6802,7 +7113,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CalendarStatus",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6841,7 +7152,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ChannelParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6874,7 +7185,160 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ClientType",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategory",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategory",
+      "name": "接口定义 CopilotCategory",
+      "aliases": [
+        "CopilotCategory",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "CopilotCategory\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300,\"pattern\":\"\\\\S\"},\"createdAt\":{\"type\":\"string\",\"maxLength\":40},\"updatedAt\":{\"type\":\"string\",\"maxLength\":40}},\"required\":[\"id\",\"name\",\"createdAt\",\"updatedAt\"]}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "pattern": "\\S"
+            },
+            "createdAt": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "updatedAt": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "createdAt",
+            "updatedAt"
+          ]
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/$defs/CopilotCategory",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategoryAssignParams",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategoryAssignParams",
+      "name": "接口定义 CopilotCategoryAssignParams",
+      "aliases": [
+        "CopilotCategoryAssignParams",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "CopilotCategoryAssignParams\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"ids\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":100,\"uniqueItems\":true,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}},\"categoryId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},{\"type\":\"null\"}]}},\"required\":[\"ids\",\"categoryId\"]}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ids": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            },
+            "categoryId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "ids",
+            "categoryId"
+          ]
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/$defs/CopilotCategoryAssignParams",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategorySaveParams",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategorySaveParams",
+      "name": "接口定义 CopilotCategorySaveParams",
+      "aliases": [
+        "CopilotCategorySaveParams",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "CopilotCategorySaveParams\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300,\"pattern\":\"\\\\S\"}},\"required\":[\"name\"]}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "pattern": "\\S"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/$defs/CopilotCategorySaveParams",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6922,7 +7386,39 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCompatibility",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/$defs/CopilotDifficulty",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotDifficulty",
+      "name": "接口定义 CopilotDifficulty",
+      "aliases": [
+        "CopilotDifficulty",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "CopilotDifficulty\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"enum\":[0,1,2,3],\"description\":\"原始作业 difficulty 位标志：0 未设置，1 普通，2 突袭，3 均支持；缺省或无效值不得推断支持难度。\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "enum": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "description": "原始作业 difficulty 位标志：0 未设置，1 普通，2 突袭，3 均支持；缺省或无效值不得推断支持难度。"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/$defs/CopilotDifficulty",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -6964,7 +7460,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotExportParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7003,7 +7499,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotIdentityParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7049,7 +7545,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotImportParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7079,7 +7575,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotKind",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7092,7 +7588,7 @@
         "JSON Schema",
         "参数约束"
       ],
-      "text": "CopilotListParams\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"kind\":{\"$ref\":\"#/$defs/CopilotKind\"},\"page\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000000}},\"required\":[]}",
+      "text": "CopilotListParams\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"kind\":{\"$ref\":\"#/$defs/CopilotKind\"},\"page\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000000},\"categoryId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},{\"type\":\"null\"}],\"description\":\"缺省列出全部分类，null 仅未分类，字符串按分类筛选；筛选先于分页。\"}},\"required\":[]}",
       "data": {
         "category": "schema",
         "schema": {
@@ -7106,6 +7602,19 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 1000000
+            },
+            "categoryId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "缺省列出全部分类，null 仅未分类，字符串按分类筛选；筛选先于分页。"
             }
           },
           "required": []
@@ -7123,7 +7632,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotListParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7173,7 +7682,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotOperator",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7262,7 +7771,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotOptions",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7318,7 +7827,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotPreview",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7380,7 +7889,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotPreviewEntry",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7432,7 +7941,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotPreviewParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7487,7 +7996,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotQueueEntry",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7543,7 +8052,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRating",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7584,7 +8093,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRatingParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7635,7 +8144,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRatingSetParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7666,7 +8175,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRatingValue",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7679,7 +8188,7 @@
         "JSON Schema",
         "参数约束"
       ],
-      "text": "CopilotRecord\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"versionId\":{\"type\":\"string\",\"pattern\":\"^[a-f0-9]{64}$\"},\"kind\":{\"$ref\":\"#/$defs/CopilotKind\"},\"title\":{\"type\":\"string\",\"maxLength\":300},\"stageName\":{\"type\":\"string\",\"maxLength\":200},\"author\":{\"type\":\"string\",\"maxLength\":300,\"description\":\"仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。\"},\"uploader\":{\"type\":\"string\",\"maxLength\":300,\"description\":\"社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。\"},\"description\":{\"type\":\"string\",\"maxLength\":16000},\"minimumCoreVersion\":{\"type\":\"string\",\"maxLength\":80},\"operators\":{\"type\":\"array\",\"maxItems\":100,\"items\":{\"$ref\":\"#/$defs/CopilotOperator\"}},\"videos\":{\"type\":\"array\",\"maxItems\":20,\"items\":{\"type\":\"string\",\"maxLength\":2048}},\"source\":{\"$ref\":\"#/$defs/CopilotSource\"},\"createdAt\":{\"type\":\"string\",\"maxLength\":40},\"compatibility\":{\"$ref\":\"#/$defs/CopilotCompatibility\"}},\"required\":[\"id\",\"versionId\",\"kind\",\"title\",\"stageName\",\"author\",\"description\",\"minimumCoreVersion\",\"operators\",\"videos\",\"source\",\"createdAt\",\"compatibility\"]}",
+      "text": "CopilotRecord\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"versionId\":{\"type\":\"string\",\"pattern\":\"^[a-f0-9]{64}$\"},\"kind\":{\"$ref\":\"#/$defs/CopilotKind\"},\"title\":{\"type\":\"string\",\"maxLength\":300},\"stageName\":{\"type\":\"string\",\"maxLength\":200},\"author\":{\"type\":\"string\",\"maxLength\":300,\"description\":\"仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。\"},\"uploader\":{\"type\":\"string\",\"maxLength\":300,\"description\":\"社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。\"},\"description\":{\"type\":\"string\",\"maxLength\":16000},\"minimumCoreVersion\":{\"type\":\"string\",\"maxLength\":80},\"operators\":{\"type\":\"array\",\"maxItems\":2000,\"items\":{\"$ref\":\"#/$defs/CopilotOperator\"}},\"videos\":{\"type\":\"array\",\"maxItems\":20,\"items\":{\"type\":\"string\",\"maxLength\":2048}},\"source\":{\"$ref\":\"#/$defs/CopilotSource\"},\"createdAt\":{\"type\":\"string\",\"maxLength\":40},\"compatibility\":{\"$ref\":\"#/$defs/CopilotCompatibility\"},\"categoryId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},{\"type\":\"null\"}],\"description\":\"本地库分类；缺省或 null 为未分类，不写入原始作业 JSON。\"},\"difficulty\":{\"$ref\":\"#/$defs/CopilotDifficulty\"}},\"required\":[\"id\",\"versionId\",\"kind\",\"title\",\"stageName\",\"author\",\"description\",\"minimumCoreVersion\",\"operators\",\"videos\",\"source\",\"createdAt\",\"compatibility\"]}",
       "data": {
         "category": "schema",
         "schema": {
@@ -7726,7 +8235,7 @@
             },
             "operators": {
               "type": "array",
-              "maxItems": 100,
+              "maxItems": 2000,
               "items": {
                 "$ref": "#/$defs/CopilotOperator"
               }
@@ -7748,6 +8257,22 @@
             },
             "compatibility": {
               "$ref": "#/$defs/CopilotCompatibility"
+            },
+            "categoryId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "本地库分类；缺省或 null 为未分类，不写入原始作业 JSON。"
+            },
+            "difficulty": {
+              "$ref": "#/$defs/CopilotDifficulty"
             }
           },
           "required": [
@@ -7778,6 +8303,11 @@
         {
           "predicate": "references",
           "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotDifficulty"
+        },
+        {
+          "predicate": "references",
+          "targetKind": "document",
           "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotKind"
         },
         {
@@ -7794,7 +8324,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRecord",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7807,7 +8337,7 @@
         "JSON Schema",
         "参数约束"
       ],
-      "text": "CopilotSearchItem\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"title\":{\"type\":\"string\",\"maxLength\":300},\"description\":{\"type\":\"string\",\"maxLength\":16000},\"author\":{\"type\":\"string\",\"maxLength\":300,\"description\":\"仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。\"},\"uploader\":{\"type\":\"string\",\"maxLength\":300,\"description\":\"社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。\"},\"url\":{\"type\":\"string\",\"maxLength\":2048},\"kind\":{\"$ref\":\"#/$defs/CopilotKind\"},\"operators\":{\"type\":\"array\",\"maxItems\":100,\"description\":\"从社区搜索摘要解析的干员及编组要求；摘要不可解析或作业集条目时省略，不额外请求详情。\",\"items\":{\"$ref\":\"#/$defs/CopilotOperator\"}}},\"required\":[\"id\",\"title\",\"description\",\"author\",\"url\"]}",
+      "text": "CopilotSearchItem\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"title\":{\"type\":\"string\",\"maxLength\":300},\"description\":{\"type\":\"string\",\"maxLength\":16000},\"author\":{\"type\":\"string\",\"maxLength\":300,\"description\":\"仅原始作业 JSON 中显式的内容署名；不得由社区上传者或作业集创建者推断。\"},\"uploader\":{\"type\":\"string\",\"maxLength\":300,\"description\":\"社区服务提供的上传者（作业集搜索为创建者），不等同内容作者；兼容旧记录缺省。\"},\"url\":{\"type\":\"string\",\"maxLength\":2048},\"kind\":{\"$ref\":\"#/$defs/CopilotKind\"},\"operators\":{\"type\":\"array\",\"maxItems\":2000,\"description\":\"从社区搜索摘要解析的干员及编组要求；摘要不可解析或作业集条目时省略，不额外请求详情。\",\"items\":{\"$ref\":\"#/$defs/CopilotOperator\"}},\"stageName\":{\"type\":\"string\",\"maxLength\":200,\"description\":\"作业关卡标识；当前已安装资源可精确映射时展示关卡编号，否则保留原值。\"},\"difficulty\":{\"$ref\":\"#/$defs/CopilotDifficulty\"}},\"required\":[\"id\",\"title\",\"description\",\"author\",\"url\"]}",
       "data": {
         "category": "schema",
         "schema": {
@@ -7846,11 +8376,19 @@
             },
             "operators": {
               "type": "array",
-              "maxItems": 100,
+              "maxItems": 2000,
               "description": "从社区搜索摘要解析的干员及编组要求；摘要不可解析或作业集条目时省略，不额外请求详情。",
               "items": {
                 "$ref": "#/$defs/CopilotOperator"
               }
+            },
+            "stageName": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "作业关卡标识；当前已安装资源可精确映射时展示关卡编号，否则保留原值。"
+            },
+            "difficulty": {
+              "$ref": "#/$defs/CopilotDifficulty"
             }
           },
           "required": [
@@ -7868,6 +8406,11 @@
         {
           "predicate": "references",
           "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotDifficulty"
+        },
+        {
+          "predicate": "references",
+          "targetKind": "document",
           "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotKind"
         },
         {
@@ -7879,7 +8422,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSearchItem",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7930,7 +8473,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSearchParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -7991,7 +8534,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSearchResult",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8050,7 +8593,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSource",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8103,7 +8646,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotStartParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8166,7 +8709,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotWorkspace",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8207,7 +8750,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotWorkspaceParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8248,7 +8791,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotWorkspaceSaveParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8317,7 +8860,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceAvailability",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8378,7 +8921,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceClickParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8415,7 +8958,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceFrameParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8458,7 +9001,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DiscoveredDevice",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8485,7 +9028,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/EmptyParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8612,7 +9155,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/HomeInfo",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8647,7 +9190,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/IdParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8730,7 +9273,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/InfrastructureEstimate",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8777,7 +9320,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ItemResourceParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8845,7 +9388,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ItemResourceResult",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8884,7 +9427,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeClientParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -8918,7 +9461,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeKind",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9053,7 +9596,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeRecord",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9120,7 +9663,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeSearchParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9202,7 +9745,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeSearchResult",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9265,7 +9808,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeSource",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9422,7 +9965,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeStatus",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9474,7 +10017,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/OperatorResourceParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9553,7 +10096,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/OperatorResourceResult",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9606,7 +10149,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognitionParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9711,7 +10254,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognitionResult",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9765,7 +10308,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognizedItem",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9838,7 +10381,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognizedOperator",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9879,7 +10422,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RunArtifactImage",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -9921,7 +10464,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RunArtifactParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10011,7 +10554,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/Schedule",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10074,7 +10617,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScheduleList",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10119,7 +10662,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScheduleOverrideParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10160,7 +10703,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScheduleSaveParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10241,7 +10784,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScreenFrame",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10326,7 +10869,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageActivity",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10367,7 +10910,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageListParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10476,7 +11019,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageListResult",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10538,7 +11081,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageOption",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10649,7 +11192,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolCatalog",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10787,7 +11330,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolConfig",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10851,7 +11394,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolConfigParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -10906,7 +11449,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolIdentity",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11005,7 +11548,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolJob",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11038,7 +11581,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolKind",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11107,7 +11650,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolStartParams",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11139,7 +11682,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11171,7 +11714,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11211,7 +11754,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/agent.message",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11243,7 +11786,135 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/app.snapshot",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.assign",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.assign",
+      "name": "接口定义 copilot.category.assign",
+      "aliases": [
+        "copilot.category.assign",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.category.assign\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/CopilotCategoryAssignParams\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/CopilotCategoryAssignParams"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategoryAssignParams"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.category.assign",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.delete",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.delete",
+      "name": "接口定义 copilot.category.delete",
+      "aliases": [
+        "copilot.category.delete",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.category.delete\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/IdParams\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/IdParams"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.category.delete",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.list",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.list",
+      "name": "接口定义 copilot.category.list",
+      "aliases": [
+        "copilot.category.list",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.category.list\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/EmptyParams\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/EmptyParams"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.category.list",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.save",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.category.save",
+      "name": "接口定义 copilot.category.save",
+      "aliases": [
+        "copilot.category.save",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.category.save\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/CopilotCategorySaveParams\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/CopilotCategorySaveParams"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategorySaveParams"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.category.save",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11275,7 +11946,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.delete",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11307,7 +11978,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.export",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11339,7 +12010,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11371,7 +12042,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.import",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11403,7 +12074,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11435,7 +12106,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.preview",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11467,7 +12138,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11499,7 +12170,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.set",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11531,7 +12202,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.search",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11563,7 +12234,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.start",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11595,7 +12266,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11627,7 +12298,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11659,7 +12330,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.auto_connect",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11696,7 +12367,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.availability",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11728,7 +12399,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.click",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11766,7 +12437,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.connect",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11798,7 +12469,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.disconnect",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11830,7 +12501,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.discover",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11862,7 +12533,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.frame",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11909,7 +12580,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/home.info",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11941,7 +12612,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.search",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -11973,7 +12644,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.status",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12005,7 +12676,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.clean",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12037,7 +12708,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.export",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12069,7 +12740,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.info",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12101,7 +12772,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.delete",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12142,7 +12813,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12174,7 +12845,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/recognition.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12206,7 +12877,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.item",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12238,7 +12909,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.operator",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12270,7 +12941,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.artifact",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12302,7 +12973,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.detail",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12347,7 +13018,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.start",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12379,7 +13050,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.stop",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12411,7 +13082,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.cancel",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12443,7 +13114,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.delete",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12501,7 +13172,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.host",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12533,7 +13204,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12565,7 +13236,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.override",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12597,7 +13268,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12638,7 +13309,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/settings.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12670,7 +13341,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/stages.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12709,7 +13380,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.catalog",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12741,7 +13412,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12773,7 +13444,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12805,7 +13476,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12837,7 +13508,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.start",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12869,7 +13540,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.stop",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12901,7 +13572,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.activate",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12933,7 +13604,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.check",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12965,7 +13636,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.prepare",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -12997,7 +13668,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.rollback",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13036,7 +13707,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/account.snapshot.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13068,7 +13739,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/account.snapshot.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13120,7 +13791,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/agent.message",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13152,7 +13823,156 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/app.snapshot",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.assign",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.assign",
+      "name": "接口定义 copilot.category.assign",
+      "aliases": [
+        "copilot.category.assign",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.category.assign\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"updated\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":100}},\"required\":[\"updated\"]}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "updated": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "updated"
+          ]
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/results/properties/copilot.category.assign",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.delete",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.delete",
+      "name": "接口定义 copilot.category.delete",
+      "aliases": [
+        "copilot.category.delete",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.category.delete\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"deleted\":{\"type\":\"boolean\"}},\"required\":[\"deleted\"]}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "deleted"
+          ]
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/results/properties/copilot.category.delete",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.list",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.list",
+      "name": "接口定义 copilot.category.list",
+      "aliases": [
+        "copilot.category.list",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.category.list\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"items\":{\"type\":\"array\",\"maxItems\":500,\"items\":{\"$ref\":\"#/$defs/CopilotCategory\"}}},\"required\":[\"items\"]}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "type": "array",
+              "maxItems": 500,
+              "items": {
+                "$ref": "#/$defs/CopilotCategory"
+              }
+            }
+          },
+          "required": [
+            "items"
+          ]
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategory"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/results/properties/copilot.category.list",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.save",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.category.save",
+      "name": "接口定义 copilot.category.save",
+      "aliases": [
+        "copilot.category.save",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.category.save\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/CopilotCategory\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/CopilotCategory"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotCategory"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/results/properties/copilot.category.save",
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13187,7 +14007,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.delete",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13248,7 +14068,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.export",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13280,7 +14100,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13349,7 +14169,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.import",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13410,7 +14230,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13442,7 +14262,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.preview",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13474,7 +14294,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.rating.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13506,7 +14326,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.rating.set",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13538,7 +14358,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.search",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13570,7 +14390,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.start",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13602,7 +14422,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.workspace.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13634,7 +14454,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.workspace.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13697,7 +14517,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.auto_connect",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13729,7 +14549,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.availability",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13764,7 +14584,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.click",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13796,7 +14616,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.connect",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13831,7 +14651,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.disconnect",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13866,7 +14686,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.discover",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13898,7 +14718,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.frame",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13930,7 +14750,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/home.info",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13962,7 +14782,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/knowledge.search",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -13994,7 +14814,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/knowledge.status",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14047,7 +14867,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.clean",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14098,7 +14918,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.export",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14143,7 +14963,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.info",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14178,7 +14998,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/plan.delete",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14210,7 +15030,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/plan.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14242,7 +15062,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/recognition.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14274,7 +15094,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/resources.item",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14306,7 +15126,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/resources.operator",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14338,7 +15158,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.artifact",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14370,7 +15190,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.detail",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14402,7 +15222,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.start",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14434,7 +15254,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.stop",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14469,7 +15289,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.cancel",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14504,7 +15324,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.delete",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14539,7 +15359,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.host",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14571,7 +15391,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14603,7 +15423,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.override",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14635,7 +15455,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14667,7 +15487,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/settings.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14699,7 +15519,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/stages.list",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14731,7 +15551,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.catalog",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14763,7 +15583,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.config.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14795,7 +15615,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.config.save",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14827,7 +15647,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.get",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14859,7 +15679,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.start",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14891,7 +15711,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.stop",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14923,7 +15743,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.activate",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14955,7 +15775,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.check",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -14987,7 +15807,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.prepare",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -15019,7 +15839,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.rollback",
-        "sha256": "63803126ee77a0e91909a116c13abd607e991c58e31321568472b582e1d718fd"
+        "sha256": "19427cb0b0d83df671f478f4923d3d8c6f1b61213504ca214e76765d506ef8a3"
       }
     },
     {
@@ -18197,5 +19017,5 @@
       }
     }
   ],
-  "digest": "db41fbc062e21584db0b8c8f7f019e8f4bf88c5a1173e54223139001c5c9a202"
+  "digest": "21e4dd79ee4ff7ec50f305018a62fa1eb17b46b0c0ef07c691baddf9673df9fe"
 }

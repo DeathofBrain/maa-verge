@@ -69,7 +69,11 @@
         "knowledge.status",
         "knowledge.search",
         "account.snapshot.get",
-        "account.snapshot.list"
+        "account.snapshot.list",
+        "copilot.category.list",
+        "copilot.category.save",
+        "copilot.category.delete",
+        "copilot.category.assign"
       ],
       "properties": {
         "app.snapshot": {
@@ -373,6 +377,18 @@
         },
         "account.snapshot.list": {
           "$ref": "#/$defs/AccountSnapshotListParams"
+        },
+        "copilot.category.list": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "copilot.category.save": {
+          "$ref": "#/$defs/CopilotCategorySaveParams"
+        },
+        "copilot.category.delete": {
+          "$ref": "#/$defs/IdParams"
+        },
+        "copilot.category.assign": {
+          "$ref": "#/$defs/CopilotCategoryAssignParams"
         }
       }
     },
@@ -435,7 +451,11 @@
         "knowledge.status",
         "knowledge.search",
         "account.snapshot.get",
-        "account.snapshot.list"
+        "account.snapshot.list",
+        "copilot.category.list",
+        "copilot.category.save",
+        "copilot.category.delete",
+        "copilot.category.assign"
       ],
       "properties": {
         "app.snapshot": {
@@ -896,6 +916,51 @@
         },
         "account.snapshot.list": {
           "$ref": "#/$defs/AccountSnapshotListResult"
+        },
+        "copilot.category.list": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "type": "array",
+              "maxItems": 500,
+              "items": {
+                "$ref": "#/$defs/CopilotCategory"
+              }
+            }
+          },
+          "required": [
+            "items"
+          ]
+        },
+        "copilot.category.save": {
+          "$ref": "#/$defs/CopilotCategory"
+        },
+        "copilot.category.delete": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "deleted"
+          ]
+        },
+        "copilot.category.assign": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "updated": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "updated"
+          ]
         }
       }
     }
@@ -2533,7 +2598,7 @@
         },
         "operators": {
           "type": "array",
-          "maxItems": 100,
+          "maxItems": 2000,
           "items": {
             "$ref": "#/$defs/CopilotOperator"
           }
@@ -2555,6 +2620,22 @@
         },
         "compatibility": {
           "$ref": "#/$defs/CopilotCompatibility"
+        },
+        "categoryId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "本地库分类；缺省或 null 为未分类，不写入原始作业 JSON。"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/CopilotDifficulty"
         }
       },
       "required": [
@@ -2791,11 +2872,19 @@
         },
         "operators": {
           "type": "array",
-          "maxItems": 100,
+          "maxItems": 2000,
           "description": "从社区搜索摘要解析的干员及编组要求；摘要不可解析或作业集条目时省略，不额外请求详情。",
           "items": {
             "$ref": "#/$defs/CopilotOperator"
           }
+        },
+        "stageName": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "作业关卡标识；当前已安装资源可精确映射时展示关卡编号，否则保留原值。"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/CopilotDifficulty"
         }
       },
       "required": [
@@ -2849,6 +2938,19 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 1000000
+        },
+        "categoryId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "缺省列出全部分类，null 仅未分类，字符串按分类筛选；筛选先于分页。"
         }
       },
       "required": []
@@ -3985,6 +4087,99 @@
         "offset",
         "limit"
       ]
+    },
+    "CopilotCategory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "\\S"
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CopilotCategorySaveParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "CopilotCategoryAssignParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "categoryId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "ids",
+        "categoryId"
+      ]
+    },
+    "CopilotDifficulty": {
+      "enum": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "description": "原始作业 difficulty 位标志：0 未设置，1 普通，2 突袭，3 均支持；缺省或无效值不得推断支持难度。"
     }
   }
 }

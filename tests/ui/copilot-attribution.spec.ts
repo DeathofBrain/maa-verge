@@ -33,7 +33,7 @@ async function exportFiles(page: Page) {
   return { original, attribution };
 }
 
-test('community results distinguish the uploader and preserve source links and attribution when exported', async ({ page }, testInfo) => {
+test('community results use one author label and preserve full source attribution when exported', async ({ page }, testInfo) => {
   await openCenter(page);
   const disclosure = page.getByLabel('社区服务与内容归属', { exact: true });
   await expect(disclosure).toBeVisible();
@@ -41,14 +41,15 @@ test('community results distinguish the uploader and preserve source links and a
   await expect(disclosure).toContainText('不因导入而改用本项目 AGPL');
   await expect(disclosure.getByRole('link', { name: 'PRTS Plus', exact: true })).toHaveAttribute('href', 'https://prts.plus/');
   await page.getByRole('tab', { name: '社区搜索', exact: true }).click();
-  await expect(library(page).locator('.cp-record')).toContainText('上传者：合成上传者 · 作者：未标注');
+  await expect(library(page).locator('.cp-record')).toContainText('作者：合成上传者');
+  await expect(library(page).locator('.cp-record')).not.toContainText('上传者：');
   await library(page).screenshot({ path: testInfo.outputPath('community-attribution.png') });
   await library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true }).click();
   await expect(detail(page)).toContainText('作者：合成作者');
-  await expect(detail(page)).toContainText('上传者：合成上传者');
+  await expect(detail(page)).not.toContainText('上传者：');
   await detail(page).getByRole('button', { name: '导入到作业库', exact: true }).click();
   await expect(detail(page).locator('.cp-detail-heading')).toContainText('作者：合成作者');
-  await expect(detail(page).locator('.cp-meta')).toContainText('上传者合成上传者');
+  await expect(detail(page).locator('.cp-meta')).not.toContainText('上传者');
   const source = detail(page).getByRole('link', { name: '查看原站', exact: true });
   await expect(source).toHaveAttribute('href', 'https://prts.plus/copilot/101');
   await expect(source).toHaveAttribute('rel', 'noopener noreferrer');
@@ -69,13 +70,18 @@ test('community results distinguish the uploader and preserve source links and a
   await detail(page).screenshot({ path: testInfo.outputPath('detail-attribution.png') });
 });
 
-test('a community upload without a content signature keeps its author unmarked', async ({ page }) => {
+test('an unsigned upload displays its uploader while keeping the original author metadata empty', async ({ page }) => {
   await openCenter(page); await importCode(page, '103');
-  await expect(detail(page).locator('.cp-detail-heading')).toContainText('作者：未标注');
-  await expect(detail(page).locator('.cp-detail-heading')).not.toContainText('作者：合成上传者');
-  await expect(detail(page).locator('.cp-meta')).toContainText('上传者合成上传者');
+  await expect(detail(page).locator('.cp-detail-heading')).toContainText('作者：合成上传者');
+  await expect(detail(page).locator('.cp-meta')).not.toContainText('上传者');
+  const stored = await page.evaluate(async () => {
+    const result = await (window as unknown as HarnessWindow).runtimeHarness.call('copilot.list', {}) as { items: { author: string; uploader?: string }[] };
+    return result.items[0];
+  });
+  expect(stored).toMatchObject({ author: '', uploader: '合成上传者' });
   await detail(page).getByRole('button', { name: '返回作业列表', exact: true }).click();
-  await expect(library(page).locator('.cp-record')).toContainText('作者：未标注 · 上传者：合成上传者');
+  await expect(library(page).locator('.cp-record')).toContainText('作者：合成上传者');
+  await expect(library(page).locator('.cp-record')).not.toContainText('上传者：');
 });
 
 test('local file export preserves the original BOM and formatting beside a separate source explanation', async ({ page }) => {
