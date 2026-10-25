@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CopilotLibrary, defaultCopilotOptions, parseCopilotCode } from '../src/copilot';
@@ -284,6 +284,31 @@ describe('fixed-origin community adapter', () => {
     const ordinaryResults = await library.search({ target: 'copilot' });
     expect(ordinaryResults.items).toMatchObject([{ author: '', uploader: '上传者' }, { author: '原 JSON 署名', uploader: '上传者乙' }]);
     expect((await library.search({ target: 'set' })).items).toMatchObject([{ author: '', uploader: '创建者' }]);
+  });
+  test('search exposes operator requirements and alternatives without requiring executable content or importing', async () => {
+    const requests: string[] = [];
+    const summary = { doc: { title: '仅有元数据的摘要' }, opers: [{ name: '必选干员', skill: 3, requirements: { elite: 2, level: 80, skill_level: 10, module: 2, unknown: '忽略非数值' } }], groups: [{ name: '输出任选', opers: [{ name: '备选甲', skill: 1 }, { name: '备选乙', skill: 0 }] }] };
+    const { library, root, store } = setup((async (url: any) => {
+      requests.push(String(url));
+      return response({ has_next: false, total: 1, data: [{ id: 1, content: JSON.stringify(summary) }] });
+    }) as typeof fetch);
+    const result = await library.search({ target: 'copilot' });
+    expect(result.items[0]!.operators).toEqual([
+      { name: '必选干员', skill: 3, requirements: { elite: 2, level: 80, skill_level: 10, module: 2 } },
+      { name: '备选甲', skill: 1, group: '输出任选' }, { name: '备选乙', group: '输出任选' },
+    ]);
+    expect(requests).toHaveLength(1); expect(requests[0]).toContain('/copilot/query?');
+    expect(library.list().items).toEqual([]); expect(store.all('copilot_version')).toEqual([]);
+    expect(readdirSync(path.join(root, 'copilot', 'versions'))).toEqual([]);
+    expect((await library.search({ target: 'set' })).items[0]!.operators).toBeUndefined();
+  });
+  test('search omits malformed or oversized operator metadata while retaining the searchable summary', async () => {
+    const malformed: unknown[] = [undefined, '{', '[]', JSON.stringify({ opers: [null] }), JSON.stringify({ opers: [{ name: '合法' }, { name: '错误技能', skill: 4 }] }), JSON.stringify({ opers: [{ name: '错误要求', requirements: [] }] }), JSON.stringify({ groups: [{ name: ' ', opers: [{ name: '备选' }] }] }), JSON.stringify({ opers: Array.from({ length: 101 }, () => ({ name: '过多干员' })) }), JSON.stringify({ opers: [{ name: '过长'.repeat(51) }] }), ' '.repeat(700_001)];
+    const { library } = setup((async (_url: any) => response({ has_next: false, total: malformed.length + 1, data: [...malformed.map((content, index) => ({ id: index + 1, title: `可搜索 ${index + 1}`, content })), { id: 99, content: JSON.stringify({ doc: { title: '无声明干员' } }) }] })) as typeof fetch);
+    const result = await library.search({ target: 'copilot' });
+    expect(result.items).toHaveLength(malformed.length + 1);
+    for (const item of result.items.slice(0, -1)) { expect(item.title).toStartWith('可搜索'); expect(item.operators).toBeUndefined(); }
+    expect(result.items.at(-1)!.operators).toEqual([]);
   });
   test('export keeps exact raw JSON while the attribution sidecar follows the selected import source', async () => {
     const raw = '\ufeff \n' + ordinary({ doc: { title: '原始作业', author: 'JSON 署名', details: '原作者说明与视频 https://example.test/video\n' + '说明'.repeat(2000) + '\n版权及许可原文：另行授权' }, license: '原作业自定义声明，不由应用解释' }) + '\r\n';
