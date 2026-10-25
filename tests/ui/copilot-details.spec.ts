@@ -26,7 +26,7 @@ test('community works open full details with portraits and grouped requirements 
   await expect(detail(page).getByRole('img', { name: '阿米娅头像', exact: true })).toBeVisible();
   await detail(page).locator('.operator-badge').filter({ hasText: '能天使' }).scrollIntoViewIfNeeded();
   await expect(detail(page).getByRole('img', { name: '能天使头像', exact: true })).toBeVisible();
-  await expect(detail(page).locator('.cp-operator-grid').first()).toContainText('精英 2 · 等级 80');
+  await expect(detail(page).locator('.cp-operator-grid').first()).toContainText('精二 · 等级 80');
   await expect(detail(page).locator('.cp-operator-groups')).toContainText('输出备选组内任选一位');
   await expect(detail(page).getByRole('button', { name: '加入执行队列', exact: true })).toHaveCount(0);
   const count = await page.evaluate(async () => {
