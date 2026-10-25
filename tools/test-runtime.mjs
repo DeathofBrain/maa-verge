@@ -1,4 +1,5 @@
-import { ensureBun, cleanRuntimeEnvironment } from './setup-bun.mjs';
+import { ensureBun } from './setup-bun.mjs';
+import { offlineAgentEnvironment } from './test-support/agent-environment.mjs';
 import { run, fail } from './project.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -13,8 +14,8 @@ async function main() {
   const worker = ['Release/', ''].map(prefix => path.join(root, 'build/native', prefix, workerName)).find(existsSync);
   const core = ['Release/', ''].map(prefix => path.join(root, 'build/native/fixtures/normal', prefix, coreName)).find(existsSync);
   const python = path.join(root, process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
-  await run(await ensureBun(), ['test', '--timeout', String(timeout), 'services/backend/tests'], { env: {
-    ...cleanRuntimeEnvironment(),
+  await run(await ensureBun(), ['test', '--timeout', String(timeout), 'packages/agent/tests', 'services/backend/tests'], { env: {
+    ...offlineAgentEnvironment(),
     ...(existsSync(python) ? { MAAVERGE_REFERENCE_PYTHON: python } : {}),
     ...(worker && core ? { MAAVERGE_TEST_NATIVE_WORKER: worker, MAAVERGE_TEST_CORE_LIBRARY: core, MAAVERGE_TEST_COMPILE_UPDATE: '1' } : {}),
   } });

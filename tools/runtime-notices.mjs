@@ -21,6 +21,8 @@ function writeNotice(output, filename, heading, files) {
 
 export function writeJavaScriptNotices(output, { projectRoot = root } = {}) {
   mkdirSync(output, { recursive: true });
+  const overridesFile = path.join(projectRoot, 'tools/licenses/javascript-overrides.json');
+  const overrides = existsSync(overridesFile) ? readJson(overridesFile) : {};
   // Resolve workspace packages from this checkout even when node_modules is shared
   // with another checkout. They still contribute their production dependencies.
   const workspaces = new Map();
@@ -51,8 +53,17 @@ export function writeJavaScriptNotices(output, { projectRoot = root } = {}) {
     const id = `${info.name}@${info.version}`;
     if (!workspaces.has(info.name) && !written.has(id)) {
       const files = licenseFiles(directory);
-      if (!files.length) throw new Error(`Missing JavaScript dependency license: ${id}`);
-      writeNotice(output, id.replaceAll('/', '_') + '.txt', id, files);
+      let provenance = '';
+      if (!files.length) {
+        const override = Object.hasOwn(overrides, id) ? overrides[id] : null;
+        if (!override || override.selectedLicense !== info.license) throw new Error(`Missing JavaScript dependency license: ${id}`);
+        if (typeof override.file !== 'string' || path.basename(override.file) !== override.file) throw new Error(`Invalid JavaScript license override path: ${id}`);
+        const file = path.join(projectRoot, 'tools/licenses', override.file);
+        if (createHash('sha256').update(readFileSync(file)).digest('hex') !== override.sha256) throw new Error(`JavaScript license override checksum mismatch: ${id}`);
+        files.push(file);
+        provenance = `\nUpstream commit: ${override.commit}\nLicense declaration: ${override.evidence}\nSelected license: ${override.selectedLicense}\nLicense source: ${override.source}\nSHA-256: ${override.sha256}\n`;
+      }
+      writeNotice(output, id.replaceAll('/', '_') + '.txt', id + provenance, files);
       written.add(id);
     }
     for (const dependency of Object.keys(info.dependencies || {})) {

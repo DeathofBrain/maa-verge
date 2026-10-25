@@ -115,6 +115,35 @@ test('fails when a JavaScript production dependency has no license text', (t) =>
   assert.throws(() => writeJavaScriptNotices(path.join(projectRoot, 'output'), { projectRoot }), /Missing JavaScript dependency license: unlicensed@1\.2\.3/u);
 });
 
+test('uses verified JavaScript license supplements only for the exact package version and declaration', (t) => {
+  const projectRoot = fixture(t), output = path.join(projectRoot, 'output');
+  const packageDirectory = path.join(projectRoot, 'apps/desktop/node_modules/missing-notice');
+  packageAt(path.join(projectRoot, 'apps/desktop'), '@maaverge/desktop', '0.1.0', { dependencies: { 'missing-notice': '1' } }, {});
+  packageAt(path.join(projectRoot, 'services/backend'), '@maaverge/backend', '0.1.0', {}, {});
+  packageAt(packageDirectory, 'missing-notice', '1.2.3', { license: 'MIT' }, {});
+  const body = 'MIT license with original upstream copyright\n';
+  const file = 'missing-notice-LICENSE', source = 'https://example.invalid/fixed-commit/LICENSE';
+  const sha256 = createHash('sha256').update(body).digest('hex');
+  write(path.join(projectRoot, 'tools/licenses', file), body);
+  json(path.join(projectRoot, 'tools/licenses/javascript-overrides.json'), {
+    'missing-notice@1.2.3': { file, sha256, source, commit: 'fixed-commit', evidence: 'https://example.invalid/metadata/1.2.3', selectedLicense: 'MIT' },
+  });
+  assert.equal(writeJavaScriptNotices(output, { projectRoot }), 1);
+  const text = outputText(output);
+  for (const expected of [body, source, sha256, 'fixed-commit', 'Selected license: MIT', 'https://example.invalid/metadata/1.2.3']) assert.ok(text.includes(expected), expected);
+  packageAt(packageDirectory, 'missing-notice', '1.2.4', { license: 'MIT' }, {});
+  assert.throws(() => writeJavaScriptNotices(output, { projectRoot }), /Missing JavaScript dependency license: missing-notice@1\.2\.4/u);
+  packageAt(packageDirectory, 'missing-notice', '1.2.3', { license: 'Apache-2.0' }, {});
+  assert.throws(() => writeJavaScriptNotices(output, { projectRoot }), /Missing JavaScript dependency license: missing-notice@1\.2\.3/u);
+  packageAt(packageDirectory, 'missing-notice', '1.2.3', { license: 'MIT' }, {});
+  write(path.join(projectRoot, 'tools/licenses', file), 'tampered text');
+  assert.throws(() => writeJavaScriptNotices(output, { projectRoot }), /JavaScript license override checksum mismatch: missing-notice@1\.2\.3/u);
+  // Actual published notice text always wins over the supplemental copy.
+  write(path.join(packageDirectory, 'LICENSE'), 'published license body');
+  assert.equal(writeJavaScriptNotices(output, { projectRoot }), 1);
+  assert.ok(outputText(output).includes('published license body'));
+});
+
 test('collects only Rust normal dependency paths and excludes proc macros even with a build target', (t) => {
   const f = rustFixture(t);
   const normal = f.crate('normal'), shared = f.crate('shared'), mixed = f.crate('also-normal');

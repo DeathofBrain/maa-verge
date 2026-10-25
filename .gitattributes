@@ -7,6 +7,8 @@
 *.woff2 binary
 # Preserve upstream trailing blank lines in license and vendored sources.
 LICENSE whitespace=-blank-at-eof
+tools/licenses/cfworker-json-schema-4.1.1-LICENSE -text whitespace=-blank-at-eof
+tools/licenses/js-tiktoken-1.0.21-LICENSE -text whitespace=-blank-at-eof
 services/runtime/maaverge_runtime/vendor/** whitespace=-blank-at-eof
 3rdparty/nlohmann-json/LICENSE.MIT whitespace=-blank-at-eol
 3rdparty/aria2/** -text whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
