@@ -31,6 +31,14 @@ const record = (pack: ResourceKnowledgePack, key: string) => pack.records.find(r
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
 describe('resource knowledge extraction', () => {
+  test('compound infrastructure skill IDs and full bounded name lists remain addressable', async () => {
+    const names = Array.from({ length: 15 }, (_, i) => '技能别名' + i);
+    const result = await buildResourceKnowledge(pack({ 'infrast.json': { Control: { skills: { 'skill_one&two': { name: names, desc: ['条件说明'], efficient: { all: 0 } } } } } }), 'Official');
+    const skill = record(result, 'infrastructure:Control:skill:skill_one&two');
+    expect(skill.source.pointer).toBe('/Control/skills/skill_one&two');
+    expect(skill.aliases).toContain(names[14]); expect(skill.data.names).toEqual(names);
+  });
+
   test('keeps stable identities, typed relations and verifiable JSON pointers for the five fixed sources', async () => {
     const combo = pack(), result = await buildResourceKnowledge(combo, 'Official');
     expect(result.parserVersion).toBe(resourceKnowledgeParserVersion);

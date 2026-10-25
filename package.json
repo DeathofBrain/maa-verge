@@ -23,7 +23,10 @@
     "test:clean-linux": "node tools/smoke-clean-linux.mjs",
     "test:packaging": "node tools/probe-bun.mjs",
     "build:native-worker": "node tools/build-core-worker.mjs",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "knowledge:generate": "node tools/generate-agent-knowledge.mjs",
+    "knowledge:check": "node tools/generate-agent-knowledge.mjs --check",
+    "knowledge:build": "node tools/build-agent-knowledge.mjs"
   },
   "devDependencies": {
     "ajv": "8.17.1",

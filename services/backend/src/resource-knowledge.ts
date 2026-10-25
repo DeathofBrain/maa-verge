@@ -3,6 +3,7 @@ import { lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { ResourceReader, type ClientType, type Combo } from './item-resources';
 import type { KnowledgeKind, KnowledgeRecord, KnowledgeSource, KnowledgeValue, ResourceKnowledgePack } from './knowledge-types';
+import { validateKnowledgeRecord, validateKnowledgeSource } from '../../../packages/contracts/src/validators.js';
 
 export const resourceKnowledgeParserVersion = 1;
 const maximumBytes = 4 * 1024 * 1024;
@@ -21,6 +22,24 @@ const integer = (value: unknown, minimum: number, maximum: number): value is num
 const strings = (value: unknown, maximum = 32, length = 300): string[] => Array.isArray(value) ? [...new Set(value.slice(0, maximum).flatMap(value => text(value, length) ?? []))] : [];
 const sha256 = (value: Buffer | string) => createHash('sha256').update(value).digest('hex');
 
+/** Persisted derived data is disposable: malformed or incompatible caches are rebuilt from source. */
+export function validResourceKnowledgePack(value: unknown): value is ResourceKnowledgePack {
+  if (!object(value) || value.parserVersion !== resourceKnowledgeParserVersion || typeof value.clientType !== 'string' || !Object.hasOwn(nameKeys, value.clientType)
+    || ![value.coreVersion, value.resourceVersion].every(part => part === null || !!text(part, 200))
+    || !Array.isArray(value.sources) || value.sources.length !== 5 || !value.sources.every(validateKnowledgeSource)
+    || !Array.isArray(value.records) || value.records.length > maximumRecords * 5 || !value.records.every(validateKnowledgeRecord)
+    || !Array.isArray(value.diagnostics) || value.diagnostics.length > 100 || !value.diagnostics.every(part => !!text(part, 1000, true))) return false;
+  const sources = value.sources as KnowledgeSource[], records = value.records as KnowledgeRecord[];
+  if (new Set(sources.map(source => source.file)).size !== sources.length || new Set(records.map(record => record.key)).size !== records.length) return false;
+  const counts = new Map<string, number>();
+  for (const record of records) {
+    if (!sources.some(source => source.file === record.source.file && source.status === 'available' && source.sha256 === record.source.sha256)) return false;
+    counts.set(record.source.file, (counts.get(record.source.file) ?? 0) + 1);
+  }
+  if (sources.some(source => source.records !== (counts.get(source.file) ?? 0))) return false;
+  return value.fingerprint === sha256(JSON.stringify({ parserVersion: value.parserVersion, clientType: value.clientType, coreVersion: value.coreVersion, resourceVersion: value.resourceVersion, sources }));
+}
+
 class Context {
   readonly records: KnowledgeRecord[] = [];
   private keys = new Set<string>();
@@ -35,7 +54,7 @@ class Context {
       text: [name, ...description].join('\n').slice(0, 4096), data, relations: relations.slice(0, 128),
       source: { file: this.file, pointer: sourcePointer, sha256: this.hash },
     };
-    if (JSON.stringify(record).length > 32_768) { this.issue(); return; }
+    if (Buffer.byteLength(JSON.stringify(record)) > 64 * 1024) { this.issue(); return; }
     this.keys.add(key); this.records.push(record);
   }
   finish(): void { for (const message of this.issues) this.diagnostics.push(`${this.file}：${message}`); }
@@ -139,8 +158,9 @@ const parseInfrastructure: Parse = (value, context) => {
     if (facility.skills === undefined) continue;
     if (!object(facility.skills) || Object.keys(facility.skills).length > 4000) { context.issue(); continue; }
     for (const [skillId, skill] of Object.entries(facility.skills)) {
-      if (!id(skillId) || !object(skill)) { context.issue(); continue; }
-      const names = strings(skill.name, 8), descriptions = Array.isArray(skill.desc) ? skill.desc.slice(0, 8).flatMap(part => text(part, 2000, true) ?? []) : [];
+      if (!/^[A-Za-z0-9][A-Za-z0-9_#@.:&-]{0,199}$/.test(skillId) || !object(skill)) { context.issue(); continue; }
+      const names = strings(skill.name, 32), descriptions = Array.isArray(skill.desc) ? skill.desc.slice(0, 8).flatMap(part => text(part, 2000, true) ?? []) : [];
+      if (Array.isArray(skill.name) && skill.name.length > 32) context.issue('部分技能名称超过数量限制，已截断');
       const operators = strings(skill.operatorIds, 64, 200).filter(operatorId);
       if (!names.length) { context.issue(); continue; }
       const data: KnowledgeRecord['data'] = { type: 'skill', roomType: room, skillId, names, descriptions, operatorIds: operators, efficient: scalarMap(skill.efficient), additional: scalarMap(skill.additional), conditionsEvaluated: false };
@@ -167,6 +187,7 @@ async function unavailableStatus(generation: string, relative: string): Promise<
 
 /** Callers pass the service-owned active combo, never a model-supplied filename or resource path. */
 export async function buildResourceKnowledge(combo: Combo, clientType: ClientType, previous?: ResourceKnowledgePack): Promise<ResourceKnowledgePack> {
+  if (previous && !validResourceKnowledgePack(previous)) previous = undefined;
   const selected = ['Official', 'Bilibili'].includes(clientType) ? '' : `global/${clientType}/resource/`;
   const pack: ResourceKnowledgePack = { parserVersion: resourceKnowledgeParserVersion, clientType, coreVersion: text(combo.core?.version, 200) ?? null, resourceVersion: text(combo.resource?.version, 200) ?? null, fingerprint: '', sources: [], records: [], diagnostics: [] };
   if (!Object.hasOwn(nameKeys, clientType)) throw new Error('不支持的客户端');

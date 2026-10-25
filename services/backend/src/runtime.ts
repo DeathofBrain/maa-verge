@@ -35,6 +35,9 @@ import { Logs } from './logs';
 import { Toolbox, toolJob, toolCatalog } from './toolbox';
 import { Scheduler } from './scheduler';
 import { CopilotLibrary, copilotWorkspaceIdentity } from './copilot';
+import { AccountKnowledge } from './account-knowledge';
+import { Knowledge } from './knowledge';
+import { validateKnowledgeClientParams, validateKnowledgeSearchParams, validateAccountSnapshotParams, validateAccountSnapshotListParams } from '../../../packages/contracts/src/validators.js';
 import { validateCopilotListParams, validateCopilotIdentityParams, validateCopilotExportParams, validateCopilotPreviewParams, validateCopilotImportParams, validateCopilotWorkspaceParams, validateCopilotWorkspaceSaveParams, validateCopilotSearchParams, validateCopilotStartParams, validateCopilotRatingParams, validateCopilotRatingSetParams } from '../../../packages/contracts/src/validators.js';
 import { validateDeviceAvailabilityParams, validateToolIdentity, validateToolConfigParams, validateScheduleHostParams, validateIdParams, validateEmptyParams, validateToolCatalogParams } from '../../../packages/contracts/src/validators.js';
 
@@ -44,6 +47,8 @@ export interface RuntimeOptions { copilotHttp?: typeof fetch; now?: () => Date; 
 export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
+  readonly accounts: AccountKnowledge;
+  readonly knowledge: Knowledge;
   readonly toolbox: Toolbox;
   readonly copilot: CopilotLibrary;
   readonly scheduler: Scheduler;
@@ -78,6 +83,8 @@ export class Runtime {
   appUpdating = false;
   constructor(readonly root: string, private options: RuntimeOptions = {}) {
     this.store = new Store(root, options.importFrom);
+    this.accounts = new AccountKnowledge(this.store);
+    this.knowledge = new Knowledge(this.store, () => this.store.get('active', 'combo', {}));
     this.logs = new Logs(root, {
       applicationDirectory: options.applicationDirectory, exportDirectory: options.logExportDirectory,
       activeWorkers: () => new Set([...this.protectedWorkerLogs, ...this.workers.keys(), ...this.connecting]),
@@ -208,6 +215,20 @@ export class Runtime {
     const required = (...keys: string[]) => { if (keys.some(key => !(key in params))) throw new RpcError(-32602, '请求参数无效'); };
     switch (method) {
       case 'app.snapshot': return this.snapshot();
+      case 'knowledge.status':
+        if (!validateKnowledgeClientParams(params)) throw new RpcError(-32602, '知识索引请求无效');
+        return this.knowledge.status(params.clientType);
+      case 'knowledge.search':
+        if (!validateKnowledgeSearchParams(params)) throw new RpcError(-32602, '知识检索请求无效');
+        return this.knowledge.search(params);
+      case 'account.snapshot.get':
+      case 'account.snapshot.list': {
+        if (!(method === 'account.snapshot.get' ? validateAccountSnapshotParams(params) : validateAccountSnapshotListParams(params))) throw new RpcError(-32602, '账号快照请求无效');
+        if (!this.store.get('device', params.deviceId)) throw new RpcError(-32004, '设备不存在');
+        const client = params.clientType ?? this.deviceClient(params.deviceId);
+        return method === 'account.snapshot.get' ? this.accounts.get(params.deviceId, client, params.kind, params.snapshotId)
+          : this.accounts.list(params.deviceId, client, params.kind, params.offset, params.limit);
+      }
       case 'device.availability':
         if (!validateDeviceAvailabilityParams(params)) throw new RpcError(-32602, '设备状态请求无效');
         return this.availability(params.deviceId);
@@ -651,6 +672,7 @@ export class Runtime {
         accountChanged = true;
         this.store.delete('user_data_sync', run.deviceId); this.store.delete('mall_visit', run.deviceId);
         clearDeviceRecognition(this.store, run.deviceId);
+        this.accounts.invalidate(run.deviceId);
         const settings = this.store.get('settings', 'main');
         if (settings.infrastructureEstimates?.some((profile: any) => profile.deviceId === run.deviceId)) {
           this.store.put('settings', 'main', { ...settings, infrastructureEstimates: settings.infrastructureEstimates.filter((profile: any) => profile.deviceId !== run.deviceId) });
@@ -1025,11 +1047,13 @@ export class Runtime {
           const step: SyncStep | undefined = state.syncSteps?.[state.syncIndex] ?? (configured.type === 'OperBox' ? { type: 'OperBox', key: 'operatorsAt' } : configured.type === 'Depot' ? { type: 'Depot', key: 'depotAt' } : undefined);
           if (step) {
             const synced = { operatorsAt: null, depotAt: null, ...this.syncHistory(run.deviceId, state.clientType), clientType: state.clientType }; synced[step.key] = state.recognitionResultAt;
-            const kind = step.type === 'OperBox' ? 'operators' : 'depot';
+            const kind = step.type === 'OperBox' ? 'operators' as const : 'depot' as const;
             const result = { deviceId: run.deviceId, kind, clientType: state.clientType, collectedAt: state.recognitionResultAt, runId: run.id, ...state.recognitionResult };
             this.store.transaction(() => {
               this.store.put('recognition', recognitionKey(run.deviceId, state.clientType, kind), result);
               this.store.put('user_data_sync', run.deviceId, synced);
+              const device = this.store.get('device', run.deviceId, {});
+              this.accounts.capture(result, { source: 'maacore-recognition', coreVersion: device.coreVersion ?? null, resourceVersion: device.resourceVersion ?? null, taskIndex: state.index });
             });
             this.emit('device.data_synced', step.type === 'OperBox' ? '干员识别已成功同步' : '仓库识别已成功同步', { deviceId: run.deviceId, runId: run.id, type: step.type, syncedAt: synced[step.key] });
             if (state.syncSteps && state.syncIndex + 1 < state.syncSteps.length) { await this.advanceNativeTask(run, state.index, state.syncSteps, state.syncIndex + 1); continue; }
@@ -1068,6 +1092,7 @@ export class Runtime {
     this.toolbox.close();
     this.cancelPendingClientSwitches();
     this.preview.invalidate();
+    await this.knowledge.close();
     await this.calendar.close();
     await this.updates.close();
     for (const run of this.executions()) if (run.status === 'running') await this.stopRun(run.id);

@@ -60,7 +60,7 @@
 - 默认理智药、源石、加急许可授权继续为 0。截图中的 999 用药是原版用户配置，不作为 Maa Verge 的默认授权。任务参数仍同时受应用与本表额度约束。
 - 公招加急尚未开放：固定版本忽略 `expedite_times`，无法把此字段作为可靠上限。表单明确禁用，高级参数请求继续拒绝；完整移植仍需实际消耗计数与停止机制。
 - 官方日历联网失败时会标记缓存待更新；仅有资源活动名称的降级结果仍需核对游戏内开放期。材料目标列表不是完整物品数据库，其他物品 ID 可直接填写。
-- 识别成功时间不等于完整库存/干员结果查看功能；专用结果面板、导出、库存保持仍按[兼容矩阵](maa-compatibility.md)推进。
+- 工具箱已提供持久识别结果、专用面板、多格式导出和有限库存补货，使用与边界见[工具箱与定时计划](toolbox-schedules.md)。识别时间不代表完整账号档案；库存补货使用识别快照和已确认掉落推算，各客户端真实游戏行为仍需分别验收。
 - 合成 Worker、浏览器和类型检查不替代真实游戏行为验收。各客户端、模拟器、任务选项及平台需要分别记录核心版本、资源提交、参数与成功证据。
 
 上游行为依据：[关卡预设](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaWpfGui/Services/StageManager.cs)、[好友成功回调](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaWpfGui/Main/AsstProxy.cs)、[数据更新周期](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaWpfGui/ViewModels/UserControl/TaskQueue/UserDataUpdateSettingsUserControlModel.cs)、[游戏日时区](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaWpfGui/Extensions/DateTimeExtension.cs)。

@@ -9,6 +9,7 @@ import { ensureAria2, readAria2BuildInfo } from './setup-aria2.mjs';
 
 async function main() {
   assertWorkspaceDependencies();
+  await run('node', ['tools/generate-agent-knowledge.mjs', '--check']);
   const bun = await ensureBun(), aria2 = await ensureAria2(), native = await buildCoreWorker({ testing: false });
   const aria2Info = readAria2BuildInfo(path.dirname(aria2));
   const directory = path.join(root, 'dist/runtime/maaverge-runtime');
