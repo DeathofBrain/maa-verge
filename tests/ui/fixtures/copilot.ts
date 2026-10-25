@@ -78,7 +78,7 @@ export function createCopilotFixture(context: Context) {
       case 'copilot.search': {
         const page = Number(params.page || 1);
         const target = params.target === 'set' ? 'set' : 'copilot';
-        return { items: [{ id: target === 'set' ? '12' : String(page * 100 + 1), title: target === 'set' ? '合成有序作业集' : `合成社区作业 ${page}`, description: '此结果来自测试夹具', author: '', uploader: '合成上传者', url: `https://prts.plus/${target === 'set' ? 'set' : 'copilot'}/${target === 'set' ? 12 : page * 100 + 1}`, kind: 'Copilot' }], page, hasNext: page < 2, total: 2 };
+        return { items: [{ id: target === 'set' ? '12' : String(page * 100 + 1), title: target === 'set' ? '合成有序作业集' : `合成社区作业 ${page}`, description: '此结果来自测试夹具', author: '', uploader: '合成上传者', url: `https://prts.plus/${target === 'set' ? 'set' : 'copilot'}/${target === 'set' ? 12 : page * 100 + 1}`, kind: 'Copilot', ...(target === 'copilot' ? { operators: [...synthetic(String(page * 100 + 1)).opers, ...synthetic(String(page * 100 + 1)).groups.flatMap(group => group.opers.map(operator => ({ ...operator, group: group.name })))] } : {}) }], page, hasNext: page < 2, total: 2 };
       }
       case 'copilot.preview': {
         const preview: CopilotPreview = { id: crypto.randomUUID(), title: '导入预览', entries: [] };

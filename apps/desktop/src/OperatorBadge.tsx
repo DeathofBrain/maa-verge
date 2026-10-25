@@ -7,7 +7,7 @@ type Client = RpcParams<'resources.operator'>['clientType'];
 type Operator = RpcResult<'resources.operator'>;
 const portraits = new Map<string, Promise<Operator>>();
 
-function readOperator(key: string, name: string, clientType: Client, operatorId?: string): Promise<Operator> {
+export function readOperator(key: string, name: string, clientType: Client, operatorId?: string): Promise<Operator> {
   const previous = portraits.get(key);
   if (previous) return previous;
   const request = rpc('resources.operator', { name, clientType, operatorId });
