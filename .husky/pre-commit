@@ -1,0 +1,3 @@
+PATH="$PWD/.tools/node:$PWD/.tools/node/bin:$PATH"
+export PATH
+exec node node_modules/lint-staged/bin/lint-staged.js

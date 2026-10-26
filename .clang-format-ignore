@@ -1,0 +1,7 @@
+.tools/**
+.worktree/**
+3rdparty/**
+**/node_modules/**
+**/build/**
+**/target/**
+**/dist/**

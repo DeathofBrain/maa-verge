@@ -1,0 +1,48 @@
+# Dependencies, local tools/data and build output (also applies in VS Code).
+**/node_modules/
+.pnpm-store/
+.venv/
+.tools/
+.worktree/
+.bun-cache/
+.cache/
+.maaverge/
+/config/
+**/target/
+**/dist/
+**/build/
+**/coverage/
+playwright-report/
+test-results/
+apps/desktop/src-tauri/gen/
+
+# WiX uses XML; Prettier otherwise infers JavaScript for the .wxs extension.
+apps/desktop/src-tauri/installer/*.wxs
+
+# Upstream source, licenses and immutable release copy.
+3rdparty/
+tools/licenses/
+services/runtime/maaverge_runtime/vendor/
+**/LICENSE*
+**/NOTICE*
+**/THIRD_PARTY_NOTICES*
+services/backend/BUN-LICENSE.md
+docs/releases/
+
+# Generated files: update their sources and run the corresponding generator.
+packages/contracts/schema.json
+packages/contracts/src/types.ts
+packages/contracts/src/rpc-types.ts
+packages/contracts/src/worker-types.ts
+packages/contracts/src/validators.js
+packages/contracts/src/validators.d.ts
+services/backend/src/casefold-data.json
+pnpm-lock.yaml
+uv.lock
+**/Cargo.lock
+
+# Local configuration and runtime data.
+.env
+.env.*
+*.local.json
+*.local.toml

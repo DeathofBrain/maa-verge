@@ -41,11 +41,11 @@ pnpm dev
 
 ## 三平台原生依赖
 
-| 平台 | 系统依赖 |
-| --- | --- |
-| Windows x64 | Visual Studio 2022 Build Tools，选择“使用 C++ 的桌面开发”、MSVC x64/x86、Windows 10/11 SDK 和 CMake 工具；Microsoft Edge WebView2 Runtime；Rust MSVC 工具链 |
-| macOS 13.5+ | `xcode-select --install`；CMake 3.25+；Rust；在目标 CPU 架构运行 Node/Bun 与构建；签名/公证另外配置 |
-| Ubuntu 22.04/24.04 x64 | 下方 apt 包、Rust；图形桌面用于运行，CI 可只编译；AppImage 运行需要 FUSE |
+| 平台                   | 系统依赖                                                                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows x64            | Visual Studio 2022 Build Tools，选择“使用 C++ 的桌面开发”、MSVC x64/x86、Windows 10/11 SDK 和 CMake 工具；Microsoft Edge WebView2 Runtime；Rust MSVC 工具链 |
+| macOS 13.5+            | `xcode-select --install`；CMake 3.25+；Rust；在目标 CPU 架构运行 Node/Bun 与构建；签名/公证另外配置                                                         |
+| Ubuntu 22.04/24.04 x64 | 下方 apt 包、Rust；图形桌面用于运行，CI 可只编译；AppImage 运行需要 FUSE                                                                                    |
 
 ```bash
 sudo apt-get update
@@ -161,6 +161,56 @@ Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runti
 Windows 完整构建后可运行 `pnpm test:desktop-webview`，需要本机已有 WebView2。工具通过独立环回 CDP 端口操作真实 release 窗口，使用专属 native 空设备数据和 WebView profile，预先禁用自动连接和下载，检查初始化异常、Agent 提案、设置持久化及正常关窗；测试前须先退出其他 Maa Verge 实例。日志与截图保留在忽略目录 `build/webview-smoke`，临时数据和 profile 退出后清理。该项由宿主 Node/Playwright 驱动，不代表卸载开发工具后的干净系统安装验收。
 
 macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和下载 MaaCore 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；手动 `release.yml` 四宿主工作流只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、18 项附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
+
+## 格式化规范与 VS Code
+
+用 VS Code 打开仓库根目录，在扩展面板搜索 `@recommended`，按开发语言安装工作区推荐扩展；先运行 `pnpm install --frozen-lockfile`，让 Prettier 扩展使用仓库锁定的 **3.9.10**。工作区已开启保存时格式化，也可右键选择“格式化文档”，或按 Windows/Linux 的 `Shift+Alt+F`、macOS 的 `Shift+Option+F`。
+
+| 文件                                                                         | 格式化器 / VS Code 扩展             | 配置与规则                                                                                                     |
+| ---------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| TypeScript、TSX、JavaScript、JSON/JSONC、CSS/SCSS/Less、HTML、YAML、Markdown | Prettier / `esbenp.prettier-vscode` | 根 `.prettierrc.json`：2 空格、100 列、单引号、分号、尾逗号、LF；JSX 属性保持双引号；Markdown 保留原有段落换行 |
+| C/C++                                                                        | clang-format / `ms-vscode.cpptools` | 根 `.clang-format`：C++20、LLVM 基础、2 空格、100 列、同行大括号、指针/引用贴类型，保留 include 顺序           |
+| Rust                                                                         | rustfmt / `rust-lang.rust-analyzer` | 根 `rustfmt.toml`：edition 2021、4 空格、100 列、LF；使用 `rust-toolchain.toml` 固定的工具链及 rustfmt 组件    |
+| Python 参考实现与合成测试                                                    | Ruff / `charliermarsh.ruff`         | `pyproject.toml`：Python 3.12、4 空格、100 列、双引号、LF；保留现有 lint 规则                                  |
+
+`.editorconfig` 为其他编辑器提供 UTF-8、缩进、行尾与末尾换行约定；Markdown 保留有意义的行尾空格。C/C++ 扩展自带 clang-format，无需为 VS Code 填写个人工具路径；终端使用 clang-format 时需另外安装并加入 PATH，本次配置使用 **19.1.7** 验证。Rust 需先安装项目 Rust 工具链；Ruff 扩展自带格式化器，终端则使用 `uv sync --frozen` 安装锁定依赖。
+
+```bash
+# Prettier：优先只格式化本次修改的文件
+pnpm exec prettier --write apps/desktop/src/main.tsx
+pnpm exec prettier --check apps/desktop/src/main.tsx
+# Prettier：显式格式化或检查整个仓库支持的文件
+pnpm format
+pnpm format:check
+
+# C++：单文件示例；VS Code 同样读取根配置
+clang-format -i services/native/src/main.cpp
+clang-format --dry-run --Werror services/native/src/main.cpp
+
+# Rust：固定工具链的整个桌面 crate
+cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml
+cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --check
+
+# Python：参考实现、合成测试与工具；只格式化可用单个文件替换目录
+uv run --frozen ruff format services/runtime services/native/tests tests/python tools
+uv run --frozen ruff format --check services/runtime services/native/tests tests/python tools
+```
+
+`pnpm format` / `pnpm format:check` 仅调用 Prettier；C++、Rust、Python 使用各自工具。没有全局 pnpm 时，沿用本文开头的 `tools/pnpm.ps1` 或 `tools/pnpm.sh` 包装命令。保存时格式化只调整当前文件，不自动修复 lint 或排序导入；Python 导入检查仍由 `ruff check` 负责。
+
+`.prettierignore` 排除第三方源码、许可原文、已发布版本说明、生成契约与 Unicode 数据、锁文件、本地数据和构建目录，也排除会被误识别为 JavaScript 的 WiX `.wxs` XML；Ruff 保留默认排除并显式跳过 vendor、本地工具及工作树；`.clang-format-ignore` 跳过工具、工作树和构建输出，`3rdparty/.clang-format` 禁止格式化第三方 C++。生成文件继续修改来源，再运行 `pnpm contracts:generate` 等对应生成器。
+
+提交时的自动格式化只处理本次暂存文件；未批量格式化存量源码，也未将全仓 Prettier/Ruff 格式检查加入 `pnpm check` 或 CI，存量文件仍可能被全量格式检查报告。全仓格式迁移应单独提交纯格式变化。
+
+### 提交时自动格式化
+
+运行 `pnpm install --frozen-lockfile` 时，`prepare` 会自动安装 Husky 的 `pre-commit` hook；现有 checkout 更新后也需安装一次依赖。此后从终端或 IDE 执行 `git commit`，lint-staged 会将本次暂存的文件交给 Prettier、clang-format、rustfmt 或 Ruff，格式化结果自动纳入当前提交。可先运行 `pnpm format:staged` 手动执行同一流程。
+
+只处理新增、修改或重命名的暂存文件；所有语言共用 `.gitignore` 和 `.prettierignore` 的排除规则，生成文件、第三方源码和锁文件继续保持原样。部分暂存文件先临时隐藏未暂存修改，格式化后再恢复；Rust 禁止递归格式化子模块，其他未暂存文件不会因此被格式化。lint-staged 保留默认备份与失败回滚，解析错误、缺少格式化器或恢复冲突会阻止提交，并在终端显示原因；解决后重新提交。
+
+hook 优先使用 checkout 的 `.tools/node`，无需全局 pnpm；其余工具沿用本地 bootstrap 工具目录或 PATH。提交 C/C++ 前需安装命令行 clang-format 并加入 PATH，VS Code 扩展内置版本不等于命令行已可用；Rust 需要固定工具链的 rustfmt。提交 Python 前先运行 `uv sync --frozen`，hook 使用已有环境中的 Ruff，以离线、不同步依赖模式执行，不在提交时下载安装。
+
+CI、`NODE_ENV=production`、`HUSKY=0` 或不含 `.git` 的源码归档不安装 hook。若此前跳过安装，可在正常开发环境执行 `pnpm run prepare` 重新启用。Git hooks 属于各 checkout 的本地配置，配置文件通过仓库同步，拉取源码本身不会自动安装。
 
 ## VS Code 的 C++ 配置
 

@@ -1,6 +1,11 @@
 {
   "recommendations": [
+    "EditorConfig.EditorConfig",
+    "esbenp.prettier-vscode",
     "ms-vscode.cpptools",
-    "ms-vscode.cmake-tools"
+    "ms-vscode.cmake-tools",
+    "rust-lang.rust-analyzer",
+    "ms-python.python",
+    "charliermarsh.ruff"
   ]
 }

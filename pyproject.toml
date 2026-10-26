@@ -33,10 +33,16 @@ pythonpath = ["services/runtime"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-exclude = ["services/runtime/maaverge_runtime/vendor"]
+extend-exclude = ["services/runtime/maaverge_runtime/vendor", ".tools", ".worktree", "3rdparty"]
+force-exclude = true
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
 
 [tool.mypy]
 python_version = "3.12"
