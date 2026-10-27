@@ -19,7 +19,7 @@ if [ "$mode" = application ]; then
   # Keep application checks separate from the native matrix's Rust/C++ gate.
   node --test tools/tests/environment.test.mjs tools/tests/commit-formatting.test.mjs tools/tests/vite-cache.test.mjs \
     tools/tests/process-tree.test.mjs tools/tests/dev-mode.test.mjs \
-    tools/tests/release-assets.test.mjs tools/tests/app-updater-release.test.mjs \
+    tools/tests/release-assets.test.mjs tools/tests/app-updater-release.test.mjs tools/tests/linux-distribution.test.mjs \
     tools/tests/runtime-notices.test.mjs \
     tools/tests/windows-installer.test.mjs tools/tests/macos-bundle.test.mjs
   pnpm contracts:check

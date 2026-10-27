@@ -142,6 +142,8 @@ Windows v0.1.3-alpha1 起只生成 NSIS EXE 和 `Maa-Verge_<version>_x64-full.zi
 
 Windows 离线组件构建还按锁文件获取 MaaCore v6.20.1 对应源码提交的 `LICENSE` / `LICENSE.spdx`、固定 MaaUtils 子模块的 LGPLv3 许可及配套 GNU GPLv3 全文，以及 MaaDeps v2.14.1 官方开发归档，分别校验固定大小和 SHA-256。开发归档仅提取依赖的 `copyright` 与 `vcpkg.spdx.json` 声明，不复制 SDK 库或可执行文件；核心和完整资源载荷均保留 `licenses/sources.json` 来源记录，资源载荷另附 MaaResource 原始许可。许可收集失败会阻止载荷生成，完整性摘要包含这些声明文件。
 
+Linux 预览版的 RPM 需要单独映射包管理版本：`0.1.3-alpha1` 的内部 `Version` 为 `0.1.3`、`Release` 为 `0.alpha1`，排在同版正式包的 `Release=1` 之前。构建先按原应用版本生成二进制、DEB 和 AppImage，再只打包 RPM；最终发行文件名和更新签名仍绑定完整应用版本 `0.1.3-alpha1`，不会重编译为正式版。此映射用于 RPM 的包管理排序，不表示所有 SemVer 预览标识的内部排序都与 RPM 相同。
+
 Windows NSIS 完整卸载会清理程序同级默认的 `MaaCore`、`MaaResource` 与 `runtime/bundled-components`，包含旧版 `downloads`、`generations` 及其内容；Tauri `/UPDATE` 更新保留已有组件并跳过随附组件安装。程序同级 `config`、用户另选的组件目录和业务数据根保留，卸载器不读取数据库或追踪自定义路径。旧 MSI 用户备份后卸载旧版并手动迁移 EXE / ZIP；ZIP 不注册卸载器，其他平台的移除方式仍需用户自行清理程序外下载的组件。组件导入与完整资源范围见 [组件运行时](maacore-runtime.md#windows-随附离线组件)。
 
 ```bash

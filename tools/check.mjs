@@ -13,6 +13,7 @@ async function main() {
     'tools/tests/dev-mode.test.mjs',
     'tools/tests/release-assets.test.mjs',
     'tools/tests/app-updater-release.test.mjs',
+    'tools/tests/linux-distribution.test.mjs',
     'tools/tests/runtime-notices.test.mjs',
     'tools/tests/windows-installer.test.mjs',
     'tools/tests/windows-components.test.mjs',
