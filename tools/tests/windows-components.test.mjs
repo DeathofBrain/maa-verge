@@ -15,7 +15,7 @@ const project = fileURLToPath(new URL('../../', import.meta.url));
 async function scenario(name, project) {
   const assert = (await import('node:assert/strict')).default;
   const { createHash } = await import('node:crypto');
-  const { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, symlink, writeFile } =
+  const { copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, symlink, writeFile } =
     await import('node:fs/promises');
   const path = (await import('node:path')).default;
   const { tmpdir } = await import('node:os');
@@ -191,6 +191,30 @@ async function scenario(name, project) {
   };
   try {
     await saveLock();
+    if (name === 'path-shadow') {
+      const { execFile } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const shadow = path.join(root, 'shadow');
+      const systemRoot = process.env.SystemRoot || process.env.WINDIR;
+      assert.ok(systemRoot);
+      await mkdir(shadow);
+      // A valid PE with incompatible tar flags makes a PATH lookup fail visibly.
+      await copyFile(path.join(systemRoot, 'System32/where.exe'), path.join(shadow, 'tar.exe'));
+      process.env.PATH = shadow + path.delimiter + process.env.PATH;
+      // Verify the child-process resolver actually selects the shadow executable.
+      await promisify(execFile)('tar.exe', ['/q', 'tar.exe'], {
+        windowsHide: true,
+        timeout: 5_000,
+      });
+      await cached();
+      await prepare(options, dependencies);
+      assert.equal(
+        await readFile(path.join(output, 'core/licenses/MaaDeps/opencv4/copyright'), 'utf8'),
+        'opencv4 license fixture',
+      );
+      await clean();
+      return;
+    }
     if (name === 'lock') {
       const official = await readLock(path.join(project, 'tools/windows-components.lock.json'));
       assert.equal(official.core.version, official.resource.coreVersion);
@@ -525,6 +549,7 @@ async function scenario(name, project) {
 
 for (const [name, description] of [
   ['lock', 'component lock accepts only compatible immutable official Windows sources'],
+  ['path-shadow', 'Windows dependency notices use the system tar despite a valid PATH shadow'],
   [
     'prepare',
     'preparation downloads verified archives, preserves full resources and licenses, and records payload integrity',
@@ -560,21 +585,25 @@ for (const [name, description] of [
   ['links', 'filesystem aliases are rejected before writing through the build parent'],
   ['licenses', 'a missing official resource license prevents publishing the payload'],
 ]) {
-  test(description, { timeout: 30_000 }, async () => {
-    const source = `await (${scenario.toString()})(${JSON.stringify(name)}, ${JSON.stringify(project)});`;
-    const result = await execute(
-      await ensureBun({ download: false }),
-      ['--no-env-file', '-e', source],
-      {
-        cwd: project,
-        env: offlineAgentEnvironment(),
-        windowsHide: true,
-        timeout: 25_000,
-        maxBuffer: 1024 * 1024,
-      },
-    ).catch((error) => {
-      throw new Error(error.stderr || error.message);
-    });
-    assert.equal(result.stderr, '');
-  });
+  test(
+    description,
+    { timeout: 30_000, skip: name === 'path-shadow' && process.platform !== 'win32' },
+    async () => {
+      const source = `await (${scenario.toString()})(${JSON.stringify(name)}, ${JSON.stringify(project)});`;
+      const result = await execute(
+        await ensureBun({ download: false }),
+        ['--no-env-file', '-e', source],
+        {
+          cwd: project,
+          env: offlineAgentEnvironment(),
+          windowsHide: true,
+          timeout: 25_000,
+          maxBuffer: 1024 * 1024,
+        },
+      ).catch((error) => {
+        throw new Error(error.stderr || error.message);
+      });
+      assert.equal(result.stderr, '');
+    },
+  );
 }

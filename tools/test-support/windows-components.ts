@@ -174,7 +174,14 @@ const requiredPorts = [
  * No executables, archive links or SDK libraries are copied into the payload.
  */
 async function dependencyNotices(archive: string, target: string): Promise<void> {
-  const tar = process.platform === 'win32' ? 'tar.exe' : 'tar';
+  let tar = 'tar';
+  if (process.platform === 'win32') {
+    const systemRoot = process.env.SystemRoot || process.env.WINDIR;
+    if (!systemRoot)
+      throw new Error('Windows system root is unavailable for dependency extraction');
+    // Git/MSYS tar on PATH has different drive-path and external xz requirements.
+    tar = path.join(systemRoot, 'System32', 'tar.exe');
+  }
   const options = {
     encoding: 'utf8' as const,
     windowsHide: true,
