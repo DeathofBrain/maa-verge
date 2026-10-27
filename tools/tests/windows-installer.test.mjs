@@ -31,7 +31,7 @@ const toolRoot = path.join(process.env.LOCALAPPDATA || '', 'tauri');
 const nsis = process.env.MAAVERGE_NSIS_COMPILER || path.join(toolRoot, 'NSIS/makensis.exe');
 
 function fixture(t) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'maa verge installer-')));
+  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'maa verge installer-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }
