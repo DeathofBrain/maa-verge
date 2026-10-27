@@ -14,8 +14,8 @@ async function main() {
     'tools/tests/release-assets.test.mjs',
     'tools/tests/app-updater-release.test.mjs',
     'tools/tests/runtime-notices.test.mjs',
-    'tools/tests/setup-aria2.test.mjs',
     'tools/tests/windows-installer.test.mjs',
+    'tools/tests/windows-components.test.mjs',
     'tools/tests/macos-bundle.test.mjs',
   ]);
   await run('pnpm', ['contracts:check']);

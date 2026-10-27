@@ -71,6 +71,5 @@ if ! "$skip_reference"; then
 fi
 if "$native"; then
   "$node_executable" tools/doctor.mjs --native
-  "$node_executable" tools/setup-aria2.mjs
 fi
 printf 'Ready. Run: bash tools/pnpm.sh dev\n'

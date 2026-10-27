@@ -22,7 +22,7 @@ import {
 import {
   errorMessage,
   rpc,
-  type ComponentDownload,
+  type DownloadProxySettings,
   type Plan,
   type Settings,
   type Snapshot,
@@ -214,7 +214,7 @@ const categories = [
     label: '更新',
     icon: RefreshCw,
     keywords:
-      '更新 应用 核心 MaaCore 游戏资源 资源更新 下载 版本 正式版 预览版 频道 活动 目录 路径 检查 回滚 aria2 断点续传 下载器',
+      '更新 应用 核心 MaaCore 游戏资源 资源更新 下载 版本 正式版 预览版 频道 活动 目录 路径 检查 回滚 断点续传 下载代理 Clash VPN 直连',
   },
   {
     id: 'data',
@@ -445,7 +445,7 @@ export function SettingsPage({
                       检查全部更新
                     </button>
                   </div>
-                  <ComponentDownloadForm
+                  <DownloadProxyForm
                     settings={snapshot.settings}
                     busy={busy}
                     onSave={saveSettings}
@@ -689,7 +689,7 @@ function ComponentPathForm({
   );
 }
 
-function ComponentDownloadForm({
+function DownloadProxyForm({
   settings,
   busy,
   onSave,
@@ -698,71 +698,127 @@ function ComponentDownloadForm({
   busy: boolean;
   onSave: (patch: Partial<Settings>) => Promise<boolean>;
 }) {
-  const saved = settings.componentDownload || { engine: 'aria2', aria2Path: '' };
-  const [draft, setDraft, reset] = useSettingsDraft<ComponentDownload>('component-download', saved);
+  const saved: DownloadProxySettings = settings.downloadProxy ?? { mode: 'auto', url: '' };
+  const [draft, setDraft, reset] = useSettingsDraft<DownloadProxySettings>('download-proxy', saved);
+  const [saving, setSaving] = useState(false);
+  const [readbackFailed, setReadbackFailed] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
-  const save = () => onSave({ componentDownload: draft });
+  const disabled = busy || saving;
+  const readSaved = async () => {
+    try {
+      const snapshot = await rpc('app.snapshot', {});
+      setDraft(snapshot.settings.downloadProxy ?? { mode: 'auto', url: '' });
+      setReadbackFailed(false);
+    } catch {
+      setReadbackFailed(true);
+    }
+  };
+  const retryRead = async () => {
+    if (disabled) return;
+    setSaving(true);
+    try {
+      await readSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+  const save = async () => {
+    if (disabled) return;
+    const next = { ...draft, url: draft.mode === 'manual' ? draft.url.trim() : '' };
+    setSaving(true);
+    setReadbackFailed(false);
+    try {
+      if (await onSave({ downloadProxy: next })) await readSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
-    <Section title="组件下载器" description="MaaCore 与 MaaResource 共用；保存后用于后续下载。">
+    <Section
+      title="下载代理"
+      description="Maa Verge 应用、MaaCore 与 MaaResource 的更新检查和下载共用此设置。"
+    >
       <form
         className="sp-model-form"
+        aria-label="下载代理设置"
         onSubmit={(event) => {
           event.preventDefault();
           void save();
         }}
       >
         <label className="sp-field">
-          下载器
+          连接方式
           <select
             className="text-input"
-            aria-label="组件下载器"
-            value={draft.engine}
-            disabled={busy}
+            aria-label="下载代理模式"
+            value={draft.mode}
+            disabled={disabled}
             onChange={(event) =>
               setDraft((previous) => ({
-                ...previous,
-                engine: event.target.value as ComponentDownload['engine'],
+                mode: event.target.value as DownloadProxySettings['mode'],
+                url: event.target.value === 'manual' ? previous.url : '',
               }))
             }
           >
-            <option value="aria2">aria2（随应用提供，推荐）</option>
-            <option value="builtin">内置 HTTP 下载器</option>
+            <option value="auto">自动（系统代理与环境变量）</option>
+            <option value="manual">手动 HTTP/HTTPS 代理</option>
+            <option value="direct">直连</option>
           </select>
         </label>
-        {draft.engine === 'aria2' && (
-          <>
-            <p className="sp-help">已随应用提供 aria2，无需另行安装。中断后可重试续传。</p>
-            <details open={Boolean(saved.aria2Path)}>
-              <summary>高级选项：自定义 aria2c 路径</summary>
-              <label className="sp-field">
-                aria2c 路径
-                <input
-                  className="text-input"
-                  aria-label="aria2c 路径"
-                  value={draft.aria2Path}
-                  disabled={busy}
-                  placeholder="留空使用随应用提供的 aria2c"
-                  onChange={(event) =>
-                    setDraft((previous) => ({ ...previous, aria2Path: event.target.value }))
-                  }
-                />
-              </label>
-              <p className="sp-help">仅在需要替换下载器时填写可执行文件的绝对路径。</p>
-            </details>
-          </>
+        {draft.mode === 'manual' && (
+          <label className="sp-field">
+            手动代理地址
+            <input
+              className="text-input"
+              type="text"
+              inputMode="url"
+              aria-label="手动下载代理地址"
+              value={draft.url}
+              placeholder="例如 127.0.0.1:7890"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              disabled={disabled}
+              onChange={(event) =>
+                setDraft((previous) => ({ ...previous, url: event.target.value }))
+              }
+            />
+          </label>
+        )}
+        <p className="sp-help">
+          {draft.mode === 'auto'
+            ? '优先使用环境变量与系统代理；代理不可用时尝试直连。'
+            : draft.mode === 'manual'
+              ? '可填写 IP:端口或完整 HTTP/HTTPS 代理地址。地址无效或连接失败时显示错误，保留已下载内容。'
+              : '绕过环境变量与系统代理，直接连接下载来源。'}
+        </p>
+        {readbackFailed && (
+          <p className="sp-help" role="alert">
+            下载代理已保存，但读取当前设置失败。请重新读取后继续编辑。
+            <button
+              className="text-button"
+              type="button"
+              disabled={disabled}
+              onClick={() => void retryRead()}
+            >
+              重新读取下载代理
+            </button>
+          </p>
         )}
         <div className="sp-form-actions">
-          <span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span>
+          <span className="sp-help">
+            {readbackFailed ? '设置已保存，等待重新读取' : dirty ? '有未保存的修改' : '已保存'}
+          </span>
           <button
             className="button secondary"
             type="button"
-            disabled={busy || !dirty}
+            disabled={disabled || !dirty}
             onClick={reset}
           >
             放弃修改
           </button>
-          <button className="button primary" type="submit" disabled={busy || !dirty}>
-            保存下载器
+          <button className="button primary" type="submit" disabled={disabled || !dirty}>
+            保存下载代理
           </button>
         </div>
       </form>
@@ -795,6 +851,8 @@ function UpdateSection({
     resourceClientFor(settings.connection?.clientType ?? 'Official'),
   );
   const [confirmInstall, setConfirmInstall] = useState(false);
+  const [appActionBusy, setAppActionBusy] = useState(false);
+  const appActionPending = useRef(false);
   const Icon = channel.id === 'app' ? HardDrive : channel.id === 'core' ? Cpu : Database;
   const working = preparing || ['checking', 'downloading'].includes(channel.status);
   const isApp = channel.id === 'app';
@@ -812,7 +870,9 @@ function UpdateSection({
           ? '暂无新版本'
           : '等待检查'
       : isApp && channel.status === 'staged'
-        ? '签名已验证，待安装'
+        ? channel.appInstallOnStartup === false
+          ? '上次安装未完成，可重试'
+          : '签名已验证，待安装'
         : updateLabels[channel.status];
   const checkedAt =
     channel.checkedAt && !Number.isNaN(Date.parse(channel.checkedAt))
@@ -821,6 +881,22 @@ function UpdateSection({
   useEffect(() => {
     if (!staged || !canInstall) setConfirmInstall(false);
   }, [staged, canInstall]);
+  const installAction = async (action: 'activate' | 'defer') => {
+    if (appActionPending.current) return;
+    appActionPending.current = true;
+    setAppActionBusy(true);
+    try {
+      const completed = await onAction(`${action}-app`, () =>
+        action === 'activate'
+          ? rpc('updates.activate', { channel: 'app' })
+          : rpc('updates.prepare', { channel: 'app' }),
+      );
+      if (completed) setConfirmInstall(false);
+    } finally {
+      appActionPending.current = false;
+      setAppActionBusy(false);
+    }
+  };
   return (
     <section className="sp-update-channel update-channel">
       <div className="sp-update-main">
@@ -849,7 +925,7 @@ function UpdateSection({
         )}
         <p className="sp-help">
           {isApp
-            ? '桌面应用与本地服务；下载并校验签名后，确认重启安装。'
+            ? '桌面应用与本地服务；下载并校验签名后，可立即重启安装，或下次启动时自动安装。'
             : channel.id === 'core'
               ? '来源：官方 MaaCore 发布'
               : '关卡、活动与公招数据；版本独立于核心'}
@@ -880,7 +956,7 @@ function UpdateSection({
           </div>
         )}
         {isApp && staged && hasActiveRun && (
-          <p className="sp-channel-message">任务正在运行，请等待全部任务结束后安装。</p>
+          <p className="sp-channel-message">立即更新将停止当前执行，未执行的计划会保留。</p>
         )}
       </div>
       <div className="sp-channel-actions">
@@ -922,7 +998,7 @@ function UpdateSection({
           <button
             className="button primary"
             disabled={
-              busy || updatesBlocked || channel.status === 'waiting_idle' || (isApp && hasActiveRun)
+              isApp ? appActionBusy : busy || updatesBlocked || channel.status === 'waiting_idle'
             }
             onClick={() =>
               isApp
@@ -1023,7 +1099,7 @@ function UpdateSection({
           }
           description={
             isApp
-              ? '仅检查新版本，下载与重启安装由你确认。'
+              ? '此开关仅控制新版本检查；已安排的更新仍会在下次启动时安装。'
               : channel.id === 'core'
                 ? '启动时与每 24 小时检查'
                 : '每 6 小时独立检查资源更新'
@@ -1058,13 +1134,11 @@ function UpdateSection({
       {confirmInstall && (
         <AppInstallConfirmation
           version={channel.latestVersion || '新版本'}
-          busy={busy || updatesBlocked}
+          busy={appActionBusy}
           hasActiveRun={hasActiveRun}
           onClose={() => setConfirmInstall(false)}
-          onInstall={async () => {
-            if (await onAction('activate-app', () => rpc('updates.activate', { channel: 'app' })))
-              setConfirmInstall(false);
-          }}
+          onDefer={() => installAction('defer')}
+          onInstall={() => installAction('activate')}
         />
       )}
     </section>
@@ -1076,12 +1150,14 @@ function AppInstallConfirmation({
   busy,
   hasActiveRun,
   onClose,
+  onDefer,
   onInstall,
 }: {
   version: string;
   busy: boolean;
   hasActiveRun: boolean;
   onClose: () => void;
+  onDefer: () => Promise<void>;
   onInstall: () => Promise<void>;
 }) {
   const ref = useRef<HTMLElement>(null);
@@ -1135,19 +1211,15 @@ function AppInstallConfirmation({
         </div>
         <p>
           版本 {version}{' '}
-          已下载并通过签名验证。请先保存未保存的更改；继续后应用将退出、安装更新并重新启动。
+          已下载并通过签名验证，更新包已保存。是否立刻更新？请先保存未保存的更改；立即更新会退出应用、安装更新并重新启动。选择“下次启动时更新”后可继续使用，下次启动时将自动安装。
         </p>
-        {hasActiveRun && <p role="status">任务正在运行，请等待全部任务结束后安装。</p>}
+        {hasActiveRun && <p role="status">立即更新将停止当前执行，未执行的计划会保留。</p>}
         <div className="modal-actions">
-          <button className="button secondary" disabled={busy} onClick={onClose}>
-            取消
+          <button className="button secondary" disabled={busy} onClick={() => void onDefer()}>
+            下次启动时更新
           </button>
-          <button
-            className="button primary"
-            disabled={busy || hasActiveRun}
-            onClick={() => void onInstall()}
-          >
-            {busy && <LoaderCircle className="spin" size={15} />}确认安装并重启
+          <button className="button primary" disabled={busy} onClick={() => void onInstall()}>
+            {busy && <LoaderCircle className="spin" size={15} />}立即更新并重启
           </button>
         </div>
       </section>

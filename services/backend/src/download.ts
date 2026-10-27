@@ -1,13 +1,129 @@
 /** Resumable component archives. A partial belongs to one immutable release identity. */
-import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { lstat, mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { childEnvironment, normalizeComponentPath } from './config.ts';
+import {
+  normalizeManualProxy,
+  ProxyConfigurationError,
+  resolveDownloadProxy,
+} from './network-proxy.ts';
+import type { DownloadProxySettings } from '../../../packages/contracts/src/types.ts';
+
+const retryRoute = Symbol('retry-download-route');
+type ComponentFetch = typeof fetch & { [retryRoute]?: () => boolean };
+export class DownloadSourceError extends Error {}
+
+/** Resolve again for each connection so system proxy changes apply on retry. */
+export function createComponentFetch(
+  resolveProxy = resolveDownloadProxy,
+  preferences?: DownloadProxySettings,
+  transport: typeof fetch = fetch,
+): typeof fetch {
+  let failedProxy: string | undefined;
+  let lastProxy: string | undefined;
+  const mode = preferences?.mode ?? 'auto';
+  const fetcher = (async (input, options) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    let proxy: string | undefined = '';
+    if (mode === 'manual') proxy = normalizeManualProxy(preferences!.url);
+    else if (mode === 'auto') {
+      try {
+        proxy = (await resolveProxy(url, options?.signal ?? undefined)) ?? '';
+      } catch {
+        options?.signal?.throwIfAborted();
+      }
+      if (proxy === failedProxy) proxy = '';
+    }
+    options?.signal?.throwIfAborted();
+    lastProxy = proxy;
+    const connect = (selected: string | undefined) =>
+      transport(input, {
+        ...options,
+        proxy: selected ? { url: selected, respectNoProxy: mode !== 'manual' } : false,
+      });
+    let response: Response;
+    try {
+      response = await connect(proxy);
+    } catch (error) {
+      options?.signal?.throwIfAborted();
+      if (mode === 'manual')
+        throw new ProxyConfigurationError(
+          '手动下载代理连接失败，请检查代理地址、端口、认证、证书及代理服务后重试',
+        );
+      if (mode !== 'auto' || !proxy) throw error;
+      failedProxy = proxy;
+      lastProxy = '';
+      return connect('');
+    }
+    if (proxy && [407, 408, 429, 500, 502, 503, 504].includes(response.status)) {
+      if (mode === 'manual' && response.status === 407) {
+        await response.body?.cancel();
+        throw new ProxyConfigurationError('手动下载代理认证失败，请检查代理用户名和密码后重试');
+      }
+      if (mode === 'auto') {
+        await response.body?.cancel();
+        options?.signal?.throwIfAborted();
+        failedProxy = proxy;
+        lastProxy = '';
+        response = await connect('');
+      }
+    }
+    return response;
+  }) as ComponentFetch;
+  fetcher[retryRoute] = () => {
+    // Body streaming can fail after fetch has already returned its headers.
+    // Bypass that failed proxy on retry; newly selected proxies remain usable.
+    if (mode !== 'auto' || !lastProxy) return false;
+    failedProxy = lastProxy;
+    return true;
+  };
+  return fetcher;
+}
+
+/** Used when streaming a response body fails after headers were received. */
+export function retryComponentDirect(fetcher: typeof fetch): boolean {
+  return (fetcher as ComponentFetch)[retryRoute]?.() ?? false;
+}
+
+/** Keep source restrictions across redirects without losing proxy body recovery. */
+export function restrictDownloadFetch(
+  fetcher: typeof fetch,
+  allowed: (url: string, redirected: boolean) => boolean,
+  signal?: AbortSignal,
+): typeof fetch {
+  const restricted = (async (input, options) => {
+    let current = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (!allowed(current, false)) throw new DownloadSourceError('应用更新下载来源不可信');
+    for (let redirects = 0; ; redirects++) {
+      const response = await fetcher(current, {
+        ...options,
+        redirect: 'manual',
+        signal:
+          signal && options?.signal
+            ? AbortSignal.any([signal, options.signal])
+            : (signal ?? options?.signal),
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+      await response.body?.cancel();
+      const location = response.headers.get('location');
+      if (!location || redirects >= 5)
+        throw new DownloadSourceError('应用更新重定向无效或次数过多');
+      let next: string;
+      try {
+        next = new URL(location!, current).href;
+      } catch {
+        throw new DownloadSourceError('应用更新重定向地址无效');
+      }
+      if (!allowed(next, true)) throw new DownloadSourceError('应用更新下载拒绝不可信的重定向');
+      current = next;
+    }
+  }) as ComponentFetch;
+  restricted[retryRoute] = () => retryComponentDirect(fetcher);
+  return restricted;
+}
 
 export const MAX_DOWNLOAD_BYTES = 2 * 1024 ** 3;
-export type DownloadEngine = 'builtin' | 'aria2';
 export interface DownloadMetadata {
   version: string;
   url: string;
@@ -18,34 +134,30 @@ export interface DownloadMetadata {
 export interface DownloadOptions {
   signal?: AbortSignal;
   fetcher?: typeof fetch;
-  engine?: DownloadEngine;
-  aria2Path?: string;
+  proxy?: DownloadProxySettings;
   idleTimeoutMs?: number;
+  /** Bounded reconnect delays; empty disables retries for callers managing them. */
+  retryDelaysMs?: readonly number[];
 }
 type Validator = { header: 'etag' | 'last-modified'; value: string };
 interface PartialState {
   format: 1;
   identity: { version: string; url: string; size: number | null; digest: string | null };
-  engine: DownloadEngine;
+  engine: 'builtin';
   validator?: Validator;
   total?: number;
 }
 class InvalidDownload extends Error {}
-class InvalidAria2Control extends Error {}
+class DownloadNetworkError extends Error {}
+const networkError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  // Proxy configuration may contain credentials; never expose them in errors.
+  const safe = message.replace(/(https?:\/\/)[^/\s]*@/gi, '$1[redacted]@');
+  return /certificate|cert_|\bTLS\b|\bSSL\b|UnsupportedProxyProtocol|InvalidURL/i.test(message)
+    ? new Error(safe)
+    : new DownloadNetworkError(safe);
+};
 const USER_AGENT = 'maa-verge/0.1';
-/** aria2 rewrites HTTPS proxy URLs to HTTP and does not support NO_PROXY=*. */
-function compatibleEngine(engine: DownloadEngine, environment = process.env): DownloadEngine {
-  if (engine !== 'aria2') return engine;
-  for (const [key, value] of Object.entries(environment)) {
-    if (!value) continue;
-    if (
-      (/^(?:HTTP|HTTPS|ALL)_PROXY$/i.test(key) && /^https:\/\//i.test(value.trim())) ||
-      (/^NO_PROXY$/i.test(key) && value.split(',').some((entry) => entry.trim() === '*'))
-    )
-      return 'builtin';
-  }
-  return engine;
-}
 const invalid = (message: string): never => {
   throw new InvalidDownload(message);
 };
@@ -54,90 +166,6 @@ const exists = async (file: string) =>
     if (error.code === 'ENOENT') return undefined;
     throw error;
   });
-/** Packaged downloads never depend on the user's PATH or working directory. */
-export function aria2ExecutablePath(configured = ''): string {
-  let custom: string;
-  try {
-    custom = normalizeComponentPath(configured);
-  } catch {
-    throw new Error('aria2 路径必须是可执行文件的绝对路径，留空使用随应用提供的 aria2c');
-  }
-  if (/\.(?:cmd|bat|ps1)$/i.test(custom))
-    throw new Error('aria2 路径必须指向可执行文件，不能使用脚本');
-  const name = 'aria2c' + (process.platform === 'win32' ? '.exe' : '');
-  return (
-    custom ||
-    (Bun.isStandaloneExecutable
-      ? path.join(path.dirname(process.execPath), name)
-      : path.resolve(import.meta.dir, '../../../.tools/aria2', name))
-  );
-}
-async function checkedAria2Executable(configured?: string): Promise<string> {
-  const executable = aria2ExecutablePath(configured);
-  try {
-    if (!(await stat(executable)).isFile()) throw new Error('不是普通文件');
-  } catch (error) {
-    const recovery = configured?.trim()
-      ? '请检查自定义可执行文件路径'
-      : Bun.isStandaloneExecutable
-        ? '请重新安装 Maa Verge'
-        : '请先运行 pnpm setup:aria2';
-    throw new Error(
-      `无法启动 aria2 下载器：${executable}。${recovery}（${error instanceof Error ? error.message : String(error)}）`,
-    );
-  }
-  return executable;
-}
-export async function aria2FeatureArguments(
-  executable: string,
-  options: DownloadOptions,
-  platform = process.platform,
-): Promise<string[]> {
-  // Windows ships the full official binary. Our POSIX build removes optional
-  // protocols, whose command switches would otherwise be rejected by aria2.
-  let features = platform === 'win32' ? 'BitTorrent, Metalink' : '';
-  if (platform !== 'win32' && options.aria2Path?.trim()) {
-    options.signal?.throwIfAborted();
-    const version = await new Promise<string>((resolve, reject) => {
-      execFile(
-        executable,
-        ['--version'],
-        {
-          encoding: 'utf8',
-          windowsHide: true,
-          shell: false,
-          timeout: 5_000,
-          maxBuffer: 64 * 1024,
-          killSignal: 'SIGKILL',
-          signal: options.signal,
-          env: { ...childEnvironment(), LC_ALL: 'C', LANG: 'C' },
-        },
-        (error, stdout) => {
-          if (error)
-            reject(
-              options.signal?.reason ?? new Error(`无法读取自定义 aria2 功能：${error.message}`),
-            );
-          else resolve(stdout);
-        },
-      );
-    });
-    const match = /^Enabled Features:\s*(.*)$/m.exec(version);
-    if (!match) throw new Error('无法识别自定义 aria2 的可用功能，请检查 aria2c 可执行文件');
-    features = match[1];
-  }
-  return [
-    ...(/\bBitTorrent\b/.test(features)
-      ? [
-          '--follow-torrent=false',
-          '--enable-dht=false',
-          '--enable-dht6=false',
-          '--enable-peer-exchange=false',
-          '--seed-time=0',
-        ]
-      : []),
-    ...(/\bMetalink\b/.test(features) ? ['--follow-metalink=false'] : []),
-  ];
-}
 const purge = async (partial: string) => {
   await Promise.all(
     [partial, partial + '.json', partial + '.json.tmp', partial + '.aria2'].map((file) =>
@@ -194,7 +222,7 @@ function idleController(signal: AbortSignal | undefined, timeout: number) {
   const touch = () => {
     clearTimeout(timer);
     timer = setTimeout(
-      () => controller.abort(new Error('下载连接空闲超时，请重试以继续下载')),
+      () => controller.abort(new DownloadNetworkError('下载连接空闲超时，请重试以继续下载')),
       timeout,
     );
     timer.unref?.();
@@ -222,11 +250,23 @@ async function request(
   let current = checkedUrl(url);
   for (let redirects = 0; redirects <= 8; redirects++) {
     signal.throwIfAborted();
-    const response = await fetcher(current, {
-      headers: { 'User-Agent': USER_AGENT, 'Accept-Encoding': 'identity', ...headers },
-      signal,
-      redirect: 'manual',
-    });
+    let response: Response;
+    try {
+      response = await fetcher(current, {
+        headers: { 'User-Agent': USER_AGENT, 'Accept-Encoding': 'identity', ...headers },
+        signal,
+        redirect: 'manual',
+      });
+    } catch (error) {
+      signal.throwIfAborted();
+      if (
+        error instanceof ProxyConfigurationError ||
+        error instanceof InvalidDownload ||
+        error instanceof DownloadSourceError
+      )
+        throw error;
+      throw networkError(error);
+    }
     if (![301, 302, 303, 307, 308].includes(response.status)) return { response, url: current };
     await response.body?.cancel();
     const location = response.headers.get('location');
@@ -306,7 +346,7 @@ async function builtin(
       headers.Range = `bytes=${offset}-`;
       headers['If-Range'] = state.validator!.value;
     }
-    ({ response } = await request(metadata.url, headers, options.fetcher ?? fetch, idle.signal));
+    ({ response } = await request(metadata.url, headers, options.fetcher!, idle.signal));
     // Local file preparation and writes are not network inactivity. Arm the
     // timer only while waiting for headers or the next response chunk.
     idle.pause();
@@ -326,6 +366,8 @@ async function builtin(
         idleMs,
       );
     }
+    if ([408, 429, 500, 502, 503, 504].includes(response.status))
+      throw new DownloadNetworkError(`下载失败 HTTP ${response.status}`);
     if (![200, 206].includes(response.status) || !response.body)
       throw new Error(`下载失败 HTTP ${response.status}`);
     if (
@@ -376,7 +418,10 @@ async function builtin(
         while (true) {
           idle.signal.throwIfAborted();
           idle.touch();
-          const { value: chunk, done } = await reader.read();
+          const { value: chunk, done } = await reader.read().catch((error) => {
+            idle.signal.throwIfAborted();
+            throw networkError(error);
+          });
           idle.pause();
           idle.signal.throwIfAborted();
           if (done) break;
@@ -421,244 +466,22 @@ async function builtin(
   }
 }
 
-async function aria2Attempt(
-  metadata: DownloadMetadata,
-  partial: string,
-  state: PartialState,
-  offset: number,
-  report: ReturnType<typeof reporter>,
-  options: DownloadOptions,
-  idleMs: number,
-): Promise<PartialState> {
-  const executable = await checkedAria2Executable(options.aria2Path);
-  const featureArguments = await aria2FeatureArguments(executable, options);
-  // Resolve and validate redirects ourselves, and bind aria2's control file to the
-  // same remote object before allowing it to continue an interrupted transfer.
-  const idle = idleController(options.signal, idleMs);
-  let probe: Response;
-  let url: string;
-  try {
-    ({ response: probe, url } = await request(
-      metadata.url,
-      { Range: 'bytes=0-0' },
-      options.fetcher ?? fetch,
-      idle.signal,
-    ));
-    try {
-      if (![200, 206].includes(probe.status)) throw new Error(`下载失败 HTTP ${probe.status}`);
-      let total = contentLength(probe);
-      if (probe.status === 206) {
-        const range = contentRange(probe);
-        if (range.start !== 0 || range.end !== 0 || (total !== undefined && total !== 1))
-          invalid('下载包探测范围不符');
-        total = range.total;
-      }
-      if (metadata.size !== undefined && total !== undefined && total !== metadata.size)
-        invalid('下载包大小不符');
-      const currentValidator = validator(probe);
-      if (
-        offset &&
-        (probe.status === 200 ||
-          !sameValidator(state.validator, currentValidator) ||
-          (state.total !== undefined && total !== state.total))
-      ) {
-        await purge(partial);
-        offset = 0;
-      }
-      state = { ...state, validator: currentValidator, total: total ?? metadata.size };
-      await saveState(partial, state);
-    } finally {
-      await probe.body?.cancel();
-    }
-  } finally {
-    idle.close();
-  }
-  options.signal?.throwIfAborted();
-  const args = [
-    '--no-conf=true',
-    '--no-netrc=true',
-    '--enable-rpc=false',
-    '--continue=true',
-    '--always-resume=true',
-    '--allow-overwrite=true',
-    '--auto-file-renaming=false',
-    '--file-allocation=none',
-    '--max-concurrent-downloads=1',
-    '--split=1',
-    '--max-connection-per-server=1',
-    '--check-certificate=true',
-    '--http-accept-gzip=false',
-    '--content-disposition=false',
-    '--max-tries=1',
-    '--connect-timeout=30',
-    `--timeout=${Math.max(1, Math.ceil(idleMs / 1000))}`,
-    '--auto-save-interval=1',
-    '--summary-interval=1',
-    '--show-console-readout=true',
-    '--truncate-console-readout=false',
-    '--human-readable=false',
-    '--download-result=hide',
-    '--console-log-level=warn',
-    '--enable-color=false',
-    `--user-agent=${USER_AGENT}`,
-    `--dir=${path.dirname(partial)}`,
-    `--out=${path.basename(partial)}`,
-  ];
-  args.push(...featureArguments);
-  if (state.validator) args.push(`--header=If-Range: ${state.validator.value}`);
-  if (metadata.digest) args.push(`--checksum=sha-256=${metadata.digest.slice(7)}`);
-  args.push('--', url!);
+async function reconnectDelay(milliseconds: number, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(executable, args, {
-      windowsHide: true,
-      shell: false,
-      env: { ...childEnvironment(), LC_ALL: 'C', LANG: 'C' },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    let output = '',
-      controlFailure = false,
-      failure: Error | undefined,
-      lastModified = -1,
-      lastCompleted = -1,
-      lastActivity = performance.now(),
-      polling = false,
-      settled = false;
-    const stop = (error: Error) => {
-      failure ??= error;
-      child.kill('SIGKILL');
-    };
-    const abort = () =>
-      stop(
-        options.signal?.reason instanceof Error ? options.signal.reason : new Error('下载已取消'),
-      );
-    const capture = (chunk: Buffer) => {
-      if (settled) return;
-      const captured = output + chunk.toString('utf8');
-      // Keep this evidence even when later progress output replaces the tail.
-      // Exit code 1 also means network/disk errors, so never classify it alone.
-      controlFailure ||=
-        /Failed to read from the segment file|Unsupported ctrl file version|Invalid info hash length|piece length must not be 0|total length mismatch\. expected|bitfield length mismatch\. expected|piece index out of range|piece length out of range|piece bitfield length mismatch/.test(
-          captured,
-        );
-      output = captured.slice(-2048);
-      // Fixed --human-readable=false gives byte counts. File size is not
-      // progress: resumed aria2 files can already be sparse at their final size.
-      for (const match of output.matchAll(/\[#[a-z0-9]+ (\d+)B\/(\d+)B/g)) {
-        const completed = Number(match[1]),
-          total = Number(match[2]);
-        if (
-          !Number.isSafeInteger(completed) ||
-          completed < 0 ||
-          completed > total ||
-          total > MAX_DOWNLOAD_BYTES
-        )
-          continue;
-        if (completed > lastCompleted) {
-          lastCompleted = completed;
-          lastActivity = performance.now();
-          report(completed, state.total ?? (total || undefined));
-        }
-      }
-    };
-    child.stdout?.on('data', capture);
-    child.stderr?.on('data', capture);
-    const timer = setInterval(
-      () => {
-        if (polling) return;
-        polling = true;
-        void stat(partial)
-          .then((file) => {
-            if (settled) return;
-            if (
-              file.size > MAX_DOWNLOAD_BYTES ||
-              (state.total !== undefined && file.size > state.total)
-            ) {
-              stop(new InvalidDownload('下载包超过声明大小或大小限制'));
-              return;
-            }
-            if (file.mtimeMs !== lastModified) {
-              lastModified = file.mtimeMs;
-              lastActivity = performance.now();
-            } else if (performance.now() - lastActivity >= idleMs)
-              stop(new Error('下载连接空闲超时，请重试以继续下载'));
-          })
-          .catch((error) => {
-            if (settled) return;
-            if (error.code !== 'ENOENT') stop(error);
-            else if (performance.now() - lastActivity >= idleMs)
-              stop(new Error('下载连接空闲超时，请重试以继续下载'));
-          })
-          .finally(() => {
-            polling = false;
-          });
-      },
-      Math.min(250, idleMs),
-    );
-    timer.unref?.();
-    const cleanup = () => {
-      settled = true;
-      clearInterval(timer);
-      options.signal?.removeEventListener('abort', abort);
-    };
-    options.signal?.addEventListener('abort', abort, { once: true });
-    if (options.signal?.aborted) abort();
-    child.once('error', (error) => {
+    const cleanup = () => signal?.removeEventListener('abort', abort);
+    const timer = setTimeout(() => {
       cleanup();
-      reject(new Error(`无法启动 aria2 下载器：${executable}（${error.message}）`));
-    });
-    child.once('close', (code) => {
+      resolve();
+    }, milliseconds);
+    const abort = () => {
+      clearTimeout(timer);
       cleanup();
-      if (failure) reject(failure);
-      else if (code === 1 && controlFailure)
-        reject(new InvalidAria2Control(`aria2 续传控制文件无效：${output.trim()}`));
-      else if (code !== 0)
-        reject(
-          [10, 32].includes(code ?? -1)
-            ? new InvalidDownload(`aria2 下载校验失败 (${code})`)
-            : new Error(`aria2 下载失败 (${code}): ${output.trim()}`),
-        );
-      else resolve();
-    });
+      reject(signal?.reason ?? new Error('下载已取消'));
+    };
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
   });
-  return state;
-}
-
-async function aria2(
-  metadata: DownloadMetadata,
-  partial: string,
-  state: PartialState,
-  offset: number,
-  report: ReturnType<typeof reporter>,
-  options: DownloadOptions,
-  idleMs: number,
-): Promise<PartialState> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await aria2Attempt(metadata, partial, state, offset, report, options, idleMs);
-    } catch (error) {
-      if (!(error instanceof InvalidAria2Control)) throw error;
-      // The same aria2 diagnostic covers fopen failures. Preserve unreadable
-      // files instead of treating permission/IO failures as corrupt bytes.
-      const control = await exists(partial + '.aria2');
-      if (!control?.isFile()) throw error;
-      try {
-        const handle = await open(partial + '.aria2', 'r');
-        try {
-          await handle.read(Buffer.alloc(1), 0, 1, 0);
-        } finally {
-          await handle.close();
-        }
-      } catch {
-        throw error;
-      }
-      options.signal?.throwIfAborted();
-      await purge(partial);
-      if (attempt === 1) throw error;
-      // Re-probe the original URL: signed redirect URLs may have expired.
-      state = { ...state, validator: undefined, total: undefined };
-      offset = 0;
-    }
-  }
 }
 
 /** Returns the SHA-256 only after validating and atomically publishing the file. */
@@ -668,6 +491,10 @@ export async function downloadArchive(
   progress: (percent: number) => void,
   options: DownloadOptions = {},
 ): Promise<string> {
+  options = {
+    ...options,
+    fetcher: options.fetcher ?? createComponentFetch(resolveDownloadProxy, options.proxy),
+  };
   checkedUrl(metadata.url);
   if (!metadata.version || typeof metadata.version !== 'string') invalid('下载包版本无效');
   if (metadata.size !== undefined) checkedSize(metadata.size);
@@ -675,11 +502,12 @@ export async function downloadArchive(
     invalid('下载包 SHA-256 摘要无效');
   const idleMs = options.idleTimeoutMs ?? 30_000;
   if (!Number.isSafeInteger(idleMs) || idleMs <= 0) throw new Error('下载空闲超时无效');
-  const selectedEngine = options.engine ?? 'aria2';
-  if (!['builtin', 'aria2'].includes(selectedEngine)) throw new Error('未知下载器');
-  // Choose before loading partials so sparse aria2 bytes can never be reused by
-  // the HTTP downloader. This is compatibility routing, not a retry on failure.
-  const engine = compatibleEngine(selectedEngine);
+  const retryDelays = options.retryDelaysMs ?? [1000, 2000];
+  if (
+    retryDelays.length > 5 ||
+    retryDelays.some((delay) => !Number.isSafeInteger(delay) || delay < 0 || delay > 60_000)
+  )
+    throw new Error('下载重连间隔无效');
   options.signal?.throwIfAborted();
   await mkdir(path.dirname(destination), { recursive: true });
   const partial = destination + '.partial';
@@ -691,20 +519,47 @@ export async function downloadArchive(
       size: metadata.size ?? null,
       digest: metadata.digest?.toLowerCase() ?? null,
     },
-    engine,
+    // Retain the cache discriminator so legacy sparse aria2 partials are discarded.
+    engine: 'builtin',
   };
-  const loaded = await loadState(partial, expected),
-    report = reporter(progress);
+  const report = reporter(progress);
   try {
-    const state = await (engine === 'aria2' ? aria2 : builtin)(
-      metadata,
-      partial,
-      loaded.state,
-      loaded.offset,
-      report,
-      options,
-      idleMs,
-    );
+    let state: PartialState;
+    for (let attempt = 0; ; attempt++) {
+      options.signal?.throwIfAborted();
+      const loaded = await loadState(partial, expected);
+      try {
+        state = await builtin(
+          metadata,
+          partial,
+          loaded.state,
+          loaded.offset,
+          report,
+          options,
+          idleMs,
+        );
+        break;
+      } catch (error) {
+        if (
+          options.signal?.aborted ||
+          !(error instanceof DownloadNetworkError) ||
+          attempt >= retryDelays.length
+        ) {
+          if (
+            !options.signal?.aborted &&
+            error instanceof DownloadNetworkError &&
+            options.proxy?.mode === 'manual'
+          )
+            throw new ProxyConfigurationError(
+              '手动代理下载中断，请检查代理服务后重试，可继续已下载的部分',
+            );
+          throw error;
+        }
+        (options.fetcher as ComponentFetch)[retryRoute]?.();
+        // Start from the immutable origin URL again: CDN signatures can expire.
+        await reconnectDelay(retryDelays[attempt], options.signal);
+      }
+    }
     options.signal?.throwIfAborted();
     const file = await lstat(partial);
     if (!file.isFile()) invalid('下载包不是普通文件');
@@ -736,7 +591,8 @@ export async function downloadArchive(
     report(file.size, file.size, true);
     return hash;
   } catch (error) {
-    if (error instanceof InvalidDownload) await purge(partial);
+    if (error instanceof InvalidDownload || error instanceof DownloadSourceError)
+      await purge(partial);
     throw error;
   }
 }

@@ -1,0 +1,52 @@
+{
+  "formatVersion": 1,
+  "platform": "win32",
+  "arch": "x64",
+  "core": {
+    "version": "v6.20.1",
+    "url": "https://github.com/MaaAssistantArknights/MaaAssistantArknights/releases/download/v6.20.1/MAA-v6.20.1-win-x64.zip",
+    "size": 297879254,
+    "sha256": "28a6c812c184f4bd6e8a7e7448b2ffa6312d711de7d39595deac771e3e784ea8"
+  },
+  "resource": {
+    "version": "6d580cec2f1993557f21509aeadb5793cd3160dc",
+    "coreVersion": "v6.20.1",
+    "url": "https://codeload.github.com/MaaAssistantArknights/MaaResource/zip/6d580cec2f1993557f21509aeadb5793cd3160dc",
+    "size": 14677518,
+    "sha256": "025bfa388963802f157471db8cc8b9532f52b77073af84a5e6cd03c5e3bace3e"
+  },
+  "licenses": {
+    "coreVersion": "v6.20.1",
+    "sourceCommit": "d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f",
+    "license": {
+      "version": "d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f",
+      "url": "https://raw.githubusercontent.com/MaaAssistantArknights/MaaAssistantArknights/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/LICENSE",
+      "size": 34523,
+      "sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef"
+    },
+    "spdx": {
+      "version": "d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f",
+      "url": "https://raw.githubusercontent.com/MaaAssistantArknights/MaaAssistantArknights/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/LICENSE.spdx",
+      "size": 245,
+      "sha256": "af9a0e7693279ee1460dbb9456415c271f5a0ac41a810cc736bd0ed4aa9d4cea"
+    },
+    "maaUtils": {
+      "version": "6e9ba33f6ad835418097d9324c01c44a82825a2b",
+      "url": "https://raw.githubusercontent.com/MaaXYZ/MaaUtils/6e9ba33f6ad835418097d9324c01c44a82825a2b/LICENSE.md",
+      "size": 7560,
+      "sha256": "446e755fae55ff034bbb21be44670b5f116c2b2667947e7036f2bfe6632539a8"
+    },
+    "gpl3": {
+      "version": "3.0",
+      "url": "https://www.gnu.org/licenses/gpl-3.0.txt",
+      "size": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    "dependencies": {
+      "version": "v2.14.1",
+      "url": "https://github.com/MaaAssistantArknights/MaaDeps/releases/download/v2.14.1/MaaDeps-x64-windows-devel.tar.xz",
+      "size": 259161768,
+      "sha256": "51d76bc70da831cc523d94610b9b9b3ca294662f6644311c327a57539e6bd39c"
+    }
+  }
+}

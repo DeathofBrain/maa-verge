@@ -689,19 +689,17 @@
         }
       }
     },
-    "ComponentDownload": {
-      "description": "Component download engine; defaults to bundled aria2. Empty aria2Path uses aria2c beside the packaged service, or checkout/.tools/aria2 in development; otherwise use an absolute executable path. Never searches PATH. Changes apply to subsequent downloads.",
+    "DownloadProxySettings": {
+      "description": "Shared HTTP proxy policy for application, MaaCore and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["engine", "aria2Path"],
+      "required": ["mode", "url"],
       "properties": {
-        "engine": {
+        "mode": { "enum": ["auto", "manual", "direct"] },
+        "url": {
           "type": "string",
-          "enum": ["builtin", "aria2"]
-        },
-        "aria2Path": {
-          "type": "string",
-          "maxLength": 4096
+          "maxLength": 4096,
+          "description": "Manual HTTP/HTTPS proxy address. settings.save accepts host:port with an implicit http:// scheme and normalizes it to a complete URL; other modes clear this field. A root slash is allowed; other paths, queries and fragments are rejected."
         }
       }
     },
@@ -729,8 +727,8 @@
         "componentPaths": {
           "$ref": "#/$defs/ComponentPaths"
         },
-        "componentDownload": {
-          "$ref": "#/$defs/ComponentDownload"
+        "downloadProxy": {
+          "$ref": "#/$defs/DownloadProxySettings"
         },
         "infrastructureEstimates": {
           "type": "array",
@@ -766,7 +764,7 @@
         "autoUpdateApp": {
           "type": "boolean",
           "default": true,
-          "description": "启动时检查应用更新；下载和安装始终由用户确认。"
+          "description": "启动时联网检查应用更新；下载由用户确认，已下载并验证的更新在下次启动时自动安装。"
         },
         "appUpdateChannel": {
           "type": "string",
@@ -898,6 +896,10 @@
         "appCanInstall": {
           "type": "boolean",
           "description": "此安装形式是否支持签名自动更新。"
+        },
+        "appInstallOnStartup": {
+          "type": "boolean",
+          "description": "已验证的应用更新是否安排在下次启动安装；失败尝试保留包但不会自动循环安装。"
         },
         "appRelease": {
           "type": "object",

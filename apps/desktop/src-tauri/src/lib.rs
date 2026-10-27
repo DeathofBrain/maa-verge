@@ -225,13 +225,16 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "windows")]
             configure_window_transitions(app.handle());
+            let updater = app_updater::AppUpdater::new(app.handle().clone());
+            // Consume an already verified package before sidecars, automatic
+            // connections or schedules can lock the installation files again.
+            updater.resume_on_startup();
             let runtime = tauri::async_runtime::block_on(Runtime::start(app.handle().clone()))
                 .map_err(std::io::Error::other)?;
             let snapshot = tauri::async_runtime::block_on(
                 runtime.request("app.snapshot".into(), serde_json::json!({})),
             )
             .map_err(std::io::Error::other)?;
-            let updater = app_updater::AppUpdater::new(app.handle().clone());
             updater.configure(&snapshot["settings"]);
             app.manage(runtime);
             app.manage(updater);

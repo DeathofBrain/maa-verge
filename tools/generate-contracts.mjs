@@ -40,6 +40,7 @@ ajv.addSchema(rpcSchema);
 ajv.addSchema(workerSchema);
 const validators = {
   validateSnapshot: schema.$id,
+  validateHostUpdateParams: `${rpcSchema.$id}#/$defs/HostUpdateParams`,
   validateCopilotListParams: `${rpcSchema.$id}#/$defs/CopilotListParams`,
   validateCopilotCategorySaveParams: `${rpcSchema.$id}#/$defs/CopilotCategorySaveParams`,
   validateCopilotCategoryAssignParams: `${rpcSchema.$id}#/$defs/CopilotCategoryAssignParams`,
@@ -135,7 +136,7 @@ const bundled = await build({
 });
 const declaration = `${bannerComment}
 import type { Plan, Settings, Snapshot } from './types';
-import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame } from './rpc-types';
+import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame, HostUpdateParams } from './rpc-types';
 import type { WorkerProtocol } from './worker-types';
 export interface ValidationError {
   instancePath: string;
@@ -149,6 +150,7 @@ export interface Validator<T> {
   errors: ValidationError[] | null;
 }
 export const validateSnapshot: Validator<Snapshot>;
+export const validateHostUpdateParams: Validator<HostUpdateParams>;
 export const validateCopilotListParams: Validator<RpcContract['params']['copilot.list']>;
 export const validateCopilotCategorySaveParams: Validator<RpcContract['params']['copilot.category.save']>;
 export const validateCopilotCategoryAssignParams: Validator<RpcContract['params']['copilot.category.assign']>;

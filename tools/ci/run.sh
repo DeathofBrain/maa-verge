@@ -20,7 +20,7 @@ if [ "$mode" = application ]; then
   node --test tools/tests/environment.test.mjs tools/tests/commit-formatting.test.mjs tools/tests/vite-cache.test.mjs \
     tools/tests/process-tree.test.mjs tools/tests/dev-mode.test.mjs \
     tools/tests/release-assets.test.mjs tools/tests/app-updater-release.test.mjs \
-    tools/tests/runtime-notices.test.mjs tools/tests/setup-aria2.test.mjs \
+    tools/tests/runtime-notices.test.mjs \
     tools/tests/windows-installer.test.mjs tools/tests/macos-bundle.test.mjs
   pnpm contracts:check
   pnpm -r check
@@ -36,7 +36,6 @@ if [ "$mode" = application ]; then
 else
   node tools/probe-bun.mjs
   pnpm run doctor --native
-  node tools/setup-aria2.mjs
   if [ "$mode" = release ]; then
     pnpm check
     node -e 'if (!process.env.TAURI_SIGNING_PRIVATE_KEY?.trim()) throw new Error("TAURI_SIGNING_PRIVATE_KEY secret is required")'

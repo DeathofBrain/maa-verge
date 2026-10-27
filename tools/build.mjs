@@ -2,6 +2,7 @@ import { run, desktop, fail } from './project.mjs';
 import { assertWorkspaceDependencies } from './environment.mjs';
 import { ensureBun } from './setup-bun.mjs';
 import { releaseConfiguration, updaterBuildArguments } from './app-updater-release.mjs';
+import { windowsInstallerConfiguration, packageWindowsPortable } from './windows-distribution.mjs';
 
 async function main() {
   assertWorkspaceDependencies();
@@ -12,7 +13,23 @@ async function main() {
   await run('node', ['tools/package-runtime.mjs']);
   await run('node', ['tools/smoke-runtime.mjs']);
   await run('node', ['tools/smoke-desktop-runtime.mjs']);
-  await run('pnpm', ['exec', 'tauri', 'build', ...updaterBuildArguments(), '--', '--locked'], { cwd: desktop });
+  let windowsArguments = [];
+  if (process.platform === 'win32') {
+    await run('node', ['tools/prepare-windows-components.mjs']);
+    windowsArguments = ['--config', JSON.stringify(await windowsInstallerConfiguration())];
+  }
+  await run(
+    'pnpm',
+    ['exec', 'tauri', 'build', ...updaterBuildArguments(), ...windowsArguments, '--', '--locked'],
+    { cwd: desktop },
+  );
+  if (process.platform === 'win32') {
+    await packageWindowsPortable();
+    await run('node', ['tools/smoke-windows-components.mjs']);
+    await run('node', ['--test', 'tools/tests/windows-installer.test.mjs'], {
+      env: { ...process.env, MAAVERGE_INSTALLER_TOOLS_REQUIRED: '1' },
+    });
+  }
   if (process.platform === 'darwin') await run('node', ['tools/verify-macos-bundle.mjs']);
 }
 main().catch(fail);

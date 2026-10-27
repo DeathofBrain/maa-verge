@@ -7,11 +7,9 @@ import test from 'node:test';
 import {
   loadRustNoticeMetadata,
   writeApplicationNotices,
-  writeAria2Notices,
   writeJavaScriptNotices,
   writeRustNotices,
 } from '../runtime-notices.mjs';
-import { aria2Assets, aria2RecipeSha256 } from '../setup-aria2.mjs';
 
 function fixture(t) {
   const directory = mkdtempSync(path.join(tmpdir(), 'maa verge runtime notices-'));
@@ -45,37 +43,6 @@ test('bundles application and community notices and rejects missing source attri
     assert.equal(readFileSync(path.join(output, target), 'utf8'), `original notice: ${source}`);
   rmSync(path.join(projectRoot, 'NOTICE.md'));
   assert.throws(() => writeApplicationNotices(output, { projectRoot }), /NOTICE\.md/);
-});
-
-test('carries verified bundled aria2 sources, licenses and build provenance into runtime notices', (t) => {
-  const directory = fixture(t),
-    aria2Directory = path.join(directory, 'tool'),
-    output = path.join(directory, 'output');
-  const source = 'full corresponding source bytes',
-    name = 'sources/aria2.tar.xz';
-  write(path.join(aria2Directory, 'licenses', name), source);
-  const info = {
-    version: '1.37.0',
-    target: 'darwin/x64',
-    recipeSha256: aria2RecipeSha256,
-    sources: [
-      {
-        name: aria2Assets.aria2.name,
-        url: aria2Assets.aria2.url,
-        sha256: aria2Assets.aria2.sha256,
-      },
-    ],
-    notices: [{ name, sha256: createHash('sha256').update(source).digest('hex') }],
-  };
-  json(path.join(aria2Directory, 'build-info.json'), info);
-  assert.deepEqual(writeAria2Notices(output, { aria2Directory }), info);
-  assert.equal(readFileSync(path.join(output, 'aria2', name), 'utf8'), source);
-  assert.deepEqual(
-    JSON.parse(readFileSync(path.join(output, 'aria2-build-info.json'), 'utf8')),
-    info,
-  );
-  write(path.join(aria2Directory, 'licenses', name), 'changed source');
-  assert.throws(() => writeAria2Notices(output, { aria2Directory }), /checksum mismatch/);
 });
 
 function packageAt(

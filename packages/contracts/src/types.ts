@@ -219,6 +219,10 @@ export interface UpdateChannel {
    * 此安装形式是否支持签名自动更新。
    */
   appCanInstall?: boolean;
+  /**
+   * 已验证的应用更新是否安排在下次启动安装；失败尝试保留包但不会自动循环安装。
+   */
+  appInstallOnStartup?: boolean;
   appRelease?: {
     url: string;
     notes: string;
@@ -244,7 +248,7 @@ export interface ResourceActivityVersion {
 }
 export interface Settings {
   componentPaths?: ComponentPaths;
-  componentDownload?: ComponentDownload;
+  downloadProxy?: DownloadProxySettings;
   /**
    * @maxItems 100
    */
@@ -261,7 +265,7 @@ export interface Settings {
   logRetentionDays?: 0 | 7 | 14 | 30;
   autoConnect: Autoconnect;
   /**
-   * 启动时检查应用更新；下载和安装始终由用户确认。
+   * 启动时联网检查应用更新；下载由用户确认，已下载并验证的更新在下次启动时自动安装。
    */
   autoUpdateApp?: boolean;
   appUpdateChannel?: 'stable' | 'preview';
@@ -287,11 +291,14 @@ export interface ComponentPaths {
   resource: string;
 }
 /**
- * Component download engine; defaults to bundled aria2. Empty aria2Path uses aria2c beside the packaged service, or checkout/.tools/aria2 in development; otherwise use an absolute executable path. Never searches PATH. Changes apply to subsequent downloads.
+ * Shared HTTP proxy policy for application, MaaCore and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.
  */
-export interface ComponentDownload {
-  engine: 'builtin' | 'aria2';
-  aria2Path: string;
+export interface DownloadProxySettings {
+  mode: 'auto' | 'manual' | 'direct';
+  /**
+   * Manual HTTP/HTTPS proxy address. settings.save accepts host:port with an implicit http:// scheme and normalizes it to a complete URL; other modes clear this field. A root slash is allowed; other paths, queries and fragments are rejected.
+   */
+  url: string;
 }
 export interface InfrastructureEstimateProfile {
   deviceId: string;

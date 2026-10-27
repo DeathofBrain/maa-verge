@@ -1,7 +1,7 @@
 {
   "name": "maa-verge",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3-alpha1",
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@10.20.0",
   "engines": {
@@ -23,7 +23,6 @@
     "test:e2e": "playwright test",
     "test:python": "uv run pytest",
     "setup:bun": "node tools/setup-bun.mjs",
-    "setup:aria2": "node tools/setup-aria2.mjs",
     "test:runtime": "node tools/test-runtime.mjs",
     "test:agent": "node tools/test-agent.mjs",
     "test:desktop-runtime": "node tools/smoke-desktop-runtime.mjs",

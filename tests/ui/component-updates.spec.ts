@@ -2,76 +2,115 @@ import { expect, test, type HarnessWindow } from './fixtures/desktop';
 import type { Page } from '@playwright/test';
 import type { Snapshot, UpdateChannel } from '../../packages/contracts/src/types';
 
-type DownloadWindow = HarnessWindow & { downloadControl: {
-  started: number;
-  checks: number;
-  progress: (value: number) => Promise<void>;
-  finish: (failed?: boolean) => void;
-  notify: () => Promise<void>;
-} };
+type DownloadWindow = HarnessWindow & {
+  downloadControl: {
+    started: number;
+    checks: number;
+    progress: (value: number) => Promise<void>;
+    finish: (failed?: boolean) => void;
+    notify: () => Promise<void>;
+  };
+};
 
 // Hold only the synthetic download RPC. Snapshot/event traffic stays live, just
 // as it does while the real service downloads outside the Settings component.
 async function controlDownload(page: Page, id: 'core' | 'resource', startup = false) {
-  await page.evaluate(async ({ id, startup }) => {
-    const target = window as DownloadWindow;
-    const original = target.runtimeHarness.call;
-    const initial = await original('app.snapshot', {}) as Snapshot;
-    const channel: UpdateChannel = { ...initial.updates.find((item) => item.id === id)!, status: startup ? 'downloading' : 'available', latestVersion: id === 'core' ? 'v6.20.0' : '2026-10-20', progress: startup ? 23 : 0, message: '合成下载，未访问网络' };
-    let resolve: ((channel: UpdateChannel) => void) | undefined;
-    let reject: ((error: Error) => void) | undefined;
-    const notify = async () => { const state = await original('app.snapshot', {}) as Snapshot; await original('settings.save', { settings: state.settings }); };
-    const control: DownloadWindow['downloadControl'] = {
-      started: 0, checks: 0,
-      notify,
-      progress: async (value) => { channel.progress = value; await notify(); },
-      finish: (failed) => {
-        channel.status = failed ? 'failed' : 'staged';
-        channel.message = failed ? '合成网络中断，可重试续传' : '合成候选版本已验证';
-        if (failed) reject?.(new Error(channel.message));
-        else { channel.progress = 100; resolve?.(structuredClone(channel)); }
-        void notify();
-      },
-    };
-    target.downloadControl = control;
-    target.runtimeHarness.call = async (method, params) => {
-      if (method === 'updates.check' && params.channel === id) control.checks++;
-      if (method === 'updates.prepare' && params.channel === id) {
-        control.started++;
-        channel.status = 'downloading'; channel.progress = 0;
-        return new Promise<UpdateChannel>((accept, fail) => { resolve = accept; reject = fail; });
-      }
-      const result = await original(method, params);
-      if (method === 'app.snapshot') {
-        const snapshot = result as Snapshot;
-        snapshot.updates = snapshot.updates.map((item) => item.id === id ? structuredClone(channel) : item);
-      }
-      return result;
-    };
-    await notify();
-  }, { id, startup });
+  await page.evaluate(
+    async ({ id, startup }) => {
+      const target = window as DownloadWindow;
+      const original = target.runtimeHarness.call;
+      const initial = (await original('app.snapshot', {})) as Snapshot;
+      const channel: UpdateChannel = {
+        ...initial.updates.find((item) => item.id === id)!,
+        status: startup ? 'downloading' : 'available',
+        latestVersion: id === 'core' ? 'v6.20.0' : '2026-10-20',
+        progress: startup ? 23 : 0,
+        message: '合成下载，未访问网络',
+      };
+      let resolve: ((channel: UpdateChannel) => void) | undefined;
+      let reject: ((error: Error) => void) | undefined;
+      const notify = async () => {
+        const state = (await original('app.snapshot', {})) as Snapshot;
+        await original('settings.save', { settings: state.settings });
+      };
+      const control: DownloadWindow['downloadControl'] = {
+        started: 0,
+        checks: 0,
+        notify,
+        progress: async (value) => {
+          channel.progress = value;
+          await notify();
+        },
+        finish: (failed) => {
+          channel.status = failed ? 'failed' : 'staged';
+          channel.message = failed ? '合成网络中断，可重试续传' : '合成候选版本已验证';
+          if (failed) reject?.(new Error(channel.message));
+          else {
+            channel.progress = 100;
+            resolve?.(structuredClone(channel));
+          }
+          void notify();
+        },
+      };
+      target.downloadControl = control;
+      target.runtimeHarness.call = async (method, params) => {
+        if (method === 'updates.check' && params.channel === id) control.checks++;
+        if (method === 'updates.prepare' && params.channel === id) {
+          control.started++;
+          channel.status = 'downloading';
+          channel.progress = 0;
+          return new Promise<UpdateChannel>((accept, fail) => {
+            resolve = accept;
+            reject = fail;
+          });
+        }
+        const result = await original(method, params);
+        if (method === 'app.snapshot') {
+          const snapshot = result as Snapshot;
+          snapshot.updates = snapshot.updates.map((item) =>
+            item.id === id ? structuredClone(channel) : item,
+          );
+        }
+        return result;
+      };
+      await notify();
+    },
+    { id, startup },
+  );
 }
 
 async function updatesPage(page: Page) {
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
-  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '更新', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: '设置分类' })
+    .getByRole('button', { name: '更新', exact: true })
+    .click();
 }
 
-test('component downloads keep progress and completion visible after leaving Settings', async ({ page }, testInfo) => {
+test('component downloads keep progress and completion visible after leaving Settings', async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   await controlDownload(page, 'core');
   await updatesPage(page);
-  const core = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+  const core = page
+    .locator('.update-channel')
+    .filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
   await core.getByRole('button', { name: '准备更新', exact: true }).click();
-  await expect.poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started)).toBe(1);
+  await expect
+    .poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started))
+    .toBe(1);
   const notice = page.getByRole('status', { name: 'MaaCore 核心下载通知', exact: true });
   await expect(notice).toContainText('正在下载与验证');
   await expect(page.getByRole('button', { name: '检查全部更新', exact: true })).toBeDisabled();
   await expect(page.getByLabel('游戏资源下载目录', { exact: true })).toBeDisabled();
-  await expect(page.getByLabel('组件下载器', { exact: true })).toBeEnabled();
-  await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '通用与外观', exact: true }).click();
+  await expect(page.getByLabel('下载代理模式', { exact: true })).toBeEnabled();
+  await page
+    .getByRole('navigation', { name: '设置分类' })
+    .getByRole('button', { name: '通用与外观', exact: true })
+    .click();
   await expect(page.getByLabel('界面主题', { exact: true })).toBeEnabled();
   await page.locator('.sidebar').getByRole('button', { name: '工具箱', exact: true }).click();
   await page.evaluate(() => (window as DownloadWindow).downloadControl.progress(42));
@@ -91,47 +130,70 @@ test('component downloads keep progress and completion visible after leaving Set
   await expect(page.getByLabel('组件下载通知', { exact: true })).toHaveCount(0);
 });
 
-test('download failure survives navigation and retries the pinned candidate directly', async ({ page }) => {
+test('download failure survives navigation and retries the pinned candidate directly', async ({
+  page,
+}) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   await controlDownload(page, 'resource');
   await updatesPage(page);
-  const resource = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: '游戏资源', exact: true }) });
+  const resource = page
+    .locator('.update-channel')
+    .filter({ has: page.getByRole('heading', { name: '游戏资源', exact: true }) });
   await resource.getByRole('button', { name: '准备更新', exact: true }).click();
-  await expect.poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started)).toBe(1);
+  await expect
+    .poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started))
+    .toBe(1);
   await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
   await page.evaluate(() => (window as DownloadWindow).downloadControl.finish(true));
   const failure = page.getByRole('alert', { name: 'MaaResource 游戏资源下载通知', exact: true });
   await expect(failure).toContainText('合成网络中断，可重试续传');
   await updatesPage(page);
   await resource.getByRole('button', { name: '重试下载', exact: true }).click();
-  await expect.poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started)).toBe(2);
+  await expect
+    .poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started))
+    .toBe(2);
   expect(await page.evaluate(() => (window as DownloadWindow).downloadControl.checks)).toBe(0);
   await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
-  await expect(page.getByRole('status', { name: 'MaaResource 游戏资源下载通知', exact: true })).toContainText('已下载并验证，待生效');
+  await expect(
+    page.getByRole('status', { name: 'MaaResource 游戏资源下载通知', exact: true }),
+  ).toContainText('已下载并验证，待生效');
 });
 
-test('a preparation overtaken by an installed version does not announce a staged candidate', async ({ page }) => {
+test('a preparation overtaken by an installed version does not announce a staged candidate', async ({
+  page,
+}) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   await controlDownload(page, 'core');
   await page.evaluate(() => {
-    const target = window as DownloadWindow, original = target.runtimeHarness.call;
+    const target = window as DownloadWindow,
+      original = target.runtimeHarness.call;
     let installed: UpdateChannel | undefined;
     target.runtimeHarness.call = async (method, params) => {
       if (method === 'updates.prepare') {
-        const state = await original('app.snapshot', {}) as Snapshot;
-        const core = state.updates.find(channel => channel.id === 'core')!;
-        installed = { ...core, currentVersion: core.latestVersion!, status: 'idle', message: '当前已是最新版本' };
+        const state = (await original('app.snapshot', {})) as Snapshot;
+        const core = state.updates.find((channel) => channel.id === 'core')!;
+        installed = {
+          ...core,
+          currentVersion: core.latestVersion!,
+          status: 'idle',
+          message: '当前已是最新版本',
+        };
         return installed;
       }
       const result = await original(method, params);
-      if (method === 'app.snapshot' && installed) (result as Snapshot).updates = (result as Snapshot).updates.map(channel => channel.id === 'core' ? installed! : channel);
+      if (method === 'app.snapshot' && installed)
+        (result as Snapshot).updates = (result as Snapshot).updates.map((channel) =>
+          channel.id === 'core' ? installed! : channel,
+        );
       return result;
     };
   });
   await updatesPage(page);
-  const core = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+  const core = page
+    .locator('.update-channel')
+    .filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
   await core.getByRole('button', { name: '准备更新', exact: true }).click();
   await expect(core).toContainText('已是最新版本');
   await expect(core.getByRole('button', { name: '应用更新', exact: true })).toHaveCount(0);
@@ -139,81 +201,58 @@ test('a preparation overtaken by an installed version does not announce a staged
 });
 
 for (const id of ['core', 'resource'] as const) {
-  test(`${id} activation failure immediately refreshes the invalid candidate without a runtime event`, async ({ page }) => {
+  test(`${id} activation failure immediately refreshes the invalid candidate without a runtime event`, async ({
+    page,
+  }) => {
     await page.clock.install();
     await page.goto('/');
     await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
     await page.evaluate(async (id) => {
-      const target = window as HarnessWindow, original = target.runtimeHarness.call;
-      const initial = await original('app.snapshot', {}) as Snapshot;
-      const channel: UpdateChannel = { ...initial.updates.find(item => item.id === id)!, status: 'staged',
-        latestVersion: id === 'core' ? 'v6.20.0' : '2026-10-20', progress: 100, message: '合成候选已校验' };
+      const target = window as HarnessWindow,
+        original = target.runtimeHarness.call;
+      const initial = (await original('app.snapshot', {})) as Snapshot;
+      const channel: UpdateChannel = {
+        ...initial.updates.find((item) => item.id === id)!,
+        status: 'staged',
+        latestVersion: id === 'core' ? 'v6.20.0' : '2026-10-20',
+        progress: 100,
+        message: '合成候选已校验',
+      };
       target.runtimeHarness.call = async (method, params) => {
         if (method === 'updates.activate' && params.channel === id) {
-          channel.status = 'available'; channel.progress = 0;
+          channel.status = 'available';
+          channel.progress = 0;
           channel.message = '更新文件缺失或完整性校验未通过，请重新下载更新';
           // Reconciliation can invalidate a candidate without emitting an event.
           throw new Error(channel.message);
         }
         const result = await original(method, params);
-        if (method === 'app.snapshot') (result as Snapshot).updates = (result as Snapshot).updates.map(item => item.id === id ? structuredClone(channel) : item);
+        if (method === 'app.snapshot')
+          (result as Snapshot).updates = (result as Snapshot).updates.map((item) =>
+            item.id === id ? structuredClone(channel) : item,
+          );
         return result;
       };
       target.runtimeHarness.emitEvent('update.changed');
     }, id);
     await updatesPage(page);
-    const channel = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: id === 'core' ? 'MaaCore 核心' : '游戏资源', exact: true }) });
+    const channel = page.locator('.update-channel').filter({
+      has: page.getByRole('heading', {
+        name: id === 'core' ? 'MaaCore 核心' : '游戏资源',
+        exact: true,
+      }),
+    });
     await expect(channel.getByRole('button', { name: '应用更新', exact: true })).toBeVisible();
     // Freeze polling so only the failed action's refresh can remove the button.
     await page.clock.pauseAt(new Date(Date.now() + 1000));
     await channel.getByRole('button', { name: '应用更新', exact: true }).click();
-    await expect(page.locator('.toast.error')).toContainText('更新文件缺失或完整性校验未通过，请重新下载更新');
+    await expect(page.locator('.toast.error')).toContainText(
+      '更新文件缺失或完整性校验未通过，请重新下载更新',
+    );
     await expect(channel.getByRole('button', { name: '应用更新', exact: true })).toHaveCount(0);
     await expect(channel.getByRole('button', { name: '准备更新', exact: true })).toBeVisible();
   });
 }
-
-test('aria2 download preference saves together and survives navigation and reload', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
-  await updatesPage(page);
-  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('aria2');
-  await expect(page.getByText('已随应用提供 aria2，无需另行安装。中断后可重试续传。')).toBeVisible();
-  await expect(page.getByLabel('aria2c 路径', { exact: true })).toBeHidden();
-  await page.getByText('高级选项：自定义 aria2c 路径', { exact: true }).click();
-  await page.getByLabel('aria2c 路径', { exact: true }).fill('C:\\Tools\\aria2\\aria2c.exe');
-  await page.getByRole('button', { name: '保存下载器', exact: true }).click();
-  await expect(page.locator('.sp-model-form .sp-form-actions > .sp-help')).toHaveText('已保存');
-  await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
-  const preference = await page.evaluate(async () => {
-    const snapshot = await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}) as Snapshot;
-    return snapshot.settings.componentDownload;
-  });
-  expect(preference).toEqual({ engine: 'aria2', aria2Path: 'C:\\Tools\\aria2\\aria2c.exe' });
-  await page.reload();
-  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
-  await updatesPage(page);
-  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('aria2');
-  await expect(page.getByLabel('aria2c 路径', { exact: true })).toHaveValue('C:\\Tools\\aria2\\aria2c.exe');
-  await page.getByLabel('aria2c 路径', { exact: true }).fill('');
-  await page.getByRole('button', { name: '保存下载器', exact: true }).click();
-  await expect(page.locator('.sp-model-form .sp-form-actions > .sp-help')).toHaveText('已保存');
-  await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
-  await page.reload();
-  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
-  await updatesPage(page);
-  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('aria2');
-  await expect(page.getByLabel('aria2c 路径', { exact: true })).toHaveValue('');
-  await page.getByLabel('组件下载器', { exact: true }).selectOption('builtin');
-  await page.getByRole('button', { name: '保存下载器', exact: true }).click();
-  await expect(page.locator('.sp-model-form .sp-form-actions > .sp-help')).toHaveText('已保存');
-  await expect(page.getByRole('button', { name: '保存下载器', exact: true })).toBeDisabled();
-  await page.reload();
-  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
-  await updatesPage(page);
-  await expect(page.getByLabel('组件下载器', { exact: true })).toHaveValue('builtin');
-  await expect(page.getByLabel('aria2c 路径', { exact: true })).toHaveCount(0);
-});
 
 test.describe('startup component download', () => {
   test.use({ runtimeHoldSnapshot: true });
@@ -227,7 +266,9 @@ test.describe('startup component download', () => {
     await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
     await expect(notice).toContainText('已下载并验证，待生效');
   });
-  test('a candidate that failed before the first snapshot still reports its error', async ({ page }) => {
+  test('a candidate that failed before the first snapshot still reports its error', async ({
+    page,
+  }) => {
     await page.goto('/');
     await controlDownload(page, 'core', true);
     await page.evaluate(() => {
@@ -235,43 +276,85 @@ test.describe('startup component download', () => {
       (window as HarnessWindow).runtimeHarness.releaseSnapshot();
     });
     await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
-    await expect(page.getByRole('alert', { name: 'MaaCore 核心下载通知', exact: true })).toContainText('合成网络中断，可重试续传');
+    await expect(
+      page.getByRole('alert', { name: 'MaaCore 核心下载通知', exact: true }),
+    ).toContainText('合成网络中断，可重试续传');
   });
 });
 
-test('component roots save independently and installed resource versions use each client activity', async ({ page }, testInfo) => {
+test('component roots save independently and installed resource versions use each client activity', async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   await page.evaluate(async () => {
     const harness = (window as HarnessWindow).runtimeHarness;
-    const snapshot = await harness.call('app.snapshot', {}) as Snapshot;
-    snapshot.settings.componentPaths = { core: 'C:\\Maa Verge\\MaaCore', resource: 'D:\\Game Data\\MaaResource' };
-    snapshot.settings.connection = { adbPath: '', address: '', config: 'General', touchMode: 'minitouch', adbLite: false, clientType: 'Bilibili' };
+    const snapshot = (await harness.call('app.snapshot', {})) as Snapshot;
+    snapshot.settings.componentPaths = {
+      core: 'C:\\Maa Verge\\MaaCore',
+      resource: 'D:\\Game Data\\MaaResource',
+    };
+    snapshot.settings.connection = {
+      adbPath: '',
+      address: '',
+      config: 'General',
+      touchMode: 'minitouch',
+      adbLite: false,
+      clientType: 'Bilibili',
+    };
     await harness.call('settings.save', { settings: snapshot.settings });
-    const resource = snapshot.updates.find(channel => channel.id === 'resource')!;
+    const resource = snapshot.updates.find((channel) => channel.id === 'resource')!;
     resource.currentVersion = 'a'.repeat(40);
-    resource.resourceActivities = [{ clientType: 'Official', name: '合成活动 · 新篇章', lastUpdated: '2026-10-23 12:00:00' }, { clientType: 'YoStarEN', name: 'Synthetic EN event', lastUpdated: '2026-10-20' }];
-    const key = Object.keys(localStorage).find(value => value.startsWith('maaverge:test-runtime:v1:'))!;
+    resource.resourceActivities = [
+      { clientType: 'Official', name: '合成活动 · 新篇章', lastUpdated: '2026-10-23 12:00:00' },
+      { clientType: 'YoStarEN', name: 'Synthetic EN event', lastUpdated: '2026-10-20' },
+    ];
+    const key = Object.keys(localStorage).find((value) =>
+      value.startsWith('maaverge:test-runtime:v1:'),
+    )!;
     localStorage.setItem(key, JSON.stringify(snapshot));
   });
   await page.reload();
   await expect(page.locator('.home-version-list')).toContainText('合成活动 · 新篇章');
   await page.getByRole('button', { name: '打开更新设置', exact: true }).click();
-  const core = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
-  const resource = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: '游戏资源', exact: true }) });
-  await expect(core.getByLabel('MaaCore 核心下载目录', { exact: true })).toHaveValue('C:\\Maa Verge\\MaaCore');
-  await expect(resource.getByLabel('游戏资源下载目录', { exact: true })).toHaveValue('D:\\Game Data\\MaaResource');
-  await core.getByLabel('MaaCore 核心下载目录', { exact: true }).fill('E:\\Custom Components\\Core');
+  const core = page
+    .locator('.update-channel')
+    .filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+  const resource = page
+    .locator('.update-channel')
+    .filter({ has: page.getByRole('heading', { name: '游戏资源', exact: true }) });
+  await expect(core.getByLabel('MaaCore 核心下载目录', { exact: true })).toHaveValue(
+    'C:\\Maa Verge\\MaaCore',
+  );
+  await expect(resource.getByLabel('游戏资源下载目录', { exact: true })).toHaveValue(
+    'D:\\Game Data\\MaaResource',
+  );
+  await core
+    .getByLabel('MaaCore 核心下载目录', { exact: true })
+    .fill('E:\\Custom Components\\Core');
   await core.getByRole('button', { name: '保存目录', exact: true }).click();
-  await expect(core.locator('.sp-component-path .sp-form-actions > .sp-help')).toHaveText('用于后续下载与安装');
+  await expect(core.locator('.sp-component-path .sp-form-actions > .sp-help')).toHaveText(
+    '用于后续下载与安装',
+  );
   await expect(core.getByRole('button', { name: '保存目录', exact: true })).toBeDisabled();
-  const paths = await page.evaluate(async () => ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot).settings.componentPaths);
-  expect(paths).toEqual({ core: 'E:\\Custom Components\\Core', resource: 'D:\\Game Data\\MaaResource' });
+  const paths = await page.evaluate(
+    async () =>
+      ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
+        .settings.componentPaths,
+  );
+  expect(paths).toEqual({
+    core: 'E:\\Custom Components\\Core',
+    resource: 'D:\\Game Data\\MaaResource',
+  });
   await expect(resource.locator('.channel-version')).toHaveText('合成活动 · 新篇章');
   await expect(resource.getByLabel('资源版本客户端', { exact: true })).toHaveValue('Official');
-  await expect(resource.getByLabel('资源版本客户端', { exact: true }).locator('option[value="Official"]')).toHaveText('国服（官服 / B服）');
-  await expect(resource.getByLabel('资源版本客户端', { exact: true }).locator('option[value="Bilibili"]')).toHaveCount(0);
+  await expect(
+    resource.getByLabel('资源版本客户端', { exact: true }).locator('option[value="Official"]'),
+  ).toHaveText('国服（官服 / B服）');
+  await expect(
+    resource.getByLabel('资源版本客户端', { exact: true }).locator('option[value="Bilibili"]'),
+  ).toHaveCount(0);
   await expect(resource).toContainText('2026-10-23 12:00:00');
   await resource.getByLabel('资源版本客户端', { exact: true }).selectOption('YoStarEN');
   await expect(resource.locator('.channel-version')).toHaveText('Synthetic EN event');
@@ -283,7 +366,9 @@ test('component roots save independently and installed resource versions use eac
   await page.screenshot({ path: testInfo.outputPath('component-updates.png'), fullPage: true });
 });
 
-test('stored update failures explain disk exhaustion in settings and the global notification', async ({ page }) => {
+test('stored update failures explain disk exhaustion in settings and the global notification', async ({
+  page,
+}) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   await page.evaluate(async () => {
@@ -293,19 +378,28 @@ test('stored update failures explain disk exhaustion in settings and the global 
       const result = await original(method, params);
       if (method === 'app.snapshot') {
         const snapshot = result as Snapshot;
-        snapshot.updates = snapshot.updates.map(channel => channel.id === 'core'
-          ? { ...channel, latestVersion: 'v6.20.0', status: 'failed', message: 'ENOSPC: no space left on device, write' }
-          : channel);
+        snapshot.updates = snapshot.updates.map((channel) =>
+          channel.id === 'core'
+            ? {
+                ...channel,
+                latestVersion: 'v6.20.0',
+                status: 'failed',
+                message: 'ENOSPC: no space left on device, write',
+              }
+            : channel,
+        );
       }
       return result;
     };
-    const state = await original('app.snapshot', {}) as Snapshot;
+    const state = (await original('app.snapshot', {})) as Snapshot;
     await original('settings.save', { settings: state.settings });
   });
   const failure = page.getByRole('alert', { name: 'MaaCore 核心下载通知', exact: true });
   await expect(failure).toContainText('存储空间不足，请清理目标磁盘后重试');
   await updatesPage(page);
-  const core = page.locator('.update-channel').filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+  const core = page
+    .locator('.update-channel')
+    .filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
   await expect(core.locator('.sp-channel-message')).toContainText('存储空间不足');
   await expect(core.locator('.sp-channel-message')).not.toContainText('ENOSPC');
   await expect(core.getByRole('button', { name: '重试下载', exact: true })).toBeEnabled();

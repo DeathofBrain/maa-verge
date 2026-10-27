@@ -125,9 +125,6 @@ jobs:
       - name: Compile and execute the pinned Bun probe on this host
         if: runner.os != 'Linux'
         run: node tools/probe-bun.mjs
-      - name: Prepare and verify the pinned Windows downloader
-        if: runner.os == 'Windows'
-        run: node tools/setup-aria2.mjs
       - name: Verify checks with isolated synthetic fixtures
         if: runner.os != 'Linux'
         run: pnpm check
@@ -142,6 +139,11 @@ jobs:
       - name: Verify final macOS installer, updater archive and installed desktop
         if: runner.os == 'macOS'
         run: node tools/smoke-macos-install.mjs --require-updater
+      - name: Verify Windows offline component selections and portable staging
+        if: runner.os == 'Windows'
+        run: node --test tools/tests/windows-installer.test.mjs tools/tests/windows-components.test.mjs
+        env:
+          MAAVERGE_INSTALLER_TOOLS_REQUIRED: '1'
       - name: Save macOS installation diagnostics
         if: failure() && runner.os == 'macOS'
         uses: actions/upload-artifact@v4

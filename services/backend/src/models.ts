@@ -1,10 +1,4 @@
-import type {
-  ComponentDownload,
-  Plan,
-  Settings,
-  Task,
-  Snapshot,
-} from '../../../packages/contracts/src/types';
+import type { Plan, Settings, Task, Snapshot } from '../../../packages/contracts/src/types';
 import {
   validatePlan,
   validateSettings,
@@ -14,6 +8,7 @@ import { RpcError } from './errors';
 import { validateDeviceProfiles } from './device-profiles';
 import { validateInfrastructureProfiles } from './home-info';
 import { normalizeComponentPath } from './config';
+import { normalizeManualProxy, ProxyConfigurationError } from './network-proxy';
 export type { Plan, Settings, Task, Snapshot };
 export type { DeviceConnectionProfile } from '../../../packages/contracts/src/types';
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
@@ -29,10 +24,6 @@ export const defaultConnection = () => ({
   touchMode: 'maatouch' as const,
   adbLite: false,
   clientType: 'Official' as const,
-});
-export const defaultComponentDownload = (): ComponentDownload => ({
-  engine: 'aria2',
-  aria2Path: '',
 });
 function record(value: any): value is Record<string, any> {
   return (
@@ -169,6 +160,23 @@ export function parseSettings(input: any = {}): Settings {
   ] as const)
     value[key] = boolean(value[key]);
   if (!validateSettings(value)) throw new RpcError(-32602, '请求参数无效', validateSettings.errors);
+  if (value.downloadProxy) {
+    const proxy = { ...value.downloadProxy, url: value.downloadProxy.url.trim() };
+    if (proxy.mode === 'manual') {
+      try {
+        proxy.url = normalizeManualProxy(proxy.url);
+      } catch (error) {
+        // Only the shared validator's static diagnostic may cross the RPC boundary.
+        throw new RpcError(
+          -32602,
+          error instanceof ProxyConfigurationError
+            ? error.message
+            : '手动下载代理地址无效，请检查代理地址和端口',
+        );
+      }
+    } else proxy.url = '';
+    value.downloadProxy = proxy;
+  }
   if (value.copilotStorage)
     try {
       value.copilotStorage = {
@@ -187,21 +195,6 @@ export function parseSettings(input: any = {}): Settings {
     } catch (error) {
       throw new RpcError(-32602, error instanceof Error ? error.message : String(error));
     }
-  }
-  if (value.componentDownload) {
-    try {
-      value.componentDownload = {
-        ...value.componentDownload,
-        aria2Path: normalizeComponentPath(value.componentDownload.aria2Path),
-      };
-    } catch {
-      throw new RpcError(
-        -32602,
-        'aria2 路径必须是可执行文件的绝对路径，留空使用随应用提供的 aria2c',
-      );
-    }
-    if (/\.(?:cmd|bat|ps1)$/i.test(value.componentDownload.aria2Path))
-      throw new RpcError(-32602, 'aria2 路径必须指向可执行文件，不能使用脚本');
   }
   validateInfrastructureProfiles(value.infrastructureEstimates);
   if ((value.capture?.mumuTouch || value.capture?.mumuBridge) && value.capture.method !== 'mumu')

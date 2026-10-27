@@ -20,25 +20,73 @@ v0.1.0 旧核心没有可信的展开文件摘要，压缩包 SHA-256 和对现�
 
 资源下载完成后再次核对基础资源，失败时也同步磁盘与组件状态；若下载或解压期间核心基础目录丢失，会提示先修复核心，避免继续显示活动组合可用。修复损坏核心后仍保留最近有效回滚组合，不以已经清空的活动记录覆盖它；仍被 worker 引用的目录继续受保护。
 
-Windows NSIS/MSI 完整卸载会删除程序同级默认的 `MaaCore/` 和 `MaaResource/`，包括旧布局；应用升级保留这些目录。自定义目录和用户数据根（数据库、计划、记录及数据锁）保留；重新安装后按磁盘文件重新判断组件状态。macOS/Linux 的卸载仍由各自分发方式处理，本轮没有新增或验收自动清理。
+Windows EXE（NSIS）完整卸载会删除程序同级默认的 `MaaCore/`、`MaaResource/` 和 `runtime/bundled-components/`，包括旧布局；应用内升级保留这些目录。自定义目录和用户数据根（数据库、计划、记录及数据锁）保留；重新安装后按磁盘文件重新判断组件状态。v0.1.3-alpha1 起不再提供 MSI，旧 MSI 用户须先备份再卸载旧版，手动迁移至 EXE 或完整 ZIP。ZIP 不注册卸载器；macOS/Linux 的卸载仍由各自分发方式处理，本轮没有新增或验收自动清理。
 
 契约新增可选 `Settings.componentPaths`（`core`、`resource`；保存空字符串恢复对应默认目录）与 `UpdateChannel.installDirectory`。服务初始化补全旧设置，旧客户端保存其他设置时保留目录。`UpdateChannel.resourceActivities` 按客户端提供已安装资源的活动名与 `last_updated`；官服和 B 服共享基础 `resource/version.json`，资源页合并显示为「国服（官服 / B服）」，其他客户端读取各自 `global/<client>/resource/version.json`，缺失时明确显示“活动信息未提供”。主页和更新页以活动名显示游戏资源版本，保留提交号、基础资源版本和更新时间用于核对。这是资源包标记，不替代官方活动日历的开放时间。
+
+## Windows 随附离线组件
+
+v0.1.3-alpha1 的 Windows EXE 包含 MaaCore（原生依赖与完整基础资源）和 MaaResource（由完整基础资源合并官方覆盖包）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用更新页下载。完整 ZIP 同时包含两者，须完全解压到可写目录后运行，系统仍需 WebView2 Runtime。
+
+构建来源固定在 [windows-components.lock.json](../tools/windows-components.lock.json)：MaaCore v6.20.1 与 MaaResource 提交 `6d580cec2f1993557f21509aeadb5793cd3160dc`。构建工具先核对官方归档大小和 SHA-256，再复用生产提取、资源重基线与 C++ 加载校验，保留上游许可并记录展开文件摘要；“完整”指核心所需依赖与完整游戏资源，不包含上游 GUI 或 .NET/WPF。
+
+随附核心许可从 v6.20.1 对应源码提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f` 的 `LICENSE` / `LICENSE.spdx` 补齐，同时保留其固定 MaaUtils 子模块的 LGPLv3 许可与 GNU GPLv3 全文；原生依赖声明取自固定的 MaaDeps v2.14.1 官方开发归档，各来源均绑定大小和 SHA-256。工具仅抽取依赖许可通知，不将开发归档的库或可执行文件加入载荷；核心和完整资源各自的 `licenses/sources.json` 记录来源，资源载荷同时保留 MaaResource 原始许可。这些文件纳入展开内容摘要。
+
+安装器只将载荷写入 `runtime/bundled-components/`，不修改业务数据库。服务取得数据根租约后，在尚未登记活动或待生效组件的数据根验证随附文件，复制到所选组件根的新 generation，原生加载验证通过后登记激活。已有组件不被替换；应用内升级跳过安装器的组件选项。随附源数据会保留供新数据根导入，其自动清理暂未实现。ZIP 的配置默认仍位于程序同级 `config/`，应用升级须手动下载新 ZIP，详见[应用更新](app-updates.md#windows-离线组件与完整-zip)。
 
 ## 后台下载与断点续传
 
 下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。
 
-「设置 → 更新 → 下载器」的新配置默认使用随安装包提供的 aria2，无需另行安装或配置 PATH；已有明确保存的下载器选择保留。也可手动选择内置 HTTP 下载器。aria2 路径留空时，发行服务只使用同目录 `aria2c[.exe]`，开发服务只使用当前 checkout 的 `.tools/aria2/aria2c[.exe]`，不从 PATH 查找；高级设置可填写自定义可执行文件的完整绝对路径，不接受命令行参数或脚本。程序通过固定参数直接启动 aria2c，不启用 RPC，也不会读取用户 aria2 配置。文件缺失或运行失败会明确报错，不自动替换下载器；开发环境可运行 `pnpm setup:aria2` 准备固定版本。偏好只影响之后开始的下载。
+当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。
 
-aria2 固定为 1.37.0。Windows x64 使用经 SHA-256 校验的官方可执行文件，Linux x64 和 macOS arm64/x64 从同版本官方源码构建；许可、对应源码和构建信息随包携带。当前固定单连接下载，内置 aria2 不代表已启用多连接加速。开发与发行准备方式见 [开发指南](development.md)。
+Maa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。
 
-aria2 1.37.0 不支持到代理的 HTTPS 连接，且 `NO_PROXY=*` 与内置 HTTP 下载器行为不同。下载开始前，服务检测环境变量 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`（兼容大小写）中的 `https://` 代理地址，或 `NO_PROXY` 列表中的 `*`；检测到时本次使用内置 HTTP 下载器，保留已保存的下载器偏好。续传缓存按本次实际引擎校验，原 aria2 分片不会作为 HTTP 连续数据复用。普通 `http://` 代理继续使用所选下载器，证书、HTTPS 重定向、大小和摘要校验保持启用。
+HTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。MirrorChyan（Mirror酱）暂不接入，核心与资源继续使用官方公开来源。
 
-两种下载器均在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。内置下载器使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。aria2 保留自己的控制文件；切换下载器时不混用两者的未完成数据。
+下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。
 
-aria2 报告续传控制文件读取或格式损坏时，服务先确认 `.partial.aria2` 是可读取的普通文件，再清理该下载的分片与控制文件，从原始来源重新探测地址并重试一次。第二次仍损坏则清理并报错；目录、不可读取文件和普通网络错误保留原有失败处理，不因退出码 `1` 就清理缓存或反复重下。
+下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。
 
-下载没有两分钟总时限；连接或数据长时间停滞才会失败。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。失败不会自动替换下载器。下载完成后仍检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。Python 调试参考实现不提供新的下载器设置。
+实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。
+
+## Clash、系统代理与 VPN/TUN
+
+“设置 → 更新 → 下载代理”提供三种连接方式，统一用于 Maa Verge 应用、MaaCore 与 MaaResource 的版本检查和更新包下载，共用 `Settings.downloadProxy`。旧配置没有该字段时使用自动模式。
+
+| 模式                 | 行为                                                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 自动                 | 优先读取环境代理，再读取系统手动代理；配置无法解析、协议不支持、代理不可达、认证失败或传输中断时尝试直连。                                                 |
+| 手动 HTTP/HTTPS 代理 | 接受 `IP:端口` 或完整代理 URL，省略协议时补 `http://`。保存前验证地址，固定使用该代理并覆盖环境、系统代理及 `NO_PROXY`；失败显示中文错误并保留可恢复分片。 |
+| 直连                 | 强制绕过环境和系统 HTTP 代理；VPN/TUN 仍可通过系统路由接管流量。                                                                                           |
+
+代理输入参考上游 MAA 的[地址与协议设置](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/UserControl/Settings/VersionUpdateSettingsUserControlModel.cs#L405)。上游[默认地址为空](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Configuration/Global/Update.cs#L51)，由 .NET HTTP handler 的默认策略读取代理；填写地址后[建立显式代理](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L330)。其下载失败后重试同一 HTTP 服务，没有主动切换到直连。Maa Verge 的自动失败转直连按本次用户要求增加，安全续传与 SHA-256 校验为本项目既有能力。
+
+自动模式按目标协议读取 `http_proxy` / `HTTP_PROXY` 或 `https_proxy` / `HTTPS_PROXY`，再使用 `all_proxy` / `ALL_PROXY`；非空的小写值优先。`no_proxy` / `NO_PROXY` 交由固定 Bun 匹配，支持全局 `*`、域名、地址和端口等绕过规则。系统代理不能覆盖已配置的环境代理。转直连时明确传入 `proxy: false`，避免再次继承同一环境代理；归档和元数据均覆盖取得响应头前的失败及读取正文时断流，元数据格式、大小与归档完整性错误不触发绕过。
+
+从开始菜单或 Finder 启动时，应用通常没有终端里的代理环境变量，因此还需读取系统手动代理。Windows 从当前用户的 Internet 设置读取代理服务器、按协议配置和绕过列表；macOS 从 `scutil --proxy` 读取当前手动 HTTP/HTTPS 代理与例外列表。使用 Clash 的「系统代理」时，请以其设置的 HTTP 或 mixed 端口为准，程序不猜测端口、不启动 Clash，也不修改代理软件或系统设置。HTTPS 目标通常也通过普通 HTTP 代理的 CONNECT 隧道传输，目标使用 HTTPS 不代表代理地址必须使用 `https://`。
+
+VPN/TUN 通过系统路由接管流量，应用直接连接即可，不需要探测节点或额外改写下载地址。Linux 本轮支持代理环境变量与系统路由，不读取 GNOME/KDE 的桌面代理配置。纯 SOCKS 端口与显式 PAC 配置暂不支持；自动模式遇到它们时尝试直连，手动模式拒绝无效或不支持的代理地址。有效的系统手动代理优先于并存的自动检测设置；只有「自动检测」而没有手动代理或显式 PAC 时直接连接，不执行 WPAD 发现。macOS 仅采用默认路由的顶层代理配置，不展开按接口或域名划分的代理作用域。
+
+自动模式每次建立连接重新读取代理设置，包含重定向和失败重试；已失败的同一代理在本次下载后续重连中绕过，新选中的代理仍可使用。手动模式正文传输中断可在同一代理上重连，默认三轮耗尽后显示错误，供用户再次重试；不会自动直连。切换代理不会改变下载来源和缓存身份，仍需核对 Range / If-Range 与远端版本后才能续传。代理认证、TLS 证书和归档 SHA-256 分别校验，保持证书检查启用。
+
+### Windows 回环验证（2026-10-27）
+
+固定 Bun 1.4.3 的组件下载、代理与重连六文件专项共 **89 项通过、0 失败**，该数字不包含新增应用宿主 RPC 的验证。测试使用隔离数据、回环 HTTP/HTTPS 源和实际转发请求的合成代理，系统设置由解析夹具注入；未向公网下载资源。
+
+| 场景           | 已验证行为                                                                                                                  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 环境代理与绕过 | 大小写 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`、协议优先级、`NO_PROXY=*`、地址及目标端口绕过                             |
+| 系统设置解析   | Windows 手动代理、协议分流、例外、停用与自动检测；macOS 顶层代理、例外及嵌套接口隔离；Linux 环境代理分支                    |
+| 传输与认证     | HTTP 正向代理、HTTP CONNECT 与 HTTPS 代理；手动认证成功，407、不可达及不受信证书报错且不直连；凭据不传给源站、不留在错误链  |
+| 模式与降级     | 自动代理不可达、407 与协议不支持时转直连，已有分片继续 Range / If-Range；直连模式绕过继承的代理环境                         |
+| 元数据检查     | 自动模式代理正文断流后直连重取；手动 407 不直连；关闭服务、无效 JSON 和大小超限不触发直连                                   |
+| 连接恢复与切换 | 直连→代理、代理→直连、代理→另一代理在断流后重新选路，并按 Range / If-Range 续传                                             |
+| 连续中断       | 三次中断后累计保留 48,000 字节，自动重试耗尽后用户再次重试从该位置完成；手动模式四次请求均经过同一代理                      |
+| 来源与完整性   | 重试从原始 URL 刷新过期签名地址；远端版本变化拒绝复用旧字节；没有安全版本标记时从零下载；大小、SHA-256 与重定向边界继续校验 |
+| 取消与错误分类 | 重连等待期间立即取消；手动代理配置、证书、完整性及本地磁盘准备错误不按临时网络故障反复重试                                  |
+
+另在本机 Windows 只读解析当前已配置的 HTTP 系统代理成功，没有通过该用户代理发送公网请求、启动或修改 Clash/VPN。macOS/Linux 目标系统、真实 Clash 节点转发、VPN/TUN 路由和公网提速尚未实测；回环结果只覆盖路由选择、故障恢复与数据校验，完整验证记录见 [开发状态](STATUS.md)。
 
 ## 与 maa-cli 的关系
 

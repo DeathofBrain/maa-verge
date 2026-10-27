@@ -122,8 +122,7 @@ async function fixture(handler: RequestListener) {
       try {
         const hash = await downloadArchive(${JSON.stringify({ ...metadata, digest })},
           ${JSON.stringify(destination)}, () => {}, {
-            engine: 'aria2', aria2Path: ${JSON.stringify(path.join(root, 'missing-aria2'))},
-            idleTimeoutMs: 2_000,
+            idleTimeoutMs: 2_000, retryDelaysMs: [],
           });
         process.stdout.write(JSON.stringify({ hash }));
       } catch (error) {
@@ -161,7 +160,7 @@ async function fixture(handler: RequestListener) {
   return { destination, metadata, download, connections: () => connections };
 }
 
-test('aria2 selection uses the compatible downloader through a trusted HTTPS proxy', async () => {
+test('downloads use the built-in HTTP client through a trusted HTTPS proxy', async () => {
   let requests = 0;
   const archive = await fixture((_request, response) => {
     requests++;
@@ -177,7 +176,7 @@ test('aria2 selection uses the compatible downloader through a trusted HTTPS pro
   expect(await Bun.file(archive.destination + '.partial.aria2').exists()).toBe(false);
 });
 
-test('HTTPS proxy compatibility retains validated partials and resumes after a new process', async () => {
+test('HTTPS proxy download retains validated partials and resumes after a new process', async () => {
   const requests: { range?: string; ifRange?: string | string[] }[] = [];
   const archive = await fixture((request, response) => {
     requests.push({ range: request.headers.range, ifRange: request.headers['if-range'] });
@@ -213,7 +212,7 @@ test('HTTPS proxy compatibility retains validated partials and resumes after a n
   expect(await readFile(archive.destination)).toEqual(payload);
 });
 
-test('HTTPS proxy compatibility still rejects an incorrect archive SHA-256', async () => {
+test('HTTPS proxy download still rejects an incorrect archive SHA-256', async () => {
   const archive = await fixture((_request, response) => {
     response.writeHead(200, { 'content-length': payload.length });
     response.end(payload);
@@ -227,7 +226,7 @@ test('HTTPS proxy compatibility still rejects an incorrect archive SHA-256', asy
   expect(await Bun.file(archive.destination + '.partial').exists()).toBe(false);
 });
 
-test('HTTPS proxy compatibility requires explicit certificate trust', async () => {
+test('HTTPS proxy download requires explicit certificate trust', async () => {
   let requests = 0;
   const archive = await fixture((_request, response) => {
     requests++;
@@ -239,7 +238,7 @@ test('HTTPS proxy compatibility requires explicit certificate trust', async () =
   expect(await Bun.file(archive.destination).exists()).toBe(false);
 });
 
-test('HTTPS proxy compatibility rejects HTTPS redirects to an HTTP archive', async () => {
+test('HTTPS proxy download rejects HTTPS redirects to an HTTP archive', async () => {
   let insecureRequests = 0;
   const insecurePort = await listen(
     createHttpServer((_request, response) => {

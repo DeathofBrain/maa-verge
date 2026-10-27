@@ -3676,6 +3676,142 @@
         "offset",
         "limit"
       ]
+    },
+    "HostUpdateParams": {
+      "description": "Host-only application update operations. This definition is deliberately absent from the public RPC parameter and result maps; callers cannot supply URLs or output paths.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operation", "operationId", "page"],
+          "properties": {
+            "operation": {
+              "const": "releases"
+            },
+            "operationId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9_-]{1,100}$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            },
+            "page": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operation", "operationId", "tag"],
+          "properties": {
+            "operation": {
+              "const": "manifest"
+            },
+            "operationId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9_-]{1,100}$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9.+_-]*$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operation", "operationId", "tag", "version", "name", "size"],
+          "properties": {
+            "operation": {
+              "const": "download"
+            },
+            "operationId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9_-]{1,100}$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9.+_-]*$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9.+_-]*$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 180,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1073741824
+            },
+            "digest": {
+              "type": "string",
+              "minLength": 71,
+              "maxLength": 71,
+              "pattern": "^sha256:[a-fA-F0-9]{64}$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["operation", "operationId"],
+          "properties": {
+            "operation": {
+              "const": "cancel"
+            },
+            "operationId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9_-]{1,100}$",
+              "not": {
+                "pattern": "[\\r\\n]"
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

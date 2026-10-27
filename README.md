@@ -21,12 +21,12 @@ Maa Verge 是一款免费开源的明日方舟桌面助手，基于 [MAA](https:
 
 从 **[GitHub Releases](https://github.com/DeathofBrain/maa-verge/releases)** 下载软件，也可以点击下表直接下载 v0.1.2 安装包。
 
-| 系统 | 安装包 | 安装方式 |
-| --- | --- | --- |
-| Windows x64 | [EXE（推荐）](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_x64-setup.exe) / [MSI](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_x64_zh-CN.msi) | 下载后运行安装程序 |
-| macOS 13.5+ · Apple Silicon（M 系列） | [DMG · aarch64](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_aarch64.dmg) | 打开后将应用拖入「应用程序」 |
-| macOS 13.5+ · Intel | [DMG · x64](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_x64.dmg) | 打开后将应用拖入「应用程序」 |
-| Linux x64 | [AppImage](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_amd64.AppImage) / [DEB](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_amd64.deb) / [RPM](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge-0.1.2-1.x86_64.rpm) | AppImage 赋予执行权限后运行；DEB / RPM 使用系统软件包管理器安装 |
+| 系统                                  | 安装包                                                                                                                                                                                                                                                                                                                       | 安装方式                                                        |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Windows x64                           | [EXE（推荐）](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_x64-setup.exe) / [MSI](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_x64_zh-CN.msi)                                                                                                    | 下载后运行安装程序                                              |
+| macOS 13.5+ · Apple Silicon（M 系列） | [DMG · aarch64](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_aarch64.dmg)                                                                                                                                                                                                              | 打开后将应用拖入「应用程序」                                    |
+| macOS 13.5+ · Intel                   | [DMG · x64](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_x64.dmg)                                                                                                                                                                                                                      | 打开后将应用拖入「应用程序」                                    |
+| Linux x64                             | [AppImage](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_amd64.AppImage) / [DEB](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge_0.1.2_amd64.deb) / [RPM](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/Maa-Verge-0.1.2-1.x86_64.rpm) | AppImage 赋予执行权限后运行；DEB / RPM 使用系统软件包管理器安装 |
 
 在 Release 页面下载时，安装包位于 **Assets** 中。**Source code** 是源码压缩包，普通使用无需下载；[SHA256SUMS.txt](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.2/SHA256SUMS.txt) 可用于核对下载文件。
 
@@ -44,7 +44,7 @@ Windows 安装包尚无发布者签名；macOS 已采用完整的本地签名（
 - **管理与执行作业**：在「作业中心」导入本地或 PRTS Plus 的普通、保全、悖论作业及作业集，查看详情、安排独立队列并保留来源署名。
 - **同时监控多次执行**：在总览中筛选和搜索任务表、设备与执行结果，逐个查看进度、材料掉落、基建反馈与失败原因，分别停止任务；模拟器画面按需打开。
 - **管理模拟器多开**：为各实例保存连接配置，分别开始任务、查看进度和停止执行。
-- **下载与更新**：内置 aria2，组件下载中断后可重试续传；应用、MaaCore 和游戏资源分别更新，组件更新在空闲时生效。
+- **下载与更新**：组件下载中断后可重试续传；应用、MaaCore 和游戏资源分别更新，组件更新在空闲时生效。
 - **使用独立工具**：在「工具箱」选择设备，识别仓库与干员、计算公招标签或按目标补货，查看上次成功采集的数据并导出 JSON、Markdown、CSV 等格式。
 - **设置每日定时**：为已保存的任务表选择设备和时间，按电脑本地时间每天执行；Windows 还提供默认关闭的提前唤醒选项。
 - **保留本地记录**：任务表、设置与执行记录保存在本机；主页提供近期执行、活动日历和组件版本，支持浅色与深色主题。
@@ -93,13 +93,15 @@ Windows 安装包尚无发布者签名；macOS 已采用完整的本地签名（
 
 ### MaaCore 或资源下载失败怎么办？
 
-在「设置 → 更新」查看失败原因，检查网络和目录写入权限，再重试下载。安装包自带 aria2，无需另行安装；也可以在设置中选择内置 HTTP 下载器。核心与资源默认放在程序同级的 `MaaCore`、`MaaResource` 文件夹，目录不可写时可分别改为可写目录。组件文件被误删或损坏时，先按页面提示修复。
+在「设置 → 更新」查看失败原因，检查网络和目录写入权限，再重试下载。v0.1.2 安装包自带 aria2，无需另行安装；也可以在设置中选择内置 HTTP 下载器。核心与资源默认放在程序同级的 `MaaCore`、`MaaResource` 文件夹，目录不可写时可分别改为可写目录。组件文件被误删或损坏时，先按页面提示修复。
+
+当前准备中的 v0.1.3-alpha1 将统一应用、MaaCore 和游戏资源的 HTTP 下载与代理设置，并在 Windows EXE 中提供离线组件选项、增加包含完整组件的 ZIP、停止提供 MSI；这些变化尚未进入上述 v0.1.2 安装包。预览版的安装和迁移说明见[待发布版本说明](docs/releases/v0.1.3-alpha1.md)。
 
 ### 软件、核心和游戏资源怎么更新？
 
 v0.1.1 用户可在「设置 → 更新」下载并校验 v0.1.2，停止任务、关闭实时画面，并等待连接和组件操作空闲后确认「重启并安装」。**v0.1.0 用户须先完全退出应用，再从 [Releases](https://github.com/DeathofBrain/maa-verge/releases) 手动安装 v0.1.2。** macOS v0.1.1 无法启动时，可直接下载对应架构的 v0.1.2 DMG 替换安装；Linux DEB / RPM 继续通过包管理器或安装包更新。
 
-应用和 MaaCore 可分别选择正式版或预览版。MaaCore 与游戏资源各自准备更新，等待空闲生效；核心已经是最新版时，游戏资源仍可能有更新。应用更新暂不支持断点续传，组件下载支持。
+应用和 MaaCore 可分别选择正式版或预览版。MaaCore 与游戏资源各自准备更新，等待空闲生效；核心已经是最新版时，游戏资源仍可能有更新。v0.1.2 的应用更新不支持断点续传，组件下载支持。
 
 ### 支持定时执行和 AI 托管吗？
 

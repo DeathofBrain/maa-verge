@@ -46,3 +46,4 @@ MaaCore.dll
 libMaaCore.so
 libMaaCore.dylib
 output
+/.cache

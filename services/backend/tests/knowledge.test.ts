@@ -4,6 +4,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -22,7 +23,7 @@ import {
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-knowledge-'));
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'maaverge-knowledge-')));
   roots.push(root);
   return root;
 };

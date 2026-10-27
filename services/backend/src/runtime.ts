@@ -5,7 +5,6 @@ import { Store, now } from './storage';
 import { RpcError } from './errors';
 import { connectionError, errorDetail, nativeConnectionError } from './connection-errors';
 import {
-  defaultComponentDownload,
   defaultConnection,
   parsePlan,
   parseSettings,
@@ -21,6 +20,7 @@ import { CoreWorker } from './worker';
 import { captureAdbPath, connectionCapture } from './capture';
 import { Preview } from './preview';
 import { UpdateService } from './updates';
+import { AppUpdateHttp } from './app-update-http';
 import {
   configuredAdbPath,
   resolveAdbPath,
@@ -132,6 +132,7 @@ export class Runtime {
   // Keep session-used directories protected through disconnect/client-switch shutdown.
   private protectedWorkerLogs = new Set<string>();
   readonly updates: UpdateService;
+  readonly appUpdateHttp: AppUpdateHttp;
   readonly preview: Preview;
   readonly calendar: ActivityCalendar;
   readonly artifacts: RunArtifacts;
@@ -195,12 +196,16 @@ export class Runtime {
       this.store.put('meta', 'initialized', true);
     }
     const defaults = defaultComponentPaths(root, options.applicationDirectory);
-    const settings = parseSettings(this.store.get('settings', 'main'));
-    if (!settings.componentPaths || !settings.componentDownload)
+    const storedSettings = this.store.get('settings', 'main', {});
+    // Removed downloader preferences may contain a custom executable path. Ignore
+    // them only when migrating persisted settings; new RPC requests remain strict.
+    const removedDownloadPreference = Object.hasOwn(storedSettings, 'componentDownload');
+    if (removedDownloadPreference) delete storedSettings.componentDownload;
+    const settings = parseSettings(storedSettings);
+    if (!settings.componentPaths || removedDownloadPreference)
       this.store.put('settings', 'main', {
         ...settings,
         componentPaths: settings.componentPaths ?? defaults,
-        componentDownload: settings.componentDownload ?? defaultComponentDownload(),
       });
     for (const device of this.store.all('device')) {
       device.state = 'offline';
@@ -230,6 +235,16 @@ export class Runtime {
         this.putExecution(run.id, run);
         this.emit('run.interrupted', run.message, { runId: run.id });
       }
+    this.appUpdateHttp = new AppUpdateHttp(
+      path.resolve(root, '../updates/app/downloads'),
+      () => this.store.get('settings', 'main', {}).downloadProxy,
+      (operationId, progress) =>
+        options.notify?.({
+          jsonrpc: '2.0',
+          method: 'runtime.hostEvent',
+          params: { operationId, progress },
+        }),
+    );
     this.updates = new UpdateService(
       path.join(root, 'components'),
       this.store,
@@ -600,6 +615,8 @@ export class Runtime {
       if (keys.some((key) => !(key in params))) throw new RpcError(-32602, '请求参数无效');
     };
     switch (method) {
+      case 'host.updates':
+        return this.appUpdateHttp.handle(params);
       case 'app.snapshot':
         return this.snapshot();
       case 'knowledge.status':
@@ -932,14 +949,14 @@ export class Runtime {
           previous = parseSettings(this.store.get('settings', 'main'));
         if (!Object.hasOwn(params.settings, 'copilotStorage') && previous.copilotStorage)
           settings.copilotStorage = previous.copilotStorage;
+        if (!Object.hasOwn(params.settings, 'downloadProxy') && previous.downloadProxy)
+          settings.downloadProxy = previous.downloadProxy;
         this.copilot.validateStorageDirectory(settings.copilotStorage?.directory ?? '');
         if (
           settings.coreUpdateChannel !== previous.coreUpdateChannel &&
           this.updates.pendingOperations
         )
           throw new RpcError(-32021, '组件检查、下载或切换正在进行，请完成后再切换核心更新通道');
-        if (!settings.componentDownload && previous.componentDownload)
-          settings.componentDownload = previous.componentDownload;
         await this.updates.saveDirectories(
           settings.componentPaths ?? previous.componentPaths!,
           (componentPaths) => {
@@ -2760,6 +2777,18 @@ export class Runtime {
       this.ticking = false;
     }
   }
+  async initializeBundledComponents(): Promise<void> {
+    if (!this.options.applicationDirectory) return;
+    try {
+      await this.updates.bootstrapBundled(
+        path.join(this.options.applicationDirectory, 'runtime', 'bundled-components'),
+      );
+    } catch (error) {
+      this.emit('update.bootstrap_failed', '随附组件初始化失败，可在更新中心查看原因并重试', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
   async automaticUpdates() {
     if (!this.running || this.appUpdating || this.appUpdatePreparing) return;
     const settings = parseSettings(this.store.get('settings', 'main'));
@@ -2798,6 +2827,7 @@ export class Runtime {
   }
   private async closeInner() {
     this.running = false;
+    this.appUpdateHttp.close();
     this.copilot.beginClose();
     this.scheduler.close();
     this.toolbox.close();

@@ -136,9 +136,6 @@ jobs:
       - name: Verify native build environment
         if: runner.os != 'Linux'
         run: pnpm run doctor --native
-      - name: Install pinned bundled aria2 and verify HTTPS support
-        if: runner.os != 'Linux'
-        run: node tools/setup-aria2.mjs
       - name: Build C++ worker and run synthetic CTest fixtures
         if: runner.os != 'Linux'
         run: node tools/build-core-worker.mjs

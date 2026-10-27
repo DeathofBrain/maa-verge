@@ -117,6 +117,9 @@ export async function main() {
     ),
     importFrom: previous ? path.join(previous, 'native') : undefined,
   });
+  // Optional installer/ZIP payloads are adopted offline before connections,
+  // schedules, downloads or frontend requests can start using components.
+  await runtime.initializeBundledComponents();
   // Preserve unexpected service diagnostics as well as forwarding them to stderr.
   const originalError = console.error;
   console.error = (...values: unknown[]) => {
@@ -211,6 +214,7 @@ export async function main() {
       const workersClosing = Promise.allSettled(
         [...runtime.workers.values()].map((worker) => worker.close()),
       );
+      runtime.appUpdateHttp.close();
       await runtime.calendar.close();
       await runtime.updates.close();
       await Promise.allSettled([...inflight]);

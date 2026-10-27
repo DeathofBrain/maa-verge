@@ -15,15 +15,15 @@ flowchart LR
     Worker --> Core[动态加载 MaaCore / ADB]
 ```
 
-| 范围 | 当前入口与约束 |
-| --- | --- |
-| 页面与 Tauri | 页面只使用 `packages/contracts` 的 transport；Rust 管理服务进程、窗口和系统集成 |
-| 应用服务 | `services/backend/src/entry.ts`；计划、策略、SQLite、设备发现、执行监督、画面令牌与人工点击准入、三条独立更新通道 |
-| Agent | `services/backend/src/agent.ts`；原生服务中保留本地确定性 mock 提案，需要审阅、保存后手动执行；真实云模型、持续托管及视觉 Agent 尚未接入 |
-| 原生调用 | `services/native`；C++20 动态加载 MaaCore，复制回调、持有设备锁、处理异步 ID、调用超时和销毁 |
-| 更新任务 | 包内服务 `--update-job`；选择性提取核心或合并固定提交的资源，调用 C++ `--validate`，不打开业务数据库 |
-| 协议来源 | `packages/contracts/schemas`；JSON Schema 生成 TypeScript 类型和独立 Ajv 校验器，生成过程不调用 Python |
-| Python 参考 | `services/runtime` 与 `tests/python`；开发回归和显式 debug 比较，不进入发行目录 |
+| 范围         | 当前入口与约束                                                                                                                           |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 页面与 Tauri | 页面只使用 `packages/contracts` 的 transport；Rust 管理服务进程、窗口和系统集成                                                          |
+| 应用服务     | `services/backend/src/entry.ts`；计划、策略、SQLite、设备发现、执行监督、画面令牌与人工点击准入、三条独立更新通道                        |
+| Agent        | `services/backend/src/agent.ts`；原生服务中保留本地确定性 mock 提案，需要审阅、保存后手动执行；真实云模型、持续托管及视觉 Agent 尚未接入 |
+| 原生调用     | `services/native`；C++20 动态加载 MaaCore，复制回调、持有设备锁、处理异步 ID、调用超时和销毁                                             |
+| 更新任务     | 包内服务 `--update-job`；选择性提取核心或合并固定提交的资源，调用 C++ `--validate`，不打开业务数据库                                     |
+| 协议来源     | `packages/contracts/schemas`；JSON Schema 生成 TypeScript 类型和独立 Ajv 校验器，生成过程不调用 Python                                   |
+| Python 参考  | `services/runtime` 与 `tests/python`；开发回归和显式 debug 比较，不进入发行目录                                                          |
 
 JSON-RPC 使用 UTF-8 换行 JSON，stdout 仅承载协议，日志进入 stderr。原生输出带 `protocolVersion: 1`。每个设备只有一个控制者；原生调用结果不明时停止并要求核对，不自动重放。`AsstStop` 清空队列，不能作为暂停恢复。
 
@@ -77,10 +77,10 @@ Windows 运行中模拟器的动态多开枚举、监听归属、自动增强截
 
 默认 TypeScript 后端在新库不存在时，从旧标准用户目录 `MAAVerge/native`（开发版为 `MAAVerge-dev/<checkout-hash>/native`）导入：同时持有源、目标数据根租约，只读序列化旧库，按下文的 fsync、完整性校验和改名流程发布新库，并复制相对 ID 引用的 `run-artifacts` 截图。失败不创建空业务库，重试会替换上次复制不完整的截图；已有目标库时不再导入，显式数据根覆盖不会自动读取旧用户数据。源数据库、旧备份和日志均保留；核心、资源及用户外部文件的绝对路径引用保持原值，因此迁移后不要删除仍被引用的旧组件目录。Python debug 参考不执行这次自动导入，检测到旧开发库时提示先用默认后端迁移。
 
-| 锁 | 实现与生命周期 |
-| --- | --- |
+| 锁           | 实现与生命周期                                                                                                                                            |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 数据目录独占 | TypeScript 与当前 Python 参考都直接打开同一 `.runtime-lock.sqlite3`，设置 DELETE journal、`busy_timeout=0` 并保持 `BEGIN EXCLUSIVE`；持锁服务退出后才释放 |
-| 设备控制权 | C++ worker 在共享设备锁目录持有文件锁；Windows 使用 LockFileEx，Unix 使用 flock，与 Python filelock 兼容；销毁核心后释放 |
+| 设备控制权   | C++ worker 在共享设备锁目录持有文件锁；Windows 使用 LockFileEx，Unix 使用 flock，与 Python filelock 兼容；销毁核心后释放                                  |
 
 两个锁不共用文件，也不互相替代。不要删除或重建正在使用的锁文件。开发 worktree 的数据根各自隔离，设备锁目录由同机实例共享。旧版本尚无 SQLite 数据根租约，交接前必须先完全退出旧桌面和旧服务。
 
@@ -123,7 +123,7 @@ pnpm test:desktop-runtime
 pnpm build
 ```
 
-`dist/runtime/maaverge-runtime` 包含应用服务、C++ worker、`aria2c[.exe]` 三个可执行文件、`build-info.json` 和 `licenses/`。aria2 固定版本并随包携带许可、对应源码和构建信息；下载引擎由 TypeScript 服务持有，不并入 MaaCore worker。新配置默认使用包内 aria2，空路径不查找 PATH；既有内置 HTTP 下载器选择保留。开发通过 `pnpm setup:aria2` 准备，详见 [开发指南](development.md)。生产 CMake 使用 `BUILD_TESTING=OFF`，不需要 Python。测试构建使用 Python 3.12/filelock 驱动合成动态库与锁互斥测试；这不构成发行依赖。
+`dist/runtime/maaverge-runtime` 包含应用服务和 C++ worker 两个可执行文件、`build-info.json` 和 `licenses/`。组件下载统一由 TypeScript 服务内置 HTTP 实现，保留断点续传、进度、代理和完整性校验；不再准备或打包 aria2，也不提供下载器选择或自定义可执行文件路径。已发布 v0.1.2 的包内 aria2 保持不变，当前源码构建布局见 [开发指南](development.md)。生产 CMake 使用 `BUILD_TESTING=OFF`，不需要 Python。测试构建使用 Python 3.12/filelock 驱动合成动态库与锁互斥测试；这不构成发行依赖。
 
 打包禁用自动加载 `.env` 与 `bunfig.toml`，启动时清理影响运行方式的 Node/Bun 环境选项。包内更新任务通过 `process.execPath` 重新启动同一服务的 `--update-job`，不依赖源码树或开发目录。最小探针检查空 PATH 下的 SQLite/WAL、保留 rowid 的备份、跨进程独占锁、子进程 NDJSON 与归档读取；包内 smoke 检查真实服务的空设备状态、Agent 提案、设置与计划保存、重启持久化、缺失设备拒绝和退出收尾，合成核心可用时继续验证 `--update-job` 的选择性归档提取与 C++ 校验。运行去重、空闲更新和回滚由注入合成适配器的服务测试覆盖。
 

@@ -13,15 +13,12 @@ import { bunVersion, ensureBun, cleanRuntimeEnvironment } from './setup-bun.mjs'
 import { buildCoreWorker } from './build-core-worker.mjs';
 import { writeRuntimeNotices } from './runtime-notices.mjs';
 import { assertWorkspaceDependencies } from './environment.mjs';
-import { ensureAria2, readAria2BuildInfo } from './setup-aria2.mjs';
 
 async function main() {
   assertWorkspaceDependencies();
   await run('node', ['tools/generate-agent-knowledge.mjs', '--check']);
   const bun = await ensureBun(),
-    aria2 = await ensureAria2(),
     native = await buildCoreWorker({ testing: false });
-  const aria2Info = readAria2BuildInfo(path.dirname(aria2));
   const directory = path.join(root, 'dist/runtime/maaverge-runtime');
   if (!path.resolve(directory).startsWith(path.join(root, 'dist') + path.sep))
     throw new Error('Unexpected runtime build path');
@@ -43,14 +40,11 @@ async function main() {
   );
   const worker = path.join(directory, path.basename(native));
   copyFileSync(native, worker);
-  const downloader = path.join(directory, path.basename(aria2));
-  copyFileSync(aria2, downloader);
   writeRuntimeNotices(directory);
   if (process.platform === 'darwin') {
     for (const [file, entitlements] of [
       [executable, 'RuntimeEntitlements.plist'],
       [worker, 'CoreWorkerEntitlements.plist'],
-      [downloader, null],
     ]) {
       const args = [
         '--force',
@@ -74,7 +68,6 @@ async function main() {
         backend: 'typescript',
         bunVersion,
         cppStandard: 20,
-        aria2: { version: aria2Info.version, target: aria2Info.target, sources: aria2Info.sources },
         applicationVersion: JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))
           .version,
       },
@@ -89,8 +82,6 @@ async function main() {
         'maaverge-runtime',
         'maaverge-core-worker.exe',
         'maaverge-core-worker',
-        'aria2c.exe',
-        'aria2c',
         'build-info.json',
         'licenses',
       ].includes(item)
