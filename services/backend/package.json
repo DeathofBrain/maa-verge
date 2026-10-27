@@ -9,6 +9,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@maaverge/agent": "workspace:*",
     "tar": "7.5.22",
     "yauzl": "3.4.0"
   },

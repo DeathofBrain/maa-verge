@@ -1,0 +1,18 @@
+{
+  "@cfworker/json-schema@4.1.1": {
+    "commit": "5409fdc2bd144f68e8b28c61c71fcb16600000a6",
+    "selectedLicense": "MIT",
+    "evidence": "https://registry.npmjs.org/@cfworker%2fjson-schema/4.1.1",
+    "file": "cfworker-json-schema-4.1.1-LICENSE",
+    "sha256": "376944252ab78ca6b41aee44ddea8894927ee67891e77e61eb9d59af63e35094",
+    "source": "https://raw.githubusercontent.com/cfworker/cfworker/5409fdc2bd144f68e8b28c61c71fcb16600000a6/LICENSE.md"
+  },
+  "js-tiktoken@1.0.21": {
+    "commit": "4c8b748e07992c00386f3180af5c574b27b65139",
+    "selectedLicense": "MIT",
+    "evidence": "https://registry.npmjs.org/js-tiktoken/1.0.21",
+    "file": "js-tiktoken-1.0.21-LICENSE",
+    "sha256": "418cb499b436128d653d79941333a5437b7be2ea9213dcc2f04d15d5d2c51d86",
+    "source": "https://raw.githubusercontent.com/dqbd/tiktoken/4c8b748e07992c00386f3180af5c574b27b65139/LICENSE"
+  }
+}

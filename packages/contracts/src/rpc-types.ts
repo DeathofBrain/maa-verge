@@ -92,6 +92,12 @@ export type CopilotDeleteParams1 =
  * via the `definition` "CopilotRatingValue".
  */
 export type CopilotRatingValue = 'none' | 'like' | 'dislike';
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "KnowledgeKind".
+ */
+export type KnowledgeKind =
+  'operator' | 'item' | 'stage' | 'recruitment' | 'infrastructure' | 'document' | 'capability';
 export type Mode = 'native';
 export type Id1 = string;
 export type Name1 = string;
@@ -218,6 +224,10 @@ export interface RpcContract {
     'copilot.category.delete': CopilotCategoryDeleteParams;
     'copilot.category.assign': CopilotCategoryAssignParams;
     'copilot.storage.info': EmptyParams;
+    'knowledge.status': KnowledgeClientParams;
+    'knowledge.search': KnowledgeSearchParams;
+    'account.snapshot.get': AccountSnapshotParams;
+    'account.snapshot.list': AccountSnapshotListParams;
   };
   results: {
     'app.snapshot': Snapshot;
@@ -356,6 +366,10 @@ export interface RpcContract {
     'copilot.storage.info': {
       directory: string;
     };
+    'knowledge.status': KnowledgeStatus;
+    'knowledge.search': KnowledgeSearchResult;
+    'account.snapshot.get': AccountKnowledgeSnapshot | null;
+    'account.snapshot.list': AccountSnapshotListResult;
   };
 }
 /**
@@ -917,6 +931,46 @@ export interface CopilotCategoryAssignParams {
    */
   ids: string[];
   categoryId: string | null;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "KnowledgeClientParams".
+ */
+export interface KnowledgeClientParams {
+  clientType?: ClientType;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "KnowledgeSearchParams".
+ */
+export interface KnowledgeSearchParams {
+  clientType?: ClientType;
+  kind?: KnowledgeKind;
+  query?: string;
+  id?: string;
+  offset?: number;
+  limit?: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "AccountSnapshotParams".
+ */
+export interface AccountSnapshotParams {
+  deviceId: string;
+  clientType?: ClientType;
+  kind: 'depot' | 'operators';
+  snapshotId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "AccountSnapshotListParams".
+ */
+export interface AccountSnapshotListParams {
+  deviceId: string;
+  clientType?: ClientType;
+  kind?: 'depot' | 'operators';
+  offset?: number;
+  limit?: number;
 }
 export interface Snapshot {
   mode: Mode;
@@ -1557,6 +1611,183 @@ export interface CopilotCategory {
   name: string;
   createdAt: string;
   updatedAt: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "KnowledgeStatus".
+ */
+export interface KnowledgeStatus {
+  parserVersion: number;
+  clientType: ClientType;
+  coreVersion: string | null;
+  resourceVersion: string | null;
+  fingerprint: string;
+  productFingerprint: string;
+  counts: {
+    operator: number;
+    item: number;
+    stage: number;
+    recruitment: number;
+    infrastructure: number;
+    document: number;
+    capability: number;
+  };
+  /**
+   * @maxItems 30
+   */
+  sources: KnowledgeSource[];
+  /**
+   * @maxItems 100
+   */
+  diagnostics: string[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "KnowledgeSource".
+ */
+export interface KnowledgeSource {
+  file: string;
+  sha256: string | null;
+  status: 'available' | 'missing' | 'invalid';
+  records: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "KnowledgeSearchResult".
+ */
+export interface KnowledgeSearchResult {
+  clientType: ClientType;
+  fingerprint: string;
+  productFingerprint: string;
+  /**
+   * @maxItems 50
+   */
+  records: KnowledgeRecord[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "KnowledgeRecord".
+ */
+export interface KnowledgeRecord {
+  key: string;
+  kind: KnowledgeKind;
+  id: string;
+  name: string;
+  /**
+   * @maxItems 100
+   */
+  aliases: string[];
+  text: string;
+  data: {
+    [k: string]: unknown;
+  };
+  /**
+   * @maxItems 1000
+   */
+  relations: {
+    predicate: string;
+    targetKind: KnowledgeKind;
+    targetId: string;
+  }[];
+  source: {
+    file: string;
+    pointer: string;
+    sha256: string;
+  };
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "AccountKnowledgeSnapshot".
+ */
+export interface AccountKnowledgeSnapshot {
+  id: string;
+  accountId: string;
+  deviceId: string;
+  clientType: ClientType;
+  kind: 'depot' | 'operators';
+  identity: 'configured-label' | 'device-only';
+  collectedAt: string;
+  runId: string | null;
+  source: 'maacore-recognition' | 'legacy-cache';
+  parserVersion: 1;
+  coreVersion: string | null;
+  resourceVersion: string | null;
+  taskIndex: number | null;
+  recordCount: number;
+  coverage: 'partial';
+  /**
+   * @maxItems 20
+   */
+  unknownFields: string[];
+  /**
+   * @maxItems 10000
+   */
+  items: {
+    id: string;
+    name: string;
+    quantity: number;
+  }[];
+  /**
+   * @maxItems 2000
+   */
+  operators: {
+    id: string;
+    name: string;
+    own: boolean;
+    elite: number | null;
+    level: number | null;
+    potential: number | null;
+    rarity: number | null;
+  }[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "AccountSnapshotListResult".
+ */
+export interface AccountSnapshotListResult {
+  accountId: string;
+  identity: 'configured-label' | 'device-only';
+  deviceId: string;
+  clientType: ClientType;
+  latest: {
+    depot: string | null;
+    operators: string | null;
+  };
+  /**
+   * @maxItems 50
+   */
+  snapshots: AccountSnapshotSummary[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "AccountSnapshotSummary".
+ */
+export interface AccountSnapshotSummary {
+  id: string;
+  accountId: string;
+  deviceId: string;
+  clientType: ClientType;
+  kind: 'depot' | 'operators';
+  identity: 'configured-label' | 'device-only';
+  collectedAt: string;
+  runId: string | null;
+  source: 'maacore-recognition' | 'legacy-cache';
+  parserVersion: 1;
+  coreVersion: string | null;
+  resourceVersion: string | null;
+  taskIndex: number | null;
+  recordCount: number;
+  coverage: 'partial';
+  /**
+   * @maxItems 20
+   */
+  unknownFields: string[];
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

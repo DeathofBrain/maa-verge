@@ -3,6 +3,7 @@ import { assertWorkspaceDependencies } from './environment.mjs';
 
 async function main() {
   assertWorkspaceDependencies();
+  await run('node', ['tools/generate-agent-knowledge.mjs', '--check']);
   await run('node', [
     '--test',
     'tools/tests/environment.test.mjs',

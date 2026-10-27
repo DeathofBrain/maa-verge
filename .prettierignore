@@ -37,6 +37,7 @@ packages/contracts/src/worker-types.ts
 packages/contracts/src/validators.js
 packages/contracts/src/validators.d.ts
 services/backend/src/casefold-data.json
+services/backend/src/product-knowledge.generated.json
 pnpm-lock.yaml
 uv.lock
 **/Cargo.lock

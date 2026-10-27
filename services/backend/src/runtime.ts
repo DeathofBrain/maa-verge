@@ -66,6 +66,14 @@ import { Logs } from './logs';
 import { Toolbox, toolJob, toolCatalog } from './toolbox';
 import { Scheduler } from './scheduler';
 import { CopilotLibrary, copilotWorkspaceIdentity } from './copilot';
+import { AccountKnowledge } from './account-knowledge';
+import { Knowledge } from './knowledge';
+import {
+  validateKnowledgeClientParams,
+  validateKnowledgeSearchParams,
+  validateAccountSnapshotParams,
+  validateAccountSnapshotListParams,
+} from '../../../packages/contracts/src/validators.js';
 import {
   validateCopilotListParams,
   validateCopilotIdentityParams,
@@ -115,6 +123,8 @@ export interface RuntimeOptions {
 export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
+  readonly accounts: AccountKnowledge;
+  readonly knowledge: Knowledge;
   readonly toolbox: Toolbox;
   readonly copilot: CopilotLibrary;
   readonly scheduler: Scheduler;
@@ -162,6 +172,8 @@ export class Runtime {
     private options: RuntimeOptions = {},
   ) {
     this.store = new Store(root, options.importFrom);
+    this.accounts = new AccountKnowledge(this.store);
+    this.knowledge = new Knowledge(this.store, () => this.store.get('active', 'combo', {}));
     this.logs = new Logs(root, {
       applicationDirectory: options.applicationDirectory,
       exportDirectory: options.logExportDirectory,
@@ -590,6 +602,26 @@ export class Runtime {
     switch (method) {
       case 'app.snapshot':
         return this.snapshot();
+      case 'knowledge.status':
+        if (!validateKnowledgeClientParams(params)) throw new RpcError(-32602, '知识索引请求无效');
+        return this.knowledge.status(params.clientType);
+      case 'knowledge.search':
+        if (!validateKnowledgeSearchParams(params)) throw new RpcError(-32602, '知识检索请求无效');
+        return this.knowledge.search(params);
+      case 'account.snapshot.get':
+      case 'account.snapshot.list': {
+        if (
+          !(method === 'account.snapshot.get'
+            ? validateAccountSnapshotParams(params)
+            : validateAccountSnapshotListParams(params))
+        )
+          throw new RpcError(-32602, '账号快照请求无效');
+        if (!this.store.get('device', params.deviceId)) throw new RpcError(-32004, '设备不存在');
+        const client = params.clientType ?? this.deviceClient(params.deviceId);
+        return method === 'account.snapshot.get'
+          ? this.accounts.get(params.deviceId, client, params.kind, params.snapshotId)
+          : this.accounts.list(params.deviceId, client, params.kind, params.offset, params.limit);
+      }
       case 'device.availability':
         if (!validateDeviceAvailabilityParams(params))
           throw new RpcError(-32602, '设备状态请求无效');
@@ -1659,9 +1691,7 @@ export class Runtime {
         return tasks[previous].params.client_type || 'Official';
     return this.deviceClient(run.deviceId);
   }
-  private deviceClient(
-    deviceId: string,
-  ): NonNullable<RpcContract['params']['stages.list']['clientType']> {
+  deviceClient(deviceId: string): NonNullable<RpcContract['params']['stages.list']['clientType']> {
     const settings = parseSettings(this.store.get('settings', 'main')),
       device = this.store.get('device', deviceId);
     const profile =
@@ -1699,6 +1729,7 @@ export class Runtime {
         this.store.delete('user_data_sync', run.deviceId);
         this.store.delete('mall_visit', run.deviceId);
         clearDeviceRecognition(this.store, run.deviceId);
+        this.accounts.invalidate(run.deviceId);
         const settings = this.store.get('settings', 'main');
         if (
           settings.infrastructureEstimates?.some(
@@ -2658,7 +2689,7 @@ export class Runtime {
               clientType: state.clientType,
             };
             synced[step.key] = state.recognitionResultAt;
-            const kind = step.type === 'OperBox' ? 'operators' : 'depot';
+            const kind = step.type === 'OperBox' ? ('operators' as const) : ('depot' as const);
             const result = {
               deviceId: run.deviceId,
               kind,
@@ -2674,6 +2705,13 @@ export class Runtime {
                 result,
               );
               this.store.put('user_data_sync', run.deviceId, synced);
+              const device = this.store.get('device', run.deviceId, {});
+              this.accounts.capture(result, {
+                source: 'maacore-recognition',
+                coreVersion: device.coreVersion ?? null,
+                resourceVersion: device.resourceVersion ?? null,
+                taskIndex: state.index,
+              });
             });
             this.emit(
               'device.data_synced',
@@ -2765,6 +2803,7 @@ export class Runtime {
     this.toolbox.close();
     this.cancelPendingClientSwitches();
     this.preview.invalidate();
+    await this.knowledge.close();
     await this.calendar.close();
     await this.updates.close();
     for (const run of this.executions()) if (run.status === 'running') await this.stopRun(run.id);

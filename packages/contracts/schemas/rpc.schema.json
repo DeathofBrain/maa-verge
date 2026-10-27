@@ -67,7 +67,11 @@
         "copilot.category.save",
         "copilot.category.delete",
         "copilot.category.assign",
-        "copilot.storage.info"
+        "copilot.storage.info",
+        "knowledge.status",
+        "knowledge.search",
+        "account.snapshot.get",
+        "account.snapshot.list"
       ],
       "properties": {
         "app.snapshot": {
@@ -342,6 +346,18 @@
         },
         "copilot.storage.info": {
           "$ref": "#/$defs/EmptyParams"
+        },
+        "knowledge.status": {
+          "$ref": "#/$defs/KnowledgeClientParams"
+        },
+        "knowledge.search": {
+          "$ref": "#/$defs/KnowledgeSearchParams"
+        },
+        "account.snapshot.get": {
+          "$ref": "#/$defs/AccountSnapshotParams"
+        },
+        "account.snapshot.list": {
+          "$ref": "#/$defs/AccountSnapshotListParams"
         }
       }
     },
@@ -405,7 +421,11 @@
         "copilot.category.save",
         "copilot.category.delete",
         "copilot.category.assign",
-        "copilot.storage.info"
+        "copilot.storage.info",
+        "knowledge.status",
+        "knowledge.search",
+        "account.snapshot.get",
+        "account.snapshot.list"
       ],
       "properties": {
         "app.snapshot": {
@@ -847,6 +867,25 @@
             }
           },
           "required": ["directory"]
+        },
+        "knowledge.status": {
+          "$ref": "#/$defs/KnowledgeStatus"
+        },
+        "knowledge.search": {
+          "$ref": "#/$defs/KnowledgeSearchResult"
+        },
+        "account.snapshot.get": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AccountKnowledgeSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "account.snapshot.list": {
+          "$ref": "#/$defs/AccountSnapshotListResult"
         }
       }
     }
@@ -2816,6 +2855,827 @@
         }
       },
       "required": ["id"]
+    },
+    "KnowledgeKind": {
+      "enum": [
+        "operator",
+        "item",
+        "stage",
+        "recruitment",
+        "infrastructure",
+        "document",
+        "capability"
+      ]
+    },
+    "KnowledgeClientParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        }
+      },
+      "required": []
+    },
+    "KnowledgeSearchParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "kind": {
+          "$ref": "#/$defs/KnowledgeKind"
+        },
+        "query": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "required": []
+    },
+    "KnowledgeRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "kind": {
+          "$ref": "#/$defs/KnowledgeKind"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 500
+          },
+          "maxItems": 100
+        },
+        "text": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 12000
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "predicate": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "targetKind": {
+                "$ref": "#/$defs/KnowledgeKind"
+              },
+              "targetId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "required": ["predicate", "targetKind", "targetId"]
+          },
+          "maxItems": 1000
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "pointer": {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 1000
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": ["file", "pointer", "sha256"]
+        }
+      },
+      "required": ["key", "kind", "id", "name", "aliases", "text", "data", "relations", "source"]
+    },
+    "KnowledgeSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": ["available", "missing", "invalid"]
+        },
+        "records": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        }
+      },
+      "required": ["file", "sha256", "status", "records"]
+    },
+    "KnowledgeStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parserVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "coreVersion": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resourceVersion": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "productFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "operator": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "item": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "stage": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "recruitment": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "infrastructure": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "document": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "capability": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            }
+          },
+          "required": [
+            "operator",
+            "item",
+            "stage",
+            "recruitment",
+            "infrastructure",
+            "document",
+            "capability"
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KnowledgeSource"
+          },
+          "maxItems": 30
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1000
+          },
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "parserVersion",
+        "clientType",
+        "coreVersion",
+        "resourceVersion",
+        "fingerprint",
+        "productFingerprint",
+        "counts",
+        "sources",
+        "diagnostics"
+      ]
+    },
+    "KnowledgeSearchResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "productFingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KnowledgeRecord"
+          },
+          "maxItems": 50
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "required": [
+        "clientType",
+        "fingerprint",
+        "productFingerprint",
+        "records",
+        "total",
+        "offset",
+        "limit"
+      ]
+    },
+    "AccountSnapshotParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "kind": {
+          "enum": ["depot", "operators"]
+        },
+        "snapshotId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": ["deviceId", "kind"]
+    },
+    "AccountSnapshotListParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "kind": {
+          "enum": ["depot", "operators"]
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "required": ["deviceId"]
+    },
+    "AccountSnapshotSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "accountId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "kind": {
+          "enum": ["depot", "operators"]
+        },
+        "identity": {
+          "enum": ["configured-label", "device-only"]
+        },
+        "collectedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "runId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "enum": ["maacore-recognition", "legacy-cache"]
+        },
+        "parserVersion": {
+          "const": 1
+        },
+        "coreVersion": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resourceVersion": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "taskIndex": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 29
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "coverage": {
+          "const": "partial"
+        },
+        "unknownFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 100
+          },
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "id",
+        "accountId",
+        "deviceId",
+        "clientType",
+        "kind",
+        "identity",
+        "collectedAt",
+        "runId",
+        "source",
+        "parserVersion",
+        "coreVersion",
+        "resourceVersion",
+        "taskIndex",
+        "recordCount",
+        "coverage",
+        "unknownFields"
+      ]
+    },
+    "AccountKnowledgeSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "accountId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "kind": {
+          "enum": ["depot", "operators"]
+        },
+        "identity": {
+          "enum": ["configured-label", "device-only"]
+        },
+        "collectedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "runId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "enum": ["maacore-recognition", "legacy-cache"]
+        },
+        "parserVersion": {
+          "const": 1
+        },
+        "coreVersion": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resourceVersion": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 0,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "taskIndex": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 29
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "coverage": {
+          "const": "partial"
+        },
+        "unknownFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 100
+          },
+          "maxItems": 20
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "quantity": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": ["id", "name", "quantity"]
+          },
+          "maxItems": 10000
+        },
+        "operators": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "own": {
+                "type": "boolean"
+              },
+              "elite": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "level": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "potential": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "rarity": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": ["id", "name", "own", "elite", "level", "potential", "rarity"]
+          },
+          "maxItems": 2000
+        }
+      },
+      "required": [
+        "id",
+        "accountId",
+        "deviceId",
+        "clientType",
+        "kind",
+        "identity",
+        "collectedAt",
+        "runId",
+        "source",
+        "parserVersion",
+        "coreVersion",
+        "resourceVersion",
+        "taskIndex",
+        "recordCount",
+        "coverage",
+        "unknownFields",
+        "items",
+        "operators"
+      ]
+    },
+    "AccountSnapshotListResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "identity": {
+          "enum": ["configured-label", "device-only"]
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "clientType": {
+          "$ref": "#/$defs/ClientType"
+        },
+        "latest": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "depot": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "operators": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": ["depot", "operators"]
+        },
+        "snapshots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AccountSnapshotSummary"
+          },
+          "maxItems": 50
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "required": [
+        "accountId",
+        "identity",
+        "deviceId",
+        "clientType",
+        "latest",
+        "snapshots",
+        "total",
+        "offset",
+        "limit"
+      ]
     }
   }
 }

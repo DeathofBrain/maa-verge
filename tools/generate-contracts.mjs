@@ -75,6 +75,17 @@ const validators = {
   validateRunArtifactParams: `${rpcSchema.$id}#/$defs/RunArtifactParams`,
   validateStageListParams: `${rpcSchema.$id}#/$defs/StageListParams`,
   validateStageListResult: `${rpcSchema.$id}#/$defs/StageListResult`,
+  validateKnowledgeRecord: `${rpcSchema.$id}#/$defs/KnowledgeRecord`,
+  validateKnowledgeSource: `${rpcSchema.$id}#/$defs/KnowledgeSource`,
+  validateAccountSnapshotSummary: `${rpcSchema.$id}#/$defs/AccountSnapshotSummary`,
+  validateKnowledgeClientParams: `${rpcSchema.$id}#/$defs/KnowledgeClientParams`,
+  validateKnowledgeSearchParams: `${rpcSchema.$id}#/$defs/KnowledgeSearchParams`,
+  validateKnowledgeStatus: `${rpcSchema.$id}#/$defs/KnowledgeStatus`,
+  validateKnowledgeSearchResult: `${rpcSchema.$id}#/$defs/KnowledgeSearchResult`,
+  validateAccountSnapshotParams: `${rpcSchema.$id}#/$defs/AccountSnapshotParams`,
+  validateAccountSnapshotListParams: `${rpcSchema.$id}#/$defs/AccountSnapshotListParams`,
+  validateAccountKnowledgeSnapshot: `${rpcSchema.$id}#/$defs/AccountKnowledgeSnapshot`,
+  validateAccountSnapshotListResult: `${rpcSchema.$id}#/$defs/AccountSnapshotListResult`,
   validateRecognitionParams: `${rpcSchema.$id}#/$defs/RecognitionParams`,
   validateRecognitionResult: `${rpcSchema.$id}#/$defs/RecognitionResult`,
   validateItemResourceParams: `${rpcSchema.$id}#/$defs/ItemResourceParams`,
@@ -173,6 +184,17 @@ export const validateDeviceClickParams: Validator<RpcContract['params']['device.
 export const validateRunArtifactParams: Validator<RpcContract['params']['run.artifact']>;
 export const validateStageListParams: Validator<RpcContract['params']['stages.list']>;
 export const validateStageListResult: Validator<RpcContract['results']['stages.list']>;
+export const validateKnowledgeRecord: Validator<RpcContract['results']['knowledge.search']['records'][number]>;
+export const validateKnowledgeSource: Validator<RpcContract['results']['knowledge.status']['sources'][number]>;
+export const validateAccountSnapshotSummary: Validator<RpcContract['results']['account.snapshot.list']['snapshots'][number]>;
+export const validateKnowledgeClientParams: Validator<RpcContract['params']['knowledge.status']>;
+export const validateKnowledgeSearchParams: Validator<RpcContract['params']['knowledge.search']>;
+export const validateKnowledgeStatus: Validator<RpcContract['results']['knowledge.status']>;
+export const validateKnowledgeSearchResult: Validator<RpcContract['results']['knowledge.search']>;
+export const validateAccountSnapshotParams: Validator<RpcContract['params']['account.snapshot.get']>;
+export const validateAccountSnapshotListParams: Validator<RpcContract['params']['account.snapshot.list']>;
+export const validateAccountKnowledgeSnapshot: Validator<Exclude<RpcContract['results']['account.snapshot.get'], null>>;
+export const validateAccountSnapshotListResult: Validator<RpcContract['results']['account.snapshot.list']>;
 export const validateRecognitionParams: Validator<RpcContract['params']['recognition.get']>;
 export const validateRecognitionResult: Validator<RpcContract['results']['recognition.get']>;
 export const validateItemResourceParams: Validator<RpcContract['params']['resources.item']>;
