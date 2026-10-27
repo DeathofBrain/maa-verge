@@ -62,6 +62,33 @@ export type ToolKind = 'depot' | 'operators' | 'recruit' | 'inventory' | 'data' 
 export type CopilotKind = 'Copilot' | 'SSSCopilot' | 'ParadoxCopilot';
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotDeleteParams".
+ */
+export type CopilotDeleteParams = {
+  id?: string;
+  /**
+   * @minItems 1
+   * @maxItems 1000
+   */
+  ids?: string[];
+  all?: true;
+} & CopilotDeleteParams1;
+export type CopilotDeleteParams1 =
+  | {
+      id: string;
+    }
+  | {
+      /**
+       * @minItems 1
+       * @maxItems 1000
+       */
+      ids: string[];
+    }
+  | {
+      all: true;
+    };
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
  * via the `definition` "CopilotRatingValue".
  */
 export type CopilotRatingValue = 'none' | 'like' | 'dislike';
@@ -179,7 +206,7 @@ export interface RpcContract {
     'copilot.export': CopilotExportParams;
     'copilot.preview': CopilotPreviewParams;
     'copilot.import': CopilotImportParams;
-    'copilot.delete': IdParams;
+    'copilot.delete': CopilotDeleteParams;
     'copilot.workspace.get': CopilotWorkspaceParams;
     'copilot.workspace.save': CopilotWorkspaceSaveParams;
     'copilot.search': CopilotSearchParams;
@@ -188,8 +215,9 @@ export interface RpcContract {
     'copilot.rating.set': CopilotRatingSetParams;
     'copilot.category.list': EmptyParams;
     'copilot.category.save': CopilotCategorySaveParams;
-    'copilot.category.delete': IdParams;
+    'copilot.category.delete': CopilotCategoryDeleteParams;
     'copilot.category.assign': CopilotCategoryAssignParams;
+    'copilot.storage.info': EmptyParams;
   };
   results: {
     'app.snapshot': Snapshot;
@@ -303,6 +331,7 @@ export interface RpcContract {
     };
     'copilot.delete': {
       deleted: boolean;
+      deletedCount: number;
     };
     'copilot.workspace.get': CopilotWorkspace;
     'copilot.workspace.save': CopilotWorkspace;
@@ -319,9 +348,13 @@ export interface RpcContract {
     'copilot.category.save': CopilotCategory;
     'copilot.category.delete': {
       deleted: boolean;
+      deletedCount: number;
     };
     'copilot.category.assign': {
       updated: number;
+    };
+    'copilot.storage.info': {
+      directory: string;
     };
   };
 }
@@ -479,6 +512,7 @@ export interface Settings {
   budgets: Budgets;
   model: ModelSettings;
   scheduler?: SchedulerSettings;
+  copilotStorage?: CopilotStorage;
 }
 /**
  * Absolute installation/download roots. An empty string restores the application default on settings.save.
@@ -599,6 +633,17 @@ export interface SchedulerSettings {
   notifyBeforeScheduledStart: boolean;
   notificationMinutes: number;
   scheduledWakeUp: boolean;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "CopilotStorage".
+ */
+export interface CopilotStorage {
+  /**
+   * Absolute directory for imported library JSON copies. Empty restores application cache/copilot.
+   */
+  directory: string;
+  deleteJsonFiles: boolean;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -852,6 +897,14 @@ export interface CopilotRatingSetParams {
 export interface CopilotCategorySaveParams {
   id?: string;
   name: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotCategoryDeleteParams".
+ */
+export interface CopilotCategoryDeleteParams {
+  id: string;
+  deleteCopilots?: boolean;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

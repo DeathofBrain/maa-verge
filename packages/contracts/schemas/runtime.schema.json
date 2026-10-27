@@ -28,11 +28,7 @@
           "type": "integer"
         }
       },
-      "required": [
-        "originium",
-        "medicine",
-        "expedited"
-      ],
+      "required": ["originium", "medicine", "expedited"],
       "title": "Budgets",
       "type": "object"
     },
@@ -42,11 +38,7 @@
       "properties": {
         "method": {
           "type": "string",
-          "enum": [
-            "adb",
-            "mumu",
-            "ldplayer"
-          ],
+          "enum": ["adb", "mumu", "ldplayer"],
           "default": "adb"
         },
         "autoDetect": {
@@ -73,11 +65,7 @@
           "default": false
         }
       },
-      "required": [
-        "method",
-        "emulatorPath",
-        "instanceIndex"
-      ]
+      "required": ["method", "emulatorPath", "instanceIndex"]
     },
     "ConnectionSettings": {
       "type": "object",
@@ -116,12 +104,7 @@
         },
         "touchMode": {
           "type": "string",
-          "enum": [
-            "minitouch",
-            "maatouch",
-            "adb",
-            "MaaFwAdb"
-          ],
+          "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"],
           "default": "maatouch"
         },
         "adbLite": {
@@ -130,36 +113,16 @@
         },
         "clientType": {
           "type": "string",
-          "enum": [
-            "Official",
-            "Bilibili",
-            "YoStarEN",
-            "YoStarJP",
-            "YoStarKR",
-            "txwy"
-          ],
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"],
           "default": "Official"
         }
       },
-      "required": [
-        "adbPath",
-        "address",
-        "config",
-        "touchMode",
-        "adbLite",
-        "clientType"
-      ]
+      "required": ["adbPath", "address", "config", "touchMode", "adbLite", "clientType"]
     },
     "DeviceConnectionProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "name",
-        "address",
-        "connection",
-        "capture"
-      ],
+      "required": ["id", "name", "address", "connection", "capture"],
       "properties": {
         "id": {
           "type": "string",
@@ -213,11 +176,7 @@
           "type": "string"
         },
         "state": {
-          "enum": [
-            "idle",
-            "running",
-            "offline"
-          ],
+          "enum": ["idle", "running", "offline"],
           "title": "State",
           "type": "string"
         },
@@ -253,14 +212,7 @@
           "title": "Resourceversion"
         }
       },
-      "required": [
-        "id",
-        "name",
-        "address",
-        "state",
-        "coreVersion",
-        "resourceVersion"
-      ],
+      "required": ["id", "name", "address", "state", "coreVersion", "resourceVersion"],
       "title": "Device",
       "type": "object"
     },
@@ -289,13 +241,7 @@
           "type": "object"
         }
       },
-      "required": [
-        "id",
-        "type",
-        "message",
-        "createdAt",
-        "data"
-      ],
+      "required": ["id", "type", "message", "createdAt", "data"],
       "title": "Event",
       "type": "object"
     },
@@ -318,11 +264,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "provider",
-        "baseUrl",
-        "model"
-      ],
+      "required": ["provider", "baseUrl", "model"],
       "title": "ModelSettings",
       "type": "object"
     },
@@ -362,10 +304,7 @@
         },
         "group": {
           "default": "daily",
-          "enum": [
-            "daily",
-            "specialized"
-          ],
+          "enum": ["daily", "specialized"],
           "title": "Group",
           "type": "string"
         },
@@ -441,22 +380,14 @@
         },
         "planId": {
           "title": "Planid",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "deviceId": {
           "title": "Deviceid",
           "type": "string"
         },
         "status": {
-          "enum": [
-            "running",
-            "completed",
-            "failed",
-            "stopped"
-          ],
+          "enum": ["running", "completed", "failed", "stopped"],
           "title": "Status",
           "type": "string"
         },
@@ -497,10 +428,7 @@
           "maxLength": 80
         },
         "source": {
-          "enum": [
-            "plan",
-            "copilot"
-          ]
+          "enum": ["plan", "copilot"]
         },
         "sourceName": {
           "type": "string",
@@ -514,11 +442,7 @@
           }
         },
         "copilotKind": {
-          "enum": [
-            "Copilot",
-            "SSSCopilot",
-            "ParadoxCopilot"
-          ]
+          "enum": ["Copilot", "SSSCopilot", "ParadoxCopilot"]
         }
       },
       "required": [
@@ -559,30 +483,17 @@
           "maxLength": 80
         },
         "status": {
-          "enum": [
-            "waiting",
-            "running",
-            "completed",
-            "failed",
-            "stopped",
-            "skipped"
-          ]
+          "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"]
         },
         "message": {
           "type": "string",
           "maxLength": 1000
         },
         "startedAt": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "finishedAt": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "drops": {
           "type": "array",
@@ -610,13 +521,7 @@
     "RunDrop": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "itemId",
-        "name",
-        "quantity",
-        "stage",
-        "at"
-      ],
+      "required": ["itemId", "name", "quantity", "stage", "at"],
       "properties": {
         "itemId": {
           "type": "string",
@@ -644,14 +549,7 @@
     "RunInfrastructure": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "facility",
-        "room",
-        "operators",
-        "product",
-        "message",
-        "at"
-      ],
+      "required": ["facility", "room", "operators", "product", "message", "at"],
       "properties": {
         "facility": {
           "type": "string",
@@ -672,11 +570,7 @@
         },
         "staffingStatus": {
           "description": "Latest staffing evidence; configured names are not an independently recognized final roster.",
-          "enum": [
-            "planned",
-            "confirmed",
-            "unavailable"
-          ]
+          "enum": ["planned", "confirmed", "unavailable"]
         },
         "product": {
           "type": "string",
@@ -695,14 +589,7 @@
       "description": "Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "kind",
-        "label",
-        "capturedAt",
-        "width",
-        "height"
-      ],
+      "required": ["id", "kind", "label", "capturedAt", "width", "height"],
       "properties": {
         "id": {
           "type": "string",
@@ -733,14 +620,7 @@
     "InfrastructureLine": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "name",
-        "unit",
-        "hourlyRate",
-        "capacity",
-        "lastCollectedAt"
-      ],
+      "required": ["id", "name", "unit", "hourlyRate", "capacity", "lastCollectedAt"],
       "properties": {
         "id": {
           "type": "string",
@@ -777,10 +657,7 @@
     "InfrastructureEstimateProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "deviceId",
-        "lines"
-      ],
+      "required": ["deviceId", "lines"],
       "properties": {
         "deviceId": {
           "type": "string",
@@ -800,10 +677,7 @@
       "description": "Absolute installation/download roots. An empty string restores the application default on settings.save.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "core",
-        "resource"
-      ],
+      "required": ["core", "resource"],
       "properties": {
         "core": {
           "type": "string",
@@ -819,17 +693,11 @@
       "description": "Component download engine; defaults to bundled aria2. Empty aria2Path uses aria2c beside the packaged service, or checkout/.tools/aria2 in development; otherwise use an absolute executable path. Never searches PATH. Changes apply to subsequent downloads.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "engine",
-        "aria2Path"
-      ],
+      "required": ["engine", "aria2Path"],
       "properties": {
         "engine": {
           "type": "string",
-          "enum": [
-            "builtin",
-            "aria2"
-          ]
+          "enum": ["builtin", "aria2"]
         },
         "aria2Path": {
           "type": "string",
@@ -840,34 +708,17 @@
     "ResourceActivityVersion": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "clientType",
-        "name",
-        "lastUpdated"
-      ],
+      "required": ["clientType", "name", "lastUpdated"],
       "properties": {
         "clientType": {
-          "enum": [
-            "Official",
-            "Bilibili",
-            "YoStarEN",
-            "YoStarJP",
-            "YoStarKR",
-            "txwy"
-          ]
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
         },
         "name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 300
         },
         "lastUpdated": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 200
         }
       }
@@ -903,12 +754,7 @@
         },
         "logRetentionDays": {
           "type": "integer",
-          "enum": [
-            0,
-            7,
-            14,
-            30
-          ],
+          "enum": [0, 7, 14, 30],
           "default": 7,
           "description": "Log retention in days; zero disables automatic cleanup."
         },
@@ -924,18 +770,12 @@
         },
         "appUpdateChannel": {
           "type": "string",
-          "enum": [
-            "stable",
-            "preview"
-          ],
+          "enum": ["stable", "preview"],
           "default": "preview"
         },
         "coreUpdateChannel": {
           "type": "string",
-          "enum": [
-            "stable",
-            "preview"
-          ],
+          "enum": ["stable", "preview"],
           "default": "stable"
         },
         "autoUpdateCore": {
@@ -960,11 +800,7 @@
         },
         "theme": {
           "default": "system",
-          "enum": [
-            "dark",
-            "light",
-            "system"
-          ],
+          "enum": ["dark", "light", "system"],
           "title": "Theme",
           "type": "string"
         },
@@ -976,6 +812,9 @@
         },
         "scheduler": {
           "$ref": "#/$defs/SchedulerSettings"
+        },
+        "copilotStorage": {
+          "$ref": "#/$defs/CopilotStorage"
         }
       },
       "required": [
@@ -995,24 +834,15 @@
       "additionalProperties": false,
       "properties": {
         "operatorsAt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 64
         },
         "depotAt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 64
         }
       },
-      "required": [
-        "operatorsAt",
-        "depotAt"
-      ]
+      "required": ["operatorsAt", "depotAt"]
     },
     "Task": {
       "additionalProperties": false,
@@ -1054,11 +884,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "type",
-        "params",
-        "enabled"
-      ],
+      "required": ["type", "params", "enabled"],
       "title": "Task",
       "type": "object"
     },
@@ -1076,12 +902,7 @@
         "appRelease": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "url",
-            "notes",
-            "publishedAt",
-            "prerelease"
-          ],
+          "required": ["url", "notes", "publishedAt", "prerelease"],
           "properties": {
             "url": {
               "type": "string",
@@ -1112,11 +933,7 @@
           }
         },
         "id": {
-          "enum": [
-            "app",
-            "core",
-            "resource"
-          ],
+          "enum": ["app", "core", "resource"],
           "title": "Id",
           "type": "string"
         },
@@ -1164,14 +981,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "id",
-        "currentVersion",
-        "latestVersion",
-        "status",
-        "progress",
-        "message"
-      ],
+      "required": ["id", "currentVersion", "latestVersion", "status", "progress", "message"],
       "title": "UpdateChannel",
       "type": "object"
     },
@@ -1215,14 +1025,7 @@
           "maxLength": 200
         },
         "kind": {
-          "enum": [
-            "depot",
-            "operators",
-            "recruit",
-            "inventory",
-            "data",
-            "games"
-          ]
+          "enum": ["depot", "operators", "recruit", "inventory", "data", "games"]
         },
         "deviceId": {
           "type": "string",
@@ -1230,22 +1033,10 @@
           "maxLength": 200
         },
         "clientType": {
-          "enum": [
-            "Official",
-            "Bilibili",
-            "YoStarEN",
-            "YoStarJP",
-            "YoStarKR",
-            "txwy"
-          ]
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
         },
         "status": {
-          "enum": [
-            "running",
-            "completed",
-            "failed",
-            "stopped"
-          ]
+          "enum": ["running", "completed", "failed", "stopped"]
         },
         "progress": {
           "type": "integer",
@@ -1262,10 +1053,7 @@
           "maxLength": 40
         },
         "finishedAt": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1303,44 +1091,39 @@
           "maximum": 100
         },
         "status": {
-          "enum": [
-            "waiting",
-            "running",
-            "completed",
-            "failed",
-            "stopped",
-            "skipped"
-          ]
+          "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"]
         },
         "verdict": {
-          "enum": [
-            "unknown",
-            "success",
-            "failure"
-          ]
+          "enum": ["unknown", "success", "failure"]
         },
         "message": {
           "type": "string",
           "maxLength": 1000
         }
       },
-      "required": [
-        "id",
-        "versionId",
-        "title",
-        "nativeId",
-        "status",
-        "verdict",
-        "message"
-      ]
+      "required": ["id", "versionId", "title", "nativeId", "status", "verdict", "message"]
+    },
+    "CopilotStorage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "directory": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Absolute directory for imported library JSON copies. Empty restores application cache/copilot."
+        },
+        "deleteJsonFiles": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["directory", "deleteJsonFiles"]
     }
   },
   "additionalProperties": false,
   "properties": {
     "mode": {
-      "enum": [
-        "native"
-      ],
+      "enum": ["native"],
       "title": "Mode",
       "type": "string"
     },
@@ -1389,15 +1172,7 @@
       }
     }
   },
-  "required": [
-    "mode",
-    "devices",
-    "plans",
-    "runs",
-    "updates",
-    "settings",
-    "events"
-  ],
+  "required": ["mode", "devices", "plans", "runs", "updates", "settings", "events"],
   "title": "Snapshot",
   "type": "object"
 }

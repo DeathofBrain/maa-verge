@@ -21,6 +21,8 @@ export const validateCopilotIdentityParams: Validator<RpcContract['params']['cop
 export const validateCopilotExportParams: Validator<RpcContract['params']['copilot.export']>;
 export const validateCopilotPreviewParams: Validator<RpcContract['params']['copilot.preview']>;
 export const validateCopilotImportParams: Validator<RpcContract['params']['copilot.import']>;
+export const validateCopilotDeleteParams: Validator<RpcContract['params']['copilot.delete']>;
+export const validateCopilotCategoryDeleteParams: Validator<RpcContract['params']['copilot.category.delete']>;
 export const validateCopilotWorkspaceParams: Validator<RpcContract['params']['copilot.workspace.get']>;
 export const validateCopilotWorkspaceSaveParams: Validator<RpcContract['params']['copilot.workspace.save']>;
 export const validateCopilotSearchParams: Validator<RpcContract['params']['copilot.search']>;

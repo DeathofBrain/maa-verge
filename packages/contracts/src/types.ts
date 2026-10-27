@@ -277,6 +277,7 @@ export interface Settings {
   budgets: Budgets;
   model: ModelSettings;
   scheduler?: SchedulerSettings;
+  copilotStorage?: CopilotStorage;
 }
 /**
  * Absolute installation/download roots. An empty string restores the application default on settings.save.
@@ -363,6 +364,13 @@ export interface SchedulerSettings {
   notifyBeforeScheduledStart: boolean;
   notificationMinutes: number;
   scheduledWakeUp: boolean;
+}
+export interface CopilotStorage {
+  /**
+   * Absolute directory for imported library JSON copies. Empty restores application cache/copilot.
+   */
+  directory: string;
+  deleteJsonFiles: boolean;
 }
 export interface Event {
   id: Id4;

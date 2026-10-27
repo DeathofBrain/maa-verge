@@ -1,0 +1,63 @@
+.cp-library-selection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 0 20px 16px;
+}
+
+.cp-library-selection .button {
+  margin-left: auto;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.cp-record.is-selectable > .cp-record-main {
+  padding-left: 24px;
+}
+
+.cp-record-select {
+  position: absolute;
+  top: 21px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  min-height: 18px;
+}
+
+.cp-record-select input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.cp-record.is-marked {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+.cp-delete-backdrop {
+  z-index: 1000;
+}
+
+.cp-delete-dialog p {
+  overflow-wrap: anywhere;
+}
+
+.cp-delete-dialog {
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+}
+
+.cp-delete-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  font-size: 13px;
+}
+
+.cp-delete-check input {
+  accent-color: var(--accent);
+}

@@ -1,0 +1,21 @@
+.cp-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cp-select-all:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cp-select-all input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+}

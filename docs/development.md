@@ -206,6 +206,8 @@ uv run --frozen ruff format --check services/runtime services/native/tests tests
 
 运行 `pnpm install --frozen-lockfile` 时，`prepare` 会自动安装 Husky 的 `pre-commit` hook；现有 checkout 更新后也需安装一次依赖。此后从终端或 IDE 执行 `git commit`，lint-staged 会将本次暂存的文件交给 Prettier、clang-format、rustfmt 或 Ruff，格式化结果自动纳入当前提交。可先运行 `pnpm format:staged` 手动执行同一流程。
 
+当前固定 lint-staged 16.2.7；17.6.0 在 Git 同时报告仅换行差异与实际未暂存修改时，会错误关联文件和补丁，导致提交结果丢失格式化修改。隔离提交回归覆盖此情形，升级前需确认通过。
+
 只处理新增、修改或重命名的暂存文件；所有语言共用 `.gitignore` 和 `.prettierignore` 的排除规则，生成文件、第三方源码和锁文件继续保持原样。部分暂存文件先临时隐藏未暂存修改，格式化后再恢复；Rust 禁止递归格式化子模块，其他未暂存文件不会因此被格式化。lint-staged 保留默认备份与失败回滚，解析错误、缺少格式化器或恢复冲突会阻止提交，并在终端显示原因；解决后重新提交。
 
 hook 优先使用 checkout 的 `.tools/node`，无需全局 pnpm；其余工具沿用本地 bootstrap 工具目录或 PATH。提交 C/C++ 前需安装命令行 clang-format 并加入 PATH，VS Code 扩展内置版本不等于命令行已可用；Rust 需要固定工具链的 rustfmt。提交 Python 前先运行 `uv sync --frozen`，hook 使用已有环境中的 Ruff，以离线、不同步依赖模式执行，不在提交时下载安装。

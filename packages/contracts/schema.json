@@ -976,6 +976,9 @@
         },
         "scheduler": {
           "$ref": "#/$defs/SchedulerSettings"
+        },
+        "copilotStorage": {
+          "$ref": "#/$defs/CopilotStorage"
         }
       },
       "required": [
@@ -1332,6 +1335,25 @@
         "status",
         "verdict",
         "message"
+      ]
+    },
+    "CopilotStorage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "directory": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Absolute directory for imported library JSON copies. Empty restores application cache/copilot."
+        },
+        "deleteJsonFiles": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "directory",
+        "deleteJsonFiles"
       ]
     }
   },

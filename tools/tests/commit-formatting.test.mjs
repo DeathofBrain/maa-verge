@@ -154,6 +154,56 @@ test('a real commit preserves partial staging and unrelated unstaged/untracked e
   assert.equal(repo.git('stash', 'list'), '');
 });
 
+test('line-ending-only dirty entries cannot pull real unstaged edits into a commit', (t) => {
+  const baseline = 'export const value = 0;\n';
+  const repo = fixture(t, {
+    '.gitattributes': '* text=auto eol=lf\n',
+    'a-crlf.ts': baseline,
+    'b-unstaged.ts': baseline,
+    'c-crlf.ts': baseline,
+    'd-unstaged.ts': baseline,
+    'z-staged.ts': baseline,
+  });
+  repo.git('config', 'core.autocrlf', 'true');
+  // Keep stat-only entries visible instead of silently refreshing the index.
+  repo.git('config', 'diff.autoRefreshIndex', 'false');
+  const unstaged = 'export const value = 99;\n';
+  repo.write('z-staged.ts', 'export const value={staged:true}\n');
+  repo.git('add', '--', 'z-staged.ts');
+  for (const file of ['a-crlf.ts', 'c-crlf.ts'])
+    repo.write(file, baseline.replaceAll('\n', '\r\n'));
+  for (const file of ['b-unstaged.ts', 'd-unstaged.ts']) repo.write(file, unstaged);
+
+  // Git can report stat-dirty entries in --raw with no corresponding patch.
+  // Interleave them with real edits to catch parsers which zip raw names to patches.
+  const diff = repo.git('diff', '--raw', '--patch', '-z', '--no-renames');
+  const [raw, patch] = diff.split('\0\0');
+  for (const file of ['a-crlf.ts', 'b-unstaged.ts', 'c-crlf.ts', 'd-unstaged.ts']) {
+    assert.ok(raw.includes(file), `expected a raw entry for ${file}`);
+  }
+  assert.ok(!patch.includes('a-crlf.ts') && !patch.includes('c-crlf.ts'));
+  assert.ok(patch.includes('b-unstaged.ts') && patch.includes('d-unstaged.ts'));
+
+  const result = repo.commit();
+  assert.equal(result.status, 0, result.output);
+  assert.equal(repo.git('show', '--format=', '--name-only', 'HEAD').trim(), 'z-staged.ts');
+  assert.equal(
+    repo.git('show', 'HEAD:z-staged.ts'),
+    'export const value = { staged: true };\n',
+    result.output,
+  );
+  for (const file of ['b-unstaged.ts', 'd-unstaged.ts']) {
+    assert.equal(repo.git('show', `HEAD:${file}`), baseline);
+    assert.equal(repo.read(file), unstaged);
+  }
+  for (const file of ['a-crlf.ts', 'c-crlf.ts']) {
+    assert.equal(repo.git('show', `HEAD:${file}`), baseline);
+    assert.equal(repo.read(file), baseline.replaceAll('\n', '\r\n'));
+  }
+  assert.equal(repo.git('diff', '--cached'), '');
+  assert.equal(repo.git('stash', 'list'), '');
+});
+
 test('formatter failure blocks the commit and restores the index and working tree', (t) => {
   const repo = fixture(t, { 'valid.ts': 'export const value = 0;\n' });
   repo.write('valid.ts', 'export const value={staged:true}\n');

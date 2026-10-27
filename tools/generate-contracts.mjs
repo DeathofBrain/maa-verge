@@ -13,7 +13,8 @@ const rpcSource = path.join(root, 'packages/contracts/schemas/rpc.schema.json');
 const workerSource = path.join(root, 'packages/contracts/schemas/worker.schema.json');
 const rpcSchema = JSON.parse(readFileSync(rpcSource, 'utf8'));
 const workerSchema = JSON.parse(readFileSync(workerSource, 'utf8'));
-const bannerComment = '/* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */';
+const bannerComment =
+  '/* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */';
 const typeOptions = {
   bannerComment,
   additionalProperties: false,
@@ -26,7 +27,14 @@ const workerTypes = await compile(workerSchema, 'WorkerProtocol', typeOptions);
 
 // Build validators once, including Ajv's small runtime helpers. The application
 // ships neither Ajv's schema compiler nor dynamically evaluated validation code.
-const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, code: { source: true, esm: true }, useDefaults: false, coerceTypes: false });
+const ajv = new Ajv({
+  allErrors: true,
+  strict: true,
+  allowUnionTypes: true,
+  code: { source: true, esm: true },
+  useDefaults: false,
+  coerceTypes: false,
+});
 ajv.addSchema(schema);
 ajv.addSchema(rpcSchema);
 ajv.addSchema(workerSchema);
@@ -39,6 +47,8 @@ const validators = {
   validateCopilotExportParams: `${rpcSchema.$id}#/$defs/CopilotExportParams`,
   validateCopilotPreviewParams: `${rpcSchema.$id}#/$defs/CopilotPreviewParams`,
   validateCopilotImportParams: `${rpcSchema.$id}#/$defs/CopilotImportParams`,
+  validateCopilotDeleteParams: `${rpcSchema.$id}#/$defs/CopilotDeleteParams`,
+  validateCopilotCategoryDeleteParams: `${rpcSchema.$id}#/$defs/CopilotCategoryDeleteParams`,
   validateCopilotWorkspaceParams: `${rpcSchema.$id}#/$defs/CopilotWorkspaceParams`,
   validateCopilotWorkspaceSaveParams: `${rpcSchema.$id}#/$defs/CopilotWorkspaceSaveParams`,
   validateCopilotSearchParams: `${rpcSchema.$id}#/$defs/CopilotSearchParams`,
@@ -83,15 +93,33 @@ const validators = {
 const standalone = standaloneCode(ajv, validators);
 const require = createRequire(import.meta.url);
 const bundled = await build({
-  stdin: { contents: standalone, resolveDir: root, sourcefile: 'validators.generated.js', loader: 'js' },
-  bundle: true, write: false, format: 'esm', platform: 'neutral', target: 'es2022', legalComments: 'none',
-  plugins: [{
-    name: 'stable-ajv-runtime-paths',
-    setup(builder) {
-      builder.onResolve({ filter: /^ajv\/dist\/runtime\// }, ({ path: runtimePath }) => ({ path: runtimePath, namespace: 'ajv-runtime' }));
-      builder.onLoad({ filter: /.*/, namespace: 'ajv-runtime' }, ({ path: runtimePath }) => ({ contents: readFileSync(require.resolve(runtimePath), 'utf8'), loader: 'js' }));
+  stdin: {
+    contents: standalone,
+    resolveDir: root,
+    sourcefile: 'validators.generated.js',
+    loader: 'js',
+  },
+  bundle: true,
+  write: false,
+  format: 'esm',
+  platform: 'neutral',
+  target: 'es2022',
+  legalComments: 'none',
+  plugins: [
+    {
+      name: 'stable-ajv-runtime-paths',
+      setup(builder) {
+        builder.onResolve({ filter: /^ajv\/dist\/runtime\// }, ({ path: runtimePath }) => ({
+          path: runtimePath,
+          namespace: 'ajv-runtime',
+        }));
+        builder.onLoad({ filter: /.*/, namespace: 'ajv-runtime' }, ({ path: runtimePath }) => ({
+          contents: readFileSync(require.resolve(runtimePath), 'utf8'),
+          loader: 'js',
+        }));
+      },
     },
-  }],
+  ],
   banner: { js: bannerComment },
 });
 const declaration = `${bannerComment}
@@ -117,6 +145,8 @@ export const validateCopilotIdentityParams: Validator<RpcContract['params']['cop
 export const validateCopilotExportParams: Validator<RpcContract['params']['copilot.export']>;
 export const validateCopilotPreviewParams: Validator<RpcContract['params']['copilot.preview']>;
 export const validateCopilotImportParams: Validator<RpcContract['params']['copilot.import']>;
+export const validateCopilotDeleteParams: Validator<RpcContract['params']['copilot.delete']>;
+export const validateCopilotCategoryDeleteParams: Validator<RpcContract['params']['copilot.category.delete']>;
 export const validateCopilotWorkspaceParams: Validator<RpcContract['params']['copilot.workspace.get']>;
 export const validateCopilotWorkspaceSaveParams: Validator<RpcContract['params']['copilot.workspace.save']>;
 export const validateCopilotSearchParams: Validator<RpcContract['params']['copilot.search']>;
@@ -169,7 +199,11 @@ const files = new Map([
 for (const [relative, content] of files) {
   const filename = path.join(root, relative);
   if (process.argv.includes('--check')) {
-    if (readFileSync(filename, 'utf8') !== content) throw new Error(relative + ' is stale. Run pnpm contracts:generate.');
-  } else { mkdirSync(path.dirname(filename), { recursive: true }); writeFileSync(filename, content); }
+    if (readFileSync(filename, 'utf8') !== content)
+      throw new Error(relative + ' is stale. Run pnpm contracts:generate.');
+  } else {
+    mkdirSync(path.dirname(filename), { recursive: true });
+    writeFileSync(filename, content);
+  }
 }
 console.log('JSON Schema, TypeScript types and standalone validators are synchronized.');

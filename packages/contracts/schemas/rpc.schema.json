@@ -5,10 +5,7 @@
   "title": "RpcContract",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "params",
-    "results"
-  ],
+  "required": ["params", "results"],
   "properties": {
     "params": {
       "type": "object",
@@ -69,7 +66,8 @@
         "copilot.category.list",
         "copilot.category.save",
         "copilot.category.delete",
-        "copilot.category.assign"
+        "copilot.category.assign",
+        "copilot.storage.info"
       ],
       "properties": {
         "app.snapshot": {
@@ -94,14 +92,7 @@
               "maxLength": 200
             },
             "clientType": {
-              "enum": [
-                "Official",
-                "Bilibili",
-                "YoStarEN",
-                "YoStarJP",
-                "YoStarKR",
-                "txwy"
-              ]
+              "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
             },
             "refresh": {
               "type": "boolean"
@@ -123,9 +114,7 @@
         "plan.save": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "plan"
-          ],
+          "required": ["plan"],
           "properties": {
             "plan": {
               "$ref": "./runtime.schema.json#/$defs/Plan"
@@ -141,9 +130,7 @@
         "device.connect": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "address"
-          ],
+          "required": ["address"],
           "properties": {
             "address": {
               "type": "string"
@@ -168,11 +155,7 @@
         "run.start": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "planId",
-            "deviceId",
-            "requestId"
-          ],
+          "required": ["planId", "deviceId", "requestId"],
           "properties": {
             "planId": {
               "type": "string"
@@ -211,9 +194,7 @@
         "settings.save": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "settings"
-          ],
+          "required": ["settings"],
           "properties": {
             "settings": {
               "$ref": "./runtime.schema.json#/$defs/Settings"
@@ -223,9 +204,7 @@
         "agent.message": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "message"
-          ],
+          "required": ["message"],
           "properties": {
             "message": {
               "type": "string",
@@ -247,9 +226,7 @@
               "maxLength": 200
             }
           },
-          "required": [
-            "deviceId"
-          ]
+          "required": ["deviceId"]
         },
         "tool.start": {
           "$ref": "#/$defs/ToolStartParams"
@@ -294,29 +271,18 @@
         "schedule.host": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "wake"
-          ],
+          "required": ["wake"],
           "properties": {
             "wake": {
               "type": "object",
               "additionalProperties": false,
-              "required": [
-                "supported",
-                "status",
-                "message"
-              ],
+              "required": ["supported", "status", "message"],
               "properties": {
                 "supported": {
                   "type": "boolean"
                 },
                 "status": {
-                  "enum": [
-                    "disabled",
-                    "registered",
-                    "failed",
-                    "unsupported"
-                  ]
+                  "enum": ["disabled", "registered", "failed", "unsupported"]
                 },
                 "message": {
                   "type": "string",
@@ -342,7 +308,7 @@
           "$ref": "#/$defs/CopilotImportParams"
         },
         "copilot.delete": {
-          "$ref": "#/$defs/IdParams"
+          "$ref": "#/$defs/CopilotDeleteParams"
         },
         "copilot.workspace.get": {
           "$ref": "#/$defs/CopilotWorkspaceParams"
@@ -369,10 +335,13 @@
           "$ref": "#/$defs/CopilotCategorySaveParams"
         },
         "copilot.category.delete": {
-          "$ref": "#/$defs/IdParams"
+          "$ref": "#/$defs/CopilotCategoryDeleteParams"
         },
         "copilot.category.assign": {
           "$ref": "#/$defs/CopilotCategoryAssignParams"
+        },
+        "copilot.storage.info": {
+          "$ref": "#/$defs/EmptyParams"
         }
       }
     },
@@ -435,7 +404,8 @@
         "copilot.category.list",
         "copilot.category.save",
         "copilot.category.delete",
-        "copilot.category.assign"
+        "copilot.category.assign",
+        "copilot.storage.info"
       ],
       "properties": {
         "app.snapshot": {
@@ -444,34 +414,21 @@
         "logs.info": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "directory",
-            "retentionDays"
-          ],
+          "required": ["directory", "retentionDays"],
           "properties": {
             "directory": {
               "type": "string"
             },
             "retentionDays": {
               "type": "integer",
-              "enum": [
-                0,
-                7,
-                14,
-                30
-              ]
+              "enum": [0, 7, 14, 30]
             }
           }
         },
         "logs.export": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "directory",
-            "path",
-            "bytes",
-            "warnings"
-          ],
+          "required": ["directory", "path", "bytes", "warnings"],
           "properties": {
             "directory": {
               "type": "string"
@@ -494,12 +451,7 @@
         "logs.clean": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "removedFiles",
-            "removedBytes",
-            "skippedFiles",
-            "warnings"
-          ],
+          "required": ["removedFiles", "removedBytes", "skippedFiles", "warnings"],
           "properties": {
             "removedFiles": {
               "type": "integer",
@@ -542,9 +494,7 @@
         "plan.delete": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "deleted"
-          ],
+          "required": ["deleted"],
           "properties": {
             "deleted": {
               "type": "boolean"
@@ -563,11 +513,7 @@
         "device.auto_connect": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "devices",
-            "discovered",
-            "diagnostics"
-          ],
+          "required": ["devices", "discovered", "diagnostics"],
           "properties": {
             "devices": {
               "type": "array",
@@ -592,9 +538,7 @@
         "device.disconnect": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "disconnected"
-          ],
+          "required": ["disconnected"],
           "properties": {
             "disconnected": {
               "type": "boolean"
@@ -607,9 +551,7 @@
         "device.click": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "accepted"
-          ],
+          "required": ["accepted"],
           "properties": {
             "accepted": {
               "const": true
@@ -646,11 +588,7 @@
         "agent.message": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "reply",
-            "requiresConfirmation",
-            "mode"
-          ],
+          "required": ["reply", "requiresConfirmation", "mode"],
           "properties": {
             "reply": {
               "type": "string"
@@ -701,9 +639,7 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "deleted"
-          ]
+          "required": ["deleted"]
         },
         "schedule.override": {
           "$ref": "#/$defs/Schedule"
@@ -716,16 +652,12 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "cancelled"
-          ]
+          "required": ["cancelled"]
         },
         "schedule.host": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "accepted"
-          ],
+          "required": ["accepted"],
           "properties": {
             "accepted": {
               "const": true
@@ -757,12 +689,7 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "items",
-            "page",
-            "total",
-            "hasNext"
-          ]
+          "required": ["items", "page", "total", "hasNext"]
         },
         "copilot.get": {
           "$ref": "#/$defs/CopilotRecord"
@@ -792,18 +719,11 @@
                   "maxLength": 16000
                 }
               },
-              "required": [
-                "filename",
-                "content"
-              ],
+              "required": ["filename", "content"],
               "description": "可与原始 JSON 一同保存的来源和署名旁文件；不表示已取得转载授权或适用应用许可证。"
             }
           },
-          "required": [
-            "filename",
-            "content",
-            "attribution"
-          ]
+          "required": ["filename", "content", "attribution"]
         },
         "copilot.preview": {
           "$ref": "#/$defs/CopilotPreview"
@@ -836,17 +756,11 @@
                     "maxLength": 1000
                   }
                 },
-                "required": [
-                  "id",
-                  "message"
-                ]
+                "required": ["id", "message"]
               }
             }
           },
-          "required": [
-            "items",
-            "errors"
-          ]
+          "required": ["items", "errors"]
         },
         "copilot.delete": {
           "type": "object",
@@ -854,11 +768,13 @@
           "properties": {
             "deleted": {
               "type": "boolean"
+            },
+            "deletedCount": {
+              "type": "integer",
+              "minimum": 0
             }
           },
-          "required": [
-            "deleted"
-          ]
+          "required": ["deleted", "deletedCount"]
         },
         "copilot.workspace.get": {
           "$ref": "#/$defs/CopilotWorkspace"
@@ -890,9 +806,7 @@
               }
             }
           },
-          "required": [
-            "items"
-          ]
+          "required": ["items"]
         },
         "copilot.category.save": {
           "$ref": "#/$defs/CopilotCategory"
@@ -903,11 +817,13 @@
           "properties": {
             "deleted": {
               "type": "boolean"
+            },
+            "deletedCount": {
+              "type": "integer",
+              "minimum": 0
             }
           },
-          "required": [
-            "deleted"
-          ]
+          "required": ["deleted", "deletedCount"]
         },
         "copilot.category.assign": {
           "type": "object",
@@ -919,9 +835,18 @@
               "maximum": 100
             }
           },
-          "required": [
-            "updated"
-          ]
+          "required": ["updated"]
+        },
+        "copilot.storage.info": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "directory": {
+              "type": "string",
+              "maxLength": 4096
+            }
+          },
+          "required": ["directory"]
         }
       }
     }
@@ -930,10 +855,7 @@
     "RecognitionParams": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "deviceId",
-        "kind"
-      ],
+      "required": ["deviceId", "kind"],
       "properties": {
         "deviceId": {
           "type": "string",
@@ -941,10 +863,7 @@
           "maxLength": 200
         },
         "kind": {
-          "enum": [
-            "depot",
-            "operators"
-          ]
+          "enum": ["depot", "operators"]
         },
         "clientType": {
           "$ref": "#/$defs/ClientType"
@@ -954,15 +873,7 @@
     "RecognitionResult": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "deviceId",
-        "kind",
-        "clientType",
-        "collectedAt",
-        "runId",
-        "items",
-        "operators"
-      ],
+      "required": ["deviceId", "kind", "clientType", "collectedAt", "runId", "items", "operators"],
       "properties": {
         "deviceId": {
           "type": "string",
@@ -970,27 +881,18 @@
           "maxLength": 200
         },
         "kind": {
-          "enum": [
-            "depot",
-            "operators"
-          ]
+          "enum": ["depot", "operators"]
         },
         "clientType": {
           "$ref": "#/$defs/ClientType"
         },
         "collectedAt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 40
         },
         "runId": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 200
         },
@@ -1009,10 +911,7 @@
           }
         },
         "estimatedAt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 40
         }
       }
@@ -1020,11 +919,7 @@
     "RecognizedItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "name",
-        "quantity"
-      ],
+      "required": ["id", "name", "quantity"],
       "properties": {
         "id": {
           "type": "string",
@@ -1051,15 +946,7 @@
     "RecognizedOperator": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "name",
-        "own",
-        "elite",
-        "level",
-        "potential",
-        "rarity"
-      ],
+      "required": ["id", "name", "own", "elite", "level", "potential", "rarity"],
       "properties": {
         "id": {
           "type": "string",
@@ -1101,9 +988,7 @@
     "ItemResourceParams": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "itemId"
-      ],
+      "required": ["itemId"],
       "properties": {
         "itemId": {
           "type": "string",
@@ -1119,13 +1004,7 @@
     "ItemResourceResult": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "itemId",
-        "name",
-        "mimeType",
-        "data",
-        "resourceVersion"
-      ],
+      "required": ["itemId", "name", "mimeType", "data", "resourceVersion"],
       "properties": {
         "itemId": {
           "type": "string",
@@ -1133,30 +1012,18 @@
           "maxLength": 200
         },
         "name": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 300
         },
         "mimeType": {
-          "enum": [
-            "image/png",
-            null
-          ]
+          "enum": ["image/png", null]
         },
         "data": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 1398104
         },
         "resourceVersion": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 200
         }
       }
@@ -1164,9 +1031,7 @@
     "OperatorResourceParams": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "type": "string",
@@ -1188,14 +1053,7 @@
       "description": "Bounded artwork and metadata from the active installed MaaResource; missing or ambiguous names keep text and known rarity without guessing an avatar.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name",
-        "id",
-        "rarity",
-        "mimeType",
-        "data",
-        "resourceVersion"
-      ],
+      "required": ["name", "id", "rarity", "mimeType", "data", "resourceVersion"],
       "properties": {
         "name": {
           "type": "string",
@@ -1203,39 +1061,24 @@
           "maxLength": 300
         },
         "id": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 200
         },
         "rarity": {
           "description": "1-based star count; null means unknown or conflicting candidates.",
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "minimum": 1,
           "maximum": 6
         },
         "mimeType": {
-          "enum": [
-            "image/png",
-            null
-          ]
+          "enum": ["image/png", null]
         },
         "data": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 699052
         },
         "resourceVersion": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 200
         }
       }
@@ -1243,10 +1086,7 @@
     "RunArtifactParams": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "runId",
-        "artifactId"
-      ],
+      "required": ["runId", "artifactId"],
       "properties": {
         "runId": {
           "type": "string",
@@ -1262,10 +1102,7 @@
     "RunArtifactImage": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "mimeType",
-        "data"
-      ],
+      "required": ["mimeType", "data"],
       "properties": {
         "mimeType": {
           "const": "image/png"
@@ -1296,14 +1133,7 @@
           "type": "string"
         },
         "clientType": {
-          "enum": [
-            "Official",
-            "Bilibili",
-            "YoStarEN",
-            "YoStarJP",
-            "YoStarKR",
-            "txwy"
-          ]
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
         },
         "gameDate": {
           "type": "string"
@@ -1325,17 +1155,10 @@
         "annihilation": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "kind",
-            "message"
-          ],
+          "required": ["kind", "message"],
           "properties": {
             "kind": {
-              "enum": [
-                "weekly-reset",
-                "weekly-last-day",
-                "weekly"
-              ]
+              "enum": ["weekly-reset", "weekly-last-day", "weekly"]
             },
             "message": {
               "type": "string"
@@ -1345,17 +1168,10 @@
         "infrastructure": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "deviceId",
-            "message",
-            "lines"
-          ],
+          "required": ["deviceId", "message", "lines"],
           "properties": {
             "deviceId": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": ["string", "null"]
             },
             "message": {
               "type": "string"
@@ -1396,10 +1212,7 @@
           "type": "string"
         },
         "estimatedQuantity": {
-          "type": [
-            "number",
-            "null"
-          ],
+          "type": ["number", "null"],
           "minimum": 0
         },
         "capacity": {
@@ -1417,28 +1230,15 @@
           "type": "boolean"
         },
         "fullAt": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "error": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       }
     },
     "ClientType": {
-      "enum": [
-        "Official",
-        "Bilibili",
-        "YoStarEN",
-        "YoStarJP",
-        "YoStarKR",
-        "txwy"
-      ]
+      "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
     },
     "StageListParams": {
       "type": "object",
@@ -1455,12 +1255,7 @@
     "StageOption": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "value",
-        "label",
-        "category",
-        "available"
-      ],
+      "required": ["value", "label", "category", "available"],
       "properties": {
         "value": {
           "type": "string",
@@ -1472,11 +1267,7 @@
           "maxLength": 300
         },
         "category": {
-          "enum": [
-            "default",
-            "activity",
-            "permanent"
-          ]
+          "enum": ["default", "activity", "permanent"]
         },
         "available": {
           "type": "boolean"
@@ -1494,15 +1285,7 @@
     "StageActivity": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "name",
-        "startAt",
-        "endAt",
-        "clientType",
-        "status",
-        "source"
-      ],
+      "required": ["id", "name", "startAt", "endAt", "clientType", "status", "source"],
       "properties": {
         "id": {
           "type": "string",
@@ -1515,35 +1298,21 @@
           "maxLength": 300
         },
         "startAt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 40
         },
         "endAt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 40
         },
         "clientType": {
           "$ref": "#/$defs/ClientType"
         },
         "status": {
-          "enum": [
-            "active",
-            "upcoming",
-            "unknown"
-          ]
+          "enum": ["active", "upcoming", "unknown"]
         },
         "source": {
-          "enum": [
-            "official-calendar",
-            "activity-metadata",
-            "resource-version"
-          ]
+          "enum": ["official-calendar", "activity-metadata", "resource-version"]
         }
       }
     },
@@ -1562,38 +1331,22 @@
       ],
       "properties": {
         "source": {
-          "enum": [
-            "official-cache",
-            "installed",
-            "unavailable"
-          ]
+          "enum": ["official-cache", "installed", "unavailable"]
         },
         "url": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 300
         },
         "fetchedAt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 40
         },
         "checkedAt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 40
         },
         "nextRefreshAt": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 40
         },
         "stale": {
@@ -1603,10 +1356,7 @@
           "type": "boolean"
         },
         "error": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 1000
         }
       }
@@ -1630,17 +1380,11 @@
           "$ref": "#/$defs/ClientType"
         },
         "resourceVersion": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 200
         },
         "source": {
-          "enum": [
-            "installed",
-            "builtin"
-          ]
+          "enum": ["installed", "builtin"]
         },
         "generatedAt": {
           "type": "string",
@@ -1679,9 +1423,7 @@
     "DeviceFrameParams": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "deviceId"
-      ],
+      "required": ["deviceId"],
       "properties": {
         "deviceId": {
           "type": "string",
@@ -1693,13 +1435,7 @@
     "DeviceClickParams": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "deviceId",
-        "frameId",
-        "x",
-        "y",
-        "requestId"
-      ],
+      "required": ["deviceId", "frameId", "x", "y", "requestId"],
       "properties": {
         "deviceId": {
           "type": "string",
@@ -1793,9 +1529,7 @@
     "IdParams": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id"
-      ],
+      "required": ["id"],
       "properties": {
         "id": {
           "type": "string"
@@ -1805,27 +1539,17 @@
     "ChannelParams": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "channel"
-      ],
+      "required": ["channel"],
       "properties": {
         "channel": {
-          "enum": [
-            "app",
-            "core",
-            "resource"
-          ]
+          "enum": ["app", "core", "resource"]
         }
       }
     },
     "DiscoveredDevice": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "address",
-        "name",
-        "adbState"
-      ],
+      "required": ["address", "name", "adbState"],
       "properties": {
         "address": {
           "type": "string"
@@ -1841,10 +1565,7 @@
     "RpcRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "jsonrpc",
-        "method"
-      ],
+      "required": ["jsonrpc", "method"],
       "properties": {
         "jsonrpc": {
           "const": "2.0"
@@ -1853,11 +1574,7 @@
           "type": "string"
         },
         "id": {
-          "type": [
-            "string",
-            "integer",
-            "null"
-          ]
+          "type": ["string", "integer", "null"]
         },
         "params": {
           "type": "object",
@@ -1868,11 +1585,7 @@
     "RpcEvent": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "jsonrpc",
-        "method",
-        "params"
-      ],
+      "required": ["jsonrpc", "method", "params"],
       "properties": {
         "jsonrpc": {
           "const": "2.0"
@@ -1905,41 +1618,20 @@
           "maxLength": 1000
         },
         "owner": {
-          "enum": [
-            "none",
-            "run",
-            "tool",
-            "manual",
-            "connecting",
-            "updates",
-            "runtime"
-          ]
+          "enum": ["none", "run", "tool", "manual", "connecting", "updates", "runtime"]
         },
         "ownerId": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "deviceId",
-        "available",
-        "connected",
-        "reason",
-        "owner",
-        "ownerId"
-      ]
+      "required": ["deviceId", "available", "connected", "reason", "owner", "ownerId"]
     },
     "ToolConfig": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "mode": {
-          "enum": [
-            "device",
-            "manual"
-          ]
+          "enum": ["device", "manual"]
         },
         "tags": {
           "type": "array",
@@ -1989,14 +1681,7 @@
                 "maximum": 100
               }
             },
-            "required": [
-              "id",
-              "stage",
-              "itemId",
-              "quantity",
-              "medicine",
-              "stone"
-            ]
+            "required": ["id", "stage", "itemId", "quantity", "medicine", "stone"]
           }
         },
         "updateDepot": {
@@ -2024,19 +1709,10 @@
           "type": "boolean"
         },
         "game": {
-          "enum": [
-            "pixelpaint",
-            "secretfront"
-          ]
+          "enum": ["pixelpaint", "secretfront"]
         },
         "ending": {
-          "enum": [
-            "A",
-            "B",
-            "C",
-            "D",
-            "E"
-          ]
+          "enum": ["A", "B", "C", "D", "E"]
         },
         "branch": {
           "type": "string",
@@ -2047,14 +1723,7 @@
       "required": []
     },
     "ToolKind": {
-      "enum": [
-        "depot",
-        "operators",
-        "recruit",
-        "inventory",
-        "data",
-        "games"
-      ]
+      "enum": ["depot", "operators", "recruit", "inventory", "data", "games"]
     },
     "ToolIdentity": {
       "type": "object",
@@ -2072,10 +1741,7 @@
           "$ref": "#/$defs/ClientType"
         }
       },
-      "required": [
-        "deviceId",
-        "kind"
-      ]
+      "required": ["deviceId", "kind"]
     },
     "ToolStartParams": {
       "type": "object",
@@ -2101,11 +1767,7 @@
           "$ref": "#/$defs/ToolConfig"
         }
       },
-      "required": [
-        "deviceId",
-        "kind",
-        "requestId"
-      ]
+      "required": ["deviceId", "kind", "requestId"]
     },
     "ToolConfigParams": {
       "type": "object",
@@ -2126,11 +1788,7 @@
           "$ref": "#/$defs/ToolConfig"
         }
       },
-      "required": [
-        "deviceId",
-        "kind",
-        "config"
-      ]
+      "required": ["deviceId", "kind", "config"]
     },
     "ToolJob": {
       "type": "object",
@@ -2153,12 +1811,7 @@
           "$ref": "#/$defs/ClientType"
         },
         "status": {
-          "enum": [
-            "running",
-            "completed",
-            "failed",
-            "stopped"
-          ]
+          "enum": ["running", "completed", "failed", "stopped"]
         },
         "progress": {
           "type": "integer",
@@ -2175,10 +1828,7 @@
           "maxLength": 40
         },
         "finishedAt": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "result": {
           "type": "object",
@@ -2229,40 +1879,20 @@
           "type": "boolean"
         },
         "override": {
-          "enum": [
-            "enable",
-            "skip",
-            null
-          ]
+          "enum": ["enable", "skip", null]
         },
         "nextAt": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "last": {
-          "type": [
-            "object",
-            "null"
-          ],
+          "type": ["object", "null"],
           "additionalProperties": true
         },
         "disabledReason": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "id",
-        "planId",
-        "deviceId",
-        "hour",
-        "minute",
-        "enabled"
-      ]
+      "required": ["id", "planId", "deviceId", "hour", "minute", "enabled"]
     },
     "ScheduleSaveParams": {
       "type": "object",
@@ -2272,9 +1902,7 @@
           "$ref": "#/$defs/Schedule"
         }
       },
-      "required": [
-        "schedule"
-      ]
+      "required": ["schedule"]
     },
     "ScheduleOverrideParams": {
       "type": "object",
@@ -2286,17 +1914,10 @@
           "maxLength": 200
         },
         "mode": {
-          "enum": [
-            "enable",
-            "skip",
-            "clear"
-          ]
+          "enum": ["enable", "skip", "clear"]
         }
       },
-      "required": [
-        "id",
-        "mode"
-      ]
+      "required": ["id", "mode"]
     },
     "ToolCatalog": {
       "type": "object",
@@ -2341,28 +1962,17 @@
                 }
               }
             },
-            "required": [
-              "id",
-              "name",
-              "rarity",
-              "tags"
-            ]
+            "required": ["id", "name", "rarity", "tags"]
           }
         },
         "games": {
           "type": "array",
           "items": {
-            "enum": [
-              "pixelpaint",
-              "secretfront"
-            ]
+            "enum": ["pixelpaint", "secretfront"]
           }
         },
         "resourceVersion": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "diagnostics": {
           "type": "array",
@@ -2371,20 +1981,11 @@
           }
         },
         "topOperatorTag": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 80
         }
       },
-      "required": [
-        "tags",
-        "operators",
-        "games",
-        "resourceVersion",
-        "diagnostics"
-      ]
+      "required": ["tags", "operators", "games", "resourceVersion", "diagnostics"]
     },
     "ScheduleList": {
       "type": "object",
@@ -2413,30 +2014,17 @@
           "additionalProperties": true
         }
       },
-      "required": [
-        "schedules",
-        "occurrences",
-        "timezone",
-        "wake"
-      ]
+      "required": ["schedules", "occurrences", "timezone", "wake"]
     },
     "CopilotKind": {
-      "enum": [
-        "Copilot",
-        "SSSCopilot",
-        "ParadoxCopilot"
-      ]
+      "enum": ["Copilot", "SSSCopilot", "ParadoxCopilot"]
     },
     "CopilotCompatibility": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "status": {
-          "enum": [
-            "ready",
-            "unverified",
-            "unsupported"
-          ]
+          "enum": ["ready", "unverified", "unsupported"]
         },
         "reasons": {
           "type": "array",
@@ -2447,21 +2035,14 @@
           }
         }
       },
-      "required": [
-        "status",
-        "reasons"
-      ]
+      "required": ["status", "reasons"]
     },
     "CopilotSource": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "kind": {
-          "enum": [
-            "local",
-            "community",
-            "legacy"
-          ]
+          "enum": ["local", "community", "legacy"]
         },
         "name": {
           "type": "string",
@@ -2482,11 +2063,7 @@
           "maxLength": 200
         }
       },
-      "required": [
-        "kind",
-        "name",
-        "url"
-      ]
+      "required": ["kind", "name", "url"]
     },
     "CopilotOperator": {
       "type": "object",
@@ -2511,9 +2088,7 @@
           "description": "组内任选一名；缺省表示独立必需干员。"
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "CopilotRecord": {
       "type": "object",
@@ -2639,13 +2214,7 @@
           "maxLength": 200
         }
       },
-      "required": [
-        "id",
-        "versionId",
-        "enabled",
-        "isRaid",
-        "navName"
-      ]
+      "required": ["id", "versionId", "enabled", "isRaid", "navName"]
     },
     "CopilotOptions": {
       "type": "object",
@@ -2691,10 +2260,7 @@
                 "maximum": 3
               }
             },
-            "required": [
-              "name",
-              "skill"
-            ]
+            "required": ["name", "skill"]
           }
         },
         "autoLikeOnSuccess": {
@@ -2731,11 +2297,7 @@
           "$ref": "#/$defs/CopilotOptions"
         }
       },
-      "required": [
-        "kind",
-        "queue",
-        "options"
-      ]
+      "required": ["kind", "queue", "options"]
     },
     "CopilotPreviewEntry": {
       "type": "object",
@@ -2757,18 +2319,11 @@
           ]
         },
         "error": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "maxLength": 1000
         }
       },
-      "required": [
-        "id",
-        "record",
-        "error"
-      ]
+      "required": ["id", "record", "error"]
     },
     "CopilotPreview": {
       "type": "object",
@@ -2791,11 +2346,7 @@
           }
         }
       },
-      "required": [
-        "id",
-        "title",
-        "entries"
-      ]
+      "required": ["id", "title", "entries"]
     },
     "CopilotSearchItem": {
       "type": "object",
@@ -2848,13 +2399,7 @@
           "$ref": "#/$defs/CopilotDifficulty"
         }
       },
-      "required": [
-        "id",
-        "title",
-        "description",
-        "author",
-        "url"
-      ]
+      "required": ["id", "title", "description", "author", "url"]
     },
     "CopilotSearchResult": {
       "type": "object",
@@ -2881,12 +2426,7 @@
           "maximum": 2147483647
         }
       },
-      "required": [
-        "items",
-        "page",
-        "hasNext",
-        "total"
-      ]
+      "required": ["items", "page", "hasNext", "total"]
     },
     "CopilotListParams": {
       "type": "object",
@@ -2947,9 +2487,7 @@
           "description": "选择同一原始 JSON 的具体导入来源，必须与 versionId 匹配；缺省沿用版本最初来源。"
         }
       },
-      "required": [
-        "versionId"
-      ]
+      "required": ["versionId"]
     },
     "CopilotPreviewParams": {
       "type": "object",
@@ -2999,9 +2537,7 @@
           }
         }
       },
-      "required": [
-        "previewId"
-      ]
+      "required": ["previewId"]
     },
     "CopilotWorkspaceParams": {
       "type": "object",
@@ -3011,9 +2547,7 @@
           "$ref": "#/$defs/CopilotKind"
         }
       },
-      "required": [
-        "kind"
-      ]
+      "required": ["kind"]
     },
     "CopilotWorkspaceSaveParams": {
       "type": "object",
@@ -3023,19 +2557,14 @@
           "$ref": "#/$defs/CopilotWorkspace"
         }
       },
-      "required": [
-        "workspace"
-      ]
+      "required": ["workspace"]
     },
     "CopilotSearchParams": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "target": {
-          "enum": [
-            "copilot",
-            "set"
-          ]
+          "enum": ["copilot", "set"]
         },
         "keyword": {
           "type": "string",
@@ -3051,9 +2580,7 @@
           "maxLength": 200
         }
       },
-      "required": [
-        "target"
-      ]
+      "required": ["target"]
     },
     "CopilotStartParams": {
       "type": "object",
@@ -3073,11 +2600,7 @@
           "maxLength": 200
         }
       },
-      "required": [
-        "kind",
-        "deviceId",
-        "requestId"
-      ]
+      "required": ["kind", "deviceId", "requestId"]
     },
     "CopilotRatingParams": {
       "type": "object",
@@ -3093,17 +2616,11 @@
           "maxLength": 200
         }
       },
-      "required": [
-        "versionId"
-      ]
+      "required": ["versionId"]
     },
     "CopilotRatingValue": {
       "type": "string",
-      "enum": [
-        "none",
-        "like",
-        "dislike"
-      ]
+      "enum": ["none", "like", "dislike"]
     },
     "CopilotRatingSetParams": {
       "type": "object",
@@ -3122,10 +2639,7 @@
           "$ref": "#/$defs/CopilotRatingValue"
         }
       },
-      "required": [
-        "versionId",
-        "rating"
-      ]
+      "required": ["versionId", "rating"]
     },
     "CopilotRating": {
       "type": "object",
@@ -3147,12 +2661,7 @@
           "$ref": "#/$defs/CopilotRatingValue"
         }
       },
-      "required": [
-        "communityId",
-        "likes",
-        "dislikes",
-        "rating"
-      ]
+      "required": ["communityId", "likes", "dislikes", "rating"]
     },
     "CopilotCategory": {
       "type": "object",
@@ -3178,12 +2687,7 @@
           "maxLength": 40
         }
       },
-      "required": [
-        "id",
-        "name",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "name", "createdAt", "updatedAt"]
     },
     "CopilotCategorySaveParams": {
       "type": "object",
@@ -3201,9 +2705,7 @@
           "pattern": "\\S"
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "CopilotCategoryAssignParams": {
       "type": "object",
@@ -3233,19 +2735,87 @@
           ]
         }
       },
-      "required": [
-        "ids",
-        "categoryId"
-      ]
+      "required": ["ids", "categoryId"]
     },
     "CopilotDifficulty": {
-      "enum": [
-        0,
-        1,
-        2,
-        3
-      ],
+      "enum": [0, 1, 2, 3],
       "description": "原始作业 difficulty 位标志：0 未设置，1 普通，2 突袭，3 均支持；缺省或无效值不得推断支持难度。"
+    },
+    "CopilotDeleteParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "all": {
+          "const": true
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": ["id"]
+        },
+        {
+          "properties": {
+            "ids": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1000,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            }
+          },
+          "required": ["ids"]
+        },
+        {
+          "properties": {
+            "all": {
+              "const": true
+            }
+          },
+          "required": ["all"]
+        }
+      ]
+    },
+    "CopilotCategoryDeleteParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "deleteCopilots": {
+          "type": "boolean"
+        }
+      },
+      "required": ["id"]
     }
   }
 }
