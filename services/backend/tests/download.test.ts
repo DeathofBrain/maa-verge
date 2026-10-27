@@ -41,13 +41,21 @@ const full = (data: Uint8Array = payload, headers: Record<string, string> = {}) 
     headers: { etag: '"v1"', 'content-length': String(data.length), ...headers },
   });
 function interrupted(data = payload, headers: Record<string, string> = {}) {
+  let sent = false;
   return new Response(
-    new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(data.subarray(0, 100));
-        setTimeout(() => controller.error(new Error('synthetic network interruption')), 20);
+    // Demand-driven pulls keep the error from discarding an unread prefix.
+    new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          if (sent) controller.error(new Error('synthetic network interruption'));
+          else {
+            sent = true;
+            controller.enqueue(data.subarray(0, 100));
+          }
+        },
       },
-    }),
+      { highWaterMark: 0 },
+    ),
     { headers: { etag: '"v1"', 'content-length': String(data.length), ...headers } },
   );
 }
@@ -76,12 +84,13 @@ test('a network interruption survives a new downloader invocation and resumes HT
   const destination = await temp();
   let attempts = 0,
     resumed = false;
+  let disconnect: (() => void) | undefined;
   const server = createServer((request, response) => {
     attempts++;
     if (attempts === 1) {
       response.writeHead(200, { etag: '"immutable-release"', 'content-length': payload.length });
       response.write(payload.subarray(0, 16_000));
-      setTimeout(() => response.destroy(), 40);
+      disconnect = () => response.destroy();
     } else {
       expect(request.headers.range).toBe('bytes=16000-');
       expect(request.headers['if-range']).toBe('"immutable-release"');
@@ -98,7 +107,26 @@ test('a network interruption survives a new downloader invocation and resumes HT
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address() as { port: number },
     metadata = meta(`http://127.0.0.1:${address.port}/archive`);
-  await expect(downloadArchive(metadata, destination, () => {}, {})).rejects.toThrow();
+  const firstAttempt = downloadArchive(metadata, destination, () => {}, {});
+  const firstSettled = firstAttempt.catch(() => {});
+  try {
+    // Interrupt after the prefix is written, independently of disk preparation speed.
+    const deadline = performance.now() + 2_000;
+    while (true) {
+      const partial = await stat(destination + '.partial').catch((error) => {
+        if (error.code === 'ENOENT') return undefined;
+        throw error;
+      });
+      if (partial?.size === 16_000) break;
+      if (performance.now() >= deadline)
+        throw new Error('Synthetic HTTP prefix was not persisted before interruption');
+      await Bun.sleep(5);
+    }
+  } finally {
+    disconnect?.();
+    await firstSettled;
+  }
+  await expect(firstAttempt).rejects.toThrow();
   expect((await stat(destination + '.partial')).size).toBe(16_000);
   expect(await downloadArchive(metadata, destination, () => {}, {})).toBe(hash(payload));
   expect(resumed).toBe(true);

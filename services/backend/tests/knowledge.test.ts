@@ -23,7 +23,7 @@ import {
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 const temporary = () => {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'maaverge-knowledge-')));
+  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'maaverge-knowledge-')));
   roots.push(root);
   return root;
 };

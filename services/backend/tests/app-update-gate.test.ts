@@ -9,7 +9,7 @@ import { snapshotIntegrity } from '../src/snapshot-integrity';
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 function fixture(source?: any, options: Partial<RuntimeOptions> = {}) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'maaverge-app-update-')));
+  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'maaverge-app-update-')));
   roots.push(root);
   const runtime = new Runtime(root, {
     source,
