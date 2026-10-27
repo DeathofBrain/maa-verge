@@ -191,6 +191,149 @@ async function scenario(name, project) {
   };
   try {
     await saveLock();
+    if (name === 'xz-fallback') {
+      const { withDependencyTar, decodeToFile } = await load(
+        'tools/test-support/dependency-tar.mjs',
+      );
+      const { execFile } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const stage = path.join(root, 'decoder-stage');
+      await mkdir(stage);
+      const source = path.join(root, 'synthetic.tar.xz');
+      await writeFile(source, Buffer.concat([Buffer.from('fd377a585a00', 'hex'), dependencyBytes]));
+      let decodedCount = 0;
+      const fallback = {
+        platform: 'win32',
+        environment: { MAAVERGE_7ZIP_PATH: process.execPath },
+        async run(_program, args) {
+          assert.deepEqual(args, ['--version']);
+          return { stdout: 'bsdtar 3.8.9 - libarchive 3.8.9 zlib/1.2.5.f-ipp' };
+        },
+        async decode(program, args, destination) {
+          assert.equal(program, process.execPath);
+          assert.deepEqual(args, ['x', '-so', '--', source]);
+          decodedCount++;
+          await decodeToFile(
+            process.execPath,
+            [
+              '--no-env-file',
+              '-e',
+              'process.stdout.write(require("node:fs").readFileSync(process.argv.at(-1)).subarray(6))',
+              source,
+            ],
+            destination,
+          );
+        },
+      };
+      let temporary;
+      await withDependencyTar(
+        source,
+        stage,
+        'system-tar',
+        async (input) => {
+          temporary = input;
+          assert.notEqual(input, source);
+          assert.deepEqual(await readFile(input), dependencyBytes);
+          const tar =
+            process.platform === 'win32'
+              ? path.join(process.env.SystemRoot || process.env.WINDIR, 'System32/tar.exe')
+              : 'tar';
+          const listing = await promisify(execFile)(tar, ['-tf', input], { timeout: 5_000 });
+          for (const port of ports)
+            for (const name of ['copyright', 'vcpkg.spdx.json'])
+              assert.ok(listing.stdout.includes(`/share/${port}/${name}`));
+        },
+        fallback,
+      );
+      assert.equal(decodedCount, 1);
+      assert.equal(await exists(temporary), false);
+      assert.deepEqual(await readdir(stage), []);
+      await assert.rejects(
+        withDependencyTar(
+          source,
+          stage,
+          'system-tar',
+          async () => {
+            throw new Error('synthetic consumer failure');
+          },
+          fallback,
+        ),
+        /synthetic consumer failure/,
+      );
+      assert.deepEqual(await readdir(stage), []);
+      await withDependencyTar(
+        source,
+        stage,
+        'system-tar',
+        async (input) => {
+          assert.equal(input, source);
+        },
+        {
+          ...fallback,
+          async run() {
+            return { stdout: 'bsdtar 3.8.9 liblzma/5.8.1' };
+          },
+        },
+      );
+      assert.equal(decodedCount, 2);
+      const plain = path.join(root, 'plain.tar.xz');
+      await writeFile(plain, dependencyBytes);
+      await withDependencyTar(
+        plain,
+        stage,
+        'system-tar',
+        async (input) => {
+          assert.equal(input, plain);
+        },
+        {
+          ...fallback,
+          async run() {
+            assert.fail('Plain TAR must not require an XZ decoder');
+          },
+        },
+      );
+      await assert.rejects(
+        withDependencyTar(
+          source,
+          stage,
+          'system-tar',
+          async () => {
+            assert.fail('Missing decoder must prevent consumption');
+          },
+          { ...fallback, environment: {} },
+        ),
+        /Install 7-Zip or set MAAVERGE_7ZIP_PATH/,
+      );
+      for (const [label, script, limits, expected] of [
+        ['failure', 'process.exit(7)', {}, /decoder failed \(7\)/],
+        ['oversized', 'process.stdout.write(Buffer.alloc(32))', { maxBytes: 16 }, /size limit/],
+        ['timeout', 'setInterval(() => {}, 1000)', { timeoutMs: 100 }, /time limit/],
+      ]) {
+        await assert.rejects(
+          decodeToFile(
+            process.execPath,
+            ['--no-env-file', '-e', script],
+            path.join(stage, label),
+            limits,
+          ),
+          expected,
+        );
+      }
+      await assert.rejects(
+        withDependencyTar(source, stage, 'system-tar', async () => {}, {
+          ...fallback,
+          async decode() {
+            throw new Error('synthetic decoder failure');
+          },
+        }),
+        /synthetic decoder failure/,
+      );
+      assert.equal(
+        (await readdir(stage)).some((entry) => entry.startsWith('.dependency-tar-')),
+        false,
+      );
+      return;
+    }
     if (name === 'path-shadow') {
       const { execFile } = await import('node:child_process');
       const { promisify } = await import('node:util');
@@ -549,6 +692,10 @@ async function scenario(name, project) {
 
 for (const [name, description] of [
   ['lock', 'component lock accepts only compatible immutable official Windows sources'],
+  [
+    'xz-fallback',
+    'XZ fallback uses bounded decoder output only when system tar lacks liblzma and cleans its temporary TAR',
+  ],
   ['path-shadow', 'Windows dependency notices use the system tar despite a valid PATH shadow'],
   [
     'prepare',

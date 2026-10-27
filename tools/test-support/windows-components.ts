@@ -18,6 +18,7 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { withDependencyTar } from './dependency-tar.mjs';
 import { extractArchive } from '../../services/backend/src/archives.ts';
 import { downloadArchive } from '../../services/backend/src/download.ts';
 import { nativeWorkerPath } from '../../services/backend/src/native-path.ts';
@@ -188,35 +189,37 @@ async function dependencyNotices(archive: string, target: string): Promise<void>
     timeout: 180_000,
     maxBuffer: 8 * 1024 ** 2,
   };
-  const listing = await execute(tar, ['-tf', archive], options);
-  const members = listing.stdout.split(/\r?\n/).filter((entry) => noticePath.test(entry));
-  if (new Set(members).size !== members.length)
-    throw new Error('Dependency notices contain duplicate paths');
-  for (const port of requiredPorts)
-    for (const name of ['copyright', 'vcpkg.spdx.json'])
-      if (!members.includes(`./vcpkg/installed/maa-x64-windows/share/${port}/${name}`))
-        throw new Error(`Official dependency notices are incomplete: ${port}/${name}`);
-  const extracted = path.join(target, '_source');
-  await mkdir(extracted, { recursive: true });
-  await execute(tar, ['-xf', archive, '-C', extracted, '--', ...members], options);
-  for (const member of members) {
-    const [, port, name] = noticePath.exec(member)!;
-    const source = path.join(extracted, member);
-    const info = await lstat(source);
-    if (
-      !info.isFile() ||
-      info.isSymbolicLink() ||
-      info.nlink !== 1 ||
-      info.size <= 0 ||
-      info.size > 4 * 1024 ** 2 ||
-      pathKey(await realpath(source)) !== pathKey(source)
-    )
-      throw new Error(`Dependency notice is not a plain bounded file: ${member}`);
-    await mkdir(path.join(target, port), { recursive: true });
-    await cp(source, path.join(target, port, name), { force: false, errorOnExist: true });
-  }
-  // This tree is a newly reserved child of the current invocation's staging.
-  await rm(extracted, { recursive: true });
+  await withDependencyTar(archive, target, tar, async (input: string) => {
+    const listing = await execute(tar, ['-tf', input], options);
+    const members = listing.stdout.split(/\r?\n/).filter((entry) => noticePath.test(entry));
+    if (new Set(members).size !== members.length)
+      throw new Error('Dependency notices contain duplicate paths');
+    for (const port of requiredPorts)
+      for (const name of ['copyright', 'vcpkg.spdx.json'])
+        if (!members.includes(`./vcpkg/installed/maa-x64-windows/share/${port}/${name}`))
+          throw new Error(`Official dependency notices are incomplete: ${port}/${name}`);
+    const extracted = path.join(target, '_source');
+    await mkdir(extracted, { recursive: true });
+    await execute(tar, ['-xf', input, '-C', extracted, '--', ...members], options);
+    for (const member of members) {
+      const [, port, name] = noticePath.exec(member)!;
+      const source = path.join(extracted, member);
+      const info = await lstat(source);
+      if (
+        !info.isFile() ||
+        info.isSymbolicLink() ||
+        info.nlink !== 1 ||
+        info.size <= 0 ||
+        info.size > 4 * 1024 ** 2 ||
+        pathKey(await realpath(source)) !== pathKey(source)
+      )
+        throw new Error(`Dependency notice is not a plain bounded file: ${member}`);
+      await mkdir(path.join(target, port), { recursive: true });
+      await cp(source, path.join(target, port, name), { force: false, errorOnExist: true });
+    }
+    // This tree is a newly reserved child of the current invocation's staging.
+    await rm(extracted, { recursive: true });
+  });
 }
 
 async function preserveLicenses(core: string, resource: string, extracted: string): Promise<void> {
