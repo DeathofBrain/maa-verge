@@ -1,0 +1,33 @@
+name: Diagnose Windows component archive
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install and verify the pinned Bun runtime
+        run: node tools/setup-bun.mjs
+      - name: Compare Node and Bun subprocess archive listing
+        run: node tools/diagnose-windows-components.mjs
+      - name: Save bounded archive diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-component-diagnostics
+          path: |
+            build/windows-component-diagnostics/summary.json
+            build/windows-component-diagnostics/versions.txt
+          if-no-files-found: warn
