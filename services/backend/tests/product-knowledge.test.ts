@@ -197,6 +197,7 @@ test('callers cannot mutate the static catalogue and manifest', () => {
   expect(Object.isFrozen(productKnowledgeSources[0])).toBe(true);
 });
 
+// Six isolated CLI invocations share this test's overall deadline.
 test('offline generator is deterministic and check detects source drift without changing output', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'maaverge-product-knowledge-'));
   const output = 'services/backend/src/product-knowledge.generated.json';
@@ -252,4 +253,4 @@ test('offline generator is deterministic and check detects source drift without 
       throw new Error('Unexpected temporary test path');
     rmSync(absolute, { recursive: true, force: true });
   }
-});
+}, 30_000);
