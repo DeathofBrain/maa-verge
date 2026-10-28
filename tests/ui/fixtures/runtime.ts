@@ -710,6 +710,13 @@ export async function fixtureRpc(
     }
     case 'logs.clean':
       return { removedFiles: 2, removedBytes: 2048, skippedFiles: 1, warnings: [] };
+    case 'logs.delete': {
+      const ids = params.ids as number[];
+      const before = state.events.length;
+      state.events = state.events.filter((event) => !ids.includes(event.id));
+      persist();
+      return { deleted: before - state.events.length };
+    }
     case 'stages.list': {
       const clientType = String(params.clientType || 'Official');
       const jp = clientType === 'YoStarJP';

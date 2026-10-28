@@ -1,10 +1,29 @@
 import { isCopilotRun } from './run-source';
 import { useContextMenu } from './ContextMenu';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Clock3, Layers, ListChecks, LoaderCircle, Monitor, Search, Square, TriangleAlert } from 'lucide-react';
-import { localizeExecutionMessage, type Plan, type Run, type Snapshot } from '@maaverge/contracts';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Clock3,
+  LoaderCircle,
+  Monitor,
+  Search,
+  Square,
+  Terminal,
+  TriangleAlert,
+} from 'lucide-react';
+import {
+  localizeExecutionMessage,
+  type Device,
+  type Plan,
+  type Run,
+  type Snapshot,
+} from '@maaverge/contracts';
+import CopilotSelectAll from './CopilotSelectAll';
+import DeviceDetailDrawer from './DeviceDetailDrawer';
 import ExecutionPage from './ExecutionPage';
-import MultiRunPanel from './MultiRunPanel';
+import MonitorLogDrawer from './MonitorLogDrawer';
 import './execution-monitor.css';
 
 type Props = {
@@ -14,47 +33,73 @@ type Props = {
   onSelectRun: (run: Run) => void;
   onRunUpdate: (run: Run) => void;
   onOverview: () => void;
-  onStart: (plan: Plan, deviceId: string) => Promise<boolean>;
   onStop: (run: Run) => Promise<boolean>;
+  onStopMany: (runs: Run[]) => Promise<boolean>;
   onEdit: (plan: Plan) => void;
   onPrepare: () => void;
-  onDevices: () => void;
 };
-const statusNames: Record<Run['status'], string> = { running: '执行中', completed: '已完成', failed: '执行失败', stopped: '已停止' };
-const dateTime = (value: string) => new Date(value).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+type DeviceFilter = 'all' | 'running' | 'idle' | 'offline';
+const statusNames: Record<Run['status'], string> = {
+  running: '执行中',
+  completed: '已完成',
+  failed: '执行失败',
+  stopped: '已停止',
+};
+const dateTime = (value: string) =>
+  new Date(value).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 function elapsed(run: Run, now: number) {
-  const seconds = Math.max(0, Math.floor(((run.finishedAt ? Date.parse(run.finishedAt) : now) - Date.parse(run.startedAt)) / 1000));
+  const seconds = Math.max(
+    0,
+    Math.floor(
+      ((run.finishedAt ? Date.parse(run.finishedAt) : now) - Date.parse(run.startedAt)) / 1000,
+    ),
+  );
   if (!Number.isFinite(seconds)) return '—';
-  return seconds >= 3600 ? `${Math.floor(seconds / 3600)} 时 ${Math.floor(seconds % 3600 / 60)} 分` : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
+  return seconds >= 3600
+    ? `${Math.floor(seconds / 3600)} 时 ${Math.floor((seconds % 3600) / 60)} 分`
+    : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
+}
+function categoryOf(device: Device, active?: Run): Exclude<DeviceFilter, 'all'> {
+  if (active || device.state === 'running') return 'running';
+  if (device.state === 'offline') return 'offline';
+  return 'idle';
 }
 
-export default function ExecutionMonitor({ snapshot, selectedRun, pending, onSelectRun, onRunUpdate, onOverview, onStart, onStop, onEdit, onPrepare, onDevices }: Props) {
+export default function ExecutionMonitor({
+  snapshot,
+  selectedRun,
+  pending,
+  onSelectRun,
+  onRunUpdate,
+  onOverview,
+  onStop,
+  onStopMany,
+  onEdit,
+  onPrepare,
+}: Props) {
   const contextMenu = useContextMenu();
-  const runMenu = (run: Run) => contextMenu('执行菜单', [
-    { label: '查看执行详情', action: () => onSelectRun(run) },
-    { label: '编辑任务表', disabled: !snapshot.plans.some((plan) => plan.id === run.planId), action: () => { const plan = snapshot.plans.find((plan) => plan.id === run.planId); if (plan) onEdit(plan); } },
-    { label: '停止执行', danger: true, disabled: run.status !== 'running' || pending.has(`stop-${run.id}`), action: () => { void onStop(run); } },
-  ]);
-  const [view, setView] = useState<'monitor' | 'instances'>('monitor');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState<DeviceFilter>('all');
   const [query, setQuery] = useState('');
   const [clock, setClock] = useState(Date.now);
-  const overviewScroll = useRef<HTMLDivElement>(null);
-  const overviewPosition = useRef(0);
-  const overviewFocus = useRef('');
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [logDevices, setLogDevices] = useState<string[] | null>(null);
+  const [detailDeviceId, setDetailDeviceId] = useState('');
+  const [bulkStopping, setBulkStopping] = useState(false);
+  const listScroll = useRef<HTMLDivElement>(null);
   const runStrip = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
-    if (selectedRun) {
-      runStrip.current?.querySelector('[aria-current=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    } else if (overviewScroll.current) {
-      overviewScroll.current.scrollTop = overviewPosition.current;
-      const trigger = [...overviewScroll.current.querySelectorAll<HTMLButtonElement>('[data-inspect-run]')].find((button) => button.dataset.inspectRun === overviewFocus.current);
-      trigger?.focus({ preventScroll: true });
-    }
-  }, [selectedRun?.id]);
-  const planRuns = snapshot.runs.filter((run) => !isCopilotRun(run));
-  const running = planRuns.filter((run) => run.status === 'running').sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id));
-  const ended = planRuns.filter((run) => run.status !== 'running').sort((a, b) => b.startedAt.localeCompare(a.startedAt) || a.id.localeCompare(b.id));
+  const planRuns = useMemo(
+    () => snapshot.runs.filter((run) => !isCopilotRun(run) && !!run.planId),
+    [snapshot.runs],
+  );
+  const running = planRuns
+    .filter((run) => run.status === 'running')
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id));
   const hasRunning = running.length > 0;
   useEffect(() => {
     if (!hasRunning) return;
@@ -62,60 +107,483 @@ export default function ExecutionMonitor({ snapshot, selectedRun, pending, onSel
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [hasRunning]);
-  const planName = (run: Run) => run.planName || snapshot.plans.find((plan) => plan.id === run.planId)?.name || '已删除的任务表';
-  const deviceName = (run: Run) => snapshot.devices.find((device) => device.id === run.deviceId)?.name || run.deviceId;
+  const activeByDevice = useMemo(() => {
+    const map = new Map<string, Run>();
+    for (const run of [...running].reverse())
+      if (!map.has(run.deviceId)) map.set(run.deviceId, run);
+    return map;
+  }, [running]);
+  const latestByDevice = useMemo(() => {
+    const map = new Map<string, Run>();
+    for (const run of [...planRuns].sort(
+      (a, b) => b.startedAt.localeCompare(a.startedAt) || b.id.localeCompare(a.id),
+    ))
+      if (!map.has(run.deviceId)) map.set(run.deviceId, run);
+    return map;
+  }, [planRuns]);
+  const detailDevice = snapshot.devices.find((device) => device.id === detailDeviceId);
+  const planName = (run: Run) =>
+    run.planName || snapshot.plans.find((plan) => plan.id === run.planId)?.name || '已删除的任务表';
+  const categories = new Map(
+    snapshot.devices.map((device) => [
+      device.id,
+      categoryOf(device, activeByDevice.get(device.id)),
+    ]),
+  );
+  const counts = {
+    all: snapshot.devices.length,
+    running: snapshot.devices.filter((device) => categories.get(device.id) === 'running').length,
+    idle: snapshot.devices.filter((device) => categories.get(device.id) === 'idle').length,
+    offline: snapshot.devices.filter((device) => categories.get(device.id) === 'offline').length,
+  };
+  const term = query.trim().toLocaleLowerCase();
+  const visibleDevices = snapshot.devices
+    .filter((device) => {
+      if (filter !== 'all' && categories.get(device.id) !== filter) return false;
+      if (!term) return true;
+      const active = activeByDevice.get(device.id);
+      const latest = latestByDevice.get(device.id);
+      const bound = snapshot.plans.find((plan) => plan.deviceId === device.id);
+      const run = active || latest;
+      return `${device.name} ${device.address} ${run ? planName(run) : ''} ${run ? localizeExecutionMessage(run.message) : ''} ${bound?.name || ''}`
+        .toLocaleLowerCase()
+        .includes(term);
+    })
+    .sort((a, b) => {
+      const rank = { running: 0, idle: 1, offline: 2 };
+      return (
+        rank[categories.get(a.id)!] - rank[categories.get(b.id)!] ||
+        a.name.localeCompare(b.name, 'zh-CN')
+      );
+    });
+  const selectedRuns = snapshot.devices
+    .filter((device) => selected.has(device.id))
+    .flatMap((device) => {
+      const run = activeByDevice.get(device.id);
+      return run ? [run] : [];
+    });
+  useEffect(() => {
+    setSelected((previous) => {
+      const next = new Set(
+        [...previous].filter((id) => snapshot.devices.some((device) => device.id === id)),
+      );
+      return next.size === previous.size ? previous : next;
+    });
+  }, [snapshot.devices]);
+  useLayoutEffect(() => {
+    if (selectedRun)
+      runStrip.current
+        ?.querySelector('[aria-current=true]')
+        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [selectedRun?.id]);
+  const toggle = (deviceId: string) =>
+    setSelected((previous) => {
+      const next = new Set(previous);
+      if (next.has(deviceId)) next.delete(deviceId);
+      else next.add(deviceId);
+      return next;
+    });
+  const selectVisible = (checked: boolean) =>
+    setSelected((previous) => {
+      const next = new Set(previous);
+      for (const device of visibleDevices) {
+        if (checked) next.add(device.id);
+        else next.delete(device.id);
+      }
+      return next;
+    });
+  const runMenu = (run: Run) =>
+    contextMenu('执行菜单', [
+      { label: '查看执行详情', action: () => onSelectRun(run) },
+      {
+        label: '编辑任务表',
+        disabled: !snapshot.plans.some((plan) => plan.id === run.planId),
+        action: () => {
+          const plan = snapshot.plans.find((plan) => plan.id === run.planId);
+          if (plan) onEdit(plan);
+        },
+      },
+      {
+        label: '停止执行',
+        danger: true,
+        disabled: run.status !== 'running' || pending.has(`stop-${run.id}`),
+        action: () => {
+          void onStop(run);
+        },
+      },
+    ]);
+  const deviceMenu = (device: Device, active: Run | undefined) =>
+    contextMenu('设备执行菜单', [
+      { label: '查看设备详情', action: () => setDetailDeviceId(device.id) },
+      { label: '查看设备日志', action: () => setLogDevices([device.id]) },
+      {
+        label: '停止设备任务',
+        danger: true,
+        disabled: !active || pending.has(`stop-${active.id}`),
+        action: () => {
+          if (active) void onStop(active);
+        },
+      },
+    ]);
+  const stopSelected = async () => {
+    if (!selectedRuns.length || bulkStopping) return;
+    setBulkStopping(true);
+    await onStopMany(selectedRuns);
+    setBulkStopping(false);
+    setSelected(new Set());
+  };
 
   if (selectedRun) {
-    const watched = running.some((run) => run.id === selectedRun.id) ? running : [selectedRun, ...running];
-    return <section className="execution-monitor inspecting" aria-label="任务表执行监控">
-      <div className="monitor-inspector-bar"><button className="text-button" onClick={() => { setView('monitor'); onOverview(); }}><ArrowLeft size={15} />返回监控总览</button><span><i className={hasRunning ? 'monitor-live-dot' : ''} />{running.length} 项正在执行</span></div>
-      <nav className="monitor-run-strip" ref={runStrip} aria-label="正在监控的执行">{watched.map((run) => <button key={run.id} {...runMenu(run)} className={`monitor-run-tab ${run.status} ${selectedRun.id === run.id ? 'selected' : ''}`} aria-label={`切换执行${run.id}`} aria-current={selectedRun.id === run.id ? 'true' : undefined} onClick={() => onSelectRun(run)}><span><RunIcon status={run.status} /><strong>{planName(run)}</strong><b>{run.progress}%</b></span><small><span className="monitor-run-device" title={deviceName(run)}>{deviceName(run)}</span><span>{statusNames[run.status]}</span></small></button>)}</nav>
-      <ExecutionPage key={selectedRun.id} snapshot={snapshot} run={selectedRun} pending={pending} onRunUpdate={onRunUpdate} onStop={onStop} onEdit={onEdit} onPrepare={onPrepare} />
-    </section>;
+    const watched = running.some((run) => run.id === selectedRun.id)
+      ? running
+      : [selectedRun, ...running];
+    return (
+      <section className="execution-monitor inspecting" aria-label="任务表执行监控">
+        <div className="monitor-inspector-bar">
+          <button
+            className="text-button"
+            onClick={() => {
+              onOverview();
+            }}
+          >
+            <ArrowLeft size={15} />
+            返回设备监控
+          </button>
+          <span>
+            <i className={hasRunning ? 'monitor-live-dot' : ''} />
+            {running.length} 项正在执行
+          </span>
+        </div>
+        <nav className="monitor-run-strip" ref={runStrip} aria-label="正在监控的执行">
+          {watched.map((run) => (
+            <button
+              key={run.id}
+              {...runMenu(run)}
+              className={`monitor-run-tab ${run.status} ${selectedRun.id === run.id ? 'selected' : ''}`}
+              aria-label={`切换执行${run.id}`}
+              aria-current={selectedRun.id === run.id ? 'true' : undefined}
+              onClick={() => onSelectRun(run)}
+            >
+              <span>
+                <RunIcon status={run.status} />
+                <strong>{planName(run)}</strong>
+                <b>{run.progress}%</b>
+              </span>
+              <small>
+                <span
+                  className="monitor-run-device"
+                  title={
+                    snapshot.devices.find((device) => device.id === run.deviceId)?.name ||
+                    run.deviceId
+                  }
+                >
+                  {snapshot.devices.find((device) => device.id === run.deviceId)?.name ||
+                    run.deviceId}
+                </span>
+                <span>{statusNames[run.status]}</span>
+              </small>
+            </button>
+          ))}
+        </nav>
+        <ExecutionPage
+          key={selectedRun.id}
+          snapshot={snapshot}
+          run={selectedRun}
+          pending={pending}
+          onRunUpdate={onRunUpdate}
+          onStop={onStop}
+          onEdit={onEdit}
+          onPrepare={onPrepare}
+        />
+      </section>
+    );
   }
 
-  const matches = (run: Run) => {
-    const statusMatches = filter === 'all' || (filter === 'ended' ? run.status !== 'running' : run.status === filter);
-    const term = query.trim().toLocaleLowerCase();
-    return statusMatches && (!term || `${planName(run)} ${deviceName(run)} ${statusNames[run.status]} ${localizeExecutionMessage(run.message)}`.toLocaleLowerCase().includes(term));
-  };
-  const activeMatches = running.filter(matches), endedMatches = ended.filter(matches);
-  const filters = [
-    { id: 'all', label: '全部', count: planRuns.length },
-    { id: 'running', label: '执行中', count: running.length },
-    { id: 'failed', label: '执行失败', count: ended.filter((run) => run.status === 'failed').length },
-    { id: 'ended', label: '已结束', count: ended.length },
+  const filters: { id: DeviceFilter; label: string; count: number }[] = [
+    { id: 'all', label: '全部', count: counts.all },
+    { id: 'running', label: '执行中', count: counts.running },
+    { id: 'idle', label: '空闲', count: counts.idle },
+    { id: 'offline', label: '离线', count: counts.offline },
   ];
-  const renderCard = (run: Run) => <article key={run.id} {...runMenu(run)} className={`monitor-card ${run.status}`} aria-label={`执行 ${planName(run)} · ${deviceName(run)}`}>
-    <header><span className={`monitor-status ${run.status}`}><RunIcon status={run.status} />{statusNames[run.status]}</span><time dateTime={run.startedAt} title={`开始于 ${dateTime(run.startedAt)}`}>{dateTime(run.startedAt)}</time></header>
-    <h3>{planName(run)}</h3><div className="monitor-card-device"><Monitor size={14} /><span>{deviceName(run)}</span></div>
-    <p className="monitor-card-message" title={localizeExecutionMessage(run.message)}>{localizeExecutionMessage(run.message) || statusNames[run.status]}</p>
-    <div className="monitor-card-progress"><span>执行进度</span><strong>{run.progress}%</strong></div><div className="monitor-progress" role="progressbar" aria-label={`${planName(run)} · ${deviceName(run)}执行进度`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={run.progress}><i style={{ width: `${run.progress}%` }} /></div>
-    <div className="monitor-card-timing"><span><Clock3 size={13} />{elapsed(run, clock)}</span>{run.finishedAt && <span title={dateTime(run.finishedAt)}>结束于 {new Date(run.finishedAt).toLocaleTimeString('zh-CN', { hour12: false })}</span>}</div>
-    <footer><button className="button secondary" data-inspect-run={run.id} aria-label={`查看执行${run.id}`} onClick={() => { overviewFocus.current = run.id; onSelectRun(run); }}>查看详情<ArrowRight size={14} /></button>{run.status === 'running' && <button className="button danger" aria-label={`停止执行${run.id}`} disabled={pending.has(`stop-${run.id}`)} onClick={() => void onStop(run)}>{pending.has(`stop-${run.id}`) ? <LoaderCircle size={13} className="spin" /> : <Square size={12} />}停止此执行</button>}</footer>
-  </article>;
-
-  return <section className="execution-monitor" aria-label="任务表执行监控">
-    <div className="monitor-scroll" ref={overviewScroll} onScroll={(event) => { overviewPosition.current = event.currentTarget.scrollTop; }}>
-      <header className="monitor-heading"><div><div className="monitor-eyebrow"><Monitor size={14} />执行工作区</div><h1>任务表执行</h1><p>同时查看各任务表的进度，按设备区分每一次执行。</p></div><button className="button secondary" onClick={onPrepare}><ListChecks size={15} />配置任务表</button></header>
-      <div className="monitor-view-tabs" role="tablist" aria-label="执行工作区视图" onKeyDown={(event) => {
-        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-        event.preventDefault();
-        const index = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : view === 'monitor' ? 1 : 0;
-        setView(index === 0 ? 'monitor' : 'instances');
-        event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=tab]')[index]?.focus();
-      }}><button role="tab" id="monitor-tab" aria-controls="monitor-panel" aria-selected={view === 'monitor'} tabIndex={view === 'monitor' ? 0 : -1} onClick={() => setView('monitor')}><Monitor size={16} />监控总览{running.length > 0 && <span>{running.length}</span>}</button><button role="tab" id="instances-tab" aria-controls="instances-panel" aria-selected={view === 'instances'} tabIndex={view === 'instances' ? 0 : -1} onClick={() => setView('instances')}><Layers size={16} />实例启动</button></div>
-      {view === 'instances' ? <div role="tabpanel" id="instances-panel" aria-labelledby="instances-tab"><MultiRunPanel devices={snapshot.devices} plans={snapshot.plans} runs={snapshot.runs} pending={pending} onStart={onStart} onStop={onStop} onInspect={onSelectRun} onConnect={onDevices} /></div> : <div role="tabpanel" id="monitor-panel" aria-labelledby="monitor-tab">
-        <div className="monitor-toolbar"><div className="monitor-filters" role="group" aria-label="筛选监控执行">{filters.map((item) => <button key={item.id} aria-label={item.label} aria-pressed={filter === item.id} className={filter === item.id ? 'selected' : ''} onClick={() => setFilter(item.id)}>{item.label}<span>{item.count}</span></button>)}</div><label className="monitor-search"><Search size={15} /><input aria-label="搜索监控执行" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索任务表、设备或结果" /></label></div>
-        {activeMatches.length > 0 && <section className="monitor-group" aria-label="正在执行"><div className="monitor-group-heading"><h2><i className="monitor-live-dot" />正在执行<span>{activeMatches.length}</span></h2><small>进度自动更新</small></div><div className="monitor-grid">{activeMatches.map(renderCard)}</div></section>}
-        {endedMatches.length > 0 && <section className="monitor-group" aria-label="最近结束"><div className="monitor-group-heading"><h2>最近结束<span>{endedMatches.length}</span></h2><small>保留结果，可随时查看详情</small></div><div className="monitor-grid">{endedMatches.map(renderCard)}</div></section>}
-        {!activeMatches.length && !endedMatches.length && <div className="monitor-empty"><Monitor size={34} /><h2>{planRuns.length ? '没有匹配的执行' : '还没有执行任务表'}</h2><p>{planRuns.length ? '调整筛选条件，或搜索其他任务表、设备。' : '从任务表开始执行，或在「实例启动」为多个设备分别启动任务。'}</p>{planRuns.length ? <button className="button secondary" onClick={() => { setFilter('all'); setQuery(''); }}>清除筛选</button> : <button className="button primary" onClick={() => setView('instances')}><Layers size={15} />选择实例与任务表</button>}</div>}
-        {planRuns.length > 0 && <p className="monitor-footnote">展示本机最近的执行记录。同一张任务表在不同设备上的执行分别显示，停止仅影响对应执行。</p>}
-      </div>}
-    </div>
-  </section>;
+  return (
+    <section className="execution-monitor" aria-label="任务表执行监控">
+      <div className="monitor-scroll" ref={listScroll}>
+        <header className="monitor-heading">
+          <div>
+            <div className="monitor-eyebrow">
+              <Monitor size={14} />
+              设备监控
+            </div>
+            <p>查看每台设备当前是否正在执行，并单独停止或查看日志。</p>
+          </div>
+          <div className="monitor-summary" role="status">
+            <span>
+              <b>{counts.all}</b> 台设备
+            </span>
+            <span className="running">
+              <i className="monitor-live-dot" />
+              {counts.running} 台执行中
+            </span>
+          </div>
+        </header>
+        <div className="monitor-toolbar">
+          <div className="monitor-toolbar-main">
+            <CopilotSelectAll
+              label="全选监控设备"
+              total={visibleDevices.length}
+              selected={visibleDevices.filter((device) => selected.has(device.id)).length}
+              onChange={selectVisible}
+            />
+            <div className="monitor-filters" role="group" aria-label="筛选监控设备">
+              {filters.map((item) => (
+                <button
+                  key={item.id}
+                  aria-label={item.label}
+                  aria-pressed={filter === item.id}
+                  className={filter === item.id ? 'selected' : ''}
+                  onClick={() => setFilter(item.id)}
+                >
+                  {item.label}
+                  <span>{item.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="monitor-search">
+            <Search size={15} />
+            <input
+              aria-label="搜索监控设备"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="搜索设备、任务或反馈"
+            />
+          </label>
+        </div>
+        {selected.size > 0 && (
+          <div className="monitor-bulk-bar" role="region" aria-label="设备批量操作">
+            <span role="status">已选 {selected.size} 台设备</span>
+            <div>
+              <button className="button secondary" onClick={() => setLogDevices([...selected])}>
+                <Terminal size={14} />
+                查看日志
+              </button>
+              <button
+                className="button danger"
+                disabled={!selectedRuns.length || bulkStopping}
+                onClick={() => void stopSelected()}
+              >
+                {bulkStopping ? <LoaderCircle size={14} className="spin" /> : <Square size={12} />}
+                停止所选
+              </button>
+              <button className="text-button" onClick={() => setSelected(new Set())}>
+                清除
+              </button>
+            </div>
+          </div>
+        )}
+        {!snapshot.devices.length ? (
+          <div className="monitor-empty">
+            <Monitor size={34} />
+            <h2>还没有设备</h2>
+            <p>请先在设备页添加并连接模拟器实例，执行状态会显示在这里。</p>
+          </div>
+        ) : !visibleDevices.length ? (
+          <div className="monitor-empty">
+            <Search size={30} />
+            <h2>没有匹配的设备</h2>
+            <p>调整筛选条件，或搜索其他设备、任务与反馈。</p>
+            <button
+              className="button secondary"
+              onClick={() => {
+                setFilter('all');
+                setQuery('');
+              }}
+            >
+              清除筛选
+            </button>
+          </div>
+        ) : (
+          <section className="monitor-device-list" aria-label="设备执行列表">
+            {visibleDevices.map((device) => {
+              const active = activeByDevice.get(device.id);
+              const latest = latestByDevice.get(device.id);
+              const category = categories.get(device.id)!;
+              const displayRun = active || (category === 'running' ? undefined : latest);
+              const bound = snapshot.plans.find((plan) => plan.deviceId === device.id);
+              const selectedDevice = selected.has(device.id);
+              return (
+                <article
+                  className={`monitor-device-row ${category} ${selectedDevice ? 'is-selected' : ''}`}
+                  key={device.id}
+                  aria-label={`设备执行${device.name}`}
+                  {...deviceMenu(device, active)}
+                >
+                  <label className="monitor-device-check">
+                    <input
+                      type="checkbox"
+                      aria-label={`选择设备${device.name}`}
+                      checked={selectedDevice}
+                      onChange={() => toggle(device.id)}
+                    />
+                  </label>
+                  <div className="monitor-device-main">
+                    <div className="monitor-device-name">
+                      <span className="monitor-device-icon">
+                        <Monitor size={17} />
+                      </span>
+                      <span className="monitor-device-copy">
+                        <strong>
+                          {device.name}
+                          <small className={`monitor-device-state ${category}`}>
+                            {category === 'running'
+                              ? active
+                                ? '执行中'
+                                : '其他任务'
+                              : category === 'offline'
+                                ? '离线'
+                                : '空闲'}
+                          </small>
+                        </strong>
+                        <small>
+                          {displayRun
+                            ? localizeExecutionMessage(displayRun.message) ||
+                              statusNames[displayRun.status]
+                            : category === 'running'
+                              ? '设备正被其他任务占用。'
+                              : bound
+                                ? `尚未执行；已绑定 ${bound.name}。`
+                                : '尚未执行任务。'}
+                        </small>
+                      </span>
+                    </div>
+                    {active && (
+                      <div
+                        className="monitor-progress"
+                        role="progressbar"
+                        aria-label={`${device.name}执行进度`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={active.progress}
+                      >
+                        <i style={{ width: `${active.progress}%` }} />
+                      </div>
+                    )}
+                    <div className="monitor-device-meta">
+                      <span>{device.address}</span>
+                      {displayRun ? (
+                        <>
+                          <span className={`monitor-status ${displayRun.status}`}>
+                            <RunIcon status={displayRun.status} />
+                            {statusNames[displayRun.status]}
+                            {active && ` ${active.progress}%`}
+                          </span>
+                          {active && <span>{planName(displayRun)}</span>}
+                          <span>
+                            <Clock3 size={12} />
+                            {active
+                              ? elapsed(active, clock)
+                              : `最近 ${dateTime(displayRun.startedAt)}`}
+                          </span>
+                          {displayRun.finishedAt && (
+                            <span>
+                              结束于{' '}
+                              {new Date(displayRun.finishedAt).toLocaleTimeString('zh-CN', {
+                                hour12: false,
+                              })}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <span>
+                            {category === 'offline'
+                              ? '设备离线'
+                              : category === 'running'
+                                ? '等待当前任务结束'
+                                : '等待任务'}
+                          </span>
+                          {bound && <span>绑定 {bound.name}</span>}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="monitor-device-actions">
+                    <button
+                      className="button secondary"
+                      data-device-detail={device.id}
+                      aria-label={`查看设备详情${device.name}`}
+                      onClick={() => setDetailDeviceId(device.id)}
+                    >
+                      详情
+                      <ArrowRight size={14} />
+                    </button>
+                    <button
+                      className="button secondary"
+                      aria-label={`查看设备日志${device.name}`}
+                      onClick={() => setLogDevices([device.id])}
+                    >
+                      <Terminal size={14} />
+                      日志
+                    </button>
+                    {active && (
+                      <button
+                        className="button danger"
+                        aria-label={`停止设备任务${device.name}`}
+                        disabled={pending.has(`stop-${active.id}`)}
+                        onClick={() => void onStop(active)}
+                      >
+                        {pending.has(`stop-${active.id}`) ? (
+                          <LoaderCircle size={13} className="spin" />
+                        ) : (
+                          <Square size={12} />
+                        )}
+                        停止
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        )}
+        {snapshot.devices.length > 0 && (
+          <p className="monitor-footnote">
+            每台设备同时只允许一个执行；停止只影响对应设备。历史结果可在执行记录中查看。
+          </p>
+        )}
+      </div>
+      {logDevices && (
+        <MonitorLogDrawer
+          snapshot={snapshot}
+          initialDeviceIds={logDevices}
+          onClose={() => setLogDevices(null)}
+        />
+      )}
+      {detailDevice && (
+        <DeviceDetailDrawer
+          snapshot={snapshot}
+          device={detailDevice}
+          run={activeByDevice.get(detailDevice.id)}
+          pending={pending}
+          onRunUpdate={onRunUpdate}
+          onStop={onStop}
+          onEdit={onEdit}
+          onPrepare={onPrepare}
+          onClose={() => setDetailDeviceId('')}
+        />
+      )}
+    </section>
+  );
 }
 
 function RunIcon({ status }: { status: Run['status'] }) {
-  return status === 'running' ? <LoaderCircle size={14} className="spin" /> : status === 'completed' ? <Check size={14} /> : status === 'failed' ? <TriangleAlert size={14} /> : <Square size={12} />;
+  return status === 'running' ? (
+    <LoaderCircle size={14} className="spin" />
+  ) : status === 'completed' ? (
+    <Check size={14} />
+  ) : status === 'failed' ? (
+    <TriangleAlert size={14} />
+  ) : (
+    <Square size={12} />
+  );
 }
