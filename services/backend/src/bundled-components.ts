@@ -21,6 +21,11 @@ export interface BundledComponents {
   core?: BundledCore;
   resource?: BundledResource;
 }
+export type BundledProgress = {
+  stage: 'verifying' | 'copying' | 'checking';
+  completed: number;
+  total: number;
+};
 
 const invalid = () => new Error('随附组件清单无效，请重新下载安装包');
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -131,6 +136,7 @@ export async function copyBundledPayload(
   directory: string,
   component: BundledCore | BundledResource,
   destination: string,
+  progress?: (value: BundledProgress) => void,
 ): Promise<SnapshotIntegrity> {
   const source = path.resolve(directory, component.directory);
   const target = path.resolve(destination);
@@ -140,7 +146,10 @@ export async function copyBundledPayload(
     (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith('..' + path.sep))
   )
     throw new Error('组件目标目录不能位于随附组件载荷内，请在设置中选择其他目录');
-  const verified = await snapshotIntegrity(source);
+  progress?.({ stage: 'verifying', completed: 0, total: 0 });
+  const verified = await snapshotIntegrity(source, undefined, (completed, total) =>
+    progress?.({ stage: 'verifying', completed, total }),
+  );
   if (verified.installedHash !== component.installedHash)
     throw new Error('随附组件完整性校验失败，请重新下载安装包');
   const parent = path.dirname(target);
@@ -159,8 +168,10 @@ export async function copyBundledPayload(
       directories.set(directory, creating);
       return creating;
     };
-    let next = 0;
+    let next = 0,
+      completed = 0;
     let failed = false;
+    progress?.({ stage: 'copying', completed: 0, total: verified.installedFiles.length });
     // fs.cp traverses resource trees serially. The verified inventory lets us
     // copy thousands of independent files with bounded disk work and handles.
     const workers = await Promise.allSettled(
@@ -186,6 +197,11 @@ export async function copyBundledPayload(
             )
               throw new Error('随附组件复制路径发生变化，请重新下载安装包');
             await copyFile(from, to, constants.COPYFILE_EXCL);
+            progress?.({
+              stage: 'copying',
+              completed: ++completed,
+              total: verified.installedFiles.length,
+            });
           } catch (error) {
             failed = true;
             throw error;
@@ -196,7 +212,10 @@ export async function copyBundledPayload(
     // Every in-flight copy and directory creation must finish before cleanup,
     // otherwise a late write could recreate a rejected generation on Windows.
     for (const worker of workers) if (worker.status === 'rejected') throw worker.reason;
-    const integrity = await snapshotIntegrity(target);
+    progress?.({ stage: 'checking', completed: 0, total: 0 });
+    const integrity = await snapshotIntegrity(target, undefined, (completed, total) =>
+      progress?.({ stage: 'checking', completed, total }),
+    );
     if (integrity.installedHash !== component.installedHash)
       throw new Error('随附组件复制后校验失败，请检查磁盘后重启重试');
     return integrity;

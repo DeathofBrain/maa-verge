@@ -11,6 +11,17 @@ type DownloadWindow = HarnessWindow & {
     notify: () => Promise<void>;
   };
 };
+type StartupWindow = HarnessWindow & {
+  startupComponents: {
+    calls: string[];
+    update: (
+      id: 'core' | 'resource',
+      status: UpdateChannel['status'],
+      progress: number,
+      message: string,
+    ) => void;
+  };
+};
 
 // Hold only the synthetic download RPC. Snapshot/event traffic stays live, just
 // as it does while the real service downloads outside the Settings component.
@@ -79,6 +90,77 @@ async function controlDownload(page: Page, id: 'core' | 'resource', startup = fa
   );
 }
 
+// Model local first-launch validation/import before the UI receives its first
+// snapshot. No download, device operation, or manual prepare RPC is required.
+async function controlStartupComponents(page: Page) {
+  await page.evaluate(async () => {
+    const target = window as StartupWindow;
+    const original = target.runtimeHarness.call;
+    const initial = (await original('app.snapshot', {})) as Snapshot;
+    const components = new Map<'core' | 'resource', UpdateChannel>();
+    for (const id of ['core', 'resource'] as const) {
+      components.set(id, {
+        ...initial.updates.find((channel) => channel.id === id)!,
+        currentVersion: '未安装',
+        latestVersion: null,
+        status: 'downloading',
+        progress: id === 'core' ? 23 : 0,
+        message:
+          id === 'core' ? '正在校验随附组件（1/4），无需联网' : '正在准备随附游戏资源，无需联网',
+      });
+    }
+    const control: StartupWindow['startupComponents'] = {
+      calls: [],
+      update: (id, status, progress, message) => {
+        Object.assign(components.get(id)!, { status, progress, message });
+        target.runtimeHarness.emitEvent('update.changed', { channel: id });
+      },
+    };
+    target.startupComponents = control;
+    target.runtimeHarness.call = async (method, params) => {
+      control.calls.push(method);
+      const result = await original(method, params);
+      if (method === 'app.snapshot') {
+        const snapshot = result as Snapshot;
+        snapshot.updates = snapshot.updates.map((channel) =>
+          components.has(channel.id as 'core' | 'resource')
+            ? structuredClone(components.get(channel.id as 'core' | 'resource')!)
+            : channel,
+        );
+      }
+      return result;
+    };
+  });
+}
+
+async function editPlanDuringPreparation(page: Page, description: string) {
+  await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
+  await page
+    .getByRole('region', { name: '任务表列表', exact: true })
+    .getByRole('button', { name: '查看任务表详情每日长草计划', exact: true })
+    .click();
+  const editor = page.getByRole('region', { name: '任务表工作台', exact: true });
+  await editor.getByRole('tab', { name: '任务表设置', exact: true }).click();
+  await editor.getByLabel('任务表说明', { exact: true }).fill(description);
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const state = (await (window as StartupWindow).runtimeHarness.call(
+          'app.snapshot',
+          {},
+        )) as Snapshot;
+        return state.plans.find((plan) => plan.name === '每日长草计划')?.description;
+      }),
+    )
+    .toBe(description);
+  // This close control overlaps the notification area at desktop widths. A
+  // preparation notice must stay below the editor and leave this clickable.
+  await page.getByRole('button', { name: '关闭任务表详情', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '任务表详情', exact: true })).toHaveCount(0);
+  await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '设备', exact: true })).toBeVisible();
+}
+
 async function updatesPage(page: Page) {
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
   await page
@@ -103,7 +185,7 @@ test('component downloads keep progress and completion visible after leaving Set
     .poll(() => page.evaluate(() => (window as DownloadWindow).downloadControl.started))
     .toBe(1);
   const notice = page.getByRole('status', { name: 'MaaCore 核心下载通知', exact: true });
-  await expect(notice).toContainText('正在下载与验证');
+  await expect(notice).toContainText('正在准备组件');
   await expect(page.getByRole('button', { name: '检查全部更新', exact: true })).toBeDisabled();
   await expect(page.getByLabel('游戏资源下载目录', { exact: true })).toBeDisabled();
   await expect(page.getByLabel('下载代理模式', { exact: true })).toBeEnabled();
@@ -121,7 +203,7 @@ test('component downloads keep progress and completion visible after leaving Set
   expect(position!.y).toBeLessThan(100);
   await page.screenshot({ path: testInfo.outputPath('background-core-download.png') });
   await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
-  await expect(notice).toContainText('已下载并验证，待生效');
+  await expect(notice).toContainText('组件已准备，待生效');
   await notice.getByRole('button', { name: '关闭MaaCore 核心下载通知', exact: true }).click();
   await page.evaluate(() => (window as DownloadWindow).downloadControl.notify());
   await expect(page.getByLabel('组件下载通知', { exact: true })).toHaveCount(0);
@@ -157,7 +239,7 @@ test('download failure survives navigation and retries the pinned candidate dire
   await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
   await expect(
     page.getByRole('status', { name: 'MaaResource 游戏资源下载通知', exact: true }),
-  ).toContainText('已下载并验证，待生效');
+  ).toContainText('组件已准备，待生效');
 });
 
 test('a preparation overtaken by an installed version does not announce a staged candidate', async ({
@@ -264,7 +346,7 @@ test.describe('startup component download', () => {
     const notice = page.getByRole('status', { name: 'MaaResource 游戏资源下载通知', exact: true });
     await expect(notice.getByRole('progressbar')).toHaveAttribute('value', '23');
     await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
-    await expect(notice).toContainText('已下载并验证，待生效');
+    await expect(notice).toContainText('组件已准备，待生效');
   });
   test('a candidate that failed before the first snapshot still reports its error', async ({
     page,
@@ -279,6 +361,117 @@ test.describe('startup component download', () => {
     await expect(
       page.getByRole('alert', { name: 'MaaCore 核心下载通知', exact: true }),
     ).toContainText('合成网络中断，可重试续传');
+  });
+
+  test('local startup preparation reports live progress while navigation and task editing stay usable', async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/');
+    await controlStartupComponents(page);
+    await page.evaluate(() => (window as StartupWindow).runtimeHarness.releaseSnapshot());
+    await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+    const core = page.getByRole('status', { name: 'MaaCore 核心下载通知', exact: true });
+    const resource = page.getByRole('status', {
+      name: 'MaaResource 游戏资源下载通知',
+      exact: true,
+    });
+    await expect(core).toContainText('正在准备组件');
+    await expect(core).toContainText('正在校验随附组件（1/4），无需联网');
+    await expect(
+      core.getByRole('progressbar', { name: 'MaaCore 核心准备进度', exact: true }),
+    ).toHaveAttribute('value', '23');
+    await expect(core).toContainText('23%');
+    await expect(resource.getByRole('progressbar')).toHaveAttribute('value', '0');
+    const position = await core.boundingBox();
+    expect(position!.x).toBeGreaterThan(1000);
+    expect(position!.y).toBeLessThan(100);
+
+    await editPlanDuringPreparation(page, '组件后台准备期间仍可编辑并保存');
+    await page.evaluate(() =>
+      (window as StartupWindow).startupComponents.update(
+        'core',
+        'downloading',
+        68,
+        '正在校验组件副本（3/4），无需联网',
+      ),
+    );
+    await expect(core.getByRole('progressbar')).toHaveAttribute('value', '68');
+    await expect(core).toContainText('68%');
+    await expect(core).toContainText('正在校验组件副本（3/4），无需联网');
+    await page.screenshot({ path: testInfo.outputPath('startup-background-preparation.png') });
+
+    await page.evaluate(() => {
+      const control = (window as StartupWindow).startupComponents;
+      control.update('core', 'active', 100, '随附核心与基础资源已启用，无需联网');
+      control.update('resource', 'downloading', 95, '随附组件已复制并校验，正在验证核心并启用');
+    });
+    await expect(core).toContainText('已生效');
+    await expect(core).toContainText('随附核心与基础资源已启用，无需联网');
+    await expect(core.getByRole('progressbar')).toHaveCount(0);
+    await expect(resource.getByRole('progressbar')).toHaveAttribute('value', '95');
+    await page.evaluate(() =>
+      (window as StartupWindow).startupComponents.update(
+        'resource',
+        'active',
+        100,
+        '随附游戏资源已启用，无需联网',
+      ),
+    );
+    await expect(resource).toContainText('已生效');
+    await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+    await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+    expect(
+      await page.evaluate(() =>
+        (window as StartupWindow).startupComponents.calls.filter((method) =>
+          [
+            'updates.prepare',
+            'device.connect',
+            'device.auto_connect',
+            'run.start',
+            'tool.start',
+          ].includes(method),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  test('a local component failure before the first snapshot is visible without a version candidate and leaves editing usable', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/');
+    await controlStartupComponents(page);
+    await page.evaluate(() => {
+      const target = window as StartupWindow;
+      target.startupComponents.update(
+        'core',
+        'failed',
+        0,
+        '随附组件摘要校验失败，可重启重试随附核心',
+      );
+      target.runtimeHarness.releaseSnapshot();
+    });
+    await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+    const failure = page.getByRole('alert', { name: 'MaaCore 核心下载通知', exact: true });
+    await expect(failure).toContainText('组件准备失败');
+    await expect(failure).toContainText('随附组件摘要校验失败，可重启重试随附核心');
+    await editPlanDuringPreparation(page, '组件准备失败后也能编辑并保存');
+    await expect(failure).toBeVisible();
+    await page.evaluate(() =>
+      (window as StartupWindow).startupComponents.update(
+        'resource',
+        'failed',
+        0,
+        '随附游戏资源准备失败，已启用的核心及基础资源会保留',
+      ),
+    );
+    await expect(
+      page.getByRole('alert', { name: 'MaaResource 游戏资源下载通知', exact: true }),
+    ).toContainText('已启用的核心及基础资源会保留');
+    await failure.getByRole('button', { name: '关闭MaaCore 核心下载通知', exact: true }).click();
+    await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+    await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   });
 });
 

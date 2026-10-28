@@ -164,6 +164,8 @@ export class Runtime {
   private ticking = false;
   private closing?: Promise<void>;
   private appUpdatePreparation?: symbol;
+  private bundledInitialization?: Promise<void>;
+  initializingComponents = false;
   get appUpdatePreparing() {
     return this.appUpdatePreparation !== undefined;
   }
@@ -355,6 +357,7 @@ export class Runtime {
     });
     if (!this.running || this.appUpdating || this.appUpdatePreparing)
       return result('runtime', '应用正在退出或安装更新');
+    if (this.initializingComponents) return result('updates', '正在后台准备随附组件，请稍后再执行');
     if (this.switching || this.updates?.channels().some((item) => item.status === 'waiting_idle'))
       return result('updates', '正在准备切换核心与资源');
     const owner = this.executions().find(
@@ -606,6 +609,18 @@ export class Runtime {
     if (typeof params !== 'object' || Array.isArray(params))
       throw new RpcError(-32602, 'params 必须是对象');
     if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
+    if (
+      this.initializingComponents &&
+      ([
+        'device.connect',
+        'device.auto_connect',
+        'run.start',
+        'copilot.start',
+        'tool.start',
+      ].includes(method) ||
+        (method.startsWith('updates.') && params.channel !== 'app'))
+    )
+      throw new RpcError(-32021, '正在后台准备随附组件，请稍后再连接或执行');
     if (
       (this.appUpdating || this.appUpdatePreparing) &&
       method !== 'app.snapshot' &&
@@ -1307,6 +1322,8 @@ export class Runtime {
     try {
       if (this.switching && !internal)
         throw new RpcError(-32011, '正在切换核心与资源，暂不能连接设备');
+      if (this.initializingComponents && !internal)
+        throw new RpcError(-32021, '正在后台准备随附组件，请稍后再连接设备');
       if (!this.running || this.appUpdating || (this.appUpdatePreparing && !internal))
         throw new RpcError(-32011, '应用运行时正在退出或安装更新');
       const address = validateAddress(params.address);
@@ -1610,6 +1627,7 @@ export class Runtime {
   async automaticConnections() {
     if (
       !this.running ||
+      this.initializingComponents ||
       this.appUpdating ||
       this.appUpdatePreparing ||
       !parseSettings(this.store.get('settings', 'main')).autoConnect ||
@@ -2808,25 +2826,32 @@ export class Runtime {
           parseSettings(this.store.get('settings', 'main')).logRetentionDays ?? 7,
         );
       await this.pollNativeWorkers();
-      this.scheduler.tick();
+      if (!this.initializingComponents) this.scheduler.tick();
     } finally {
       this.ticking = false;
     }
   }
-  async initializeBundledComponents(): Promise<void> {
-    if (!this.options.applicationDirectory) return;
-    try {
-      await this.updates.bootstrapBundled(
-        path.join(this.options.applicationDirectory, 'runtime', 'bundled-components'),
-      );
-    } catch (error) {
-      this.emit('update.bootstrap_failed', '随附组件初始化失败，可在更新中心查看原因并重试', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+  initializeBundledComponents(): Promise<void> {
+    if (!this.options.applicationDirectory) return Promise.resolve();
+    if (this.bundledInitialization) return this.bundledInitialization;
+    this.initializingComponents = true;
+    return (this.bundledInitialization = (async () => {
+      try {
+        await this.updates.bootstrapBundled(
+          path.join(this.options.applicationDirectory!, 'runtime', 'bundled-components'),
+        );
+      } catch (error) {
+        this.emit('update.bootstrap_failed', '随附组件初始化失败，可在更新中心查看原因并重试', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        this.initializingComponents = false;
+      }
+    })());
   }
   async automaticUpdates() {
-    if (!this.running || this.appUpdating || this.appUpdatePreparing) return;
+    if (!this.running || this.initializingComponents || this.appUpdating || this.appUpdatePreparing)
+      return;
     const settings = parseSettings(this.store.get('settings', 'main'));
     for (const [channel, interval] of [
       ['core', 86400],

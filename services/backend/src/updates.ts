@@ -777,7 +777,7 @@ export class UpdateService {
     this.queue = tracked.catch(() => {});
     return tracked;
   }
-  /** Called before serving RPCs or starting automatic work, while holding the Store lease. */
+  /** Background adoption keeps its Store lease and serializes with other component mutations. */
   bootstrapBundled(directory: string): Promise<void> {
     return this.serial(async () => {
       if (this.bundledBootstrapped || this.busy()) return;
@@ -843,7 +843,38 @@ export class UpdateService {
         progress: 0,
         message: '正在验证并准备随附组件，无需联网',
       });
-      const integrity = await copyBundledPayload(directory, component, generation);
+      let previousStage = '',
+        previousProgress = -1,
+        previousTime = 0;
+      const integrity = await copyBundledPayload(
+        directory,
+        component,
+        generation,
+        ({ stage, completed, total }) => {
+          if (this.closing) throw new Error('更新服务正在关闭');
+          const [base, weight, label] =
+            stage === 'verifying'
+              ? ([0, 35, '正在校验随附组件'] as const)
+              : stage === 'copying'
+                ? ([35, 30, '正在复制随附组件'] as const)
+                : ([65, 25, '正在校验组件副本'] as const);
+          const progress = base + (total ? Math.floor((weight * completed) / total) : 0);
+          const time = Date.now();
+          if (
+            stage === previousStage &&
+            (progress === previousProgress || time - previousTime < 150)
+          )
+            return;
+          previousStage = stage;
+          previousProgress = progress;
+          previousTime = time;
+          this.change(channel, {
+            status: 'downloading',
+            progress,
+            message: `${label}${total ? `（${completed}/${total}）` : ''}，无需联网`,
+          });
+        },
+      );
       prepared = true;
       if (this.closing) throw new Error('更新服务正在关闭');
       const manifest = {
@@ -859,10 +890,10 @@ export class UpdateService {
       await writeFile(path.join(generation, 'manifest.json'), JSON.stringify(manifest));
       this.store.put('staged', channel, manifest);
       this.change(channel, {
-        status: 'staged',
+        status: 'downloading',
         latestVersion: component.version,
-        progress: 100,
-        message: '随附组件已复制并校验，等待空闲生效',
+        progress: 95,
+        message: '随附组件已复制并校验，正在验证核心并启用',
       });
       await this.activateCurrent(channel);
     } catch (error) {

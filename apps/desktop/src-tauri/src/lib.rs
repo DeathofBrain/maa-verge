@@ -231,15 +231,27 @@ pub fn run() {
             updater.resume_on_startup();
             let runtime = tauri::async_runtime::block_on(Runtime::start(app.handle().clone()))
                 .map_err(std::io::Error::other)?;
-            let snapshot = tauri::async_runtime::block_on(
-                runtime.request("app.snapshot".into(), serde_json::json!({})),
-            )
-            .map_err(std::io::Error::other)?;
-            updater.configure(&snapshot["settings"]);
             app.manage(runtime);
             app.manage(updater);
             desktop_scheduler::start(app.handle().clone());
-            app_updater::AppUpdater::check_in_background(app.handle().clone(), false);
+            // The first snapshot may overlap offline component preparation.
+            // Never hold the window's setup thread while waiting for service I/O.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let snapshot = handle
+                    .state::<Runtime>()
+                    .request("app.snapshot".into(), serde_json::json!({}))
+                    .await;
+                match snapshot {
+                    Ok(snapshot) => {
+                        handle
+                            .state::<app_updater::AppUpdater>()
+                            .configure(&snapshot["settings"]);
+                        app_updater::AppUpdater::check_in_background(handle, false);
+                    }
+                    Err(error) => eprintln!("初始化应用更新设置失败：{error}"),
+                }
+            });
             let show = MenuItem::with_id(app, "show", "显示 Maa Verge", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;

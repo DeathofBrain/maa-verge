@@ -117,9 +117,6 @@ export async function main() {
     ),
     importFrom: previous ? path.join(previous, 'native') : undefined,
   });
-  // Optional installer/ZIP payloads are adopted offline before connections,
-  // schedules, downloads or frontend requests can start using components.
-  await runtime.initializeBundledComponents();
   // Preserve unexpected service diagnostics as well as forwarding them to stderr.
   const originalError = console.error;
   console.error = (...values: unknown[]) => {
@@ -139,6 +136,9 @@ export async function main() {
     inflight.add(promise);
     void promise.catch((error) => console.error(error)).finally(() => inflight.delete(promise));
   };
+  // Serve snapshots and editing immediately. Runtime gates native work until
+  // this offline adoption finishes; progress flows through normal update events.
+  track(runtime.initializeBundledComponents());
   const timers = [
     setInterval(() => track(runtime.tick()), 100),
     setInterval(() => {

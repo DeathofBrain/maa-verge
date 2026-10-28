@@ -594,3 +594,125 @@ test('Runtime adopts optional application payloads offline even when automatic u
     await runtime.close();
   }
 });
+
+test('background preparation serves snapshots and editing while native work waits, with staged progress', async () => {
+  const f = await fixture();
+  const notifications: any[] = [];
+  const runtime = new Runtime(path.join(f.root, 'background-data/native'), {
+    applicationDirectory: path.join(f.root, 'application'),
+    validator() {},
+    calendar: { fetcher: null },
+    notify: (value) => notifications.push(value),
+  });
+  let entered!: () => void, release!: () => void;
+  const copying = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const original = fs.copyFile;
+  const spy = spyOn(fs, 'copyFile').mockImplementation(async (...args) => {
+    entered();
+    await held;
+    return original(...args);
+  });
+  try {
+    const initialization = runtime.initializeBundledComponents();
+    expect(runtime.initializeBundledComponents()).toBe(initialization);
+    await copying;
+    expect(runtime.initializingComponents).toBe(true);
+    const snapshot = await runtime.handle('app.snapshot');
+    expect(snapshot.updates.find((item: any) => item.id === 'core')).toMatchObject({
+      status: 'downloading',
+      message: expect.stringContaining('复制随附组件'),
+    });
+    const plan = await runtime.handle('plan.save', {
+      plan: { name: '后台准备时可编辑', tasks: [{ type: 'Award' }] },
+    });
+    expect(plan.name).toBe('后台准备时可编辑');
+    for (const method of [
+      'device.connect',
+      'device.auto_connect',
+      'run.start',
+      'copilot.start',
+      'tool.start',
+    ]) {
+      await expect(runtime.handle(method, {})).rejects.toMatchObject({
+        code: -32021,
+        message: expect.stringContaining('后台准备随附组件'),
+      });
+    }
+    let installationReady = false;
+    const installation = runtime.handle('updates.activate', { channel: 'app' }).then((value) => {
+      installationReady = true;
+      return value;
+    });
+    expect(runtime.appUpdatePreparing).toBe(true);
+    await Promise.resolve();
+    expect(installationReady).toBe(false);
+    expect(runtime.appUpdating).toBe(false);
+    release();
+    await initialization;
+    expect(await installation).toMatchObject({ status: 'staged' });
+    expect(runtime.appUpdating).toBe(true);
+    expect(runtime.initializingComponents).toBe(false);
+    expect(runtime.updates.channel('core').status).toBe('active');
+    expect(runtime.updates.channel('resource').status).toBe('active');
+    const states = notifications.map((item) => item.params?.data?.update).filter(Boolean);
+    const messages = states.map((item) => item.message as string);
+    expect(messages.some((text) => text.includes('校验随附组件'))).toBe(true);
+    expect(messages.some((text) => text.includes('复制随附组件'))).toBe(true);
+    expect(messages.some((text) => text.includes('校验组件副本'))).toBe(true);
+    for (const channel of ['core', 'resource']) {
+      const progress = states
+        .filter((item) => item.id === channel && item.status === 'downloading')
+        .map((item) => item.progress);
+      expect(progress).toEqual([...progress].sort((a, b) => a - b));
+      expect(progress).toContain(95);
+    }
+  } finally {
+    release();
+    spy.mockRestore();
+    await runtime.close();
+  }
+});
+
+test('failed background preparation releases the native gate and permits manual component repair', async () => {
+  const f = await fixture();
+  await writeFile(path.join(f.directory, 'manifest.json'), '{');
+  let checks = 0;
+  const runtime = new Runtime(path.join(f.root, 'failed-background/native'), {
+    applicationDirectory: path.join(f.root, 'application'),
+    validator() {},
+    calendar: { fetcher: null },
+    source: {
+      check() {
+        checks++;
+        return { version: 'v6.20.2' };
+      },
+      download() {
+        throw new Error('must not download');
+      },
+    },
+  });
+  try {
+    await runtime.initializeBundledComponents();
+    expect(runtime.initializingComponents).toBe(false);
+    expect(
+      (await runtime.handle('app.snapshot')).updates.find((item: any) => item.id === 'core').status,
+    ).toBe('failed');
+    const repair = await runtime.handle('updates.check', { channel: 'core' });
+    expect(repair).toMatchObject({ status: 'available', latestVersion: 'v6.20.2' });
+    expect(checks).toBe(1);
+    await expect(
+      runtime.handle('run.start', {
+        planId: 'missing',
+        deviceId: 'missing',
+        requestId: 'after-failure',
+      }),
+    ).rejects.toMatchObject({ code: -32004 });
+  } finally {
+    await runtime.close();
+  }
+});

@@ -309,8 +309,34 @@ export async function smokeWindowsComponents({ staging } = {}) {
     const first = startSession(executable, { cwd: temporary, env: environment }, children);
     const snapshot = await first.request('app.snapshot');
     const firstStartupMs = first.elapsed();
-    assert(firstStartupMs < startupDeadline, `Offline first startup took ${firstStartupMs}ms`);
-    assertSnapshot(snapshot, lock, componentPaths);
+    assert(
+      firstStartupMs < 10_000,
+      `First UI snapshot must not wait for component preparation: ${firstStartupMs}ms`,
+    );
+    assert.equal(snapshot.mode, 'native');
+    let prepared = snapshot;
+    while (
+      !['core', 'resource'].every((channel) =>
+        prepared.updates.some(
+          (value) =>
+            value.id === channel &&
+            value.status === 'active' &&
+            value.currentVersion === lock[channel].version,
+        ),
+      )
+    ) {
+      const failure = prepared.updates.find(
+        (value) => value.id !== 'app' && value.status === 'failed',
+      );
+      assert(!failure, `Offline component preparation failed: ${failure?.message}`);
+      assert(first.elapsed() < startupDeadline, 'Offline component preparation exceeded deadline');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const requested = performance.now();
+      prepared = await first.request('app.snapshot');
+      assert(performance.now() - requested < 5000, 'Component preparation blocked a UI snapshot');
+    }
+    const componentReadyMs = first.elapsed();
+    assertSnapshot(prepared, lock, componentPaths);
     // Let both one-second automatic-work timers run with the saved opt-outs.
     await new Promise((resolve) => setTimeout(resolve, 1200));
     assertSnapshot(await first.request('app.snapshot'), lock, componentPaths);
@@ -346,9 +372,9 @@ export async function smokeWindowsComponents({ staging } = {}) {
       'Smoke data must stay outside the portable package',
     );
     console.log(
-      `Full Windows offline components smoke passed: first snapshot ${firstStartupMs}ms, restart ${restartMs}ms, locked core/resource active, zero devices and HTTP requests.`,
+      `Full Windows offline components smoke passed: first snapshot ${firstStartupMs}ms, components ready ${componentReadyMs}ms, restart ${restartMs}ms, locked core/resource active, zero devices and HTTP requests.`,
     );
-    return { firstStartupMs, restartMs };
+    return { firstStartupMs, componentReadyMs, restartMs };
   } finally {
     for (const child of children) terminate(child);
     if (guard.listening) {

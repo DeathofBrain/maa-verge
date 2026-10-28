@@ -7,7 +7,8 @@
   overflow-y: auto;
   display: grid;
   gap: 10px;
-  z-index: 90;
+  z-index: 80;
+  pointer-events: none;
 }
 .update-notification {
   padding: 13px 15px;
@@ -17,14 +18,58 @@
   box-shadow: var(--shadow);
   font-size: 12px;
 }
-.update-notification-heading, .update-notification-status { display: flex; align-items: center; gap: 9px; }
-.update-notification-heading > svg { flex-shrink: 0; color: var(--success); }
-.update-notification.is-error .update-notification-heading > svg { color: var(--danger); }
-.update-notification-heading strong { flex: 1; }
-.update-notification-heading .icon-button { width: 24px; height: 24px; }
-.update-notification-status { justify-content: space-between; margin-top: 8px; }
-.update-notification progress { display: block; width: 100%; height: 5px; margin-top: 9px; border: 0; border-radius: 5px; overflow: hidden; accent-color: var(--accent); background: var(--line); }
-.update-notification progress::-webkit-progress-bar { background: var(--line); }
-.update-notification progress::-webkit-progress-value { background: var(--accent); }
-.update-notification p { margin: 9px 0 0; color: var(--muted); line-height: 1.65; overflow-wrap: anywhere; }
-.update-notification small { display: flex; align-items: center; gap: 5px; color: var(--muted); margin-top: 9px; }
+.update-notification-heading,
+.update-notification-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.update-notification-heading > svg {
+  flex-shrink: 0;
+  color: var(--success);
+}
+.update-notification.is-error .update-notification-heading > svg {
+  color: var(--danger);
+}
+.update-notification-heading strong {
+  flex: 1;
+}
+.update-notification-heading .icon-button {
+  width: 24px;
+  height: 24px;
+  pointer-events: auto;
+}
+.update-notification-status {
+  justify-content: space-between;
+  margin-top: 8px;
+}
+.update-notification progress {
+  display: block;
+  width: 100%;
+  height: 5px;
+  margin-top: 9px;
+  border: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  accent-color: var(--accent);
+  background: var(--line);
+}
+.update-notification progress::-webkit-progress-bar {
+  background: var(--line);
+}
+.update-notification progress::-webkit-progress-value {
+  background: var(--accent);
+}
+.update-notification p {
+  margin: 9px 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.update-notification small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  margin-top: 9px;
+}

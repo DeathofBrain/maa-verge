@@ -29,8 +29,8 @@ export function useComponentDownloads(
         }
         const failedCandidate =
           channel.status === 'failed' &&
-          channel.latestVersion &&
-          channel.latestVersion !== channel.currentVersion;
+          (channel.id !== 'app' ||
+            (channel.latestVersion && channel.latestVersion !== channel.currentVersion));
         const appReady = channel.id === 'app' && channel.status === 'staged';
         if (
           !force &&
@@ -59,7 +59,17 @@ export function useComponentDownloads(
       if (requests.current.has(channel.id) || channel.status === 'downloading') return;
       requests.current.add(channel.id);
       setPreparing(new Set(requests.current));
-      observe([{ ...channel, status: 'downloading', progress: 0, message: '正在开始下载…' }], true);
+      observe(
+        [
+          {
+            ...channel,
+            status: 'downloading',
+            progress: 0,
+            message: channel.id === 'app' ? '正在开始下载…' : '正在开始准备组件…',
+          },
+        ],
+        true,
+      );
       try {
         const result = await rpc('updates.prepare', { channel: channel.id });
         if (result.status === 'downloading' || terminal.has(result.status)) observe([result], true);
@@ -106,11 +116,13 @@ export default function UpdateNotifications({
         const downloading = channel.status === 'downloading';
         const failed = channel.status === 'failed';
         const title = downloading
-          ? '正在下载与验证'
+          ? channel.id === 'app'
+            ? '正在下载与验证'
+            : '正在准备组件'
           : failed
             ? channel.id === 'app'
               ? '应用更新失败'
-              : '下载失败'
+              : '组件准备失败'
             : channel.status === 'active'
               ? '已生效'
               : channel.id === 'app'
@@ -118,8 +130,8 @@ export default function UpdateNotifications({
                   ? '上次安装未完成，可重试'
                   : '签名已验证，等待确认重启'
                 : channel.status === 'waiting_idle'
-                  ? '已下载，等待空闲生效'
-                  : '已下载并验证，待生效';
+                  ? '组件已准备，等待空闲生效'
+                  : '组件已准备，待生效';
         return (
           <section
             key={channel.id}
@@ -150,7 +162,7 @@ export default function UpdateNotifications({
             </div>
             {downloading && (
               <progress
-                aria-label={`${names[channel.id]}下载进度`}
+                aria-label={`${names[channel.id]}${channel.id === 'app' ? '下载' : '准备'}进度`}
                 max={100}
                 value={progressFor(channel)}
               />
