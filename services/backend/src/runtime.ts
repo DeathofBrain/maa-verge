@@ -53,6 +53,7 @@ import {
   validateRecognitionParams,
   validateItemResourceParams,
   validateOperatorResourceParams,
+  validateLogDeleteParams,
 } from '../../../packages/contracts/src/validators.js';
 import {
   clearDeviceRecognition,
@@ -759,6 +760,12 @@ export class Runtime {
             `${this.logs.directory}：${String(error)}`,
           );
         }
+      }
+      case 'logs.delete': {
+        if (!validateLogDeleteParams(params)) throw new RpcError(-32602, '日志删除请求参数无效');
+        const result = { deleted: this.store.deleteEvents(params.ids) };
+        if (result.deleted) this.logs.diagnostics.write('info', 'logs.events_deleted', result);
+        return result;
       }
       case 'stages.list':
         if (!validateStageListParams(params)) throw new RpcError(-32602, '关卡目录请求参数无效');

@@ -68,6 +68,7 @@ const validators = {
   validateScheduleHostParams: `${rpcSchema.$id}#/properties/params/properties/schedule.host`,
   validateIdParams: `${rpcSchema.$id}#/$defs/IdParams`,
   validateEmptyParams: `${rpcSchema.$id}#/$defs/EmptyParams`,
+  validateLogDeleteParams: `${rpcSchema.$id}#/$defs/LogDeleteParams`,
   validateToolCatalogParams: `${rpcSchema.$id}#/properties/params/properties/tool.catalog`,
   validateRpcRequest: `${rpcSchema.$id}#/$defs/RpcRequest`,
   validateRpcEvent: `${rpcSchema.$id}#/$defs/RpcEvent`,
@@ -178,6 +179,7 @@ export const validateScheduleOverrideParams: Validator<RpcContract['params']['sc
 export const validateScheduleHostParams: Validator<RpcContract['params']['schedule.host']>;
 export const validateIdParams: Validator<RpcContract['params']['tool.get']>;
 export const validateEmptyParams: Validator<RpcContract['params']['schedule.list']>;
+export const validateLogDeleteParams: Validator<RpcContract['params']['logs.delete']>;
 export const validateToolCatalogParams: Validator<RpcContract['params']['tool.catalog']>;
 export const validateRpcRequest: Validator<RpcRequest>;
 export const validateRpcEvent: Validator<RpcEvent>;

@@ -173,6 +173,7 @@ export interface RpcContract {
     'logs.info': EmptyParams;
     'logs.export': EmptyParams;
     'logs.clean': EmptyParams;
+    'logs.delete': LogDeleteParams;
     'home.info': {
       deviceId?: string;
       clientType?: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
@@ -276,6 +277,9 @@ export interface RpcContract {
       removedBytes: number;
       skippedFiles: number;
       warnings: string[];
+    };
+    'logs.delete': {
+      deleted: number;
     };
     'home.info': HomeInfo;
     'stages.list': StageListResult;
@@ -407,6 +411,17 @@ export interface RpcContract {
  * via the `definition` "EmptyParams".
  */
 export interface EmptyParams {}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "LogDeleteParams".
+ */
+export interface LogDeleteParams {
+  /**
+   * @minItems 1
+   * @maxItems 1000
+   */
+  ids: number[];
+}
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
  * via the `definition` "StageListParams".
