@@ -21,7 +21,7 @@ export async function buildCoreWorker({
     '-B',
     build,
     '-DCMAKE_BUILD_TYPE=Release',
-    ...(process.platform === 'darwin' ? ['-DCMAKE_OSX_DEPLOYMENT_TARGET=13.5'] : []),
+    ...(process.platform === 'darwin' ? ['-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0'] : []),
     `-DBUILD_TESTING=${testing ? 'ON' : 'OFF'}`,
     ...(testing && existsSync(python) ? [`-DPython3_EXECUTABLE=${python}`] : []),
   ]);
