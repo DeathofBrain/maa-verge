@@ -87,13 +87,15 @@ v0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封�
 
 ## 准备新发行版
 
-`.github/workflows/release.yml` 的 **Prepare signed application release** 手动工作流会执行四宿主检查、构建、签名和资产校验，最后创建 GitHub **草稿**；不会自动公开发布。GitHub 要求手动工作流先进入仓库默认分支，之后可选择具体源码 ref。当前已发布的正式版为 [v0.1.2](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)；后续发行仍需先提交新的版本号，并保留既有标签与资产。
+`.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.2](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)；后续发行仍需先提交新的版本号，并保留既有标签与资产。
 
 1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。
-2. 使用 `node tools/app-updater-release.mjs check --tag v版本号` 核对。工作流拒绝覆盖现有 Release，已有标签必须指向选中的源码提交。
+2. 合并版本与发行说明提交，先确认该提交的 Checks 五个任务全部通过。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的 Checks 构建。
 3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。
-4. 在 Actions 选择该工作流与源码 ref，填写 `release_tag` 和 `prerelease`。含预览后缀的版本始终生成预发布草稿。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。
-5. 检查草稿中的全部 **17 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。
+4. 推送标签（例如 `git push origin v0.1.3-alpha1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。
+5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **17 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。
+
+Checks 等待上限为 30 分钟；若该提交没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待通过，再补跑 Release。
 
 完整附件集合为六个首次安装包、Windows 完整 ZIP、两个分架构 macOS 更新归档、六个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`。`latest.json` 包含 `windows-x86_64-nsis`、`darwin-aarch64`、`darwin-x86_64`、`linux-x86_64` 四个目标。DEB/RPM 也生成签名供发行校验，但不交给应用内安装器；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。
 

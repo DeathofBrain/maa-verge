@@ -1,0 +1,20 @@
+name: Prepare native host
+description: Install Node, pnpm, Rust, workspace dependencies and the pinned Bun runtime
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .node-version
+        cache: pnpm
+    - uses: dtolnay/rust-toolchain@1.90.0
+      with:
+        components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: apps/desktop/src-tauri
+    - run: pnpm install --frozen-lockfile
+      shell: bash
+    - run: node tools/setup-bun.mjs
+      shell: bash

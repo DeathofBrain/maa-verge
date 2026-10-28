@@ -95,8 +95,6 @@ Windows 安装包尚无发布者签名；macOS 已采用完整的本地签名（
 
 在「设置 → 更新」查看失败原因，检查网络和目录写入权限，再重试下载。v0.1.2 安装包自带 aria2，无需另行安装；也可以在设置中选择内置 HTTP 下载器。核心与资源默认放在程序同级的 `MaaCore`、`MaaResource` 文件夹，目录不可写时可分别改为可写目录。组件文件被误删或损坏时，先按页面提示修复。
 
-[v0.1.3-alpha1 预览版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha1) 已发布：应用、MaaCore 和游戏资源统一使用 HTTP 下载与代理设置，Windows EXE 提供离线组件选项，并提供包含完整组件的 ZIP，不再提供 MSI。上述 v0.1.2 安装包保持原有行为；预览版的安装与迁移见[版本说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha1/docs/releases/v0.1.3-alpha1.md)。
-
 ### 软件、核心和游戏资源怎么更新？
 
 v0.1.1 用户可在「设置 → 更新」下载并校验 v0.1.2，停止任务、关闭实时画面，并等待连接和组件操作空闲后确认「重启并安装」。**v0.1.0 用户须先完全退出应用，再从 [Releases](https://github.com/DeathofBrain/maa-verge/releases) 手动安装 v0.1.2。** macOS v0.1.1 无法启动时，可直接下载对应架构的 v0.1.2 DMG 替换安装；Linux DEB / RPM 继续通过包管理器或安装包更新。

@@ -65,6 +65,8 @@ Ubuntu 22.04 默认 apt CMake 为 3.22，低于项目要求；请从 [CMake 官�
 
 `doctor --native` 与 C++ 构建使用相同的 CMake 查找规则，要求 3.25+；诊断会在临时目录实际编译、链接一个 C++20 程序，检查编译器和 SDK，并在结束后清理。系统依赖缺失时按当前平台给出安装方向，脚本不自动调用 sudo 或修改系统 SDK。C++20 worker 的独立构建、协议和合成测试见 [services/native/README.md](../services/native/README.md)。
 
+CMake preset 使用平台默认生成器；如需 Ninja，可安装后通过 `CMAKE_GENERATOR=Ninja` 显式选择。命令行与 VS Code 共用 `build/native`，CMake 会沿用其中缓存的生成器。若旧缓存选中了未安装的 Ninja，出现 `CMAKE_MAKE_PROGRAM` 未设置并伴随 `CMAKE_CXX_COMPILER not set`，可运行 `node tools/build-core-worker.mjs --fresh --production` 刷新缓存并重新构建，再重试原命令。`--fresh` 由 CMake 重建 `CMakeCache.txt` 和 `CMakeFiles`，此前手动添加的 CMake 缓存选项需重新提供；设过 `CMAKE_GENERATOR` 时仍按该环境变量选择生成器。常规构建保留缓存；doctor 的临时目录检查通过不代表既有缓存可用。
+
 ```bash
 node tools/doctor.mjs --native
 pnpm dev
@@ -128,11 +130,11 @@ python tools/clean-codex-worktrees.py                   # 清理干净的 worktr
 
 原生模式默认自动连接已启动的本机模拟器，设置中可以关闭或手动触发；已保存实例清单时只逐项连接清单，没有清单时进行自动发现。SDK/模拟器内置 ADB、默认端口和非标准路径见 [emulator-connection.md](emulator-connection.md)，共享/逐实例连接设置见 [connection-settings.md](connection-settings.md)，并行执行与隔离边界见 [multi-instance.md](multi-instance.md)。此流程不会自动启动游戏或运行任务。
 
-侧边栏的「任务表」与「专项任务」管理任务表，页内通过「任务编排」「任务表设置」「定时计划」组织配置。新建日常表采用原版九项默认队列与参数，名称自动选择未占用的“日常表1”等；各步骤可重复添加、排序、复制、启停并单独配置，高级 JSON 保留常用字段之外的参数。逐项默认及执行映射见 [maa-task-settings.md](maa-task-settings.md)。官方活动日历、关卡目录和主页游戏提醒共用缓存，基建估算按设备手工校准，见 [game-reminders.md](game-reminders.md)。上游边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
+侧边栏的「任务」统一管理任务表：列表展示启用态、绑定设备与最近执行，点击行在右侧详情抽屉内通过「任务编排」「任务表设置」「定时计划」组织配置，同一页的「执行监控」页签按设备展示当前或最近执行，支持设备多选停止、设备日志合并查看与逐条复制导出；页头勾选任务表后「运行」，单表可多选空闲设备，多表各用绑定设备或逐行选择。新建表采用原版九项默认队列与参数，名称自动选择未占用的“日常表1”等；各步骤可重复添加、排序、复制、启停并单独配置，高级 JSON 保留常用字段之外的参数。逐项默认及执行映射见 [maa-task-settings.md](maa-task-settings.md)。官方活动日历、关卡目录和主页游戏提醒共用缓存，基建估算按设备手工校准，见 [game-reminders.md](game-reminders.md)。上游边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
 
 ## 构建与持续集成
 
-Linux CI 使用基于 Ubuntu 22.04 的[构建镜像](ci-image.md)，从 checkout 构建并缓存工具链与 Chromium，统一 application 检查、Linux 未签名及签名打包环境；Windows/macOS 继续使用宿主工具链。镜像定义、版本来源、本地复现和干净容器检查的边界见该文档。
+Linux CI 使用基于 Ubuntu 22.04 的[构建镜像](ci-image.md)，从 checkout 构建并缓存工具链与 Chromium，统一 application 检查与 Linux 签名打包环境；Windows/macOS 继续使用宿主工具链。镜像定义、版本来源、本地复现和干净容器检查的边界见该文档。
 
 `pnpm build` 先检查工作区并构建 React，再由 Bun 1.4.3 `--compile` 生成自包含 TypeScript 服务，构建并复制 C++20 worker、收集许可，执行包内及 Rust transport 集成 smoke，最后调用 Tauri 打包。生产 C++ 配置使用 `BUILD_TESTING=OFF`，不查找 Python；发行目录不包含 `.venv`、`node_modules` 或独立解释器安装。macOS/Linux 的 MaaCore 和游戏资源由运行期安装器下载；Windows 构建还会准备随附的离线组件。
 
@@ -162,13 +164,13 @@ smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下�
 
 许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`。
 
-CI 先在 Windows x64、Ubuntu x64、macOS arm64/x64 分别编译并执行 Bun 探针，检查 SQLite/WAL、保留 rowid 的备份、跨进程锁、子进程 NDJSON 和 ZIP/TAR。四宿主 gate 成功后才运行原生矩阵的 C++ CTest、TypeScript 测试、Rust fmt/clippy/test 和未签名构建。应用 job 另保留 Python 参考、契约及浏览器 IPC 夹具端到端检查。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
+Checks 在每次提交和 PR 上运行五个独立任务，不生成任何安装包：`application` 在 Linux 镜像中执行工程、契约、TypeScript、Python 参考与 Chromium 夹具端到端检查；Windows x64、Linux x64、macOS arm64/x64 四个 `native` 任务各自执行 Bun 探针、C++ CTest、TypeScript 运行时测试、Rust fmt/clippy/test 和本平台打包夹具。平台夹具只在本宿主执行，Windows 会显式安装 NSIS；任一宿主失败不会取消其他平台。发布工作流复用标签提交上成功的 Checks，只在四个宿主构建签名产物。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
 
-Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runtime/maaverge-runtime` 中的 Linux x64 两个可执行文件。测试驱动在宿主 Node 中准备隔离数据，容器使用原始 Ubuntu 22.04 镜像并确认没有 Python、Node 或 Bun；后端会话断网，覆盖真实 native 服务、持久化、缺失设备拒绝和 EOF 重启。CI 在 Linux 构建后自动执行。这是后端容器测试，桌面和安装器仍需单独验收。
+Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runtime/maaverge-runtime` 中的 Linux x64 两个可执行文件。测试驱动在宿主 Node 中准备隔离数据，容器使用原始 Ubuntu 22.04 镜像并确认没有 Python、Node 或 Bun；后端会话断网，覆盖真实 native 服务、持久化、缺失设备拒绝和 EOF 重启。发布流程在 Linux 签名构建后自动执行。这是后端容器测试，桌面和安装器仍需单独验收。
 
 Windows 完整构建后可运行 `pnpm test:desktop-webview`，需要本机已有 WebView2。工具通过独立环回 CDP 端口操作真实 release 窗口，使用专属 native 空设备数据和 WebView profile，预先禁用自动连接和下载，检查初始化异常、Agent 提案、设置持久化及正常关窗；测试前须先退出其他 Maa Verge 实例。日志与截图保留在忽略目录 `build/webview-smoke`，临时数据和 profile 退出后清理。该项由宿主 Node/Playwright 驱动，不代表卸载开发工具后的干净系统安装验收。
 
-macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和下载 MaaCore 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；手动 `release.yml` 四宿主工作流只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、17 项附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
+macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和下载 MaaCore 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；推送 `v*` 标签或手动补跑的 `release.yml` 会复用该提交成功的 Checks，在四宿主构建签名产物并只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、17 项附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
 
 ## 格式化规范与 VS Code
 

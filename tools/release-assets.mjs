@@ -85,11 +85,9 @@ const commonInstallerKinds = [
   'linux-rpm-x64',
 ];
 
-export function validateRelease(release, tag) {
+export function validateAssetSet(release, tag) {
   const version = releaseVersion(tag);
-  if (release?.tag_name !== tag || release.draft !== false || !release.published_at) {
-    throw new Error('The requested release must already be published with the exact tag.');
-  }
+  if (release?.tag_name !== tag) throw new Error('The release must use the exact requested tag.');
   if (
     !Array.isArray(release.assets) ||
     ![8, 8 + updaterAssetKinds.length, 8 + legacyUpdaterAssetKinds.length].includes(
@@ -155,6 +153,12 @@ export function validateRelease(release, tag) {
   )
     throw new Error('Release has an incomplete or mixed signed updater asset set.');
   return release.assets;
+}
+
+export function validateRelease(release, tag) {
+  if (release?.draft !== false || !release.published_at)
+    throw new Error('The requested release must already be published with the exact tag.');
+  return validateAssetSet(release, tag);
 }
 
 export function parseChecksums(text, installers) {

@@ -19,7 +19,7 @@ pnpm test:e2e
 - `pnpm dev` 启动真实原生服务，`pnpm dev:ui` 仅启动前端；旧 `dev:mock` 与产品 mock 模式已移除。自动测试与 CI 使用测试目录中的合成设备、网络和 IPC 夹具，关闭自动连接与下载。真实设备、付费模型和发布操作由明确授权另行测试并记录。
 - 消耗预算默认 0，模型参数由确定性规则校验；不能向模型暴露任意命令执行。
 
-先运行与修改相关的检查，再执行 `pnpm check` 和相关端到端场景。原生修改运行 `node tools/check-native.mjs --required`。`pnpm check` 仅在 cargo 缺失时明确跳过原生检查；存在工具链但检查失败时必须修复，CI 始终要求原生检查通过。
+先运行与修改相关的检查，再执行 `pnpm check` 和相关端到端场景。只改工程、契约或前端时运行 `pnpm check:app`；只改原生、C++ 或打包时运行 `pnpm check:native`；`pnpm check` 等价于两者之和。原生修改也可直接运行 `node tools/check-native.mjs --required`。`pnpm check` 仅在 cargo 缺失时明确跳过原生检查；存在工具链但检查失败时必须修复，CI 始终要求原生检查通过。
 
 提交依赖锁文件；不提交 `.tools`、`.venv`、原生下载、构建结果、数据库、密钥或真实账号截图。生成文件通过对应生成命令更新。修改不涉及依赖时，不顺带更新锁文件。
 

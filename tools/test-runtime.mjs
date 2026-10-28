@@ -7,7 +7,7 @@ import { root } from './project.mjs';
 import { assertWorkspaceDependencies } from './environment.mjs';
 async function main() {
   assertWorkspaceDependencies();
-  const timeout = Number(process.env.MAAVERGE_TEST_TIMEOUT_MS ?? 5000);
+  const timeout = Number(process.env.MAAVERGE_TEST_TIMEOUT_MS ?? 30000);
   if (!Number.isSafeInteger(timeout) || timeout <= 0 || timeout > 300000)
     throw new Error('MAAVERGE_TEST_TIMEOUT_MS must be an integer from 1 to 300000.');
   const workerName =

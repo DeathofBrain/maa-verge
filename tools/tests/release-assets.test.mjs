@@ -8,6 +8,7 @@ import {
   updaterAssetKind,
   updaterAssetKinds,
   legacyUpdaterAssetKinds,
+  validateAssetSet,
   validateRelease,
 } from '../release-assets.mjs';
 
@@ -125,6 +126,17 @@ test('drafts, different versions, incomplete uploads and missing or extra assets
       ),
     );
   }
+});
+
+test('draft releases validate their asset set without being published', () => {
+  const draft = { ...release, draft: true, published_at: null };
+  assert.equal(validateAssetSet(draft, 'v0.1.0').length, 8);
+  assert.equal(validateAssetSet({ ...draft, assets: extendedAssets }, 'v0.1.0').length, 18);
+  assert.throws(() => validateRelease(draft, 'v0.1.0'), /already be published/);
+  assert.throws(
+    () => validateAssetSet({ ...draft, tag_name: 'v0.2.0' }, 'v0.1.0'),
+    /exact requested tag/,
+  );
 });
 
 test('release installer set rejects duplicate architectures, wrong versions and unsafe filenames', () => {

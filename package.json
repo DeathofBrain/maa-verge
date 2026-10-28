@@ -14,6 +14,8 @@
     "dev": "node tools/dev.mjs",
     "doctor": "node tools/doctor.mjs",
     "check": "node tools/check.mjs",
+    "check:app": "node tools/check.mjs --app",
+    "check:native": "node tools/check.mjs --native",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "format:staged": "lint-staged",

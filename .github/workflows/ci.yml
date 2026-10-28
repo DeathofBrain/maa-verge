@@ -2,7 +2,9 @@ name: Checks
 
 on:
   push:
+    branches: [main, dev]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,43 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  bun-probe:
-    name: Bun standalone gate (${{ matrix.os }}, ${{ matrix.architecture }})
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-2022
-            architecture: x64
-          - os: ubuntu-22.04
-            architecture: x64
-          - os: macos-14
-            architecture: arm64
-          - os: macos-15-intel
-            architecture: x64
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Install and verify pinned Bun
-        run: node tools/setup-bun.mjs
-      - name: Compile and execute without host runtimes
-        run: node tools/probe-bun.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: bun-probe-${{ matrix.os }}-${{ matrix.architecture }}
-          path: .tools/bun-probe/*/result.json
-          include-hidden-files: true
-          if-no-files-found: ignore
-
   application:
+    name: application
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     steps:
@@ -63,7 +30,7 @@ jobs:
         run: |
           docker run --rm --init --ipc=host --user "$(id -u):$(id -g)" \
             --mount "type=bind,source=$PWD,target=/workspace" \
-            --env CI=true maa-verge-ci:local bash tools/ci/run.sh application
+            --env CI=true maa-verge-ci:local bash tools/ci/run.sh app
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -74,8 +41,8 @@ jobs:
           if-no-files-found: ignore
 
   native:
-    needs: bun-probe
-    timeout-minutes: 90
+    name: native (${{ matrix.os }}, ${{ matrix.architecture }})
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -91,28 +58,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: ./.github/actions/linux-ci-image
+        if: runner.os == 'Linux'
+      - uses: ./.github/actions/host-setup
         if: runner.os != 'Linux'
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: ${{ runner.os != 'Linux' && 'pnpm' || '' }}
       - uses: astral-sh/setup-uv@v6
         if: runner.os != 'Linux'
         with:
           # Keep this aligned with tools/ci/Dockerfile.
           version: '0.13.5'
           enable-cache: true
-      - uses: dtolnay/rust-toolchain@1.90.0
+      - name: Install the Python 3.12 test environment
         if: runner.os != 'Linux'
-        with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-        if: runner.os != 'Linux'
-        with:
-          workspaces: apps/desktop/src-tauri
-      - uses: ./.github/actions/linux-ci-image
-        if: runner.os == 'Linux'
+        run: uv sync --frozen
       - uses: actions/cache@v4
         if: runner.os == 'Linux'
         with:
@@ -121,46 +79,27 @@ jobs:
             apps/desktop/src-tauri/target
           key: linux-native-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: linux-native-
-      - name: Build and check Linux package in the CI image
+      - name: Ensure the NSIS compiler is available
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $nsis = Join-Path ${env:ProgramFiles(x86)} 'NSIS\makensis.exe'
+          if (-not (Test-Path $nsis)) {
+            choco install nsis -y --no-progress
+          }
+          if (-not (Test-Path $nsis)) { throw "NSIS compiler was not installed at $nsis" }
+          "MAAVERGE_NSIS_COMPILER=$nsis" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Check native toolchain and host packaging fixtures
+        if: runner.os != 'Linux'
+        env:
+          MAAVERGE_INSTALLER_TOOLS_REQUIRED: '1'
+        run: node tools/check.mjs --native
+      - name: Check native toolchain in the Linux CI image
         if: runner.os == 'Linux'
         run: |
           docker run --rm --init --user "$(id -u):$(id -g)" \
             --mount "type=bind,source=$PWD,target=/workspace" \
             --env CI=true maa-verge-ci:local bash tools/ci/run.sh native
-      - run: pnpm install --frozen-lockfile
-        if: runner.os != 'Linux'
-      - run: uv sync --frozen
-        if: runner.os != 'Linux'
-      - run: node tools/setup-bun.mjs
-        if: runner.os != 'Linux'
-      - name: Verify native build environment
-        if: runner.os != 'Linux'
-        run: pnpm run doctor --native
-      - name: Build C++ worker and run synthetic CTest fixtures
-        if: runner.os != 'Linux'
-        run: node tools/build-core-worker.mjs
-      - name: Test TypeScript backend
-        if: runner.os != 'Linux'
-        run: pnpm test:runtime
-      - run: node tools/check-native.mjs --required
-        if: runner.os != 'Linux'
-      - name: Build unsigned package with standalone TypeScript service and C++ worker
-        if: runner.os != 'Linux'
-        run: pnpm build
-      - name: Verify macOS bundle regression and installed desktop startup
-        if: runner.os == 'macOS'
-        run: |
-          node --test tools/tests/macos-bundle.test.mjs
-          node tools/smoke-macos-install.mjs
-      - name: Verify Windows component uninstall hooks without installing the application
-        if: runner.os == 'Windows'
-        run: node --test tools/tests/windows-installer.test.mjs
-        env:
-          MAAVERGE_INSTALLER_TOOLS_REQUIRED: '1'
-      - name: Smoke packaged backend in clean Ubuntu 22.04 container
-        if: runner.os == 'Linux'
-        # Run on the host so Docker bind paths and the non-root UID match.
-        run: node tools/smoke-clean-linux.mjs
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -169,8 +108,3 @@ jobs:
             build/native/Testing/Temporary/
             build/macos-install-smoke/
           if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
-        with:
-          name: unsigned-${{ matrix.os }}-${{ matrix.architecture }}
-          path: apps/desktop/src-tauri/target/release/bundle/
-          if-no-files-found: error
