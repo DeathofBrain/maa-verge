@@ -9,7 +9,7 @@ CI 在常规检查与签名发行工作流中统一固定 uv 0.13.5，避免安�
 每台机器从相同 Git 提交重新执行引导脚本。不要复制其他电脑的 `node_modules`、`.venv`、`.tools`、Rust target 或产品数据库。
 
 ```powershell
-# Windows：工作区依赖、固定 Bun 及 Python 参考/合成测试
+# Windows：工作区依赖、固定 Bun / Rust 及 Python 参考/合成测试
 powershell -ExecutionPolicy Bypass -File tools/bootstrap.ps1
 # 已安装下文的系统依赖时，添加 -Native 验证桌面编译环境
 powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 run doctor --native
@@ -21,9 +21,11 @@ bash tools/bootstrap.sh
 bash tools/pnpm.sh run doctor --native
 ```
 
-引导脚本在仓库 `.tools` 安装或修复与项目固定版本不符的 Node/pnpm，冻结同步所有工作区依赖，安装并验证固定 Bun，并使用 uv 管理参考测试所需的 Python。`-SkipReference` / `--skip-reference` 跳过 Python 参考环境；`-Native` / `--native` 额外验证原生依赖。更新代码后应重新运行引导，或执行 `pnpm install --frozen-lockfile` 同步新增工作区。
+引导脚本在仓库 `.tools` 安装或修复与项目固定版本不符的 Node/pnpm，冻结同步所有工作区依赖，安装并验证固定 Bun / Rust，并使用 uv 管理参考测试所需的 Python。Rust 按 `rust-toolchain.toml` 安装编译器、Cargo、rustfmt 和 Clippy，已有完整且版本符合的工具链可直接复用；需要安装时下载并校验官方 rustup 安装器，将工具放在 `.tools/cargo` 与 `.tools/rustup`，不修改系统 PATH 或 Shell 配置。`-SkipReference` / `--skip-reference` 跳过 Python 参考环境；`-Native` / `--native` 额外验证原生依赖。更新代码后应重新运行引导，或执行 `pnpm install --frozen-lockfile` 同步新增工作区。
 
-`pnpm setup:bun` 也可单独运行：下载官方固定版本归档，按仓库保存的 SHA-256 校验后安装 `.tools/bun`，不会采用 PATH 中的全局 Bun。Node 下载通过官方 SHA256 清单验证，下载或校验失败保留旧工具。Rust、CMake、C++ 编译器和系统 SDK 需要单独安装。脚本只调整当前进程的 PATH；没有全局 Node/pnpm 时，使用 `powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 <command>` 或 `bash tools/pnpm.sh <command>`，包装脚本会选择本地工具，版本不符时提示重新引导。
+Python 安装不向用户命令目录或 Windows 注册表添加入口，避免覆盖已有 Python。依赖同步若发现 uv 缓存中的归档文件缺失，会保留原始诊断并以 `uv sync --frozen --no-cache` 绕过缓存重试一次；不会删除共享缓存或改写锁文件。其他同步错误直接退出，绕过缓存后仍失败也会退出；处理报错后重新运行引导即可。
+
+`pnpm setup:bun` 也可单独运行：下载官方固定版本归档，按仓库保存的 SHA-256 校验后安装 `.tools/bun`，不会采用 PATH 中的全局 Bun。Node 下载通过官方 SHA256 清单验证，下载或校验失败保留旧工具。CMake、C++ 编译器和系统 SDK 需要单独安装。脚本只调整当前进程的 PATH；没有全局 Node/pnpm 时，使用 `powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 <command>` 或 `bash tools/pnpm.sh <command>`，包装脚本会选择本地工具，版本不符时提示重新引导。
 
 组件下载由固定 Bun 中的内置 HTTP 实现，支持进度、断点续传和完整性校验，沿用运行时的代理环境设置。开发与打包均无需准备额外下载器；详细下载及缓存行为见 [组件运行时](maacore-runtime.md)。
 
@@ -44,7 +46,7 @@ pnpm dev
 | 平台                   | 系统依赖                                                                                                                                                    |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Windows x64            | Visual Studio 2022 Build Tools，选择“使用 C++ 的桌面开发”、MSVC x64/x86、Windows 10/11 SDK 和 CMake 工具；Microsoft Edge WebView2 Runtime；Rust MSVC 工具链 |
-| macOS 13.5+            | `xcode-select --install`；CMake 3.25+；Rust；在目标 CPU 架构运行 Node/Bun 与构建；签名/公证另外配置                                                         |
+| macOS 15+              | `xcode-select --install`；CMake 3.25+；Rust；在目标 CPU 架构运行 Node/Bun 与构建；签名/公证另外配置                                                         |
 | Ubuntu 22.04/24.04 x64 | 下方 apt 包、Rust；图形桌面用于运行，CI 可只编译；AppImage 运行需要 FUSE                                                                                    |
 
 ```bash
@@ -59,7 +61,7 @@ Windows 安装 Visual Studio 时务必勾选 CMake 工具；脚本可通过 `vsw
 
 macOS 先运行 `xcode-select --install`，安装后确认 `xcode-select -p` 可用；使用 Homebrew 时可通过 `brew install cmake` 安装 CMake。Apple Silicon 使用 arm64 的 Node/Bun/Rust，Intel Mac 使用 x64，避免混用 Rosetta 工具和其他架构的缓存。
 
-Rust 使用 [rustup](https://rustup.rs/) 安装；在仓库运行 `rustup show` 会按 `rust-toolchain.toml` 安装并选择版本，包含 rustfmt/clippy。Windows 从 Developer PowerShell for VS 2022 启动可帮助诊断链接器。若选择本地 `.tools/cargo` 与 `.tools/rustup`，工具脚本会自动识别；不要提交这些目录。
+Rust 默认由 bootstrap 安装，也可单独执行 `node tools/setup-rust.mjs` 修复。手动使用 [rustup](https://rustup.rs/) 时，在仓库运行 `rustup show` 会按 `rust-toolchain.toml` 安装并选择版本，包含 rustfmt/clippy。Windows 从 Developer PowerShell for VS 2022 启动可帮助诊断链接器。项目命令和 pnpm 包装脚本会自动识别本地 `.tools/cargo` 与 `.tools/rustup`；不要提交这些目录。
 
 Ubuntu 22.04 默认 apt CMake 为 3.22，低于项目要求；请从 [CMake 官方下载](https://cmake.org/download/) 取得 Linux x86_64 的 3.25+ 归档，校验官方 SHA-256 后，将归档内顶层目录放到 `.tools/cmake`，使 `.tools/cmake/bin/cmake` 存在。脚本会优先使用这份本地工具；Ubuntu 24.04 也可安装系统 `cmake`。macOS/Windows 同样支持 `.tools/cmake/bin`。不要复制其他 OS 或 CPU 架构的工具目录。
 
@@ -105,6 +107,8 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 
 同一 checkout 同时启动界面测试与桌面时，应分别设置不同的 `MAAVERGE_DEV_PORT`。Vite 的预构建缓存按实际端口存放在 `apps/desktop/node_modules/.vite/port-<port>`，避免多个实例覆盖彼此的 Tauri 模块。若旧窗口出现 `Importing a module script failed` 等组件加载错误，点击「重新加载界面」；更新脚本后应先完全退出旧开发窗口与命令，再重新运行 `pnpm dev`。普通服务连接失败仍使用「重新连接」。
 
+界面测试产物统一放在被 Git 忽略的 `test-results/` 下；默认目录为 `test-results/ui`，并行验证通过 `--output=test-results/<专项名称>` 分开保存截图、trace 和报告，不在仓库根目录创建新的 `test-*` 产物目录。
+
 开发启动器在 macOS/Linux 为 Vite 和 Tauri 创建独立进程组，终端按 Ctrl+C 时一并结束其后代进程；Windows 继续使用定向 `taskkill /t` 清理。不会按应用名终止其他 checkout 的进程。桌面窗口完全退出时仍由 Rust 负责关闭本地服务与释放租约。
 
 `pnpm run doctor` 检查固定工具版本、所有工作区的直接依赖和本地环境，不连接设备、不发模型请求、不输出密钥；显式写 `run` 可避免调用 pnpm 自带的同名命令。`pnpm run doctor --native` 将原生依赖设为必需。`pnpm build` 与默认 TypeScript 桌面 `pnpm dev` 在编译前执行原生诊断；构建、检查和运行入口若发现工作区依赖缺失，会直接提示冻结同步命令，避免到 Bun 打包时才出现 `Could not resolve tar/yauzl` 或缺少 Bun 类型。设备发现也会查找模拟器内置 ADB，非标准安装需配置路径。可选 ADB 的缺失不阻断界面测试。真实设备测试由用户明确选择，且必须记录核心、资源、平台及设备标识的脱敏值。
@@ -130,7 +134,7 @@ python tools/clean-codex-worktrees.py                   # 清理干净的 worktr
 
 原生模式默认自动连接已启动的本机模拟器，设置中可以关闭或手动触发；已保存实例清单时只逐项连接清单，没有清单时进行自动发现。SDK/模拟器内置 ADB、默认端口和非标准路径见 [emulator-connection.md](emulator-connection.md)，共享/逐实例连接设置见 [connection-settings.md](connection-settings.md)，并行执行与隔离边界见 [multi-instance.md](multi-instance.md)。此流程不会自动启动游戏或运行任务。
 
-侧边栏的「任务」统一管理任务表：列表展示启用态、绑定设备与最近执行，点击行在右侧详情抽屉内通过「任务编排」「任务表设置」「定时计划」组织配置，同一页的「执行监控」页签按设备展示当前或最近执行，支持设备多选停止、设备日志合并查看与逐条复制导出；页头勾选任务表后「运行」，单表可多选空闲设备，多表各用绑定设备或逐行选择。新建表采用原版九项默认队列与参数，名称自动选择未占用的“日常表1”等；各步骤可重复添加、排序、复制、启停并单独配置，高级 JSON 保留常用字段之外的参数。逐项默认及执行映射见 [maa-task-settings.md](maa-task-settings.md)。官方活动日历、关卡目录和主页游戏提醒共用缓存，基建估算按设备手工校准，见 [game-reminders.md](game-reminders.md)。上游边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
+侧边栏的「任务」统一管理任务表：列表展示启用态、绑定设备与最近执行，点击行在右侧详情抽屉内通过「任务编排」「任务表设置」「定时计划」组织配置，同一页的「执行监控」页签上方选择在线/历史设备，下方显示该设备当前的任务表、作业或工具；离线显示已离线，历史执行从显式入口查看。任务表「查看执行」与底部运行详情定位同一设备，支持设备多选停止；日志、连接设置和画面使用右侧抽屉，连接设置关闭后恢复任务编辑草稿；页头勾选任务表后「运行」，单表可多选空闲设备，多表各用绑定设备或逐行选择。新建表采用原版九项默认队列与参数，名称自动选择未占用的“日常表1”等；各步骤可重复添加、排序、复制、启停并单独配置，高级 JSON 保留常用字段之外的参数。逐项默认及执行映射见 [maa-task-settings.md](maa-task-settings.md)。官方活动日历、关卡目录和主页游戏提醒共用缓存，基建估算按设备手工校准，见 [game-reminders.md](game-reminders.md)。上游边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
 
 ## 构建与持续集成
 
@@ -164,7 +168,7 @@ smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下�
 
 许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`。
 
-Checks 在每次提交和 PR 上运行五个独立任务，不生成任何安装包：`application` 在 Linux 镜像中执行工程、契约、TypeScript、Python 参考与 Chromium 夹具端到端检查；Windows x64、Linux x64、macOS arm64/x64 四个 `native` 任务各自执行 Bun 探针、C++ CTest、TypeScript 运行时测试、Rust fmt/clippy/test 和本平台打包夹具。平台夹具只在本宿主执行，Windows 会显式安装 NSIS；任一宿主失败不会取消其他平台。发布工作流复用标签提交上成功的 Checks，只在四个宿主构建签名产物。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
+Checks 在每次提交和 PR 上运行五个独立任务，不生成任何安装包：`application` 在 Linux 镜像中执行工程、契约、TypeScript、Python 参考与 Chromium 夹具端到端检查；Windows x64、Linux x64、macOS arm64/x64 四个 `native` 任务各自执行 Bun 探针、C++ CTest、TypeScript 运行时测试、Rust fmt/clippy/test 和本平台打包夹具。macOS 最低支持 15，Checks 和发行使用 `macos-15` arm64 与 `macos-15-intel` x64；Tauri 与 C++ worker 部署目标均为 15.0。平台夹具只在本宿主执行，Windows 会显式安装 NSIS；任一宿主失败不会取消其他平台。发布工作流复用标签提交上成功的 Checks，只在四个宿主构建签名产物。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
 
 Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runtime/maaverge-runtime` 中的 Linux x64 两个可执行文件。测试驱动在宿主 Node 中准备隔离数据，容器使用原始 Ubuntu 22.04 镜像并确认没有 Python、Node 或 Bun；后端会话断网，覆盖真实 native 服务、持久化、缺失设备拒绝和 EOF 重启。发布流程在 Linux 签名构建后自动执行。这是后端容器测试，桌面和安装器仍需单独验收。
 

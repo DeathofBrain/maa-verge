@@ -68,7 +68,7 @@ SingleStep 有需要先做契约探针的细节：[集成文档](https://github.
 | 自定义流程   | Pipeline 的识别、动作、分支、错误路径和动态覆盖                           | 新活动／小游戏资源及成功标准；不重做已经成熟的 MAA 业务  |
 | 多平台控制   | ADB、Win32、macOS、PlayCover、Linux 等控制器                              | 各平台权限、实际目标程序兼容性和设备身份适配             |
 
-依据为 [Tasker C API](https://github.com/MaaXYZ/MaaFramework/blob/v5.14.3/include/MaaFramework/Instance/MaaTasker.h)、[Tasker 初始化源码](https://github.com/MaaXYZ/MaaFramework/blob/v5.14.3/source/MaaFramework/Tasker/Tasker.cpp#L70)、[Pipeline 协议](https://github.com/MaaXYZ/MaaFramework/blob/v5.14.3/docs/zh_cn/3.1-%E4%BB%BB%E5%8A%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%8D%8F%E8%AE%AE.md)和[控制方式说明](https://github.com/MaaXYZ/MaaFramework/blob/v5.14.3/docs/zh_cn/2.4-%E6%8E%A7%E5%88%B6%E6%96%B9%E5%BC%8F%E8%AF%B4%E6%98%8E.md)。macOS 原生控制器要求 14.0＋，不能用“支持 macOS”推断它满足本项目 13.5 的全部功能目标；ADB 路径需另行验证。
+依据为 [Tasker C API](https://github.com/MaaXYZ/MaaFramework/blob/v5.14.3/include/MaaFramework/Instance/MaaTasker.h)、[Tasker 初始化源码](https://github.com/MaaXYZ/MaaFramework/blob/v5.14.3/source/MaaFramework/Tasker/Tasker.cpp#L70)、[Pipeline 协议](https://github.com/MaaXYZ/MaaFramework/blob/v5.14.3/docs/zh_cn/3.1-%E4%BB%BB%E5%8A%A1%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%8D%8F%E8%AE%AE.md)和[控制方式说明](https://github.com/MaaXYZ/MaaFramework/blob/v5.14.3/docs/zh_cn/2.4-%E6%8E%A7%E5%88%B6%E6%96%B9%E5%BC%8F%E8%AF%B4%E6%98%8E.md)。macOS 原生控制器要求 14.0＋；本项目当前最低支持 macOS 15，但版本条件满足不代表控制器已接入或通过验收，权限、实际目标程序与 ADB 路径仍需分别验证。
 
 MaaFramework 的 AgentServer 是进程外 Custom 识别／动作服务，不等于 LLM Agent。它也不提供明日方舟自动解题器、完整战场状态、第三方插件权限宿主或插件市场。相关能力继续遵守 [插件调研](plugin-marketplace-research.md) 的产品边界。
 

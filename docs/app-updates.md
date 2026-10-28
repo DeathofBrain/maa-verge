@@ -50,6 +50,8 @@ v0.1.3-alpha1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资�
 
 ## macOS 签名与首次放行
 
+当前源码及后续发行版最低支持 **macOS 15（Sequoia）**，覆盖 Apple Silicon 和 Intel。已有发行版的历史系统要求见各版本说明。
+
 macOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付费账号或新增 GitHub Secrets。Tauri 配置显式设置 `bundle.macOS.signingIdentity: "-"`，在生成 DMG、更新归档及更新签名前封装整个 `.app`；Bun 服务和 C++ worker 保留各自的签名与权限。只签主程序或子进程、没有 `.app` 的资源封装，会导致系统报告应用「已损坏」。
 
 本地签名可以验证应用包完整性，但没有 Apple 认可的发布者身份与公证。首次安装时，先把应用从 DMG 拖到可写的安装目录，尝试打开，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」。应用需要用户明确放行；CI 不修改全局 Gatekeeper 设置，也不承诺未公证下载可以直接打开。
