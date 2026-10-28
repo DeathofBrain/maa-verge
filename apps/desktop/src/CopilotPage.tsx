@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { acquireModalEffects } from './modal-effects';
 import {
   ArrowDown,
   ArrowLeft,
@@ -2804,68 +2805,18 @@ function CopilotDetailDrawer({ children, onClose }: { children: ReactNode; onClo
   const close = useRef(onClose);
   close.current = onClose;
   useLayoutEffect(() => {
+    if (!container.current) return;
     const background = document.getElementById('root');
-    const previousInert = background?.inert ?? false;
-    const previousAriaHidden = background?.getAttribute('aria-hidden');
     const page = document.querySelector<HTMLElement>('.copilot-page');
-    const previousOverflow = page?.style.overflowY ?? '';
-    const previousBodyOverflow = document.body.style.overflow;
-    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    if (background) {
-      background.inert = true;
-      background.setAttribute('aria-hidden', 'true');
-    }
-    if (page) page.style.overflowY = 'hidden';
-    document.body.style.overflow = 'hidden';
-    container.current?.querySelector<HTMLElement>('h2[tabindex]')?.focus({ preventScroll: true });
-    const keydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        close.current();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const targets = [
-        ...(container.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex="0"]',
-        ) ?? []),
-      ].filter((target) => !target.closest('[hidden]') && target.getClientRects().length > 0);
-      const first = targets[0],
-        last = targets.at(-1);
-      if (!first) {
-        event.preventDefault();
-        return;
-      }
-      if (
-        event.shiftKey &&
-        (!targets.includes(document.activeElement as HTMLElement) ||
-          document.activeElement === first)
-      ) {
-        event.preventDefault();
-        last?.focus();
-      } else if (
-        !event.shiftKey &&
-        (!targets.includes(document.activeElement as HTMLElement) ||
-          document.activeElement === last)
-      ) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', keydown, true);
-    return () => {
-      document.removeEventListener('keydown', keydown, true);
-      if (background) {
-        background.inert = previousInert;
-        if (previousAriaHidden === null || previousAriaHidden === undefined)
-          background.removeAttribute('aria-hidden');
-        else background.setAttribute('aria-hidden', previousAriaHidden);
-      }
-      if (page) page.style.overflowY = previousOverflow;
-      document.body.style.overflow = previousBodyOverflow;
-      if (active?.isConnected) active.focus({ preventScroll: true });
-    };
+    return acquireModalEffects({
+      panel: container.current,
+      layer: container.current.parentElement ?? undefined,
+      background: [background],
+      ariaHidden: [background],
+      scroll: page ? [{ element: page, property: 'overflow-y' }] : [],
+      initialFocus: container.current.querySelector<HTMLElement>('h2[tabindex]'),
+      onEscape: () => close.current(),
+    });
   }, []);
   return createPortal(
     <div className="cp-drawer-layer">

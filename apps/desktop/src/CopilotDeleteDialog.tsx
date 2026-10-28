@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { acquireModalEffects } from './modal-effects';
 import { LoaderCircle, Trash2, X } from 'lucide-react';
 import './copilot-library-actions.css';
 
@@ -31,25 +32,24 @@ export default function CopilotDeleteDialog({
   const container = useRef<HTMLElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
   const title = target.type === 'category' ? '删除分类' : '删除作业';
+  const close = useRef(onClose);
+  close.current = () => {
+    if (!busy) onClose();
+  };
 
   useLayoutEffect(() => {
-    const active =
-      returnFocus ??
-      (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    if (!container.current) return;
     const background = document.getElementById('root');
-    const previousInert = background?.inert ?? false;
-    const previousOverflow = document.body.style.overflow;
-    if (background) background.inert = true;
-    document.body.style.overflow = 'hidden';
-    cancel.current?.focus();
-    return () => {
-      if (background) background.inert = previousInert;
-      document.body.style.overflow = previousOverflow;
-      const target = active?.isConnected
-        ? active
-        : background?.querySelector<HTMLElement>('.cp-category-chip[aria-pressed="true"]');
-      target?.focus({ preventScroll: true });
-    };
+    return acquireModalEffects({
+      panel: container.current,
+      layer: container.current.parentElement ?? undefined,
+      background: [background],
+      initialFocus: cancel.current,
+      returnFocus,
+      fallbackFocus: () =>
+        background?.querySelector<HTMLElement>('.cp-category-chip[aria-pressed="true"]'),
+      onEscape: () => close.current(),
+    });
   }, []);
 
   return createPortal(
@@ -62,27 +62,6 @@ export default function CopilotDeleteDialog({
         aria-label={title}
         aria-busy={busy}
         onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            if (!busy) onClose();
-          }
-          if (event.key !== 'Tab') return;
-          const nodes = [
-            ...(container.current?.querySelectorAll<HTMLElement>(
-              'button:not(:disabled),input:not(:disabled)',
-            ) ?? []),
-          ];
-          if (!nodes.length) {
-            event.preventDefault();
-          } else if (event.shiftKey && document.activeElement === nodes[0]) {
-            event.preventDefault();
-            nodes.at(-1)?.focus();
-          } else if (!event.shiftKey && document.activeElement === nodes.at(-1)) {
-            event.preventDefault();
-            nodes[0].focus();
-          }
-        }}
       >
         <div className="modal-title">
           <h2>{title}</h2>
