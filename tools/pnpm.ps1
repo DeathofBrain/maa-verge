@@ -10,6 +10,11 @@ if ($installedNode -ne "v$nodeVersion") { throw "Node $nodeVersion is required. 
 $env:PATH = "$(Split-Path -Parent $nodeExecutable);$env:PATH"
 $localUvDirectory = Join-Path $projectRoot '.tools/uv'
 if (Test-Path -LiteralPath (Join-Path $localUvDirectory 'uv.exe')) { $env:PATH = "$localUvDirectory;$env:PATH" }
+if (Test-Path -LiteralPath (Join-Path $projectRoot '.tools/rustup')) {
+    $env:CARGO_HOME = Join-Path $projectRoot '.tools/cargo'
+    $env:RUSTUP_HOME = Join-Path $projectRoot '.tools/rustup'
+    $env:PATH = "$(Join-Path $env:CARGO_HOME 'bin');$env:PATH"
+}
 $pnpmEntry = Join-Path $projectRoot '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs'
 $manager = (Get-Content (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json).packageManager
 $installedPnpm = if (Test-Path -LiteralPath $pnpmEntry) { try { & $nodeExecutable $pnpmEntry --version 2>$null } catch { '' } } else { '' }

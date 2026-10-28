@@ -59,6 +59,7 @@ fi
 cd "$project_root"
 "$node_executable" "$pnpm_entry" install --frozen-lockfile
 "$node_executable" tools/setup-bun.mjs
+"$node_executable" tools/setup-rust.mjs
 if ! "$skip_reference"; then
   if [[ -x "$tool_root/uv/uv" ]]; then export PATH="$tool_root/uv:$PATH"; fi
   if ! command -v uv >/dev/null; then
@@ -66,8 +67,8 @@ if ! "$skip_reference"; then
     UV_INSTALL_DIR="$tool_root/uv" UV_NO_MODIFY_PATH=1 sh "$tool_root/uv-install.sh"
     export PATH="$tool_root/uv:$PATH"
   fi
-  uv python install 3.12
-  uv sync --frozen
+  uv python install 3.12 --no-bin --no-registry
+  "$node_executable" tools/sync-python.mjs "$(command -v uv)"
 fi
 if "$native"; then
   "$node_executable" tools/doctor.mjs --native

@@ -10,6 +10,10 @@ if [[ -z "$node_executable" ]] || [[ "$("$node_executable" --version 2>/dev/null
 fi
 export PATH="$(dirname -- "$node_executable"):$PATH"
 if [[ -x "$project_root/.tools/uv/uv" ]]; then export PATH="$project_root/.tools/uv:$PATH"; fi
+if [[ -d "$project_root/.tools/rustup" ]]; then
+  export CARGO_HOME="$project_root/.tools/cargo" RUSTUP_HOME="$project_root/.tools/rustup"
+  export PATH="$CARGO_HOME/bin:$PATH"
+fi
 pnpm_entry="$project_root/.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs"
 package_manager="$("$node_executable" -p "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).packageManager" "$project_root/package.json")"
 if [[ ! -f "$pnpm_entry" ]] || [[ "$("$node_executable" "$pnpm_entry" --version 2>/dev/null)" != "${package_manager#pnpm@}" ]]; then

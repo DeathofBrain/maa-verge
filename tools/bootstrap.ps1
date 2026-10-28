@@ -48,6 +48,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency sync failed' }
     & $nodeExecutable (Join-Path $PSScriptRoot 'setup-bun.mjs')
     if ($LASTEXITCODE -ne 0) { throw 'Pinned Bun installation failed' }
+    & $nodeExecutable (Join-Path $PSScriptRoot 'setup-rust.mjs')
+    if ($LASTEXITCODE -ne 0) { throw 'Pinned Rust installation failed' }
     if (!$SkipReference) {
         $uvCommand = Get-Command uv -ErrorAction SilentlyContinue
         $uvExecutable = Join-Path $toolRoot 'uv/uv.exe'
@@ -61,9 +63,9 @@ try {
             if ($LASTEXITCODE -ne 0) { throw 'uv installation failed' }
             $uvCommand = @{ Source = $uvExecutable }
         }
-        & $uvCommand.Source python install 3.12
+        & $uvCommand.Source python install 3.12 --no-bin --no-registry
         if ($LASTEXITCODE -ne 0) { throw 'Python 3.12 installation failed' }
-        & $uvCommand.Source sync --frozen
+        & $nodeExecutable (Join-Path $PSScriptRoot 'sync-python.mjs') $uvCommand.Source
         if ($LASTEXITCODE -ne 0) { throw 'Python dependency sync failed' }
     }
     if ($Native) {

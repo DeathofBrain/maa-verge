@@ -3,6 +3,8 @@ import { assertWorkspaceDependencies } from './environment.mjs';
 
 const toolTests = [
   'tools/tests/environment.test.mjs',
+  'tools/tests/sync-python.test.mjs',
+  'tools/tests/setup-rust.test.mjs',
   'tools/tests/commit-formatting.test.mjs',
   'tools/tests/vite-cache.test.mjs',
   'tools/tests/process-tree.test.mjs',
