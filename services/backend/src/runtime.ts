@@ -1663,9 +1663,12 @@ export class Runtime {
     const workers = [...this.workers.entries()];
     this.workers.clear();
     this.workerConfigurations.clear();
-    for (const [id] of workers) {
+    for (const [id, worker] of workers) {
       const d = this.store.get('device', id);
-      reconnect.set(id, d);
+      // Only a device that was actually connected needs to come back after the
+      // switch. Registered offline workers must not block an idle component
+      // update, and their next connection will pick up the new combo.
+      if (worker.connected) reconnect.set(id, d);
       d.state = 'offline';
       this.store.put('device', id, d);
       this.emit('device.disconnected', '正在安全切换核心工作进程', { deviceId: id });
@@ -1676,10 +1679,36 @@ export class Runtime {
   }
   async afterSwitch() {
     for (const device of this.reconnect) {
-      await this.connectDevice({ address: device.address, name: device.name }, true);
-      if (!(await this.workers.get(device.id)!.waitConnected()))
-        throw new Error('新版核心设备重连失败或超时: ' + device.name);
+      try {
+        const connected = await this.connectDevice(
+          { address: device.address, name: device.name },
+          true,
+        );
+        if (!(await this.workers.get(connected.id)?.waitConnected()))
+          throw new Error('新版核心设备重连失败或超时: ' + device.name);
+      } catch (error) {
+        // The new files were validated before the switch. A device that cannot
+        // come back is reported as offline; it must not roll back a valid idle
+        // update or terminate waiting plans.
+        await this.abandonReconnect(device.id, error);
+      }
     }
+  }
+  private async abandonReconnect(id: string, error: unknown) {
+    const reason = connectionError(error),
+      worker = this.workers.get(id);
+    this.workers.delete(id);
+    this.workerConfigurations.delete(id);
+    if (worker) await worker.close().catch(() => {});
+    const device = this.store.get('device', id);
+    if (!device) return;
+    device.state = 'offline';
+    device.connectionError = reason.slice(0, 4096);
+    this.store.put('device', id, device);
+    this.emit('device.failed', '更新已生效，但设备重连失败：' + reason, {
+      device,
+      detail: String(error),
+    });
   }
   async finishSwitch(error?: string) {
     if (!this.switching) return;

@@ -297,6 +297,7 @@ function fixtureUpdates(
     afterActivate?: () => void | Promise<void>;
     finishActivate?: (error?: string) => void | Promise<void>;
     protectedPaths?: () => string[];
+    validator?: () => void | Promise<void>;
   } = {},
 ) {
   const validator = async () => {};
@@ -1089,7 +1090,7 @@ test('native install/update use selective extraction; resource overlays rebase o
   await updates.rollback('core');
   expect(store.get('active', 'combo').core).toEqual(core);
 });
-test('failed candidate reconnection restores original pointer and reinitializes old workers', async () => {
+test('failed candidate reconnection restores original pointer and keeps the verified candidate staged', async () => {
   const root = await temp(),
     store = new MemoryStore(),
     source = new FixtureSource();
@@ -1112,6 +1113,37 @@ test('failed candidate reconnection restores original pointer and reinitializes 
   expect(store.get('active', 'combo')).toEqual(original);
   expect(attempts).toBe(2);
   expect(store.get('staged', 'core')).toBeDefined();
+  expect(updates.channel('core')).toMatchObject({
+    status: 'staged',
+    progress: 100,
+    latestVersion: 'v6.20.1',
+    currentVersion: 'v6.20.0',
+  });
+  expect(updates.channel('core').message).toContain('候选快照已保留');
+  fail = false;
+  expect((await updates.activate('core')).status).toBe('active');
+  expect(store.get('staged', 'core')).toBeUndefined();
+  expect(store.get('active', 'combo').core.version).toBe('v6.20.1');
+});
+
+test('an invalid candidate stays failed instead of offering a staged retry', async () => {
+  const root = await temp(),
+    store = new MemoryStore(),
+    source = new FixtureSource();
+  let fail = false;
+  const updates = fixtureUpdates(root, store, () => false, source, {
+    validator: () => {
+      if (fail) throw new Error('synthetic validation failure');
+    },
+  });
+  await updates.check('core');
+  await updates.prepare('core');
+  fail = true;
+  await expect(updates.activate('core')).rejects.toThrow('更新切换失败');
+  expect(updates.channel('core').status).toBe('failed');
+  expect(updates.channel('core').message).toContain('切换校验失败');
+  expect(store.get('staged', 'core')).toBeDefined();
+  expect(store.get('active', 'combo')).toBeUndefined();
 });
 
 test('changing core release channel invalidates staged preview and rejects its activation', async () => {

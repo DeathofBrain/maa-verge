@@ -1273,8 +1273,10 @@ export class UpdateService {
         throw new RpcError(-32020, '核心已变化，请重新准备资源快照');
       next.resource = staged;
     }
+    let validated = false;
     try {
       await this.validator(next.core.path, next.resource.path, next.core.version);
+      validated = true;
       await this.switchCombo(next, combo);
       // Repair may have removed the broken active pointer. Keep the last good
       // rollback instead of replacing it with an empty or unverified combo.
@@ -1305,9 +1307,22 @@ export class UpdateService {
       await this.pruneVersions();
       return result;
     } catch (error) {
+      const candidate = this.store.get('staged', channel),
+        active = this.store.get('active', 'combo', {});
+      // A switch can fail for reasons unrelated to the package (for example a
+      // device reconnect race). Keep a validated candidate staged so the user
+      // can retry "应用更新" without downloading it again.
+      const retryable =
+        validated &&
+        !!candidate &&
+        installedSnapshot(candidate, channel === 'core', false) &&
+        (channel === 'core' || candidate.coreVersion === active.core?.version);
       this.change(channel, {
-        status: 'failed',
-        message: '切换校验失败，保留原版本: ' + message(error),
+        status: retryable ? 'staged' : 'failed',
+        progress: retryable ? 100 : 0,
+        message: retryable
+          ? '切换失败，候选快照已保留，可重试：' + message(error)
+          : '切换校验失败，保留原版本: ' + message(error),
       });
       throw new RpcError(-32020, '更新切换失败，已保留原版本', message(error));
     }
