@@ -42,10 +42,7 @@ test('task arrangement exposes deletion, cancel preserves the draft, and deletio
   await expect(
     workbench(page).getByRole('status', { name: '任务表运行状态', exact: true }),
   ).toContainText('执行中');
-  await page
-    .getByRole('contentinfo', { name: '执行状态栏', exact: true })
-    .getByRole('button', { name: '停止执行', exact: true })
-    .click();
+  await workbench(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await workbench(page).getByLabel('作战次数').fill('9');
   await remove(page).click();
   await expect(confirmation(page)).toContainText('未保存改动也会丢弃，执行记录会保留');

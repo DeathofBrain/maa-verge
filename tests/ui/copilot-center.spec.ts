@@ -13,6 +13,8 @@ const json = (title: string, extra: Record<string, unknown> = {}) =>
 const queue = (page: Page) => page.getByRole('region', { name: '作业执行队列', exact: true });
 const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
 const preview = (page: Page) => page.getByRole('region', { name: '导入预览', exact: true });
+const monitoredExecution = (page: Page) =>
+  page.getByRole('region', { name: '所选设备执行情况', exact: true });
 async function navigate(page: Page, name: string) {
   const menu = page.getByRole('button', { name: '打开导航', exact: true });
   if (await menu.isVisible()) await menu.click();
@@ -114,14 +116,22 @@ test('independent execution stays in the center, fixes its queue snapshot and su
   const current = page.getByRole('region', { name: '当前执行', exact: true });
   await expect(current).toContainText('独立作业快照');
   await current.getByRole('button', { name: '查看运行详情', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
-  await expect(run).toContainText('独立作业快照');
-  await navigate(page, '任务');
-  await page.getByRole('tab', { name: '执行监控', exact: true }).click();
   const monitor = page.getByRole('region', { name: '任务表执行监控', exact: true });
+  await expect(page.getByRole('tab', { name: '执行监控', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(
+    monitoredExecution(page).getByRole('heading', { name: '独立作业快照', exact: true }),
+  ).toBeVisible();
+  await expect(
+    monitoredExecution(page).getByRole('button', { name: '停止执行', exact: true }),
+  ).toBeVisible();
   await expect(monitor).not.toHaveClass(/inspecting/u);
-  await expect(monitor.getByRole('article')).toContainText('其他任务执行中');
-  await expect(monitor.getByRole('article')).not.toContainText('独立作业快照');
+  await expect(monitor.getByRole('article')).toContainText('作业 · 独立作业快照');
+  await expect(
+    monitor.getByRole('button', { name: '查看设备执行本地模拟设备', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('执行状态栏', { exact: true })).toHaveClass(/is-running/u);
   await navigate(page, '作业中心');
   await run.getByRole('button', { name: '停止作业', exact: true }).click();
@@ -251,7 +261,15 @@ test('switching workspaces keeps the running panel, expanded logs and stop contr
     .filter({ hasText: '切换时持续执行的普通作业' })
     .getByRole('button')
     .click();
-  await expect(page.getByRole('tab', { name: '普通作业', exact: true })).toHaveAttribute(
+  await expect(
+    monitoredExecution(page).getByRole('heading', {
+      name: '切换时持续执行的普通作业',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(monitoredExecution(page)).toContainText('正在查看历史执行');
+  await navigate(page, '作业中心');
+  await expect(page.getByRole('tab', { name: '悖论模拟', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   );
@@ -435,13 +453,11 @@ test('local JSON selection and narrow dark/light layouts provide a return path w
   await page.setViewportSize({ width: 390, height: 844 });
   await openCenter(page);
   await page.getByRole('button', { name: '导入作业', exact: true }).click();
-  await page
-    .locator('input[type=file]')
-    .setInputFiles({
-      name: 'synthetic.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(json('窄窗作业')),
-    });
+  await page.locator('input[type=file]').setInputFiles({
+    name: 'synthetic.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(json('窄窗作业')),
+  });
   await expect(preview(page)).toContainText('窄窗作业');
   await preview(page).getByRole('button', { name: '导入到作业库', exact: true }).click();
   await page.getByRole('button', { name: '返回作业列表', exact: true }).click();
@@ -485,6 +501,14 @@ test('an explicitly restored historical selection survives outside the recent sn
     .filter({ hasText: '窗口外的旧作业' })
     .getByRole('button')
     .click();
+  await expect(
+    monitoredExecution(page).getByRole('heading', { name: '窗口外的旧作业', exact: true }),
+  ).toBeVisible();
+  await expect(monitoredExecution(page)).toContainText('正在查看历史执行');
+  // History details now open the shared device monitor. Explicit selection in
+  // the authoring workspace still has to survive the recent-summary window.
+  await navigate(page, '作业中心');
+  await panel.getByLabel('查看作业记录', { exact: true }).selectOption(older);
   await expect(panel.getByRole('heading', { name: '窗口外的旧作业', exact: true })).toBeVisible();
   await page.evaluate((older) => {
     const harness = (window as unknown as HarnessWindow).runtimeHarness;
@@ -549,12 +573,18 @@ test('starting a newer run updates the selection retained after explicit history
   await page.getByRole('button', { name: '开始作业', exact: true }).click();
   const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
   await panel.getByRole('button', { name: '停止作业', exact: true }).click();
+  const older = (await call<{ runs: { id: string }[] }>(page, 'app.snapshot')).runs[0].id;
   await navigate(page, '执行记录');
   await page
     .locator('.history-table tbody tr')
     .filter({ hasText: '历史导航的旧作业' })
     .getByRole('button')
     .click();
+  await expect(
+    monitoredExecution(page).getByRole('heading', { name: '历史导航的旧作业', exact: true }),
+  ).toBeVisible();
+  await navigate(page, '作业中心');
+  await panel.getByLabel('查看作业记录', { exact: true }).selectOption(older);
   await expect(panel.getByRole('heading', { name: '历史导航的旧作业', exact: true })).toBeVisible();
   await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
   await importJson(page, json('导航后启动的新作业'));

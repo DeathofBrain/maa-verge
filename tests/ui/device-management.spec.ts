@@ -26,8 +26,11 @@ test('disconnected history stays separate and a discovered device can become an 
   await expect(
     page.getByRole('article', { name: '多开实例：主账号模拟器', exact: true }),
   ).toContainText('未连接');
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
-  await expect(page.getByText('已启用手动实例清单', { exact: false })).toBeVisible();
+  await page
+    .locator('.sp-heading-actions')
+    .getByRole('button', { name: '连接设置', exact: true })
+    .click();
+  await page.getByRole('button', { name: '关闭设备连接设置', exact: true }).click();
   await page.getByRole('tab', { name: /^当前设备/ }).click();
   await expect(page.getByRole('button', { name: '连接已保存实例', exact: true })).toBeVisible();
 });
@@ -62,7 +65,10 @@ test('editing detected profiles through connection or capture settings consisten
     });
   });
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
+  await page
+    .locator('.sp-heading-actions')
+    .getByRole('button', { name: '连接设置', exact: true })
+    .click();
   await page.getByLabel('编辑设备连接配置', { exact: true }).selectOption('first');
   await page.getByLabel('触控模式', { exact: true }).selectOption('maatouch');
   await page.getByRole('button', { name: '保存连接配置', exact: true }).click();
@@ -149,23 +155,15 @@ test('StartUp keeps game actions local and opens its bound device settings witho
   await expect(wb).toContainText('本表绑定设备：本地模拟设备');
   await wb.getByLabel('游戏客户端', { exact: true }).selectOption('YoStarJP');
   await wb.getByRole('button', { name: '管理设备连接', exact: true }).click();
-  await expect(page.getByRole('tab', { name: '连接设置', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await expect(page.getByLabel('编辑设备连接配置', { exact: true })).toHaveValue('bound');
-  await expect(page.getByRole('region', { name: '所选设备详情', exact: true })).toContainText(
-    '127.0.0.1:5555',
-  );
+  const connection = page.getByRole('dialog', { name: '设备连接设置', exact: true });
+  await expect(connection).toBeVisible();
+  await expect(connection.getByLabel('编辑设备连接配置', { exact: true })).toHaveValue('bound');
+  await expect(connection.getByLabel('连接地址', { exact: true })).toHaveValue('127.0.0.1:5555');
   const snapshot = (await page.evaluate(() =>
     (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}),
   )) as Snapshot;
   expect(snapshot.settings).toEqual(savedSettings);
-  await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
-  await page
-    .getByRole('region', { name: '任务表列表', exact: true })
-    .getByRole('button', { name: '查看任务表详情每日长草计划', exact: true })
-    .click();
+  await connection.getByRole('button', { name: '关闭设备连接设置', exact: true }).click();
   await expect(wb.getByLabel('游戏客户端', { exact: true })).toHaveValue('YoStarJP');
   await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
 });
@@ -210,13 +208,25 @@ test('device and instance pages fit desktop, dark mode and a narrow window', asy
     await page.emulateMedia({ colorScheme: theme });
     await page.setViewportSize({ width, height: 1000 });
     for (const tab of ['current', 'instances', 'settings']) {
-      await page.locator(`#dp-tab-${tab}`).click();
+      if (tab === 'settings')
+        await page
+          .locator('.sp-heading-actions')
+          .getByRole('button', { name: '连接设置', exact: true })
+          .click();
+      else await page.locator(`#dp-tab-${tab}`).click();
       expect(
         await page
           .locator('.dp-page')
           .evaluate((element) => element.scrollWidth <= element.clientWidth),
       ).toBeTruthy();
       await page.screenshot({ path: testInfo.outputPath(`${theme}-${width}-${tab}.png`) });
+      if (tab === 'settings') {
+        const drawer = page.getByRole('dialog', { name: '设备连接设置', exact: true });
+        expect(await drawer.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+          true,
+        );
+        await drawer.getByRole('button', { name: '关闭设备连接设置', exact: true }).click();
+      }
     }
   }
   expect(errors).toEqual([]);
@@ -263,9 +273,11 @@ test('an instance reconnecting at a new address uses the live device while prese
   await expect(card).toContainText('已连接');
   await expect(card.getByRole('button', { name: '删除实例', exact: true })).toBeDisabled();
   await card.getByRole('button', { name: '连接设置', exact: true }).click();
-  await expect(page.getByRole('region', { name: '所选设备详情', exact: true })).toContainText(
-    '127.0.0.1:5557',
-  );
+  await expect(
+    page
+      .getByRole('dialog', { name: '设备连接设置', exact: true })
+      .getByLabel('连接地址', { exact: true }),
+  ).toHaveValue('127.0.0.1:5557');
   await page.getByRole('button', { name: '截图测试', exact: true }).click();
   await expect(page.getByRole('img', { name: '连接截图测试结果', exact: true })).toBeVisible();
   expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.frames)).toEqual([

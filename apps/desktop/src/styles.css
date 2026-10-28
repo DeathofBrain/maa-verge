@@ -808,20 +808,6 @@ textarea.text-input {
   }
 }
 
-.execution-drawer {
-  animation: drawer-enter 0.22s var(--ease-out) both;
-}
-@keyframes drawer-enter {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .toast {
   animation: toast-enter 0.2s var(--ease-out) both;
 }
@@ -1037,108 +1023,6 @@ textarea.text-input {
   padding: 5px 10px;
 }
 
-.execution-drawer {
-  position: fixed;
-  bottom: var(--dock-height);
-  left: var(--sidebar-width);
-  right: 0;
-  height: min(350px, calc(100dvh - 140px));
-  background: var(--surface);
-  border-top: 1px solid var(--line-strong);
-  box-shadow: 0 -8px 25px #2027340c;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.execution-drawer-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-  padding: 0 22px;
-  min-height: 48px;
-  border-bottom: 1px solid var(--line);
-  flex: none;
-}
-
-.drawer-tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 24px;
-  align-self: stretch;
-}
-
-.drawer-tabs > button {
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--muted);
-  font-size: 12px;
-  padding: 0 1px;
-}
-
-.drawer-tabs > button.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.drawer-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.drawer-actions select {
-  max-width: 220px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  padding: 4px 7px;
-  border-radius: 4px;
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.execution-content {
-  flex: 1;
-  overflow: auto;
-  min-height: 0;
-}
-
-.execution-content .empty-state {
-  min-height: 170px;
-}
-
-.run-detail {
-  padding: 20px 26px;
-}
-
-.run-detail-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.run-detail-title h3 {
-  font-size: 14px;
-  font-weight: 550;
-  margin: 0;
-  flex: 1;
-}
-
-.run-detail-title > .button {
-  font-size: 11px;
-  min-height: 29px;
-}
-
-.run-detail > p {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.8;
-  margin: 17px 0;
-}
-
 .run-progress {
   height: 5px;
   border-radius: 5px;
@@ -1151,64 +1035,6 @@ textarea.text-input {
   height: 100%;
   background: var(--accent);
   transition: width 0.3s;
-}
-
-.run-metadata {
-  display: flex;
-  gap: 12px 25px;
-  flex-wrap: wrap;
-  color: var(--muted);
-  font-size: 10px;
-  margin-top: 12px;
-}
-
-.run-detail .run-footnote {
-  font-size: 11px;
-  margin-top: 22px;
-}
-
-.event-log {
-  padding: 8px 22px;
-  font-size: 11px;
-  line-height: 1.8;
-}
-
-.event-log > div {
-  display: grid;
-  grid-template-columns: 95px 170px minmax(0, 1fr);
-  gap: 10px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.event-log time {
-  color: var(--dim);
-  font-size: 10px;
-}
-
-.event-log code {
-  color: var(--accent);
-  font-size: 10px;
-  overflow-wrap: anywhere;
-}
-
-.event-log details {
-  grid-column: 2/-1;
-  color: var(--muted);
-}
-
-.event-log summary {
-  cursor: pointer;
-  font-size: 10px;
-}
-
-.event-log pre {
-  overflow: auto;
-  background: var(--code-bg);
-  padding: 9px;
-  border-radius: 4px;
-  font-size: 10px;
-  max-height: 170px;
 }
 
 .agent-page,
@@ -1851,34 +1677,6 @@ textarea.text-input {
   .dock-status > strong {
     font-size: 11px;
   }
-  .execution-drawer {
-    left: 0;
-  }
-  .execution-drawer-heading {
-    padding: 0 17px;
-    gap: 8px;
-  }
-  .drawer-tabs {
-    gap: 20px;
-  }
-  .drawer-actions select {
-    max-width: 150px;
-  }
-  .run-detail {
-    padding: 19px;
-  }
-  .event-log {
-    padding: 8px 17px;
-  }
-  .event-log > div {
-    grid-template-columns: 80px minmax(0, 1fr);
-  }
-  .event-log > div > span {
-    grid-column: 1/-1;
-  }
-  .event-log details {
-    grid-column: 1/-1;
-  }
   .history-toolbar {
     padding: 0 20px 20px;
   }
@@ -1905,9 +1703,6 @@ textarea.text-input {
   .toast {
     left: 50%;
     width: max-content;
-  }
-  .drawer-actions {
-    gap: 3px;
   }
 }
 
@@ -1950,24 +1745,6 @@ textarea.text-input {
   }
   .run-dock {
     padding-inline: 12px;
-  }
-  .drawer-tabs {
-    gap: 15px;
-  }
-  .drawer-actions select {
-    max-width: 125px;
-    font-size: 9px;
-  }
-  .drawer-tabs > button {
-    font-size: 11px;
-  }
-  .run-detail-title {
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .run-detail-title h3 {
-    font-size: 12px;
-    min-width: 90px;
   }
   .page-heading {
     align-items: flex-start;

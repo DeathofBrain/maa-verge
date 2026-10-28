@@ -171,6 +171,7 @@
 }
 .monitor-device-list {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
   gap: 12px;
   max-width: 1680px;
   margin: 0 auto;
@@ -215,6 +216,172 @@
   flex-direction: column;
   gap: 9px;
   min-width: 0;
+  width: 100%;
+  align-self: stretch;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.monitor-device-main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+  border-radius: 4px;
+}
+.monitor-device-row.is-current {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+}
+.monitor-device-open {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--accent);
+}
+.monitor-device-groups {
+  max-width: 1680px;
+  margin: 0 auto;
+  max-height: clamp(160px, 28vh, 260px);
+  overflow-y: auto;
+  padding: 3px;
+}
+.monitor-device-group + .monitor-device-group {
+  margin-top: 24px;
+}
+.monitor-device-group > h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+.monitor-device-group > h2 > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.monitor-device-group > p {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.monitor-selected-device {
+  max-width: 1680px;
+  margin: 28px auto 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 12px;
+}
+.monitor-selection-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.monitor-selection-heading > div > span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.monitor-selection-heading h2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 5px 0 0;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.monitor-selected-device > .exec-page {
+  width: 100%;
+  height: auto;
+  max-width: none;
+  padding: 24px 0 0;
+  overflow: visible;
+}
+.monitor-selected-device .exec-task-panel {
+  position: static;
+  max-height: none;
+}
+.monitor-history-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  font-size: 12px;
+}
+.monitor-idle-state {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 18px;
+  color: var(--dim);
+  text-align: center;
+}
+.monitor-idle-state h2 {
+  margin: 14px 0 0;
+  color: var(--text);
+  font-size: 17px;
+}
+.monitor-idle-state p {
+  margin: 10px 0 20px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.monitor-tool-execution {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+.monitor-tool-execution > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.monitor-tool-execution h3 {
+  margin: 0;
+  font-size: 17px;
+}
+.monitor-tool-execution > p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.monitor-tool-execution progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.monitor-tool-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.monitor-tool-times dt {
+  color: var(--muted);
+}
+.monitor-tool-times dd {
+  margin: 0;
+  color: var(--text);
 }
 .monitor-device-name {
   display: flex;
@@ -362,131 +529,7 @@
   color: var(--dim);
   line-height: 1.8;
 }
-.monitor-inspector-bar {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 15px 30px 10px;
-}
-.monitor-inspector-bar > button {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-}
-.monitor-inspector-bar > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  color: var(--muted);
-}
-.monitor-run-strip {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(215px, 260px);
-  gap: 10px;
-  overflow-x: auto;
-  padding: 4px 30px 15px;
-  border-bottom: 1px solid var(--line);
-  flex: none;
-}
-.monitor-run-tab {
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface);
-  min-width: 0;
-  text-align: left;
-}
-.monitor-run-tab:hover {
-  border-color: var(--line-strong);
-  background: var(--surface-subtle);
-}
-.monitor-run-tab.selected {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-.monitor-run-tab > span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.monitor-run-tab strong {
-  font-size: 12px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.monitor-run-tab b {
-  font-size: 11px;
-  font-weight: 500;
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-}
-.monitor-run-tab svg {
-  color: var(--muted);
-}
-.monitor-run-tab.running svg {
-  color: var(--accent);
-}
-.monitor-run-tab.failed svg {
-  color: var(--danger);
-}
-.monitor-run-tab.completed svg {
-  color: var(--success);
-}
-.monitor-run-tab > small {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: 7px;
-  white-space: nowrap;
-}
-.monitor-run-tab > small > span {
-  flex: none;
-}
-.monitor-run-tab > small > .monitor-run-device {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.execution-monitor.inspecting > .exec-page {
-  flex: 1;
-  width: 100%;
-  height: auto;
-  min-height: 0;
-}
-.device-detail-panel {
-  width: min(760px, calc(100vw - 96px));
-}
-.device-detail-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: none;
-}
-.device-detail-actions .monitor-device-state {
-  padding: 3px 8px;
-  font-size: 11px;
-}
-.device-detail-info {
-  flex: none;
-  padding: 16px 22px 0;
-}
-.device-detail-info h2 {
-  margin: 0 0 9px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-}
-.device-detail-grid {
+.monitor-device-info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 11px 18px;
@@ -496,15 +539,15 @@
   border-radius: 9px;
   background: var(--surface-subtle);
 }
-.device-detail-grid > div {
+.monitor-device-info-grid > div {
   min-width: 0;
 }
-.device-detail-grid dt {
+.monitor-device-info-grid dt {
   margin-bottom: 3px;
   font-size: 10px;
   color: var(--dim);
 }
-.device-detail-grid dd {
+.monitor-device-info-grid dd {
   margin: 0;
   font-size: 12px;
   color: var(--text);
@@ -512,7 +555,7 @@
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
-.device-detail-error {
+.monitor-device-error {
   margin: 10px 0 0;
   padding: 8px 11px;
   border: 1px solid color-mix(in srgb, var(--danger) 32%, var(--line));
@@ -522,46 +565,6 @@
   font-size: 11px;
   line-height: 1.7;
   overflow-wrap: anywhere;
-}
-.device-detail-run {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  margin-top: 14px;
-  border-top: 1px solid var(--line);
-  overflow: hidden;
-}
-.device-detail-run > .exec-page {
-  flex: 1;
-  width: 100%;
-  height: auto;
-  min-height: 0;
-  max-width: none;
-  padding: 18px 22px 26px;
-}
-.device-detail-empty {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 20px 56px;
-  color: var(--dim);
-  text-align: center;
-}
-.device-detail-empty h2 {
-  margin: 14px 0 0;
-  font-size: 16px;
-  color: var(--text);
-}
-.device-detail-empty p {
-  max-width: 420px;
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.8;
 }
 @media (max-width: 900px) {
   .monitor-heading {
@@ -626,24 +629,8 @@
     flex: 1;
     justify-content: center;
   }
-  .monitor-inspector-bar {
-    padding: 12px 16px 8px;
-  }
-  .monitor-run-strip {
-    padding: 4px 16px 12px;
-    grid-auto-columns: minmax(205px, 235px);
-  }
-  .device-detail-panel {
-    width: calc(100vw - 20px);
-  }
-  .device-detail-info {
-    padding: 14px 16px 0;
-  }
-  .device-detail-grid {
+  .monitor-device-info-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     padding: 12px 14px;
-  }
-  .device-detail-run > .exec-page {
-    padding: 14px 16px 22px;
   }
 }

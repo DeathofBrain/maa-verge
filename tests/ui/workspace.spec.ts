@@ -39,11 +39,20 @@ async function closeDetail(page: Page) {
   if (await close.isVisible()) await close.click();
 }
 async function navigate(page: Page, name: string) {
+  const closeSettings = page.getByRole('button', { name: '关闭设备连接设置', exact: true });
+  if (await closeSettings.isVisible()) await closeSettings.click();
   await closeDetail(page);
   await page
     .locator('.sidebar')
     .getByRole('button', { name, exact: name !== 'Agent 助手' })
     .click();
+}
+async function openConnectionSettings(page: Page) {
+  await page
+    .locator('.sp-heading-actions')
+    .getByRole('button', { name: '连接设置', exact: true })
+    .click();
+  await expect(page.getByRole('dialog', { name: '设备连接设置', exact: true })).toBeVisible();
 }
 async function createPlan(page: Page, name: string) {
   await openTaskTables(page);
@@ -250,11 +259,10 @@ test('the persistent run dock reports progress and stop preserves the plan and h
   await navigate(page, '工具箱');
   await expect(dock(page)).toContainText('任务进度');
   await dock(page).getByRole('button', { name: '运行详情', exact: true }).click();
-  const details = page.getByRole('region', { name: '运行详情', exact: true });
-  await expect(details).toContainText('运行中编辑和保存的设置用于下一次执行。停止会结束当前队列。');
+  const details = page.getByRole('region', { name: '任务表执行页面', exact: true });
+  await expect(details).toContainText('本页显示开始执行时的任务。修改设置用于下次执行。');
   await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await expect(dock(page).getByRole('button', { name: '停止执行', exact: true })).toBeHidden();
-  await page.getByRole('button', { name: '收起运行详情', exact: true }).click();
   await navigate(page, '执行记录');
   await expect(page.getByRole('cell', { name: '已停止', exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: '模拟执行已停止', exact: true })).toBeVisible();
@@ -315,7 +323,7 @@ test('executing task tables cannot be deleted through the editor or runtime', as
     }),
   ).toContain('请先停止执行中的计划');
   await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
-  await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
+  await wb(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await expect(remove).toBeEnabled();
 });
 
@@ -600,14 +608,14 @@ test('automatic connection is deterministic with the test runtime and its prefer
   await navigate(page, '设备');
   await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
   await expect(page.locator('.connection-diagnostics')).toContainText('未访问真实模拟器');
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
-  await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).toBeChecked();
-  await page.getByRole('switch', { name: '自动连接模拟器', exact: true }).click();
-  await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).not.toBeChecked();
+  await openConnectionSettings(page);
+  await expect(page.getByRole('checkbox', { name: '自动检测连接', exact: true })).toBeChecked();
+  await page.getByRole('checkbox', { name: '自动检测连接', exact: true }).uncheck();
+  await expect(page.getByRole('checkbox', { name: '自动检测连接', exact: true })).not.toBeChecked();
   await page.reload();
   await navigate(page, '设备');
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
-  await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).not.toBeChecked();
+  await openConnectionSettings(page);
+  await expect(page.getByRole('checkbox', { name: '自动检测连接', exact: true })).not.toBeChecked();
   await navigate(page, '执行记录');
   await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
 });
@@ -617,7 +625,7 @@ test('capture choices preserve drafts and save independently of the actual conne
 }) => {
   await openHome(page);
   await navigate(page, '设备');
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
+  await openConnectionSettings(page);
   const form = page.locator('.sp-capture-form');
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
   await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认');
@@ -626,11 +634,11 @@ test('capture choices preserve drafts and save independently of the actual conne
   await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
   await navigate(page, '主页');
   await navigate(page, '设备');
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
+  await openConnectionSettings(page);
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('mumu');
   await page.reload();
   await navigate(page, '设备');
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
+  await openConnectionSettings(page);
   await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue(
     'C:\\synthetic\\MuMu',
   );
@@ -642,12 +650,12 @@ test('capture choices preserve drafts and save independently of the actual conne
   await page.getByLabel('模拟器安装目录', { exact: true }).fill('  C:\\synthetic\\MuMu  ');
   await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
   await form.getByRole('button', { name: '保存截图配置', exact: true }).click();
-  await expect(page.locator('.toast')).toContainText('断开设备后重新连接生效');
+  await expect(page.locator('.toast')).toContainText('连接配置已保存，下次连接生效');
   await expect(form.getByText('已保存', { exact: true })).toBeVisible();
   await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认');
   await page.reload();
   await navigate(page, '设备');
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
+  await openConnectionSettings(page);
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('mumu');
   await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue(
     'C:\\synthetic\\MuMu',
@@ -660,13 +668,14 @@ test('capture choices preserve drafts and save independently of the actual conne
   await expect(form.getByText('已保存', { exact: true })).toBeVisible();
   await page.reload();
   await navigate(page, '设备');
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
+  await openConnectionSettings(page);
   await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('ldplayer');
   await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue(
     'C:\\synthetic\\LDPlayer',
   );
   await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('0');
-  await expect(page.getByRole('switch', { name: '自动连接模拟器', exact: true })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: '自动检测连接', exact: true })).toBeChecked();
+  await page.getByRole('button', { name: '关闭设备连接设置', exact: true }).click();
   await page.getByRole('button', { name: '断开设备', exact: true }).click();
   await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认（设备已断开）');
   await navigate(page, '执行记录');
@@ -678,7 +687,7 @@ test('enhanced capture requires an installation directory and a nonnegative inte
 }) => {
   await openHome(page);
   await navigate(page, '设备');
-  await page.getByRole('tab', { name: '连接设置', exact: true }).click();
+  await openConnectionSettings(page);
   const form = page.locator('.sp-capture-form');
   await page.getByLabel('截图协议', { exact: true }).selectOption('ldplayer');
   await expect(form).toContainText('不会自动改用 ADB 截图');
@@ -953,10 +962,10 @@ test('starting flushes pending changes and keeps the editor open with run feedba
   await expect(wb(page).getByRole('status', { name: '任务表运行状态', exact: true })).toContainText(
     '执行中',
   );
-  await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
+  await wb(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
   await expect(dock(page)).toContainText('执行中');
-  await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
+  await wb(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await reloadWorkspace(page, '固源岩补给');
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
 });

@@ -198,9 +198,9 @@ test('execution overview shows every result, facility staff and optional referen
   await execution(page).hover();
   await page.mouse.wheel(0, 500);
   await expect
-    .poll(() => execution(page).evaluate((element) => element.scrollTop))
+    .poll(() => page.locator('.monitor-scroll').evaluate((element) => element.scrollTop))
     .toBeGreaterThan(0);
-  await execution(page).evaluate((element) => element.scrollTo(0, 0));
+  await page.locator('.monitor-scroll').evaluate((element) => element.scrollTo(0, 0));
   const drops = execution(page).getByRole('region', { name: '本次获得材料', exact: true });
   await expect(drops).toContainText('固源岩');
   await expect(drops).toContainText('× 4');

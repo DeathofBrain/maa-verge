@@ -248,8 +248,10 @@ test('device, instance, execution and history menus expose matching actions', as
   await page.getByRole('button', { name: '查看任务表详情每日长草计划', exact: true }).click();
   await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
   await wb(page).getByRole('button', { name: '查看执行', exact: true }).click();
-  await page.getByRole('button', { name: '返回设备监控', exact: true }).click();
-  await page.locator('.monitor-device-row').first().click({ button: 'right' });
+  await expect(page.getByRole('region', { name: '所选设备执行情况', exact: true })).toBeVisible();
+  await page
+    .getByRole('article', { name: '设备执行本地模拟设备', exact: true })
+    .click({ button: 'right' });
   await menu(page).getByRole('menuitem', { name: '停止设备任务', exact: true }).click();
   await nav(page, '执行记录');
   await page.locator('.history-table tbody tr').first().click({ button: 'right' });

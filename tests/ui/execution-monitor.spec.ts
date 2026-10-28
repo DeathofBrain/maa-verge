@@ -5,6 +5,7 @@ import { expect, test, type HarnessWindow } from './fixtures/desktop';
 
 type MonitorState = {
   runs: Run[];
+  toolJobs: NonNullable<Snapshot['toolJobs']>;
   devices: Snapshot['devices'];
   calls: { method: string; params: Record<string, unknown> }[];
   releaseDetails: Record<string, () => void>;
@@ -15,15 +16,13 @@ type MonitorWindow = HarnessWindow & { monitorState: MonitorState };
 
 const monitor = (page: Page) => page.getByRole('region', { name: '任务表执行监控', exact: true });
 const detail = (page: Page) => page.getByRole('region', { name: '任务表执行页面', exact: true });
-const switcher = (page: Page) =>
-  page.getByRole('navigation', { name: '正在监控的执行', exact: true });
+const inspected = (page: Page) =>
+  page.getByRole('region', { name: '所选设备执行情况', exact: true });
 const logDrawer = (page: Page) => page.getByRole('dialog', { name: '设备日志', exact: true });
-const detailDrawer = (page: Page, name: string) =>
-  page.getByRole('dialog', { name: `设备详情${name}`, exact: true });
 const row = (page: Page, name: string) =>
   monitor(page).getByRole('article', { name: `设备执行${name}`, exact: true });
 const detailButton = (page: Page, name: string) =>
-  row(page, name).getByRole('button', { name: `查看设备详情${name}`, exact: true });
+  row(page, name).getByRole('button', { name: `查看设备执行${name}`, exact: true });
 const logButton = (page: Page, name: string) =>
   row(page, name).getByRole('button', { name: `查看设备日志${name}`, exact: true });
 
@@ -70,6 +69,7 @@ async function seedMonitor(page: Page, heldDetails: string[] = []) {
             type: 'Fight' as const,
             params: { stage: '1-7', times: 6, medicine: 0, stone: 0 },
           },
+          { enabled: true, type: 'StartUp' as const, params: { client_type: 'Official' } },
         ],
       },
       {
@@ -122,6 +122,7 @@ async function seedMonitor(page: Page, heldDetails: string[] = []) {
         makeRun('monitor-completed', 0, 1, 'completed', '已完成领奖', stamp(-60)),
       ],
       devices,
+      toolJobs: [],
       calls: [],
       releaseDetails: {},
     };
@@ -171,6 +172,7 @@ async function seedMonitor(page: Page, heldDetails: string[] = []) {
           devices: structuredClone(state.devices),
           plans: structuredClone(plans),
           runs: state.runs.map(({ tasks: _tasks, ...summary }) => structuredClone(summary)),
+          toolJobs: structuredClone(state.toolJobs),
           events: [...base.events, ...structuredClone(logEvents)],
         };
       if (method === 'run.detail') {
@@ -182,6 +184,21 @@ async function seedMonitor(page: Page, heldDetails: string[] = []) {
             state.releaseDetails[run.id] = resolve;
           });
         return result;
+      }
+      if (method === 'plan.save') {
+        const plan = structuredClone(params.plan) as Snapshot['plans'][number];
+        const index = plans.findIndex((item) => item.id === plan.id);
+        if (index >= 0) plans[index] = plan as (typeof plans)[number];
+        return plan;
+      }
+      if (method === 'tool.stop') {
+        const job = state.toolJobs.find((item) => item.id === params.id)!;
+        job.status = 'stopped';
+        job.message = '工具已停止';
+        job.finishedAt = new Date().toISOString();
+        state.devices.find((device) => device.id === job.deviceId)!.state = 'idle';
+        api.emitEvent('tool.stopped', { jobId: job.id });
+        return structuredClone(job);
       }
       if (method === 'logs.delete') {
         const ids = params.ids as number[];
@@ -271,7 +288,8 @@ test('monitor lists one row per device, stops only that device and bulk-stops se
     .getByRole('button', { name: '停止设备任务一号模拟器', exact: true })
     .click();
   await expect(row(page, '一号模拟器')).toContainText('已停止');
-  await expect(row(page, '一号模拟器')).not.toContainText('共同日常');
+  await expect(row(page, '一号模拟器')).toContainText('最近执行：共同日常');
+  await expect(row(page, '一号模拟器')).toContainText('当前没有任务');
   await expect(row(page, '二号模拟器')).toContainText('执行中');
   await expect(row(page, '三号模拟器')).toContainText('执行中');
   expect(
@@ -365,28 +383,32 @@ test('monitor filters, searches and fits desktop, dark and narrow layouts', asyn
   });
 });
 
-test('device detail drawer shows device info and the running table, then reports no active run', async ({
+test('selecting a device shows its execution below the device cards and follows live state', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
   await seedMonitor(page);
   await openMonitor(page);
-  const trigger = detailButton(page, '一号模拟器');
-  await trigger.click();
-  const drawer = detailDrawer(page, '一号模拟器');
-  await expect(drawer).toBeVisible();
-  const info = drawer.getByRole('region', { name: '设备信息', exact: true });
-  await expect(info).toContainText('连接地址');
+  const online = monitor(page).getByRole('region', { name: '已连接监控设备', exact: true });
+  const offline = monitor(page).getByRole('region', { name: '历史离线监控设备', exact: true });
+  await expect(online.getByRole('article')).toHaveCount(4);
+  await expect(offline.getByRole('article')).toHaveCount(1);
+  await detailButton(page, '一号模拟器').click();
+  await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('dialog', { name: /^设备详情/ })).toHaveCount(0);
+  await expect(detailButton(page, '一号模拟器')).toBeInViewport();
+  await expect(inspected(page).getByRole('heading', { name: /^一号模拟器/ })).toBeInViewport();
+  const info = inspected(page).getByRole('region', { name: '设备信息', exact: true });
   await expect(info).toContainText('127.0.0.1:5555');
-  await expect(info).toContainText('正在运行 共同日常');
-  await expect(drawer.getByRole('region', { name: '任务表执行页面', exact: true })).toContainText(
-    '一号模拟器的独立任务结果',
-  );
-  await drawer.evaluate((element) =>
-    Promise.all(element.getAnimations().map((animation) => animation.finished)),
-  );
-  await page.screenshot({ path: testInfo.outputPath('device-detail-drawer.png'), fullPage: true });
+  await expect(detail(page)).toContainText('一号模拟器的独立任务结果');
+  const cardsBox = await online.boundingBox();
+  const executionBox = await inspected(page).boundingBox();
+  expect(executionBox!.y).toBeGreaterThan(cardsBox!.y);
+  await page.screenshot({
+    path: testInfo.outputPath('device-execution-inline.png'),
+    fullPage: true,
+  });
 
   await page.evaluate(() => {
     const target = window as unknown as MonitorWindow;
@@ -402,48 +424,214 @@ test('device detail drawer shows device info and the running table, then reports
     target.monitorState.devices.find((device) => device.id === run.deviceId)!.state = 'idle';
     target.runtimeHarness.emitEvent('run.completed', { runId: run.id });
   });
-  await expect(drawer.getByRole('heading', { name: '现在没有运行', exact: true })).toBeVisible();
-  await expect(drawer.getByRole('region', { name: '任务表执行页面', exact: true })).toHaveCount(0);
+  await expect(
+    inspected(page).getByRole('heading', { name: '当前没有任务', exact: true }),
+  ).toBeVisible();
+  await expect(detail(page)).toHaveCount(0);
   await expect(row(page, '一号模拟器')).toContainText('已完成');
-  await drawer.getByRole('button', { name: '关闭设备详情', exact: true }).click();
-  await expect(drawer).toHaveCount(0);
-  await expect(trigger).toBeFocused();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await detailButton(page, '四号模拟器').click();
-  const idle = detailDrawer(page, '四号模拟器');
-  await expect(idle.getByRole('region', { name: '设备信息', exact: true })).toContainText(
-    '现在没有运行',
-  );
-  await expect(idle.getByRole('heading', { name: '现在没有运行', exact: true })).toBeVisible();
-  expect(await idle.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expect(
+    inspected(page).getByRole('heading', { name: '当前没有任务', exact: true }),
+  ).toBeVisible();
+  expect(
+    await inspected(page).evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
+  await detailButton(page, '五号模拟器').click();
+  await expect(
+    inspected(page).getByRole('heading', { name: '设备已离线', exact: true }),
+  ).toBeVisible();
+  await expect(detail(page)).toHaveCount(0);
   await page.screenshot({
-    path: testInfo.outputPath('device-detail-drawer-mobile.png'),
+    path: testInfo.outputPath('device-execution-offline-mobile.png'),
     fullPage: true,
   });
-  await page.keyboard.press('Escape');
-  await expect(idle).toHaveCount(0);
 });
 
-test('device detail drawer keeps keyboard focus inside and closes with Escape', async ({
+test('offline state takes precedence over a stale running summary', async ({ page }) => {
+  await seedMonitor(page);
+  await openMonitor(page);
+  await detailButton(page, '一号模拟器').click();
+  await expect(detail(page)).toContainText('一号模拟器的独立任务结果');
+  await page.evaluate(() => {
+    const target = window as unknown as MonitorWindow;
+    target.monitorState.devices[0].state = 'offline';
+    target.runtimeHarness.emitEvent('device.disconnected', {
+      deviceId: target.monitorState.devices[0].id,
+    });
+  });
+  await expect(
+    inspected(page).getByRole('heading', { name: '设备已离线', exact: true }),
+  ).toBeVisible();
+  await expect(detail(page)).toHaveCount(0);
+  await expect(
+    monitor(page).getByRole('region', { name: '历史离线监控设备', exact: true }),
+  ).toContainText('一号模拟器');
+  await expect(
+    row(page, '一号模拟器').getByRole('button', { name: '停止设备任务一号模拟器', exact: true }),
+  ).toHaveCount(0);
+});
+
+test('the same device monitor shows copilot execution and independently stops tools', async ({
   page,
 }) => {
   await seedMonitor(page);
+  await page.evaluate(() => {
+    const target = window as unknown as MonitorWindow;
+    const run = target.monitorState.runs.find((item) => item.id === 'monitor-a')!;
+    run.source = 'copilot';
+    run.sourceName = '自动作战专项';
+    run.planId = null;
+    run.copilotEntries = [
+      {
+        id: 'entry-complete',
+        versionId: 'version-1',
+        title: '启动时的第一份作业',
+        nativeId: 1,
+        status: 'completed',
+        verdict: 'unknown',
+        message: '流程已结束，等待战斗证据',
+      },
+      {
+        id: 'entry-running',
+        versionId: 'version-2',
+        title: '正在执行的第二份作业',
+        nativeId: 2,
+        status: 'running',
+        verdict: 'unknown',
+        message: '执行中',
+      },
+    ];
+    run.tasks = run.tasks?.map((task) => ({
+      ...task,
+      type: 'Copilot',
+      message: '自动作战正在执行第一份作业',
+    }));
+    target.monitorState.devices[3].state = 'running';
+    target.monitorState.toolJobs.push({
+      id: 'monitor-tool',
+      kind: 'depot',
+      deviceId: 'monitor-device-4',
+      clientType: 'Official',
+      status: 'running',
+      progress: 48,
+      message: '正在识别仓库物品',
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+    });
+    target.runtimeHarness.emitEvent('run.progress');
+  });
   await openMonitor(page);
-  const trigger = detailButton(page, '三号模拟器');
-  await trigger.scrollIntoViewIfNeeded();
-  await trigger.click();
-  const drawer = detailDrawer(page, '三号模拟器');
-  await expect(drawer.getByRole('button', { name: '关闭设备详情', exact: true })).toBeFocused();
+  await expect(row(page, '一号模拟器')).toContainText('自动作战专项');
+  await detailButton(page, '一号模拟器').click();
+  await expect(detail(page)).toContainText('自动作战专项');
+  await expect(detail(page)).toContainText('自动作战正在执行第一份作业');
+  const queue = detail(page).getByRole('region', { name: '本次作业队列', exact: true });
+  await expect(queue).toContainText('启动时的第一份作业');
+  await expect(queue).toContainText('正在执行的第二份作业');
+  await expect(queue).toContainText('核心流程结束');
+  await expect(queue.getByText('通关未确认', { exact: true })).toHaveCount(2);
+  await expect(queue.getByText('通关已确认', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('任务');
+  await detailButton(page, '四号模拟器').click();
+  const tool = inspected(page).getByRole('region', { name: '工具执行状态', exact: true });
+  await expect(tool).toContainText('仓库识别');
+  await expect(tool).toContainText('正在识别仓库物品');
+  await expect(detail(page)).toHaveCount(0);
+  await tool.getByRole('button', { name: '停止工具', exact: true }).click();
+  await expect(
+    inspected(page).getByRole('heading', { name: '当前没有任务', exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as MonitorWindow).monitorState.calls
+        .filter((item) => ['tool.stop', 'run.stop'].includes(item.method))
+        .map((item) => ({ method: item.method, id: item.params.id })),
+    ),
+  ).toEqual([{ method: 'tool.stop', id: 'monitor-tool' }]);
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as MonitorWindow).monitorState.calls.filter(
+        (item) => item.method === 'run.detail' && item.params.id === 'monitor-tool',
+      ),
+    ),
+  ).toEqual([]);
+});
+
+test('history stays on the exact execution until the device is returned to current execution', async ({
+  page,
+}) => {
+  await seedMonitor(page);
+  await openRunFromHistory(page, 'monitor-failed');
+  await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'true');
+  await expect(inspected(page)).toContainText('正在查看历史执行');
+  await expect(detail(page)).toContainText('历史识别');
+  await expect(
+    detail(page).getByRole('region', { name: '本次执行总览', exact: true }),
+  ).toContainText('执行失败');
+  await page.evaluate(() => {
+    const target = window as unknown as MonitorWindow;
+    target.monitorState.runs.find((item) => item.id === 'monitor-a')!.message = '当前任务继续运行';
+    target.runtimeHarness.emitEvent('run.progress');
+  });
+  await expect(detail(page)).toContainText('历史识别');
+  await expect(detail(page)).not.toContainText('当前任务继续运行');
+  await inspected(page).getByRole('button', { name: '查看当前执行', exact: true }).click();
+  await expect(detail(page)).toContainText('共同日常');
+  await expect(detail(page)).toContainText('当前任务继续运行');
+});
+
+test('connection settings return to the task draft and viewing execution selects its device', async ({
+  page,
+}) => {
+  await seedMonitor(page);
+  await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
+  await page
+    .getByRole('region', { name: '任务表列表', exact: true })
+    .getByRole('button', { name: '查看任务表详情共同日常', exact: true })
+    .click();
+  const task = page.getByRole('dialog', { name: '任务表详情', exact: true });
+  const workbench = page.getByRole('region', { name: '任务表工作台', exact: true });
+  await workbench.getByRole('tab', { name: '任务表设置', exact: true }).click();
+  await workbench.getByLabel('任务表说明', { exact: true }).fill('设备设置关闭后保留此任务表草稿');
+  await workbench.getByRole('tab', { name: '任务编排', exact: true }).click();
+  await workbench.getByRole('button', { name: /^设置第 2 条/ }).click();
+  await workbench.getByRole('button', { name: '管理设备连接', exact: true }).click();
+  const connection = page.getByRole('dialog', { name: '设备连接设置', exact: true });
+  await expect(connection.getByLabel('ADB 路径', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(connection).toHaveCount(0);
+  await expect(task).toBeVisible();
+  await workbench.getByRole('tab', { name: '任务表设置', exact: true }).click();
+  await expect(workbench.getByLabel('任务表说明', { exact: true })).toHaveValue(
+    '设备设置关闭后保留此任务表草稿',
+  );
+  await workbench
+    .getByRole('status', { name: '任务表运行状态', exact: true })
+    .getByRole('button', { name: '查看执行', exact: true })
+    .click();
+  await expect(task).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: '执行监控', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'true');
+  await expect(detail(page)).toContainText('一号模拟器的独立任务结果');
+  await logButton(page, '一号模拟器').click();
+  await expect(logDrawer(page)).toBeVisible();
   await page.keyboard.press('Shift+Tab');
   expect(
-    await page.evaluate(
-      () => !!document.querySelector('[role="dialog"]')?.contains(document.activeElement),
-    ),
+    await logDrawer(page).evaluate((element) => element.contains(document.activeElement)),
   ).toBe(true);
   await page.keyboard.press('Escape');
-  await expect(drawer).toHaveCount(0);
-  await expect(trigger).toBeFocused();
+  await expect(logDrawer(page)).toHaveCount(0);
+  await detailButton(page, '二号模拟器').click();
+  await expect(detail(page)).toContainText('二号模拟器的独立任务结果');
+  await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  await expect(page.getByRole('tab', { name: /^当前设备/ })).toBeVisible();
+  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
 });
 
 test('single-device log drawer hides the device list and only enables selection on demand', async ({
@@ -598,14 +786,14 @@ test('late run details cannot overwrite a different inspected execution', async 
       ),
     )
     .toBe(true);
-  await switcher(page).getByRole('button', { name: '切换执行monitor-b', exact: true }).click();
+  await detailButton(page, '二号模拟器').click();
   await expect(detail(page)).toContainText('二号模拟器的独立任务结果');
   await page.evaluate(() => {
     (window as unknown as MonitorWindow).monitorState.releaseDetails['monitor-a']();
   });
   await expect(detail(page)).toContainText('二号模拟器的独立任务结果');
   await expect(detail(page)).not.toContainText('一号模拟器的独立任务结果');
-  await page.getByRole('button', { name: '返回设备监控', exact: true }).click();
+  await detailButton(page, '四号模拟器').click();
   await expect(monitor(page)).toBeVisible();
   await expect(detail(page)).toHaveCount(0);
 });
@@ -637,10 +825,73 @@ test('a delayed background start does not replace execution selected while it wa
     (window as unknown as MonitorWindow).monitorState.releaseStart!();
   });
   await expect(page.locator('.toast')).toContainText('任务表已开始执行');
-  await expect(
-    switcher(page).getByRole('button', { name: '切换执行monitor-a', exact: true }),
-  ).toHaveAttribute('aria-current', 'true');
+  await page.keyboard.press('Escape');
+  await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'true');
   await expect(detail(page)).toContainText('一号模拟器的独立任务结果');
+});
+
+test('a late editor start preserves a historical execution selected on another device', async ({
+  page,
+}) => {
+  await seedMonitor(page);
+  await page.evaluate(() => {
+    const target = window as unknown as MonitorWindow;
+    const run = target.monitorState.runs.find((item) => item.id === 'monitor-c')!;
+    run.status = 'completed';
+    run.progress = 100;
+    run.finishedAt = new Date().toISOString();
+    run.tasks = run.tasks?.map((task) => ({
+      ...task,
+      status: 'completed',
+      finishedAt: run.finishedAt,
+    }));
+    target.monitorState.devices[2].state = 'idle';
+    target.monitorState.holdStart = true;
+    target.runtimeHarness.emitEvent('run.completed', { runId: run.id });
+  });
+  await page.getByLabel('选择设备', { exact: true }).selectOption('monitor-device-4');
+  await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
+  await page
+    .getByRole('region', { name: '任务表列表', exact: true })
+    .getByRole('button', { name: '查看任务表详情剿灭检查', exact: true })
+    .click();
+  await page
+    .getByRole('region', { name: '任务表工作台', exact: true })
+    .getByRole('button', { name: '开始执行', exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => !!(window as unknown as MonitorWindow).monitorState.releaseStart),
+    )
+    .toBe(true);
+  await page.getByRole('button', { name: '关闭任务表详情', exact: true }).click();
+  await openRunFromHistory(page, 'monitor-failed');
+  await expect(detail(page)).toContainText('历史识别');
+  await expect(page.getByLabel('选择设备', { exact: true })).toHaveValue('monitor-device-1');
+  await page.evaluate(() => {
+    (window as unknown as MonitorWindow).monitorState.releaseStart!();
+  });
+  await expect(page.locator('.toast')).toContainText('任务表已开始执行');
+  await expect(page.getByRole('dialog', { name: '任务表详情', exact: true })).toHaveCount(0);
+  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('任务');
+  await expect(page.getByRole('tab', { name: '执行监控', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByLabel('选择设备', { exact: true })).toHaveValue('monitor-device-1');
+  await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'true');
+  await expect(inspected(page)).toContainText('正在查看历史执行');
+  await expect(detail(page)).toContainText('历史识别');
+  await expect(
+    detail(page).getByRole('region', { name: '本次执行总览', exact: true }),
+  ).toContainText('执行失败');
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as MonitorWindow).monitorState.calls
+        .filter((item) => item.method === 'run.start')
+        .map((item) => item.params.deviceId),
+    ),
+  ).toEqual(['monitor-device-4']);
 });
 
 test('a selected run omitted from summaries still receives its final detail status', async ({
@@ -674,9 +925,7 @@ test('a selected run omitted from summaries still receives its final detail stat
   await expect(
     detail(page).getByRole('region', { name: '本次执行总览', exact: true }),
   ).toContainText('已完成');
-  await expect(
-    switcher(page).getByRole('button', { name: '切换执行monitor-a', exact: true }),
-  ).toContainText('已完成');
+  await expect(inspected(page)).toContainText('正在查看历史执行');
   await expect(detail(page).getByRole('button', { name: '停止执行', exact: true })).toHaveCount(0);
 });
 

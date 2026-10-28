@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Clock3,
   History,
   House,
   Layers,
@@ -57,6 +56,9 @@ import DevicePreview from './DevicePreview';
 import MultiRunPanel from './MultiRunPanel';
 import ExecutionMonitor from './ExecutionMonitor';
 import TasksPage from './TasksPage';
+import DeviceConnectionDrawer from './DeviceConnectionDrawer';
+import SideDrawer from './SideDrawer';
+import MonitorLogDrawer from './MonitorLogDrawer';
 import { isCopilotRun, runDisplayName, runSourceLabel } from './run-source';
 import UpdateNotifications, { useComponentDownloads } from './UpdateNotifications';
 
@@ -134,7 +136,6 @@ export default function App() {
   const [agentQuery, setAgentQuery] = useState('');
   const [historyFilter, setHistoryFilter] = useState('all');
   const [historyQuery, setHistoryQuery] = useState('');
-  const [selectedRunId, setSelectedRunId] = useState('');
   const [executionSelection, setExecutionSelection] = useState<Run>();
   const [copilotRunId, setCopilotRunId] = useState<string>();
   const [copilotLegacy, setCopilotLegacy] = useState<{
@@ -253,6 +254,8 @@ export default function App() {
       setProposal(null);
     }
     setDeviceSettingsEntry(undefined);
+    setRunPanel(null);
+    setExecutionSelection(undefined);
     setPage(next);
     setSidebarOpen(false);
     setPageSearch('');
@@ -288,19 +291,13 @@ export default function App() {
     navigate('tasks', true);
   };
   const showExecution = (run: Run) => {
-    setSelectedRunId(run.id);
     setSelectedDevice(run.deviceId);
     setRunPanel(null);
     setDetailPlanId(null);
     setProposal(null);
-    if (isCopilotRun(run)) {
-      setCopilotRunId(run.id);
-      navigate('copilot');
-    } else {
-      setExecutionSelection(run);
-      setTaskView('execution');
-      navigate('tasks');
-    }
+    navigate('tasks');
+    setExecutionSelection(run);
+    setTaskView('execution');
   };
   const updateExecution = useCallback(
     (run: Run) => setExecutionSelection((previous) => (previous?.id === run.id ? run : previous)),
@@ -331,6 +328,7 @@ export default function App() {
     action(
       `start-plan-${plan.deviceId || requestedDeviceId || selectedDevice}`,
       async () => {
+        const navigationRevision = detailRevision.current;
         let devices = snapshot?.devices || [];
         let deviceId = plan.deviceId || requestedDeviceId || selectedDevice;
         if (
@@ -360,12 +358,10 @@ export default function App() {
               ? '绑定设备尚未连接，请在设备页连接后重试'
               : '请先连接设备，或开启自动连接',
           );
-        const run = await rpc('run.start', { planId: plan.id, deviceId, requestId: uid() });
-        if (!requestedDeviceId) {
+        await rpc('run.start', { planId: plan.id, deviceId, requestId: uid() });
+        if (!requestedDeviceId && detailRevision.current === navigationRevision) {
           setSelectedDevice(deviceId);
-          setExecutionSelection(undefined);
         }
-        setSelectedRunId(run.id);
       },
       '任务表已开始执行',
     );
@@ -463,8 +459,6 @@ export default function App() {
       : editorPlan?.id || '';
   const activeRuns = snapshot?.runs.filter((item) => item.status === 'running') || [];
   const dockRun = activeRuns.find((item) => item.deviceId === selectedDevice) || activeRuns[0];
-  const detailRun =
-    snapshot?.runs.find((item) => item.id === selectedRunId) || dockRun || snapshot?.runs[0];
   const executionRun =
     executionSelection?.status !== 'running'
       ? executionSelection
@@ -472,31 +466,19 @@ export default function App() {
   const device = snapshot?.devices.find((item) => item.id === selectedDevice);
   const selectDevice = (id: string) => {
     setSelectedDevice(id);
-    setSelectedRunId(
-      snapshot?.runs.find((run) => run.deviceId === id && run.status === 'running')?.id || '',
-    );
   };
   const toggleRunPanel = (panel: 'progress' | 'logs' | 'preview' | 'instances') => {
-    if (dockRun && panel !== 'preview') setSelectedRunId(dockRun.id);
+    setDeviceSettingsEntry(undefined);
+    if (panel === 'progress') {
+      if (dockRun) showExecution(dockRun);
+      else {
+        navigate('tasks');
+        setTaskView('execution');
+      }
+      return;
+    }
     setRunPanel(runPanel === panel ? null : panel);
   };
-  const relevantEvents =
-    snapshot?.events
-      .filter((event) => {
-        if (!detailRun) return true;
-        const data = event.data as {
-          runId?: string;
-          run?: { id?: string; deviceId?: string };
-          deviceId?: string;
-          device?: { id?: string };
-        };
-        const runId = data.runId || data.run?.id;
-        if (runId) return runId === detailRun.id;
-        const deviceId = data.deviceId || data.device?.id;
-        return !deviceId || deviceId === detailRun.deviceId;
-      })
-      .slice()
-      .reverse() || [];
   const searchResults = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term || !snapshot) return [];
@@ -808,7 +790,7 @@ export default function App() {
                       settings={snapshot.settings}
                       selectedDeviceId={selectedDevice}
                       onOpenDeviceSettings={(deviceId) => {
-                        navigate('devices');
+                        setRunPanel(null);
                         setDeviceSettingsEntry(deviceId || '');
                       }}
                       defaultName={nextPlanName(snapshot.plans.map((plan) => plan.name))}
@@ -875,6 +857,8 @@ export default function App() {
                   <ExecutionMonitor
                     snapshot={snapshot}
                     selectedRun={executionRun}
+                    selectedDeviceId={selectedDevice}
+                    onSelectDevice={selectDevice}
                     pending={pending}
                     onSelectRun={showExecution}
                     onRunUpdate={updateExecution}
@@ -889,8 +873,11 @@ export default function App() {
                   />
                 }
                 onView={(next) => {
+                  closeTaskDetail();
+                  setRunPanel(null);
+                  setDeviceSettingsEntry(undefined);
                   setTaskView(next);
-                  if (next === 'execution') setExecutionSelection(undefined);
+                  setExecutionSelection(undefined);
                 }}
                 onOpenPlan={(plan) => choosePlan(plan)}
                 onCreatePlan={() => createPlan()}
@@ -902,9 +889,7 @@ export default function App() {
                 onCloseDetail={closeTaskDetail}
               />
             )}
-            {page === 'devices' && (
-              <DevicesPage {...supportProps} settingsDeviceId={deviceSettingsEntry} />
-            )}
+            {page === 'devices' && <DevicesPage {...supportProps} />}
             {page === 'settings' && <SettingsPage {...supportProps} />}
             {page === 'copilot' && (
               <CopilotPage
@@ -1132,7 +1117,7 @@ export default function App() {
                       <tbody>
                         {history.map((run) => (
                           <tr
-                            className={detailRun?.id === run.id ? 'selected' : ''}
+                            className={executionRun?.id === run.id ? 'selected' : ''}
                             key={run.id}
                             tabIndex={0}
                             {...contextMenu('执行记录菜单', [
@@ -1204,154 +1189,75 @@ export default function App() {
           </div>
         </main>
       </div>
-      {runPanel && (
-        <section
-          className={`execution-drawer ${runPanel === 'preview' ? 'has-preview' : runPanel === 'instances' ? 'has-instances' : ''}`}
-          aria-label="运行详情"
+      {deviceSettingsEntry !== undefined && (
+        <DeviceConnectionDrawer
+          key={deviceSettingsEntry}
+          snapshot={snapshot}
+          deviceId={deviceSettingsEntry}
+          busy={pending.has('settings')}
+          onSave={(settings) =>
+            action(
+              'settings',
+              () => rpc('settings.save', { settings }),
+              '连接配置已保存，下次连接生效',
+            )
+          }
+          onClose={() => setDeviceSettingsEntry(undefined)}
+        />
+      )}
+      {runPanel === 'logs' && (
+        <MonitorLogDrawer
+          snapshot={snapshot}
+          initialDeviceIds={
+            selectedDevice ? [selectedDevice] : snapshot.devices.map((item) => item.id)
+          }
+          onClose={() => setRunPanel(null)}
+        />
+      )}
+      {(runPanel === 'preview' || runPanel === 'instances') && (
+        <SideDrawer
+          title={runPanel === 'preview' ? '设备画面' : '多开执行'}
+          closeLabel="收起运行详情"
+          onClose={() => setRunPanel(null)}
         >
-          <div className="execution-drawer-heading">
-            <div className="drawer-tabs">
-              {(
-                [
-                  ['progress', '运行详情'],
-                  ['logs', '日志'],
-                  ['preview', '画面'],
-                  ['instances', '多开执行'],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  className={runPanel === value ? 'active' : ''}
-                  onClick={() => setRunPanel(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="drawer-actions">
-              {runPanel !== 'preview' && runPanel !== 'instances' && snapshot.runs.length > 0 && (
+          {runPanel === 'preview' ? (
+            <div className="side-drawer-preview">
+              <label className="sp-field">
+                画面设备
                 <select
-                  aria-label="查看哪次执行"
-                  value={detailRun?.id || ''}
-                  onChange={(event) => setSelectedRunId(event.target.value)}
+                  className="text-input"
+                  aria-label="画面设备"
+                  value={selectedDevice}
+                  onChange={(event) => selectDevice(event.target.value)}
                 >
-                  {snapshot.runs.map((run) => (
-                    <option key={run.id} value={run.id}>
-                      {snapshot.devices.find((item) => item.id === run.deviceId)?.name ||
-                        run.deviceId}{' '}
-                      · {runDisplayName(run, snapshot.plans)} · {time(run.startedAt)} ·{' '}
-                      {statusNames[run.status]}
+                  {!snapshot.devices.length && <option value="">尚未连接设备</option>}
+                  {snapshot.devices.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} ·{' '}
+                      {item.state === 'offline'
+                        ? '已离线'
+                        : item.state === 'running'
+                          ? '执行中'
+                          : '已连接'}
                     </option>
                   ))}
                 </select>
-              )}
-              <button
-                className="icon-button"
-                aria-label="收起运行详情"
-                onClick={() => setRunPanel(null)}
-              >
-                <ChevronDown size={18} />
-              </button>
-            </div>
-          </div>
-          <div className="execution-content">
-            {runPanel === 'progress' &&
-              (detailRun ? (
-                <div className="run-detail">
-                  <div className="run-detail-title">
-                    <span className={`pill ${detailRun.status}`}>
-                      {statusNames[detailRun.status]}
-                    </span>
-                    <h3>{runDisplayName(detailRun, snapshot.plans)}</h3>
-                    <button className="button secondary" onClick={() => showExecution(detailRun)}>
-                      {isCopilotRun(detailRun) ? '打开作业中心' : '打开任务表执行页'}
-                    </button>
-                    {detailRun.status === 'running' && (
-                      <button
-                        className="button danger"
-                        disabled={pending.has(`stop-${detailRun.id}`)}
-                        onClick={() => void stopRun(detailRun)}
-                      >
-                        <Square size={13} />
-                        停止执行
-                      </button>
-                    )}
-                  </div>
-                  <p>{localizeExecutionMessage(detailRun.message)}</p>
-                  <div className="run-progress">
-                    <i style={{ width: `${detailRun.progress}%` }} />
-                  </div>
-                  <div className="run-metadata">
-                    <span>任务进度 {detailRun.progress}%</span>
-                    <span>开始于 {time(detailRun.startedAt)}</span>
-                    <span>
-                      设备：
-                      {snapshot.devices.find((item) => item.id === detailRun.deviceId)?.name ||
-                        detailRun.deviceId}
-                    </span>
-                    {detailRun.finishedAt && <span>结束于 {time(detailRun.finishedAt)}</span>}
-                  </div>
-                  <p className="muted run-footnote">
-                    {detailRun.status === 'running'
-                      ? '运行中编辑和保存的设置用于下一次执行。停止会结束当前队列。'
-                      : '执行结果以运行时的参数与证据为准。'}
-                  </p>
-                </div>
-              ) : (
-                <Empty
-                  icon={<Clock3 size={24} />}
-                  title="等待第一次执行"
-                  text="选择任务表并开始，运行进度会显示在这里。"
-                />
-              ))}
-            {runPanel === 'logs' &&
-              (relevantEvents.length ? (
-                <div className="event-log">
-                  {relevantEvents.map((event) => (
-                    <div key={event.id}>
-                      <time>{time(event.createdAt)}</time>
-                      <code>{event.type}</code>
-                      <span>{localizeExecutionMessage(event.message)}</span>
-                      {Object.keys(event.data).length > 0 && (
-                        <details>
-                          <summary>事件数据</summary>
-                          <pre>{JSON.stringify(event.data, null, 2)}</pre>
-                        </details>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <Empty
-                  icon={<Terminal size={24} />}
-                  title="暂无运行事件"
-                  text="连接、保存、执行与更新的事件会显示在这里。"
-                />
-              ))}
-            {runPanel === 'instances' && (
-              <MultiRunPanel
-                devices={snapshot.devices}
-                plans={snapshot.plans}
-                runs={snapshot.runs}
-                pending={pending}
-                onStart={startPlan}
-                onStop={stopRun}
-                onInspect={(run) => {
-                  setSelectedDevice(run.deviceId);
-                  setSelectedRunId(run.id);
-                  setRunPanel('progress');
-                }}
-                onConnect={() => {
-                  setRunPanel(null);
-                  navigate('devices');
-                }}
-              />
-            )}
-            {runPanel === 'preview' && (
+              </label>
               <DevicePreview key={device?.id || 'no-device'} device={device} />
-            )}
-          </div>
-        </section>
+            </div>
+          ) : (
+            <MultiRunPanel
+              devices={snapshot.devices}
+              plans={snapshot.plans}
+              runs={snapshot.runs}
+              pending={pending}
+              onStart={startPlan}
+              onStop={stopRun}
+              onInspect={showExecution}
+              onConnect={() => navigate('devices')}
+            />
+          )}
+        </SideDrawer>
       )}
       <footer className={`run-dock ${dockRun ? 'is-running' : ''}`} aria-label="执行状态栏">
         <button className="dock-status" onClick={() => toggleRunPanel('progress')}>
@@ -1402,7 +1308,7 @@ export default function App() {
           )}
           <button
             aria-label="运行详情"
-            className={runPanel === 'progress' ? 'selected' : ''}
+            className={page === 'tasks' && taskView === 'execution' ? 'selected' : ''}
             onClick={() => toggleRunPanel('progress')}
           >
             <ListChecks size={16} />
@@ -1428,8 +1334,8 @@ export default function App() {
             className="icon-button"
             aria-label={runPanel ? '收起运行面板' : '展开运行面板'}
             onClick={() => {
-              if (dockRun) setSelectedRunId(dockRun.id);
-              setRunPanel(runPanel ? null : 'progress');
+              if (runPanel) setRunPanel(null);
+              else toggleRunPanel('progress');
             }}
           >
             {runPanel ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
