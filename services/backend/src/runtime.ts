@@ -241,11 +241,15 @@ export class Runtime {
     this.appUpdateHttp = new AppUpdateHttp(
       path.resolve(root, '../updates/app/downloads'),
       () => this.store.get('settings', 'main', {}).downloadProxy,
-      (operationId, progress) =>
+      (operationId, progress, downloadSpeedBytesPerSecond) =>
         options.notify?.({
           jsonrpc: '2.0',
           method: 'runtime.hostEvent',
-          params: { operationId, progress },
+          params: {
+            operationId,
+            progress,
+            ...(downloadSpeedBytesPerSecond === undefined ? {} : { downloadSpeedBytesPerSecond }),
+          },
         }),
     );
     this.updates = new UpdateService(

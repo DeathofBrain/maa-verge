@@ -22,14 +22,40 @@ fn apply_progress(state: &mut State, value: &Value) -> bool {
     let Some(progress) = value["progress"].as_u64().filter(|value| *value <= 90) else {
         return false;
     };
-    if value.as_object().is_none_or(|value| value.len() != 2)
-        || value["operationId"].as_str() != Some(operation_id(state.generation).as_str())
+    let Some(fields) = value.as_object() else {
+        return false;
+    };
+    let speed = value.get("downloadSpeedBytesPerSecond");
+    let current = state.value["progress"].as_u64().unwrap_or_default();
+    // A server can ignore Range after reconnecting. Keep displayed progress
+    // monotonic while still accepting the new transfer's measured speed.
+    let next = current.max(progress);
+    if fields.keys().any(|key| {
+        !matches!(
+            key.as_str(),
+            "operationId" | "progress" | "downloadSpeedBytesPerSecond"
+        )
+    }) || speed.is_some_and(|speed| {
+        speed
+            .as_f64()
+            .is_none_or(|speed| !speed.is_finite() || speed < 0.0)
+    }) || value["operationId"].as_str() != Some(operation_id(state.generation).as_str())
         || state.value["status"] != "downloading"
-        || state.value["progress"].as_u64().unwrap_or_default() >= progress
+        || current >= 95
+        || (current == next && state.value.get("downloadSpeedBytesPerSecond") == speed)
     {
         return false;
     }
-    state.value["progress"] = json!(progress);
+    state.value["progress"] = json!(next);
+    if let Some(speed) = speed {
+        state.value["downloadSpeedBytesPerSecond"] = speed.clone();
+    } else {
+        state
+            .value
+            .as_object_mut()
+            .expect("app updater value")
+            .remove("downloadSpeedBytesPerSecond");
+    }
     true
 }
 
@@ -257,6 +283,85 @@ mod tests {
             &mut state,
             &json!({ "operationId": operation_id(3), "progress": 60 })
         ));
+    }
+
+    #[test]
+    fn download_speed_can_change_without_advancing_percent_and_is_validated() {
+        let mut state = state();
+        let payload = json!({ "operationId": operation_id(3), "progress": 25,
+            "downloadSpeedBytesPerSecond": 1_048_576 });
+        assert!(apply_progress(&mut state, &payload));
+        assert_eq!(state.value["downloadSpeedBytesPerSecond"], 1_048_576);
+        assert!(!apply_progress(&mut state, &payload));
+        let slower = json!({ "operationId": operation_id(3), "progress": 25,
+            "downloadSpeedBytesPerSecond": 512.5 });
+        assert!(apply_progress(&mut state, &slower));
+        assert_eq!(state.value["downloadSpeedBytesPerSecond"], 512.5);
+        for speed in [json!(-1), json!("512"), Value::Null, json!(true)] {
+            let invalid = json!({ "operationId": operation_id(3), "progress": 30,
+                "downloadSpeedBytesPerSecond": speed });
+            assert!(!apply_progress(&mut state, &invalid));
+            assert_eq!(state.value["progress"], 25);
+        }
+        assert!(apply_progress(
+            &mut state,
+            &json!({ "operationId": operation_id(3), "progress": 25 })
+        ));
+        assert!(state.value.get("downloadSpeedBytesPerSecond").is_none());
+        assert!(apply_progress(
+            &mut state,
+            &json!({ "operationId": operation_id(3), "progress": 30,
+                "downloadSpeedBytesPerSecond": 0 })
+        ));
+        assert_eq!(state.value["downloadSpeedBytesPerSecond"], 0);
+    }
+
+    #[test]
+    fn download_speed_is_cleared_when_transfer_finishes_or_changes_state() {
+        for (status, progress) in [
+            ("downloading", 95),
+            ("staged", 100),
+            ("failed", 0),
+            ("checking", 0),
+        ] {
+            let mut state = state();
+            state.value["downloadSpeedBytesPerSecond"] = json!(1024);
+            state.value["status"] = json!(status);
+            state.value["progress"] = json!(progress);
+            state.clear_inactive_download_speed();
+            assert!(state.value.get("downloadSpeedBytesPerSecond").is_none());
+        }
+    }
+
+    #[test]
+    fn restarted_transfers_refresh_speed_without_rewinding_or_reopening_verification() {
+        let mut state = state();
+        state.value["progress"] = json!(60);
+        for (progress, speed) in [(0, 0), (25, 1024)] {
+            assert!(apply_progress(
+                &mut state,
+                &json!({ "operationId": operation_id(3), "progress": progress,
+                    "downloadSpeedBytesPerSecond": speed })
+            ));
+            assert_eq!(state.value["progress"], 60);
+            assert_eq!(state.value["downloadSpeedBytesPerSecond"], speed);
+        }
+        let cleared = json!({ "operationId": operation_id(3), "progress": 25 });
+        assert!(apply_progress(&mut state, &cleared));
+        assert_eq!(state.value["progress"], 60);
+        assert!(state.value.get("downloadSpeedBytesPerSecond").is_none());
+        assert!(!apply_progress(&mut state, &cleared));
+
+        state.value["progress"] = json!(95);
+        for payload in [
+            cleared,
+            json!({ "operationId": operation_id(3), "progress": 90,
+                "downloadSpeedBytesPerSecond": 2048 }),
+        ] {
+            assert!(!apply_progress(&mut state, &payload));
+            assert_eq!(state.value["progress"], 95);
+            assert!(state.value.get("downloadSpeedBytesPerSecond").is_none());
+        }
     }
 
     #[test]

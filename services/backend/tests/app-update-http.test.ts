@@ -58,7 +58,8 @@ async function fixture(
   const directory = path.join(root, 'updates', 'app', 'downloads');
   let preferences: DownloadProxySettings | undefined = initial;
   const requests: Request[] = [];
-  const progress: { operationId: string; value: number }[] = [];
+  const progress: { operationId: string; value: number; downloadSpeedBytesPerSecond?: number }[] =
+    [];
   const transport = (async (input, init) => {
     const request: Request = {
       url: typeof input === 'string' ? input : input instanceof URL ? input.href : input.url,
@@ -74,7 +75,8 @@ async function fixture(
     new AppUpdateHttp(
       directory,
       () => preferences,
-      (operationId, value) => progress.push({ operationId, value }),
+      (operationId, value, downloadSpeedBytesPerSecond) =>
+        progress.push({ operationId, value, downloadSpeedBytesPerSecond }),
       {
         resolveProxy: async () => '',
         retryDelaysMs: [0, 0],
@@ -416,6 +418,38 @@ test('host archives still compute a digest when the release does not supply one'
   expect(result.sha256).toBe(sha256);
   expect(await readFile(result.path)).toEqual(payload);
   await assertNoInstallCandidate(f.root);
+});
+
+test('host archive progress forwards measured transfer speed with its operation identity', async () => {
+  let offset = 0;
+  const f = await fixture(
+    () =>
+      new Response(
+        new ReadableStream<Uint8Array>(
+          {
+            async pull(controller) {
+              if (offset === payload.length) {
+                controller.close();
+                return;
+              }
+              await Bun.sleep(280);
+              const end = Math.min(offset + payload.length / 2, payload.length);
+              controller.enqueue(payload.subarray(offset, end));
+              offset = end;
+            },
+          },
+          { highWaterMark: 0 },
+        ),
+        { headers: { 'content-length': String(payload.length), etag: '"app-v1"' } },
+      ),
+  );
+  await f.service.handle(archive('speed-download'));
+  const measured = f.progress.filter((entry) => entry.downloadSpeedBytesPerSecond !== undefined);
+  expect(measured.some((entry) => entry.downloadSpeedBytesPerSecond! > 0)).toBe(true);
+  expect(measured.every((entry) => Number.isFinite(entry.downloadSpeedBytesPerSecond))).toBe(true);
+  expect(f.progress.every((entry) => entry.operationId === 'speed-download')).toBe(true);
+  expect(f.progress[0].downloadSpeedBytesPerSecond).toBe(0);
+  expect(f.progress.at(-1)?.downloadSpeedBytesPerSecond).toBeUndefined();
 });
 
 test('automatic archive body interruption resumes directly with Range and If-Range', async () => {

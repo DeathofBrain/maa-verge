@@ -29,6 +29,7 @@ import {
   downloadArchive,
   DownloadSourceError,
   retryComponentDirect,
+  type DownloadProgress,
 } from './download.ts';
 import { compareReleaseVersions, releaseVersion } from './release-version';
 import application from '../../../package.json';
@@ -53,7 +54,7 @@ export interface UpdateSource {
   download(
     metadata: UpdateMetadata,
     destination: string,
-    progress: (percent: number) => void,
+    progress: DownloadProgress,
   ): Promise<string> | string;
   close?(): void;
 }
@@ -294,7 +295,7 @@ export class OfficialSource implements UpdateSource {
   async download(
     metadata: UpdateMetadata,
     destination: string,
-    progress: (percent: number) => void,
+    progress: DownloadProgress,
   ): Promise<string> {
     return downloadArchive(metadata as UpdateMetadata & { url: string }, destination, progress, {
       signal: this.abort.signal,
@@ -994,6 +995,12 @@ export class UpdateService {
   private save(value: any): any {
     const { installDirectory: _directory, resourceActivities: _activities, ...state } = value;
     value = { latestVersion: null, ...state };
+    if (
+      value.status !== 'downloading' ||
+      !Number.isFinite(value.downloadSpeedBytesPerSecond) ||
+      value.downloadSpeedBytesPerSecond < 0
+    )
+      delete value.downloadSpeedBytesPerSecond;
     this.store.put('update', value.id, value);
     return this.decorate(value);
   }
@@ -1116,7 +1123,12 @@ export class UpdateService {
       'generations',
       `${channel}-${randomUUID().replaceAll('-', '')}`,
     );
-    this.change(channel, { status: 'downloading', progress: 0, message: '正在准备独立更新快照' });
+    this.change(channel, {
+      status: 'downloading',
+      progress: 0,
+      downloadSpeedBytesPerSecond: undefined,
+      message: '正在准备独立更新快照',
+    });
     try {
       await mkdir(generation, { recursive: true });
       let digest: string;
@@ -1144,21 +1156,38 @@ export class UpdateService {
         .digest('hex');
       const archive = path.join(directory, '.download-' + identity + '-' + metadata.name);
       let lastProgress = -1,
+        lastSpeed: number | undefined,
         lastReport = 0;
       try {
-        digest = await this.source.download(metadata, archive, (value) => {
+        digest = await this.source.download(metadata, archive, (value, bytesPerSecond) => {
           const progress = Math.max(0, Math.min(90, Math.trunc(value)));
+          const speed =
+            typeof bytesPerSecond === 'number' &&
+            Number.isFinite(bytesPerSecond) &&
+            bytesPerSecond >= 0
+              ? bytesPerSecond
+              : undefined;
+          const clearingSpeed = speed === undefined && lastSpeed !== undefined;
           if (
             !Number.isFinite(progress) ||
-            progress === lastProgress ||
-            (progress < 90 && Date.now() - lastReport < 250)
+            (progress === lastProgress && speed === lastSpeed) ||
+            (!clearingSpeed && progress < 90 && Date.now() - lastReport < 250)
           )
             return;
           lastProgress = progress;
+          lastSpeed = speed;
           lastReport = Date.now();
-          this.change(channel, { progress, message: '正在下载官方组件' });
+          this.change(channel, {
+            progress,
+            downloadSpeedBytesPerSecond: speed,
+            message: '正在下载官方组件',
+          });
         });
-        this.change(channel, { progress: 90, message: '正在解压并校验组件' });
+        this.change(channel, {
+          progress: 90,
+          downloadSpeedBytesPerSecond: undefined,
+          message: '正在解压并校验组件',
+        });
         // Recheck the resource base after downloading, before copying it.
         if (channel === 'resource') await this.reconcileCurrent();
         const core = this.store.get('active', 'combo', {}).core;

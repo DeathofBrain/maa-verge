@@ -311,17 +311,63 @@ async function loadState(
   await purge(partial);
   return { state: expected, offset: 0 };
 }
-function reporter(progress: (percent: number) => void) {
-  let last = -1,
-    reportedAt = -Infinity;
-  return (count: number, total?: number, force = false) => {
-    const percent = total ? Math.min(90, Math.trunc((count / total) * 90)) : 25;
+export type DownloadProgress = (percent: number, bytesPerSecond?: number) => void;
+
+function reporter(progress: DownloadProgress) {
+  let count = 0,
+    total: number | undefined,
+    sampleCount = 0,
+    sampleAt = 0,
+    last = -1,
+    lastSpeed: number | undefined,
+    timer: ReturnType<typeof setInterval> | undefined;
+  const percent = () => (total ? Math.min(90, Math.trunc((count / total) * 90)) : 25);
+  const sample = () => {
     const now = performance.now();
-    if (percent !== last && (force || now - reportedAt >= 250)) {
-      last = percent;
-      reportedAt = now;
-      progress(percent);
+    const elapsed = now - sampleAt;
+    if (elapsed < 250) return;
+    const speed = Math.max(0, Math.round(((count - sampleCount) * 1000) / elapsed));
+    sampleCount = count;
+    sampleAt = now;
+    const value = percent();
+    if (value !== last || speed !== lastSpeed) {
+      last = value;
+      lastSpeed = speed;
+      progress(value, speed);
     }
+  };
+  const stop = () => {
+    if (timer === undefined) return;
+    clearInterval(timer);
+    timer = undefined;
+    last = percent();
+    lastSpeed = undefined;
+    progress(last);
+  };
+  return {
+    start(offset: number, size?: number) {
+      stop();
+      // Cached bytes do not contribute to the new connection's transfer rate.
+      count = sampleCount = offset;
+      total = size;
+      sampleAt = performance.now();
+      last = percent();
+      lastSpeed = 0;
+      progress(last, 0);
+      timer = setInterval(sample, 250);
+    },
+    update(received: number) {
+      count = received;
+      sample();
+    },
+    stop,
+    complete() {
+      stop();
+      if (last !== 90) {
+        last = 90;
+        progress(90);
+      }
+    },
   };
 }
 async function builtin(
@@ -407,7 +453,7 @@ async function builtin(
       // Truncate before binding a new validator, so a crash can never give old
       // bytes the identity of the replacement object.
       await saveState(partial, state);
-      report(count, state.total, true);
+      report.start(count, state.total);
       const reader = response.body.getReader();
       const cancel = () => {
         void reader.cancel(idle.signal.reason).catch(() => {});
@@ -424,7 +470,10 @@ async function builtin(
           });
           idle.pause();
           idle.signal.throwIfAborted();
-          if (done) break;
+          if (done) {
+            report.stop();
+            break;
+          }
           count += chunk.length;
           if (
             count > MAX_DOWNLOAD_BYTES ||
@@ -443,7 +492,7 @@ async function builtin(
             if (result.bytesWritten === 0) throw new Error('写入下载包失败');
             written += result.bytesWritten;
           }
-          report(count, state.total);
+          report.update(count);
         }
       } finally {
         idle.signal.removeEventListener('abort', cancel);
@@ -455,12 +504,12 @@ async function builtin(
       )
         invalid('下载包大小不符');
       await file.sync();
-      report(count, state.total, true);
     } finally {
       await file.close();
     }
     return state;
   } finally {
+    report.stop();
     idle.close();
     await response?.body?.cancel().catch(() => {});
   }
@@ -488,7 +537,7 @@ async function reconnectDelay(milliseconds: number, signal?: AbortSignal): Promi
 export async function downloadArchive(
   metadata: DownloadMetadata,
   destination: string,
-  progress: (percent: number) => void,
+  progress: DownloadProgress,
   options: DownloadOptions = {},
 ): Promise<string> {
   options = {
@@ -588,7 +637,7 @@ export async function downloadArchive(
     await Promise.all(
       [partial + '.json', partial + '.aria2'].map((file) => rm(file, { force: true })),
     );
-    report(file.size, file.size, true);
+    report.complete();
     return hash;
   } catch (error) {
     if (error instanceof InvalidDownload || error instanceof DownloadSourceError)

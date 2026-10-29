@@ -42,6 +42,14 @@
 .update-notification-status {
   justify-content: space-between;
   margin-top: 8px;
+  flex-wrap: wrap;
+}
+.update-notification-metrics {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-left: auto;
+  white-space: nowrap;
 }
 .update-notification progress {
   display: block;

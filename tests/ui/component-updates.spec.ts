@@ -6,7 +6,7 @@ type DownloadWindow = HarnessWindow & {
   downloadControl: {
     started: number;
     checks: number;
-    progress: (value: number) => Promise<void>;
+    progress: (value: number, speed?: number) => Promise<void>;
     finish: (failed?: boolean) => void;
     notify: () => Promise<void>;
   };
@@ -48,8 +48,9 @@ async function controlDownload(page: Page, id: 'core' | 'resource', startup = fa
         started: 0,
         checks: 0,
         notify,
-        progress: async (value) => {
+        progress: async (value, speed) => {
           channel.progress = value;
+          channel.downloadSpeedBytesPerSecond = speed;
           await notify();
         },
         finish: (failed) => {
@@ -167,6 +168,61 @@ async function updatesPage(page: Page) {
     .getByRole('navigation', { name: '设置分类' })
     .getByRole('button', { name: '更新', exact: true })
     .click();
+}
+
+for (const id of ['core', 'resource'] as const) {
+  test(`${id} download speed stays synchronized between Settings and the notification`, async ({
+    page,
+  }, testInfo) => {
+    await page.goto('/');
+    await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+    await controlDownload(page, id);
+    await updatesPage(page);
+    const name = id === 'core' ? 'MaaCore 核心' : '游戏资源';
+    const noticeName = id === 'core' ? name : 'MaaResource 游戏资源';
+    const channel = page
+      .locator('.update-channel')
+      .filter({ has: page.getByRole('heading', { name, exact: true }) });
+    await channel.getByRole('button', { name: '准备更新', exact: true }).click();
+    const notice = page.getByRole('status', { name: `${noticeName}下载通知`, exact: true });
+    const pageSpeed = channel.getByLabel(`${name}下载速度`, { exact: true });
+    const noticeSpeed = notice.getByLabel(`${noticeName}下载速度`, { exact: true });
+    await expect(notice).toBeVisible();
+    await expect(pageSpeed).toHaveCount(0);
+    await expect(noticeSpeed).toHaveCount(0);
+    for (const [speed, label] of [
+      [128, '128 B/s'],
+      [2048, '2.0 KB/s'],
+      [2621440, '2.5 MB/s'],
+      [0, '0 B/s'],
+    ] as const) {
+      await page.evaluate(
+        (speed) => (window as DownloadWindow).downloadControl.progress(42, speed),
+        speed,
+      );
+      await expect(pageSpeed).toHaveText(`下载速度：${label}`);
+      await expect(noticeSpeed).toHaveText(label);
+      await expect(notice.getByRole('progressbar')).toHaveAttribute('value', '42');
+    }
+    await page.evaluate(() => (window as DownloadWindow).downloadControl.progress(90));
+    await expect(pageSpeed).toHaveCount(0);
+    await expect(noticeSpeed).toHaveCount(0);
+    await page.evaluate(() => (window as DownloadWindow).downloadControl.progress(42, 2621440));
+    await expect(pageSpeed).toContainText('2.5 MB/s');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(noticeSpeed).toBeVisible();
+    const bounds = await notice.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+    expect(await notice.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+      true,
+    );
+    await page.screenshot({ path: testInfo.outputPath(`${id}-download-speed-narrow.png`) });
+    await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
+    await expect(notice).toContainText('组件已准备，待生效');
+    await expect(pageSpeed).toHaveCount(0);
+    await expect(noticeSpeed).toHaveCount(0);
+  });
 }
 
 test('component downloads keep progress and completion visible after leaving Settings', async ({

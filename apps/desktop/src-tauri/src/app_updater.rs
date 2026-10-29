@@ -277,6 +277,17 @@ struct State {
 }
 
 impl State {
+    fn clear_inactive_download_speed(&mut self) {
+        if self.value["status"] != "downloading"
+            || self.value["progress"].as_u64().unwrap_or_default() >= 95
+        {
+            self.value
+                .as_object_mut()
+                .expect("app updater value")
+                .remove("downloadSpeedBytesPerSecond");
+        }
+    }
+
     fn fail_check(&mut self, error: &str) {
         self.candidate = None;
         // A failed check cannot supply prepare() with a usable candidate. Clear
@@ -285,6 +296,7 @@ impl State {
         self.value["status"] = json!("failed");
         self.value["progress"] = json!(0);
         self.value["message"] = json!(error);
+        self.clear_inactive_download_speed();
     }
 }
 
@@ -568,6 +580,7 @@ impl AppUpdater {
                 return Err("应用更新通道已切换，请重新检查".into());
             }
             update(&mut state);
+            state.clear_inactive_download_speed();
             state.value.clone()
         };
         self.emit(value.clone());

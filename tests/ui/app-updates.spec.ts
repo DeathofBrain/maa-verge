@@ -116,6 +116,7 @@ async function controlAppUpdate(
           target.appUpdateControl.downloads++;
           channel.status = 'downloading';
           channel.progress = 37;
+          channel.downloadSpeedBytesPerSecond = 1572864;
           notify();
           return new Promise<UpdateChannel>((resolve) => {
             complete = resolve;
@@ -224,13 +225,19 @@ test('app download survives navigation and installation requires explicit confir
   await expect
     .poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.prepared))
     .toBe(1);
+  await expect(app.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveText(
+    '下载速度：1.5 MB/s',
+  );
   await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
   const notice = page.getByRole('status', { name: 'Maa Verge 应用下载通知', exact: true });
   await expect(notice.getByRole('progressbar')).toHaveAttribute('value', '37');
+  await expect(notice.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveText('1.5 MB/s');
   await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.finish());
   await expect(notice).toContainText('签名已验证，等待确认重启');
+  await expect(notice.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.installed)).toBe(0);
   await settingsCategory(page, '更新');
+  await expect(app.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveCount(0);
   await app.getByRole('button', { name: '安装并重启', exact: true }).click();
   const confirmation = page.getByRole('dialog', { name: '安装应用更新', exact: true });
   await expect(confirmation).toContainText('请先保存未保存的更改');

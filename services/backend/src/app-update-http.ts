@@ -56,7 +56,11 @@ export class AppUpdateHttp {
   constructor(
     private readonly directory: string,
     private readonly preferences: () => DownloadProxySettings | undefined,
-    private readonly progress: (operationId: string, progress: number) => void,
+    private readonly progress: (
+      operationId: string,
+      progress: number,
+      downloadSpeedBytesPerSecond?: number,
+    ) => void,
     private readonly options: AppUpdateHttpOptions = {},
   ) {}
 
@@ -148,7 +152,7 @@ export class AppUpdateHttp {
       const sha256 = await downloadArchive(
         identity,
         destination,
-        (percent) => this.progress(params.operationId, percent),
+        (percent, bytesPerSecond) => this.progress(params.operationId, percent, bytesPerSecond),
         {
           ...this.options,
           signal: active.abort.signal,

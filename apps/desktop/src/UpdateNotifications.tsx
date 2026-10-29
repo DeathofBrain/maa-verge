@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Download, LoaderCircle, X } from 'lucide-react';
 import { errorMessage, rpc, type UpdateChannel } from '@maaverge/contracts';
+import { downloadSpeedLabel } from './update-display';
 import './update-notifications.css';
 
 type Notice = { channel: UpdateChannel; visible: boolean };
@@ -65,6 +66,7 @@ export function useComponentDownloads(
             ...channel,
             status: 'downloading',
             progress: 0,
+            downloadSpeedBytesPerSecond: undefined,
             message: channel.id === 'app' ? '正在开始下载…' : '正在开始准备组件…',
           },
         ],
@@ -114,6 +116,7 @@ export default function UpdateNotifications({
     <aside className="update-notifications" aria-label="组件下载通知">
       {notices.map(({ channel }) => {
         const downloading = channel.status === 'downloading';
+        const downloadSpeed = downloadSpeedLabel(channel);
         const failed = channel.status === 'failed';
         const title = downloading
           ? channel.id === 'app'
@@ -158,7 +161,14 @@ export default function UpdateNotifications({
             </div>
             <div className="update-notification-status">
               <span>{title}</span>
-              {downloading && <span className="numeric">{progressFor(channel)}%</span>}
+              {downloading && (
+                <span className="update-notification-metrics numeric">
+                  {downloadSpeed && (
+                    <span aria-label={`${names[channel.id]}下载速度`}>{downloadSpeed}</span>
+                  )}
+                  <span>{progressFor(channel)}%</span>
+                </span>
+              )}
             </div>
             {downloading && (
               <progress

@@ -35,6 +35,7 @@ import { useSettingsDraft } from './settings-draft';
 import LogSettings from './LogSettings';
 import CopilotStorageSettings from './CopilotStorageSettings';
 import {
+  downloadSpeedLabel,
   resourceClientFor,
   resourceClientLabels,
   resourceVersionDetail,
@@ -856,6 +857,7 @@ function UpdateSection({
   const appActionPending = useRef(false);
   const Icon = channel.id === 'app' ? HardDrive : channel.id === 'core' ? Cpu : Database;
   const working = preparing || ['checking', 'downloading'].includes(channel.status);
+  const downloadSpeed = downloadSpeedLabel(channel);
   const isApp = channel.id === 'app';
   const canInstall = !isApp || channel.appCanInstall === true;
   const staged = ['staged', 'waiting_idle'].includes(channel.status);
@@ -955,6 +957,11 @@ function UpdateSection({
           <div className="sp-update-progress" aria-label={`${channelLabels[channel.id]}更新进度`}>
             <span style={{ width: `${Math.max(0, Math.min(100, channel.progress))}%` }} />
           </div>
+        )}
+        {downloadSpeed && (
+          <p className="sp-help numeric" aria-label={`${channelLabels[channel.id]}下载速度`}>
+            下载速度：{downloadSpeed}
+          </p>
         )}
         {isApp && staged && hasActiveRun && (
           <p className="sp-channel-message">立即更新将停止当前执行，未执行的计划会保留。</p>
