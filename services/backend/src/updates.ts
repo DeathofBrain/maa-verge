@@ -19,10 +19,13 @@ import { pruneGenerations } from './generation-retention.ts';
 import { snapshotIntegrity } from './snapshot-integrity.ts';
 import {
   copyBundledPayload,
+  copyComponentPayload,
   hasBundledPayload,
   readBundledComponents,
+  readLocalComponentSnapshots,
   type BundledCore,
   type BundledResource,
+  type LocalComponentSnapshot,
 } from './bundled-components';
 import {
   createComponentFetch,
@@ -778,6 +781,15 @@ export class UpdateService {
     this.queue = tracked.catch(() => {});
     return tracked;
   }
+  private async localSnapshots(channel: 'core' | 'resource'): Promise<LocalComponentSnapshot[]> {
+    const roots = this.rememberRoots();
+    const snapshots = (
+      await Promise.all(roots.map((root) => readLocalComponentSnapshots(root, channel)))
+    ).flat();
+    return channel === 'core'
+      ? snapshots.sort((left, right) => compareReleaseVersions(right.version, left.version))
+      : snapshots;
+  }
   /** Background adoption keeps its Store lease and serializes with other component mutations. */
   bootstrapBundled(directory: string): Promise<void> {
     return this.serial(async () => {
@@ -793,26 +805,41 @@ export class UpdateService {
         this.store.get('staged', 'resource')
       )
         return;
+      const local = {
+        core: await this.localSnapshots('core'),
+        resource: await this.localSnapshots('resource'),
+      };
       let bundled;
       try {
         bundled = await readBundledComponents(directory);
       } catch (error) {
-        this.change('core', { status: 'failed', message: message(error), progress: 0 });
-        throw error;
+        if (!local.core.length && !local.resource.length) {
+          this.change('core', { status: 'failed', message: message(error), progress: 0 });
+          throw error;
+        }
       }
-      if (!bundled) return;
       for (const channel of ['core', 'resource'] as const) {
-        const component = bundled[channel];
+        const core = this.store.get('active', 'combo', {}).core;
+        const snapshot = local[channel].find((snapshot) =>
+          channel === 'core'
+            ? this.store.get('settings', 'main', {}).coreUpdateChannel === 'preview' ||
+              !releaseVersion(snapshot.version)!.prerelease.length
+            : !core || snapshot.coreVersion === core.version,
+        );
+        const component = snapshot ?? bundled?.[channel];
         if (!component) continue;
         try {
-          if (!(await hasBundledPayload(directory, component))) continue;
-          const core = this.store.get('active', 'combo', {}).core;
+          if (
+            !snapshot &&
+            !(await hasBundledPayload(directory, component as BundledCore | BundledResource))
+          )
+            continue;
           if (
             channel === 'resource' &&
             (!core || (component as BundledResource).coreVersion !== core.version)
           )
             throw new Error('随附游戏资源依赖匹配的 MaaCore，请同时安装随附核心后重启重试');
-          await this.importBundledSnapshot(directory, channel, component);
+          await this.importBundledSnapshot(directory, channel, component, snapshot);
         } catch (error) {
           const detail =
             error instanceof RpcError && typeof error.data === 'string'
@@ -830,71 +857,95 @@ export class UpdateService {
   private async importBundledSnapshot(
     directory: string,
     channel: 'core' | 'resource',
-    component: BundledCore | BundledResource,
+    component: BundledCore | BundledResource | LocalComponentSnapshot,
+    local?: LocalComponentSnapshot,
   ): Promise<void> {
-    const generation = path.join(
-      this.directories()[channel],
-      'generations',
-      `${channel}-${randomUUID().replaceAll('-', '')}`,
-    );
+    const inPlace =
+      local &&
+      path.resolve(path.dirname(path.dirname(local.path))) ===
+        path.resolve(this.directories()[channel]);
+    const generation = inPlace
+      ? local.path
+      : path.join(
+          this.directories()[channel],
+          'generations',
+          `${channel}-${randomUUID().replaceAll('-', '')}`,
+        );
     let prepared = false;
     try {
       this.change(channel, {
         status: 'downloading',
         progress: 0,
-        message: '正在验证并准备随附组件，无需联网',
+        message: '正在校验并准备已有组件，无需联网',
       });
       let previousStage = '',
         previousProgress = -1,
         previousTime = 0;
-      const integrity = await copyBundledPayload(
-        directory,
-        component,
-        generation,
-        ({ stage, completed, total }) => {
-          if (this.closing) throw new Error('更新服务正在关闭');
-          const [base, weight, label] =
-            stage === 'verifying'
-              ? ([0, 35, '正在校验随附组件'] as const)
-              : stage === 'copying'
-                ? ([35, 30, '正在复制随附组件'] as const)
-                : ([65, 25, '正在校验组件副本'] as const);
-          const progress = base + (total ? Math.floor((weight * completed) / total) : 0);
-          const time = Date.now();
-          if (
-            stage === previousStage &&
-            (progress === previousProgress || time - previousTime < 150)
+      const report = ({
+        stage,
+        completed,
+        total,
+      }: {
+        stage: string;
+        completed: number;
+        total: number;
+      }) => {
+        if (this.closing) throw new Error('更新服务正在关闭');
+        const [base, weight, label] =
+          stage === 'verifying'
+            ? ([0, 35, '正在校验组件'] as const)
+            : stage === 'copying'
+              ? ([35, 30, '正在复制组件'] as const)
+              : ([65, 25, '正在校验组件副本'] as const);
+        const progress = base + (total ? Math.floor((weight * completed) / total) : 0);
+        const time = Date.now();
+        if (stage === previousStage && (progress === previousProgress || time - previousTime < 150))
+          return;
+        previousStage = stage;
+        previousProgress = progress;
+        previousTime = time;
+        this.change(channel, {
+          status: 'downloading',
+          progress,
+          message: `${label}${total ? `（${completed}/${total}）` : ''}，无需联网`,
+        });
+      };
+      const integrity = inPlace
+        ? await snapshotIntegrity(generation, undefined, (completed, total) =>
+            report({ stage: 'checking', completed, total }),
           )
-            return;
-          previousStage = stage;
-          previousProgress = progress;
-          previousTime = time;
-          this.change(channel, {
-            status: 'downloading',
-            progress,
-            message: `${label}${total ? `（${completed}/${total}）` : ''}，无需联网`,
-          });
-        },
-      );
-      prepared = true;
+        : local
+          ? await copyComponentPayload(local.path, local.installedHash, generation, report)
+          : await copyBundledPayload(
+              directory,
+              component as BundledCore | BundledResource,
+              generation,
+              report,
+            );
+      if (integrity.installedHash !== component.installedHash)
+        throw new Error('组件完整性校验失败，请重新下载安装');
+      prepared = !inPlace;
       if (this.closing) throw new Error('更新服务正在关闭');
       const manifest = {
-        ...component,
+        version: component.version,
+        ...('coreVersion' in component ? { coreVersion: component.coreVersion } : {}),
         ...integrity,
-        source: 'bundled',
         path: generation,
         validatedAt: new Date().toISOString(),
         ...(channel === 'core'
           ? { releaseChannel: this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable' }
           : {}),
       };
-      await writeFile(path.join(generation, 'manifest.json'), JSON.stringify(manifest));
+      // Other data roots may already use this completed generation. Its payload
+      // and manifest stay immutable; the local Store owns absolute references.
+      if (!inPlace)
+        await writeFile(path.join(generation, 'manifest.json'), JSON.stringify(manifest));
       this.store.put('staged', channel, manifest);
       this.change(channel, {
         status: 'downloading',
         latestVersion: component.version,
         progress: 95,
-        message: '随附组件已复制并校验，正在验证核心并启用',
+        message: '组件文件已校验，正在验证核心并启用',
       });
       await this.activateCurrent(channel);
     } catch (error) {
@@ -1085,6 +1136,66 @@ export class UpdateService {
   prepare(channel: string): Promise<any> {
     return this.serial(() => this.prepareCurrent(channel));
   }
+  private async reuseLocalSnapshot(
+    channel: 'core' | 'resource',
+    metadata: UpdateMetadata,
+  ): Promise<any | undefined> {
+    const combo = this.store.get('active', 'combo', {}),
+      core = combo.core;
+    for (const snapshot of await this.localSnapshots(channel)) {
+      if (
+        snapshot.path === combo[channel]?.path ||
+        snapshot.version !== metadata.version ||
+        (channel === 'resource' && (!core || snapshot.coreVersion !== core.version))
+      )
+        continue;
+      let integrity;
+      try {
+        integrity = await snapshotIntegrity(snapshot.path);
+        if (
+          integrity.installedHash !== snapshot.installedHash ||
+          !installedSnapshot(snapshot, channel === 'core', false)
+        )
+          continue;
+        await this.validator(
+          channel === 'core' ? snapshot.path : core.path,
+          snapshot.path,
+          channel === 'core' ? snapshot.version : core.version,
+        );
+      } catch {
+        continue;
+      }
+      if (this.closing) throw new Error('更新服务正在关闭');
+      if (
+        channel === 'core' &&
+        metadata.releaseChannel !==
+          (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')
+      )
+        throw new RpcError(-32020, '核心更新通道已改变，请重新检查并准备更新');
+      const manifest = {
+        ...metadata,
+        ...snapshot,
+        ...integrity,
+        ...(channel === 'core' ? { releaseChannel: metadata.releaseChannel } : {}),
+        validatedAt: new Date().toISOString(),
+      };
+      // Reuse the immutable payload and persist only its normal candidate reference.
+      this.store.put('staged', channel, manifest);
+      await this.pruneVersions();
+      if (
+        channel === 'core' &&
+        metadata.releaseChannel !==
+          (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')
+      )
+        throw new RpcError(-32020, '核心更新通道已改变，请重新检查并准备更新');
+      return this.change(channel, {
+        status: 'staged',
+        progress: 100,
+        downloadSpeedBytesPerSecond: undefined,
+        message: '已有下载版本已校验，等待在空闲边界生效',
+      });
+    }
+  }
   private async prepareCurrent(channel: string): Promise<any> {
     await this.reconcileCurrent();
     let current = this.channel(channel);
@@ -1117,6 +1228,8 @@ export class UpdateService {
       throw new RpcError(-32020, '缓存版本低于当前核心，拒绝自动降级，请重新检查');
     }
     if (metadata.version === current.currentVersion && !this.needsRepair(channel)) return current;
+    const reused = await this.reuseLocalSnapshot(channel as 'core' | 'resource', metadata);
+    if (reused) return reused;
     const directory = this.directories()[channel as 'core' | 'resource'];
     const generation = path.join(
       directory,

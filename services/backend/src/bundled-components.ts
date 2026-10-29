@@ -1,6 +1,6 @@
-/** Optional installer payloads are copied into ordinary immutable generations. */
+/** Adopt ordinary local generations, with compatibility for older installer payloads. */
 import { constants } from 'node:fs';
-import { copyFile, lstat, mkdir, readFile, realpath, rm } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readFile, readdir, realpath, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { releaseVersion } from './release-version';
 import { snapshotIntegrity, type SnapshotIntegrity } from './snapshot-integrity';
@@ -26,6 +26,14 @@ export type BundledProgress = {
   completed: number;
   total: number;
 };
+export interface LocalComponentSnapshot {
+  version: string;
+  coreVersion?: string;
+  installedHash: string;
+  path: string;
+  validatedAt?: string;
+  releaseChannel?: 'stable' | 'preview';
+}
 
 const invalid = () => new Error('随附组件清单无效，请重新下载安装包');
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -35,6 +43,75 @@ const digest = (value: unknown): value is string =>
 const version = (value: unknown): value is string =>
   typeof value === 'string' && !/[\r\n]/.test(value) && Boolean(releaseVersion(value));
 const pathKey = (value: string) => (process.platform === 'win32' ? value.toLowerCase() : value);
+
+/** Discover completed payloads without trusting a saved absolute installation path. */
+export async function readLocalComponentSnapshots(
+  directory: string,
+  channel: 'core' | 'resource',
+): Promise<LocalComponentSnapshot[]> {
+  const parent = path.resolve(directory, 'generations');
+  try {
+    const info = await lstat(parent);
+    if (
+      !info.isDirectory() ||
+      info.isSymbolicLink() ||
+      pathKey(await realpath(parent)) !== pathKey(parent)
+    )
+      return [];
+  } catch {
+    return [];
+  }
+  const snapshots: LocalComponentSnapshot[] = [];
+  const entries = await readdir(parent, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (
+      !new RegExp(`^${channel}-[a-f0-9]{32}$`).test(entry.name) ||
+      !entry.isDirectory() ||
+      entry.isSymbolicLink()
+    )
+      continue;
+    const candidate = path.join(parent, entry.name);
+    try {
+      const filename = path.join(candidate, 'manifest.json');
+      const info = await lstat(filename);
+      if (
+        !info.isFile() ||
+        info.isSymbolicLink() ||
+        info.size > 16 * 1024 * 1024 ||
+        pathKey(await realpath(filename)) !== pathKey(filename)
+      )
+        continue;
+      const value: unknown = JSON.parse(await readFile(filename, 'utf8'));
+      if (
+        !record(value) ||
+        !digest(value.installedHash) ||
+        (channel === 'core'
+          ? !version(value.version)
+          : typeof value.version !== 'string' ||
+            !/^[a-f0-9]{40}$/.test(value.version) ||
+            !version(value.coreVersion))
+      )
+        continue;
+      snapshots.push({
+        version: value.version as string,
+        ...(channel === 'resource' ? { coreVersion: value.coreVersion as string } : {}),
+        installedHash: value.installedHash,
+        path: candidate,
+        ...(typeof value.validatedAt === 'string' ? { validatedAt: value.validatedAt } : {}),
+        ...(value.releaseChannel === 'stable' || value.releaseChannel === 'preview'
+          ? { releaseChannel: value.releaseChannel }
+          : {}),
+      });
+    } catch {
+      /* Damaged or foreign generations never authorize adoption. */
+    }
+  }
+  return snapshots.sort(
+    (left, right) =>
+      (Date.parse(right.validatedAt ?? '') || 0) - (Date.parse(left.validatedAt ?? '') || 0) ||
+      left.path.localeCompare(right.path),
+  );
+}
 
 async function prepareDestinationParent(directory: string): Promise<void> {
   // Check the nearest existing ancestor before recursive mkdir can follow a
@@ -138,7 +215,21 @@ export async function copyBundledPayload(
   destination: string,
   progress?: (value: BundledProgress) => void,
 ): Promise<SnapshotIntegrity> {
-  const source = path.resolve(directory, component.directory);
+  return copyComponentPayload(
+    path.resolve(directory, component.directory),
+    component.installedHash,
+    destination,
+    progress,
+  );
+}
+
+export async function copyComponentPayload(
+  sourceDirectory: string,
+  installedHash: string,
+  destination: string,
+  progress?: (value: BundledProgress) => void,
+): Promise<SnapshotIntegrity> {
+  const source = path.resolve(sourceDirectory);
   const target = path.resolve(destination);
   const relative = path.relative(source, target);
   if (
@@ -150,7 +241,7 @@ export async function copyBundledPayload(
   const verified = await snapshotIntegrity(source, undefined, (completed, total) =>
     progress?.({ stage: 'verifying', completed, total }),
   );
-  if (verified.installedHash !== component.installedHash)
+  if (verified.installedHash !== installedHash)
     throw new Error('随附组件完整性校验失败，请重新下载安装包');
   const parent = path.dirname(target);
   await prepareDestinationParent(parent);
@@ -216,7 +307,7 @@ export async function copyBundledPayload(
     const integrity = await snapshotIntegrity(target, undefined, (completed, total) =>
       progress?.({ stage: 'checking', completed, total }),
     );
-    if (integrity.installedHash !== component.installedHash)
+    if (integrity.installedHash !== installedHash)
       throw new Error('随附组件复制后校验失败，请检查磁盘后重启重试');
     return integrity;
   } catch (error) {

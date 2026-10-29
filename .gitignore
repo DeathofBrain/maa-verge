@@ -27,6 +27,8 @@ apps/desktop/src-tauri/gen/
 *.local.toml
 .maaverge/
 /config/
+/config-location.json
+/.config-location.json-*.tmp
 *.db
 *.db-shm
 *.db-wal

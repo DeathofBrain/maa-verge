@@ -1030,6 +1030,8 @@ export class Runtime {
           settings.copilotStorage = previous.copilotStorage;
         if (!Object.hasOwn(params.settings, 'downloadProxy') && previous.downloadProxy)
           settings.downloadProxy = previous.downloadProxy;
+        if (!Object.hasOwn(params.settings, 'notifications'))
+          settings.notifications = previous.notifications;
         this.copilot.validateStorageDirectory(settings.copilotStorage?.directory ?? '');
         if (
           settings.coreUpdateChannel !== previous.coreUpdateChannel &&

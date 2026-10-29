@@ -12,6 +12,13 @@ import { normalizeManualProxy, ProxyConfigurationError } from './network-proxy';
 export type { Plan, Settings, Task, Snapshot };
 export type { DeviceConnectionProfile } from '../../../packages/contracts/src/types';
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
+export const defaultNotifications = () => ({
+  enabled: true,
+  runResults: true,
+  deviceErrors: true,
+  updates: true,
+  schedules: true,
+});
 export const defaultCapture = () => ({
   method: 'adb' as const,
   emulatorPath: '',
@@ -98,6 +105,11 @@ export function parseSettings(input: any = {}): Settings {
     theme: 'system',
     logRetentionDays: 7,
     ...input,
+    notifications: Object.hasOwn(input, 'notifications')
+      ? record(input.notifications)
+        ? { ...defaultNotifications(), ...input.notifications }
+        : input.notifications
+      : defaultNotifications(),
     ...(Object.hasOwn(input, 'capture')
       ? {
           capture: record(input.capture)

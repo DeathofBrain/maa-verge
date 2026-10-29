@@ -379,6 +379,18 @@ export async function prepareWindowsComponentPayloads(
     await rm(source, { recursive: true });
     const coreIntegrity = await snapshotIntegrity(core);
     const resourceIntegrity = await snapshotIntegrity(resource);
+    const validatedAt = new Date().toISOString();
+    for (const [directory, snapshot] of [
+      [core, { version: lock.core.version, ...coreIntegrity }],
+      [
+        resource,
+        { version: lock.resource.version, coreVersion: lock.core.version, ...resourceIntegrity },
+      ],
+    ] as const)
+      await writeFile(
+        path.join(directory, 'manifest.json'),
+        JSON.stringify({ ...snapshot, validatedAt }) + '\n',
+      );
     const manifest = {
       formatVersion: 1,
       core: {

@@ -253,6 +253,7 @@ export interface ResourceActivityVersion {
 export interface Settings {
   componentPaths?: ComponentPaths;
   downloadProxy?: DownloadProxySettings;
+  notifications?: NotificationSettings;
   /**
    * @maxItems 100
    */
@@ -303,6 +304,13 @@ export interface DownloadProxySettings {
    * Manual HTTP/HTTPS proxy address. settings.save accepts host:port with an implicit http:// scheme and normalizes it to a complete URL; other modes clear this field. A root slash is allowed; other paths, queries and fragments are rejected.
    */
   url: string;
+}
+export interface NotificationSettings {
+  enabled: boolean;
+  runResults: boolean;
+  deviceErrors: boolean;
+  updates: boolean;
+  schedules: boolean;
 }
 export interface InfrastructureEstimateProfile {
   deviceId: string;

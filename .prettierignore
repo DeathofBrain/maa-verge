@@ -8,6 +8,8 @@
 .cache/
 .maaverge/
 /config/
+/config-location.json
+/.config-location.json-*.tmp
 **/target/
 **/dist/
 **/build/

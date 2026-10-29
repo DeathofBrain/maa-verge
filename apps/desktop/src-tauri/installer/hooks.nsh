@@ -107,17 +107,20 @@ FunctionEnd
   ${If} $MaaVergeCore == ""
     Call MaaVergeComponentsDefaults
   ${EndIf}
-  ; Only immutable, packaged seed data is written here. The service validates
-  ; and imports it after acquiring its data-root lease; no business DB writes.
+  ; Install directly into ordinary immutable generations. Never overwrite an
+  ; existing tree: another data root or worker may already reference it.
+  ; The service validates and registers it after acquiring its data-root lease.
   ${If} $MaaVergeCore == 1
-    SetOutPath "$INSTDIR\runtime\bundled-components"
-    File "${MAAVERGE_COMPONENTS_DIR}\manifest.json"
-    SetOutPath "$INSTDIR\runtime\bundled-components\core"
-    File /r "${MAAVERGE_COMPONENTS_DIR}\core\*"
+    ${IfNot} ${FileExists} "$INSTDIR\MaaCore\generations\${MAAVERGE_CORE_GENERATION}"
+      SetOutPath "$INSTDIR\MaaCore\generations\${MAAVERGE_CORE_GENERATION}"
+      File /r "${MAAVERGE_COMPONENTS_DIR}\core\*"
+    ${EndIf}
   ${EndIf}
   ${If} $MaaVergeResource == 1
-    SetOutPath "$INSTDIR\runtime\bundled-components\resource"
-    File /r "${MAAVERGE_COMPONENTS_DIR}\resource\*"
+    ${IfNot} ${FileExists} "$INSTDIR\MaaResource\generations\${MAAVERGE_RESOURCE_GENERATION}"
+      SetOutPath "$INSTDIR\MaaResource\generations\${MAAVERGE_RESOURCE_GENERATION}"
+      File /r "${MAAVERGE_COMPONENTS_DIR}\resource\*"
+    ${EndIf}
   ${EndIf}
   SetOutPath "$INSTDIR"
 !macroend

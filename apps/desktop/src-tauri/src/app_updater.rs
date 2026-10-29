@@ -311,34 +311,7 @@ pub struct AppUpdater {
 }
 
 fn cache_directory() -> Result<PathBuf, String> {
-    if std::env::args().any(|arg| arg == "--schedule-data-root") {
-        return Ok(crate::desktop_scheduler::data_root().join("updates/app"));
-    }
-    let root = if let Some(value) =
-        std::env::var_os("MAAVERGE_DATA_DIR").filter(|value| !value.is_empty())
-    {
-        let path = PathBuf::from(value);
-        let path = if path.starts_with("~") {
-            let home_directory =
-                std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
-                    .ok_or("无法展开更新缓存的数据目录")?;
-            PathBuf::from(home_directory).join(path.strip_prefix("~").unwrap())
-        } else {
-            path
-        };
-        if path.is_absolute() {
-            path
-        } else {
-            std::env::current_dir()
-                .map_err(|error| error.to_string())?
-                .join(path)
-        }
-    } else if cfg!(debug_assertions) {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../config")
-    } else {
-        crate::runtime::application_directory()?.join("config")
-    };
-    Ok(root.join("updates/app"))
+    Ok(crate::configuration::data_root()?.join("updates/app"))
 }
 
 fn installation_id() -> Result<String, String> {

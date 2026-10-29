@@ -39,6 +39,7 @@ Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, l
 The root package.json is the command source of truth: pnpm dev, pnpm dev:ui, pnpm setup:bun, pnpm run doctor, pnpm check, pnpm test:runtime, pnpm test:packaging, pnpm test:desktop-runtime, pnpm test:e2e, pnpm build.
 Use .bun-version and tools/setup-bun.mjs for the pinned runtime; do not depend on a global Bun. C++: node tools/build-core-worker.mjs (Node-driven synthetic CTest), or --production to skip test fixtures. Rust: cargo fmt --check and cargo clippy --locked when the native toolchain is available.
 Use targeted checks while developing, then the relevant project checks. Do not modify formatting or dependencies unrelated to the task.
+绝对禁止添加关于外观断言的测试（test）。
 Format touched files with the repository configuration: Prettier for TypeScript/JavaScript, JSON, styles and Markdown; clang-format for C++; rustfmt for Rust. VS Code setup and CLI commands are documented in docs/development.md. Do not format generated files or vendored code; regenerate outputs from their source.
 
 ## Real-world effects

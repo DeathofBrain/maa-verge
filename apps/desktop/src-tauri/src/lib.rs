@@ -1,4 +1,6 @@
 mod app_updater;
+mod configuration;
+mod desktop_notifications;
 mod desktop_scheduler;
 mod external_links;
 mod runtime;
@@ -8,7 +10,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::time::Duration;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Listener, Manager};
 use tokio::sync::Notify;
 
 const RUNNING: u8 = 0;
@@ -200,6 +202,7 @@ fn resolve_window_close(app: tauri::AppHandle, action: String) -> Result<(), Str
 pub fn run() {
     let app = tauri::Builder::default()
         .manage(DesktopLifecycle::default())
+        .manage(desktop_notifications::DesktopNotifications::default())
         .manage(desktop_scheduler::DesktopScheduler::default())
         .plugin(tauri_plugin_single_instance::init(|app, args, _| {
             if desktop_scheduler::is_wake(&args) {
@@ -218,11 +221,22 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             runtime::runtime_request,
             external_links::open_external_url,
+            configuration::get_configuration_locations,
+            configuration::save_configuration_directory,
+            configuration::open_configuration_directory,
+            desktop_notifications::desktop_notification_status,
+            desktop_notifications::desktop_test_notification,
             resolve_window_close,
             get_desktop_lifecycle,
             exit_ui_ready
         ])
         .setup(|app| {
+            let notification_app = app.handle().clone();
+            app.listen("runtime-event", move |event| {
+                if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload()) {
+                    desktop_notifications::handle_event(&notification_app, &payload);
+                }
+            });
             #[cfg(target_os = "windows")]
             configure_window_transitions(app.handle());
             let updater = app_updater::AppUpdater::new(app.handle().clone());
@@ -244,6 +258,9 @@ pub fn run() {
                     .await;
                 match snapshot {
                     Ok(snapshot) => {
+                        handle
+                            .state::<desktop_notifications::DesktopNotifications>()
+                            .configure(&snapshot["settings"]);
                         handle
                             .state::<app_updater::AppUpdater>()
                             .configure(&snapshot["settings"]);

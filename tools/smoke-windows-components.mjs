@@ -218,18 +218,25 @@ export async function smokeWindowsComponents({ staging } = {}) {
   const lock = JSON.parse(
     await readFile(path.join(root, 'tools/windows-components.lock.json'), 'utf8'),
   );
-  const manifest = JSON.parse(
-    await readFile(path.join(staging, 'runtime/bundled-components/manifest.json'), 'utf8'),
-  );
-  assert.equal(manifest.formatVersion, 1);
+  const manifest = {};
   for (const channel of ['core', 'resource']) {
+    const parent = path.join(
+      staging,
+      channel === 'core' ? 'MaaCore' : 'MaaResource',
+      'generations',
+    );
+    const generations = await readdir(parent);
+    assert.equal(generations.length, 1);
+    manifest[channel] = JSON.parse(
+      await readFile(path.join(parent, generations[0], 'manifest.json'), 'utf8'),
+    );
     assert.equal(manifest[channel]?.version, lock[channel].version);
-    assert.equal(manifest[channel]?.directory, channel);
     assert.match(manifest[channel]?.installedHash ?? '', /^[a-f0-9]{64}$/u);
+    assert.equal(generations[0], `${channel}-${manifest[channel].installedHash.slice(0, 32)}`);
   }
   assert.equal(manifest.resource.coreVersion, lock.core.version);
   const sourceEntries = await readdir(staging);
-  for (const name of ['config', 'MaaCore', 'MaaResource', 'log', 'cache'])
+  for (const name of ['config', 'log', 'cache'])
     assert(
       !sourceEntries.includes(name),
       `Portable staging contains unexpected user data: ${name}`,

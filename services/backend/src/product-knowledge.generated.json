@@ -4,7 +4,7 @@
   "sources": [
     {
       "file": "docs/app-updates.md",
-      "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
+      "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
     },
     {
       "file": "docs/connection-settings.md",
@@ -20,7 +20,7 @@
     },
     {
       "file": "docs/maa-compatibility.md",
-      "sha256": "962d21e20a2afe7f4762e1f23e820e1715a20e6295a413fa504a5dbb2c83acfa"
+      "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
     },
     {
       "file": "docs/maa-task-settings.md",
@@ -28,7 +28,7 @@
     },
     {
       "file": "docs/maacore-runtime.md",
-      "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+      "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
     },
     {
       "file": "docs/multi-instance.md",
@@ -36,7 +36,7 @@
     },
     {
       "file": "docs/toolbox-schedules.md",
-      "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+      "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
     },
     {
       "file": "packages/contracts/schemas/rpc.schema.json",
@@ -44,7 +44,7 @@
     },
     {
       "file": "packages/contracts/schemas/runtime.schema.json",
-      "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+      "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
     },
     {
       "file": "packages/contracts/src/tasks.ts",
@@ -76,7 +76,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L29-L42",
-        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
+        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
       }
     },
     {
@@ -103,7 +103,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L51-L77",
-        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
+        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
       }
     },
     {
@@ -130,7 +130,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L5-L28",
-        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
+        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
       }
     },
     {
@@ -157,7 +157,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L86-L89",
-        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
+        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
       }
     },
     {
@@ -182,7 +182,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L1-L4",
-        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
+        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
       }
     },
     {
@@ -196,7 +196,7 @@
         "Windows 离线组件与完整 ZIP",
         "app-updates"
       ],
-      "text": "应用与核心更新 > 平台安装方式 > Windows 离线组件与完整 ZIP\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n### Windows 离线组件与完整 ZIP\n\nv0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。\n\n完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。\n\n固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。随包数据位于 `runtime/bundled-components`；服务取得数据库租约后，在尚未登记活动或待生效组件的数据根验证内容、复制到所选组件根的新 generation，再通过原生校验登记激活。安装器不写业务库，已有组件和自定义组件位置不会被随包旧版本替换。保留随包源数据用于新数据根导入，清理策略尚未提供。",
+      "text": "应用与核心更新 > 平台安装方式 > Windows 离线组件与完整 ZIP\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n### Windows 离线组件与完整 ZIP\n\nv0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。\n\n完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。\n\n固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。当前源码将完整组件直接放入程序同级 `MaaCore/generations/` 与 `MaaResource/generations/`，保存普通版本清单；服务取得数据库租约并完成内容及原生校验后，登记为已下载完成的普通版本。后续更新可复用同版本内容，并遵循普通版本的激活、回滚和清理规则；不再保存新的 `runtime/bundled-components` 副本，旧布局仍可导入。安装器不写业务库或覆盖已有 generation，已有活动组件与自定义组件位置不会被旧版本替换。",
       "data": {
         "category": "documentation",
         "headingPath": [
@@ -204,14 +204,14 @@
           "平台安装方式",
           "Windows 离线组件与完整 ZIP"
         ],
-        "content": "### Windows 离线组件与完整 ZIP\n\nv0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。\n\n完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。\n\n固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。随包数据位于 `runtime/bundled-components`；服务取得数据库租约后，在尚未登记活动或待生效组件的数据根验证内容、复制到所选组件根的新 generation，再通过原生校验登记激活。安装器不写业务库，已有组件和自定义组件位置不会被随包旧版本替换。保留随包源数据用于新数据根导入，清理策略尚未提供。",
+        "content": "### Windows 离线组件与完整 ZIP\n\nv0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。\n\n完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。\n\n固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。当前源码将完整组件直接放入程序同级 `MaaCore/generations/` 与 `MaaResource/generations/`，保存普通版本清单；服务取得数据库租约并完成内容及原生校验后，登记为已下载完成的普通版本。后续更新可复用同版本内容，并遵循普通版本的激活、回滚和清理规则；不再保存新的 `runtime/bundled-components` 副本，旧布局仍可导入。安装器不写业务库或覆盖已有 generation，已有活动组件与自定义组件位置不会被旧版本替换。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L43-L50",
-        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
+        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
       }
     },
     {
@@ -238,7 +238,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L78-L85",
-        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
+        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
       }
     },
     {
@@ -265,7 +265,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L90-L107",
-        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
+        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
       }
     },
     {
@@ -421,7 +421,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L5-L12",
-        "sha256": "962d21e20a2afe7f4762e1f23e820e1715a20e6295a413fa504a5dbb2c83acfa"
+        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
       }
     },
     {
@@ -434,21 +434,21 @@
         "完整替代原版的发布门槛",
         "maa-compatibility"
       ],
-      "text": "原 MAA 功能覆盖与验收 > 完整替代原版的发布门槛\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 完整替代原版的发布门槛\n\n以下项目包含尚未交付或尚未完成真实验收的工作，不能从“登记了 19 类任务”推导为已完成：\n\n| 范围           | 还需完成的验收                                                                                                                                                                                         |\n| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |\n| 所有任务与选项 | 各任务主路径及原版常用选项的 UI、失败反馈、结果解析与真实游戏验证；补齐上述受限消耗选项及自定义流程                                                                                                    |\n| 识别与工具     | 仓库/公招/干员/补货/小游戏已有独立工具与合成验证；仍需六种客户端实测、视频工具与作业真实验收，离线视频不应强制连接设备                                                                                 |\n| 编排与调度     | 独立 Schedule 支持每日定时、普通跳过、可取消强制接管、通知、准备和去重；仍需真实强制关闭游戏/休眠恢复、完整跨配置与完成后系统动作验收。旧 Plan.schedule 不解释为新规则                                 |\n| 连接与平台     | 已实现独立实例配置、同时执行/单独停止和错误隔离；仍需各模拟器真实多开验收、启动模拟器和全部触控/截图模式验证；Windows 原生窗口/PlayCover 等原版平台能力也必须单列方案，不能因为首版只走 ADB 而宣布覆盖 |\n| 展示与数据     | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需跨执行掉落统计及游戏公告等数据展示                                                                                   |\n| 设置与外部服务 | 原版通知/推送、社区账号/收藏/发布及其他公共数据接口、自定义基建文件管理、其他原版设置的覆盖或等价路径；MirrorChyan（Mirror酱）暂不接入，属于当前范围外                                                 |\n| 发行与兼容     | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测                                                                                                 |\n\n其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：",
+      "text": "原 MAA 功能覆盖与验收 > 完整替代原版的发布门槛\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 完整替代原版的发布门槛\n\n以下项目包含尚未交付或尚未完成真实验收的工作，不能从“登记了 19 类任务”推导为已完成：\n\n| 范围           | 还需完成的验收                                                                                                                                                                                              |\n| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| 所有任务与选项 | 各任务主路径及原版常用选项的 UI、失败反馈、结果解析与真实游戏验证；补齐上述受限消耗选项及自定义流程                                                                                                         |\n| 识别与工具     | 仓库/公招/干员/补货/小游戏已有独立工具与合成验证；仍需六种客户端实测、视频工具与作业真实验收，离线视频不应强制连接设备                                                                                      |\n| 编排与调度     | 独立 Schedule 支持每日定时、普通跳过、可取消强制接管、通知、准备和去重；仍需真实强制关闭游戏/休眠恢复、完整跨配置与完成后系统动作验收。旧 Plan.schedule 不解释为新规则                                      |\n| 连接与平台     | 已实现独立实例配置、同时执行/单独停止和错误隔离；仍需各模拟器真实多开验收、启动模拟器和全部触控/截图模式验证；Windows 原生窗口/PlayCover 等原版平台能力也必须单列方案，不能因为首版只走 ADB 而宣布覆盖      |\n| 展示与数据     | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需跨执行掉落统计及游戏公告等数据展示                                                                                        |\n| 设置与外部服务 | 已接入三平台系统通知及分类偏好，实际系统投递待各宿主验收；第三方推送、远控、社区账号/收藏/发布及其他公共数据接口、自定义基建文件管理和其他原版设置仍待覆盖；MirrorChyan（Mirror酱）暂不接入，属于当前范围外 |\n| 发行与兼容     | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测                                                                                                      |\n\n其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：",
       "data": {
         "category": "documentation",
         "headingPath": [
           "原 MAA 功能覆盖与验收",
           "完整替代原版的发布门槛"
         ],
-        "content": "## 完整替代原版的发布门槛\n\n以下项目包含尚未交付或尚未完成真实验收的工作，不能从“登记了 19 类任务”推导为已完成：\n\n| 范围           | 还需完成的验收                                                                                                                                                                                         |\n| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |\n| 所有任务与选项 | 各任务主路径及原版常用选项的 UI、失败反馈、结果解析与真实游戏验证；补齐上述受限消耗选项及自定义流程                                                                                                    |\n| 识别与工具     | 仓库/公招/干员/补货/小游戏已有独立工具与合成验证；仍需六种客户端实测、视频工具与作业真实验收，离线视频不应强制连接设备                                                                                 |\n| 编排与调度     | 独立 Schedule 支持每日定时、普通跳过、可取消强制接管、通知、准备和去重；仍需真实强制关闭游戏/休眠恢复、完整跨配置与完成后系统动作验收。旧 Plan.schedule 不解释为新规则                                 |\n| 连接与平台     | 已实现独立实例配置、同时执行/单独停止和错误隔离；仍需各模拟器真实多开验收、启动模拟器和全部触控/截图模式验证；Windows 原生窗口/PlayCover 等原版平台能力也必须单列方案，不能因为首版只走 ADB 而宣布覆盖 |\n| 展示与数据     | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需跨执行掉落统计及游戏公告等数据展示                                                                                   |\n| 设置与外部服务 | 原版通知/推送、社区账号/收藏/发布及其他公共数据接口、自定义基建文件管理、其他原版设置的覆盖或等价路径；MirrorChyan（Mirror酱）暂不接入，属于当前范围外                                                 |\n| 发行与兼容     | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测                                                                                                 |\n\n其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：",
+        "content": "## 完整替代原版的发布门槛\n\n以下项目包含尚未交付或尚未完成真实验收的工作，不能从“登记了 19 类任务”推导为已完成：\n\n| 范围           | 还需完成的验收                                                                                                                                                                                              |\n| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| 所有任务与选项 | 各任务主路径及原版常用选项的 UI、失败反馈、结果解析与真实游戏验证；补齐上述受限消耗选项及自定义流程                                                                                                         |\n| 识别与工具     | 仓库/公招/干员/补货/小游戏已有独立工具与合成验证；仍需六种客户端实测、视频工具与作业真实验收，离线视频不应强制连接设备                                                                                      |\n| 编排与调度     | 独立 Schedule 支持每日定时、普通跳过、可取消强制接管、通知、准备和去重；仍需真实强制关闭游戏/休眠恢复、完整跨配置与完成后系统动作验收。旧 Plan.schedule 不解释为新规则                                      |\n| 连接与平台     | 已实现独立实例配置、同时执行/单独停止和错误隔离；仍需各模拟器真实多开验收、启动模拟器和全部触控/截图模式验证；Windows 原生窗口/PlayCover 等原版平台能力也必须单列方案，不能因为首版只走 ADB 而宣布覆盖      |\n| 展示与数据     | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需跨执行掉落统计及游戏公告等数据展示                                                                                        |\n| 设置与外部服务 | 已接入三平台系统通知及分类偏好，实际系统投递待各宿主验收；第三方推送、远控、社区账号/收藏/发布及其他公共数据接口、自定义基建文件管理和其他原版设置仍待覆盖；MirrorChyan（Mirror酱）暂不接入，属于当前范围外 |\n| 发行与兼容     | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测                                                                                                      |\n\n其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L55-L70",
-        "sha256": "962d21e20a2afe7f4762e1f23e820e1715a20e6295a413fa504a5dbb2c83acfa"
+        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
       }
     },
     {
@@ -475,7 +475,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L71-L77",
-        "sha256": "962d21e20a2afe7f4762e1f23e820e1715a20e6295a413fa504a5dbb2c83acfa"
+        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
       }
     },
     {
@@ -502,7 +502,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L13-L28",
-        "sha256": "962d21e20a2afe7f4762e1f23e820e1715a20e6295a413fa504a5dbb2c83acfa"
+        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
       }
     },
     {
@@ -529,7 +529,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L29-L41",
-        "sha256": "962d21e20a2afe7f4762e1f23e820e1715a20e6295a413fa504a5dbb2c83acfa"
+        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
       }
     },
     {
@@ -556,7 +556,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L42-L54",
-        "sha256": "962d21e20a2afe7f4762e1f23e820e1715a20e6295a413fa504a5dbb2c83acfa"
+        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
       }
     },
     {
@@ -581,7 +581,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L1-L4",
-        "sha256": "962d21e20a2afe7f4762e1f23e820e1715a20e6295a413fa504a5dbb2c83acfa"
+        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
       }
     },
     {
@@ -766,7 +766,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L99-L108",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -793,7 +793,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L55-L70",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -820,7 +820,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L71-L74",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -847,7 +847,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L7-L26",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -860,21 +860,21 @@
         "Windows 随附离线组件",
         "maacore-runtime"
       ],
-      "text": "MaaCore 运行文件的选择性安装 > Windows 随附离线组件\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## Windows 随附离线组件\n\nv0.1.3-alpha1 的 Windows EXE 包含 MaaCore（原生依赖与完整基础资源）和 MaaResource（由完整基础资源合并官方覆盖包）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用更新页下载。完整 ZIP 同时包含两者，须完全解压到可写目录后运行，系统仍需 WebView2 Runtime。\n\n构建来源固定在 [windows-components.lock.json](../tools/windows-components.lock.json)：MaaCore v6.20.1 与 MaaResource 提交 `6d580cec2f1993557f21509aeadb5793cd3160dc`。构建工具先核对官方归档大小和 SHA-256，再复用生产提取、资源重基线与 C++ 加载校验，保留上游许可并记录展开文件摘要；“完整”指核心所需依赖与完整游戏资源，不包含上游 GUI 或 .NET/WPF。\n\n随附核心许可从 v6.20.1 对应源码提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f` 的 `LICENSE` / `LICENSE.spdx` 补齐，同时保留其固定 MaaUtils 子模块的 LGPLv3 许可与 GNU GPLv3 全文；原生依赖声明取自固定的 MaaDeps v2.14.1 官方开发归档，各来源均绑定大小和 SHA-256。工具仅抽取依赖许可通知，不将开发归档的库或可执行文件加入载荷；核心和完整资源各自的 `licenses/sources.json` 记录来源，资源载荷同时保留 MaaResource 原始许可。这些文件纳入展开内容摘要。\n\n安装器只将载荷写入 `runtime/bundled-components/`，不修改业务数据库。服务取得数据根租约后，在尚未登记活动或待生效组件的数据根验证随附文件，复制到所选组件根的新 generation，原生加载验证通过后登记激活。已有组件不被替换；应用内升级跳过安装器的组件选项。随附源数据会保留供新数据根导入，其自动清理暂未实现。ZIP 的配置默认仍位于程序同级 `config/`，应用升级须手动下载新 ZIP，详见[应用更新](app-updates.md#windows-离线组件与完整-zip)。",
+      "text": "MaaCore 运行文件的选择性安装 > Windows 随附离线组件\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## Windows 随附离线组件\n\nv0.1.3-alpha1 的 Windows EXE 包含 MaaCore（原生依赖与完整基础资源）和 MaaResource（由完整基础资源合并官方覆盖包）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用更新页下载。完整 ZIP 同时包含两者，须完全解压到可写目录后运行，系统仍需 WebView2 Runtime。\n\n构建来源固定在 [windows-components.lock.json](../tools/windows-components.lock.json)：MaaCore v6.20.1 与 MaaResource 提交 `6d580cec2f1993557f21509aeadb5793cd3160dc`。构建工具先核对官方归档大小和 SHA-256，再复用生产提取、资源重基线与 C++ 加载校验，保留上游许可并记录展开文件摘要；“完整”指核心所需依赖与完整游戏资源，不包含上游 GUI 或 .NET/WPF。\n\n随附核心许可从 v6.20.1 对应源码提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f` 的 `LICENSE` / `LICENSE.spdx` 补齐，同时保留其固定 MaaUtils 子模块的 LGPLv3 许可与 GNU GPLv3 全文；原生依赖声明取自固定的 MaaDeps v2.14.1 官方开发归档，各来源均绑定大小和 SHA-256。工具仅抽取依赖许可通知，不将开发归档的库或可执行文件加入载荷；核心和完整资源各自的 `licenses/sources.json` 记录来源，资源载荷同时保留 MaaResource 原始许可。这些文件纳入展开内容摘要。\n\n当前源码的安装器和完整 ZIP 直接将组件放入程序同级 `MaaCore/generations/`、`MaaResource/generations/`，每个版本保存普通快照清单，不再保留一份 `runtime/bundled-components/` 载荷。安装器不修改业务数据库，也不覆盖已经存在的同名 generation。服务取得数据根租约后，完整验证内容及原生加载，再把这些版本登记为已下载完成的普通版本；已有活动或待生效组件继续保留。后续自动更新、同版本复用、空闲激活、回滚和版本保留使用同一套规则，自定义组件目录仍按设置生效。旧安装包的 `runtime/bundled-components/` 保留兼容导入。应用内升级跳过安装器的组件选项。ZIP 的配置默认仍位于程序同级 `config/`，应用升级须手动下载新 ZIP，详见[应用更新](app-updates.md#windows-离线组件与完整-zip)。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "MaaCore 运行文件的选择性安装",
           "Windows 随附离线组件"
         ],
-        "content": "## Windows 随附离线组件\n\nv0.1.3-alpha1 的 Windows EXE 包含 MaaCore（原生依赖与完整基础资源）和 MaaResource（由完整基础资源合并官方覆盖包）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用更新页下载。完整 ZIP 同时包含两者，须完全解压到可写目录后运行，系统仍需 WebView2 Runtime。\n\n构建来源固定在 [windows-components.lock.json](../tools/windows-components.lock.json)：MaaCore v6.20.1 与 MaaResource 提交 `6d580cec2f1993557f21509aeadb5793cd3160dc`。构建工具先核对官方归档大小和 SHA-256，再复用生产提取、资源重基线与 C++ 加载校验，保留上游许可并记录展开文件摘要；“完整”指核心所需依赖与完整游戏资源，不包含上游 GUI 或 .NET/WPF。\n\n随附核心许可从 v6.20.1 对应源码提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f` 的 `LICENSE` / `LICENSE.spdx` 补齐，同时保留其固定 MaaUtils 子模块的 LGPLv3 许可与 GNU GPLv3 全文；原生依赖声明取自固定的 MaaDeps v2.14.1 官方开发归档，各来源均绑定大小和 SHA-256。工具仅抽取依赖许可通知，不将开发归档的库或可执行文件加入载荷；核心和完整资源各自的 `licenses/sources.json` 记录来源，资源载荷同时保留 MaaResource 原始许可。这些文件纳入展开内容摘要。\n\n安装器只将载荷写入 `runtime/bundled-components/`，不修改业务数据库。服务取得数据根租约后，在尚未登记活动或待生效组件的数据根验证随附文件，复制到所选组件根的新 generation，原生加载验证通过后登记激活。已有组件不被替换；应用内升级跳过安装器的组件选项。随附源数据会保留供新数据根导入，其自动清理暂未实现。ZIP 的配置默认仍位于程序同级 `config/`，应用升级须手动下载新 ZIP，详见[应用更新](app-updates.md#windows-离线组件与完整-zip)。",
+        "content": "## Windows 随附离线组件\n\nv0.1.3-alpha1 的 Windows EXE 包含 MaaCore（原生依赖与完整基础资源）和 MaaResource（由完整基础资源合并官方覆盖包）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用更新页下载。完整 ZIP 同时包含两者，须完全解压到可写目录后运行，系统仍需 WebView2 Runtime。\n\n构建来源固定在 [windows-components.lock.json](../tools/windows-components.lock.json)：MaaCore v6.20.1 与 MaaResource 提交 `6d580cec2f1993557f21509aeadb5793cd3160dc`。构建工具先核对官方归档大小和 SHA-256，再复用生产提取、资源重基线与 C++ 加载校验，保留上游许可并记录展开文件摘要；“完整”指核心所需依赖与完整游戏资源，不包含上游 GUI 或 .NET/WPF。\n\n随附核心许可从 v6.20.1 对应源码提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f` 的 `LICENSE` / `LICENSE.spdx` 补齐，同时保留其固定 MaaUtils 子模块的 LGPLv3 许可与 GNU GPLv3 全文；原生依赖声明取自固定的 MaaDeps v2.14.1 官方开发归档，各来源均绑定大小和 SHA-256。工具仅抽取依赖许可通知，不将开发归档的库或可执行文件加入载荷；核心和完整资源各自的 `licenses/sources.json` 记录来源，资源载荷同时保留 MaaResource 原始许可。这些文件纳入展开内容摘要。\n\n当前源码的安装器和完整 ZIP 直接将组件放入程序同级 `MaaCore/generations/`、`MaaResource/generations/`，每个版本保存普通快照清单，不再保留一份 `runtime/bundled-components/` 载荷。安装器不修改业务数据库，也不覆盖已经存在的同名 generation。服务取得数据根租约后，完整验证内容及原生加载，再把这些版本登记为已下载完成的普通版本；已有活动或待生效组件继续保留。后续自动更新、同版本复用、空闲激活、回滚和版本保留使用同一套规则，自定义组件目录仍按设置生效。旧安装包的 `runtime/bundled-components/` 保留兼容导入。应用内升级跳过安装器的组件选项。ZIP 的配置默认仍位于程序同级 `config/`，应用升级须手动下载新 ZIP，详见[应用更新](app-updates.md#windows-离线组件与完整-zip)。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L27-L36",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -901,7 +901,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L93-L98",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -930,7 +930,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L75-L92",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -957,7 +957,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L117-L122",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -984,7 +984,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L37-L54",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -1011,7 +1011,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L109-L116",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -1036,7 +1036,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L1-L6",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -1063,7 +1063,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L123-L132",
-        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
+        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
       }
     },
     {
@@ -1196,7 +1196,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L45-L52",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     },
     {
@@ -1221,7 +1221,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L1-L4",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     },
     {
@@ -1248,7 +1248,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L5-L29",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     },
     {
@@ -1261,21 +1261,21 @@
         "每日定时",
         "toolbox-schedules"
       ],
-      "text": "工具箱与定时计划 > 每日定时\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 每日定时\n\n打开已保存任务表的「定时计划」页签，选择设备、时间并添加。支持八组以上，可继续增加；「查看全部定时」汇总其他任务表的规则。任务表绑定设备时，定时必须选择同一设备。每行显示下一次触发和最近结果，可修改时间、任务表、设备、启用状态或删除。\n\n定时采用电脑本地时间，每天执行一次。仅本次启用/跳过是会话内覆盖，消费后恢复保存设置，应用重启后清除。旧 `Plan.schedule` 字符串继续保留兼容，不会转换成新规则。\n\n- 到点读取已保存任务表，固定启用任务的执行快照；之后编辑影响下一次执行。\n- 普通定时遇到设备占用时记录跳过，不排队。\n- 全局「强制定时启动」启用后提供 10 秒取消倒计时；可选择提前显示窗口。倒计时结束后停止目标设备的任务表或工具，等核心与异步调用结束，先关闭当前客户端游戏，再执行目标任务表。停止的操作不恢复，启动游戏由目标表内「开始唤醒」负责。\n- 提前两分钟准备目标连接，不重启 Maa Verge，不提前中断设备。\n- 通知默认提前五分钟，可选 1–1439 分钟；应用内提示和桌面系统通知同时发出。\n- 同设备同刻按列表顺序执行第一条，其他记录冲突跳过；不同设备独立执行。\n- 退出、休眠、时钟跳变错过的分钟不补跑。触发键及运行快照在原生操作前持久化，重启、重复轮询和时钟回拨不重复执行同一每日触发。\n- 删除任务表、设备或关联连接配置时，停用对应规则并显示原因；不会自动改用其他目标。",
+      "text": "工具箱与定时计划 > 每日定时\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 每日定时\n\n打开已保存任务表的「定时计划」页签，选择设备、时间并添加。支持八组以上，可继续增加；「查看全部定时」汇总其他任务表的规则。任务表绑定设备时，定时必须选择同一设备。每行显示下一次触发和最近结果，可修改时间、任务表、设备、启用状态或删除。\n\n定时采用电脑本地时间，每天执行一次。仅本次启用/跳过是会话内覆盖，消费后恢复保存设置，应用重启后清除。旧 `Plan.schedule` 字符串继续保留兼容，不会转换成新规则。\n\n- 到点读取已保存任务表，固定启用任务的执行快照；之后编辑影响下一次执行。\n- 普通定时遇到设备占用时记录跳过，不排队。\n- 全局「强制定时启动」启用后提供 10 秒取消倒计时；可选择提前显示窗口。倒计时结束后停止目标设备的任务表或工具，等核心与异步调用结束，先关闭当前客户端游戏，再执行目标任务表。停止的操作不恢复，启动游戏由目标表内「开始唤醒」负责。\n- 提前两分钟准备目标连接，不重启 Maa Verge，不提前中断设备。\n- 通知默认提前五分钟，可选 1–1439 分钟；应用内提示保留，桌面系统通知还受“设置 → 通知与远控”的总开关和定时分类开关控制，详见[系统通知](notifications.md)。\n- 同设备同刻按列表顺序执行第一条，其他记录冲突跳过；不同设备独立执行。\n- 退出、休眠、时钟跳变错过的分钟不补跑。触发键及运行快照在原生操作前持久化，重启、重复轮询和时钟回拨不重复执行同一每日触发。\n- 删除任务表、设备或关联连接配置时，停用对应规则并显示原因；不会自动改用其他目标。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "工具箱与定时计划",
           "每日定时"
         ],
-        "content": "## 每日定时\n\n打开已保存任务表的「定时计划」页签，选择设备、时间并添加。支持八组以上，可继续增加；「查看全部定时」汇总其他任务表的规则。任务表绑定设备时，定时必须选择同一设备。每行显示下一次触发和最近结果，可修改时间、任务表、设备、启用状态或删除。\n\n定时采用电脑本地时间，每天执行一次。仅本次启用/跳过是会话内覆盖，消费后恢复保存设置，应用重启后清除。旧 `Plan.schedule` 字符串继续保留兼容，不会转换成新规则。\n\n- 到点读取已保存任务表，固定启用任务的执行快照；之后编辑影响下一次执行。\n- 普通定时遇到设备占用时记录跳过，不排队。\n- 全局「强制定时启动」启用后提供 10 秒取消倒计时；可选择提前显示窗口。倒计时结束后停止目标设备的任务表或工具，等核心与异步调用结束，先关闭当前客户端游戏，再执行目标任务表。停止的操作不恢复，启动游戏由目标表内「开始唤醒」负责。\n- 提前两分钟准备目标连接，不重启 Maa Verge，不提前中断设备。\n- 通知默认提前五分钟，可选 1–1439 分钟；应用内提示和桌面系统通知同时发出。\n- 同设备同刻按列表顺序执行第一条，其他记录冲突跳过；不同设备独立执行。\n- 退出、休眠、时钟跳变错过的分钟不补跑。触发键及运行快照在原生操作前持久化，重启、重复轮询和时钟回拨不重复执行同一每日触发。\n- 删除任务表、设备或关联连接配置时，停用对应规则并显示原因；不会自动改用其他目标。",
+        "content": "## 每日定时\n\n打开已保存任务表的「定时计划」页签，选择设备、时间并添加。支持八组以上，可继续增加；「查看全部定时」汇总其他任务表的规则。任务表绑定设备时，定时必须选择同一设备。每行显示下一次触发和最近结果，可修改时间、任务表、设备、启用状态或删除。\n\n定时采用电脑本地时间，每天执行一次。仅本次启用/跳过是会话内覆盖，消费后恢复保存设置，应用重启后清除。旧 `Plan.schedule` 字符串继续保留兼容，不会转换成新规则。\n\n- 到点读取已保存任务表，固定启用任务的执行快照；之后编辑影响下一次执行。\n- 普通定时遇到设备占用时记录跳过，不排队。\n- 全局「强制定时启动」启用后提供 10 秒取消倒计时；可选择提前显示窗口。倒计时结束后停止目标设备的任务表或工具，等核心与异步调用结束，先关闭当前客户端游戏，再执行目标任务表。停止的操作不恢复，启动游戏由目标表内「开始唤醒」负责。\n- 提前两分钟准备目标连接，不重启 Maa Verge，不提前中断设备。\n- 通知默认提前五分钟，可选 1–1439 分钟；应用内提示保留，桌面系统通知还受“设置 → 通知与远控”的总开关和定时分类开关控制，详见[系统通知](notifications.md)。\n- 同设备同刻按列表顺序执行第一条，其他记录冲突跳过；不同设备独立执行。\n- 退出、休眠、时钟跳变错过的分钟不补跑。触发键及运行快照在原生操作前持久化，重启、重复轮询和时钟回拨不重复执行同一每日触发。\n- 删除任务表、设备或关联连接配置时，停用对应规则并显示原因；不会自动改用其他目标。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L30-L44",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     },
     {
@@ -1621,6 +1621,10 @@
           },
           {
             "file": "packages/contracts/schemas/runtime.schema.json",
+            "pointer": "#/$defs/NotificationSettings"
+          },
+          {
+            "file": "packages/contracts/schemas/runtime.schema.json",
             "pointer": "#/$defs/Plan"
           },
           {
@@ -1759,6 +1763,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/ModelSettings"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/NotificationSettings"
         },
         {
           "predicate": "defined-by",
@@ -5809,6 +5818,10 @@
           },
           {
             "file": "packages/contracts/schemas/runtime.schema.json",
+            "pointer": "#/$defs/NotificationSettings"
+          },
+          {
+            "file": "packages/contracts/schemas/runtime.schema.json",
             "pointer": "#/$defs/SchedulerSettings"
           },
           {
@@ -5878,6 +5891,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/ModelSettings"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/NotificationSettings"
         },
         {
           "predicate": "defined-by",
@@ -17024,7 +17042,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17080,7 +17098,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Budgets",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17146,7 +17164,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CaptureSettings",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17188,7 +17206,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ComponentPaths",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17282,7 +17300,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ConnectionSettings",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17359,7 +17377,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CopilotRunEntry",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17401,7 +17419,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CopilotStorage",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17505,7 +17523,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Device",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17578,7 +17596,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/DeviceConnectionProfile",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17624,7 +17642,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/DownloadProxySettings",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17682,7 +17700,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Event",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17733,7 +17751,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/InfrastructureEstimateProfile",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17800,7 +17818,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/InfrastructureLine",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17850,7 +17868,63 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ModelSettings",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/runtime.schema.json#/$defs/NotificationSettings",
+      "kind": "document",
+      "id": "packages/contracts/schemas/runtime.schema.json#/$defs/NotificationSettings",
+      "name": "接口定义 NotificationSettings",
+      "aliases": [
+        "NotificationSettings",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "NotificationSettings\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"enabled\":{\"type\":\"boolean\",\"default\":true},\"runResults\":{\"type\":\"boolean\",\"default\":true},\"deviceErrors\":{\"type\":\"boolean\",\"default\":true},\"updates\":{\"type\":\"boolean\",\"default\":true},\"schedules\":{\"type\":\"boolean\",\"default\":true}},\"required\":[\"enabled\",\"runResults\",\"deviceErrors\",\"updates\",\"schedules\"]}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "runResults": {
+              "type": "boolean",
+              "default": true
+            },
+            "deviceErrors": {
+              "type": "boolean",
+              "default": true
+            },
+            "updates": {
+              "type": "boolean",
+              "default": true
+            },
+            "schedules": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "required": [
+            "enabled",
+            "runResults",
+            "deviceErrors",
+            "updates",
+            "schedules"
+          ]
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/runtime.schema.json",
+        "pointer": "#/$defs/NotificationSettings",
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -17979,7 +18053,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Plan",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18037,7 +18111,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ResourceActivityVersion",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18184,7 +18258,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Run",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18246,7 +18320,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunArtifact",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18303,7 +18377,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunDrop",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18376,7 +18450,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunInfrastructure",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18488,7 +18562,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunTask",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18541,7 +18615,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/SchedulerSettings",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18554,7 +18628,7 @@
         "JSON Schema",
         "参数约束"
       ],
-      "text": "Settings\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"additionalProperties\":false,\"properties\":{\"componentPaths\":{\"$ref\":\"#/$defs/ComponentPaths\"},\"downloadProxy\":{\"$ref\":\"#/$defs/DownloadProxySettings\"},\"infrastructureEstimates\":{\"type\":\"array\",\"maxItems\":100,\"items\":{\"$ref\":\"#/$defs/InfrastructureEstimateProfile\"}},\"capture\":{\"$ref\":\"#/$defs/CaptureSettings\"},\"connection\":{\"$ref\":\"#/$defs/ConnectionSettings\"},\"deviceProfiles\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"$ref\":\"#/$defs/DeviceConnectionProfile\"}},\"logRetentionDays\":{\"type\":\"integer\",\"enum\":[0,7,14,30],\"default\":7,\"description\":\"Log retention in days; zero disables automatic cleanup.\"},\"autoConnect\":{\"default\":true,\"title\":\"Autoconnect\",\"type\":\"boolean\"},\"autoUpdateApp\":{\"type\":\"boolean\",\"default\":true,\"description\":\"启动时联网检查应用更新；下载由用户确认，已下载并验证的更新在下次启动时自动安装。\"},\"appUpdateChannel\":{\"type\":\"string\",\"enum\":[\"stable\",\"preview\"],\"default\":\"preview\"},\"coreUpdateChannel\":{\"type\":\"string\",\"enum\":[\"stable\",\"preview\"],\"default\":\"stable\"},\"autoUpdateCore\":{\"default\":true,\"title\":\"Autoupdatecore\",\"type\":\"boolean\"},\"autoUpdateResource\":{\"default\":true,\"title\":\"Autoupdateresource\",\"type\":\"boolean\"},\"minimizeToTray\":{\"default\":true,\"title\":\"Minimizetotray\",\"type\":\"boolean\"},\"rememberCloseAction\":{\"type\":\"boolean\",\"default\":false,\"description\":\"记住 minimizeToTray 指定的关闭方式；缺失或 false 时每次关闭窗口均询问。\"},\"theme\":{\"default\":\"system\",\"enum\":[\"dark\",\"light\",\"system\"],\"title\":\"Theme\",\"type\":\"string\"},\"budgets\":{\"$ref\":\"#/$defs/Budgets\"},\"model\":{\"$ref\":\"#/$defs/ModelSettings\"},\"scheduler\":{\"$ref\":\"#/$defs/SchedulerSettings\"},\"copilotStorage\":{\"$ref\":\"#/$defs/CopilotStorage\"}},\"required\":[\"autoConnect\",\"autoUpdateCore\",\"autoUpdateResource\",\"minimizeToTray\",\"theme\",\"budgets\",\"model\"],\"title\":\"Settings\",\"type\":\"object\"}",
+      "text": "Settings\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"additionalProperties\":false,\"properties\":{\"componentPaths\":{\"$ref\":\"#/$defs/ComponentPaths\"},\"downloadProxy\":{\"$ref\":\"#/$defs/DownloadProxySettings\"},\"notifications\":{\"$ref\":\"#/$defs/NotificationSettings\"},\"infrastructureEstimates\":{\"type\":\"array\",\"maxItems\":100,\"items\":{\"$ref\":\"#/$defs/InfrastructureEstimateProfile\"}},\"capture\":{\"$ref\":\"#/$defs/CaptureSettings\"},\"connection\":{\"$ref\":\"#/$defs/ConnectionSettings\"},\"deviceProfiles\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"$ref\":\"#/$defs/DeviceConnectionProfile\"}},\"logRetentionDays\":{\"type\":\"integer\",\"enum\":[0,7,14,30],\"default\":7,\"description\":\"Log retention in days; zero disables automatic cleanup.\"},\"autoConnect\":{\"default\":true,\"title\":\"Autoconnect\",\"type\":\"boolean\"},\"autoUpdateApp\":{\"type\":\"boolean\",\"default\":true,\"description\":\"启动时联网检查应用更新；下载由用户确认，已下载并验证的更新在下次启动时自动安装。\"},\"appUpdateChannel\":{\"type\":\"string\",\"enum\":[\"stable\",\"preview\"],\"default\":\"preview\"},\"coreUpdateChannel\":{\"type\":\"string\",\"enum\":[\"stable\",\"preview\"],\"default\":\"stable\"},\"autoUpdateCore\":{\"default\":true,\"title\":\"Autoupdatecore\",\"type\":\"boolean\"},\"autoUpdateResource\":{\"default\":true,\"title\":\"Autoupdateresource\",\"type\":\"boolean\"},\"minimizeToTray\":{\"default\":true,\"title\":\"Minimizetotray\",\"type\":\"boolean\"},\"rememberCloseAction\":{\"type\":\"boolean\",\"default\":false,\"description\":\"记住 minimizeToTray 指定的关闭方式；缺失或 false 时每次关闭窗口均询问。\"},\"theme\":{\"default\":\"system\",\"enum\":[\"dark\",\"light\",\"system\"],\"title\":\"Theme\",\"type\":\"string\"},\"budgets\":{\"$ref\":\"#/$defs/Budgets\"},\"model\":{\"$ref\":\"#/$defs/ModelSettings\"},\"scheduler\":{\"$ref\":\"#/$defs/SchedulerSettings\"},\"copilotStorage\":{\"$ref\":\"#/$defs/CopilotStorage\"}},\"required\":[\"autoConnect\",\"autoUpdateCore\",\"autoUpdateResource\",\"minimizeToTray\",\"theme\",\"budgets\",\"model\"],\"title\":\"Settings\",\"type\":\"object\"}",
       "data": {
         "category": "schema",
         "schema": {
@@ -18565,6 +18639,9 @@
             },
             "downloadProxy": {
               "$ref": "#/$defs/DownloadProxySettings"
+            },
+            "notifications": {
+              "$ref": "#/$defs/NotificationSettings"
             },
             "infrastructureEstimates": {
               "type": "array",
@@ -18730,13 +18807,18 @@
         {
           "predicate": "references",
           "targetKind": "document",
+          "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/NotificationSettings"
+        },
+        {
+          "predicate": "references",
+          "targetKind": "document",
           "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/SchedulerSettings"
         }
       ],
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Settings",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18807,7 +18889,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Task",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -18905,7 +18987,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ToolJobSummary",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -19056,7 +19138,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/UpdateChannel",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -19103,7 +19185,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/UserDataSync",
-        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
+        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
       }
     },
     {
@@ -19934,7 +20016,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L17-L17",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     },
     {
@@ -19973,7 +20055,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L13-L13",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     },
     {
@@ -20012,7 +20094,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L18-L18",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     },
     {
@@ -20051,7 +20133,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L16-L16",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     },
     {
@@ -20090,7 +20172,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L14-L14",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     },
     {
@@ -20129,9 +20211,9 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L15-L15",
-        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
+        "sha256": "06d3ea28e23fa3f6d8d5e2bbff4aa67b1337d917fa682db425619f652b8acc86"
       }
     }
   ],
-  "digest": "af688e8653aa830fa985de72a77c1f236ef32c4bf52f069eff4140475a95f501"
+  "digest": "8e69a3bd7165d1948a58f8e9a078629d0746ead16ec6ee0994faff4bc7971e7a"
 }

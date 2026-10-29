@@ -32,7 +32,7 @@ v0.1.3-alpha1 的 Windows EXE 包含 MaaCore（原生依赖与完整基础资源
 
 随附核心许可从 v6.20.1 对应源码提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f` 的 `LICENSE` / `LICENSE.spdx` 补齐，同时保留其固定 MaaUtils 子模块的 LGPLv3 许可与 GNU GPLv3 全文；原生依赖声明取自固定的 MaaDeps v2.14.1 官方开发归档，各来源均绑定大小和 SHA-256。工具仅抽取依赖许可通知，不将开发归档的库或可执行文件加入载荷；核心和完整资源各自的 `licenses/sources.json` 记录来源，资源载荷同时保留 MaaResource 原始许可。这些文件纳入展开内容摘要。
 
-安装器只将载荷写入 `runtime/bundled-components/`，不修改业务数据库。服务取得数据根租约后，在尚未登记活动或待生效组件的数据根验证随附文件，复制到所选组件根的新 generation，原生加载验证通过后登记激活。已有组件不被替换；应用内升级跳过安装器的组件选项。随附源数据会保留供新数据根导入，其自动清理暂未实现。ZIP 的配置默认仍位于程序同级 `config/`，应用升级须手动下载新 ZIP，详见[应用更新](app-updates.md#windows-离线组件与完整-zip)。
+当前源码的安装器和完整 ZIP 直接将组件放入程序同级 `MaaCore/generations/`、`MaaResource/generations/`，每个版本保存普通快照清单，不再保留一份 `runtime/bundled-components/` 载荷。安装器不修改业务数据库，也不覆盖已经存在的同名 generation。服务取得数据根租约后，完整验证内容及原生加载，再把这些版本登记为已下载完成的普通版本；已有活动或待生效组件继续保留。后续自动更新、同版本复用、空闲激活、回滚和版本保留使用同一套规则，自定义组件目录仍按设置生效。旧安装包的 `runtime/bundled-components/` 保留兼容导入。应用内升级跳过安装器的组件选项。ZIP 的配置默认仍位于程序同级 `config/`，应用升级须手动下载新 ZIP，详见[应用更新](app-updates.md#windows-离线组件与完整-zip)。
 
 ## 后台下载与断点续传
 

@@ -22,6 +22,8 @@ const contractTests = [
   'packages/contracts/test/copilot-categories.test.mjs',
   'packages/contracts/test/external-links.test.mjs',
   'packages/contracts/test/error-display.test.mjs',
+  'packages/contracts/test/desktop-notifications.test.mjs',
+  'packages/contracts/test/configuration.test.mjs',
 ];
 // Packaging fixtures exercise host tools, so each one runs on its own platform.
 const platformTests = {

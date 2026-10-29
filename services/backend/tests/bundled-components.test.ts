@@ -7,6 +7,7 @@ import {
   readdir,
   realpath,
   rm,
+  rename,
   symlink,
   writeFile,
 } from 'node:fs/promises';
@@ -118,6 +119,155 @@ async function fixture(options: UpdateOptions = {}, busy = () => false) {
     validations,
     network: () => network,
   };
+}
+
+async function installGenerations(f: Awaited<ReturnType<typeof fixture>>) {
+  const result: Record<string, string> = {};
+  for (const channel of ['core', 'resource'] as const) {
+    const component = f.manifest[channel]!;
+    const generation = path.join(
+      f.service.directories()[channel],
+      'generations',
+      `${channel}-${component.installedHash.slice(0, 32)}`,
+    );
+    await mkdir(path.dirname(generation), { recursive: true });
+    await rename(path.join(f.directory, channel), generation);
+    await writeFile(
+      path.join(generation, 'manifest.json'),
+      JSON.stringify({
+        version: component.version,
+        ...('coreVersion' in component ? { coreVersion: component.coreVersion } : {}),
+        ...(await snapshotIntegrity(generation)),
+        validatedAt: new Date().toISOString(),
+      }),
+    );
+    result[channel] = generation;
+  }
+  await rm(f.directory, { recursive: true });
+  return result;
+}
+
+test('installer generations are adopted in place as ordinary downloaded snapshots without duplicate payloads', async () => {
+  let downloads = 0;
+  const f = await fixture({
+    source: {
+      check(channel) {
+        return { version: channel === 'core' ? 'v6.20.1' : 'a'.repeat(40) };
+      },
+      download() {
+        downloads++;
+        throw new Error('completed generations must not be downloaded');
+      },
+    },
+  });
+  const installed = await installGenerations(f);
+  const installedManifests = await Promise.all(
+    ['core', 'resource'].map((channel) =>
+      readFile(path.join(installed[channel]!, 'manifest.json'), 'utf8'),
+    ),
+  );
+  await f.service.bootstrapBundled(f.directory);
+  const original = f.store.get('active', 'combo');
+  expect(original.core.path).toBe(installed.core);
+  expect(original.resource.path).toBe(installed.resource);
+  for (const channel of ['core', 'resource'] as const) {
+    expect(original[channel].source).toBeUndefined();
+    expect(original[channel].directory).toBeUndefined();
+    expect(await readdir(path.join(f.service.directories()[channel], 'generations'))).toEqual([
+      path.basename(installed[channel]!),
+    ]);
+    expect((await f.service.check(channel)).status).toBe('idle');
+    await f.service.prepare(channel);
+  }
+  expect(downloads).toBe(0);
+  expect(
+    await Promise.all(
+      ['core', 'resource'].map((channel) =>
+        readFile(path.join(installed[channel]!, 'manifest.json'), 'utf8'),
+      ),
+    ),
+  ).toEqual(installedManifests);
+  expect(f.store.get('active', 'combo')).toEqual(original);
+  await f.service.rollback('resource');
+  expect(f.store.get('active', 'combo').resource.path).toBe(installed.core);
+  await f.service.check('resource');
+  expect((await f.service.prepare('resource')).status).toBe('staged');
+  expect(f.store.get('staged', 'resource').path).toBe(installed.resource);
+  await f.service.activate('resource');
+  expect(f.store.get('active', 'combo').resource.path).toBe(installed.resource);
+  expect(downloads).toBe(0);
+});
+
+test('a completed core generation is reused after rollback without replacing its files', async () => {
+  let downloads = 0;
+  const f = await fixture({
+    source: {
+      check() {
+        return { version: 'v6.20.2' };
+      },
+      download() {
+        downloads++;
+        throw new Error('completed core must not be downloaded');
+      },
+    },
+  });
+  const installed = await installGenerations(f);
+  await f.service.bootstrapBundled(f.directory);
+  const next = path.join(f.service.directories().core, 'generations', 'core-' + 'c'.repeat(32));
+  await fs.cp(installed.core!, next, { recursive: true });
+  const integrity = await snapshotIntegrity(next);
+  await writeFile(
+    path.join(next, 'manifest.json'),
+    JSON.stringify({ version: 'v6.20.2', ...integrity }),
+  );
+  await f.service.check('core');
+  await f.service.prepare('core');
+  expect(f.store.get('staged', 'core').path).toBe(next);
+  await f.service.activate('core');
+  await f.service.rollback('core');
+  expect(f.store.get('active', 'combo').core.path).toBe(installed.core);
+  await f.service.check('core');
+  await f.service.prepare('core');
+  expect(f.store.get('staged', 'core').path).toBe(next);
+  expect((await snapshotIntegrity(next)).installedHash).toBe(integrity.installedHash);
+  expect(downloads).toBe(0);
+});
+
+for (const corruption of ['manifest', 'payload'] as const) {
+  test(`a damaged completed ${corruption} falls back to normal download and preserves active files`, async () => {
+    let downloads = 0;
+    const f = await fixture({
+      source: {
+        check() {
+          return { version: 'v6.20.2', name: 'core.zip', url: 'https://fixture.invalid/core.zip' };
+        },
+        download() {
+          downloads++;
+          throw new Error('synthetic offline download fallback');
+        },
+      },
+    });
+    const installed = await installGenerations(f);
+    await f.service.bootstrapBundled(f.directory);
+    const original = f.store.get('active', 'combo');
+    const cached = path.join(f.service.directories().core, 'generations', 'core-' + 'd'.repeat(32));
+    await fs.cp(installed.core!, cached, { recursive: true });
+    await writeFile(
+      path.join(cached, 'manifest.json'),
+      JSON.stringify({ path: cached, version: 'v6.20.2', ...(await snapshotIntegrity(cached)) }),
+    );
+    const damaged = path.join(
+      cached,
+      corruption === 'manifest' ? 'manifest.json' : 'resource/version.json',
+    );
+    await writeFile(damaged, '{changed cached content');
+    await f.service.check('core');
+    await expect(f.service.prepare('core')).rejects.toThrow('活动版本保持可用');
+    expect(downloads).toBe(1);
+    expect(f.store.get('active', 'combo')).toEqual(original);
+    expect(await readFile(damaged, 'utf8')).toBe('{changed cached content');
+    expect(f.validations).toHaveLength(2);
+  });
 }
 
 test('offline bootstrap copies both seeds into separate immutable generations and activates them', async () => {
@@ -625,7 +775,7 @@ test('background preparation serves snapshots and editing while native work wait
     const snapshot = await runtime.handle('app.snapshot');
     expect(snapshot.updates.find((item: any) => item.id === 'core')).toMatchObject({
       status: 'downloading',
-      message: expect.stringContaining('复制随附组件'),
+      message: expect.stringContaining('复制组件'),
     });
     const plan = await runtime.handle('plan.save', {
       plan: { name: '后台准备时可编辑', tasks: [{ type: 'Award' }] },
@@ -661,8 +811,8 @@ test('background preparation serves snapshots and editing while native work wait
     expect(runtime.updates.channel('resource').status).toBe('active');
     const states = notifications.map((item) => item.params?.data?.update).filter(Boolean);
     const messages = states.map((item) => item.message as string);
-    expect(messages.some((text) => text.includes('校验随附组件'))).toBe(true);
-    expect(messages.some((text) => text.includes('复制随附组件'))).toBe(true);
+    expect(messages.some((text) => text.includes('校验组件'))).toBe(true);
+    expect(messages.some((text) => text.includes('复制组件'))).toBe(true);
     expect(messages.some((text) => text.includes('校验组件副本'))).toBe(true);
     for (const channel of ['core', 'resource']) {
       const progress = states

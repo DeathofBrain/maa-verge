@@ -433,30 +433,13 @@ fn validate_backend(value: Option<&str>) -> Result<(), String> {
 }
 
 pub(crate) fn application_directory() -> Result<PathBuf, String> {
-    let executable = if cfg!(target_os = "linux") {
-        std::env::var_os("APPIMAGE")
-            .map(PathBuf::from)
-            .filter(|path| path.is_absolute())
-            .unwrap_or(std::env::current_exe().map_err(|error| error.to_string())?)
-    } else {
-        std::env::current_exe().map_err(|error| error.to_string())?
-    };
-    let directory = executable.parent().ok_or("无法定位应用程序目录")?;
-    // A macOS bundle is the program; keep downloaded components alongside .app.
-    if cfg!(target_os = "macos") && directory.file_name().is_some_and(|name| name == "MacOS") {
-        if let Some(bundle) = directory.parent().and_then(|contents| contents.parent()) {
-            if bundle
-                .extension()
-                .is_some_and(|extension| extension == "app")
-            {
-                return bundle
-                    .parent()
-                    .map(PathBuf::from)
-                    .ok_or("无法定位应用程序目录".into());
-            }
-        }
-    }
-    Ok(directory.to_path_buf())
+    let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+    let appimage = std::env::var_os("APPIMAGE").map(PathBuf::from);
+    crate::configuration::application_directory_for(
+        &executable,
+        std::env::consts::OS,
+        appimage.as_deref(),
+    )
 }
 
 impl Runtime {
@@ -467,10 +450,10 @@ impl Runtime {
         let (executable, arguments) = program(&app)?;
         let mut command = Command::new(executable);
         command.args(arguments);
-        // Preserve the service's default-root migration. Only a scheduled launch
-        // explicitly pins its root; ordinary startup retains the existing resolver.
-        if std::env::args().any(|arg| arg == "--schedule-data-root") {
-            command.env("MAAVERGE_DATA_DIR", crate::desktop_scheduler::data_root());
+        // Keep one startup root for the service, scheduler and app updater.
+        // The default resolver still performs the existing legacy-data import.
+        if crate::configuration::should_pin_data_root()? {
+            command.env("MAAVERGE_DATA_DIR", crate::configuration::data_root()?);
         }
         if !cfg!(debug_assertions) {
             // The service lives in resource_dir/runtime, not beside the main executable.
@@ -1456,6 +1439,10 @@ pub async fn runtime_request(
     let snapshot = method == "app.snapshot";
     let settings = method == "settings.save";
     let mut result = runtime.request(method, params).await?;
+    if settings {
+        app.state::<crate::desktop_notifications::DesktopNotifications>()
+            .configure(&result);
+    }
     if settings && updater.configure(&result) {
         AppUpdater::check_in_background(app, true);
     }

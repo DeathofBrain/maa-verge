@@ -46,7 +46,7 @@ v0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资
 
 完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。
 
-固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。随包数据位于 `runtime/bundled-components`；服务取得数据库租约后，在尚未登记活动或待生效组件的数据根验证内容、复制到所选组件根的新 generation，再通过原生校验登记激活。安装器不写业务库，已有组件和自定义组件位置不会被随包旧版本替换。保留随包源数据用于新数据根导入，清理策略尚未提供。
+固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。当前源码将完整组件直接放入程序同级 `MaaCore/generations/` 与 `MaaResource/generations/`，保存普通版本清单；服务取得数据库租约并完成内容及原生校验后，登记为已下载完成的普通版本。后续更新可复用同版本内容，并遵循普通版本的激活、回滚和清理规则；不再保存新的 `runtime/bundled-components` 副本，旧布局仍可导入。安装器不写业务库或覆盖已有 generation，已有活动组件与自定义组件位置不会被旧版本替换。
 
 ## macOS 签名与首次放行
 

@@ -100,6 +100,10 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 
 安装版默认使用程序目录下的 `config/`；macOS 指 `.app` 所在目录，Linux AppImage 指 AppImage 所在目录。默认 TypeScript 后端首次启动且新库不存在时，从原标准用户目录 `MAAVerge/native` 导入；开发版导入原 `MAAVerge-dev/<checkout-hash>/native`。迁移保留旧文件，需先退出旧服务；已有新库或显式覆盖数据根时不导入。具体范围见 [运行时说明](runtime-migration.md#数据交接与回退)。
 
+桌面版可在“设置 → 数据与诊断 → 配置文件”查看并打开当前配置目录、保存其他绝对目录或恢复默认。选择保存在程序目录的本地 `config-location.json`，重启应用后生效；当前服务、调度及应用更新缓存继续使用本次启动时固定的数据根。切换不会复制或覆盖旧配置；选择空目录会创建新配置，选择已有目录会读取其中配置。迁移既有配置前须完全退出应用，再备份或复制整个数据根。显式 `--schedule-data-root` / `MAAVERGE_DATA_DIR` 优先于界面保存的选择；该选择文件不提交 Git。
+
+Windows 切换后会精确清理旧配置目录对应的唤醒任务，清理失败保留记录供下次重试。等待清理期间，旧唤醒任务携带的旧目录参数会跟随已保存的新选择，避免重新打开切走的配置；其他显式启动根不受影响。
+
 `MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各次测试的独立数据目录。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
 
 同一 checkout 同时启动界面测试与桌面时，应分别设置不同的 `MAAVERGE_DEV_PORT`。Vite 的预构建缓存按实际端口存放在 `apps/desktop/node_modules/.vite/port-<port>`，避免多个实例覆盖彼此的 Tauri 模块。若旧窗口出现 `Importing a module script failed` 等组件加载错误，点击「重新加载界面」；更新脚本后应先完全退出旧开发窗口与命令，再重新运行 `pnpm dev`。普通服务连接失败仍使用「重新连接」。

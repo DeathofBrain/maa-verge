@@ -1,12 +1,13 @@
 //! Desktop-only scheduling effects. Bun owns the canonical rules and dispatch.
 use crate::runtime::Runtime;
 use serde_json::{json, Value};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(any(windows, test))]
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
-use tauri_plugin_notification::NotificationExt;
 
 #[derive(Default)]
 pub struct DesktopScheduler {
@@ -14,50 +15,6 @@ pub struct DesktopScheduler {
     synchronization: tokio::sync::Mutex<()>,
     awake_until: AtomicU64,
     execution_active: Mutex<bool>,
-}
-
-pub fn data_root() -> PathBuf {
-    let root = configured_root();
-    let root = if root.is_absolute() {
-        root
-    } else {
-        std::env::current_dir().unwrap_or_default().join(root)
-    };
-    std::fs::canonicalize(&root).unwrap_or(root)
-}
-
-fn configured_root() -> PathBuf {
-    let args: Vec<String> = std::env::args().collect();
-    if let Some(index) = args.iter().position(|arg| arg == "--schedule-data-root") {
-        if let Some(value) = args
-            .get(index + 1)
-            .map(PathBuf::from)
-            .filter(|path| path.is_absolute())
-        {
-            return value;
-        }
-    }
-    if let Some(value) = std::env::var_os("MAAVERGE_DATA_DIR") {
-        let value = PathBuf::from(value);
-        if value.starts_with("~") {
-            if let Some(home_directory) =
-                std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
-            {
-                return PathBuf::from(home_directory)
-                    .join(value.strip_prefix("~").unwrap_or(&value));
-            }
-        }
-        return value;
-    }
-    if cfg!(debug_assertions) {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../config")
-    } else {
-        std::env::current_exe()
-            .unwrap_or_default()
-            .parent()
-            .unwrap_or(Path::new("."))
-            .join("config")
-    }
 }
 
 pub fn is_wake(args: &[String]) -> bool {
@@ -78,14 +35,6 @@ pub fn handle_event(app: AppHandle, payload: &Value) {
     }
     if matches!(event, "schedule.changed" | "settings.saved") {
         synchronize(app.clone());
-    }
-    if matches!(event, "schedule.notice" | "schedule.countdown") {
-        let _ = app
-            .notification()
-            .builder()
-            .title("Maa Verge 定时任务")
-            .body(payload["message"].as_str().unwrap_or("定时任务即将开始"))
-            .show();
     }
     if event == "schedule.countdown" && payload["data"]["showWindow"].as_bool() == Some(true) {
         crate::show_main(&app);
@@ -114,10 +63,8 @@ pub fn synchronize(app: AppHandle) {
         let enabled = snapshot["settings"]["scheduler"]["scheduledWakeUp"]
             .as_bool()
             .unwrap_or(false);
-        let outcome = tauri::async_runtime::spawn_blocking(move || {
-            register_wake(enabled, &rules, &data_root())
-        })
-        .await;
+        let outcome =
+            tauri::async_runtime::spawn_blocking(move || synchronize_wake(enabled, &rules)).await;
         let wake = match outcome {
             Ok(Ok(wake)) => wake,
             Ok(Err(message)) => {
@@ -131,6 +78,44 @@ pub fn synchronize(app: AppHandle) {
             .request("schedule.host".into(), json!({"wake": wake}))
             .await;
     });
+}
+
+fn synchronize_wake(enabled: bool, rules: &Value) -> Result<Value, String> {
+    let root = crate::configuration::data_root()?;
+    #[cfg(windows)]
+    {
+        reconcile_wake(
+            enabled,
+            rules,
+            &root,
+            &crate::configuration::pending_wake_cleanup()?,
+            register_wake,
+            crate::configuration::complete_wake_cleanup,
+        )
+    }
+    #[cfg(not(windows))]
+    register_wake(enabled, rules, &root)
+}
+
+#[cfg(any(windows, test))]
+fn reconcile_wake(
+    enabled: bool,
+    rules: &Value,
+    root: &Path,
+    previous_roots: &[PathBuf],
+    mut register: impl FnMut(bool, &Value, &Path) -> Result<Value, String>,
+    mut complete: impl FnMut(&Path) -> Result<(), String>,
+) -> Result<Value, String> {
+    for previous in previous_roots {
+        if previous == root {
+            continue;
+        }
+        // register_wake derives its exact task identity from current_exe + root.
+        // Failed deletion/confirmation leaves the durable cleanup entry retryable.
+        register(false, &json!({"schedules": []}), previous)?;
+        complete(previous)?;
+    }
+    register(enabled, rules, root)
 }
 
 pub fn start(app: AppHandle) {
@@ -395,6 +380,118 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn root_switch_cleans_only_the_previous_task_for_this_executable() {
+        use std::cell::RefCell;
+        let executable = Path::new("C:/Apps/MaaVerge/app.exe");
+        let previous = PathBuf::from("C:/Profiles/previous");
+        let current = PathBuf::from("C:/Profiles/current");
+        let unrelated = PathBuf::from("C:/Profiles/explicit-environment");
+        let previous_task = task_name(executable, &previous);
+        let unrelated_task = task_name(executable, &unrelated);
+        let other_program_task = task_name(Path::new("C:/Other/app.exe"), &previous);
+        let tasks = RefCell::new(std::collections::HashSet::from([
+            previous_task.clone(),
+            unrelated_task.clone(),
+            other_program_task.clone(),
+        ]));
+        let completed = RefCell::new(Vec::new());
+        reconcile_wake(
+            true,
+            &json!({"schedules": []}),
+            &current,
+            &[previous.clone(), current.clone()],
+            |enabled, _, root| {
+                let name = task_name(executable, root);
+                if enabled {
+                    tasks.borrow_mut().insert(name);
+                } else {
+                    tasks.borrow_mut().remove(&name);
+                }
+                Ok(json!({"status": if enabled {"registered"} else {"disabled"}}))
+            },
+            |root| {
+                completed.borrow_mut().push(root.to_path_buf());
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert!(!tasks.borrow().contains(&previous_task));
+        assert!(tasks.borrow().contains(&task_name(executable, &current)));
+        assert!(tasks.borrow().contains(&unrelated_task));
+        assert!(tasks.borrow().contains(&other_program_task));
+        assert_eq!(*completed.borrow(), vec![previous]);
+    }
+
+    #[test]
+    fn failed_wake_cleanup_is_not_acknowledged_or_replaced_and_can_retry() {
+        use std::cell::RefCell;
+        let previous = PathBuf::from("C:/Profiles/previous");
+        let current = PathBuf::from("C:/Profiles/current");
+        let operations = RefCell::new(Vec::new());
+        let rules = json!({"schedules": []});
+        let failed = reconcile_wake(
+            true,
+            &rules,
+            &current,
+            std::slice::from_ref(&previous),
+            |enabled, _, root| {
+                operations.borrow_mut().push((enabled, root.to_path_buf()));
+                Err("synthetic cleanup failure".into())
+            },
+            |_| panic!("failed cleanup must remain pending"),
+        );
+        assert_eq!(failed.unwrap_err(), "synthetic cleanup failure");
+        assert_eq!(*operations.borrow(), vec![(false, previous.clone())]);
+        let completed = RefCell::new(Vec::new());
+        let restored = reconcile_wake(
+            true,
+            &rules,
+            &current,
+            std::slice::from_ref(&previous),
+            |enabled, _, root| {
+                operations.borrow_mut().push((enabled, root.to_path_buf()));
+                Ok(json!({"status": if enabled {"registered"} else {"disabled"}}))
+            },
+            |root| {
+                completed.borrow_mut().push(root.to_path_buf());
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(restored["status"], "registered");
+        assert_eq!(
+            *operations.borrow(),
+            vec![
+                (false, previous.clone()),
+                (false, previous.clone()),
+                (true, current)
+            ]
+        );
+        assert_eq!(*completed.borrow(), vec![previous]);
+    }
+
+    #[test]
+    fn interrupted_cleanup_confirmation_retries_the_idempotent_delete() {
+        let previous = PathBuf::from("C:/Profiles/previous");
+        let current = PathBuf::from("C:/Profiles/current");
+        let mut operations = 0;
+        let failed = reconcile_wake(
+            true,
+            &json!({"schedules": []}),
+            &current,
+            &[previous],
+            |enabled, _, _| {
+                assert!(!enabled);
+                operations += 1;
+                Ok(json!({"status": "disabled"}))
+            },
+            |_| Err("synthetic selector write failure".into()),
+        );
+        assert_eq!(failed.unwrap_err(), "synthetic selector write failure");
+        assert_eq!(operations, 1);
     }
     #[cfg(windows)]
     #[test]

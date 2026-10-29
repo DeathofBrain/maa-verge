@@ -52,6 +52,22 @@ function write(file, contents) {
   writeFileSync(file, contents);
 }
 
+const generations = { core: 'core-' + 'a'.repeat(32), resource: 'resource-' + 'b'.repeat(32) };
+function writeComponentsManifest(directory) {
+  const components = {
+    core: { version: 'v6.20.1', directory: 'core', installedHash: 'a'.repeat(64) },
+    resource: {
+      version: 'c'.repeat(40),
+      coreVersion: 'v6.20.1',
+      directory: 'resource',
+      installedHash: 'b'.repeat(64),
+    },
+  };
+  write(path.join(directory, 'manifest.json'), JSON.stringify({ formatVersion: 1, ...components }));
+  for (const channel of ['core', 'resource'])
+    write(path.join(directory, channel, 'manifest.json'), JSON.stringify(components[channel]));
+}
+
 const nsisString = (value) => value.replaceAll('$', '$$').replaceAll('"', '$\\"');
 
 test('compiled NSIS cleanup removes default component trees, preserves custom data and skips application updates', (t) => {
@@ -131,7 +147,7 @@ test('compiled offline component hooks honor selections and preserve active comp
   const root = fixture(t),
     components = path.join(root, 'offline'),
     application = path.join(root, '程序目录');
-  write(path.join(components, 'manifest.json'), '{"formatVersion":1}');
+  writeComponentsManifest(components);
   write(path.join(components, 'core/MaaCore.dll'), 'core fixture');
   write(path.join(components, 'core/resource/version.json'), 'base fixture');
   write(path.join(components, 'resource/resource/version.json'), 'complete resource fixture');
@@ -225,22 +241,30 @@ test('compiled offline component hooks honor selections and preserve active comp
     path.join(root, 'custom/MaaResource/resource.json'),
   ];
   for (const file of retained) write(file, 'retained');
-  const bundled = path.join(application, 'runtime/bundled-components');
+  const core = path.join(application, 'MaaCore/generations', generations.core);
+  const resource = path.join(application, 'MaaResource/generations', generations.resource);
   for (const args of [
     ['/S', '/UPDATE'],
     ['/S', '/CORE=0'],
   ]) {
     execFileSync(executable, args, { windowsHide: true, timeout: 30_000 });
-    assert.equal(existsSync(bundled), false);
+    assert.equal(existsSync(core), false);
+    assert.equal(existsSync(resource), false);
   }
   execFileSync(executable, ['/S', '/RESOURCE=0'], { windowsHide: true, timeout: 30_000 });
-  assert.equal(readFileSync(path.join(bundled, 'core/MaaCore.dll'), 'utf8'), 'core fixture');
-  assert.equal(existsSync(path.join(bundled, 'resource')), false);
+  assert.equal(readFileSync(path.join(core, 'MaaCore.dll'), 'utf8'), 'core fixture');
+  assert.equal(existsSync(resource), false);
+  write(path.join(core, 'MaaCore.dll'), 'active core must not be overwritten');
   execFileSync(executable, ['/S'], { windowsHide: true, timeout: 30_000 });
   assert.equal(
-    readFileSync(path.join(bundled, 'resource/resource/version.json'), 'utf8'),
+    readFileSync(path.join(resource, 'resource/version.json'), 'utf8'),
     'complete resource fixture',
   );
+  assert.equal(
+    readFileSync(path.join(core, 'MaaCore.dll'), 'utf8'),
+    'active core must not be overwritten',
+  );
+  assert.equal(existsSync(path.join(application, 'runtime/bundled-components')), false);
   for (const file of retained) assert.equal(readFileSync(file, 'utf8'), 'retained');
 });
 
@@ -254,7 +278,7 @@ test('full portable staging includes only packaged application and complete comp
     path.join(root, 'dist/runtime/maaverge-runtime/maaverge-core-worker.exe'),
     'worker fixture',
   );
-  write(path.join(root, 'dist/windows-components/manifest.json'), '{"formatVersion":1}');
+  writeComponentsManifest(path.join(root, 'dist/windows-components'));
   write(path.join(root, 'dist/windows-components/core/MaaCore.dll'), 'core fixture');
   write(
     path.join(root, 'dist/windows-components/resource/resource/version.json'),
@@ -267,11 +291,12 @@ test('full portable staging includes only packaged application and complete comp
   assert.equal(readFileSync(path.join(staging, 'Maa Verge.exe'), 'utf8'), 'application fixture');
   assert.equal(
     readFileSync(
-      path.join(staging, 'runtime/bundled-components/resource/resource/version.json'),
+      path.join(staging, 'MaaResource/generations', generations.resource, 'resource/version.json'),
       'utf8',
     ),
     'full resource fixture',
   );
+  assert.equal(existsSync(path.join(staging, 'runtime/bundled-components')), false);
   for (const name of ['config', '.env', 'uninstall.exe', 'app.exe'])
     assert.equal(existsSync(path.join(staging, name)), false);
   assert.match(readFileSync(path.join(staging, '使用说明.txt'), 'utf8'), /WebView2/);
@@ -378,7 +403,7 @@ test(
       path.join(root, 'dist/runtime/maaverge-runtime/maaverge-core-worker.exe'),
       'worker fixture',
     );
-    write(path.join(root, 'dist/windows-components/manifest.json'), '{"formatVersion":1}');
+    writeComponentsManifest(path.join(root, 'dist/windows-components'));
     write(path.join(root, 'dist/windows-components/resource/resource/中文目录/空文件.json'), '');
     const binary = Buffer.from(Array.from({ length: 4096 }, (_, index) => index % 256));
     write(path.join(root, 'dist/windows-components/resource/resource/中文目录/数据.bin'), binary);
@@ -386,11 +411,12 @@ test(
     const files = await readZip(archive);
     assert.deepEqual(files.get('Maa Verge.exe').bytes, Buffer.from([0, 1, 2, 255]));
     assert.equal(
-      files.get('runtime/bundled-components/resource/resource/中文目录/空文件.json').bytes.length,
+      files.get(`MaaResource/generations/${generations.resource}/resource/中文目录/空文件.json`)
+        .bytes.length,
       0,
     );
     assert.deepEqual(
-      files.get('runtime/bundled-components/resource/resource/中文目录/数据.bin').bytes,
+      files.get(`MaaResource/generations/${generations.resource}/resource/中文目录/数据.bin`).bytes,
       binary,
     );
     assert.match(files.get('使用说明.txt').bytes.toString('utf8'), /WebView2/);

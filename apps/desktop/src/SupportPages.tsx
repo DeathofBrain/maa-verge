@@ -34,6 +34,8 @@ import './support-pages.css';
 import { useSettingsDraft } from './settings-draft';
 import LogSettings from './LogSettings';
 import CopilotStorageSettings from './CopilotStorageSettings';
+import ConfigurationSettings from './ConfigurationSettings';
+import NotificationSettings from './NotificationSettings';
 import {
   downloadSpeedLabel,
   resourceClientFor,
@@ -223,7 +225,7 @@ const categories = [
     label: '数据与诊断',
     icon: HardDrive,
     keywords:
-      '数据 日志 log 诊断 事件 导出 清理 自动 保留 存储 本地 目录 路径 作业 copilot JSON 缓存 删除',
+      '配置 配置文件 配置目录 数据 日志 log 诊断 事件 导出 清理 自动 保留 存储 本地 目录 路径 作业 copilot JSON 缓存 删除',
   },
   { id: 'about', label: '关于', icon: Info, keywords: '版本 AGPL 许可证 开源 系统 模式' },
 ] as const;
@@ -390,12 +392,11 @@ export function SettingsPage({
               )}
               {selected.id === 'notifications' && (
                 <Section title="通知与远控">
-                  <Notice icon={<Bell size={17} />}>
-                    系统推送、第三方通知与远程控制尚未接入。
-                  </Notice>
-                  <p className="sp-help">
-                    当前运行进度、失败原因与完成结果保留在底部运行栏和执行记录中。
-                  </p>
+                  <NotificationSettings
+                    settings={snapshot.settings}
+                    busy={busy}
+                    onSave={saveSettings}
+                  />
                 </Section>
               )}
               {selected.id === 'services' && (
@@ -473,6 +474,7 @@ export function SettingsPage({
               )}
               {selected.id === 'data' && (
                 <Section title="数据与诊断">
+                  <ConfigurationSettings busy={busy} />
                   <dl className="sp-description-list">
                     <div>
                       <dt>数据归属</dt>

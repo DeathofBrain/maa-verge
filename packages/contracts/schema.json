@@ -873,6 +873,39 @@
         }
       }
     },
+    "NotificationSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "runResults": {
+          "type": "boolean",
+          "default": true
+        },
+        "deviceErrors": {
+          "type": "boolean",
+          "default": true
+        },
+        "updates": {
+          "type": "boolean",
+          "default": true
+        },
+        "schedules": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": [
+        "enabled",
+        "runResults",
+        "deviceErrors",
+        "updates",
+        "schedules"
+      ]
+    },
     "Settings": {
       "additionalProperties": false,
       "properties": {
@@ -881,6 +914,9 @@
         },
         "downloadProxy": {
           "$ref": "#/$defs/DownloadProxySettings"
+        },
+        "notifications": {
+          "$ref": "#/$defs/NotificationSettings"
         },
         "infrastructureEstimates": {
           "type": "array",
