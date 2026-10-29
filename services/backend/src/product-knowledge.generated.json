@@ -4,7 +4,7 @@
   "sources": [
     {
       "file": "docs/app-updates.md",
-      "sha256": "8bac229b14164e4c98091bfe9a54327fd69018b580e85f35c0cf25de403ce76f"
+      "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
     },
     {
       "file": "docs/connection-settings.md",
@@ -62,21 +62,21 @@
         "平台安装方式",
         "app-updates"
       ],
-      "text": "应用与核心更新 > 平台安装方式\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 平台安装方式\n\n| 平台/安装方式                      | 应用内安装                                                             |\n| ---------------------------------- | ---------------------------------------------------------------------- |\n| Windows x64 NSIS EXE               | 下载同类 EXE，签名校验后退出并运行安装器                               |\n| Windows x64 ZIP                    | 从发行页下载完整 ZIP，退出并备份配置后手动更新                         |\n| 旧 Windows x64 MSI                 | v0.1.3-alpha1 起停止提供 MSI，须备份、卸载旧版后手动迁移 EXE / ZIP     |\n| macOS Apple Silicon / Intel `.app` | 下载对应架构 `.app.tar.gz`，替换应用包并重启；DMG 继续用于首次手动安装 |\n| Linux x64 AppImage                 | 在 AppImage 环境中更新当前 AppImage 并重启                             |\n| Linux DEB / RPM                    | 显示版本与平台提示，通过包管理器或对应安装包更新                       |\n| 开发构建、未识别的安装方式/架构    | 可以检查发行版本，禁用自动下载安装                                     |\n\n自动安装仍要求应用位置可写或安装器获得所需权限。macOS 签名/公证和 Windows Authenticode 发布者签名与下文的更新签名是不同机制，目前没有完成这些系统发行签名的配置与验收。",
+      "text": "应用与核心更新 > 平台安装方式\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 平台安装方式\n\n| 平台/安装方式                      | 应用内安装                                                             |\n| ---------------------------------- | ---------------------------------------------------------------------- |\n| Windows x64 NSIS EXE               | 下载同类 EXE，签名校验后退出并运行安装器                               |\n| Windows x64 ZIP                    | 从发行页下载完整 ZIP，退出并备份配置后手动更新                         |\n| 旧 Windows x64 MSI                 | v0.1.3-alpha.1 起停止提供 MSI，须备份、卸载旧版后手动迁移 EXE / ZIP    |\n| macOS Apple Silicon / Intel `.app` | 下载对应架构 `.app.tar.gz`，替换应用包并重启；DMG 继续用于首次手动安装 |\n| Linux x64 AppImage                 | 在 AppImage 环境中更新当前 AppImage 并重启                             |\n| Linux DEB / RPM                    | 显示版本与平台提示，通过包管理器或对应安装包更新                       |\n| 开发构建、未识别的安装方式/架构    | 可以检查发行版本，禁用自动下载安装                                     |\n\n自动安装仍要求应用位置可写或安装器获得所需权限。macOS 签名/公证和 Windows Authenticode 发布者签名与下文的更新签名是不同机制，目前没有完成这些系统发行签名的配置与验收。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "应用与核心更新",
           "平台安装方式"
         ],
-        "content": "## 平台安装方式\n\n| 平台/安装方式                      | 应用内安装                                                             |\n| ---------------------------------- | ---------------------------------------------------------------------- |\n| Windows x64 NSIS EXE               | 下载同类 EXE，签名校验后退出并运行安装器                               |\n| Windows x64 ZIP                    | 从发行页下载完整 ZIP，退出并备份配置后手动更新                         |\n| 旧 Windows x64 MSI                 | v0.1.3-alpha1 起停止提供 MSI，须备份、卸载旧版后手动迁移 EXE / ZIP     |\n| macOS Apple Silicon / Intel `.app` | 下载对应架构 `.app.tar.gz`，替换应用包并重启；DMG 继续用于首次手动安装 |\n| Linux x64 AppImage                 | 在 AppImage 环境中更新当前 AppImage 并重启                             |\n| Linux DEB / RPM                    | 显示版本与平台提示，通过包管理器或对应安装包更新                       |\n| 开发构建、未识别的安装方式/架构    | 可以检查发行版本，禁用自动下载安装                                     |\n\n自动安装仍要求应用位置可写或安装器获得所需权限。macOS 签名/公证和 Windows Authenticode 发布者签名与下文的更新签名是不同机制，目前没有完成这些系统发行签名的配置与验收。",
+        "content": "## 平台安装方式\n\n| 平台/安装方式                      | 应用内安装                                                             |\n| ---------------------------------- | ---------------------------------------------------------------------- |\n| Windows x64 NSIS EXE               | 下载同类 EXE，签名校验后退出并运行安装器                               |\n| Windows x64 ZIP                    | 从发行页下载完整 ZIP，退出并备份配置后手动更新                         |\n| 旧 Windows x64 MSI                 | v0.1.3-alpha.1 起停止提供 MSI，须备份、卸载旧版后手动迁移 EXE / ZIP    |\n| macOS Apple Silicon / Intel `.app` | 下载对应架构 `.app.tar.gz`，替换应用包并重启；DMG 继续用于首次手动安装 |\n| Linux x64 AppImage                 | 在 AppImage 环境中更新当前 AppImage 并重启                             |\n| Linux DEB / RPM                    | 显示版本与平台提示，通过包管理器或对应安装包更新                       |\n| 开发构建、未识别的安装方式/架构    | 可以检查发行版本，禁用自动下载安装                                     |\n\n自动安装仍要求应用位置可写或安装器获得所需权限。macOS 签名/公证和 Windows Authenticode 发布者签名与下文的更新签名是不同机制，目前没有完成这些系统发行签名的配置与验收。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L29-L42",
-        "sha256": "8bac229b14164e4c98091bfe9a54327fd69018b580e85f35c0cf25de403ce76f"
+        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
       }
     },
     {
@@ -103,7 +103,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L51-L77",
-        "sha256": "8bac229b14164e4c98091bfe9a54327fd69018b580e85f35c0cf25de403ce76f"
+        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
       }
     },
     {
@@ -130,7 +130,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L5-L28",
-        "sha256": "8bac229b14164e4c98091bfe9a54327fd69018b580e85f35c0cf25de403ce76f"
+        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
       }
     },
     {
@@ -157,7 +157,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L86-L89",
-        "sha256": "8bac229b14164e4c98091bfe9a54327fd69018b580e85f35c0cf25de403ce76f"
+        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
       }
     },
     {
@@ -182,7 +182,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L1-L4",
-        "sha256": "8bac229b14164e4c98091bfe9a54327fd69018b580e85f35c0cf25de403ce76f"
+        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
       }
     },
     {
@@ -196,7 +196,7 @@
         "Windows 离线组件与完整 ZIP",
         "app-updates"
       ],
-      "text": "应用与核心更新 > 平台安装方式 > Windows 离线组件与完整 ZIP\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n### Windows 离线组件与完整 ZIP\n\nv0.1.3-alpha1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。\n\n完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。\n\n固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。随包数据位于 `runtime/bundled-components`；服务取得数据库租约后，在尚未登记活动或待生效组件的数据根验证内容、复制到所选组件根的新 generation，再通过原生校验登记激活。安装器不写业务库，已有组件和自定义组件位置不会被随包旧版本替换。保留随包源数据用于新数据根导入，清理策略尚未提供。",
+      "text": "应用与核心更新 > 平台安装方式 > Windows 离线组件与完整 ZIP\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n### Windows 离线组件与完整 ZIP\n\nv0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。\n\n完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。\n\n固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。随包数据位于 `runtime/bundled-components`；服务取得数据库租约后，在尚未登记活动或待生效组件的数据根验证内容、复制到所选组件根的新 generation，再通过原生校验登记激活。安装器不写业务库，已有组件和自定义组件位置不会被随包旧版本替换。保留随包源数据用于新数据根导入，清理策略尚未提供。",
       "data": {
         "category": "documentation",
         "headingPath": [
@@ -204,14 +204,14 @@
           "平台安装方式",
           "Windows 离线组件与完整 ZIP"
         ],
-        "content": "### Windows 离线组件与完整 ZIP\n\nv0.1.3-alpha1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。\n\n完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。\n\n固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。随包数据位于 `runtime/bundled-components`；服务取得数据库租约后，在尚未登记活动或待生效组件的数据根验证内容、复制到所选组件根的新 generation，再通过原生校验登记激活。安装器不写业务库，已有组件和自定义组件位置不会被随包旧版本替换。保留随包源数据用于新数据根导入，清理策略尚未提供。",
+        "content": "### Windows 离线组件与完整 ZIP\n\nv0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。\n\n完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。\n\n固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。随包数据位于 `runtime/bundled-components`；服务取得数据库租约后，在尚未登记活动或待生效组件的数据根验证内容、复制到所选组件根的新 generation，再通过原生校验登记激活。安装器不写业务库，已有组件和自定义组件位置不会被随包旧版本替换。保留随包源数据用于新数据根导入，清理策略尚未提供。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L43-L50",
-        "sha256": "8bac229b14164e4c98091bfe9a54327fd69018b580e85f35c0cf25de403ce76f"
+        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
       }
     },
     {
@@ -238,7 +238,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L78-L85",
-        "sha256": "8bac229b14164e4c98091bfe9a54327fd69018b580e85f35c0cf25de403ce76f"
+        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
       }
     },
     {
@@ -251,21 +251,21 @@
         "准备新发行版",
         "app-updates"
       ],
-      "text": "应用与核心更新 > 准备新发行版\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 准备新发行版\n\n`.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.2](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)；后续发行仍需先提交新的版本号，并保留既有标签与资产。\n\n1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。\n2. 合并版本与发行说明提交，先确认该提交的 Checks 五个任务全部通过。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的 Checks 构建。\n3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。\n4. 推送标签（例如 `git push origin v0.1.3-alpha1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。\n5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **17 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。\n\nChecks 等待上限为 30 分钟；若该提交没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待通过，再补跑 Release。\n\n完整附件集合为六个首次安装包、Windows 完整 ZIP、两个分架构 macOS 更新归档、六个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`。`latest.json` 包含 `windows-x86_64-nsis`、`darwin-aarch64`、`darwin-x86_64`、`linux-x86_64` 四个目标。DEB/RPM 也生成签名供发行校验，但不交给应用内安装器；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。\n\n发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；macOS 归档还加入版本与架构，避免多宿主上传时覆盖。复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，兼容既有八附件、含 MSI 的十八附件及当前 EXE / 完整 ZIP 的十七附件集合，拒绝不完整的混合版本；安装包仅通过 GitHub Releases 分发。\n\n当前验证范围见 [开发状态](STATUS.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。",
+      "text": "应用与核心更新 > 准备新发行版\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 准备新发行版\n\n`.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.2](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)；后续发行仍需先提交新的版本号，并保留既有标签与资产。\n\n1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。\n2. 合并版本与发行说明提交，先确认该提交的 Checks 五个任务全部通过。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的 Checks 构建。\n3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。\n4. 推送标签（例如 `git push origin v0.1.3-alpha.1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。\n5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **17 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。\n\nChecks 等待上限为 30 分钟；若该提交没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待通过，再补跑 Release。\n\n完整附件集合为六个首次安装包、Windows 完整 ZIP、两个分架构 macOS 更新归档、六个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`。`latest.json` 包含 `windows-x86_64-nsis`、`darwin-aarch64`、`darwin-x86_64`、`linux-x86_64` 四个目标。DEB/RPM 也生成签名供发行校验，但不交给应用内安装器；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。\n\n发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；macOS 归档还加入版本与架构，避免多宿主上传时覆盖。复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，兼容既有八附件、含 MSI 的十八附件及当前 EXE / 完整 ZIP 的十七附件集合，拒绝不完整的混合版本；安装包仅通过 GitHub Releases 分发。\n\n当前验证范围见 [开发状态](STATUS.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "应用与核心更新",
           "准备新发行版"
         ],
-        "content": "## 准备新发行版\n\n`.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.2](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)；后续发行仍需先提交新的版本号，并保留既有标签与资产。\n\n1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。\n2. 合并版本与发行说明提交，先确认该提交的 Checks 五个任务全部通过。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的 Checks 构建。\n3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。\n4. 推送标签（例如 `git push origin v0.1.3-alpha1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。\n5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **17 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。\n\nChecks 等待上限为 30 分钟；若该提交没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待通过，再补跑 Release。\n\n完整附件集合为六个首次安装包、Windows 完整 ZIP、两个分架构 macOS 更新归档、六个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`。`latest.json` 包含 `windows-x86_64-nsis`、`darwin-aarch64`、`darwin-x86_64`、`linux-x86_64` 四个目标。DEB/RPM 也生成签名供发行校验，但不交给应用内安装器；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。\n\n发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；macOS 归档还加入版本与架构，避免多宿主上传时覆盖。复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，兼容既有八附件、含 MSI 的十八附件及当前 EXE / 完整 ZIP 的十七附件集合，拒绝不完整的混合版本；安装包仅通过 GitHub Releases 分发。\n\n当前验证范围见 [开发状态](STATUS.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。",
+        "content": "## 准备新发行版\n\n`.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.2](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)；后续发行仍需先提交新的版本号，并保留既有标签与资产。\n\n1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。\n2. 合并版本与发行说明提交，先确认该提交的 Checks 五个任务全部通过。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的 Checks 构建。\n3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。\n4. 推送标签（例如 `git push origin v0.1.3-alpha.1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。\n5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **17 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。\n\nChecks 等待上限为 30 分钟；若该提交没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待通过，再补跑 Release。\n\n完整附件集合为六个首次安装包、Windows 完整 ZIP、两个分架构 macOS 更新归档、六个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`。`latest.json` 包含 `windows-x86_64-nsis`、`darwin-aarch64`、`darwin-x86_64`、`linux-x86_64` 四个目标。DEB/RPM 也生成签名供发行校验，但不交给应用内安装器；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。\n\n发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；macOS 归档还加入版本与架构，避免多宿主上传时覆盖。复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，兼容既有八附件、含 MSI 的十八附件及当前 EXE / 完整 ZIP 的十七附件集合，拒绝不完整的混合版本；安装包仅通过 GitHub Releases 分发。\n\n当前验证范围见 [开发状态](STATUS.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L90-L107",
-        "sha256": "8bac229b14164e4c98091bfe9a54327fd69018b580e85f35c0cf25de403ce76f"
+        "sha256": "84ed005afea1613bc5fd1d8aa0f427c64dad0982838cbb9985991647ba6cf4fa"
       }
     },
     {
@@ -20133,5 +20133,5 @@
       }
     }
   ],
-  "digest": "b08ace4fd4e840e187b5067332ae854a742ca02374ab13e128853d948d8b5dc7"
+  "digest": "af688e8653aa830fa985de72a77c1f236ef32c4bf52f069eff4140475a95f501"
 }

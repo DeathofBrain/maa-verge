@@ -32,7 +32,7 @@ HTTP 下载暂存于当前数据根的 `updates/app/downloads`，已签名安装
 | ---------------------------------- | ---------------------------------------------------------------------- |
 | Windows x64 NSIS EXE               | 下载同类 EXE，签名校验后退出并运行安装器                               |
 | Windows x64 ZIP                    | 从发行页下载完整 ZIP，退出并备份配置后手动更新                         |
-| 旧 Windows x64 MSI                 | v0.1.3-alpha1 起停止提供 MSI，须备份、卸载旧版后手动迁移 EXE / ZIP     |
+| 旧 Windows x64 MSI                 | v0.1.3-alpha.1 起停止提供 MSI，须备份、卸载旧版后手动迁移 EXE / ZIP    |
 | macOS Apple Silicon / Intel `.app` | 下载对应架构 `.app.tar.gz`，替换应用包并重启；DMG 继续用于首次手动安装 |
 | Linux x64 AppImage                 | 在 AppImage 环境中更新当前 AppImage 并重启                             |
 | Linux DEB / RPM                    | 显示版本与平台提示，通过包管理器或对应安装包更新                       |
@@ -42,7 +42,7 @@ HTTP 下载暂存于当前数据根的 `updates/app/downloads`，已签名安装
 
 ### Windows 离线组件与完整 ZIP
 
-v0.1.3-alpha1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。
+v0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。
 
 完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。
 
@@ -94,7 +94,7 @@ v0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封�
 1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。
 2. 合并版本与发行说明提交，先确认该提交的 Checks 五个任务全部通过。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的 Checks 构建。
 3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。
-4. 推送标签（例如 `git push origin v0.1.3-alpha1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。
+4. 推送标签（例如 `git push origin v0.1.3-alpha.1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。
 5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **17 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。
 
 Checks 等待上限为 30 分钟；若该提交没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待通过，再补跑 Release。

@@ -458,7 +458,7 @@ test('incomplete platform sets, unsigned versions and unexpected files never pro
   });
 });
 
-for (const prerelease of ['0.2.0-beta.1', '0.1.3-alpha1']) {
+for (const prerelease of ['0.2.0-beta.1', '0.1.3-alpha1', '0.1.3-alpha.1']) {
   test(`prerelease ${prerelease} retains one exact SemVer in artifact names, signed comments, manifest and release asset validation`, async () =>
     temporary(async (directory) => {
       const key = signingKey();
