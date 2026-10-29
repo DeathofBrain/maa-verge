@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   Square,
+  Trash2,
 } from 'lucide-react';
 import { localizeExecutionMessage, type Plan, type Run, type Snapshot } from '@maaverge/contracts';
 import { useContextMenu, useContextMenuShow } from './ContextMenu';
@@ -29,6 +30,7 @@ type Props = {
   onCreatePlan: () => void;
   onCommand: (plan: Plan, command: 'settings' | 'rename' | 'duplicate' | 'export') => void;
   onDelete: (plan: Plan) => void;
+  onDeleteMany: (plans: Plan[]) => void;
   onStart: (plan: Plan, deviceId?: string) => Promise<boolean>;
   onStop: (run: Run) => Promise<boolean>;
   onShowRun: (run: Run) => void;
@@ -60,6 +62,7 @@ export default function TasksPage({
   onCreatePlan,
   onCommand,
   onDelete,
+  onDeleteMany,
   onStart,
   onStop,
   onShowRun,
@@ -267,6 +270,28 @@ export default function TasksPage({
               />
             </label>
           </div>
+          {selectedPlans.length > 0 && (
+            <div className="tc-selection-actions" role="group" aria-label="所选任务表操作">
+              <strong aria-live="polite">已选 {selectedPlans.length} 张任务表</strong>
+              <div>
+                <button className="button primary" onClick={() => setRunningDialog(true)}>
+                  <Play size={14} />
+                  同时执行
+                </button>
+                <button
+                  className="button danger"
+                  disabled={pending.has('delete-plan')}
+                  onClick={() => onDeleteMany(selectedPlans)}
+                >
+                  <Trash2 size={14} />
+                  批量删除
+                </button>
+                <button className="button secondary" onClick={() => setSelectedPlanIds(new Set())}>
+                  取消选择
+                </button>
+              </div>
+            </div>
+          )}
           {!snapshot.plans.length ? (
             <div className="tc-empty">
               <span className="tc-empty-icon">
@@ -422,7 +447,7 @@ export default function TasksPage({
           )}
           {snapshot.plans.length > 0 && (
             <p className="tc-footnote">
-              勾选任务表后可从页头运行；绑定只影响对应任务表，同一实例同时只允许一个执行。修改任务表不改变已经启动的执行快照。
+              勾选任务表后可同时执行或批量删除；同一设备同时只允许执行一张任务表。修改任务表不改变已经启动的执行快照。
             </p>
           )}
         </div>

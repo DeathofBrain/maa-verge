@@ -131,7 +131,8 @@ export default function App() {
   const detailRevision = useRef(0);
   const [error, setError] = useState('');
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
-  const [deleting, setDeleting] = useState<Plan | null>(null);
+  const [deleting, setDeleting] = useState<{ plans: Plan[]; batch: boolean } | null>(null);
+  const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<Message[]>([]);
   const [agentQuery, setAgentQuery] = useState('');
   const [historyFilter, setHistoryFilter] = useState('all');
@@ -402,22 +403,14 @@ export default function App() {
     choosePlan(plan);
     setEditorCommand({ id: uid(), type });
   };
-  const deletePlan = async (plan: Plan) => {
-    deletedPlans.current.add(plan.id);
-    if (
-      !(await action(
-        'delete-plan',
-        () => mutatePlan(plan.id, () => rpc('plan.delete', { id: plan.id })),
-        '任务表已删除',
-      ))
-    ) {
-      deletedPlans.current.delete(plan.id);
-      return;
-    }
-    discardPlanDraft(plan.id);
-    setDeleting(null);
-    if (detailPlanId === plan.id || proposal?.id === plan.id) closeTaskDetail();
-    if (selectedPlanId === plan.id) {
+  const requestDeletePlans = (plans: Plan[], batch = false) => {
+    setDeleteErrors({});
+    setDeleting({ plans, batch });
+  };
+  const clearDeletedPlan = (id: string) => {
+    discardPlanDraft(id);
+    if (detailPlanId === id || proposal?.id === id) closeTaskDetail();
+    if (selectedPlanId === id) {
       setSelectedPlanId('');
       setFocusTaskType(undefined);
       setFocusTaskIndex(undefined);
@@ -428,6 +421,44 @@ export default function App() {
         /* UI selection is optional. */
       }
     }
+  };
+  const deletePlans = async (plans: Plan[], batch: boolean) => {
+    if (
+      snapshot?.runs.some(
+        (run) => run.status === 'running' && plans.some((plan) => plan.id === run.planId),
+      )
+    )
+      return;
+    await action(
+      'delete-plan',
+      async () => {
+        for (const plan of plans) deletedPlans.current.add(plan.id);
+        const settled = await Promise.allSettled(
+          plans.map((plan) => mutatePlan(plan.id, () => rpc('plan.delete', { id: plan.id }))),
+        );
+        const errors: Record<string, string> = {};
+        const failed: Plan[] = [];
+        settled.forEach((result, index) => {
+          const plan = plans[index];
+          if (result.status === 'rejected') {
+            deletedPlans.current.delete(plan.id);
+            errors[plan.id] = errorMessage(result.reason);
+            failed.push(plan);
+          } else clearDeletedPlan(plan.id);
+        });
+        setDeleteErrors(errors);
+        if (failed.length) {
+          setDeleting({ plans: failed, batch });
+          throw new Error(
+            batch
+              ? `已删除 ${plans.length - failed.length} 张任务表，${failed.length} 张删除失败：${errors[failed[0].id]}`
+              : errors[failed[0].id],
+          );
+        }
+        setDeleting(null);
+      },
+      batch ? `已删除 ${plans.length} 张任务表。` : '任务表已删除',
+    );
   };
   const sendMessage = async (text: string) => {
     if (!text.trim() || pendingRef.current.has('agent')) return;
@@ -824,7 +855,9 @@ export default function App() {
                       onStopRun={(run) => {
                         void stopRun(run);
                       }}
-                      suspended={deleting?.id === (editorPlan === 'new' ? '' : editorPlan.id)}
+                      suspended={deleting?.plans.some(
+                        (plan) => plan.id === (editorPlan === 'new' ? '' : editorPlan.id),
+                      )}
                       command={editorCommand}
                       onCommandHandled={() => setEditorCommand(undefined)}
                       onDuplicate={(plan) => void duplicatePlan(plan)}
@@ -849,7 +882,7 @@ export default function App() {
                         }
                       }}
                       onClose={closeTaskDetail}
-                      onDelete={(plan) => setDeleting(plan)}
+                      onDelete={(plan) => requestDeletePlans([plan])}
                     />
                   ) : undefined
                 }
@@ -882,7 +915,8 @@ export default function App() {
                 onOpenPlan={(plan) => choosePlan(plan)}
                 onCreatePlan={() => createPlan()}
                 onCommand={(plan, type) => editPlan(plan, type)}
-                onDelete={(plan) => setDeleting(plan)}
+                onDelete={(plan) => requestDeletePlans([plan])}
+                onDeleteMany={(plans) => requestDeletePlans(plans, true)}
                 onStart={(plan, deviceId) => startPlan(plan, deviceId)}
                 onStop={stopRun}
                 onShowRun={showExecution}
@@ -1344,14 +1378,30 @@ export default function App() {
       </footer>
       {deleting && (
         <ConfirmDialog
-          title="删除任务表"
+          title={deleting.batch ? '删除所选任务表' : '删除任务表'}
           onClose={() => {
             if (!pendingRef.current.has('delete-plan')) setDeleting(null);
           }}
         >
-          <p>确定删除“{deleting.name}”？此表的未保存改动也会丢弃，执行记录会保留。</p>
-          {activeRuns.some((run) => run.planId === deleting.id) && (
-            <p role="alert">请先停止此任务表的执行，再删除任务表。</p>
+          <p>
+            {deleting.batch
+              ? `确定删除所选的 ${deleting.plans.length} 张任务表？这些任务表的未保存改动也会丢弃，执行记录会保留。`
+              : `确定删除“${deleting.plans[0].name}”？此表的未保存改动也会丢弃，执行记录会保留。`}
+          </p>
+          {deleting.batch && (
+            <ul className="tc-delete-list">
+              {deleting.plans.map((plan) => (
+                <li key={plan.id}>
+                  {plan.name}
+                  {deleteErrors[plan.id] && <span>：{deleteErrors[plan.id]}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {activeRuns.some((run) => deleting.plans.some((plan) => plan.id === run.planId)) && (
+            <p role="alert">
+              请先停止{deleting.batch ? '所选任务表' : '此任务表'}的执行，再删除任务表。
+            </p>
           )}
           <div className="modal-actions">
             <button
@@ -1364,12 +1414,17 @@ export default function App() {
             <button
               className="button danger"
               disabled={
-                pending.has('delete-plan') || activeRuns.some((run) => run.planId === deleting.id)
+                pending.has('delete-plan') ||
+                activeRuns.some((run) => deleting.plans.some((plan) => plan.id === run.planId))
               }
-              onClick={() => void deletePlan(deleting)}
+              onClick={() => void deletePlans(deleting.plans, deleting.batch)}
             >
               <Trash2 size={15} />
-              {pending.has('delete-plan') ? '正在删除…' : '删除任务表'}
+              {pending.has('delete-plan')
+                ? '正在删除…'
+                : deleting.batch
+                  ? `删除 ${deleting.plans.length} 张任务表`
+                  : '删除任务表'}
             </button>
           </div>
         </ConfirmDialog>

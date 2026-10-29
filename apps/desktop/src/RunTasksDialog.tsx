@@ -17,7 +17,10 @@ const boundDevice = (snapshot: Snapshot, plan: Plan) =>
   snapshot.devices.find((device) => device.id === plan.deviceId);
 
 function planReady(plan: Plan) {
-  return plan.enabled && plan.tasks.some((task) => task.enabled !== false);
+  return (
+    plan.enabled &&
+    plan.tasks.some((task) => task.enabled !== false && task.params.enable !== false)
+  );
 }
 
 function deviceIssue(snapshot: Snapshot, plan: Plan, device: Device | undefined, targetId: string) {
@@ -27,6 +30,8 @@ function deviceIssue(snapshot: Snapshot, plan: Plan, device: Device | undefined,
   if (device.state === 'offline') return '离线，请先连接';
   if (snapshot.runs.some((run) => run.deviceId === device.id && run.status === 'running'))
     return '正在执行其他任务';
+  if (snapshot.toolJobs?.some((job) => job.deviceId === device.id && job.status === 'running'))
+    return '正在执行工具';
   if (device.state !== 'idle') return '设备忙，等待空闲';
   if (plan.deviceId && targetId !== plan.deviceId) return '任务表已绑定其他实例';
   return '';
@@ -81,7 +86,17 @@ export default function RunTasksDialog({
     if (targetId && (targetCounts.get(targetId) || 0) > 1)
       issues.set(plan.id, '同一设备只能运行一张任务表');
   }
-  const blocked = [...issues.values()].some(Boolean);
+  const blocked = multi
+    ? [...issues.values()].some(Boolean)
+    : !!single &&
+      [...selected].some((id) =>
+        deviceIssue(
+          snapshot,
+          single,
+          snapshot.devices.find((device) => device.id === id),
+          id,
+        ),
+      );
   busy.current = submitting;
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -301,7 +316,7 @@ export default function RunTasksDialog({
                         <input
                           type="checkbox"
                           aria-label={`选择设备${device.name}`}
-                          disabled={!!reason || submitting}
+                          disabled={submitting || (!!reason && !selected.has(device.id))}
                           checked={selected.has(device.id)}
                           onChange={() => toggle(device.id)}
                         />
