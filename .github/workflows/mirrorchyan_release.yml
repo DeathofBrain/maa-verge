@@ -1,0 +1,51 @@
+name: mirrorchyan_release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag; leave empty to select the latest release
+        default: ''
+        required: false
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  mirrorchyan:
+    if: ${{ github.repository_owner == 'DeathofBrain' }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: win
+            arch: x86_64
+            filename: 'Maa-Verge_*_x64-setup.exe'
+          - os: macos
+            arch: aarch64
+            filename: 'Maa-Verge_*_aarch64.dmg'
+          - os: macos
+            arch: x86_64
+            filename: 'Maa-Verge_*_x64.dmg'
+          - os: linux
+            arch: x86_64
+            filename: 'Maa-Verge_*_amd64.AppImage'
+    steps:
+      - uses: MirrorChyan/uploading-action@v1
+        with:
+          filetype: latest-release
+          filename: ${{ matrix.filename }}
+          mirrorchyan_rid: maa-verge
+          tag: ${{ inputs.tag || github.event.release.tag_name }}
+
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+
+          owner: DeathofBrain
+          repo: maa-verge
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          upload_token: ${{ secrets.MirrorChyanUploadToken }}
