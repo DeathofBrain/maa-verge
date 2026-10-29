@@ -1,3 +1,4 @@
+import Select from './Select';
 import {
   useEffect,
   useLayoutEffect,
@@ -227,7 +228,7 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
             </label>
             <p>启动时及之后每天清理过期日志，保留本次会话使用的日志。</p>
           </div>
-          <select
+          <Select
             id="log-retention-days"
             className="text-input sp-inline-select"
             value={draft.days}
@@ -242,7 +243,7 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
             <option value="7">保留 7 天</option>
             <option value="14">保留 14 天</option>
             <option value="30">保留 30 天</option>
-          </select>
+          </Select>
         </div>
         <div className="sp-form-actions">
           <span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span>

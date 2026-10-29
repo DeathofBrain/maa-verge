@@ -426,7 +426,7 @@
   flex: none;
 }
 
-.wb-add-task select {
+.wb-add-task .app-select {
   width: 100%;
   font-size: 12px;
   min-height: 34px;

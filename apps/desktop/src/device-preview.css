@@ -66,7 +66,7 @@
   color: var(--muted);
   white-space: nowrap;
 }
-.device-preview-frequency select {
+.device-preview-frequency .app-select {
   min-height: 28px;
   width: 77px;
   padding: 4px 6px;

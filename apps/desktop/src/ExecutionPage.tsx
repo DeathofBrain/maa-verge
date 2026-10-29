@@ -1,3 +1,4 @@
+import Select from './Select';
 import { useEffect, useState } from 'react';
 import {
   ArrowLeft,
@@ -589,7 +590,7 @@ function ResultImages({
       {artifacts.length > 1 && (
         <label>
           反馈截图
-          <select
+          <Select
             className="text-input"
             aria-label="选择结果截图"
             value={artifact.id}
@@ -601,7 +602,7 @@ function ResultImages({
                 {new Date(item.capturedAt).toLocaleTimeString('zh-CN', { hour12: false })}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       {error ? (

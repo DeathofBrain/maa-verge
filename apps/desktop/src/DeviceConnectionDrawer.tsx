@@ -1,3 +1,4 @@
+import Select from './Select';
 import { useState } from 'react';
 import { matchingDeviceProfile, type Settings, type Snapshot } from '@maaverge/contracts';
 import { deviceForProfile } from './device-association';
@@ -44,7 +45,7 @@ export default function DeviceConnectionDrawer({
         </div>
         <label className="sp-field">
           编辑配置
-          <select
+          <Select
             className="text-input"
             aria-label="编辑设备连接配置"
             value={profile?.id || 'default'}
@@ -56,7 +57,7 @@ export default function DeviceConnectionDrawer({
                 {item.name} · {item.address}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </section>
       <TaskConnectionSettings

@@ -1,3 +1,4 @@
+import Select from './Select';
 import { useEffect, useRef, useState } from 'react';
 import { LoaderCircle, Play, TriangleAlert, X } from 'lucide-react';
 import type { Device, Plan, Snapshot } from '@maaverge/contracts';
@@ -226,7 +227,7 @@ export default function RunTasksDialog({
                         {plan.deviceId ? ` · 绑定 ${target?.name || '设备'}` : ' · 未绑定设备'}
                       </small>
                       {!plan.deviceId && (
-                        <select
+                        <Select
                           className="text-input"
                           aria-label={`为${plan.name}选择设备`}
                           value={targets[plan.id] || ''}
@@ -249,7 +250,7 @@ export default function RunTasksDialog({
                                   : '空闲'}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       )}
                     </div>
                     <span className={`tc-launch-reason ${reason ? 'is-blocked' : ''}`}>

@@ -43,7 +43,7 @@
   white-space: nowrap;
 }
 
-.sp-heading-actions select {
+.sp-heading-actions .app-select {
   max-width: 180px;
 }
 
@@ -1289,7 +1289,7 @@
   .sp-heading-actions .button {
     font-size: 12px;
   }
-  .sp-heading-actions select {
+  .sp-heading-actions .app-select {
     max-width: 160px;
   }
   .sp-notice {

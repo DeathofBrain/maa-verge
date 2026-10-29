@@ -1,13 +1,76 @@
-.schedule-panel { padding:24px; min-width:0; }
-.schedule-panel>header { display:flex; gap:16px; justify-content:space-between; flex-wrap:wrap; margin-bottom:20px; }
-.schedule-panel h2 { display:flex; gap:8px; align-items:center; margin:0; }
-.schedule-panel p { color:var(--text-muted); font-size:13px; line-height:1.7; }
-.schedule-create { display:flex; gap:12px; flex-wrap:wrap; margin:20px 0; }
-.schedule-create select { max-width:240px; }
-.schedule-options { display:flex; flex-direction:column; gap:12px; }
-.schedule-options label { display:flex; gap:8px; align-items:center; }
-.schedule-options input[type=number] { width:90px; }
-.schedule-options p { margin:0 0 4px; }
-.schedule-notifications { position:fixed; bottom:76px; right:20px; width:min(400px,calc(100vw - 40px)); z-index:80; display:grid; gap:12px; }
-.schedule-notifications section { background:var(--surface,#fff); color:var(--text-primary); border:1px solid var(--border); border-radius:14px; padding:20px; box-shadow:0 8px 28px #0002; }
-@media(max-width:650px){.schedule-panel{padding:16px}.schedule-panel table{min-width:850px}.schedule-create>*{width:100%;max-width:none!important}}
+.schedule-panel {
+  padding: 24px;
+  min-width: 0;
+}
+.schedule-panel > header {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.schedule-panel h2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+}
+.schedule-panel p {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.schedule-create {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.schedule-create .app-select {
+  max-width: 240px;
+}
+.schedule-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.schedule-options label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.schedule-options input[type='number'] {
+  width: 90px;
+}
+.schedule-options p {
+  margin: 0 0 4px;
+}
+.schedule-notifications {
+  position: fixed;
+  bottom: 76px;
+  right: 20px;
+  width: min(400px, calc(100vw - 40px));
+  z-index: 80;
+  display: grid;
+  gap: 12px;
+}
+.schedule-notifications section {
+  background: var(--surface, #fff);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 8px 28px #0002;
+}
+@media (max-width: 650px) {
+  .schedule-panel {
+    padding: 16px;
+  }
+  .schedule-panel table {
+    min-width: 850px;
+  }
+  .schedule-create > * {
+    width: 100%;
+    max-width: none !important;
+  }
+}

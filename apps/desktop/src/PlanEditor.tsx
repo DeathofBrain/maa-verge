@@ -1,3 +1,4 @@
+import Select from './Select';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowDown,
@@ -1364,7 +1365,7 @@ export default function PlanEditor({
               <label className="wb-sr-only" htmlFor="task-type">
                 添加任务类型
               </label>
-              <select
+              <Select
                 id="task-type"
                 className="text-input"
                 value={
@@ -1379,7 +1380,7 @@ export default function PlanEditor({
                     {taskCategories[type]} · {label}
                   </option>
                 ))}
-              </select>
+              </Select>
               <button
                 className="button secondary"
                 disabled={draft.steps.length >= 30 || !filteredTypes.length}
@@ -1700,7 +1701,7 @@ export default function PlanEditor({
               <h2>设备绑定</h2>
               <label className="param-field">
                 <span className="field-label">绑定设备</span>
-                <select
+                <Select
                   className="text-input"
                   aria-label="绑定设备"
                   value={draft.deviceId || ''}
@@ -1716,7 +1717,7 @@ export default function PlanEditor({
                       {device.state === 'offline' ? ' · 离线' : ''}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <p className="wb-helper">
                 绑定只影响这张任务表。游戏客户端在启动／关闭游戏任务中设置，切换顶部设备不会改写绑定。

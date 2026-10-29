@@ -80,7 +80,7 @@ function keydown(event: KeyboardEvent) {
   // Browser-managed dialogs (including the window-close prompt) own their keyboard handling.
   if (document.querySelector('dialog:modal')) return;
   if (event.key === 'Escape') {
-    if (document.querySelector('.app-context-menu')) return;
+    if (document.querySelector('.app-context-menu, [data-select-menu]')) return;
     if (!overlay.onEscape) return;
     event.preventDefault();
     event.stopPropagation();

@@ -1,3 +1,4 @@
+import Select from './Select';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -325,7 +326,7 @@ export function SettingsPage({
                         <strong>界面主题</strong>
                         <p>浅色、深色，或跟随系统外观。</p>
                       </div>
-                      <select
+                      <Select
                         className="text-input sp-inline-select"
                         aria-label="界面主题"
                         value={snapshot.settings.theme}
@@ -337,14 +338,14 @@ export function SettingsPage({
                         <option value="system">跟随系统</option>
                         <option value="light">浅色</option>
                         <option value="dark">深色</option>
-                      </select>
+                      </Select>
                     </div>
                     <div className="sp-setting-row">
                       <div>
                         <strong>关闭窗口时</strong>
                         <p>最小化到托盘可继续运行；退出会停止本地执行。</p>
                       </div>
-                      <select
+                      <Select
                         className="text-input sp-inline-select"
                         aria-label="关闭窗口时"
                         value={
@@ -367,7 +368,7 @@ export function SettingsPage({
                         <option value="ask">每次询问</option>
                         <option value="tray">最小化到托盘</option>
                         <option value="exit">退出应用</option>
-                      </select>
+                      </Select>
                     </div>
                     <div className="sp-setting-row">
                       <div>
@@ -748,7 +749,7 @@ function DownloadProxyForm({
       >
         <label className="sp-field">
           连接方式
-          <select
+          <Select
             className="text-input"
             aria-label="下载代理模式"
             value={draft.mode}
@@ -763,7 +764,7 @@ function DownloadProxyForm({
             <option value="auto">自动（系统代理与环境变量）</option>
             <option value="manual">手动 HTTP/HTTPS 代理</option>
             <option value="direct">直连</option>
-          </select>
+          </Select>
         </label>
         {draft.mode === 'manual' && (
           <label className="sp-field">
@@ -1040,7 +1041,7 @@ function UpdateSection({
       {channel.id === 'resource' && (
         <label className="sp-resource-client sp-field">
           资源客户端
-          <select
+          <Select
             className="text-input"
             aria-label="资源版本客户端"
             value={resourceClient}
@@ -1051,7 +1052,7 @@ function UpdateSection({
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       <div className="sp-update-preference">
@@ -1067,7 +1068,7 @@ function UpdateSection({
                   : '正式版提供稳定更新；预览版包含最新预览版与正式版。'}
               </p>
             </div>
-            <select
+            <Select
               className="text-input sp-inline-select"
               aria-label={isApp ? '应用更新频道' : 'MaaCore 更新频道'}
               value={
@@ -1086,7 +1087,7 @@ function UpdateSection({
             >
               <option value="stable">正式版</option>
               <option value="preview">预览版</option>
-            </select>
+            </Select>
           </div>
         )}
         <Toggle

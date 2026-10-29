@@ -1,3 +1,4 @@
+import Select from './Select';
 import {
   useCallback,
   useEffect,
@@ -1214,7 +1215,7 @@ export default function CopilotPage({
             <div className="cp-run-filters">
               <label className="cp-run-select">
                 查看设备
-                <select
+                <Select
                   className="text-input"
                   aria-label="查看作业设备"
                   value={monitorDevice}
@@ -1226,11 +1227,11 @@ export default function CopilotPage({
                       {deviceName(id)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label className="cp-run-select cp-run-history">
                 执行记录
-                <select
+                <Select
                   className="text-input"
                   aria-label="查看作业记录"
                   value={runId}
@@ -1247,7 +1248,7 @@ export default function CopilotPage({
                       {new Date(item.startedAt).toLocaleString('zh-CN')}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             </div>
           </header>
@@ -1547,7 +1548,7 @@ export default function CopilotPage({
                     {previewKinds.length > 1 && (
                       <label className="cp-field">
                         本次加入类型
-                        <select
+                        <Select
                           className="text-input"
                           aria-label="作业集入队类型"
                           value={setQueueKind}
@@ -1564,7 +1565,7 @@ export default function CopilotPage({
                               项）
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </label>
                     )}
                     <button
@@ -1831,7 +1832,7 @@ export default function CopilotPage({
                     <div className="cp-category-enqueue">
                       <label>
                         入队类型
-                        <select
+                        <Select
                           className="text-input"
                           aria-label="分类入队类型"
                           value={categoryQueueKind}
@@ -1845,7 +1846,7 @@ export default function CopilotPage({
                               {item.label}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </label>
                       <button
                         className="button secondary"
@@ -2397,7 +2398,7 @@ export default function CopilotPage({
                   {isStored && (
                     <label className="cp-drawer-category cp-field">
                       本地分类
-                      <select
+                      <Select
                         className="text-input"
                         aria-label="详情作业分类"
                         value={current.categoryId ?? ''}
@@ -2410,7 +2411,7 @@ export default function CopilotPage({
                             {item.name}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                   )}
                   <dl className="cp-meta">
@@ -2692,7 +2693,7 @@ export default function CopilotPage({
             <div className="cp-launch">
               <label className="cp-field">
                 目标设备
-                <select
+                <Select
                   className="text-input"
                   aria-label="作业目标设备"
                   value={selectedDevice}
@@ -2709,7 +2710,7 @@ export default function CopilotPage({
                           : '已连接'}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <div className="cp-device-status" role="status">
                 {checking && <LoaderCircle size={14} className="spin" />}
@@ -3068,7 +3069,7 @@ function CopilotSettings({
               <p className="cp-error-text">自动编队会清空当前编队，请先确认。</p>
               <label className="cp-field">
                 编队栏位
-                <select
+                <Select
                   className="text-input"
                   aria-label="作业编队栏位"
                   value={options.formationIndex}
@@ -3079,7 +3080,7 @@ function CopilotSettings({
                       {value === 0 ? '当前编队' : `第 ${value} 队`}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label className="cp-check">
                 <input
@@ -3129,7 +3130,7 @@ function CopilotSettings({
                         )
                       }
                     />
-                    <select
+                    <Select
                       className="text-input"
                       aria-label={`追加技能 ${index + 1}`}
                       value={operator.skill}
@@ -3146,7 +3147,7 @@ function CopilotSettings({
                           技能 {skill}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     <button
                       className="icon-button"
                       aria-label={`删除追加干员 ${index + 1}`}
