@@ -7,6 +7,7 @@ import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { fail, root } from './project.mjs';
 import { seedNativeData } from './test-support/seed-native.mjs';
+import { waitForRuntimeStartup } from './smoke-runtime.mjs';
 
 // This exercises packaged backend processes in an OS container. Desktop,
 // installer and clean-VM acceptance remain separate platform checks.
@@ -150,7 +151,9 @@ function session(data) {
         pending.delete(message.id);
         clearTimeout(request.timer);
         message.error
-          ? request.reject(new Error(JSON.stringify(message.error)))
+          ? request.reject(
+              Object.assign(new Error(JSON.stringify(message.error)), { rpcError: message.error }),
+            )
           : request.resolve(message.result);
       }
     } catch (error) {
@@ -222,6 +225,7 @@ async function main() {
     const plan = await first.request('plan.save', {
       plan: { ...proposal.plan, id: 'clean-linux-smoke' },
     });
+    await waitForRuntimeStartup(first.request);
     const request = { planId: plan.id, deviceId: 'missing-device', requestId: 'clean-linux-once' };
     await assert.rejects(first.request('run.start', request), /"code":-32004/u);
     await assert.rejects(
@@ -241,6 +245,7 @@ async function main() {
       recovered.plans.find((item) => item.id === plan.id),
       plan,
     );
+    await waitForRuntimeStartup(second.request);
     await assert.rejects(second.request('run.start', request), /"code":-32004/u);
     await second.end();
     assert(existsSync(path.join(data, 'native/maaverge.sqlite3')));
