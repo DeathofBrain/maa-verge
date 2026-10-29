@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '../src/runtime';
+import { Store } from '../src/storage';
 import type { CopilotKind } from '../../../packages/contracts/src/rpc-types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 
@@ -613,13 +614,19 @@ test('disconnect and restart interrupt uncertain copilot work without replaying 
   });
   expect((await start('disconnect')).id).toBe(run.id);
   expect(worker.tasks).toHaveLength(1);
-  // Persist an uncertain active run to verify the constructor marks its per-entry state too.
   const stored = r.store.get('run', run.id);
-  stored.status = 'running';
-  stored.copilotEntries[0].status = 'running';
-  r.store.put('run', run.id, stored);
   await r.close();
   runtimes.splice(runtimes.indexOf(r), 1);
+  // Simulate crash residue after graceful shutdown so stopRun cannot rewrite it.
+  // The next constructor must mark both the run and its active entry uncertain.
+  stored.status = 'running';
+  stored.copilotEntries[0].status = 'running';
+  const crashed = new Store(root);
+  try {
+    crashed.put('run', run.id, stored);
+  } finally {
+    crashed.close();
+  }
   const next = open(root);
   expect((await next.handle('run.detail', { id: run.id })).status).toBe('failed');
 });

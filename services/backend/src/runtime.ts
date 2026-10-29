@@ -4,6 +4,8 @@ import { realpathSync } from 'node:fs';
 import { Store, now } from './storage';
 import { RpcError } from './errors';
 import { connectionError, errorDetail, nativeConnectionError } from './connection-errors';
+import { observeAdbDevices } from './connection-health';
+import { connectAdbTransport, localAdbServer, probeAdbEndpoint } from './adb-transport';
 import {
   defaultConnection,
   parsePlan,
@@ -26,6 +28,7 @@ import {
   resolveAdbPath,
   adbServerIdentity,
   autoDiscover,
+  type AdbDevice,
   deviceLockAddress,
   emulatorCanonicalAddress,
   emulatorInstanceForAddress,
@@ -90,6 +93,7 @@ import {
 } from '../../../packages/contracts/src/validators.js';
 import {
   validateDeviceAvailabilityParams,
+  validateDeviceDeleteParams,
   validateToolIdentity,
   validateToolConfigParams,
   validateScheduleHostParams,
@@ -104,6 +108,31 @@ type Worker = Pick<
   'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'
 > &
   Partial<Pick<CoreWorker, 'frame' | 'click'>>;
+type DeviceObservation = {
+  workers: Map<string, Worker>;
+  close: () => Promise<void>;
+};
+type AutomaticTarget = {
+  key: string;
+  address: string;
+  name: string;
+  revision: string;
+};
+type AutomaticConnection = {
+  target: AutomaticTarget;
+  failures: number;
+  retryAt: number;
+  ready: boolean;
+  readyAt: number;
+  online: boolean;
+  lastOnline: boolean;
+  lastError?: string;
+  probing?: AbortController;
+  controller?: AbortController;
+  started?: Promise<any>;
+  worker?: Worker;
+  deviceId?: string;
+};
 export interface RuntimeOptions {
   copilotHttp?: typeof fetch;
   copilotDirectory?: string;
@@ -119,6 +148,9 @@ export interface RuntimeOptions {
   adbExecutable?: () => string;
   emulatorInventory?: () => Promise<EmulatorInventory>;
   discoverDevices?: typeof autoDiscover;
+  observeDeviceConnections?: typeof observeAdbDevices;
+  probeDeviceEndpoint?: typeof probeAdbEndpoint;
+  connectDeviceTransport?: typeof connectAdbTransport;
   workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker>;
 }
 export class Runtime {
@@ -139,6 +171,9 @@ export class Runtime {
   readonly artifacts: RunArtifacts;
   readonly workers = new Map<string, Worker>();
   private workerConfigurations = new Map<string, any>();
+  private deviceObservation?: DeviceObservation;
+  private closingDeviceObservations = new Set<Promise<void>>();
+  private nextDeviceObservation = 0;
   private connectionErrors = new WeakMap<Worker, string>();
   private clientSwitches = new Map<string, AbortController>();
   private submissions = new Set<Promise<void>>();
@@ -150,6 +185,14 @@ export class Runtime {
   private connecting = new Set<string>();
   private connectingAddresses = new Set<string>();
   private suppressed = new Set<string>();
+  private suppressedAddresses = new Set<string>();
+  private automaticTargets = new Map<string, AutomaticConnection>();
+  private automaticOperations = new Set<Promise<unknown>>();
+  private automaticActive = new Set<AutomaticConnection>();
+  private adbSnapshot: AdbDevice[] = [];
+  private discoveredAutomatic: AdbDevice[] = [];
+  private nextEndpointProbe = 0;
+  private endpointProbes?: Promise<void>;
   private reconnect: any[] = [];
   private switching = false;
   private autoConnecting = false;
@@ -516,6 +559,7 @@ export class Runtime {
   }
   busy() {
     return (
+      this.automaticActive.size > 0 ||
       !!this.preview?.busy ||
       this.connecting.size > 0 ||
       this.executions().some(
@@ -530,7 +574,12 @@ export class Runtime {
     if (this.executions().some((run) => run.status === 'running'))
       reasons.push('任务或工具仍在执行');
     if (this.preview.busy) reasons.push('人工点击尚未结束');
-    if (this.connecting.size || this.connectingAddresses.size || this.autoConnecting)
+    if (
+      this.connecting.size ||
+      this.connectingAddresses.size ||
+      this.autoConnecting ||
+      this.automaticActive.size
+    )
       reasons.push('设备连接或自动发现尚未结束');
     if (this.switching) reasons.push('核心与资源正在切换');
     if (this.starts.size) reasons.push('任务正在启动');
@@ -919,6 +968,8 @@ export class Runtime {
       case 'device.disconnect':
         required('id');
         return this.disconnectDevice(params.id);
+      case 'device.delete':
+        return this.deleteDevices(params);
       case 'device.frame':
         return this.preview.frame(params);
       case 'device.click':
@@ -996,8 +1047,11 @@ export class Runtime {
         );
         if (settings.autoConnect && !previous.autoConnect) {
           this.suppressed.clear();
+          this.suppressedAddresses.clear();
           this.nextAutoConnect = 0;
         }
+        this.syncAutomaticTargets();
+        this.nextEndpointProbe = 0;
         if (settings.logRetentionDays !== previous.logRetentionDays) {
           this.logs.resetCleanup();
           this.logs.automatic(settings.logRetentionDays ?? 7);
@@ -1261,11 +1315,356 @@ export class Runtime {
     }
     return run;
   }
-  private validateAutomatic(address: string) {
+  private isSuppressed(address: string) {
+    const profile = findDeviceProfile(parseSettings(this.store.get('settings', 'main')), address);
+    return (
+      this.suppressed.has(this.lockAddress(address)) ||
+      this.suppressedAddresses.has(deviceLockAddress(address)) ||
+      !!(profile && this.suppressedAddresses.has('profile:' + profile.id))
+    );
+  }
+  private suppressAddress(address: string, suppress: boolean) {
+    const canonical = this.lockAddress(address);
+    const identities = [deviceLockAddress(address)];
+    const profile = findDeviceProfile(parseSettings(this.store.get('settings', 'main')), address);
+    if (profile) identities.push('profile:' + profile.id);
+    for (const instance of this.emulatorInventory.instances)
+      for (const alias of [instance.address, ...instance.aliases])
+        if (this.lockAddress(alias) === canonical) identities.push(deviceLockAddress(alias));
+    if (suppress) this.suppressed.add(canonical);
+    else this.suppressed.delete(canonical);
+    for (const identity of identities) {
+      if (suppress) this.suppressedAddresses.add(identity);
+      else this.suppressedAddresses.delete(identity);
+    }
+    for (const state of this.automaticTargets.values())
+      if (this.lockAddress(state.target.address) === canonical) {
+        state.probing?.abort();
+        state.controller?.abort();
+        this.automaticTargets.delete(state.target.key);
+      }
+  }
+  private automaticConfiguration(address: string) {
+    const settings = parseSettings(this.store.get('settings', 'main'));
+    const profile = findDeviceProfile(settings, address);
+    return JSON.stringify([
+      settings.autoConnect,
+      profile ?? { connection: settings.connection, capture: settings.capture },
+      this.store.get('active', 'combo', {}),
+    ]);
+  }
+  private automaticCandidates(): AutomaticTarget[] {
+    const settings = parseSettings(this.store.get('settings', 'main'));
+    const profiles = settings.deviceProfiles ?? [];
+    const configuredOnly = profiles.some((profile) => !profile.autoDetected);
+    const candidates = [
+      ...profiles,
+      ...(!configuredOnly
+        ? [...this.store.all('device'), ...this.adbSnapshot, ...this.discoveredAutomatic].filter(
+            (device) => isLocalEmulator(device.address),
+          )
+        : []),
+    ];
+    const selected = new Map<string, AutomaticTarget>();
+    for (const candidate of candidates) {
+      if (this.isSuppressed(candidate.address)) continue;
+      const profile = findDeviceProfile(settings, candidate.address);
+      // Process-derived lease identities can change after an emulator restart.
+      // Queue identity uses the proven primary endpoint, never its transient PID.
+      const instance = emulatorInstanceForAddress(candidate.address, this.emulatorInventory);
+      const canonical = deviceLockAddress(
+        instance?.address ?? profile?.address ?? candidate.address,
+      );
+      const key = adbServerIdentity() + '|' + canonical;
+      if (!selected.has(key))
+        selected.set(key, {
+          key,
+          address: candidate.address,
+          name: candidate.name,
+          revision: this.automaticConfiguration(candidate.address),
+        });
+    }
+    return [...selected.values()];
+  }
+  private automaticAvailable() {
+    return (
+      this.running &&
+      !this.initializingComponents &&
+      !this.appUpdating &&
+      !this.appUpdatePreparing &&
+      !this.switching &&
+      parseSettings(this.store.get('settings', 'main')).autoConnect &&
+      !!this.store.get('active', 'combo', {}).core
+    );
+  }
+  private syncAutomaticTargets() {
+    const targets = new Map(
+      (this.automaticAvailable() ? this.automaticCandidates() : []).map((target) => [
+        target.key,
+        target,
+      ]),
+    );
+    for (const [key, state] of this.automaticTargets)
+      if (!targets.has(key) || targets.get(key)!.revision !== state.target.revision) {
+        state.probing?.abort();
+        state.controller?.abort();
+        this.automaticTargets.delete(key);
+      }
+    for (const [key, target] of targets)
+      if (!this.automaticTargets.has(key))
+        this.automaticTargets.set(key, {
+          target,
+          failures: 0,
+          retryAt: 0,
+          ready: false,
+          readyAt: 0,
+          online: false,
+          lastOnline: false,
+        });
+    return [...this.automaticTargets.values()];
+  }
+  private validateAutomatic(address: string, attempt?: AutomaticConnection) {
     if (!parseSettings(this.store.get('settings', 'main')).autoConnect)
       throw new RpcError(-32011, '自动连接已关闭');
-    if (this.suppressed.has(this.lockAddress(address)))
-      throw new RpcError(-32011, '该设备已手动断开，自动连接已跳过');
+    if (this.isSuppressed(address)) throw new RpcError(-32011, '该设备已手动断开，自动连接已跳过');
+    if (
+      attempt &&
+      (!this.automaticAvailable() ||
+        attempt.controller?.signal.aborted ||
+        this.automaticTargets.get(attempt.target.key) !== attempt ||
+        attempt.target.revision !== this.automaticConfiguration(address) ||
+        !this.automaticCandidates().some((target) => target.key === attempt.target.key))
+    )
+      throw new RpcError(-32011, '自动连接配置或设备状态已改变，连接已取消');
+  }
+  private automaticWorker(state: AutomaticConnection) {
+    return [...this.workers].find(([id]) => {
+      const device = this.store.get('device', id);
+      return device && this.lockAddress(device.address) === this.lockAddress(state.target.address);
+    });
+  }
+  private async waitAutomaticConnected(worker: Worker, signal: AbortSignal) {
+    let finished = false;
+    let cancel!: () => void;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const stopped = new Promise<boolean>((resolve) => {
+      cancel = () => resolve(false);
+      signal.addEventListener('abort', cancel, { once: true });
+      timer = setTimeout(cancel, 30_000);
+      if (signal.aborted) cancel();
+    });
+    try {
+      return await Promise.race([
+        worker.waitConnected(30_000, () => finished || signal.aborted),
+        stopped,
+      ]);
+    } finally {
+      finished = true;
+      clearTimeout(timer);
+      signal.removeEventListener('abort', cancel);
+    }
+  }
+  private beginAutomaticConnection(
+    state: AutomaticConnection,
+    inventory?: EmulatorInventory,
+    nativeTransport = false,
+  ): Promise<any> | undefined {
+    if (state.started) return state.started;
+    const previous = this.automaticWorker(state);
+    if (previous?.[1].connected) return Promise.resolve(this.store.get('device', previous[0]));
+    if (
+      this.automaticActive.size >= 2 ||
+      [...this.automaticActive].some(
+        (active) =>
+          this.lockAddress(active.target.address) === this.lockAddress(state.target.address),
+      ) ||
+      Date.now() < state.retryAt ||
+      (previous && !previous[1].safeIdle) ||
+      this.connectingAddresses.has(state.target.address) ||
+      (previous && this.hasExecution(previous[0]))
+    )
+      return;
+    const controller = new AbortController();
+    state.controller = controller;
+    this.automaticActive.add(state);
+    let resolveStarted!: (device: any) => void;
+    let rejectStarted!: (reason: unknown) => void;
+    const started = new Promise<any>((resolve, reject) => {
+      resolveStarted = resolve;
+      rejectStarted = reject;
+    });
+    state.started = started;
+    // All callers may ignore the start result; the lifecycle operation owns errors.
+    void started.catch(() => {});
+    const operation = Promise.resolve().then(async () => {
+      try {
+        this.validateAutomatic(state.target.address, state);
+        if (!state.online && !nativeTransport) {
+          const transport =
+            this.options.connectDeviceTransport ??
+            (this.options.workerFactory || this.options.adbExecutable
+              ? undefined
+              : connectAdbTransport);
+          if (!transport) throw new Error('合成测试未配置 ADB 传输适配器');
+          const settings = parseSettings(this.store.get('settings', 'main'));
+          const profile = findDeviceProfile(settings, state.target.address);
+          const adb = await this.adbExecutable(profile ?? settings);
+          this.validateAutomatic(state.target.address, state);
+          await transport(adb, state.target.address, controller.signal);
+          this.validateAutomatic(state.target.address, state);
+          this.nextDeviceObservation = 0;
+        }
+        if (previous) {
+          await this.disconnectDevice(previous[0], true);
+          this.validateAutomatic(state.target.address, state);
+        }
+        const device = await this.connectDevice(state.target, false, true, inventory, state);
+        resolveStarted(device);
+        const worker = this.workers.get(device.id);
+        if (!worker || !(await this.waitAutomaticConnected(worker, controller.signal)))
+          throw new Error(
+            this.store.get('device', device.id)?.connectionError || '核心设备连接失败或超时',
+          );
+        this.validateAutomatic(state.target.address, state);
+        state.failures = 0;
+        state.retryAt = 0;
+        state.lastError = undefined;
+        state.worker = undefined;
+      } catch (error) {
+        rejectStarted(error);
+        const worker = state.worker;
+        if (worker) {
+          await worker.close();
+          if (this.workers.get(state.deviceId!) === worker) {
+            this.workers.delete(state.deviceId!);
+            this.workerConfigurations.delete(state.deviceId!);
+            if (this.running) {
+              const device = this.store.get('device', state.deviceId!);
+              if (device) {
+                device.state = 'offline';
+                delete device.captureMethod;
+                device.connectionError = connectionError(error);
+                this.store.put('device', device.id, device);
+                this.emit('device.failed', device.connectionError, { device });
+              }
+            }
+          }
+          state.worker = undefined;
+        }
+        if (!controller.signal.aborted && this.running) {
+          const failure = connectionError(error);
+          if (!worker && failure !== state.lastError) {
+            const settings = parseSettings(this.store.get('settings', 'main'));
+            const profile = findDeviceProfile(settings, state.target.address);
+            const device = this.store
+              .all('device')
+              .find(
+                (item) => this.lockAddress(item.address) === this.lockAddress(state.target.address),
+              );
+            if (device) {
+              device.connectionError = failure;
+              this.store.put('device', device.id, device);
+              this.emit('device.failed', failure, { device });
+            } else if (profile)
+              this.emit('device.connection_failed', failure, {
+                profileId: profile.id,
+                address: state.target.address,
+                error: failure,
+              });
+          }
+          state.lastError = failure;
+          state.failures++;
+          state.retryAt =
+            Date.now() +
+            (/设备控制权|device lock/.test(failure)
+              ? 30_000
+              : [2000, 4000, 8000, 16_000, 30_000][Math.min(state.failures - 1, 4)]!);
+        }
+      } finally {
+        state.started = undefined;
+        state.controller = undefined;
+        this.automaticActive.delete(state);
+      }
+    });
+    this.automaticOperations.add(operation);
+    void operation.catch(() => {}).finally(() => this.automaticOperations.delete(operation));
+    return started;
+  }
+  private drainAutomaticConnections() {
+    if (!this.automaticAvailable()) return;
+    for (const state of this.automaticTargets.values())
+      if (state.online || (state.ready && Date.now() - state.readyAt < 2000))
+        this.beginAutomaticConnection(state);
+  }
+  private async checkAutomaticEndpoints() {
+    const states = this.syncAutomaticTargets();
+    const online = new Set(
+      this.adbSnapshot
+        .filter((device) => device.adbState === 'device')
+        .map((device) => this.lockAddress(device.address)),
+    );
+    for (const state of states) {
+      if (online.has(this.lockAddress(state.target.address))) {
+        if (!state.lastOnline) state.retryAt = 0;
+        state.online = true;
+        state.lastOnline = true;
+      }
+    }
+    this.drainAutomaticConnections();
+    if (this.endpointProbes || Date.now() < this.nextEndpointProbe || !localAdbServer()) return;
+    const probe =
+      this.options.probeDeviceEndpoint ??
+      (this.options.workerFactory || this.options.adbExecutable ? undefined : probeAdbEndpoint);
+    if (!probe) return;
+    this.nextEndpointProbe = Date.now() + 2000;
+    const candidates = states.filter(
+      (state) =>
+        !state.online &&
+        !state.started &&
+        !state.probing &&
+        isLocalEmulator(state.target.address) &&
+        !this.automaticWorker(state)?.[1].connected,
+    );
+    let next = 0;
+    const scan = async () => {
+      while (next < candidates.length) {
+        const state = candidates[next++]!;
+        if (!this.automaticAvailable()) return;
+        const controller = new AbortController();
+        state.probing = controller;
+        try {
+          const ready = await probe(state.target.address, controller.signal);
+          if (
+            controller.signal.aborted ||
+            this.automaticTargets.get(state.target.key) !== state ||
+            state.target.revision !== this.automaticConfiguration(state.target.address) ||
+            !this.automaticAvailable() ||
+            this.isSuppressed(state.target.address)
+          )
+            continue;
+          if (ready && !state.ready && state.readyAt > 0) state.retryAt = 0;
+          state.ready = ready;
+          state.readyAt = Date.now();
+        } catch {
+          /* A failed TCP probe is not evidence of a native connection failure. */
+        } finally {
+          state.probing = undefined;
+        }
+      }
+    };
+    const pending = Promise.all(Array.from({ length: Math.min(4, candidates.length) }, scan)).then(
+      () => {
+        this.drainAutomaticConnections();
+      },
+    );
+    this.endpointProbes = pending;
+    this.automaticOperations.add(pending);
+    try {
+      await pending;
+    } finally {
+      this.endpointProbes = undefined;
+      this.automaticOperations.delete(pending);
+    }
   }
   private lockAddress(address: string) {
     return emulatorCanonicalAddress(
@@ -1318,6 +1717,7 @@ export class Runtime {
     internal = false,
     automatic = false,
     inventory?: EmulatorInventory,
+    attempt?: AutomaticConnection,
   ): Promise<any> {
     let id: string | undefined,
       reservedAddress: string | undefined,
@@ -1334,12 +1734,16 @@ export class Runtime {
         throw new RpcError(-32011, '应用运行时正在退出或安装更新');
       const address = validateAddress(params.address);
       attemptedAddress = address;
-      if (automatic) this.validateAutomatic(address);
+      if (automatic) this.validateAutomatic(address, attempt);
       const active = this.store
         .all('device')
         .find((device) => device.address === address && this.workers.has(device.id));
       if (active) return active;
       if (this.connectingAddresses.has(address)) throw new RpcError(-32011, '该设备正在建立连接');
+      if (!attempt)
+        for (const state of this.automaticActive)
+          if (this.lockAddress(state.target.address) === this.lockAddress(address))
+            throw new RpcError(-32011, '该设备正在自动建立连接');
       this.connectingAddresses.add(address);
       reservedAddress = address;
       this.emulatorInventory = inventory ?? (await this.readEmulatorInventory());
@@ -1436,6 +1840,7 @@ export class Runtime {
               : [...profiles, automaticProfile],
           });
           this.store.put('settings', 'main', next);
+          if (attempt) attempt.target.revision = this.automaticConfiguration(address);
           profile = next.deviceProfiles!.find((item) => item.id === profileKey);
           profileId = profileKey;
           if (!existing || JSON.stringify(existing) !== JSON.stringify(profile))
@@ -1458,8 +1863,8 @@ export class Runtime {
       else if (capture.method === 'mumu' && capture.mumuBridge)
         throw new Error('未能确认 MuMu 桥接实例，请启动对应实例并检查多开管理器');
       else this.store.delete('device-alias', address);
-      if (automatic) this.validateAutomatic(address);
-      else if (!internal) this.suppressed.delete(this.lockAddress(address));
+      if (automatic) this.validateAutomatic(address, attempt);
+      else if (!internal) this.suppressAddress(address, false);
       const combo = this.store.get('active', 'combo', {});
       if (!combo.core) throw new Error('请先在更新中心安装并启用核心');
       const canonical = this.lockAddress(address),
@@ -1475,7 +1880,7 @@ export class Runtime {
       const adb = await this.adbExecutable(selected);
       if (!this.running || (this.switching && !internal))
         throw new RpcError(-32011, '正在退出或切换核心，连接已取消');
-      if (automatic) this.validateAutomatic(address);
+      if (automatic) this.validateAutomatic(address, attempt);
       const connection = (({ config, touchMode, adbLite, clientType }) => ({
         config,
         touchMode,
@@ -1502,14 +1907,20 @@ export class Runtime {
         ...(connection ? { connection } : {}),
         userDir: path.join(this.root, 'workers', id!),
         lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical),
+        ...(automatic ? { lockTimeoutMs: 0 } : {}),
       };
-      worker = await this.startWorker(config);
+      worker = await this.startWorker(config, attempt?.controller?.signal);
+      if (automatic) this.validateAutomatic(address, attempt);
       await worker.connect();
       if (!this.running || this.appUpdating)
         throw new RpcError(-32011, '应用运行时正在退出或安装更新');
-      if (automatic) this.validateAutomatic(address);
+      if (automatic) this.validateAutomatic(address, attempt);
       this.workers.set(id!, worker);
       this.workerConfigurations.set(id!, structuredClone(config));
+      if (attempt) {
+        attempt.worker = worker;
+        attempt.deviceId = id;
+      }
       const device = {
         id,
         name: String(params.name || profile?.name || address).slice(0, 80),
@@ -1545,7 +1956,14 @@ export class Runtime {
     try {
       if (!this.running || this.appUpdating || this.appUpdatePreparing || this.switching)
         throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，请稍后重试');
-      if (!automatic) this.suppressed.clear();
+      if (!automatic) {
+        this.suppressed.clear();
+        this.suppressedAddresses.clear();
+        for (const state of this.automaticTargets.values()) {
+          state.failures = 0;
+          state.retryAt = 0;
+        }
+      }
       if (!this.store.get('active', 'combo', {}).core)
         throw new RpcError(-32040, '请先在更新中心安装并启用核心，再自动连接模拟器');
       const profiles = parseSettings(this.store.get('settings', 'main')).deviceProfiles ?? [];
@@ -1574,6 +1992,10 @@ export class Runtime {
         diagnostics = [...inventory.diagnostics];
       }
       this.emulatorInventory = inventory;
+      if (automatic) {
+        this.discoveredAutomatic = discovered;
+        this.syncAutomaticTargets();
+      }
       // Explicit multi-instance profiles use their own ADB executables and SDK
       // indices. A global enhanced-capture index must never be applied to all.
       const candidates = configuredOnly
@@ -1594,13 +2016,35 @@ export class Runtime {
           (!configured &&
             (candidate.adbState !== 'device' || !isLocalEmulator(candidate.address))) ||
           seen.has(key) ||
-          (automatic && this.suppressed.has(key))
+          (automatic && this.isSuppressed(candidate.address))
         )
           continue;
         seen.add(key);
         try {
           if (this.switching || !this.running)
             throw new RpcError(-32011, '正在退出或切换核心，请稍后重试');
+          const queued = [...this.automaticTargets.values()].find(
+            (state) => this.lockAddress(state.target.address) === key,
+          );
+          if (automatic) {
+            if (queued) {
+              if (candidate.adbState === 'device') {
+                queued.online = true;
+                queued.lastOnline = true;
+              }
+              const nativeTransport =
+                candidate.adbState === 'configured' &&
+                !candidate.address.includes(':') &&
+                !candidate.address.startsWith('emulator-');
+              const started = this.beginAutomaticConnection(queued, inventory, nativeTransport);
+              if (started) devices.push(await started);
+            }
+            continue;
+          }
+          if (queued?.started) {
+            devices.push(await queued.started);
+            continue;
+          }
           const previous = [...this.workers.keys()]
             .map((id) => this.store.get('device', id))
             .find((d) => this.lockAddress(d.address) === key);
@@ -1631,19 +2075,19 @@ export class Runtime {
     }
   }
   async automaticConnections() {
+    if (!this.running) return;
+    this.syncAutomaticTargets();
+    if (!this.automaticAvailable()) return;
+    this.watchDeviceConnections();
+    await this.checkAutomaticEndpoints();
     if (
-      !this.running ||
-      this.initializingComponents ||
-      this.appUpdating ||
-      this.appUpdatePreparing ||
-      !parseSettings(this.store.get('settings', 'main')).autoConnect ||
+      !this.automaticAvailable() ||
       Date.now() < this.nextAutoConnect ||
-      this.switching ||
-      this.busy()
+      this.busy() ||
+      this.autoConnecting
     )
       return;
     this.nextAutoConnect = Date.now() + 30_000;
-    if (!this.store.get('active', 'combo', {}).core) return;
     try {
       await this.autoConnectDevices(true);
     } catch (error) {
@@ -1656,6 +2100,52 @@ export class Runtime {
       this.lastDiagnostics = diagnostics;
     }
   }
+  private deleteDevices(params: unknown): RpcContract['results']['device.delete'] {
+    if (!validateDeviceDeleteParams(params)) throw new RpcError(-32602, '历史设备删除请求无效');
+    if (this.switching) throw new RpcError(-32011, '正在切换核心与资源，暂不能删除历史设备');
+    const devices = params.deviceIds
+      .map((id) => this.store.get('device', id))
+      .filter((device) => !!device);
+    const connectingAddresses = new Set(
+      [...this.connectingAddresses].map((address) => this.lockAddress(address)),
+    );
+    // Preflight the entire batch without yielding: an offline-looking record can
+    // still belong to an asynchronous connection, execution or scheduled start.
+    for (const device of devices) {
+      if (
+        device.state !== 'offline' ||
+        this.workers.has(device.id) ||
+        this.connecting.has(device.id) ||
+        connectingAddresses.has(this.lockAddress(device.address)) ||
+        [...this.automaticActive].some(
+          (state) => this.lockAddress(state.target.address) === this.lockAddress(device.address),
+        ) ||
+        this.clientSwitches.has(device.id) ||
+        this.hasExecution(device.id) ||
+        [...this.starts.values()].some((start) => start.deviceId === device.id) ||
+        this.scheduler.owner(device.id) ||
+        this.preview.isClicking(device.id)
+      )
+        throw new RpcError(-32011, '只能删除未被占用的离线历史设备，请先断开设备并等待操作结束', {
+          deviceId: device.id,
+        });
+    }
+    const deletedDeviceIds = devices.map((device) => device.id as string);
+    this.store.transaction(() => {
+      // Instance profiles, bindings, execution evidence and account history have
+      // independent lifetimes; deleting this list entry must not cascade to them.
+      for (const id of deletedDeviceIds) this.store.delete('device', id);
+    });
+    for (const device of devices) {
+      this.preview.invalidate(device.id);
+      this.suppressAddress(device.address, true);
+    }
+    if (deletedDeviceIds.length)
+      this.emit('device.deleted', '离线历史设备已删除，实例配置和执行记录保留', {
+        deletedDeviceIds,
+      });
+    return { deletedDeviceIds };
+  }
   async disconnectDevice(id: string, internal = false) {
     if (this.switching && !internal)
       throw new RpcError(-32011, '正在切换核心与资源，暂不能断开设备');
@@ -1666,13 +2156,14 @@ export class Runtime {
       this.executions().some((r) => r.deviceId === id && r.status === 'running')
     )
       throw new RpcError(-32011, '请先停止该设备的执行');
+    const recorded = this.store.get('device', id);
+    if (!internal && recorded) this.suppressAddress(recorded.address, true);
     const worker = this.workers.get(id);
     this.workers.delete(id);
     this.workerConfigurations.delete(id);
     await worker?.close();
     const device = this.store.get('device', id);
     if (device) {
-      if (!internal) this.suppressed.add(this.lockAddress(device.address));
       device.state = 'offline';
       this.store.put('device', id, device);
     }
@@ -2404,6 +2895,106 @@ export class Runtime {
         run.copilotEntries ?? [],
       );
   }
+  private closeDeviceObservation() {
+    const observation = this.deviceObservation;
+    this.deviceObservation = undefined;
+    if (!observation) return;
+    const closing = Promise.resolve()
+      .then(() => observation.close())
+      .catch(() => {})
+      .finally(() => this.closingDeviceObservations.delete(closing));
+    this.closingDeviceObservations.add(closing);
+  }
+  private watchDeviceConnections() {
+    if (!this.running || this.switching || this.appUpdating || this.appUpdatePreparing) {
+      this.closeDeviceObservation();
+      this.adbSnapshot = [];
+      for (const state of this.automaticTargets.values()) state.online = false;
+      return;
+    }
+    // Synthetic workers must explicitly opt into a synthetic observer. Never let
+    // routine tests reach the host ADB, even when their fixture uses CoreWorker.
+    const observe =
+      this.options.observeDeviceConnections ??
+      (this.options.workerFactory || this.options.adbExecutable ? undefined : observeAdbDevices);
+    if (!observe) return;
+    const workers = new Map(
+      [...this.workers].filter(
+        ([id, worker]) =>
+          worker.connected && !this.connecting.has(id) && this.workerConfigurations.has(id),
+      ),
+    );
+    const current = this.deviceObservation;
+    const reconnecting = this.automaticAvailable();
+    if (
+      current &&
+      (workers.size > 0 || reconnecting) &&
+      current.workers.size === workers.size &&
+      [...workers].every(([id, worker]) => current.workers.get(id) === worker)
+    )
+      return;
+    this.closeDeviceObservation();
+    if ((!workers.size && !reconnecting) || Date.now() < this.nextDeviceObservation) return;
+    // One passive subscription covers every device on this service's ADB server.
+    // Refresh it on worker replacement to get a new initial snapshot, rather than
+    // applying a cached device list from before that connection was established.
+    const observation: DeviceObservation = { workers, close: async () => {} };
+    this.deviceObservation = observation;
+    const disconnected = () => {
+      if (this.deviceObservation !== observation) return;
+      this.closeDeviceObservation();
+      this.adbSnapshot = [];
+      for (const state of this.automaticTargets.values()) state.online = false;
+      // Losing the observer says nothing about individual devices. Retry only
+      // the subscription; never turn a server/socket error into device loss.
+      this.nextDeviceObservation = Date.now() + 5000;
+    };
+    try {
+      const observer = observe((devices) => {
+        if (!this.running || this.switching || this.deviceObservation !== observation) return;
+        this.adbSnapshot = devices;
+        const online = new Set(
+          devices
+            .filter((device) => device.adbState === 'device')
+            .map((device) => this.lockAddress(device.address)),
+        );
+        for (const [id, worker] of observation.workers) {
+          const config = this.workerConfigurations.get(id);
+          if (
+            this.workers.get(id) === worker &&
+            worker.connected &&
+            config &&
+            !online.has(this.lockAddress(config.address))
+          )
+            worker.events.push({ type: 'connection_lost' });
+        }
+        for (const state of this.syncAutomaticTargets()) {
+          const ready = devices.some(
+            (device) =>
+              device.adbState === 'device' &&
+              this.lockAddress(device.address) === this.lockAddress(state.target.address),
+          );
+          if (ready && !state.lastOnline) state.retryAt = 0;
+          state.online = ready;
+          state.lastOnline = ready;
+        }
+        this.drainAutomaticConnections();
+      }, disconnected);
+      observation.close = () => observer.close();
+    } catch {
+      disconnected();
+    }
+  }
+  private async releaseOfflineWorker(id: string, worker: Worker) {
+    this.preview.invalidate(id);
+    // Keep the worker registered until shutdown releases its native device lease.
+    // History deletion and replacement connections must wait for that boundary.
+    await worker.close();
+    if (this.workers.get(id) === worker) {
+      this.workers.delete(id);
+      this.workerConfigurations.delete(id);
+    }
+  }
   async pollNativeWorkers() {
     for (const [id, worker] of [...this.workers.entries()]) {
       if (this.workers.get(id) !== worker) continue;
@@ -2412,20 +3003,33 @@ export class Runtime {
       while (worker.events.length) {
         const event = worker.events.shift(),
           state = run ? this.store.get('execution', run.id, {}) : {};
-        if (['exit', 'protocol_error'].includes(event.type)) {
+        if (['exit', 'protocol_error', 'connection_lost'].includes(event.type)) {
+          const connectionLost = event.type === 'connection_lost';
+          const reason = connectionLost
+            ? '设备已离线，模拟器可能已关闭或 ADB 连接已中断；请启动模拟器或检查连接后重试'
+            : undefined;
           worker.connected = false;
+          this.preview.invalidate(id);
           if (run)
-            this.finishNativeRun(run, 'failed', '核心工作进程异常，执行结果未知；不会自动重放');
+            this.finishNativeRun(
+              run,
+              'failed',
+              connectionLost
+                ? reason + '；执行结果未知，不会自动重放'
+                : '核心工作进程异常，执行结果未知；不会自动重放',
+            );
           run = undefined;
           const d = this.store.get('device', id);
           d.state = 'offline';
-          d.connectionError = event.error
-            ? String(event.error).slice(0, 4096)
-            : '核心工作进程异常退出，请重新连接；若仍失败可在设置中导出诊断日志';
+          delete d.captureMethod;
+          d.connectionError =
+            reason ??
+            (event.error
+              ? String(event.error).slice(0, 4096)
+              : '核心工作进程异常退出，请重新连接；若仍失败可在设置中导出诊断日志');
           this.store.put('device', id, d);
-          await worker.close();
-          this.workers.delete(id);
-          this.workerConfigurations.delete(id);
+          if (connectionLost) this.emit('device.failed', reason!, { device: d });
+          await this.releaseOfflineWorker(id, worker);
           break;
         }
         if (event.type === 'callback') {
@@ -2463,7 +3067,8 @@ export class Runtime {
             const reported = details.details?.error,
               translated = reported ? connectionError(reported) : undefined;
             if (worker.connected) delete d.connectionError;
-            else
+            else {
+              delete d.captureMethod;
               d.connectionError =
                 (reported && translated !== errorDetail(reported).slice(0, 4096)
                   ? translated
@@ -2471,6 +3076,7 @@ export class Runtime {
                 this.connectionErrors.get(worker) ||
                 translated ||
                 '设备连接失败，核心未返回具体原因；请确认模拟器已启动、ADB 调试已开启，并核对连接地址';
+            }
             this.connectionErrors.delete(worker);
             this.store.put('device', id, d);
             this.emit(
@@ -2483,6 +3089,11 @@ export class Runtime {
                   : {}),
               },
             );
+            if (!worker.connected) {
+              if (run) this.finishNativeRun(run, 'failed', d.connectionError);
+              await this.releaseOfflineWorker(id, worker);
+              break;
+            }
           }
           if (message === 2 && ['Disconnect', 'ResolutionChanged'].includes(details.what)) {
             worker.connected = false;
@@ -2500,6 +3111,8 @@ export class Runtime {
             this.emit('device.failed', reason, { device: d });
             if (run) this.finishNativeRun(run, 'failed', reason);
             run = undefined;
+            await this.releaseOfflineWorker(id, worker);
+            break;
           }
           if (run) {
             const matches = details.taskid === state.taskId;
@@ -2832,6 +3445,7 @@ export class Runtime {
           parseSettings(this.store.get('settings', 'main')).logRetentionDays ?? 7,
         );
       await this.pollNativeWorkers();
+      this.watchDeviceConnections();
       if (!this.initializingComponents) this.scheduler.tick();
     } finally {
       this.ticking = false;
@@ -2894,12 +3508,20 @@ export class Runtime {
   }
   private async closeInner() {
     this.running = false;
+    for (const state of this.automaticTargets.values()) {
+      state.probing?.abort();
+      state.controller?.abort();
+    }
+    for (const state of this.automaticActive) state.controller?.abort();
+    this.automaticTargets.clear();
+    this.closeDeviceObservation();
     this.appUpdateHttp.close();
     this.copilot.beginClose();
     this.scheduler.close();
     this.toolbox.close();
     this.cancelPendingClientSwitches();
     this.preview.invalidate();
+    await Promise.allSettled([...this.automaticOperations]);
     await this.knowledge.close();
     await this.calendar.close();
     await this.updates.close();
@@ -2912,6 +3534,7 @@ export class Runtime {
       ...[...this.starts.values()].map((start) => start.promise),
     ]);
     await Promise.allSettled([...this.artifactCaptures.values()]);
+    await Promise.allSettled([...this.closingDeviceObservations]);
     await this.copilot.drainFeedback(1000);
     this.logs.diagnostics.write('info', 'runtime.stopped');
     this.store.close();
