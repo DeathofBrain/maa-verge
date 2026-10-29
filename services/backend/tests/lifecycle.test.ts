@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -23,7 +31,9 @@ const nativeChildren = new Set<number>();
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function temp() {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-lifecycle-'));
+  // macOS temp roots use /var aliases; Windows may use short path names.
+  // Snapshot fixtures need the canonical tree, just like installed generations.
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'maaverge-lifecycle-')));
   roots.push(root);
   return root;
 }

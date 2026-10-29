@@ -285,7 +285,9 @@ function emitTools() {
   };
   for (const kind of schemas.get(rpcFile).$defs.ToolKind.enum) {
     const label = labels[kind];
-    const index = lines.findIndex((line) => line.startsWith(`| ${label} |`));
+    const index = lines.findIndex(
+      (line) => line.startsWith('|') && line.split('|')[1]?.trim() === label,
+    );
     if (!label || index < 0) throw new Error(`Missing current tool documentation: ${kind}`);
     add({
       key: `product:tool:${kind}`,

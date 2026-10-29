@@ -609,9 +609,24 @@ test('automatic connection is deterministic with the test runtime and its prefer
   await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
   await expect(page.locator('.connection-diagnostics')).toContainText('未访问真实模拟器');
   await openConnectionSettings(page);
-  await expect(page.getByRole('checkbox', { name: '自动检测连接', exact: true })).toBeChecked();
-  await page.getByRole('checkbox', { name: '自动检测连接', exact: true }).uncheck();
-  await expect(page.getByRole('checkbox', { name: '自动检测连接', exact: true })).not.toBeChecked();
+  const automatic = page.getByRole('checkbox', { name: '自动检测连接', exact: true });
+  await expect(automatic).toBeChecked();
+  // The checkbox reflects saved settings after the asynchronous write finishes.
+  await automatic.click();
+  await expect(automatic).not.toBeChecked();
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const snapshot = (await (window as HarnessWindow).runtimeHarness.call(
+          'app.snapshot',
+          {},
+        )) as {
+          settings: { autoConnect: boolean };
+        };
+        return snapshot.settings.autoConnect;
+      }),
+    )
+    .toBe(false);
   await page.reload();
   await navigate(page, '设备');
   await openConnectionSettings(page);

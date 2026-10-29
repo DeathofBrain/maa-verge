@@ -197,7 +197,7 @@ test('callers cannot mutate the static catalogue and manifest', () => {
   expect(Object.isFrozen(productKnowledgeSources[0])).toBe(true);
 });
 
-// Six isolated CLI invocations share this test's overall deadline.
+// Seven isolated CLI invocations share this test's overall deadline.
 test('offline generator is deterministic and check detects source drift without changing output', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'maaverge-product-knowledge-'));
   const output = 'services/backend/src/product-knowledge.generated.json';
@@ -232,7 +232,18 @@ test('offline generator is deterministic and check detects source drift without 
     }
     expect(run('--check').status).toBe(0);
     const source = path.join(temporary, 'docs/toolbox-schedules.md');
-    writeFileSync(source, readFileSync(source, 'utf8') + '\n## 测试缺口\n\n离线来源发生变化。\n');
+    const originalSource = readFileSync(source, 'utf8');
+    const tools = records.filter((record) => record.data.category === 'tool');
+    let formattedSource = originalSource;
+    // Column padding changes Markdown layout without changing tool identities.
+    for (const tool of tools)
+      formattedSource = formattedSource.replace(
+        new RegExp(`^\\|[ \\t]*${tool.name}[ \\t]*\\|`, 'm'),
+        `|   ${tool.name.padEnd(12)}|`,
+      );
+    expect(formattedSource).not.toBe(originalSource);
+    const changedSource = formattedSource + '\n## 测试缺口\n\n离线来源发生变化。\n';
+    writeFileSync(source, changedSource);
     const stale = run('--check');
     expect(stale.status).toBe(1);
     expect(stale.stderr).toContain('产品知识未同步');
@@ -244,6 +255,22 @@ test('offline generator is deterministic and check detects source drift without 
     expect(
       updated.records.some((record: { text: string }) => record.text.includes('离线来源发生变化')),
     ).toBe(true);
+    const updatedTools = updated.records.filter(
+      (record: { data: { category: string } }) => record.data.category === 'tool',
+    );
+    expect(updatedTools.map((record: { id: string }) => record.id)).toEqual(
+      tools.map((tool) => tool.id),
+    );
+    for (const tool of updatedTools) {
+      expect(tool.text).toContain(`|   ${tool.name.padEnd(12)}|`);
+      expect(tool.source.sha256).toBe(sha256(changedSource));
+    }
+    const regenerated = readFileSync(path.join(temporary, output), 'utf8');
+    writeFileSync(source, changedSource.replace(/^\|[ \t]*仓库[ \t]*\|.*\n/m, ''));
+    const missing = run();
+    expect(missing.status).toBe(1);
+    expect(missing.stderr).toContain('Missing current tool documentation: depot');
+    expect(readFileSync(path.join(temporary, output), 'utf8')).toBe(regenerated);
   } finally {
     const absolute = path.resolve(temporary);
     if (
