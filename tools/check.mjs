@@ -7,6 +7,7 @@ const toolTests = [
   'tools/tests/commit-formatting.test.mjs',
   'tools/tests/vite-cache.test.mjs',
   'tools/tests/process-tree.test.mjs',
+  'tools/tests/runtime-smoke.test.mjs',
   'tools/tests/dev-mode.test.mjs',
   'tools/tests/release-assets.test.mjs',
   'tools/tests/app-updater-release.test.mjs',
