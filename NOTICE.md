@@ -2,11 +2,19 @@
 
 Maa Verge is an independent community project and is not an official product of the MAA Team or Hypergryph. Its original source is distributed under AGPL-3.0-only.
 
-MaaCore binaries and game resources are obtained separately from official upstream distributions and retain their respective notices. The previous Python reference backend and vendored updater bindings have been removed from the current source tree.
+MaaCore binaries and game resources retain their respective upstream notices, whether included in an installer or downloaded separately. The previous Python reference backend and vendored updater bindings have been removed from the current source tree.
 
 The Maa Verge mark and geometric icon in this repository were created for this project. The upstream MAA logo is not used.
 
 No game account data or model credentials are distributed with this repository.
+
+## Mirror酱分发服务
+
+[Mirror酱（MirrorChyan）](https://mirrorchyan.com?source=maa_verge_notice) 是由其团队独立运营的第三方分发服务。**Mirror酱在用户端的高速下载分发为付费服务，需要购买适用项目的有效 CDK**；价格、有效期、限额及售后以其官网说明为准。Maa Verge 本身仍为免费开源软件，使用官方免费来源无需购买 CDK。
+
+Maa Verge 的分发对应 `maa-verge`，核心使用上游 `MAA` 分发中的 MaaCore，独立资源对应 `MaaResource`。分发服务不改变应用、核心、依赖或游戏资源各自的许可证及权利归属，也不代表游戏官方授权或背书。Mirror酱名称与标识归其相应权利人；本项目不将其作为自身品牌或声称提供该服务的售后保障。
+
+本集成根据[官方 API 文档](https://github.com/MirrorChyan/docs)复用现有 HTTP 下载器，没有随应用打包第三方运行时 SDK。仓库内 `.skill/mirrorchyan-integration/SKILL.md` 来自 MirrorChyan/docs，保留原文与[固定来源记录](.skill/mirrorchyan-integration/UPSTREAM.md)，仅供项目开发。配置、联网、费用与平台限制见 [Mirror酱说明](docs/mirrorchyan.md)。
 
 ## PRTS Plus 社区服务与内容归属
 

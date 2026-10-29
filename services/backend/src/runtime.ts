@@ -295,6 +295,12 @@ export class Runtime {
             ...(downloadSpeedBytesPerSecond === undefined ? {} : { downloadSpeedBytesPerSecond }),
           },
         }),
+      {
+        mirrorChyan: () => parseSettings(this.store.get('settings', 'main')).mirrorChyan,
+        mirrorChyanStatus: (message) => {
+          if (this.running) this.emit('app.update_source', message);
+        },
+      },
     );
     this.updates = new UpdateService(
       path.join(root, 'components'),
@@ -1033,6 +1039,8 @@ export class Runtime {
           settings.downloadProxy = previous.downloadProxy;
         if (!Object.hasOwn(params.settings, 'notifications'))
           settings.notifications = previous.notifications;
+        if (!Object.hasOwn(params.settings, 'mirrorChyan'))
+          settings.mirrorChyan = previous.mirrorChyan;
         this.copilot.validateStorageDirectory(settings.copilotStorage?.directory ?? '');
         if (
           settings.coreUpdateChannel !== previous.coreUpdateChannel &&

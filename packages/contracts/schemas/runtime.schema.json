@@ -703,6 +703,20 @@
         }
       }
     },
+    "MirrorChyanSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "cdk"],
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "cdk": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\r\\n\\u0000]*$",
+          "description": "Shared MirrorChyan CDK for the application, MaaCore and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports."
+        }
+      }
+    },
     "ResourceActivityVersion": {
       "type": "object",
       "additionalProperties": false,
@@ -741,6 +755,9 @@
         },
         "downloadProxy": {
           "$ref": "#/$defs/DownloadProxySettings"
+        },
+        "mirrorChyan": {
+          "$ref": "#/$defs/MirrorChyanSettings"
         },
         "notifications": {
           "$ref": "#/$defs/NotificationSettings"

@@ -22,6 +22,7 @@ apps/desktop/src-tauri/gen/
 apps/desktop/src-tauri/installer/*.wxs
 
 # Upstream source, licenses and immutable release copy.
+.skill/mirrorchyan-integration/SKILL.md
 3rdparty/
 tools/licenses/
 **/LICENSE*

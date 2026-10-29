@@ -23,6 +23,8 @@ Maa Verge 是一款免费开源的明日方舟桌面助手，基于 [MAA](https:
 
 从 **[GitHub Releases](https://github.com/DeathofBrain/maa-verge/releases)** 下载软件，也可以点击下表直接下载 v0.1.2 安装包。
 
+本项目也已接入 [Mirror酱](https://mirrorchyan.com?source=maa_verge_readme)分发。**Mirror酱在用户端的高速下载是付费服务，需要有效 CDK**；Maa Verge 本身免费开源，GitHub 官方免费下载继续保留。当前开发源码新增的「设置 → 更新 → Mirror酱」共用 CDK 配置及 MaaCore / MaaResource 对应关系见[服务说明](docs/mirrorchyan.md)，这些新增设置尚未包含在上述已发布版本中。
+
 v0.1.3-alpha.1 预览版最低支持 **macOS 15（Sequoia）**，适用于 Apple Silicon 和 Intel；当前源码及后续发行包按此要求构建。v0.1.2 正式版的历史构建目标仍为 macOS 13.5。
 
 | 系统                                | 安装包                                                                                                                                                                                                                                                                                                                       | 安装方式                                                        |

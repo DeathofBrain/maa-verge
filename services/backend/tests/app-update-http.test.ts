@@ -153,6 +153,116 @@ async function assertNoInstallCandidate(root: string): Promise<void> {
   expect(await Bun.file(path.join(root, 'updates/app/pending.json')).exists()).toBe(false);
 }
 
+for (const name of ['Maa-Verge_0.2.0_x64-setup.exe', 'Maa-Verge_0.2.0_amd64.AppImage']) {
+  test(`mirror application transport retains official digest/size binding for ${name}`, async () => {
+    const notices: string[] = [];
+    const f = await fixture(
+      (request) => {
+        if (request.url.includes('/api/resources/maa-verge/latest')) {
+          const url = new URL(request.url);
+          expect(url.searchParams.get('current_version')).toBe('0');
+          expect(url.searchParams.get('cdk')).toBe('synthetic-secret');
+          return Response.json({
+            code: 0,
+            data: {
+              version_name: 'v0.2.0',
+              version_number: 1,
+              os: name.endsWith('.exe') ? 'windows' : 'linux',
+              arch: 'amd64',
+              channel: 'stable',
+              url: 'https://mirrorchyan.com/resources/download/app?token=synthetic-signed-token',
+              sha256,
+              filesize: payload.length,
+              update_type: 'full',
+            },
+          });
+        }
+        expect(request.url).toContain('mirrorchyan.com/resources/download/app');
+        return complete(request);
+      },
+      {
+        mirrorChyan: () => ({ enabled: true, cdk: 'synthetic-secret' }),
+        mirrorChyanStatus: (text) => notices.push(text),
+      },
+    );
+    const result: any = await f.service.handle({ ...archive(), name });
+    expect(result.sha256).toBe(sha256);
+    expect(notices[0]).toContain('Mirror酱下载');
+    expect(await readFile(result.path)).toEqual(payload);
+    expect(f.requests.some((request) => request.url.startsWith('https://github.com'))).toBe(false);
+    expect(JSON.stringify(result)).not.toContain('synthetic-signed-token');
+    expect(JSON.stringify(result)).not.toContain('synthetic-secret');
+  });
+}
+
+for (const failure of [
+  'CDK',
+  'wrong version',
+  'wrong hash',
+  'wrong size',
+  'incremental',
+  'download',
+  'download code',
+]) {
+  test(`mirror application ${failure} falls back to official bytes with a safe diagnostic`, async () => {
+    const notices: string[] = [];
+    const f = await fixture(
+      (request) => {
+        if (request.url.includes('/api/resources/maa-verge/latest')) {
+          if (failure === 'CDK')
+            return Response.json({ code: 7002, msg: 'synthetic-secret' }, { status: 403 });
+          return Response.json({
+            code: 0,
+            data: {
+              version_name: failure === 'wrong version' ? 'v9.9.9' : 'v0.2.0',
+              os: 'windows',
+              arch: 'amd64',
+              channel: 'stable',
+              url: 'https://mirrorchyan.com/resources/download/app?token=synthetic-signed-token',
+              sha256: failure === 'wrong hash' ? 'a'.repeat(64) : sha256,
+              filesize: failure === 'wrong size' ? payload.length + 1 : payload.length,
+              update_type: failure === 'incremental' ? 'incremental' : 'full',
+            },
+          });
+        }
+        if (request.url.includes('mirrorchyan.com'))
+          return failure === 'download code'
+            ? Response.json({ code: 8009, msg: 'synthetic-secret' }, { status: 403 })
+            : new Response('', { status: 403 });
+        expect(request.url).toBe(archiveUrl);
+        return complete(request);
+      },
+      {
+        mirrorChyan: () => ({ enabled: true, cdk: 'synthetic-secret' }),
+        mirrorChyanStatus: (text) => notices.push(text),
+      },
+    );
+    const result: any = await f.service.handle(archive());
+    expect(result.sha256).toBe(sha256);
+    expect(notices[0]).toContain('已改用官方更新源');
+    if (failure === 'CDK') expect(notices[0]).toContain('CDK 无效');
+    if (failure === 'download code') expect(notices[0]).toContain('正式 CDK');
+    expect(JSON.stringify(notices)).not.toContain('synthetic-secret');
+    expect(JSON.stringify(notices)).not.toContain('synthetic-signed-token');
+  });
+}
+
+test('macOS app transport keeps the signed Tauri tar archive and never substitutes the mirror DMG', async () => {
+  const f = await fixture(
+    (request) => {
+      expect(request.url).toBe(archiveUrl.replace('x64-setup.exe', 'aarch64.app.tar.gz'));
+      return complete(request);
+    },
+    { mirrorChyan: () => ({ enabled: true, cdk: 'synthetic-secret' }) },
+  );
+  const result: any = await f.service.handle({
+    ...archive(),
+    name: 'Maa-Verge_0.2.0_aarch64.app.tar.gz',
+  });
+  expect(result.sha256).toBe(sha256);
+  expect(f.requests).toHaveLength(1);
+});
+
 test('host metadata constructs fixed repository URLs and forces manual redirect handling', async () => {
   const f = await fixture(() => Response.json({ ok: true }));
   expect(await f.service.handle(releases('first-page'))).toEqual({ ok: true });

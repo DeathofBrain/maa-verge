@@ -13,6 +13,13 @@ import {
 } from './download';
 import { RpcError } from './errors';
 import { OfficialSource } from './updates';
+import {
+  MirrorChyanClient,
+  MirrorChyanError,
+  mirrorChyanFull,
+  mirrorChyanMessage,
+  type MirrorChyanPreferences,
+} from './mirrorchyan';
 
 const REPOSITORY = '/DeathofBrain/maa-verge/releases/';
 const MAX_WIRE_METADATA = 3 * 1024 * 1024;
@@ -46,6 +53,8 @@ export interface AppUpdateHttpOptions {
   resolveProxy?: Parameters<typeof createComponentFetch>[0];
   retryDelaysMs?: DownloadOptions['retryDelaysMs'];
   idleTimeoutMs?: number;
+  mirrorChyan?: () => MirrorChyanPreferences;
+  mirrorChyanStatus?: (message: string) => void;
 }
 
 export class AppUpdateHttp {
@@ -149,7 +158,58 @@ export class AppUpdateHttp {
       };
       const name = createHash('sha256').update(JSON.stringify(identity)).digest('hex') + '.bin';
       const destination = path.resolve(this.directory, name);
-      const sha256 = await downloadArchive(
+      let sha256: string | undefined;
+      const client = new MirrorChyanClient(
+        this.options.mirrorChyan ?? (() => undefined),
+        fetcher,
+        active.abort.signal,
+      );
+      // The registered macOS artifact is a DMG. Tauri requires its separately
+      // signed .app.tar.gz; never treat those two installation formats as equal.
+      const platform = params.name.endsWith('_x64-setup.exe')
+        ? { os: 'windows', arch: 'amd64' }
+        : params.name.endsWith('_amd64.AppImage')
+          ? { os: 'linux', arch: 'amd64' }
+          : undefined;
+      if (client.enabled && platform && identity.digest) {
+        let fallbackNotice: string | undefined;
+        try {
+          const release = await client.latest(
+            'maa-verge',
+            params.tag.includes('-') ? 'preview' : 'stable',
+            platform,
+          );
+          if (!mirrorChyanFull(release)) {
+            fallbackNotice = this.options.mirrorChyan?.()?.cdk.trim()
+              ? 'Mirror酱未提供完整下载包'
+              : '未填写 Mirror酱 CDK';
+            throw new MirrorChyanError();
+          }
+          if (
+            release.version.replace(/^v/, '') !== params.version ||
+            release.size !== params.size ||
+            release.digest !== identity.digest
+          )
+            throw new MirrorChyanError();
+          sha256 = await client.download(
+            release,
+            identity,
+            destination,
+            (percent, bytesPerSecond) => this.progress(params.operationId, percent, bytesPerSecond),
+            {
+              ...this.options,
+              proxy: preferences,
+            },
+          );
+          this.options.mirrorChyanStatus?.('应用更新包已通过 Mirror酱下载，仍需校验发行签名');
+        } catch (error) {
+          active.abort.signal.throwIfAborted();
+          this.options.mirrorChyanStatus?.(
+            (fallbackNotice ?? mirrorChyanMessage(error)) + '，已改用官方更新源',
+          );
+        }
+      }
+      sha256 ??= await downloadArchive(
         identity,
         destination,
         (percent, bytesPerSecond) => this.progress(params.operationId, percent, bytesPerSecond),

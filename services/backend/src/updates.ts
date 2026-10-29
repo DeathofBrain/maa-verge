@@ -2,7 +2,18 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, lstatSync, readFileSync } from 'node:fs';
-import { cp, lstat, mkdir, open, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises';
+import {
+  cp,
+  lstat,
+  mkdir,
+  open,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  rmdir,
+  writeFile,
+} from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractArchive, extractCoreArchive, normalizeRuntimeRoot } from './archives.ts';
@@ -38,6 +49,17 @@ import { compareReleaseVersions, releaseVersion } from './release-version';
 import application from '../../../package.json';
 import type { DownloadProxySettings } from '../../../packages/contracts/src/types';
 import { ProxyConfigurationError } from './network-proxy';
+import {
+  MirrorChyanClient,
+  MirrorChyanError,
+  mirrorChyanFull,
+  mirrorChyanMessage,
+  mirrorChyanPlatform,
+  mirrorChyanSource,
+  validResourceTimestamp,
+  type MirrorChyanIdentity,
+  type MirrorChyanPreferences,
+} from './mirrorchyan';
 
 const GITHUB = 'https://api.github.com/repos/MaaAssistantArknights';
 export { MAX_DOWNLOAD_BYTES } from './download.ts';
@@ -60,6 +82,11 @@ export interface UpdateSource {
     progress: DownloadProgress,
   ): Promise<string> | string;
   close?(): void;
+  fallback?(
+    channel: string,
+    releaseChannel?: 'stable' | 'preview',
+    reason?: unknown,
+  ): Promise<UpdateMetadata>;
 }
 type Validator = (core: string, resource: string, version: string) => Promise<void> | void;
 type Hook = () => Promise<void> | void;
@@ -82,11 +109,14 @@ export interface UpdateJobConfig {
   core?: string;
   coreVersion?: string;
   workerPath?: string;
+  resourceTimestamp?: string;
+  mirrorChyanFull?: boolean;
 }
 export interface UpdateJobResult {
   ownedFiles?: string[];
   coreVersion?: string;
   contentHash?: string;
+  resourceVersion?: Record<string, unknown>;
 }
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -144,6 +174,23 @@ function resourceVersion(combo: any): string {
     ? 'bundled@' + combo.core.version
     : (combo.resource?.version ?? '未安装');
 }
+function resourceAge(metadata: UpdateMetadata, combo: any): number | undefined {
+  const incoming = metadata.resourceTimestamp ?? metadata.resourceVersion?.last_updated;
+  if (typeof incoming !== 'string' || !validResourceTimestamp(incoming) || !combo.resource?.path)
+    return undefined;
+  try {
+    const file = path.join(combo.resource.path, 'resource/version.json');
+    const info = lstatSync(file);
+    if (!info.isFile() || info.isSymbolicLink() || info.size > 256 * 1024) return undefined;
+    const installed = JSON.parse(readFileSync(file, 'utf8')).last_updated;
+    if (typeof installed !== 'string' || !validResourceTimestamp(installed)) return undefined;
+    return (
+      Date.parse(incoming.replace(' ', 'T') + 'Z') - Date.parse(installed.replace(' ', 'T') + 'Z')
+    );
+  } catch {
+    return undefined;
+  }
+}
 const digestRecorded = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 function hasIntegrity(snapshot: any, core: boolean): boolean {
@@ -178,7 +225,16 @@ export class OfficialSource implements UpdateSource {
   constructor(
     private readonly fetcher?: typeof fetch,
     private readonly proxySettings: () => DownloadProxySettings | undefined = () => undefined,
+    private readonly mirrorSettings: () => MirrorChyanPreferences = () => undefined,
+    private readonly mirrorPlatform = () => mirrorChyanPlatform(),
   ) {}
+  private mirror(): MirrorChyanClient {
+    return new MirrorChyanClient(
+      this.mirrorSettings,
+      this.fetcher ?? createComponentFetch(undefined, this.proxySettings()),
+      this.abort.signal,
+    );
+  }
   close(): void {
     this.abort.abort(new Error('应用服务正在关闭'));
   }
@@ -230,6 +286,75 @@ export class OfficialSource implements UpdateSource {
     }
   }
   async check(
+    channel: string,
+    releaseChannel: 'stable' | 'preview' = 'stable',
+  ): Promise<UpdateMetadata> {
+    const client = this.mirror();
+    let notice: string | undefined;
+    if (client.enabled && ['core', 'resource'].includes(channel)) {
+      try {
+        const platform = channel === 'core' ? this.mirrorPlatform() : undefined;
+        // The registered MAA macOS package is a GUI installer; the Linux
+        // combination has no package. Keep the official native runtime source.
+        if (channel === 'core' && platform?.os !== 'windows') {
+          notice = 'Mirror酱当前平台未提供可验证的核心运行时包';
+        } else {
+          const release = await client.latest(
+            channel === 'core' ? 'MAA' : 'MaaResource',
+            channel === 'core' ? releaseChannel : 'stable',
+            platform,
+          );
+          if (mirrorChyanFull(release)) {
+            if (channel === 'core') {
+              const version = releaseVersion(release.version);
+              if (!version || (releaseChannel === 'stable' && version.prerelease.length))
+                throw new MirrorChyanError();
+            } else if (!validResourceTimestamp(release.version)) throw new MirrorChyanError();
+            const identity: MirrorChyanIdentity = {
+              rid: release.rid,
+              version: release.version,
+              channel: release.channel,
+              ...(platform ?? {}),
+            };
+            return {
+              version: channel === 'core' ? release.version : 'mirrorchyan:' + release.version,
+              url: mirrorChyanSource(identity),
+              name: `${channel === 'core' ? 'MaaCore' : 'MaaResource'}-${release.version.replace(/[^a-zA-Z0-9._-]/g, '-')}.zip`,
+              size: release.size,
+              digest: release.digest,
+              source: 'MirrorChyan',
+              mirrorChyan: identity,
+              ...(channel === 'resource' ? { resourceTimestamp: release.version } : {}),
+            };
+          }
+          notice = this.mirrorSettings()?.cdk.trim()
+            ? 'Mirror酱未提供完整下载包'
+            : '未填写 Mirror酱 CDK，使用官方更新源';
+        }
+      } catch (error) {
+        this.abort.signal.throwIfAborted();
+        notice = mirrorChyanMessage(error);
+      }
+    }
+    const metadata = await this.checkOfficial(channel, releaseChannel);
+    if (notice)
+      metadata.mirrorChyanMessage = notice.includes('官方更新源')
+        ? notice
+        : notice + '，已改用官方更新源';
+    return metadata;
+  }
+  async fallback(
+    channel: string,
+    releaseChannel: 'stable' | 'preview' = 'stable',
+    reason?: unknown,
+  ) {
+    const metadata = await this.checkOfficial(channel, releaseChannel);
+    metadata.mirrorChyanMessage =
+      (reason instanceof MirrorChyanError ? reason.message : 'Mirror酱准备失败') +
+      '，已改用官方更新源';
+    return metadata;
+  }
+  private async checkOfficial(
     channel: string,
     releaseChannel: 'stable' | 'preview' = 'stable',
   ): Promise<UpdateMetadata> {
@@ -300,6 +425,34 @@ export class OfficialSource implements UpdateSource {
     destination: string,
     progress: DownloadProgress,
   ): Promise<string> {
+    if (metadata.source === 'MirrorChyan') {
+      const identity = metadata.mirrorChyan as MirrorChyanIdentity;
+      if (!identity || !['MAA', 'MaaResource'].includes(identity.rid)) throw new MirrorChyanError();
+      const platform =
+        identity.os && identity.arch ? { os: identity.os, arch: identity.arch } : undefined;
+      const client = this.mirror();
+      const release = await client.latest(
+        identity.rid,
+        identity.channel === 'alpha' ? 'preview' : 'stable',
+        platform,
+      );
+      if (
+        !mirrorChyanFull(release) ||
+        release.version !== identity.version ||
+        release.digest !== metadata.digest ||
+        release.size !== metadata.size
+      )
+        throw new MirrorChyanError();
+      return client.download(
+        release,
+        metadata as UpdateMetadata & { url: string },
+        destination,
+        progress,
+        {
+          proxy: this.proxySettings(),
+        },
+      );
+    }
     return downloadArchive(metadata as UpdateMetadata & { url: string }, destination, progress, {
       signal: this.abort.signal,
       fetcher: this.fetcher,
@@ -480,7 +633,9 @@ export async function runUpdateJob(
   )
     throw new Error('更新作业配置无效');
   if (config.channel === 'core') {
-    await extractCoreArchive(config.archive, config.target);
+    await extractCoreArchive(config.archive, config.target, {
+      rejectIncremental: config.mirrorChyanFull,
+    });
     await normalizeRuntimeRoot(config.target);
     await validator(config.target, config.target, config.version);
     return {};
@@ -495,8 +650,16 @@ export async function runUpdateJob(
     force: false,
   });
   try {
-    await extractArchive(config.archive, overlay);
+    await extractArchive(config.archive, overlay, { rejectIncremental: config.mirrorChyanFull });
     const roots = [];
+    if (config.mirrorChyanFull) {
+      try {
+        if ((await lstat(path.join(overlay, 'resource'))).isDirectory())
+          roots.push(path.join(overlay, 'resource'));
+      } catch {
+        /* GitHub archives use one outer directory instead. */
+      }
+    }
     for (const entry of await readdir(overlay, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const resource = path.join(overlay, entry.name, 'resource');
@@ -508,10 +671,20 @@ export async function runUpdateJob(
       }
     }
     if (roots.length !== 1) throw new Error('资源归档结构不符合预期');
+    const versionPath = path.join(roots[0], 'version.json');
+    if ((await lstat(versionPath)).size > 256 * 1024) throw new Error('资源版本文件超出大小限制');
+    const resourceVersion = JSON.parse(await readFile(versionPath, 'utf8'));
+    if (config.resourceTimestamp && resourceVersion?.last_updated !== config.resourceTimestamp)
+      throw new Error('Mirror酱资源包内版本与选定时间戳不一致');
     const ownedFiles = await treeFiles(roots[0]);
     await cp(roots[0], candidate, { recursive: true, force: true });
     await validator(config.core, config.target, config.coreVersion);
-    return { ownedFiles, coreVersion: config.coreVersion, contentHash: await treeHash(candidate) };
+    return {
+      ownedFiles,
+      coreVersion: config.coreVersion,
+      contentHash: await treeHash(candidate),
+      resourceVersion,
+    };
   } finally {
     await rm(overlay, { recursive: true, force: true });
   }
@@ -565,7 +738,11 @@ export class UpdateService {
     this.defaults = options.directories ?? { core: root, resource: root };
     this.source =
       options.source ??
-      new OfficialSource(undefined, () => this.store.get('settings', 'main', {}).downloadProxy);
+      new OfficialSource(
+        undefined,
+        () => this.store.get('settings', 'main', {}).downloadProxy,
+        () => this.store.get('settings', 'main', {}).mirrorChyan,
+      );
     this.validator =
       options.validator ??
       ((core, resource, version) => {
@@ -1093,7 +1270,16 @@ export class UpdateService {
     this.change(channel, { status: 'checking', message: '正在检查官方版本', progress: 0 });
     try {
       const releaseChannel = this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable';
-      const metadata = await this.source.check(channel, releaseChannel);
+      let metadata = await this.source.check(channel, releaseChannel);
+      if (
+        channel === 'resource' &&
+        metadata.source === 'MirrorChyan' &&
+        this.source.fallback &&
+        (resourceAge(metadata, this.store.get('active', 'combo', {})) ?? 0) < 0
+      ) {
+        metadata = await this.source.fallback(channel, releaseChannel);
+        metadata.mirrorChyanMessage = 'Mirror酱资源版本早于已安装版本，已改用官方更新源';
+      }
       if (
         channel === 'core' &&
         releaseChannel !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')
@@ -1102,7 +1288,14 @@ export class UpdateService {
       if (channel === 'core') metadata.releaseChannel = releaseChannel;
       this.store.put('update_metadata', channel, metadata);
       const repair = this.needsRepair(channel);
-      const available = metadata.version !== current.currentVersion || repair;
+      const age =
+        channel === 'resource'
+          ? resourceAge(metadata, this.store.get('active', 'combo', {}))
+          : undefined;
+      if (age !== undefined && age < 0 && repair)
+        throw new Error('更新源资源早于已安装版本，拒绝通过旧资源修复');
+      const available =
+        (age === undefined ? metadata.version !== current.currentVersion : age > 0) || repair;
       if (channel === 'core' && available) {
         if (
           releaseVersion(current.currentVersion) &&
@@ -1111,16 +1304,19 @@ export class UpdateService {
         )
           throw new Error('所选通道版本低于已安装版本，拒绝自动降级');
       }
+      const notice = metadata.mirrorChyanMessage ? `；${metadata.mirrorChyanMessage}` : '';
       return this.change(channel, {
         checkedAt: new Date().toISOString(),
         latestVersion: metadata.version,
         status: available ? 'available' : 'idle',
         message:
-          repair && metadata.version === current.currentVersion
+          (repair && metadata.version === current.currentVersion
             ? '旧版组件缺少完整性记录，可重新下载安装修复'
             : available
               ? '发现可用更新'
-              : '当前已是最新版本',
+              : age !== undefined && age < 0
+                ? '更新源资源早于已安装版本，保留当前资源'
+                : '当前已是最新版本') + notice,
       });
     } catch (error) {
       this.store.delete('update_metadata', channel);
@@ -1227,7 +1423,17 @@ export class UpdateService {
       });
       throw new RpcError(-32020, '缓存版本低于当前核心，拒绝自动降级，请重新检查');
     }
-    if (metadata.version === current.currentVersion && !this.needsRepair(channel)) return current;
+    const age =
+      channel === 'resource'
+        ? resourceAge(metadata, this.store.get('active', 'combo', {}))
+        : undefined;
+    if (age !== undefined && age < 0 && this.needsRepair(channel))
+      throw new RpcError(-32020, '更新源资源早于已安装版本，拒绝通过旧资源修复');
+    if (
+      (metadata.version === current.currentVersion || (age !== undefined && age <= 0)) &&
+      !this.needsRepair(channel)
+    )
+      return current;
     const reused = await this.reuseLocalSnapshot(channel as 'core' | 'resource', metadata);
     if (reused) return reused;
     const directory = this.directories()[channel as 'core' | 'resource'];
@@ -1244,79 +1450,118 @@ export class UpdateService {
     });
     try {
       await mkdir(generation, { recursive: true });
-      let digest: string;
-      if (
-        typeof metadata.name !== 'string' ||
-        path.basename(metadata.name) !== metadata.name ||
-        metadata.name.includes('\\')
-      )
-        throw new Error('更新包文件名无效');
-      // Stable per data root and immutable source, so interrupted downloads can
-      // resume without two independent data roots sharing a writable cache.
-      const scope = path.resolve(this.root);
-      const identity = createHash('sha256')
-        .update(
-          JSON.stringify([
-            scope,
-            channel,
-            metadata.url,
-            metadata.version,
-            metadata.name,
-            metadata.size,
-            metadata.digest,
-          ]),
+      let digest = '';
+      for (let attempt = 0; ; attempt++) {
+        if (
+          typeof metadata.name !== 'string' ||
+          path.basename(metadata.name) !== metadata.name ||
+          metadata.name.includes('\\')
         )
-        .digest('hex');
-      const archive = path.join(directory, '.download-' + identity + '-' + metadata.name);
-      let lastProgress = -1,
-        lastSpeed: number | undefined,
-        lastReport = 0;
-      try {
-        digest = await this.source.download(metadata, archive, (value, bytesPerSecond) => {
-          const progress = Math.max(0, Math.min(90, Math.trunc(value)));
-          const speed =
-            typeof bytesPerSecond === 'number' &&
-            Number.isFinite(bytesPerSecond) &&
-            bytesPerSecond >= 0
-              ? bytesPerSecond
-              : undefined;
-          const clearingSpeed = speed === undefined && lastSpeed !== undefined;
-          if (
-            !Number.isFinite(progress) ||
-            (progress === lastProgress && speed === lastSpeed) ||
-            (!clearingSpeed && progress < 90 && Date.now() - lastReport < 250)
+          throw new Error('更新包文件名无效');
+        // Stable per data root and immutable source, so interrupted downloads can
+        // resume without two independent data roots sharing a writable cache.
+        const scope = path.resolve(this.root);
+        const identity = createHash('sha256')
+          .update(
+            JSON.stringify([
+              scope,
+              channel,
+              metadata.url,
+              metadata.version,
+              metadata.name,
+              metadata.size,
+              metadata.digest,
+            ]),
           )
-            return;
-          lastProgress = progress;
-          lastSpeed = speed;
-          lastReport = Date.now();
-          this.change(channel, {
-            progress,
-            downloadSpeedBytesPerSecond: speed,
-            message: '正在下载官方组件',
+          .digest('hex');
+        const archive = path.join(directory, '.download-' + identity + '-' + metadata.name);
+        let lastProgress = -1,
+          lastSpeed: number | undefined,
+          lastReport = 0;
+        try {
+          digest = await this.source.download(metadata, archive, (value, bytesPerSecond) => {
+            const progress = Math.max(0, Math.min(90, Math.trunc(value)));
+            const speed =
+              typeof bytesPerSecond === 'number' &&
+              Number.isFinite(bytesPerSecond) &&
+              bytesPerSecond >= 0
+                ? bytesPerSecond
+                : undefined;
+            const clearingSpeed = speed === undefined && lastSpeed !== undefined;
+            if (
+              !Number.isFinite(progress) ||
+              (progress === lastProgress && speed === lastSpeed) ||
+              (!clearingSpeed && progress < 90 && Date.now() - lastReport < 250)
+            )
+              return;
+            lastProgress = progress;
+            lastSpeed = speed;
+            lastReport = Date.now();
+            this.change(channel, {
+              progress,
+              downloadSpeedBytesPerSecond: speed,
+              message: '正在下载组件',
+            });
           });
-        });
-        this.change(channel, {
-          progress: 90,
-          downloadSpeedBytesPerSecond: undefined,
-          message: '正在解压并校验组件',
-        });
-        // Recheck the resource base after downloading, before copying it.
-        if (channel === 'resource') await this.reconcileCurrent();
-        const core = this.store.get('active', 'combo', {}).core;
-        if (channel === 'resource' && !core)
-          throw new Error('核心或基础资源文件缺失或损坏，请先重新下载安装并启用核心');
-        const config: UpdateJobConfig = {
-          channel: channel as 'core' | 'resource',
-          archive,
-          target: generation,
-          version: metadata.version,
-          core: core?.path,
-          coreVersion: core?.version,
-        };
-        Object.assign(metadata, await this.jobRunner(config));
-      } finally {
-        await rm(archive, { force: true });
+          this.change(channel, {
+            progress: 90,
+            downloadSpeedBytesPerSecond: undefined,
+            message: '正在解压并校验组件',
+          });
+          // Recheck the resource base after downloading, before copying it.
+          if (channel === 'resource') await this.reconcileCurrent();
+          const core = this.store.get('active', 'combo', {}).core;
+          if (channel === 'resource' && !core)
+            throw new Error('核心或基础资源文件缺失或损坏，请先重新下载安装并启用核心');
+          const config: UpdateJobConfig = {
+            channel: channel as 'core' | 'resource',
+            archive,
+            target: generation,
+            version: metadata.version,
+            core: core?.path,
+            coreVersion: core?.version,
+            resourceTimestamp: metadata.resourceTimestamp,
+            mirrorChyanFull: metadata.source === 'MirrorChyan',
+          };
+          Object.assign(metadata, await this.jobRunner(config));
+        } catch (error) {
+          if (
+            attempt !== 0 ||
+            metadata.source !== 'MirrorChyan' ||
+            !this.source.fallback ||
+            this.closing
+          )
+            throw error;
+          const releaseChannel =
+            this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable';
+          metadata = await this.source.fallback(channel, releaseChannel, error);
+          if (channel === 'core') {
+            metadata.releaseChannel = releaseChannel;
+            if (
+              releaseVersion(current.currentVersion) &&
+              releaseVersion(metadata.version) &&
+              compareReleaseVersions(metadata.version, current.currentVersion) < 0
+            )
+              throw new Error('官方回退版本低于已安装核心，拒绝自动降级');
+          }
+          if (
+            channel === 'resource' &&
+            (resourceAge(metadata, this.store.get('active', 'combo', {})) ?? 0) < 0
+          )
+            throw new Error('官方回退资源早于已安装版本，拒绝自动降级');
+          this.store.put('update_metadata', channel, metadata);
+          await rm(generation, { recursive: true, force: true });
+          await mkdir(generation, { recursive: true });
+          this.change(channel, {
+            latestVersion: metadata.version,
+            progress: 0,
+            message: 'Mirror酱准备失败，正在使用官方更新源重新准备',
+          });
+          continue;
+        } finally {
+          await rm(archive, { force: true });
+        }
+        break;
       }
       const integrity = await snapshotIntegrity(generation);
       if (
@@ -1349,8 +1594,11 @@ export class UpdateService {
         throw new Error('核心更新通道已改变，已取消旧通道候选，请重新检查');
       return this.change(channel, {
         status: 'staged',
+        latestVersion: metadata.version,
         progress: 100,
-        message: '快照已校验，等待在空闲边界生效',
+        message:
+          '快照已校验，等待在空闲边界生效' +
+          (metadata.mirrorChyanMessage ? `；${metadata.mirrorChyanMessage}` : ''),
       });
     } catch (error) {
       await rm(generation, { recursive: true, force: true }).catch(() => {});
@@ -1418,6 +1666,20 @@ export class UpdateService {
       throw new RpcError(-32020, '核心更新通道已改变，请重新检查并准备更新');
     }
     const current = this.channel(channel).currentVersion;
+    if (
+      channel === 'resource' &&
+      (resourceAge(staged, this.store.get('active', 'combo', {})) ?? 0) < 0
+    ) {
+      this.store.delete('staged', channel);
+      this.store.delete('update_metadata', channel);
+      this.change(channel, {
+        status: 'failed',
+        latestVersion: null,
+        progress: 0,
+        message: '候选资源早于当前版本，拒绝自动降级，请重新检查',
+      });
+      throw new RpcError(-32020, '候选资源早于当前版本，拒绝自动降级，请重新检查');
+    }
     if (
       channel === 'core' &&
       releaseVersion(current) &&

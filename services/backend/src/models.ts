@@ -12,6 +12,7 @@ import { normalizeManualProxy, ProxyConfigurationError } from './network-proxy';
 export type { Plan, Settings, Task, Snapshot };
 export type { DeviceConnectionProfile } from '../../../packages/contracts/src/types';
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
+export const defaultMirrorChyan = () => ({ enabled: true, cdk: '' });
 export const defaultNotifications = () => ({
   enabled: true,
   runResults: true,
@@ -105,6 +106,11 @@ export function parseSettings(input: any = {}): Settings {
     theme: 'system',
     logRetentionDays: 7,
     ...input,
+    mirrorChyan: Object.hasOwn(input, 'mirrorChyan')
+      ? record(input.mirrorChyan)
+        ? { ...defaultMirrorChyan(), ...input.mirrorChyan }
+        : input.mirrorChyan
+      : defaultMirrorChyan(),
     notifications: Object.hasOwn(input, 'notifications')
       ? record(input.notifications)
         ? { ...defaultNotifications(), ...input.notifications }
@@ -172,6 +178,7 @@ export function parseSettings(input: any = {}): Settings {
   ] as const)
     value[key] = boolean(value[key]);
   if (!validateSettings(value)) throw new RpcError(-32602, '请求参数无效', validateSettings.errors);
+  value.mirrorChyan.cdk = value.mirrorChyan.cdk.trim();
   if (value.downloadProxy) {
     const proxy = { ...value.downloadProxy, url: value.downloadProxy.url.trim() };
     if (proxy.mode === 'manual') {

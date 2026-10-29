@@ -4,7 +4,7 @@
   "sources": [
     {
       "file": "docs/app-updates.md",
-      "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
+      "sha256": "418740f5e21d9fb35c635d89c13f4486fed386cc67f806b69a41a023d2f625c4"
     },
     {
       "file": "docs/connection-settings.md",
@@ -20,7 +20,7 @@
     },
     {
       "file": "docs/maa-compatibility.md",
-      "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
+      "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
     },
     {
       "file": "docs/maa-task-settings.md",
@@ -28,7 +28,7 @@
     },
     {
       "file": "docs/maacore-runtime.md",
-      "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+      "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
     },
     {
       "file": "docs/multi-instance.md",
@@ -44,7 +44,7 @@
     },
     {
       "file": "packages/contracts/schemas/runtime.schema.json",
-      "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+      "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
     },
     {
       "file": "packages/contracts/src/tasks.ts",
@@ -75,8 +75,8 @@
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L29-L42",
-        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
+        "pointer": "L31-L44",
+        "sha256": "418740f5e21d9fb35c635d89c13f4486fed386cc67f806b69a41a023d2f625c4"
       }
     },
     {
@@ -102,8 +102,8 @@
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L51-L77",
-        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
+        "pointer": "L53-L79",
+        "sha256": "418740f5e21d9fb35c635d89c13f4486fed386cc67f806b69a41a023d2f625c4"
       }
     },
     {
@@ -116,21 +116,21 @@
         "频道与更新行为",
         "app-updates"
       ],
-      "text": "应用与核心更新 > 频道与更新行为\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 频道与更新行为\n\n| 对象      | 默认频道 | 正式版                                                    | 预览版                                          |\n| --------- | -------- | --------------------------------------------------------- | ----------------------------------------------- |\n| Maa Verge | 预览版   | 项目 GitHub Releases 中非预发布、无 SemVer 预览后缀的版本 | 正式版与预览版中版本号最高的已发布版本          |\n| MaaCore   | 正式版   | 官方稳定版 API                                            | 官方 Releases 中正式版与预览版的最高有效 SemVer |\n\n草稿不参与检查；版本按 SemVer 比较，`beta.10` 高于 `beta.2`。切回正式频道时，已安装的较高预览版继续保留，不自动降级。应用和核心切换频道均取消旧频道候选；核心正在检查、下载、校验或切换时须等待操作完成再改频道。显式核心/资源回滚仍可恢复上一组已验证组合。\n\nMaa Verge 的「启动时检查应用更新」默认开启，只控制联网检查，不会自动下载。发现新版后选择「下载更新」，切换页面不影响下载。签名通过且更新包与清单写盘完成后，选择「安装并重启」，询问是否立刻更新：\n\n- 「立即更新并重启」会停止当前任务、工具和连接，取消后台组件作业，关闭本地服务后调用安装器；正常安装完成后重新启动。未执行计划和业务数据保留，不自动继续游戏操作。\n- 「下次启动时更新」或关闭确认框会继续使用当前版本；下次打开时先从本地恢复更新包，复核安装位置、平台/安装器、版本、登记大小与签名，再自动安装。这一步可离线执行，也不受「启动时检查应用更新」开关影响。\n\n当前开发源码中，Maa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的内置 HTTP 下载器与「设置 → 更新 → 下载代理」，统一使用自动、手动 HTTP/HTTPS 代理或直连模式。自动模式在代理无效、不可达或传输失败时尝试直连；手动模式失败显示错误并保留可恢复数据，不自动绕过所填代理。版本选择和安装流程仍分别管理，代理选择与系统网络边界见 [组件运行时](maacore-runtime.md)。\n\n应用下载支持安全断点续传：缓存绑定固定来源 URL、版本、大小和摘要，以 HTTP Range / If-Range 核对远端内容后继续；内容身份不能确认时重新下载。临时网络故障和空闲超时默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。切换页面不会取消下载，取消或正常退出保留可恢复分片。应用内版本回滚仍不支持。\n\nHTTP 下载暂存于当前数据根的 `updates/app/downloads`，已签名安装候选保存在 `updates/app`，默认是程序目录的 `config/updates/app`，开发环境是 checkout 的同一路径；遵循自定义数据根。传输完成后由 Rust 复核登记大小、版本和 minisign 签名，签名通过才把包写入独立文件并同步磁盘，再原子提交安装清单。下载分片与未通过签名的文件不会成为启动安装候选。MaaCore/资源继续使用不可变版本目录和空闲边界切换。\n\n启动安装先于本地服务、自动连接和调度。立即安装不等待组件下载结束或已有 RPC 的长时读锁；本地服务先通过 EOF 正常退出，五秒后仍未结束则强制收尾。Windows 还核对并等待本实例的服务、更新作业及原生 worker 退出，保留共享 ADB 和其他应用实例，无法确认退出时保留更新包并重启恢复应用，不继续替换占用文件。macOS/Linux 的强制收尾和真实升级仍需在对应宿主验收。\n\n调用安装器前先持久化本次安装尝试。安装失败、取消或中断后再次打开旧版时，不会反复自动安装；旧版正常启动并在更新页面保留已验证包，可手动重试。重新选择「下次启动时更新」可以安排一次新的自动尝试，无需重新下载；只关闭确认框不会重置失败标记。只有新版本实际启动且版本号已达到候选版本后才清理缓存；改变应用更新频道会取消原频道候选。损坏、缺失或验证失败的缓存拒绝安装，继续打开应用并允许重新检查、下载。Windows 安装器成功启动后由其负责安装和重开应用；当前 Tauri 更新器无法获知安装器后期取消或失败的结果，这种情况下可手动重新打开旧版重试。",
+      "text": "应用与核心更新 > 频道与更新行为\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 频道与更新行为\n\n| 对象      | 默认频道 | 正式版                                                    | 预览版                                          |\n| --------- | -------- | --------------------------------------------------------- | ----------------------------------------------- |\n| Maa Verge | 预览版   | 项目 GitHub Releases 中非预发布、无 SemVer 预览后缀的版本 | 正式版与预览版中版本号最高的已发布版本          |\n| MaaCore   | 正式版   | 官方稳定版 API                                            | 官方 Releases 中正式版与预览版的最高有效 SemVer |\n\n草稿不参与检查；版本按 SemVer 比较，`beta.10` 高于 `beta.2`。切回正式频道时，已安装的较高预览版继续保留，不自动降级。应用和核心切换频道均取消旧频道候选；核心正在检查、下载、校验或切换时须等待操作完成再改频道。显式核心/资源回滚仍可恢复上一组已验证组合。\n\nMaa Verge 的「启动时检查应用更新」默认开启，只控制联网检查，不会自动下载。发现新版后选择「下载更新」，切换页面不影响下载。签名通过且更新包与清单写盘完成后，选择「安装并重启」，询问是否立刻更新：\n\n- 「立即更新并重启」会停止当前任务、工具和连接，取消后台组件作业，关闭本地服务后调用安装器；正常安装完成后重新启动。未执行计划和业务数据保留，不自动继续游戏操作。\n- 「下次启动时更新」或关闭确认框会继续使用当前版本；下次打开时先从本地恢复更新包，复核安装位置、平台/安装器、版本、登记大小与签名，再自动安装。这一步可离线执行，也不受「启动时检查应用更新」开关影响。\n\n当前开发源码中，Maa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的内置 HTTP 下载器与「设置 → 更新 → 下载代理」，统一使用自动、手动 HTTP/HTTPS 代理或直连模式。自动模式在代理无效、不可达或传输失败时尝试直连；手动模式失败显示错误并保留可恢复数据，不自动绕过所填代理。版本选择和安装流程仍分别管理，代理选择与系统网络边界见 [组件运行时](maacore-runtime.md)。\n\n当前开发源码还提供「设置 → 更新 → Mirror酱」，三通道共用一个 CDK。Mirror酱用户端高速下载为付费服务，官方免费来源继续保留。应用对应 `maa-verge`：Windows EXE、Linux AppImage 需与官方资产版本、大小和摘要一致，Rust 继续校验 minisign；当前镜像 macOS DMG 与应用内签名归档不同，macOS 自动更新保持官方来源。详情及第三方声明见 [Mirror酱说明](mirrorchyan.md) 和 [NOTICE.md](../NOTICE.md)。\n\n应用下载支持安全断点续传：缓存绑定固定来源 URL、版本、大小和摘要，以 HTTP Range / If-Range 核对远端内容后继续；内容身份不能确认时重新下载。临时网络故障和空闲超时默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。切换页面不会取消下载，取消或正常退出保留可恢复分片。应用内版本回滚仍不支持。\n\nHTTP 下载暂存于当前数据根的 `updates/app/downloads`，已签名安装候选保存在 `updates/app`，默认是程序目录的 `config/updates/app`，开发环境是 checkout 的同一路径；遵循自定义数据根。传输完成后由 Rust 复核登记大小、版本和 minisign 签名，签名通过才把包写入独立文件并同步磁盘，再原子提交安装清单。下载分片与未通过签名的文件不会成为启动安装候选。MaaCore/资源继续使用不可变版本目录和空闲边界切换。\n\n启动安装先于本地服务、自动连接和调度。立即安装不等待组件下载结束或已有 RPC 的长时读锁；本地服务先通过 EOF 正常退出，五秒后仍未结束则强制收尾。Windows 还核对并等待本实例的服务、更新作业及原生 worker 退出，保留共享 ADB 和其他应用实例，无法确认退出时保留更新包并重启恢复应用，不继续替换占用文件。macOS/Linux 的强制收尾和真实升级仍需在对应宿主验收。\n\n调用安装器前先持久化本次安装尝试。安装失败、取消或中断后再次打开旧版时，不会反复自动安装；旧版正常启动并在更新页面保留已验证包，可手动重试。重新选择「下次启动时更新」可以安排一次新的自动尝试，无需重新下载；只关闭确认框不会重置失败标记。只有新版本实际启动且版本号已达到候选版本后才清理缓存；改变应用更新频道会取消原频道候选。损坏、缺失或验证失败的缓存拒绝安装，继续打开应用并允许重新检查、下载。Windows 安装器成功启动后由其负责安装和重开应用；当前 Tauri 更新器无法获知安装器后期取消或失败的结果，这种情况下可手动重新打开旧版重试。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "应用与核心更新",
           "频道与更新行为"
         ],
-        "content": "## 频道与更新行为\n\n| 对象      | 默认频道 | 正式版                                                    | 预览版                                          |\n| --------- | -------- | --------------------------------------------------------- | ----------------------------------------------- |\n| Maa Verge | 预览版   | 项目 GitHub Releases 中非预发布、无 SemVer 预览后缀的版本 | 正式版与预览版中版本号最高的已发布版本          |\n| MaaCore   | 正式版   | 官方稳定版 API                                            | 官方 Releases 中正式版与预览版的最高有效 SemVer |\n\n草稿不参与检查；版本按 SemVer 比较，`beta.10` 高于 `beta.2`。切回正式频道时，已安装的较高预览版继续保留，不自动降级。应用和核心切换频道均取消旧频道候选；核心正在检查、下载、校验或切换时须等待操作完成再改频道。显式核心/资源回滚仍可恢复上一组已验证组合。\n\nMaa Verge 的「启动时检查应用更新」默认开启，只控制联网检查，不会自动下载。发现新版后选择「下载更新」，切换页面不影响下载。签名通过且更新包与清单写盘完成后，选择「安装并重启」，询问是否立刻更新：\n\n- 「立即更新并重启」会停止当前任务、工具和连接，取消后台组件作业，关闭本地服务后调用安装器；正常安装完成后重新启动。未执行计划和业务数据保留，不自动继续游戏操作。\n- 「下次启动时更新」或关闭确认框会继续使用当前版本；下次打开时先从本地恢复更新包，复核安装位置、平台/安装器、版本、登记大小与签名，再自动安装。这一步可离线执行，也不受「启动时检查应用更新」开关影响。\n\n当前开发源码中，Maa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的内置 HTTP 下载器与「设置 → 更新 → 下载代理」，统一使用自动、手动 HTTP/HTTPS 代理或直连模式。自动模式在代理无效、不可达或传输失败时尝试直连；手动模式失败显示错误并保留可恢复数据，不自动绕过所填代理。版本选择和安装流程仍分别管理，代理选择与系统网络边界见 [组件运行时](maacore-runtime.md)。\n\n应用下载支持安全断点续传：缓存绑定固定来源 URL、版本、大小和摘要，以 HTTP Range / If-Range 核对远端内容后继续；内容身份不能确认时重新下载。临时网络故障和空闲超时默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。切换页面不会取消下载，取消或正常退出保留可恢复分片。应用内版本回滚仍不支持。\n\nHTTP 下载暂存于当前数据根的 `updates/app/downloads`，已签名安装候选保存在 `updates/app`，默认是程序目录的 `config/updates/app`，开发环境是 checkout 的同一路径；遵循自定义数据根。传输完成后由 Rust 复核登记大小、版本和 minisign 签名，签名通过才把包写入独立文件并同步磁盘，再原子提交安装清单。下载分片与未通过签名的文件不会成为启动安装候选。MaaCore/资源继续使用不可变版本目录和空闲边界切换。\n\n启动安装先于本地服务、自动连接和调度。立即安装不等待组件下载结束或已有 RPC 的长时读锁；本地服务先通过 EOF 正常退出，五秒后仍未结束则强制收尾。Windows 还核对并等待本实例的服务、更新作业及原生 worker 退出，保留共享 ADB 和其他应用实例，无法确认退出时保留更新包并重启恢复应用，不继续替换占用文件。macOS/Linux 的强制收尾和真实升级仍需在对应宿主验收。\n\n调用安装器前先持久化本次安装尝试。安装失败、取消或中断后再次打开旧版时，不会反复自动安装；旧版正常启动并在更新页面保留已验证包，可手动重试。重新选择「下次启动时更新」可以安排一次新的自动尝试，无需重新下载；只关闭确认框不会重置失败标记。只有新版本实际启动且版本号已达到候选版本后才清理缓存；改变应用更新频道会取消原频道候选。损坏、缺失或验证失败的缓存拒绝安装，继续打开应用并允许重新检查、下载。Windows 安装器成功启动后由其负责安装和重开应用；当前 Tauri 更新器无法获知安装器后期取消或失败的结果，这种情况下可手动重新打开旧版重试。",
+        "content": "## 频道与更新行为\n\n| 对象      | 默认频道 | 正式版                                                    | 预览版                                          |\n| --------- | -------- | --------------------------------------------------------- | ----------------------------------------------- |\n| Maa Verge | 预览版   | 项目 GitHub Releases 中非预发布、无 SemVer 预览后缀的版本 | 正式版与预览版中版本号最高的已发布版本          |\n| MaaCore   | 正式版   | 官方稳定版 API                                            | 官方 Releases 中正式版与预览版的最高有效 SemVer |\n\n草稿不参与检查；版本按 SemVer 比较，`beta.10` 高于 `beta.2`。切回正式频道时，已安装的较高预览版继续保留，不自动降级。应用和核心切换频道均取消旧频道候选；核心正在检查、下载、校验或切换时须等待操作完成再改频道。显式核心/资源回滚仍可恢复上一组已验证组合。\n\nMaa Verge 的「启动时检查应用更新」默认开启，只控制联网检查，不会自动下载。发现新版后选择「下载更新」，切换页面不影响下载。签名通过且更新包与清单写盘完成后，选择「安装并重启」，询问是否立刻更新：\n\n- 「立即更新并重启」会停止当前任务、工具和连接，取消后台组件作业，关闭本地服务后调用安装器；正常安装完成后重新启动。未执行计划和业务数据保留，不自动继续游戏操作。\n- 「下次启动时更新」或关闭确认框会继续使用当前版本；下次打开时先从本地恢复更新包，复核安装位置、平台/安装器、版本、登记大小与签名，再自动安装。这一步可离线执行，也不受「启动时检查应用更新」开关影响。\n\n当前开发源码中，Maa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的内置 HTTP 下载器与「设置 → 更新 → 下载代理」，统一使用自动、手动 HTTP/HTTPS 代理或直连模式。自动模式在代理无效、不可达或传输失败时尝试直连；手动模式失败显示错误并保留可恢复数据，不自动绕过所填代理。版本选择和安装流程仍分别管理，代理选择与系统网络边界见 [组件运行时](maacore-runtime.md)。\n\n当前开发源码还提供「设置 → 更新 → Mirror酱」，三通道共用一个 CDK。Mirror酱用户端高速下载为付费服务，官方免费来源继续保留。应用对应 `maa-verge`：Windows EXE、Linux AppImage 需与官方资产版本、大小和摘要一致，Rust 继续校验 minisign；当前镜像 macOS DMG 与应用内签名归档不同，macOS 自动更新保持官方来源。详情及第三方声明见 [Mirror酱说明](mirrorchyan.md) 和 [NOTICE.md](../NOTICE.md)。\n\n应用下载支持安全断点续传：缓存绑定固定来源 URL、版本、大小和摘要，以 HTTP Range / If-Range 核对远端内容后继续；内容身份不能确认时重新下载。临时网络故障和空闲超时默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。切换页面不会取消下载，取消或正常退出保留可恢复分片。应用内版本回滚仍不支持。\n\nHTTP 下载暂存于当前数据根的 `updates/app/downloads`，已签名安装候选保存在 `updates/app`，默认是程序目录的 `config/updates/app`，开发环境是 checkout 的同一路径；遵循自定义数据根。传输完成后由 Rust 复核登记大小、版本和 minisign 签名，签名通过才把包写入独立文件并同步磁盘，再原子提交安装清单。下载分片与未通过签名的文件不会成为启动安装候选。MaaCore/资源继续使用不可变版本目录和空闲边界切换。\n\n启动安装先于本地服务、自动连接和调度。立即安装不等待组件下载结束或已有 RPC 的长时读锁；本地服务先通过 EOF 正常退出，五秒后仍未结束则强制收尾。Windows 还核对并等待本实例的服务、更新作业及原生 worker 退出，保留共享 ADB 和其他应用实例，无法确认退出时保留更新包并重启恢复应用，不继续替换占用文件。macOS/Linux 的强制收尾和真实升级仍需在对应宿主验收。\n\n调用安装器前先持久化本次安装尝试。安装失败、取消或中断后再次打开旧版时，不会反复自动安装；旧版正常启动并在更新页面保留已验证包，可手动重试。重新选择「下次启动时更新」可以安排一次新的自动尝试，无需重新下载；只关闭确认框不会重置失败标记。只有新版本实际启动且版本号已达到候选版本后才清理缓存；改变应用更新频道会取消原频道候选。损坏、缺失或验证失败的缓存拒绝安装，继续打开应用并允许重新检查、下载。Windows 安装器成功启动后由其负责安装和重开应用；当前 Tauri 更新器无法获知安装器后期取消或失败的结果，这种情况下可手动重新打开旧版重试。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L5-L28",
-        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
+        "pointer": "L5-L30",
+        "sha256": "418740f5e21d9fb35c635d89c13f4486fed386cc67f806b69a41a023d2f625c4"
       }
     },
     {
@@ -156,8 +156,8 @@
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L86-L89",
-        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
+        "pointer": "L88-L91",
+        "sha256": "418740f5e21d9fb35c635d89c13f4486fed386cc67f806b69a41a023d2f625c4"
       }
     },
     {
@@ -182,7 +182,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L1-L4",
-        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
+        "sha256": "418740f5e21d9fb35c635d89c13f4486fed386cc67f806b69a41a023d2f625c4"
       }
     },
     {
@@ -210,8 +210,8 @@
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L43-L50",
-        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
+        "pointer": "L45-L52",
+        "sha256": "418740f5e21d9fb35c635d89c13f4486fed386cc67f806b69a41a023d2f625c4"
       }
     },
     {
@@ -237,8 +237,8 @@
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L78-L85",
-        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
+        "pointer": "L80-L87",
+        "sha256": "418740f5e21d9fb35c635d89c13f4486fed386cc67f806b69a41a023d2f625c4"
       }
     },
     {
@@ -264,8 +264,8 @@
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L90-L107",
-        "sha256": "175f6b5ce37c2c41bfe1543ae335c19fd3d046d0b9fef513756b3c1376a2d8a6"
+        "pointer": "L92-L109",
+        "sha256": "418740f5e21d9fb35c635d89c13f4486fed386cc67f806b69a41a023d2f625c4"
       }
     },
     {
@@ -421,7 +421,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L5-L12",
-        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
+        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
       }
     },
     {
@@ -434,21 +434,21 @@
         "完整替代原版的发布门槛",
         "maa-compatibility"
       ],
-      "text": "原 MAA 功能覆盖与验收 > 完整替代原版的发布门槛\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 完整替代原版的发布门槛\n\n以下项目包含尚未交付或尚未完成真实验收的工作，不能从“登记了 19 类任务”推导为已完成：\n\n| 范围           | 还需完成的验收                                                                                                                                                                                              |\n| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| 所有任务与选项 | 各任务主路径及原版常用选项的 UI、失败反馈、结果解析与真实游戏验证；补齐上述受限消耗选项及自定义流程                                                                                                         |\n| 识别与工具     | 仓库/公招/干员/补货/小游戏已有独立工具与合成验证；仍需六种客户端实测、视频工具与作业真实验收，离线视频不应强制连接设备                                                                                      |\n| 编排与调度     | 独立 Schedule 支持每日定时、普通跳过、可取消强制接管、通知、准备和去重；仍需真实强制关闭游戏/休眠恢复、完整跨配置与完成后系统动作验收。旧 Plan.schedule 不解释为新规则                                      |\n| 连接与平台     | 已实现独立实例配置、同时执行/单独停止和错误隔离；仍需各模拟器真实多开验收、启动模拟器和全部触控/截图模式验证；Windows 原生窗口/PlayCover 等原版平台能力也必须单列方案，不能因为首版只走 ADB 而宣布覆盖      |\n| 展示与数据     | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需跨执行掉落统计及游戏公告等数据展示                                                                                        |\n| 设置与外部服务 | 已接入三平台系统通知及分类偏好，实际系统投递待各宿主验收；第三方推送、远控、社区账号/收藏/发布及其他公共数据接口、自定义基建文件管理和其他原版设置仍待覆盖；MirrorChyan（Mirror酱）暂不接入，属于当前范围外 |\n| 发行与兼容     | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测                                                                                                      |\n\n其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：",
+      "text": "原 MAA 功能覆盖与验收 > 完整替代原版的发布门槛\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 完整替代原版的发布门槛\n\n以下项目包含尚未交付或尚未完成真实验收的工作，不能从“登记了 19 类任务”推导为已完成：\n\n| 范围           | 还需完成的验收                                                                                                                                                                                                                                                                             |\n| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |\n| 所有任务与选项 | 各任务主路径及原版常用选项的 UI、失败反馈、结果解析与真实游戏验证；补齐上述受限消耗选项及自定义流程                                                                                                                                                                                        |\n| 识别与工具     | 仓库/公招/干员/补货/小游戏已有独立工具与合成验证；仍需六种客户端实测、视频工具与作业真实验收，离线视频不应强制连接设备                                                                                                                                                                     |\n| 编排与调度     | 独立 Schedule 支持每日定时、普通跳过、可取消强制接管、通知、准备和去重；仍需真实强制关闭游戏/休眠恢复、完整跨配置与完成后系统动作验收。旧 Plan.schedule 不解释为新规则                                                                                                                     |\n| 连接与平台     | 已实现独立实例配置、同时执行/单独停止和错误隔离；仍需各模拟器真实多开验收、启动模拟器和全部触控/截图模式验证；Windows 原生窗口/PlayCover 等原版平台能力也必须单列方案，不能因为首版只走 ADB 而宣布覆盖                                                                                     |\n| 展示与数据     | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需跨执行掉落统计及游戏公告等数据展示                                                                                                                                                                       |\n| 设置与外部服务 | 已接入三平台系统通知及分类偏好，实际系统投递待各宿主验收；第三方推送、远控、社区账号/收藏/发布及其他公共数据接口、自定义基建文件管理和其他原版设置仍待覆盖；MirrorChyan 已提供三通道共用 CDK 设置，用户端高速下载为付费服务，保留官方免费来源及包型不适配时回退，见 [说明](mirrorchyan.md) |\n| 发行与兼容     | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测                                                                                                                                                                                     |\n\n其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：",
       "data": {
         "category": "documentation",
         "headingPath": [
           "原 MAA 功能覆盖与验收",
           "完整替代原版的发布门槛"
         ],
-        "content": "## 完整替代原版的发布门槛\n\n以下项目包含尚未交付或尚未完成真实验收的工作，不能从“登记了 19 类任务”推导为已完成：\n\n| 范围           | 还需完成的验收                                                                                                                                                                                              |\n| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| 所有任务与选项 | 各任务主路径及原版常用选项的 UI、失败反馈、结果解析与真实游戏验证；补齐上述受限消耗选项及自定义流程                                                                                                         |\n| 识别与工具     | 仓库/公招/干员/补货/小游戏已有独立工具与合成验证；仍需六种客户端实测、视频工具与作业真实验收，离线视频不应强制连接设备                                                                                      |\n| 编排与调度     | 独立 Schedule 支持每日定时、普通跳过、可取消强制接管、通知、准备和去重；仍需真实强制关闭游戏/休眠恢复、完整跨配置与完成后系统动作验收。旧 Plan.schedule 不解释为新规则                                      |\n| 连接与平台     | 已实现独立实例配置、同时执行/单独停止和错误隔离；仍需各模拟器真实多开验收、启动模拟器和全部触控/截图模式验证；Windows 原生窗口/PlayCover 等原版平台能力也必须单列方案，不能因为首版只走 ADB 而宣布覆盖      |\n| 展示与数据     | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需跨执行掉落统计及游戏公告等数据展示                                                                                        |\n| 设置与外部服务 | 已接入三平台系统通知及分类偏好，实际系统投递待各宿主验收；第三方推送、远控、社区账号/收藏/发布及其他公共数据接口、自定义基建文件管理和其他原版设置仍待覆盖；MirrorChyan（Mirror酱）暂不接入，属于当前范围外 |\n| 发行与兼容     | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测                                                                                                      |\n\n其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：",
+        "content": "## 完整替代原版的发布门槛\n\n以下项目包含尚未交付或尚未完成真实验收的工作，不能从“登记了 19 类任务”推导为已完成：\n\n| 范围           | 还需完成的验收                                                                                                                                                                                                                                                                             |\n| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |\n| 所有任务与选项 | 各任务主路径及原版常用选项的 UI、失败反馈、结果解析与真实游戏验证；补齐上述受限消耗选项及自定义流程                                                                                                                                                                                        |\n| 识别与工具     | 仓库/公招/干员/补货/小游戏已有独立工具与合成验证；仍需六种客户端实测、视频工具与作业真实验收，离线视频不应强制连接设备                                                                                                                                                                     |\n| 编排与调度     | 独立 Schedule 支持每日定时、普通跳过、可取消强制接管、通知、准备和去重；仍需真实强制关闭游戏/休眠恢复、完整跨配置与完成后系统动作验收。旧 Plan.schedule 不解释为新规则                                                                                                                     |\n| 连接与平台     | 已实现独立实例配置、同时执行/单独停止和错误隔离；仍需各模拟器真实多开验收、启动模拟器和全部触控/截图模式验证；Windows 原生窗口/PlayCover 等原版平台能力也必须单列方案，不能因为首版只走 ADB 而宣布覆盖                                                                                     |\n| 展示与数据     | 实时预览、周期同步和官方活动日历已有入口，主页支持剿灭日历提醒及手工基建估算；仍需跨执行掉落统计及游戏公告等数据展示                                                                                                                                                                       |\n| 设置与外部服务 | 已接入三平台系统通知及分类偏好，实际系统投递待各宿主验收；第三方推送、远控、社区账号/收藏/发布及其他公共数据接口、自定义基建文件管理和其他原版设置仍待覆盖；MirrorChyan 已提供三通道共用 CDK 设置，用户端高速下载为付费服务，保留官方免费来源及包型不适配时回退，见 [说明](mirrorchyan.md) |\n| 发行与兼容     | 三平台签名发行、应用/核心/资源独立更新；六种客户端资源组合验证；不能以 CI 配置或 mock 通过替代平台实测                                                                                                                                                                                     |\n\n其中，原版 UI 自有能力需要独立实现，不能由核心任务透传代替：",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L55-L70",
-        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
+        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
       }
     },
     {
@@ -475,7 +475,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L71-L77",
-        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
+        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
       }
     },
     {
@@ -502,7 +502,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L13-L28",
-        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
+        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
       }
     },
     {
@@ -529,7 +529,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L29-L41",
-        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
+        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
       }
     },
     {
@@ -556,7 +556,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L42-L54",
-        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
+        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
       }
     },
     {
@@ -581,7 +581,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L1-L4",
-        "sha256": "0116e81f813788aa1fc4d67ba46b880e6004ae7fbeb0bae6e6509bb42ee07293"
+        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
       }
     },
     {
@@ -766,7 +766,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L99-L108",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -793,7 +793,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L55-L70",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -820,7 +820,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L71-L74",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -847,7 +847,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L7-L26",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -874,7 +874,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L27-L36",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -901,7 +901,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L93-L98",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -930,7 +930,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L75-L92",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -957,7 +957,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L117-L122",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -970,21 +970,21 @@
         "后台下载与断点续传",
         "maacore-runtime"
       ],
-      "text": "MaaCore 运行文件的选择性安装 > 后台下载与断点续传\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。MirrorChyan（Mirror酱）暂不接入，核心与资源继续使用官方公开来源。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
+      "text": "MaaCore 运行文件的选择性安装 > 后台下载与断点续传\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。当前开发源码在「设置 → 更新 → Mirror酱」提供三通道共用 CDK：用户端高速分发为付费服务，未填写 CDK、服务不可用或平台无适配包时保留官方免费来源。核心对应 `MAA`，资源对应 `MaaResource`，完整包、资源时间及回退规则见 [Mirror酱说明](mirrorchyan.md)。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "MaaCore 运行文件的选择性安装",
           "后台下载与断点续传"
         ],
-        "content": "## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。MirrorChyan（Mirror酱）暂不接入，核心与资源继续使用官方公开来源。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
+        "content": "## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。当前开发源码在「设置 → 更新 → Mirror酱」提供三通道共用 CDK：用户端高速分发为付费服务，未填写 CDK、服务不可用或平台无适配包时保留官方免费来源。核心对应 `MAA`，资源对应 `MaaResource`，完整包、资源时间及回退规则见 [Mirror酱说明](mirrorchyan.md)。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L37-L54",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -1011,7 +1011,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L109-L116",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -1036,7 +1036,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L1-L6",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -1063,7 +1063,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L123-L132",
-        "sha256": "9ec2aeb21a05c953a3584410759810f4b1e2270f0f5bb4ba13cac38220ace767"
+        "sha256": "1bca2d4618759e0d94bd2d1969bb1e166d023ca8cb32773cfa0330c4d424bf59"
       }
     },
     {
@@ -1617,6 +1617,10 @@
           },
           {
             "file": "packages/contracts/schemas/runtime.schema.json",
+            "pointer": "#/$defs/MirrorChyanSettings"
+          },
+          {
+            "file": "packages/contracts/schemas/runtime.schema.json",
             "pointer": "#/$defs/ModelSettings"
           },
           {
@@ -1758,6 +1762,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/InfrastructureLine"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/MirrorChyanSettings"
         },
         {
           "predicate": "defined-by",
@@ -5814,6 +5823,10 @@
           },
           {
             "file": "packages/contracts/schemas/runtime.schema.json",
+            "pointer": "#/$defs/MirrorChyanSettings"
+          },
+          {
+            "file": "packages/contracts/schemas/runtime.schema.json",
             "pointer": "#/$defs/ModelSettings"
           },
           {
@@ -5886,6 +5899,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/InfrastructureLine"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/MirrorChyanSettings"
         },
         {
           "predicate": "defined-by",
@@ -17042,7 +17060,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17098,7 +17116,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Budgets",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17164,7 +17182,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CaptureSettings",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17206,7 +17224,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ComponentPaths",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17300,7 +17318,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ConnectionSettings",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17377,7 +17395,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CopilotRunEntry",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17419,7 +17437,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CopilotStorage",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17523,7 +17541,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Device",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17596,7 +17614,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/DeviceConnectionProfile",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17642,7 +17660,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/DownloadProxySettings",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17700,7 +17718,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Event",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17751,7 +17769,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/InfrastructureEstimateProfile",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17818,7 +17836,50 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/InfrastructureLine",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/runtime.schema.json#/$defs/MirrorChyanSettings",
+      "kind": "document",
+      "id": "packages/contracts/schemas/runtime.schema.json#/$defs/MirrorChyanSettings",
+      "name": "接口定义 MirrorChyanSettings",
+      "aliases": [
+        "MirrorChyanSettings",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "MirrorChyanSettings\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"enabled\",\"cdk\"],\"properties\":{\"enabled\":{\"type\":\"boolean\",\"default\":true},\"cdk\":{\"type\":\"string\",\"maxLength\":256,\"pattern\":\"^[^\\\\r\\\\n\\\\u0000]*$\",\"description\":\"Shared MirrorChyan CDK for the application, MaaCore and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports.\"}}}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "cdk"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "cdk": {
+              "type": "string",
+              "maxLength": 256,
+              "pattern": "^[^\\r\\n\\u0000]*$",
+              "description": "Shared MirrorChyan CDK for the application, MaaCore and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports."
+            }
+          }
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/runtime.schema.json",
+        "pointer": "#/$defs/MirrorChyanSettings",
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17868,7 +17929,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ModelSettings",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -17924,7 +17985,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/NotificationSettings",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18053,7 +18114,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Plan",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18111,7 +18172,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ResourceActivityVersion",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18258,7 +18319,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Run",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18320,7 +18381,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunArtifact",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18377,7 +18438,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunDrop",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18450,7 +18511,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunInfrastructure",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18562,7 +18623,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunTask",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18615,7 +18676,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/SchedulerSettings",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18628,7 +18689,7 @@
         "JSON Schema",
         "参数约束"
       ],
-      "text": "Settings\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"additionalProperties\":false,\"properties\":{\"componentPaths\":{\"$ref\":\"#/$defs/ComponentPaths\"},\"downloadProxy\":{\"$ref\":\"#/$defs/DownloadProxySettings\"},\"notifications\":{\"$ref\":\"#/$defs/NotificationSettings\"},\"infrastructureEstimates\":{\"type\":\"array\",\"maxItems\":100,\"items\":{\"$ref\":\"#/$defs/InfrastructureEstimateProfile\"}},\"capture\":{\"$ref\":\"#/$defs/CaptureSettings\"},\"connection\":{\"$ref\":\"#/$defs/ConnectionSettings\"},\"deviceProfiles\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"$ref\":\"#/$defs/DeviceConnectionProfile\"}},\"logRetentionDays\":{\"type\":\"integer\",\"enum\":[0,7,14,30],\"default\":7,\"description\":\"Log retention in days; zero disables automatic cleanup.\"},\"autoConnect\":{\"default\":true,\"title\":\"Autoconnect\",\"type\":\"boolean\"},\"autoUpdateApp\":{\"type\":\"boolean\",\"default\":true,\"description\":\"启动时联网检查应用更新；下载由用户确认，已下载并验证的更新在下次启动时自动安装。\"},\"appUpdateChannel\":{\"type\":\"string\",\"enum\":[\"stable\",\"preview\"],\"default\":\"preview\"},\"coreUpdateChannel\":{\"type\":\"string\",\"enum\":[\"stable\",\"preview\"],\"default\":\"stable\"},\"autoUpdateCore\":{\"default\":true,\"title\":\"Autoupdatecore\",\"type\":\"boolean\"},\"autoUpdateResource\":{\"default\":true,\"title\":\"Autoupdateresource\",\"type\":\"boolean\"},\"minimizeToTray\":{\"default\":true,\"title\":\"Minimizetotray\",\"type\":\"boolean\"},\"rememberCloseAction\":{\"type\":\"boolean\",\"default\":false,\"description\":\"记住 minimizeToTray 指定的关闭方式；缺失或 false 时每次关闭窗口均询问。\"},\"theme\":{\"default\":\"system\",\"enum\":[\"dark\",\"light\",\"system\"],\"title\":\"Theme\",\"type\":\"string\"},\"budgets\":{\"$ref\":\"#/$defs/Budgets\"},\"model\":{\"$ref\":\"#/$defs/ModelSettings\"},\"scheduler\":{\"$ref\":\"#/$defs/SchedulerSettings\"},\"copilotStorage\":{\"$ref\":\"#/$defs/CopilotStorage\"}},\"required\":[\"autoConnect\",\"autoUpdateCore\",\"autoUpdateResource\",\"minimizeToTray\",\"theme\",\"budgets\",\"model\"],\"title\":\"Settings\",\"type\":\"object\"}",
+      "text": "Settings\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"additionalProperties\":false,\"properties\":{\"componentPaths\":{\"$ref\":\"#/$defs/ComponentPaths\"},\"downloadProxy\":{\"$ref\":\"#/$defs/DownloadProxySettings\"},\"mirrorChyan\":{\"$ref\":\"#/$defs/MirrorChyanSettings\"},\"notifications\":{\"$ref\":\"#/$defs/NotificationSettings\"},\"infrastructureEstimates\":{\"type\":\"array\",\"maxItems\":100,\"items\":{\"$ref\":\"#/$defs/InfrastructureEstimateProfile\"}},\"capture\":{\"$ref\":\"#/$defs/CaptureSettings\"},\"connection\":{\"$ref\":\"#/$defs/ConnectionSettings\"},\"deviceProfiles\":{\"type\":\"array\",\"maxItems\":32,\"items\":{\"$ref\":\"#/$defs/DeviceConnectionProfile\"}},\"logRetentionDays\":{\"type\":\"integer\",\"enum\":[0,7,14,30],\"default\":7,\"description\":\"Log retention in days; zero disables automatic cleanup.\"},\"autoConnect\":{\"default\":true,\"title\":\"Autoconnect\",\"type\":\"boolean\"},\"autoUpdateApp\":{\"type\":\"boolean\",\"default\":true,\"description\":\"启动时联网检查应用更新；下载由用户确认，已下载并验证的更新在下次启动时自动安装。\"},\"appUpdateChannel\":{\"type\":\"string\",\"enum\":[\"stable\",\"preview\"],\"default\":\"preview\"},\"coreUpdateChannel\":{\"type\":\"string\",\"enum\":[\"stable\",\"preview\"],\"default\":\"stable\"},\"autoUpdateCore\":{\"default\":true,\"title\":\"Autoupdatecore\",\"type\":\"boolean\"},\"autoUpdateResource\":{\"default\":true,\"title\":\"Autoupdateresource\",\"type\":\"boolean\"},\"minimizeToTray\":{\"default\":true,\"title\":\"Minimizetotray\",\"type\":\"boolean\"},\"rememberCloseAction\":{\"type\":\"boolean\",\"default\":false,\"description\":\"记住 minimizeToTray 指定的关闭方式；缺失或 false 时每次关闭窗口均询问。\"},\"theme\":{\"default\":\"system\",\"enum\":[\"dark\",\"light\",\"system\"],\"title\":\"Theme\",\"type\":\"string\"},\"budgets\":{\"$ref\":\"#/$defs/Budgets\"},\"model\":{\"$ref\":\"#/$defs/ModelSettings\"},\"scheduler\":{\"$ref\":\"#/$defs/SchedulerSettings\"},\"copilotStorage\":{\"$ref\":\"#/$defs/CopilotStorage\"}},\"required\":[\"autoConnect\",\"autoUpdateCore\",\"autoUpdateResource\",\"minimizeToTray\",\"theme\",\"budgets\",\"model\"],\"title\":\"Settings\",\"type\":\"object\"}",
       "data": {
         "category": "schema",
         "schema": {
@@ -18639,6 +18700,9 @@
             },
             "downloadProxy": {
               "$ref": "#/$defs/DownloadProxySettings"
+            },
+            "mirrorChyan": {
+              "$ref": "#/$defs/MirrorChyanSettings"
             },
             "notifications": {
               "$ref": "#/$defs/NotificationSettings"
@@ -18802,6 +18866,11 @@
         {
           "predicate": "references",
           "targetKind": "document",
+          "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/MirrorChyanSettings"
+        },
+        {
+          "predicate": "references",
+          "targetKind": "document",
           "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/ModelSettings"
         },
         {
@@ -18818,7 +18887,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Settings",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18889,7 +18958,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Task",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -18987,7 +19056,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ToolJobSummary",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -19138,7 +19207,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/UpdateChannel",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -19185,7 +19254,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/UserDataSync",
-        "sha256": "67df86238ab805cbb66652e992e53a500c4add256e7a6acdcbac2208b5289aff"
+        "sha256": "06af462b98cac49b6a800291b00c81e429e609c43c9329c6a287d821a7482cb3"
       }
     },
     {
@@ -20215,5 +20284,5 @@
       }
     }
   ],
-  "digest": "8e69a3bd7165d1948a58f8e9a078629d0746ead16ec6ee0994faff4bc7971e7a"
+  "digest": "5b01f2273622289b9ca7494e114e1019f281b66b0900746f2358ffcd7f5d2ea9"
 }

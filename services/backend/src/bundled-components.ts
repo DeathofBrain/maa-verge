@@ -4,6 +4,7 @@ import { copyFile, lstat, mkdir, readFile, readdir, realpath, rm } from 'node:fs
 import path from 'node:path';
 import { releaseVersion } from './release-version';
 import { snapshotIntegrity, type SnapshotIntegrity } from './snapshot-integrity';
+import { validResourceTimestamp } from './mirrorchyan';
 
 export interface BundledCore {
   version: string;
@@ -42,6 +43,11 @@ const digest = (value: unknown): value is string =>
   typeof value === 'string' && value.length === 64 && /^[a-f0-9]{64}$/.test(value);
 const version = (value: unknown): value is string =>
   typeof value === 'string' && !/[\r\n]/.test(value) && Boolean(releaseVersion(value));
+const resourceVersion = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  (/^[a-f0-9]{40}$/.test(value) ||
+    (value.startsWith('mirrorchyan:') &&
+      validResourceTimestamp(value.slice('mirrorchyan:'.length))));
 const pathKey = (value: string) => (process.platform === 'win32' ? value.toLowerCase() : value);
 
 /** Discover completed payloads without trusting a saved absolute installation path. */
@@ -87,9 +93,7 @@ export async function readLocalComponentSnapshots(
         !digest(value.installedHash) ||
         (channel === 'core'
           ? !version(value.version)
-          : typeof value.version !== 'string' ||
-            !/^[a-f0-9]{40}$/.test(value.version) ||
-            !version(value.coreVersion))
+          : !resourceVersion(value.version) || !version(value.coreVersion))
       )
         continue;
       snapshots.push({

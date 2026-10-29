@@ -36,6 +36,7 @@ import LogSettings from './LogSettings';
 import CopilotStorageSettings from './CopilotStorageSettings';
 import ConfigurationSettings from './ConfigurationSettings';
 import NotificationSettings from './NotificationSettings';
+import MirrorChyanSettings from './MirrorChyanSettings';
 import {
   downloadSpeedLabel,
   resourceClientFor,
@@ -211,14 +212,14 @@ const categories = [
     id: 'services',
     label: '外部服务',
     icon: ArrowUpRight,
-    keywords: 'MirrorChyan 社区 作业站 企鹅 数据 汇报',
+    keywords: '社区 作业站 企鹅 数据 汇报',
   },
   {
     id: 'updates',
     label: '更新',
     icon: RefreshCw,
     keywords:
-      '更新 应用 核心 MaaCore 游戏资源 资源更新 下载 版本 正式版 预览版 频道 活动 目录 路径 检查 回滚 断点续传 下载代理 Clash VPN 直连',
+      '更新 应用 核心 MaaCore MaaResource 游戏资源 资源更新 下载 版本 正式版 预览版 频道 活动 目录 路径 检查 回滚 断点续传 下载代理 Clash VPN 直连 MirrorChyan Mirror酱 mirror酱 CDK 付费 加速',
   },
   {
     id: 'data',
@@ -420,7 +421,12 @@ export function SettingsPage({
                     </div>
                     <div>
                       <dt>MirrorChyan 加速</dt>
-                      <dd>尚未接入</dd>
+                      <dd>
+                        用户端高速下载为付费服务，需要有效 CDK。
+                        <button className="text-button" onClick={() => setCategory('updates')}>
+                          前往更新设置
+                        </button>
+                      </dd>
                     </div>
                     <div>
                       <dt>数据汇报</dt>
@@ -448,6 +454,11 @@ export function SettingsPage({
                       检查全部更新
                     </button>
                   </div>
+                  <MirrorChyanSettings
+                    settings={snapshot.settings}
+                    busy={busy || updating}
+                    onSave={saveSettings}
+                  />
                   <DownloadProxyForm
                     settings={snapshot.settings}
                     busy={busy}

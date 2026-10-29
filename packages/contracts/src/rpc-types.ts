@@ -556,6 +556,7 @@ export interface ChannelParams {
 export interface Settings {
   componentPaths?: ComponentPaths;
   downloadProxy?: DownloadProxySettings;
+  mirrorChyan?: MirrorChyanSettings;
   notifications?: NotificationSettings;
   /**
    * @maxItems 100
@@ -613,6 +614,17 @@ export interface DownloadProxySettings {
    * Manual HTTP/HTTPS proxy address. settings.save accepts host:port with an implicit http:// scheme and normalizes it to a complete URL; other modes clear this field. A root slash is allowed; other paths, queries and fragments are rejected.
    */
   url: string;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "MirrorChyanSettings".
+ */
+export interface MirrorChyanSettings {
+  enabled: boolean;
+  /**
+   * Shared MirrorChyan CDK for the application, MaaCore and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports.
+   */
+  cdk: string;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema

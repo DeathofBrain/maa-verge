@@ -248,18 +248,29 @@ describe('diagnostic log export and retention', () => {
 
   test('credential redaction covers URL credentials, query tokens, JSON and headers', () => {
     const value = redactLog(
-      'https://user:pass@example.test/api?token=secret123&ok=yes\n{"password":"pwd123","api_key":"key123"}\nCookie: session=abc; value=123\nAuthorization: Basic abc123',
+      'https://user:pass@example.test/api?token=secret123&cdk=private-cdk&ok=yes\n{"password":"pwd123","api_key":"key123","CDK":"private-json-cdk"}\nCookie: session=abc; value=123\nAuthorization: Basic abc123',
     );
-    for (const secret of ['user:pass', 'secret123', 'pwd123', 'key123', 'session=abc', 'abc123'])
+    for (const secret of [
+      'user:pass',
+      'secret123',
+      'private-cdk',
+      'private-json-cdk',
+      'pwd123',
+      'key123',
+      'session=abc',
+      'abc123',
+    ])
       expect(value).not.toContain(secret);
     expect(value).toContain('ok=yes');
     const diagnostic = new Diagnostics(path.join(temp(), 'logs'));
     diagnostic.write('error', 'url https://example.test/?token=private-token&ok=yes', {
       password: 'private-password',
+      mirrorChyan: { cdk: 'private-nested-cdk' },
     });
     expect(JSON.parse(readFileSync(diagnostic.currentFile, 'utf8')).message).not.toContain(
       'private-token',
     );
+    expect(readFileSync(diagnostic.currentFile, 'utf8')).not.toContain('private-nested-cdk');
   });
 
   test('runtime persists retention, validates commands and exports correlated failures without raw event payloads', async () => {
