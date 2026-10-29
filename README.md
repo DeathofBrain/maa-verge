@@ -17,11 +17,13 @@ Maa Verge 是一款免费开源的明日方舟桌面助手，基于 [MAA](https:
 
 > 当前提供 **[v0.1.2 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)**，本页的安装与使用说明以该发行版为准。Agent 和部分上游功能仍在开发，完整更新与已知限制见 [版本说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.2/docs/releases/v0.1.2.md)。
 
+> 也可体验 **[v0.1.3-alpha.1 预览版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha.1)**，包含新的任务中心、设备监控、作业库和下载更新体验。预览版的安装包与界面有调整，升级前请阅读下方预览版说明及[完整版本说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md)。
+
 ## 下载与安装
 
 从 **[GitHub Releases](https://github.com/DeathofBrain/maa-verge/releases)** 下载软件，也可以点击下表直接下载 v0.1.2 安装包。
 
-项目当前最低支持 **macOS 15（Sequoia）**，适用于 Apple Silicon 和 Intel；当前源码及后续发行包按此要求构建。已发布 v0.1.2 的历史构建目标仍为 macOS 13.5。
+v0.1.3-alpha.1 预览版最低支持 **macOS 15（Sequoia）**，适用于 Apple Silicon 和 Intel；当前源码及后续发行包按此要求构建。v0.1.2 正式版的历史构建目标仍为 macOS 13.5。
 
 | 系统                                | 安装包                                                                                                                                                                                                                                                                                                                       | 安装方式                                                        |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -39,6 +41,19 @@ Maa Verge 是一款免费开源的明日方舟桌面助手，基于 [MAA](https:
 - **系统组件**：Windows 使用 WebView2，缺少时安装程序会引导安装；Linux 需要系统 WebView 与桌面库，目前以 Ubuntu 22.04 / 24.04 x64 为目标，其他发行版需自行确认依赖。
 
 Windows 安装包尚无发布者签名；macOS 已采用完整的本地签名（ad-hoc），但尚无 Developer ID 签名与公证，首次打开可能需要在「系统设置 → 隐私与安全性」明确放行，详见 [macOS 安装说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.2/docs/app-updates.md#macos-签名与首次放行)。应用内更新会校验独立的更新签名；这与系统发布者签名不同。各平台的已知限制见版本说明。
+
+<details>
+<summary>体验 v0.1.3-alpha.1 预览版</summary>
+
+从[预览版 Release](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha.1) 下载对应系统与架构的安装包，包型及完整下载表见[本版下载与安装说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md#下载与安装)。Windows 提供 EXE 与完整 ZIP，不再提供 MSI；macOS 需要 15 或更新版本，Linux 继续提供 AppImage、DEB 与 RPM。
+
+- **安装与升级**：完全退出旧版，备份整个 `config` 和已有作业 JSON 目录。Windows EXE 默认选中 MaaCore 与 MaaResource 离线组件，可按需取消；完整 ZIP 包含两者，完全解压到可写目录后运行 `Maa Verge.exe`。首次启动会校验并导入随附组件；未附带组件时仍需联网下载。旧 MSI 用户须先卸载旧版，再安装 EXE 或使用 ZIP；安装过未公开的 `v0.1.3-alpha1` 测试包时，请手动安装本版。升级渠道与备份细节见[升级说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md#升级说明)。
+- **任务与设备**：从「任务」管理任务表，勾选后点击「运行」，在同页「执行监控」查看设备进度；底栏左侧切换设备后，可打开对应运行详情、日志与画面。
+- **下载与更新**：应用、MaaCore 和游戏资源统一使用内置 HTTP 下载，无需 aria2。在「设置 → 更新 → 下载代理」选择自动、手动 HTTP/HTTPS 代理或直连，下载时显示速度并支持续传。应用更新下载校验后可选择「立即更新并重启」或「下次启动时更新」；后者需真正退出并重新打开，最小化到托盘不会安装。ZIP 版仍需手动更新，详见[本版更新说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/app-updates.md)。
+
+预览版 Agent 仍暂不可用，真实游戏与各平台升级的验证范围见[已知问题与限制](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md#已知问题与限制)。下文功能与操作步骤继续以 v0.1.2 正式版为准。
+
+</details>
 
 ## 能做什么
 

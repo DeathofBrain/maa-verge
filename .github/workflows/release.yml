@@ -52,13 +52,10 @@ jobs:
               object = (await github.rest.git.getTag({ ...repo, tag_sha: object.sha })).data.object;
             if (object.type !== 'commit')
               throw new Error(`Tag ${tag} does not resolve to a commit.`);
-            let existing;
-            try {
-              existing = await github.rest.repos.getReleaseByTag({ ...repo, tag });
-            } catch (error) {
-              if (error.status !== 404) throw error;
-            }
-            if (existing)
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              ...repo, per_page: 100,
+            });
+            if (releases.some((release) => release.tag_name === tag))
               throw new Error('A release, including a draft, already exists for this tag; create a new committed version.');
             core.setOutput('tag', tag);
             core.setOutput('commit', object.sha);
@@ -223,13 +220,10 @@ jobs:
               object = (await github.rest.git.getTag({ ...repo, tag_sha: object.sha })).data.object;
             if (object.type !== 'commit' || object.sha !== process.env.RELEASE_COMMIT)
               throw new Error('The release tag changed during the build.');
-            let existing;
-            try {
-              existing = await github.rest.repos.getReleaseByTag({ ...repo, tag });
-            } catch (error) {
-              if (error.status !== 404) throw error;
-            }
-            if (existing)
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              ...repo, per_page: 100,
+            });
+            if (releases.some((release) => release.tag_name === tag))
               throw new Error('A release or draft appeared during the build; refusing to overwrite it.');
       - name: Create and validate a draft for review (never publish automatically)
         env:
@@ -255,13 +249,22 @@ jobs:
             "${flags[@]}"
           created=true
           gh release upload "$RELEASE_TAG" dist/release/* --repo "$GITHUB_REPOSITORY"
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > dist/draft.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" > dist/releases.json
           node --input-type=module -e '
-          import { readFileSync } from "node:fs";
+          import { execFileSync } from "node:child_process";
+          import { readFileSync, writeFileSync } from "node:fs";
           import { validateAssetSet } from "./tools/release-assets.mjs";
-          const release = JSON.parse(readFileSync("dist/draft.json", "utf8"));
           const tag = process.env.RELEASE_TAG;
-          if (release.draft !== true || release.tag_name !== tag)
+          const matches = JSON.parse(readFileSync("dist/releases.json", "utf8"))
+            .flat().filter((release) => release.tag_name === tag);
+          if (matches.length !== 1 || matches[0].draft !== true ||
+              !Number.isSafeInteger(matches[0].id) || matches[0].id <= 0)
+            throw new Error("Expected one draft release with a numeric REST ID for the exact tag.");
+          const release = JSON.parse(execFileSync("gh", ["api",
+            `repos/${process.env.GITHUB_REPOSITORY}/releases/${matches[0].id}`,
+          ], { encoding: "utf8" }));
+          writeFileSync("dist/draft.json", JSON.stringify(release, null, 2) + "\n");
+          if (release.id !== matches[0].id || release.draft !== true || release.tag_name !== tag)
             throw new Error("The draft release is not in the expected unpublished state.");
           const assets = validateAssetSet(release, tag);
           console.log(`Draft ${tag} contains ${assets.length} validated assets.`);

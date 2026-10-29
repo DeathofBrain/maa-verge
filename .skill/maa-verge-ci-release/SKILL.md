@@ -52,10 +52,10 @@ description: 维护 Maa Verge 的 GitHub Actions Checks 与签名发行流程：
 
 1. **开发、构建与测试不依赖 Python/uv。** CTest 由 Node 驱动，设备租约互斥使用独立原生锁探针；不要恢复旧参考后端、setup-uv 或 uv sync。Linux 镜像使用固定 CMake 官方归档与 SHA-256 校验，不通过 Python 包管理器安装构建工具。
 2. **Windows 必须显式准备 NSIS。** Checks 不再运行 `pnpm build`，Tauri 不会顺带安装 NSIS。Windows 任务需查找 `%ProgramFiles(x86)%\NSIS\makensis.exe`，缺失时用 choco 安装，导出 `MAAVERGE_NSIS_COMPILER`，找不到就失败。设置 `MAAVERGE_INSTALLER_TOOLS_REQUIRED=1`，让缺少安装器工具成为失败而不是跳过。
-3. **手动补跑时的 `github.sha` 不是标签提交。** 用 `github.rest.git.getRef({ ref: 'tags/<tag>' })` 解析标签，404 直接失败；用 `github.rest.git.getTag` 有界剥离批注标签，要求最终对象是 commit；checkout 解析出的 commit。`verify` 需要 `contents: write` 才能看到草稿并拒绝重复 Release；只读 token 会把已有草稿误判为不存在。
+3. **手动补跑时的 `github.sha` 不是标签提交。** 用 `github.rest.git.getRef({ ref: 'tags/<tag>' })` 解析标签，404 直接失败；用 `github.rest.git.getTag` 有界剥离批注标签，要求最终对象是 commit；checkout 解析出的 commit。两处重复发行门禁均使用 `github.paginate(github.rest.repos.listReleases, { ...repo, per_page: 100 })`，按精确 `tag_name` 匹配公开 Release 和草稿；`verify` 保留 `contents: write` 以查看草稿。`getReleaseByTag` 返回 404 不能证明草稿不存在。
 4. **Actions 运行查询必须用完整 SHA。** `tools/ci/require-checks.mjs` 用 40 位 `head_sha` 查询 `ci.yml` 运行；短 SHA 查不到。接受 push、PR、workflow_dispatch；任一运行成功即通过，即使更早的运行失败；有未完成运行则等待；成功运行最多等 30 分钟，完全没有运行时只等 5 分钟，并提示 `gh workflow run ci.yml --ref <tag>`。不要改为复用 Release 自身或旧提交的运行。
-5. **草稿必须用 `--verify-tag --draft` 创建。** 使用 `gh release create <tag> --verify-tag --draft --notes-file docs/releases/<tag>.md`，不要传 `--target`：标签不存在时 `--target` 会创建 `untagged-*` 占位草稿。含 `-` 的标签自动加 `--prerelease`。创建前再次确认标签未移动且无并发 Release；失败清理用 trap 只删除本次创建的草稿，保留标签。
-6. **资产 ID 必须来自 REST。** `gh release view --json` 的 asset `id` 是 GraphQL 字符串，不能用于要求数字 ID 的校验。用 `gh api repos/$GITHUB_REPOSITORY/releases/tags/<tag>` 获取 REST 响应，断言 `draft === true`、`tag_name` 精确匹配，再调用 [tools/release-assets.mjs](../../tools/release-assets.mjs) 的 `validateAssetSet`。草稿不能用 `validateRelease`，后者要求 `draft === false` 且已有 `published_at`。
+5. **草稿必须用 `--verify-tag --draft` 创建。** 使用 `gh release create <tag> --verify-tag --draft --notes-file docs/releases/<tag>.md`，不传 `--target`，避免隐式创建缺失标签。含 `-` 的标签自动加 `--prerelease`。草稿的 HTML URL 使用 `releases/tag/untagged-*` 是正常行为，不能据此判断标签缺失；标签以 Git ref 和精确 `tag_name` 为准。创建前再次确认标签未移动且无并发 Release；失败清理用 trap 只删除本次创建的草稿，保留标签。
+6. **Release 与资产 ID 必须来自 REST。** `gh release view --json` 的 asset `id` 是 GraphQL 字符串，不能用于要求数字 ID 的校验。草稿不通过按标签的 REST 端点查询：先用 `gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100"` 分页列出 Release，按精确 `tag_name` 找到唯一草稿和数值 `release.id`，再 GET `repos/$GITHUB_REPOSITORY/releases/<id>` 获取完整资产。断言 ID、`draft === true` 与 `tag_name` 均匹配，再调用 [tools/release-assets.mjs](../../tools/release-assets.mjs) 的 `validateAssetSet`。草稿不能用 `validateRelease`，后者要求 `draft === false` 且已有 `published_at`。
 7. **Linux 干净容器 smoke 必须在签名构建之后。** [tools/smoke-clean-linux.mjs](../../tools/smoke-clean-linux.mjs) 需要 `dist/runtime/maaverge-runtime`；先执行 `run.sh release`，再在宿主运行该脚本。容器内构建使用 `APPIMAGE_EXTRACT_AND_RUN=1` 以避免依赖 FUSE。不要把它前移或并入 `run.sh`。
 8. **版本与发行说明必须对齐。** 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、`Cargo.toml` 与标签；运行 `node tools/app-updater-release.mjs check --tag <tag>`，并确认 `docs/releases/<tag>.md` 非空。当前 EXE/完整 ZIP 资产集合为 17 项；`validateAssetSet` 仍接受旧的 8/18 项集合，不要硬编码单一数量。
 9. **发行权限与并发。** `verify` 需要 `actions: read` + `contents: write`，`draft` 需要 `contents: write`，`build` 只读；Release 并发按标签分组且 `cancel-in-progress: false`；`build` 矩阵 `fail-fast: false`。签名密钥只从 Actions secrets 读取，不打印、不提交私钥。
@@ -103,7 +103,7 @@ shellcheck tools/ci/run.sh
 - **native 失败**：确认固定 Bun、Node、CMake/CTest 与 C++ 工具链可用；Windows 再检查 NSIS 路径与 `MAAVERGE_INSTALLER_TOOLS_REQUIRED`。
 - **Release verify 失败**：区分标签不存在、已有草稿、版本不一致、说明缺失、Checks 缺失/失败/被取消。Checks 未运行时先 `gh workflow run ci.yml --ref <tag>` 并通过，再补跑 Release。
 - **Release build 失败**：检查签名 secret、Linux 构建是否先于 clean smoke、macOS 是否使用 `--require-updater`。不要把未签名本地包当作发行候选。
-- **draft 失败**：检查标签是否在构建期间移动、是否出现并发 Release、资产集合是否完整、是否误用了 GraphQL 字符串 ID。trap 会删除本次草稿并保留标签，修正后可重跑。
+- **draft 失败**：检查标签是否在构建期间移动、是否出现并发 Release、资产集合是否完整、是否误用了 GraphQL 字符串 ID。按标签的 REST 查询返回 404 时，先从分页 Release 列表按 `tag_name` 查找并使用数值 ID 获取草稿，不把正常的 `untagged-*` HTML URL 当成标签缺失。trap 会删除本次草稿并保留标签，修正后可重跑。
 
 ## 文档同步
 
