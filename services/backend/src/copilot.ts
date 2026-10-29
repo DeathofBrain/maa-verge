@@ -327,6 +327,8 @@ export class CopilotLibrary {
   private resourceCache?: {
     root: string;
     aliases: Map<string, string>;
+    searchAliases: Map<string, string | null>;
+    codes: Map<string, { value: string; label: string; stageId: string } | null>;
     displayNames: Map<string, string | null>;
   };
   private navigationCache = new Map<string, Record<string, unknown>>();
@@ -548,6 +550,8 @@ export class CopilotLibrary {
     }
     if (this.resourceCache?.root === generation) return this.resourceCache.aliases;
     const aliases = new Map<string, string>();
+    const searchAliases = new Map<string, string | null>();
+    const codes = new Map<string, { value: string; label: string; stageId: string } | null>();
     const displayNames = new Map<string, string | null>();
     const directory = path.join(generation, 'resource', 'Arknights-Tile-Pos');
     try {
@@ -566,8 +570,16 @@ export class CopilotLibrary {
             (item) => typeof item === 'string' && item.length > 0 && item.length <= 200,
           ) as string[];
           const baseId = text(entry.stageId, 200).split('#')[0]!;
-          for (const name of names)
-            aliases.set(name, baseId || text(entry.stageId ?? entry.levelId, 200));
+          const stageId = baseId || text(entry.stageId ?? entry.levelId, 200);
+          if (!stageId) continue;
+          for (const name of names) {
+            aliases.set(name, stageId);
+            const key = name.trim().toLowerCase();
+            searchAliases.set(
+              key,
+              searchAliases.has(key) && searchAliases.get(key) !== stageId ? null : stageId,
+            );
+          }
           const code =
             typeof entry.code === 'string' && entry.code.trim() && entry.code.length <= 200
               ? entry.code
@@ -580,6 +592,19 @@ export class CopilotLibrary {
                 displayNames.has(name) && displayNames.get(name) !== code ? null : code,
               );
             }
+          if (code) {
+            const key = code.trim().toLowerCase(),
+              previous = codes.get(key);
+            if (codes.has(key) && previous?.stageId !== stageId) codes.set(key, null);
+            else if (!codes.has(key)) {
+              const name = text(entry.name, 200);
+              codes.set(key, {
+                value: code,
+                label: name && name !== code ? `${code} · ${name}` : code,
+                stageId,
+              });
+            }
+          }
         } catch {
           /* A summary without its map file is not an installed map. */
         }
@@ -587,8 +612,30 @@ export class CopilotLibrary {
     } catch {
       /* Missing or invalid index is reported as unverified below. */
     }
-    this.resourceCache = { root: generation, aliases, displayNames };
+    this.resourceCache = { root: generation, aliases, searchAliases, codes, displayNames };
     return aliases;
+  }
+  stages(
+    input: RpcContract['params']['copilot.stages'] = {},
+  ): RpcContract['results']['copilot.stages'] {
+    validate(validators.validateEmptyParams, input);
+    this.aliases();
+    const stages = [...(this.resourceCache?.codes.values() ?? [])]
+      .filter((stage): stage is NonNullable<typeof stage> => !!stage)
+      .sort((a, b) => a.value.localeCompare(b.value, 'en', { numeric: true }))
+      .map(({ value, label }) => ({ value, label }));
+    // Keep the full response within the desktop's 4 MiB NDJSON limit.
+    let bytes = 1024;
+    for (const stage of stages) bytes += Buffer.byteLength(JSON.stringify(stage)) + 1;
+    if (bytes > 3 * 1024 * 1024) fail('关卡目录超出读取限制，请更新资源后重试');
+    return { stages };
+  }
+  private searchStage(value: string): string | undefined {
+    this.aliases();
+    const key = value.trim().toLowerCase();
+    // A display code takes precedence over another map's human-readable alias.
+    if (this.resourceCache?.codes.has(key)) return this.resourceCache.codes.get(key)?.stageId;
+    return this.resourceCache?.searchAliases.get(key) ?? undefined;
   }
   private displayStage(stage: string): string {
     this.aliases();
@@ -1810,12 +1857,12 @@ export class CopilotLibrary {
       const query = new URLSearchParams({
         page: String(page),
         limit: '20',
-        orderBy: 'upload_time',
+        orderBy: params.orderBy ?? 'hot',
         desc: 'true',
         document: params.keyword ?? '',
       });
       if (params.stage) {
-        const stage = this.aliases().get(params.stage);
+        const stage = this.searchStage(params.stage);
         if (!stage) fail('无法将关卡编号映射为社区内部标识，请先更新资源或直接搜索关键词');
         query.set('levelKeyword', stage!);
       }

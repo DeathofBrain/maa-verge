@@ -352,6 +352,18 @@ export function createCopilotFixture(context: Context) {
         persist();
         return clone(value);
       }
+      case 'copilot.stages':
+        return {
+          stages: [
+            { value: '1-1', label: '1-1 · 君临' },
+            { value: '1-7', label: '1-7 · 暴君' },
+            { value: '1-12', label: '1-12 · 代价' },
+            { value: 'PR-A-1', label: 'PR-A-1 · 固若金汤' },
+            { value: 'PR-A-2', label: 'PR-A-2 · 固若金汤' },
+            { value: 'R8-11', label: 'R8-11 · 渴求' },
+            { value: 'TEST-1', label: 'TEST-1 · 合成活动关卡' },
+          ],
+        };
       case 'copilot.search': {
         const page = Number(params.page || 1);
         const target = params.target === 'set' ? 'set' : 'copilot';

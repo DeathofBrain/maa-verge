@@ -697,6 +697,8 @@ export class Runtime {
       case 'copilot.search':
         if (!validateCopilotSearchParams(params)) throw new RpcError(-32602, '社区搜索请求无效');
         return this.copilot.search(params);
+      case 'copilot.stages':
+        return this.copilot.stages(params);
       case 'copilot.rating.get':
         if (!validateCopilotRatingParams(params)) throw new RpcError(-32602, '社区评价请求无效');
         return this.copilot.ratingGet(params);

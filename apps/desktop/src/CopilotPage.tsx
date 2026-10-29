@@ -20,9 +20,12 @@ import {
   BookOpen,
   Check,
   ChevronRight,
+  Clock3,
   Download,
+  Eye,
   ExternalLink,
   FileJson,
+  Flame,
   FolderOpen,
   Info,
   ListOrdered,
@@ -49,6 +52,7 @@ import {
   type CopilotPreview,
   type CopilotRecord,
   type CopilotWorkspace,
+  type RpcParams,
   type RpcResult,
 } from '@maaverge/contracts';
 import type { SupportPageProps } from './SupportPages';
@@ -57,6 +61,7 @@ import CopilotOperators, { useCopilotRoster } from './CopilotOperators';
 import CopilotSetOperators from './CopilotSetOperators';
 import CopilotDifficulty from './CopilotDifficulty';
 import CopilotSelectAll from './CopilotSelectAll';
+import CopilotStageFilter from './CopilotStageFilter';
 import CopilotDeleteDialog, { type CopilotDeleteTarget } from './CopilotDeleteDialog';
 import {
   cachedCommunityPreview,
@@ -65,6 +70,7 @@ import {
   useCommunitySearch,
 } from './copilot-community';
 import './copilot-page.css';
+import './copilot-community-sort.css';
 import './copilot-drawer.css';
 
 type Props = SupportPageProps & {
@@ -75,6 +81,12 @@ type Props = SupportPageProps & {
 };
 type Availability = RpcResult<'device.availability'>;
 type Run = RpcResult<'run.detail'>;
+type CommunityOrder = NonNullable<RpcParams<'copilot.search'>['orderBy']>;
+const communityOrders = [
+  { value: 'hot', label: '热度', icon: Flame },
+  { value: 'id', label: '最新', icon: Clock3 },
+  { value: 'views', label: '访问量', icon: Eye },
+] as const;
 const kinds: { value: CopilotKind; label: string; short: string }[] = [
   { value: 'Copilot', label: '普通作业', short: '普通' },
   { value: 'SSSCopilot', label: '保全派驻', short: '保全' },
@@ -113,6 +125,8 @@ let browseSession = {
   target: 'copilot' as 'copilot' | 'set',
   keyword: '',
   stage: '',
+  stageFilter: '',
+  orderBy: 'hot' as CommunityOrder,
   page: 1,
   query: '',
   category: '',
@@ -311,6 +325,8 @@ export default function CopilotPage({
   const [target, setTarget] = useState(browseSession.target);
   const [keyword, setKeyword] = useState(browseSession.keyword);
   const [stage, setStage] = useState(browseSession.stage);
+  const [stageFilter, setStageFilter] = useState(browseSession.stageFilter);
+  const [orderBy, setOrderBy] = useState(browseSession.orderBy);
   const [page, setPage] = useState(browseSession.page);
   const [runId, setRunId] = useState(initialRunId ?? uiSelection('run'));
   const [monitorDevice, setMonitorDevice] = useState(() => uiSelection('monitor-device'));
@@ -360,7 +376,8 @@ export default function CopilotPage({
       target,
       keyword,
       page,
-      ...(target === 'copilot' && stage.trim() ? { stage: stage.trim() } : {}),
+      ...(target === 'copilot' ? { orderBy } : {}),
+      ...(target === 'copilot' && stageFilter ? { stage: stageFilter } : {}),
     },
     tab === 'community',
     resourceKey,
@@ -439,12 +456,14 @@ export default function CopilotPage({
       target,
       keyword,
       stage,
+      stageFilter,
+      orderBy,
       page,
       query,
       category: categoryFilter,
       localPage,
     };
-  }, [tab, target, keyword, stage, page, query, categoryFilter, localPage]);
+  }, [tab, target, keyword, stage, stageFilter, orderBy, page, query, categoryFilter, localPage]);
   useLayoutEffect(() => {
     if (restoreScroll.current === undefined || (tab === 'local' ? !libraryReady : !searchResult))
       return;
@@ -2090,25 +2109,41 @@ export default function CopilotPage({
                       />
                     </label>
                     {target === 'copilot' && (
-                      <label className="cp-field">
-                        关卡筛选
-                        <input
-                          className="text-input"
-                          aria-label="社区关卡筛选"
-                          value={stage}
-                          onChange={(event) => {
-                            setStage(event.target.value);
-                            setPage(1);
-                          }}
-                          placeholder="例如 1-7"
-                        />
-                      </label>
+                      <CopilotStageFilter
+                        value={stage}
+                        resourceKey={resourceKey}
+                        onChange={setStage}
+                        onCommit={(value) => {
+                          setStageFilter(value);
+                          setPage(1);
+                        }}
+                      />
+                    )}
+                    {target === 'copilot' && (
+                      <div className="cp-community-sort" role="group" aria-label="社区作业排序">
+                        <span>排序：</span>
+                        {communityOrders.map(({ value, label, icon: Icon }) => (
+                          <button
+                            key={value}
+                            type="button"
+                            aria-pressed={orderBy === value}
+                            onClick={() => {
+                              if (orderBy === value) return;
+                              setOrderBy(value);
+                              setPage(1);
+                            }}
+                          >
+                            <Icon size={15} aria-hidden="true" />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     )}
                     <div className="cp-search-actions">
                       <p className="sp-help">
                         {target === 'set'
                           ? '点进作业集查看成员，可逐项选择并按原顺序加入队列。'
-                          : '默认按最新排序，也可以用编号或链接直接导入。'}
+                          : '支持用编号或链接直接导入。'}
                       </p>
                       <button
                         className="icon-button"
