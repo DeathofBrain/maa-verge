@@ -1,3 +1,4 @@
+import { deviceOptions, devicePicker, selectDevice } from './fixtures/device-picker';
 import { readFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
 import type { Run, Snapshot } from '../../packages/contracts/src/types';
@@ -243,9 +244,9 @@ async function seedMonitor(page: Page, heldDetails: string[] = []) {
     };
     api.emitEvent('run.started');
   }, heldDetails);
-  await expect(
-    page.getByLabel('选择设备', { exact: true }).getByRole('option', { name: /五号模拟器/ }),
-  ).toHaveCount(1);
+  await devicePicker(page).click();
+  await expect(deviceOptions(page).getByRole('option', { name: /五号模拟器/ })).toHaveCount(1);
+  await devicePicker(page).press('Escape');
 }
 
 test('monitor lists one row per device, stops only that device and bulk-stops selected devices', async ({
@@ -383,7 +384,7 @@ test('monitor filters, searches and fits desktop, dark and narrow layouts', asyn
   });
 });
 
-test('selecting a device shows its execution below the device cards and follows live state', async ({
+test('selecting a device toggles its details, switches devices and follows live state', async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -409,6 +410,31 @@ test('selecting a device shows its execution below the device cards and follows 
     path: testInfo.outputPath('device-execution-inline.png'),
     fullPage: true,
   });
+
+  await detailButton(page, '一号模拟器').click();
+  await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'false');
+  await expect(inspected(page)).toHaveCount(0);
+  await expect(detail(page)).toHaveCount(0);
+  await expect(devicePicker(page)).toHaveAttribute('data-value', 'monitor-device-1');
+  await page.evaluate(() => {
+    const target = window as unknown as MonitorWindow;
+    target.monitorState.runs.find((item) => item.id === 'monitor-a')!.message =
+      '取消查看后任务继续执行';
+    target.runtimeHarness.emitEvent('run.progress', { runId: 'monitor-a' });
+  });
+  await expect(row(page, '一号模拟器')).toContainText('取消查看后任务继续执行');
+  await expect(inspected(page)).toHaveCount(0);
+  await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'false');
+
+  await detailButton(page, '二号模拟器').click();
+  await expect(detailButton(page, '二号模拟器')).toHaveAttribute('aria-pressed', 'true');
+  await expect(detail(page)).toContainText('二号模拟器的独立任务结果');
+  await expect(detail(page)).not.toContainText('一号模拟器的独立任务结果');
+  await detailButton(page, '一号模拟器').click();
+  await expect(detailButton(page, '二号模拟器')).toHaveAttribute('aria-pressed', 'false');
+  await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'true');
+  await expect(detail(page)).toContainText('一号模拟器的独立任务结果');
+  await expect(detail(page)).toContainText('取消查看后任务继续执行');
 
   await page.evaluate(() => {
     const target = window as unknown as MonitorWindow;
@@ -559,7 +585,7 @@ test('the same device monitor shows copilot execution and independently stops to
   ).toEqual([]);
 });
 
-test('history stays on the exact execution until the device is returned to current execution', async ({
+test('history stays exact until returning to current execution or clearing the device selection', async ({
   page,
 }) => {
   await seedMonitor(page);
@@ -580,6 +606,20 @@ test('history stays on the exact execution until the device is returned to curre
   await inspected(page).getByRole('button', { name: '查看当前执行', exact: true }).click();
   await expect(detail(page)).toContainText('共同日常');
   await expect(detail(page)).toContainText('当前任务继续运行');
+
+  await openRunFromHistory(page, 'monitor-failed');
+  await expect(inspected(page)).toContainText('正在查看历史执行');
+  await expect(detail(page)).toContainText('历史识别');
+  await detailButton(page, '一号模拟器').click();
+  await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'false');
+  await expect(inspected(page)).toHaveCount(0);
+  await expect(detail(page)).toHaveCount(0);
+  await expect(devicePicker(page)).toHaveAttribute('data-value', 'monitor-device-1');
+  await detailButton(page, '一号模拟器').click();
+  await expect(detail(page)).toContainText('共同日常');
+  await expect(detail(page)).toContainText('当前任务继续运行');
+  await expect(detail(page)).not.toContainText('历史识别');
+  await expect(inspected(page)).not.toContainText('正在查看历史执行');
 });
 
 test('connection settings return to the task draft and viewing execution selects its device', async ({
@@ -849,7 +889,7 @@ test('a late editor start preserves a historical execution selected on another d
     target.monitorState.holdStart = true;
     target.runtimeHarness.emitEvent('run.completed', { runId: run.id });
   });
-  await page.getByLabel('选择设备', { exact: true }).selectOption('monitor-device-4');
+  await selectDevice(page, 'monitor-device-4');
   await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
   await page
     .getByRole('region', { name: '任务表列表', exact: true })
@@ -867,7 +907,7 @@ test('a late editor start preserves a historical execution selected on another d
   await page.getByRole('button', { name: '关闭任务表详情', exact: true }).click();
   await openRunFromHistory(page, 'monitor-failed');
   await expect(detail(page)).toContainText('历史识别');
-  await expect(page.getByLabel('选择设备', { exact: true })).toHaveValue('monitor-device-1');
+  await expect(devicePicker(page)).toHaveAttribute('data-value', 'monitor-device-1');
   await page.evaluate(() => {
     (window as unknown as MonitorWindow).monitorState.releaseStart!();
   });
@@ -878,7 +918,7 @@ test('a late editor start preserves a historical execution selected on another d
     'aria-selected',
     'true',
   );
-  await expect(page.getByLabel('选择设备', { exact: true })).toHaveValue('monitor-device-1');
+  await expect(devicePicker(page)).toHaveAttribute('data-value', 'monitor-device-1');
   await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'true');
   await expect(inspected(page)).toContainText('正在查看历史执行');
   await expect(detail(page)).toContainText('历史识别');

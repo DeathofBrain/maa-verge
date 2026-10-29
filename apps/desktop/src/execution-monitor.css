@@ -169,6 +169,12 @@
   padding: 6px 10px;
   font-size: 12px;
 }
+.monitor-bulk-hint {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
 .monitor-device-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
@@ -499,6 +505,10 @@
   min-height: 34px;
   padding: 7px 11px;
   font-size: 12px;
+}
+.monitor-device-menu {
+  width: 34px;
+  height: 34px;
 }
 .monitor-empty {
   min-height: 280px;

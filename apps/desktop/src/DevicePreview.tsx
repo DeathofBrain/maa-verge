@@ -443,7 +443,7 @@ export default function DevicePreview({
             </strong>
             <span>
               {!online
-                ? '在设备页连接后，选择顶部的设备。'
+                ? '在设备页连接后，选择底栏的设备。'
                 : error
                   ? '请检查设备连接，然后重试画面。'
                   : '首帧就绪后将自动刷新。'}

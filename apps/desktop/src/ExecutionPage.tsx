@@ -1,7 +1,6 @@
 import Select from './Select';
 import { useEffect, useState } from 'react';
 import {
-  ArrowLeft,
   Check,
   ChevronDown,
   Circle,
@@ -13,7 +12,6 @@ import {
   Monitor,
   Package,
   Square,
-  Terminal,
   TriangleAlert,
 } from 'lucide-react';
 import {
@@ -21,7 +19,6 @@ import {
   localizeExecutionMessage,
   rpc,
   taskLabels,
-  type Plan,
   type Run,
   type RunArtifact,
   type RunTask,
@@ -35,12 +32,8 @@ import './execution-page.css';
 type Props = {
   snapshot: Snapshot;
   run?: Run;
-  pending: Set<string>;
   onRunUpdate: (run: Run) => void;
-  onStop: (run: Run) => Promise<boolean>;
-  onEdit: (plan: Plan) => void;
   onPrepare: () => void;
-  onOpenLogs?: () => void;
 };
 const runNames: Record<Run['status'], string> = {
   running: '执行中',
@@ -87,16 +80,7 @@ const duration = (start: string, end: string | null | undefined, now: number) =>
     : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
 };
 
-export default function ExecutionPage({
-  snapshot,
-  run: summary,
-  pending,
-  onRunUpdate,
-  onStop,
-  onEdit,
-  onPrepare,
-  onOpenLogs,
-}: Props) {
+export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onPrepare }: Props) {
   const [detail, setDetail] = useState<Run>();
   const [loadError, setLoadError] = useState('');
   const run =
@@ -153,7 +137,6 @@ export default function ExecutionPage({
       </section>
     );
 
-  const plan = snapshot.plans.find((item) => item.id === run.planId);
   const device = snapshot.devices.find((item) => item.id === run.deviceId);
   const tasks = run.tasks || [];
   const completed = tasks.filter((task) => task.status === 'completed').length;
@@ -205,33 +188,6 @@ export default function ExecutionPage({
           </div>
           <h1>{runDisplayName(run, snapshot.plans)}</h1>
           <p>{localizeExecutionMessage(run.message)}</p>
-        </div>
-        <div className="exec-actions">
-          {!isCopilotRun(run) && (
-            <button
-              className="button secondary"
-              onClick={() => (plan ? onEdit(plan) : onPrepare())}
-            >
-              <ArrowLeft size={15} />
-              返回任务设置
-            </button>
-          )}
-          {onOpenLogs && (
-            <button className="button secondary" onClick={onOpenLogs}>
-              <Terminal size={15} />
-              查看日志
-            </button>
-          )}
-          {run.status === 'running' && (
-            <button
-              className="button danger"
-              disabled={pending.has(`stop-${run.id}`)}
-              onClick={() => void onStop(run)}
-            >
-              <Square size={13} />
-              停止执行
-            </button>
-          )}
         </div>
       </header>
       {loadError && (

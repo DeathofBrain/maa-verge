@@ -1,3 +1,4 @@
+import { deviceOption, deviceOptions, devicePicker, selectDevice } from './fixtures/device-picker';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 
 test('one task table runs on two instances and each instance stops independently', async ({
@@ -44,9 +45,9 @@ test('one task table runs on two instances and each instance stops independently
   await panel.getByRole('button', { name: '停止实例 第二个模拟器', exact: true }).click();
 });
 
-test('switching the target device allows the same unbound editor plan to start in parallel', async ({
+test('the dock device selector follows progress and logs without borrowing another device run', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   const second = (await page.evaluate(async () =>
@@ -63,22 +64,81 @@ test('switching the target device allows the same unbound editor plan to start i
     '执行中',
   );
   await page.getByRole('button', { name: '关闭任务表详情', exact: true }).click();
-  await page.getByLabel('选择设备', { exact: true }).selectOption(second.id);
+  const dock = page.getByRole('contentinfo', { name: '执行状态栏', exact: true });
+  const target = devicePicker(page);
+  const runPanel = page.getByRole('region', { name: '运行面板', exact: true });
+  await target.focus();
+  await target.press('ArrowUp');
+  await expect(deviceOptions(page)).toBeVisible();
+  await expect(deviceOptions(page)).not.toContainText(/执行中|空闲|离线|已连接/);
+  await expect(deviceOptions(page)).toContainText('127.0.0.1:5557');
+  const optionsBounds = await deviceOptions(page).boundingBox();
+  const pickerBounds = await target.boundingBox();
+  expect(optionsBounds!.y + optionsBounds!.height).toBeLessThanOrEqual(pickerBounds!.y);
+  await page.screenshot({ path: testInfo.outputPath('device-picker-open.png'), fullPage: true });
+  await target.press('End');
+  await expect(target).toBeFocused();
+  await expect(target).toHaveAttribute(
+    'aria-activedescendant',
+    (await deviceOption(page, second.id).getAttribute('id'))!,
+  );
+  await expect(target).toHaveAttribute('data-value', 'mock-device-1');
+  await target.press('Enter');
+  await expect(deviceOptions(page)).toHaveCount(0);
+  await expect(target).toHaveAttribute('data-value', second.id);
+  await expect(dock).not.toHaveClass(/is-running/u);
+  await expect(dock.getByRole('button', { name: '停止执行', exact: true })).toHaveCount(0);
+  await dock.getByRole('button', { name: '运行详情', exact: true }).click();
+  await expect(runPanel).toBeVisible();
+  await expect(runPanel.getByRole('region', { name: '任务表执行页面', exact: true })).toHaveCount(
+    0,
+  );
+  await expect(page.getByRole('tab', { name: '任务表', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await dock.getByRole('button', { name: '日志', exact: true }).click();
+  const logs = runPanel.getByRole('region', { name: '设备日志', exact: true });
+  await expect(runPanel.locator('.run-panel-heading')).toContainText('第二个模拟器');
+  await expect(logs.locator('code').filter({ hasText: /^run.started$/ })).toHaveCount(0);
+  await target.click();
+  await target.press('Escape');
+  await expect(deviceOptions(page)).toHaveCount(0);
+  await expect(target).toBeFocused();
+  await expect(runPanel).toBeVisible();
+  await selectDevice(page, 'mock-device-1');
+  await expect(dock).toHaveClass(/is-running/u);
+  await expect(dock.getByRole('button', { name: '停止执行', exact: true })).toBeVisible();
+  await expect(runPanel.locator('.run-panel-heading')).toContainText('本地模拟设备');
+  await expect(logs.locator('code').filter({ hasText: /^run.started$/ })).toHaveCount(1);
+  await selectDevice(page, second.id);
+  await expect(runPanel.locator('.run-panel-heading')).toContainText('第二个模拟器');
+  await expect(logs.locator('code').filter({ hasText: /^run.started$/ })).toHaveCount(0);
+  await expect(dock.getByRole('button', { name: '停止执行', exact: true })).toHaveCount(0);
+  const active = (await page.evaluate(async () =>
+    (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}),
+  )) as { runs: { deviceId: string; status: string }[] };
+  expect(active.runs.filter((run) => run.status === 'running').map((run) => run.deviceId)).toEqual([
+    'mock-device-1',
+  ]);
+  await runPanel.getByRole('button', { name: '收起运行详情', exact: true }).click();
   await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
   await expect(wb.getByRole('button', { name: '开始执行', exact: true })).toBeEnabled();
   await wb.getByRole('button', { name: '开始执行', exact: true }).click();
   await page.getByRole('button', { name: '关闭任务表详情', exact: true }).click();
-  const dock = page.getByRole('contentinfo', { name: '执行状态栏', exact: true });
   await expect(dock).toContainText('第二个模拟器');
   await dock.getByRole('button', { name: '日志', exact: true }).click();
-  const logs = page.getByRole('dialog', { name: '设备日志', exact: true });
   await expect(logs.locator('code').filter({ hasText: /^run.started$/ })).toHaveCount(1);
-  await logs.getByRole('button', { name: '关闭设备日志', exact: true }).click();
+  await runPanel.getByRole('button', { name: '收起运行详情', exact: true }).click();
   await dock.getByRole('button', { name: '运行详情', exact: true }).click();
-  const execution = page.getByRole('region', { name: '所选设备执行情况', exact: true });
+  const execution = runPanel.getByRole('region', { name: '任务表执行页面', exact: true });
   await expect(execution).toBeVisible();
   await expect(execution).toContainText('第二个模拟器');
-  await page.getByLabel('选择设备', { exact: true }).selectOption('mock-device-1');
+  await expect(page.getByRole('tab', { name: '任务表', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await selectDevice(page, 'mock-device-1');
   await expect(execution).toContainText('本地模拟设备');
   await dock.getByRole('button', { name: '多开执行', exact: true }).click();
   const panel = page.getByRole('region', { name: '多开执行面板', exact: true });

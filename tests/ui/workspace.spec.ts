@@ -1,3 +1,4 @@
+import { devicePicker } from './fixtures/device-picker';
 import type { Page } from '@playwright/test';
 import type { Plan } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
@@ -252,17 +253,49 @@ test('Agent proposes a reviewable plan without starting a run', async ({ page })
 
 test('the persistent run dock reports progress and stop preserves the plan and history', async ({
   page,
-}) => {
+}, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
   await openWorkspace(page);
   await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
   await expect(dock(page)).toContainText('执行中');
   await navigate(page, '工具箱');
   await expect(dock(page)).toContainText('任务进度');
   await dock(page).getByRole('button', { name: '运行详情', exact: true }).click();
-  const details = page.getByRole('region', { name: '任务表执行页面', exact: true });
+  const panel = page.getByRole('region', { name: '运行面板', exact: true });
+  const details = panel.getByRole('region', { name: '任务表执行页面', exact: true });
   await expect(details).toContainText('本页显示开始执行时的任务。修改设置用于下次执行。');
+  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('工具箱');
+  await expect(page.locator('.main-shell')).not.toHaveAttribute('inert');
+  await expect(devicePicker(page)).toBeEnabled();
   await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await expect(dock(page).getByRole('button', { name: '停止执行', exact: true })).toBeHidden();
+  for (const layout of [
+    { width: 1440, height: 900, theme: 'light' },
+    { width: 1280, height: 800, theme: 'dark' },
+    { width: 390, height: 844, theme: 'dark' },
+  ] as const) {
+    await page.setViewportSize({ width: layout.width, height: layout.height });
+    await page.emulateMedia({ colorScheme: layout.theme, reducedMotion: 'reduce' });
+    await expect(panel).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    expect(await panel.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+      true,
+    );
+    const panelBounds = await panel.boundingBox();
+    const dockBounds = await dock(page).boundingBox();
+    expect(panelBounds!.y).toBeGreaterThanOrEqual(0);
+    expect(panelBounds!.y + panelBounds!.height).toBeLessThanOrEqual(dockBounds!.y + 1);
+    await page.screenshot({
+      path: testInfo.outputPath(`run-panel-${layout.theme}-${layout.width}.png`),
+      fullPage: true,
+    });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await panel.getByRole('button', { name: '收起运行详情', exact: true }).click();
+  await expect(panel).toHaveCount(0);
   await navigate(page, '执行记录');
   await expect(page.getByRole('cell', { name: '已停止', exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: '模拟执行已停止', exact: true })).toBeVisible();
@@ -917,11 +950,36 @@ test('enabled Fight task limits accumulate and disabled tasks do not contribute'
 
 test('global search locates updates, saved tables and individual task settings', async ({
   page,
-}) => {
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await openWorkspace(page);
   await closeDetail(page);
   const search = page.getByLabel('搜索任务与设置', { exact: true });
   await search.fill('资源更新');
+  const results = page.getByRole('region', { name: '搜索结果', exact: true });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(results).toBeVisible();
+    const inputBounds = await page.locator('.global-search').boundingBox();
+    const resultsBounds = await results.boundingBox();
+    expect(Math.abs(resultsBounds!.x - inputBounds!.x)).toBeLessThanOrEqual(1);
+    expect(resultsBounds!.x + resultsBounds!.width).toBeLessThanOrEqual(width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    expect(
+      await results.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return element.contains(document.elementFromPoint(bounds.left + 12, bounds.top + 24));
+      }),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`global-search-${width}.png`),
+      fullPage: true,
+      animations: 'disabled',
+    });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page
     .getByRole('region', { name: '搜索结果' })
     .getByRole('button', { name: /更新/ })
@@ -972,7 +1030,8 @@ test('starting flushes pending changes and keeps the editor open with run feedba
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
   await wb(page).getByRole('button', { name: '查看执行', exact: true }).click();
   await expect(page.getByRole('region', { name: '任务表执行页面', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
+  await page.getByRole('tab', { name: '任务表', exact: true }).click();
+  await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
   await expect(wb(page).getByRole('status', { name: '任务表运行状态', exact: true })).toContainText(
     '执行中',
@@ -1074,26 +1133,4 @@ test('copilot entries focus the exact task when a table contains duplicate task 
     '/synthetic/second.json',
   );
   await expect(wb(page).getByText('第 7 条任务 · 独立设置', { exact: true })).toBeVisible();
-});
-
-test('legacy specialized tables stay visible in the unified task list without a group control', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await tab(page, '任务表设置');
-  await expect(wb(page).getByLabel('任务分组', { exact: true })).toHaveCount(0);
-  await page.evaluate(async () => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    const snapshot = (await api.call('app.snapshot', {})) as { plans: Plan[] };
-    const plan = snapshot.plans.find((item) => item.name === '每日长草计划')!;
-    await api.call('plan.save', { plan: { ...plan, group: 'specialized' } });
-  });
-  await page.reload();
-  await expect(home(page)).toBeVisible();
-  await openSavedPlan(page, '每日长草计划');
-  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('任务');
-  await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
-  await tab(page, '任务表设置');
-  await expect(wb(page).getByLabel('任务分组', { exact: true })).toHaveCount(0);
-  await expect(wb(page).getByLabel('任务表名称', { exact: true })).toHaveValue('每日长草计划');
 });

@@ -14,7 +14,7 @@ async function openLatestExecution(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: `查看执行${run.id}`, exact: true }).click();
 }
 
-test('starting a table keeps the editor open and its run strip opens the execution page without losing the draft', async ({
+test('starting a table keeps the editor open and its run strip selects the device monitor without losing the draft', async ({
   page,
 }) => {
   await page.goto('/');
@@ -23,11 +23,27 @@ test('starting a table keeps the editor open and its run strip opens the executi
   const workbench = page.getByRole('region', { name: '任务表工作台', exact: true });
   await workbench.getByLabel('作战次数', { exact: true }).fill('9');
   await workbench.getByRole('button', { name: '开始执行', exact: true }).click();
+  const strip = workbench.getByRole('status', { name: '任务表运行状态', exact: true });
+  await expect(strip).toContainText('执行中');
   await expect(
-    workbench.getByRole('status', { name: '任务表运行状态', exact: true }),
+    strip.getByRole('progressbar', { name: '任务表执行进度', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '任务表详情', exact: true })).toBeVisible();
+  await expect(page.getByRole('contentinfo', { name: '执行状态栏', exact: true })).toContainText(
+    '执行中',
+  );
+  await expect(
+    page
+      .getByRole('region', { name: '任务表列表', exact: true })
+      .getByRole('article', { name: '任务表 固源岩补给', exact: true }),
   ).toContainText('执行中');
   await expect(execution(page)).toHaveCount(0);
   await workbench.getByRole('button', { name: '查看执行', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '任务表详情', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: '执行监控', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   await expect(execution(page)).toBeVisible();
   await expect(
     execution(page).getByRole('heading', { name: '固源岩补给', exact: true }),
@@ -44,10 +60,6 @@ test('starting a table keeps the editor open and its run strip opens the executi
   await expect(
     execution(page).getByRole('region', { name: '本次执行总览', exact: true }),
   ).toBeVisible();
-  await expect(
-    execution(page).getByRole('region', { name: '设备画面预览', exact: true }),
-  ).toHaveCount(0);
-  expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.frames.length)).toBe(0);
   await expect(execution(page).getByRole('button', { name: '实时画面', exact: true })).toHaveCount(
     0,
   );
@@ -62,13 +74,19 @@ test('starting a table keeps the editor open and its run strip opens the executi
   ).toBeVisible();
   await page.getByRole('button', { name: '收起运行详情', exact: true }).click();
   await expect(execution(page)).not.toContainText(/StartUp|Fight|Infrast/);
-  await execution(page).getByRole('button', { name: '停止执行', exact: true }).click();
+  await page
+    .getByRole('contentinfo', { name: '执行状态栏', exact: true })
+    .getByRole('button', { name: '停止执行', exact: true })
+    .click();
   await expect(
     execution(page).getByRole('region', { name: '本次执行总览', exact: true }),
   ).toContainText('已停止');
-  await execution(page).getByRole('button', { name: '返回任务设置', exact: true }).click();
+  await page.getByRole('tab', { name: '任务表', exact: true }).click();
+  await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
   await expect(workbench.getByLabel('作战次数', { exact: true })).toHaveValue('9');
   await expect(workbench.locator('.wb-save-state')).toHaveText('已保存');
+  await expect(strip).toHaveCount(0);
+  await expect(workbench.getByRole('button', { name: '开始执行', exact: true })).toBeEnabled();
 });
 
 test('save-and-start respects navigation made while the save was pending', async ({ page }) => {

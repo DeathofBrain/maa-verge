@@ -177,7 +177,7 @@ export default function RecognitionPanel({
       ) : !selectedDevice ? (
         <div className="recognition-empty">
           <Database size={28} />
-          <p>请先在顶部选择设备。</p>
+          <p>请先在底栏选择设备。</p>
         </div>
       ) : !result ? (
         <div className="recognition-empty" role="status">

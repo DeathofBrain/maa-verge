@@ -1,5 +1,5 @@
 import { runDisplayName, runSourceLabel } from './run-source';
-import { useContextMenu } from './ContextMenu';
+import { useContextMenu, useContextMenuShow, type MenuItem } from './ContextMenu';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,
@@ -7,9 +7,11 @@ import {
   Clock3,
   LoaderCircle,
   Monitor,
+  MoreHorizontal,
   Search,
   Square,
   Terminal,
+  Trash2,
   TriangleAlert,
 } from 'lucide-react';
 import {
@@ -17,7 +19,6 @@ import {
   localizeExecutionMessage,
   rpc,
   type Device,
-  type Plan,
   type Run,
   type Snapshot,
   type ToolJobSummary,
@@ -38,8 +39,8 @@ type Props = {
   onOverview: () => void;
   onStop: (run: Run) => Promise<boolean>;
   onStopMany: (runs: Run[]) => Promise<boolean>;
-  onEdit: (plan: Plan) => void;
   onPrepare: () => void;
+  onDevicesDeleted: () => Promise<void>;
 };
 type DeviceFilter = 'all' | 'running' | 'idle' | 'offline';
 const statusNames: Record<Run['status'], string> = {
@@ -96,23 +97,29 @@ export default function ExecutionMonitor({
   onOverview,
   onStop,
   onStopMany,
-  onEdit,
   onPrepare,
+  onDevicesDeleted,
 }: Props) {
   const contextMenu = useContextMenu();
+  const showMenu = useContextMenuShow();
   const [filter, setFilter] = useState<DeviceFilter>('all');
   const [query, setQuery] = useState('');
   const [clock, setClock] = useState(Date.now);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [logDevices, setLogDevices] = useState<string[] | null>(null);
   const [deviceId, setDeviceId] = useState(selectedRun?.deviceId || '');
+  const currentDeviceId = useRef(deviceId);
+  currentDeviceId.current = deviceId;
   const [historyToolId, setHistoryToolId] = useState('');
   const [bulkStopping, setBulkStopping] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
   const [toolPending, setToolPending] = useState<Set<string>>(() => new Set());
   const [toolResults, setToolResults] = useState<Map<string, ToolJobSummary>>(() => new Map());
   const [operationError, setOperationError] = useState('');
   const toolPendingRef = useRef(new Set<string>());
   const previousHeaderDevice = useRef(selectedDeviceId);
+  const deletedHeaderDevice = useRef<string | undefined>(undefined);
   const monitorScroll = useRef<HTMLDivElement>(null);
   const tools = (snapshot.toolJobs || []).map((job) => toolResults.get(job.id) || job);
   const activeByDevice = new Map<string, Run>();
@@ -163,12 +170,21 @@ export default function ExecutionMonitor({
   }, [selectedRun?.id, selectedRun?.deviceId]);
   useEffect(() => {
     if (previousHeaderDevice.current === selectedDeviceId) return;
+    const previous = previousHeaderDevice.current;
     previousHeaderDevice.current = selectedDeviceId;
+    if (
+      previous === deletedHeaderDevice.current &&
+      previous &&
+      !snapshot.devices.some((device) => device.id === previous)
+    ) {
+      deletedHeaderDevice.current = undefined;
+      return;
+    }
     if (!selectedDeviceId || selectedRun?.deviceId === selectedDeviceId) return;
     setDeviceId(selectedDeviceId);
     setHistoryToolId('');
     onOverview();
-  }, [selectedDeviceId, selectedRun?.deviceId, onOverview]);
+  }, [selectedDeviceId, selectedRun?.deviceId, onOverview, snapshot.devices]);
   useLayoutEffect(() => {
     monitorScroll.current?.scrollTo({ top: 0, behavior: 'instant' });
   }, [deviceId, selectedRun?.id]);
@@ -217,11 +233,16 @@ export default function ExecutionMonitor({
       const job = activeToolsByDevice.get(device.id);
       return job ? [job] : [];
     });
+  const canDeleteSelected =
+    selected.size > 0 &&
+    [...selected].every((id) =>
+      snapshot.devices.some((device) => device.id === id && device.state === 'offline'),
+    );
   const chooseDevice = (id: string) => {
     setDeviceId(id);
     setHistoryToolId('');
     onOverview();
-    onSelectDevice?.(id);
+    if (id) onSelectDevice?.(id);
   };
   const toggle = (id: string) =>
     setSelected((previous) => {
@@ -254,7 +275,7 @@ export default function ExecutionMonitor({
       });
       return true;
     } catch (cause) {
-      setOperationError(errorMessage(cause));
+      setOperationError(`工具停止失败：${errorMessage(cause)}`);
       return false;
     } finally {
       toolPendingRef.current.delete(job.id);
@@ -272,6 +293,36 @@ export default function ExecutionMonitor({
       setSelected(new Set());
     } finally {
       setBulkStopping(false);
+    }
+  };
+  const deleteDevices = async (deviceIds: string[]) => {
+    if (deletingRef.current || !deviceIds.length) return;
+    deletingRef.current = true;
+    setDeleting(true);
+    setOperationError('');
+    if (selectedDeviceId && deviceIds.includes(selectedDeviceId))
+      deletedHeaderDevice.current = selectedDeviceId;
+    try {
+      await rpc('device.delete', { deviceIds });
+      setSelected((previous) => new Set([...previous].filter((id) => !deviceIds.includes(id))));
+      if (deletedHeaderDevice.current !== previousHeaderDevice.current)
+        deletedHeaderDevice.current = undefined;
+      if (deviceIds.includes(currentDeviceId.current)) {
+        setDeviceId('');
+        setHistoryToolId('');
+        onOverview();
+      }
+      setLogDevices((previous) => {
+        const next = previous?.filter((id) => !deviceIds.includes(id));
+        return next?.length ? next : null;
+      });
+      await onDevicesDeleted();
+    } catch (cause) {
+      deletedHeaderDevice.current = undefined;
+      setOperationError(`删除历史设备失败：${errorMessage(cause)}`);
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
     }
   };
   const currentDevice = snapshot.devices.find((device) => device.id === deviceId);
@@ -375,7 +426,7 @@ export default function ExecutionMonitor({
         </div>
         {operationError && (
           <p className="error-banner" role="alert">
-            工具停止失败：{operationError}
+            {operationError}
           </p>
         )}
         {selected.size > 0 && (
@@ -394,10 +445,20 @@ export default function ExecutionMonitor({
                 {bulkStopping ? <LoaderCircle size={14} className="spin" /> : <Square size={12} />}
                 停止所选
               </button>
+              <button
+                className="button danger"
+                disabled={!canDeleteSelected || deleting}
+                title={!canDeleteSelected ? '仅可删除离线历史设备' : '删除所选历史设备'}
+                onClick={() => void deleteDevices([...selected])}
+              >
+                {deleting ? <LoaderCircle size={14} className="spin" /> : <Trash2 size={14} />}
+                批量删除
+              </button>
               <button className="text-button" onClick={() => setSelected(new Set())}>
                 清除
               </button>
             </div>
+            {!canDeleteSelected && <p className="monitor-bulk-hint">仅可删除离线历史设备</p>}
           </div>
         )}
         {!snapshot.devices.length ? (
@@ -432,7 +493,7 @@ export default function ExecutionMonitor({
                     <span>{group.devices.length}</span>
                   </h2>
                   {group.id === 'offline' && (
-                    <p>保留曾连接的设备。选择后可查看设备信息和历史记录。</p>
+                    <p>保留曾连接的设备，可从右侧菜单或右键删除。删除不影响实例配置与执行记录。</p>
                   )}
                   <div className="monitor-device-list">
                     {group.devices.map((device) => {
@@ -448,26 +509,37 @@ export default function ExecutionMonitor({
                       const recent = recentTool ? latestJob : latest;
                       const category = categories.get(device.id)!;
                       const isCurrent = deviceId === device.id;
+                      const menuItems: MenuItem[] = [
+                        { label: '查看设备执行', action: () => chooseDevice(device.id) },
+                        { label: '查看设备日志', action: () => setLogDevices([device.id]) },
+                        {
+                          label: '停止设备任务',
+                          danger: true,
+                          disabled:
+                            !active ||
+                            (run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)),
+                          action: () => {
+                            if (run) void onStop(run);
+                            else if (job) void stopTool(job);
+                          },
+                        },
+                        ...(category === 'offline'
+                          ? [
+                              {
+                                label: '删除历史设备',
+                                danger: true,
+                                disabled: deleting,
+                                action: () => void deleteDevices([device.id]),
+                              },
+                            ]
+                          : []),
+                      ];
                       return (
                         <article
                           className={`monitor-device-row ${category} ${selected.has(device.id) ? 'is-selected' : ''} ${isCurrent ? 'is-current' : ''}`}
                           key={device.id}
                           aria-label={`设备执行${device.name}`}
-                          {...contextMenu('设备执行菜单', [
-                            { label: '查看设备执行', action: () => chooseDevice(device.id) },
-                            { label: '查看设备日志', action: () => setLogDevices([device.id]) },
-                            {
-                              label: '停止设备任务',
-                              danger: true,
-                              disabled:
-                                !active ||
-                                (run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)),
-                              action: () => {
-                                if (run) void onStop(run);
-                                else if (job) void stopTool(job);
-                              },
-                            },
-                          ])}
+                          {...contextMenu('设备执行菜单', menuItems)}
                         >
                           <label className="monitor-device-check">
                             <input
@@ -481,8 +553,9 @@ export default function ExecutionMonitor({
                             className="monitor-device-main"
                             aria-label={`查看设备执行${device.name}`}
                             aria-pressed={isCurrent}
+                            aria-expanded={isCurrent}
                             aria-controls="monitor-selected-device"
-                            onClick={() => chooseDevice(device.id)}
+                            onClick={() => chooseDevice(isCurrent ? '' : device.id)}
                           >
                             <span className="monitor-device-name">
                               <span className="monitor-device-icon">
@@ -550,7 +623,7 @@ export default function ExecutionMonitor({
                               )}
                             </span>
                             <span className="monitor-device-open">
-                              {isCurrent ? '正在下方查看' : '查看执行'}
+                              {isCurrent ? '收起执行' : '查看执行'}
                               <ArrowDown size={12} />
                             </span>
                           </button>
@@ -585,6 +658,24 @@ export default function ExecutionMonitor({
                                 停止
                               </button>
                             )}
+                            <button
+                              className="icon-button monitor-device-menu"
+                              aria-label={`设备操作${device.name}`}
+                              aria-haspopup="menu"
+                              title="更多操作"
+                              onClick={(event) => {
+                                const rect = event.currentTarget.getBoundingClientRect();
+                                showMenu({
+                                  x: rect.right - 180,
+                                  y: rect.bottom + 4,
+                                  target: event.currentTarget,
+                                  items: menuItems,
+                                  label: '设备执行菜单',
+                                });
+                              }}
+                            >
+                              <MoreHorizontal size={18} />
+                            </button>
                           </div>
                         </article>
                       );
@@ -614,13 +705,6 @@ export default function ExecutionMonitor({
                   </small>
                 </h2>
               </div>
-              <button
-                className="button secondary"
-                onClick={() => setLogDevices([currentDevice.id])}
-              >
-                <Terminal size={14} />
-                查看此设备日志
-              </button>
             </header>
             <section className="monitor-device-info" aria-label="设备信息">
               <dl className="monitor-device-info-grid">
@@ -673,12 +757,8 @@ export default function ExecutionMonitor({
                 key={displayedRun.id}
                 snapshot={snapshot}
                 run={displayedRun}
-                pending={pending}
                 onRunUpdate={onRunUpdate}
-                onStop={onStop}
-                onEdit={onEdit}
                 onPrepare={onPrepare}
-                onOpenLogs={() => setLogDevices([deviceId])}
               />
             ) : displayedTool ? (
               <section className="monitor-tool-execution" aria-label="工具执行状态">
@@ -746,6 +826,23 @@ export default function ExecutionMonitor({
                 )}
               </div>
             )}
+          </section>
+        ) : historicalRun ? (
+          <section
+            id="monitor-selected-device"
+            className="monitor-selected-device"
+            aria-label="历史设备执行情况"
+          >
+            <p className="monitor-history-notice" role="status">
+              设备历史已删除，仍可查看此次执行记录。
+            </p>
+            <ExecutionPage
+              key={historicalRun.id}
+              snapshot={snapshot}
+              run={historicalRun}
+              onRunUpdate={onRunUpdate}
+              onPrepare={onPrepare}
+            />
           </section>
         ) : (
           snapshot.devices.length > 0 && (

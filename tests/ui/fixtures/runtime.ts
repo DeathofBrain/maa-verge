@@ -16,6 +16,7 @@ import { matchingDeviceProfile } from '../../../packages/contracts/src/device-pr
 import { mockPreviewImage } from '../../fixtures/preview-image';
 import { stagePresets } from '../../../packages/contracts/src/stages';
 import {
+  validateDeviceDeleteParams,
   validateDeviceClickParams,
   validateDeviceFrameParams,
 } from '../../../packages/contracts/src/validators.js';
@@ -879,6 +880,22 @@ export async function fixtureRpc(
       invalidatePreview(device.id);
       emit('device.disconnected', '模拟设备控制权已释放', { deviceId: device.id });
       return { disconnected: true };
+    }
+    case 'device.delete': {
+      if (!validateDeviceDeleteParams(params)) throw new Error('历史设备删除参数无效');
+      const ids = new Set(params.deviceIds);
+      const devices = state.devices.filter((device) => ids.has(device.id));
+      if (
+        devices.some((device) => device.state !== 'offline') ||
+        state.runs.some((run) => ids.has(run.deviceId) && run.status === 'running') ||
+        toolData.jobs.some((job) => ids.has(job.deviceId) && job.status === 'running')
+      )
+        throw new Error('只能删除未被占用的离线历史设备');
+      const deletedDeviceIds = devices.map((device) => device.id);
+      state.devices = state.devices.filter((device) => !ids.has(device.id));
+      deletedDeviceIds.forEach(invalidatePreview);
+      emit('device.deleted', '已删除离线历史设备', { deletedDeviceIds });
+      return { deletedDeviceIds };
     }
     case 'device.auto_connect': {
       const discovered = state.devices.map((device) => ({

@@ -125,7 +125,7 @@ test('independent execution stays in the center, fixes its queue snapshot and su
     monitoredExecution(page).getByRole('heading', { name: '独立作业快照', exact: true }),
   ).toBeVisible();
   await expect(
-    monitoredExecution(page).getByRole('button', { name: '停止执行', exact: true }),
+    monitor.getByRole('button', { name: '停止设备任务本地模拟设备', exact: true }),
   ).toBeVisible();
   await expect(monitor).not.toHaveClass(/inspecting/u);
   await expect(monitor.getByRole('article')).toContainText('作业 · 独立作业快照');

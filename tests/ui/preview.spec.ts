@@ -1,3 +1,4 @@
+import { selectDevice } from './fixtures/device-picker';
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 
@@ -185,7 +186,7 @@ test('running tasks keep frames visible and block manual input', async ({ page }
   await expect.poll(() => image(page).getAttribute('data-frame-id')).not.toBe(frame);
 });
 
-test('polling does not accumulate and stops when hidden, switched or collapsed', async ({
+test('preview follows the dock device selector and ignores late frames after switching or closing', async ({
   page,
 }) => {
   await openPreview(page);
@@ -216,16 +217,26 @@ test('polling does not accumulate and stops when hidden, switched or collapsed',
   await expect
     .poll(() => page.evaluate(() => (window as HarnessWindow).runtimeHarness.frames.length))
     .toBeGreaterThan(heldCount);
-  await page.evaluate(() =>
+  const second = (await page.evaluate(() =>
     (window as HarnessWindow).runtimeHarness.call('device.connect', {
       address: '127.0.0.1:5557',
       name: '第二台模拟设备',
     }),
-  );
-  await page
-    .getByLabel('画面设备', { exact: true })
-    .selectOption({ label: '第二台模拟设备 · 已连接' });
+  )) as { id: string };
+  await page.evaluate(() => {
+    (window as HarnessWindow).runtimeHarness.holdFrames = true;
+  });
+  await expect
+    .poll(() => page.evaluate(() => (window as HarnessWindow).runtimeHarness.activeFrames))
+    .toBe(1);
+  await selectDevice(page, second.id);
+  await expect(image(page)).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => (window as HarnessWindow).runtimeHarness.activeFrames))
+    .toBe(2);
+  await page.evaluate(() => (window as HarnessWindow).runtimeHarness.releaseFrames());
   await expect(preview(page).getByRole('img', { name: '第二台模拟设备实时画面' })).toBeVisible();
+  await expect(preview(page).getByRole('img', { name: '本地模拟设备实时画面' })).toHaveCount(0);
   await expect(preview(page).getByRole('checkbox', { name: '允许点击操作' })).not.toBeChecked();
   const switchedCount = await page.evaluate(
     () =>

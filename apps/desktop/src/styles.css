@@ -730,7 +730,8 @@ textarea.text-input {
 
 .search-results {
   position: absolute;
-  right: 0;
+  left: 0;
+  right: auto;
   top: calc(100% + 9px);
   width: 350px;
   max-height: min(480px, 70dvh);
@@ -741,6 +742,10 @@ textarea.text-input {
   box-shadow: var(--shadow);
   padding: 6px;
   z-index: 42;
+}
+
+.topbar:has(.search-results) {
+  z-index: 90;
 }
 
 .search-results > button {
@@ -1636,7 +1641,7 @@ textarea.text-input {
     width: 170px;
   }
   .search-results {
-    width: min(350px, calc(100vw - 30px));
+    width: min(350px, calc(100vw - 80px));
   }
   .page-heading {
     padding: 23px 20px;

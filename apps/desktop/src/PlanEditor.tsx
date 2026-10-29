@@ -1564,7 +1564,7 @@ export default function PlanEditor({
                     <p className="wb-helper">
                       {draft.deviceId
                         ? `本表绑定设备：${syncDevice?.name || '设备暂不可用'}`
-                        : `使用顶部所选设备：${syncDevice?.name || '尚未选择'}`}
+                        : `使用底栏所选设备：${syncDevice?.name || '尚未选择'}`}
                       {syncDevice ? `（${syncDevice.address}）` : ''}
                     </p>
                     <p className="wb-helper">
@@ -1707,7 +1707,7 @@ export default function PlanEditor({
                   value={draft.deviceId || ''}
                   onChange={(event) => patch({ deviceId: event.target.value || null })}
                 >
-                  <option value="">执行时使用顶部选中的设备</option>
+                  <option value="">执行时使用底栏选中的设备</option>
                   {draft.deviceId && !devices.some((device) => device.id === draft.deviceId) && (
                     <option value={draft.deviceId}>已绑定设备（当前未发现）</option>
                   )}
@@ -1720,7 +1720,7 @@ export default function PlanEditor({
                 </Select>
               </label>
               <p className="wb-helper">
-                绑定只影响这张任务表。游戏客户端在启动／关闭游戏任务中设置，切换顶部设备不会改写绑定。
+                绑定只影响这张任务表。游戏客户端在启动／关闭游戏任务中设置，切换底栏设备不会改写绑定。
               </p>
             </section>
             <section id="wb-consumption">

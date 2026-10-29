@@ -10,6 +10,7 @@ type Props = {
   snapshot: Snapshot;
   initialDeviceIds: string[];
   onClose: () => void;
+  embedded?: boolean;
 };
 type LogRow = { event: Snapshot['events'][number]; deviceId: string; deviceName: string };
 const stamp = (value: string) =>
@@ -35,7 +36,12 @@ const line = (row: LogRow) =>
   `[${fullStamp(row.event.createdAt)}] ${row.deviceName} ${row.event.type} ${localizeExecutionMessage(row.event.message) || row.event.type}`;
 const removedEventIds = new Set<number>();
 
-export default function MonitorLogDrawer({ snapshot, initialDeviceIds, onClose }: Props) {
+export default function MonitorLogDrawer({
+  snapshot,
+  initialDeviceIds,
+  onClose,
+  embedded = false,
+}: Props) {
   const panel = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -129,7 +135,7 @@ export default function MonitorLogDrawer({ snapshot, initialDeviceIds, onClose }
     if (!selectedLogs.size) setConfirmDelete(false);
   }, [selectedLogs]);
   useLayoutEffect(() => {
-    if (!panel.current) return;
+    if (embedded || !panel.current) return;
     return acquireModalEffects({
       panel: panel.current,
       layer: panel.current.parentElement ?? undefined,
@@ -141,7 +147,7 @@ export default function MonitorLogDrawer({ snapshot, initialDeviceIds, onClose }
       initialFocus: panel.current.querySelector<HTMLElement>('[data-autofocus]'),
       onEscape: () => close.current(),
     });
-  }, []);
+  }, [embedded]);
   const toggleDevice = (deviceId: string) =>
     setDeviceIds((previous) => {
       const next = new Set(previous);
@@ -229,41 +235,45 @@ export default function MonitorLogDrawer({ snapshot, initialDeviceIds, onClose }
     : !selectedDeviceCount
       ? '在左侧勾选一台或多台设备，合并查看它们的日志。'
       : '连接、保存、执行与更新事件会显示在这里。';
-  return createPortal(
-    <div className="monitor-log-layer">
-      <button
-        className="monitor-log-backdrop"
-        tabIndex={-1}
-        aria-label="关闭设备日志遮罩"
-        onClick={() => close.current()}
-      />
+  const content = (
+    <div className={embedded ? 'monitor-log-embedded' : 'monitor-log-layer'}>
+      {!embedded && (
+        <button
+          className="monitor-log-backdrop"
+          tabIndex={-1}
+          aria-label="关闭设备日志遮罩"
+          onClick={() => close.current()}
+        />
+      )}
       <div
         className="monitor-log-panel"
         ref={panel}
-        role="dialog"
-        aria-modal="true"
+        role={embedded ? 'region' : 'dialog'}
+        aria-modal={embedded ? undefined : true}
         aria-label="设备日志"
       >
-        <div className="monitor-log-bar">
-          <div className="monitor-log-title">
-            <Terminal size={17} />
-            <div>
-              <strong>设备日志</strong>
-              <small>
-                {single ? devices[0].device.name : `${selectedDeviceCount} 台设备`} · {rows.length}{' '}
-                条日志
-              </small>
+        {!embedded && (
+          <div className="monitor-log-bar">
+            <div className="monitor-log-title">
+              <Terminal size={17} />
+              <div>
+                <strong>设备日志</strong>
+                <small>
+                  {single ? devices[0].device.name : `${selectedDeviceCount} 台设备`} ·{' '}
+                  {rows.length} 条日志
+                </small>
+              </div>
             </div>
+            <button
+              className="icon-button"
+              data-autofocus
+              aria-label="关闭设备日志"
+              onClick={() => close.current()}
+            >
+              <X size={18} />
+            </button>
           </div>
-          <button
-            className="icon-button"
-            data-autofocus
-            aria-label="关闭设备日志"
-            onClick={() => close.current()}
-          >
-            <X size={18} />
-          </button>
-        </div>
+        )}
         <div className={`monitor-log-body ${single ? 'is-single' : ''}`}>
           {!single && (
             <section className="monitor-log-devices" aria-label="选择日志设备">
@@ -411,9 +421,9 @@ export default function MonitorLogDrawer({ snapshot, initialDeviceIds, onClose }
           </section>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+  return embedded ? content : createPortal(content, document.body);
 }
 
 function LogContent({ row }: { row: LogRow }) {

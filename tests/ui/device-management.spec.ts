@@ -1,3 +1,4 @@
+import { selectDevice } from './fixtures/device-picker';
 import type { Snapshot } from '@maaverge/contracts';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 
@@ -140,9 +141,7 @@ test('StartUp keeps game actions local and opens its bound device settings witho
     });
     return settings;
   });
-  await page
-    .getByLabel('选择设备', { exact: true })
-    .selectOption('mock-device-' + encodeURIComponent('127.0.0.1:5557'));
+  await selectDevice(page, 'mock-device-' + encodeURIComponent('127.0.0.1:5557'));
   await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
   await page
     .getByRole('region', { name: '任务表列表', exact: true })

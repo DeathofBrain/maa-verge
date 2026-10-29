@@ -25,15 +25,21 @@
   animation: monitor-log-in 160ms ease-out;
 }
 
-@keyframes monitor-log-in {
-  from {
-    transform: translateX(18px);
-    opacity: 0.65;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+.monitor-log-embedded {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.monitor-log-embedded > .monitor-log-panel {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-shadow: none;
+  animation: none;
 }
 
 .monitor-log-bar {
@@ -352,6 +358,9 @@
   .monitor-log-body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
+  }
+  .monitor-log-body.is-single {
+    grid-template-rows: minmax(0, 1fr);
   }
   .monitor-log-devices {
     overflow: visible;

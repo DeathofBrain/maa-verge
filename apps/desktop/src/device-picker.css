@@ -1,0 +1,148 @@
+.dock-device-picker {
+  position: relative;
+  flex: 0 1 280px;
+  min-width: 0;
+  max-width: 30%;
+}
+
+.dock-device-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+}
+
+.dock-device-trigger:hover,
+.dock-device-trigger[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dock-device-trigger[aria-expanded='true'] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.dock-device-trigger:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.dock-device-trigger > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-device-trigger > svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.dock-device-trigger > svg:first-child {
+  color: var(--accent);
+}
+
+.dock-device-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 80;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(360px, calc(100dvh - var(--dock-height) - 24px));
+  padding: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.dock-device-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.dock-device-option:hover,
+.dock-device-option.is-active {
+  background: var(--hover);
+}
+
+.dock-device-option[aria-selected='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.dock-device-option[aria-selected='true'].is-active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.dock-device-option > svg {
+  flex: none;
+}
+
+.dock-device-option > span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dock-device-option strong,
+.dock-device-option small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-device-option strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.dock-device-option small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.dock-device-empty {
+  margin: 0;
+  padding: 18px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+@media (max-width: 760px) {
+  .dock-device-picker {
+    flex-basis: 180px;
+    max-width: 42%;
+  }
+  .dock-device-trigger {
+    gap: 5px;
+    padding-inline: 7px;
+    font-size: 11px;
+  }
+}

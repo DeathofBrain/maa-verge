@@ -1,0 +1,122 @@
+.run-panel {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--dock-height);
+  z-index: 54;
+  display: flex;
+  flex-direction: column;
+  height: min(58dvh, 620px);
+  max-height: calc(100dvh - var(--dock-height) - 60px);
+  min-height: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -12px 36px #0002;
+  animation: run-panel-in 160ms ease-out;
+}
+
+.run-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+  min-height: 48px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.run-panel-heading > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.run-panel-heading > button {
+  margin-left: auto;
+  flex: none;
+}
+
+.run-panel-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.run-panel .exec-page {
+  height: auto;
+  overflow: visible;
+}
+
+.run-panel-preview {
+  width: min(100%, 1000px);
+  padding: 18px 24px;
+  margin: 0 auto;
+}
+
+.run-panel-empty,
+.run-panel-tool {
+  max-width: 1000px;
+  padding: 24px;
+  margin: 0 auto;
+}
+
+.run-panel-history {
+  margin: 0;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--hover);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.run-panel-tool progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.run-dock > .dock-device-picker {
+  flex: none;
+  max-width: 28%;
+}
+
+.run-dock > .dock-status {
+  flex: 1;
+}
+
+@keyframes run-panel-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0.65;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .run-dock > .dock-device-picker {
+    max-width: 40%;
+  }
+  .run-dock .dock-status > strong,
+  .run-dock .dock-message,
+  .run-dock .dock-divider {
+    display: none;
+  }
+  .run-panel-heading {
+    padding-inline: 14px;
+  }
+  .run-panel-preview {
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .run-panel {
+    animation: none;
+  }
+}

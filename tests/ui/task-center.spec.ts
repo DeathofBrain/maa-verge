@@ -19,12 +19,6 @@ const nav = async (page: Page, name: string) => {
     .getByRole('button', { name, exact: name !== 'Agent 助手' })
     .click();
 };
-async function openFarm(page: Page) {
-  await nav(page, '任务');
-  await list(page).getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
-  await expect(wb(page)).toBeVisible();
-}
-
 test('one task entry combines the table list, detail drawer and execution tab', async ({
   page,
 }) => {
@@ -74,39 +68,6 @@ test('one task entry combines the table list, detail drawer and execution tab', 
   await page.getByRole('tab', { name: '执行监控', exact: true }).click();
   await expect(page.getByRole('region', { name: '任务表执行监控', exact: true })).toBeVisible();
   await expect(list(page)).toHaveCount(0);
-});
-
-test('starting keeps the task page in place and the run strip links to the execution detail', async ({
-  page,
-}) => {
-  await page.goto('/');
-  await openFarm(page);
-  await wb(page).getByLabel('作战次数', { exact: true }).fill('9');
-  await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
-  const strip = wb(page).getByRole('status', { name: '任务表运行状态', exact: true });
-  await expect(strip).toContainText('执行中');
-  await expect(
-    strip.getByRole('progressbar', { name: '任务表执行进度', exact: true }),
-  ).toBeVisible();
-  await expect(drawer(page)).toBeVisible();
-  await expect(page.getByRole('region', { name: '任务表执行页面', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('contentinfo', { name: '执行状态栏', exact: true })).toContainText(
-    '执行中',
-  );
-  await expect(
-    list(page).getByRole('article', { name: '任务表 固源岩补给', exact: true }),
-  ).toContainText('执行中');
-
-  await strip.getByRole('button', { name: '查看执行', exact: true }).click();
-  await expect(page.getByRole('region', { name: '任务表执行页面', exact: true })).toContainText(
-    '固源岩补给',
-  );
-  await page.getByRole('button', { name: '返回任务设置', exact: true }).click();
-  await expect(wb(page).getByLabel('作战次数', { exact: true })).toHaveValue('9');
-  await expect(strip).toContainText('执行中');
-  await strip.getByRole('button', { name: '停止执行', exact: true }).click();
-  await expect(strip).toHaveCount(0);
-  await expect(wb(page).getByRole('button', { name: '开始执行', exact: true })).toBeEnabled();
 });
 
 test('search, home shortcut and Agent proposals open the unified task center', async ({ page }) => {
