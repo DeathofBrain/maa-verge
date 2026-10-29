@@ -153,6 +153,12 @@
 - `pnpm check:app` 通过：工程与契约检查、四工作区 TypeScript、Python Ruff/mypy 与 **276 项 pytest**；完整运行时 **1,410 通过、9 项条件跳过、0 失败**，另加强的首启真实小组件入口、失败恢复和安装等待回归 **3/3** 通过。Edge 全量界面回归共 **260 项**，首轮 250 项通过，其余 10 项适配新的页面入口后定向全部通过；作业队列与通关证据显示的补充回归通过。桌面 TypeScript 与 Vite 生产构建、Rust fmt、严格 locked clippy 通过，Rust 单元测试 **41 项通过、3 项按规则忽略**。
 - 所有浏览器截图、trace 和临时验证结果统一收敛到忽略的 `test-results/` 子目录；本轮仅使用隔离浏览器、合成设备及本地编译，不操作正在运行的真实程序或游戏。原生 WebView、macOS/Linux 桌面仍须分别验收；此次尚未重建、安装或启动包含新界面的完整发行包。
 
+## v0.1.3-alpha.1 预览版发行导航（2026-10-29）
+
+- 预览版的安装包、更新内容、迁移方法与已知限制见 [v0.1.3-alpha.1 Release](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha.1) 和[固定标签发行说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md)，源码见[对应标签](https://github.com/DeathofBrain/maa-verge/tree/v0.1.3-alpha.1)。最新正式版仍为 v0.1.2。
+- 本次 main 仅同步 README、发行导航与状态说明，不包含预览版源码合入。下方实现表、开发文档与既有验证记录继续对应 main 的 0.1.2 源码，不能用来描述预览版的新任务中心、下载器或安装包。
+- README 保留 v0.1.2 正式版安装表与操作步骤，另列预览版入口和差异；预览版使用文档固定到其标签，既有 Logo、品牌、Agent 暂不可用和旧截图说明保持不变。本次仅核对文档链接与差异空白，没有启动应用、操作游戏或执行平台安装验收。
+
 ## 已实现
 
 | 范围                | 当前行为                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
