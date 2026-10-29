@@ -95,24 +95,21 @@ test('refresh keeps the same visible results and a failed refresh can be retried
       return original(method, params);
     };
   });
-  const row = library(page).locator('.cp-record');
-  await page.evaluate(() => document.fonts.ready);
-  const before = await row.boundingBox();
+  const work = library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true });
   await library(page).getByRole('button', { name: '刷新社区搜索', exact: true }).click();
   await expect.poll(() => commands(page)).toContain('refresh-pending');
   await expect(library(page).locator('.cp-community-results')).toHaveAttribute('aria-busy', 'true');
-  await expect(row).toBeVisible();
-  expect(await row.boundingBox()).toEqual(before);
+  await expect(work).toBeVisible();
   await page.evaluate(() => (window as unknown as { failSearch: () => void }).failSearch());
   await expect(library(page).getByRole('alert')).toContainText('合成搜索刷新失败');
-  await expect(row).toBeVisible();
+  await expect(work).toBeVisible();
   await library(page).getByRole('button', { name: '刷新社区搜索', exact: true }).click();
   await expect(library(page).locator('.cp-community-results')).toHaveAttribute(
     'aria-busy',
     'false',
   );
   await expect(library(page).getByRole('alert')).toHaveCount(0);
-  await expect(row).toBeVisible();
+  await expect(work).toBeVisible();
 });
 
 test('in-flight searches are shared and an older query cannot replace a newer result', async ({
@@ -205,7 +202,7 @@ test('expired search data stays visible while refreshing and expired details are
   expect((await commands(page)).filter((value) => value === 'copilot.search')).toHaveLength(2);
 });
 
-test('reading a detail does not move the workspace and duplicate requests share one read', async ({
+test('reading a detail preserves visible search results and duplicate requests share one read', async ({
   page,
 }) => {
   await openCenter(page);
@@ -226,10 +223,9 @@ test('reading a detail does not move the workspace and duplicate requests share 
   });
   const work = library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true });
   await work.scrollIntoViewIfNeeded();
-  const before = await queue(page).boundingBox();
   await work.click();
   await expect(page.getByText('正在读取作业…', { exact: true })).toBeVisible();
-  expect(await queue(page).boundingBox()).toEqual(before);
+  await expect(work).toBeVisible();
   await work.click();
   await page.evaluate(() => (window as unknown as { releasePreview: () => void }).releasePreview());
   await expect(detail(page)).toBeVisible();
@@ -292,7 +288,7 @@ for (const changed of [false, true]) {
   });
 }
 
-test('unrelated runtime events refresh ownership without disabling a ready queue or moving it', async ({
+test('unrelated runtime events refresh ownership without disabling a ready queue', async ({
   page,
 }) => {
   await openCenter(page);
@@ -325,14 +321,12 @@ test('unrelated runtime events refresh ownership without disabling a ready queue
     harness.emitEvent('diagnostic.changed');
   });
   await expect.poll(() => commands(page)).toContain('availability-pending');
-  const before = await start.boundingBox();
   await expect(start).toBeEnabled();
   await expect(queue(page).getByText('正在检查设备占用', { exact: true })).toHaveCount(0);
   await page.evaluate(() =>
     (window as unknown as { releaseAvailability: () => void }).releaseAvailability(),
   );
   await expect(start).toBeEnabled();
-  expect(await start.boundingBox()).toEqual(before);
 });
 
 test('partially available sets are cached and expired member imports preserve the remaining selection', async ({

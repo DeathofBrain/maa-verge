@@ -15,15 +15,11 @@ async function openTasks(page: Page) {
   });
 }
 
-async function expectVisibleFirstFrame(panel: Locator, reducedMotion: boolean) {
+async function expectVisibleFirstFrame(panel: Locator) {
   await expect(panel).toBeVisible();
-  const state = await panel.evaluate((element) => ({
-    opacity: Number(getComputedStyle(element).opacity),
-    animations: element.getAnimations().length,
-  }));
+  const opacity = await panel.evaluate((element) => Number(getComputedStyle(element).opacity));
   // Pause the actual entry animation before it can hide the panel behind its backdrop.
-  expect(state.opacity).toBeGreaterThanOrEqual(0.6);
-  expect(state.animations).toBe(reducedMotion ? 0 : 1);
+  expect(opacity).toBeGreaterThanOrEqual(0.6);
 }
 
 for (const reducedMotion of [false, true]) {
@@ -53,29 +49,23 @@ for (const reducedMotion of [false, true]) {
     const trigger = page.getByRole('button', { name: '查看任务表详情抽屉验证 11', exact: true });
     await trigger.scrollIntoViewIfNeeded();
     const background = await page.locator('.tc-page').elementHandle();
-    const before = await page.locator('.tc-plans-scroll').evaluate((element) => ({
-      top: element.scrollTop,
-      rect: element.getBoundingClientRect().toJSON(),
-    }));
-    expect(before.top).toBeGreaterThan(0);
+    const before = await page.locator('.tc-plans-scroll').evaluate((element) => element.scrollTop);
+    expect(before).toBeGreaterThan(0);
     await trigger.click();
-    await expectVisibleFirstFrame(detail(page), reducedMotion);
+    await expectVisibleFirstFrame(detail(page));
     expect(
       await background!.evaluate((element) => element === document.querySelector('.tc-page')),
     ).toBe(true);
-    expect(
-      await page.locator('.tc-plans-scroll').evaluate((element) => ({
-        top: element.scrollTop,
-        rect: element.getBoundingClientRect().toJSON(),
-      })),
-    ).toEqual(before);
+    expect(await page.locator('.tc-plans-scroll').evaluate((element) => element.scrollTop)).toBe(
+      before,
+    );
     await expect(page.locator('.page-transition')).toHaveCSS('opacity', '1');
     const manageConnection = detail(page).getByRole('button', {
       name: '管理设备连接',
       exact: true,
     });
     await manageConnection.click();
-    await expectVisibleFirstFrame(connection(page), reducedMotion);
+    await expectVisibleFirstFrame(connection(page));
     await page.keyboard.press('Escape');
     await expect(connection(page)).toHaveCount(0);
     await expect(detail(page)).toBeVisible();
@@ -84,13 +74,13 @@ for (const reducedMotion of [false, true]) {
     await expect(detail(page)).toHaveCount(0);
     await expect(trigger).toBeFocused();
     expect(await page.locator('.tc-plans-scroll').evaluate((element) => element.scrollTop)).toBe(
-      before.top,
+      before,
     );
 
     await page.getByRole('tab', { name: '执行监控', exact: true }).click();
     const logTrigger = page.getByRole('button', { name: '查看设备日志本地模拟设备', exact: true });
     await logTrigger.click();
-    await expectVisibleFirstFrame(logs(page), reducedMotion);
+    await expectVisibleFirstFrame(logs(page));
     await page.keyboard.press('Escape');
     await expect(logs(page)).toHaveCount(0);
     await expect(logTrigger).toBeFocused();

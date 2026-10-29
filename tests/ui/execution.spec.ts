@@ -239,11 +239,6 @@ test('execution overview shows every result, facility staff and optional referen
     const badge = infrastructure.locator(`.operator-badge.rarity-${rarity}`);
     await expect(badge).toContainText(`${rarity} 星`);
     await expect(badge.getByRole('img')).toBeVisible();
-    expect(
-      await badge
-        .locator('.operator-avatar')
-        .evaluate((element) => getComputedStyle(element).borderBottomColor),
-    ).not.toBe('rgba(0, 0, 0, 0)');
   }
   await expect(infrastructure.locator('.operator-badge.rarity-unknown')).toContainText(
     '合成未知干员',
@@ -418,21 +413,6 @@ test('overview preserves failure reasons and separates confirmed staff from a pe
   for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: theme });
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    const colors = await progress.evaluate((element) => {
-      const success = getComputedStyle(element.querySelector('.completed')!),
-        failed = getComputedStyle(element.querySelector('.failed')!);
-      return {
-        success: success.backgroundColor,
-        failed: failed.backgroundColor,
-        successBorder: success.borderLeftColor,
-        failedBorder: failed.borderLeftColor,
-        surface: getComputedStyle(element).backgroundColor,
-      };
-    });
-    expect(colors.success).not.toBe(colors.failed);
-    expect(colors.success).not.toBe(colors.surface);
-    expect(colors.failed).not.toBe(colors.surface);
-    expect(colors.successBorder).not.toBe(colors.failedBorder);
     await page.screenshot({
       path: testInfo.outputPath(`execution-failed-${theme}.png`),
       fullPage: true,

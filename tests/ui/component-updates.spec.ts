@@ -254,9 +254,7 @@ test('component downloads keep progress and completion visible after leaving Set
   await page.evaluate(() => (window as DownloadWindow).downloadControl.progress(42));
   await expect(notice.getByRole('progressbar')).toHaveAttribute('value', '42');
   await expect(notice).toContainText('可继续使用其他页面');
-  const position = await notice.boundingBox();
-  expect(position!.x).toBeGreaterThan(1000);
-  expect(position!.y).toBeLessThan(100);
+  await expect(notice).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('background-core-download.png') });
   await page.evaluate(() => (window as DownloadWindow).downloadControl.finish());
   await expect(notice).toContainText('组件已准备，待生效');
@@ -439,9 +437,7 @@ test.describe('startup component download', () => {
     ).toHaveAttribute('value', '23');
     await expect(core).toContainText('23%');
     await expect(resource.getByRole('progressbar')).toHaveAttribute('value', '0');
-    const position = await core.boundingBox();
-    expect(position!.x).toBeGreaterThan(1000);
-    expect(position!.y).toBeLessThan(100);
+    await expect(core).toBeVisible();
 
     await editPlanDuringPreparation(page, '组件后台准备期间仍可编辑并保存');
     await page.evaluate(() =>

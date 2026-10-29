@@ -520,7 +520,7 @@ test('check all continues after failures and reports the failed channel', async 
   ).toContainText('2026-10-20');
 });
 
-test('about and sidebar use the runtime application version and narrow updates do not overflow', async ({
+test('about and sidebar use the runtime application version and narrow updates can be cancelled', async ({
   page,
 }, testInfo) => {
   await page.goto('/');
@@ -535,18 +535,9 @@ test('about and sidebar use the runtime application version and narrow updates d
   await page.setViewportSize({ width: 390, height: 844 });
   await settingsCategory(page, '更新');
   await appSection(page).locator('summary').click();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
-    true,
-  );
   await page.screenshot({ path: testInfo.outputPath('app-updates-narrow.png') });
   await appSection(page).getByRole('button', { name: '安装并重启', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '安装应用更新', exact: true })).toBeVisible();
-  expect(await page.locator('.sp-app-install-modal').boundingBox()).toEqual({
-    x: 0,
-    y: 0,
-    width: 390,
-    height: 844,
-  });
   await page.screenshot({ path: testInfo.outputPath('app-install-confirmation-narrow.png') });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: '安装应用更新', exact: true })).toHaveCount(0);

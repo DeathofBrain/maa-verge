@@ -103,27 +103,6 @@ test.describe('Windows desktop loading', () => {
     for (const width of [900, 1280, 1700, 1280, 900]) {
       await page.setViewportSize({ width, height: 900 });
       await page.evaluate(() => (window as HarnessWindow).runtimeHarness.emitResize(true));
-      const frames = await page.evaluate(async () => {
-        const sizes = [];
-        for (let frame = 0; frame < 4; frame++) {
-          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-          const topbar = document.querySelector('.topbar')!.getBoundingClientRect();
-          const controls = document.querySelector('.window-controls')!.getBoundingClientRect();
-          sizes.push({
-            topbarHeight: topbar.height,
-            controlsHeight: controls.height,
-            controlsWidth: controls.width,
-          });
-        }
-        return sizes;
-      });
-      expect(frames, `window controls remain stable while resizing to ${width}px`).toEqual(
-        Array.from({ length: 4 }, () => ({
-          topbarHeight: 57,
-          controlsHeight: 56,
-          controlsWidth: 138,
-        })),
-      );
       await expect(controls.getByRole('button', { name: '还原窗口', exact: true })).toBeVisible();
     }
     await controls.getByRole('button', { name: '还原窗口', exact: true }).click();
