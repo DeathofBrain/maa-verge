@@ -1,3 +1,5 @@
+@import './drawer-motion.css';
+
 .side-drawer-layer {
   position: fixed;
   inset: 0;

@@ -1,3 +1,5 @@
+@import './drawer-motion.css';
+
 .monitor-log-layer {
   position: fixed;
   inset: 0;
@@ -22,7 +24,6 @@
   height: 100%;
   background: var(--surface);
   box-shadow: -12px 0 40px #0003;
-  animation: monitor-log-in 160ms ease-out;
 }
 
 .monitor-log-embedded {
@@ -411,11 +412,5 @@
   }
   .monitor-log-list {
     padding: 6px 8px 20px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .monitor-log-panel {
-    animation: none;
   }
 }
