@@ -981,6 +981,11 @@
           "default": "",
           "title": "Message",
           "type": "string"
+        },
+        "downloadSpeedBytesPerSecond": {
+          "description": "当前网络传输速度，单位为字节/秒；非传输阶段省略。",
+          "type": "number",
+          "minimum": 0
         }
       },
       "required": ["id", "currentVersion", "latestVersion", "status", "progress", "message"],

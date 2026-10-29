@@ -240,6 +240,10 @@ export interface UpdateChannel {
   status: Status1;
   progress: Progress1;
   message: Message1;
+  /**
+   * 当前网络传输速度，单位为字节/秒；非传输阶段省略。
+   */
+  downloadSpeedBytesPerSecond?: number;
 }
 export interface ResourceActivityVersion {
   clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';

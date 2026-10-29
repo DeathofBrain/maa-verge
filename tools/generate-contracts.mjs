@@ -53,12 +53,14 @@ const validators = {
   validateCopilotWorkspaceParams: `${rpcSchema.$id}#/$defs/CopilotWorkspaceParams`,
   validateCopilotWorkspaceSaveParams: `${rpcSchema.$id}#/$defs/CopilotWorkspaceSaveParams`,
   validateCopilotSearchParams: `${rpcSchema.$id}#/$defs/CopilotSearchParams`,
+  validateCopilotStagesResult: `${rpcSchema.$id}#/$defs/CopilotStagesResult`,
   validateCopilotStartParams: `${rpcSchema.$id}#/$defs/CopilotStartParams`,
   validateCopilotRatingParams: `${rpcSchema.$id}#/$defs/CopilotRatingParams`,
   validateCopilotRatingSetParams: `${rpcSchema.$id}#/$defs/CopilotRatingSetParams`,
   validatePlan: `${schema.$id}#/$defs/Plan`,
   validateSettings: `${schema.$id}#/$defs/Settings`,
   validateDeviceAvailabilityParams: `${rpcSchema.$id}#/properties/params/properties/device.availability`,
+  validateDeviceDeleteParams: `${rpcSchema.$id}#/$defs/DeviceDeleteParams`,
   validateToolStartParams: `${rpcSchema.$id}#/$defs/ToolStartParams`,
   validateToolIdentity: `${rpcSchema.$id}#/$defs/ToolIdentity`,
   validateToolConfigParams: `${rpcSchema.$id}#/$defs/ToolConfigParams`,
@@ -164,12 +166,14 @@ export const validateCopilotCategoryDeleteParams: Validator<RpcContract['params'
 export const validateCopilotWorkspaceParams: Validator<RpcContract['params']['copilot.workspace.get']>;
 export const validateCopilotWorkspaceSaveParams: Validator<RpcContract['params']['copilot.workspace.save']>;
 export const validateCopilotSearchParams: Validator<RpcContract['params']['copilot.search']>;
+export const validateCopilotStagesResult: Validator<RpcContract['results']['copilot.stages']>;
 export const validateCopilotStartParams: Validator<RpcContract['params']['copilot.start']>;
 export const validateCopilotRatingParams: Validator<RpcContract['params']['copilot.rating.get']>;
 export const validateCopilotRatingSetParams: Validator<RpcContract['params']['copilot.rating.set']>;
 export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
 export const validateDeviceAvailabilityParams: Validator<RpcContract['params']['device.availability']>;
+export const validateDeviceDeleteParams: Validator<RpcContract['params']['device.delete']>;
 export const validateToolStartParams: Validator<RpcContract['params']['tool.start']>;
 export const validateToolIdentity: Validator<RpcContract['params']['tool.config.get']>;
 export const validateToolConfigParams: Validator<RpcContract['params']['tool.config.save']>;

@@ -27,12 +27,14 @@ export const validateCopilotCategoryDeleteParams: Validator<RpcContract['params'
 export const validateCopilotWorkspaceParams: Validator<RpcContract['params']['copilot.workspace.get']>;
 export const validateCopilotWorkspaceSaveParams: Validator<RpcContract['params']['copilot.workspace.save']>;
 export const validateCopilotSearchParams: Validator<RpcContract['params']['copilot.search']>;
+export const validateCopilotStagesResult: Validator<RpcContract['results']['copilot.stages']>;
 export const validateCopilotStartParams: Validator<RpcContract['params']['copilot.start']>;
 export const validateCopilotRatingParams: Validator<RpcContract['params']['copilot.rating.get']>;
 export const validateCopilotRatingSetParams: Validator<RpcContract['params']['copilot.rating.set']>;
 export const validatePlan: Validator<Plan>;
 export const validateSettings: Validator<Settings>;
 export const validateDeviceAvailabilityParams: Validator<RpcContract['params']['device.availability']>;
+export const validateDeviceDeleteParams: Validator<RpcContract['params']['device.delete']>;
 export const validateToolStartParams: Validator<RpcContract['params']['tool.start']>;
 export const validateToolIdentity: Validator<RpcContract['params']['tool.config.get']>;
 export const validateToolConfigParams: Validator<RpcContract['params']['tool.config.save']>;

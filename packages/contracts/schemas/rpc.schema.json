@@ -27,6 +27,7 @@
         "device.connect",
         "device.auto_connect",
         "device.disconnect",
+        "device.delete",
         "device.frame",
         "device.click",
         "run.start",
@@ -61,6 +62,7 @@
         "copilot.workspace.get",
         "copilot.workspace.save",
         "copilot.search",
+        "copilot.stages",
         "copilot.start",
         "copilot.rating.get",
         "copilot.rating.set",
@@ -153,6 +155,9 @@
         },
         "device.disconnect": {
           "$ref": "#/$defs/IdParams"
+        },
+        "device.delete": {
+          "$ref": "#/$defs/DeviceDeleteParams"
         },
         "device.frame": {
           "$ref": "#/$defs/DeviceFrameParams"
@@ -327,6 +332,9 @@
         "copilot.search": {
           "$ref": "#/$defs/CopilotSearchParams"
         },
+        "copilot.stages": {
+          "$ref": "#/$defs/EmptyParams"
+        },
         "copilot.start": {
           "$ref": "#/$defs/CopilotStartParams"
         },
@@ -385,6 +393,7 @@
         "device.connect",
         "device.auto_connect",
         "device.disconnect",
+        "device.delete",
         "device.frame",
         "device.click",
         "run.start",
@@ -419,6 +428,7 @@
         "copilot.workspace.get",
         "copilot.workspace.save",
         "copilot.search",
+        "copilot.stages",
         "copilot.start",
         "copilot.rating.get",
         "copilot.rating.set",
@@ -578,6 +588,22 @@
           "properties": {
             "disconnected": {
               "type": "boolean"
+            }
+          }
+        },
+        "device.delete": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["deletedDeviceIds"],
+          "properties": {
+            "deletedDeviceIds": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
             }
           }
         },
@@ -820,6 +846,9 @@
         },
         "copilot.search": {
           "$ref": "#/$defs/CopilotSearchResult"
+        },
+        "copilot.stages": {
+          "$ref": "#/$defs/CopilotStagesResult"
         },
         "copilot.start": {
           "$ref": "./runtime.schema.json#/$defs/Run"
@@ -1580,6 +1609,24 @@
     "EmptyParams": {
       "type": "object",
       "additionalProperties": false
+    },
+    "DeviceDeleteParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceIds"],
+      "properties": {
+        "deviceIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      }
     },
     "IdParams": {
       "type": "object",
@@ -2500,6 +2547,27 @@
       },
       "required": ["items", "page", "hasNext", "total"]
     },
+    "CopilotStagesResult": {
+      "description": "当前启用资源中可唯一映射到社区关卡标识的地图编号；不受活动开放时间或刷图导航预设限制。",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stages": {
+          "type": "array",
+          "maxItems": 50000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "value": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "label": { "type": "string", "minLength": 1, "maxLength": 500 }
+            },
+            "required": ["value", "label"]
+          }
+        }
+      },
+      "required": ["stages"]
+    },
     "CopilotListParams": {
       "type": "object",
       "additionalProperties": false,
@@ -2637,6 +2705,10 @@
       "properties": {
         "target": {
           "enum": ["copilot", "set"]
+        },
+        "orderBy": {
+          "description": "社区作业按热度、最新编号或访问量降序排列，缺省按热度；作业集不使用此字段。",
+          "enum": ["hot", "id", "views"]
         },
         "keyword": {
           "type": "string",

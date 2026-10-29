@@ -194,6 +194,7 @@ export interface RpcContract {
     };
     'device.auto_connect': EmptyParams;
     'device.disconnect': IdParams;
+    'device.delete': DeviceDeleteParams;
     'device.frame': DeviceFrameParams;
     'device.click': DeviceClickParams;
     'run.start': {
@@ -247,6 +248,7 @@ export interface RpcContract {
     'copilot.workspace.get': CopilotWorkspaceParams;
     'copilot.workspace.save': CopilotWorkspaceSaveParams;
     'copilot.search': CopilotSearchParams;
+    'copilot.stages': EmptyParams;
     'copilot.start': CopilotStartParams;
     'copilot.rating.get': CopilotRatingParams;
     'copilot.rating.set': CopilotRatingSetParams;
@@ -299,6 +301,9 @@ export interface RpcContract {
     };
     'device.disconnect': {
       disconnected: boolean;
+    };
+    'device.delete': {
+      deletedDeviceIds: string[];
     };
     'device.frame': ScreenFrame;
     'device.click': {
@@ -380,6 +385,7 @@ export interface RpcContract {
     'copilot.workspace.get': CopilotWorkspace;
     'copilot.workspace.save': CopilotWorkspace;
     'copilot.search': CopilotSearchResult;
+    'copilot.stages': CopilotStagesResult;
     'copilot.start': Run;
     'copilot.rating.get': CopilotRating;
     'copilot.rating.set': CopilotRating;
@@ -498,6 +504,17 @@ export interface Params {
  */
 export interface IdParams {
   id: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DeviceDeleteParams".
+ */
+export interface DeviceDeleteParams {
+  /**
+   * @minItems 1
+   * @maxItems 1000
+   */
+  deviceIds: string[];
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -922,6 +939,10 @@ export interface CopilotOptions {
  */
 export interface CopilotSearchParams {
   target: 'copilot' | 'set';
+  /**
+   * 社区作业按热度、最新编号或访问量降序排列，缺省按热度；作业集不使用此字段。
+   */
+  orderBy?: 'hot' | 'id' | 'views';
   keyword?: string;
   page?: number;
   stage?: string;
@@ -1194,6 +1215,10 @@ export interface UpdateChannel {
   status: Status1;
   progress: Progress1;
   message: Message1;
+  /**
+   * 当前网络传输速度，单位为字节/秒；非传输阶段省略。
+   */
+  downloadSpeedBytesPerSecond?: number;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -1643,6 +1668,21 @@ export interface CopilotSearchItem {
    */
   stageName?: string;
   difficulty?: CopilotDifficulty;
+}
+/**
+ * 当前启用资源中可唯一映射到社区关卡标识的地图编号；不受活动开放时间或刷图导航预设限制。
+ *
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "CopilotStagesResult".
+ */
+export interface CopilotStagesResult {
+  /**
+   * @maxItems 50000
+   */
+  stages: {
+    value: string;
+    label: string;
+  }[];
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

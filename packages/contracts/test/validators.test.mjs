@@ -15,6 +15,7 @@ import {
   validateWorkerValidation,
   validateDeviceFrameParams,
   validateDeviceClickParams,
+  validateDeviceDeleteParams,
   validateScreenFrame,
   validateWorkerFrame,
   validateStageListParams,
@@ -41,6 +42,21 @@ const plan = () => ({
   tasks: [{ type: 'Award', params: { future_option: { nested: [1, '保留'] } }, enabled: true }],
   schedule: null,
   enabled: true,
+});
+
+test('historical device deletion requires a bounded unique list and rejects cascading options', () => {
+  assert.equal(validateDeviceDeleteParams({ deviceIds: ['first', 'second'] }), true);
+  for (const params of [
+    {},
+    { deviceIds: [] },
+    { deviceIds: [''] },
+    { deviceIds: ['a'.repeat(201)] },
+    { deviceIds: ['first', 'first'] },
+    { deviceIds: [1] },
+    { deviceIds: Array.from({ length: 1001 }, (_, index) => `device-${index}`) },
+    { deviceIds: ['first'], deleteProfiles: true },
+  ])
+    assert.equal(validateDeviceDeleteParams(params), false, JSON.stringify(params));
 });
 
 test('host update operations accept bounded release identities without entering the public method map', () => {
@@ -245,6 +261,45 @@ test('standalone validators preserve normalized data and arbitrary task paramete
     validateSnapshot({ ...snapshot, devices: [{ ...device, dataSync: { operatorsAt: null } }] }),
     false,
   );
+});
+
+test('update download speed is optional and accepts only finite nonnegative bytes per second', () => {
+  const update = {
+    id: 'core',
+    currentVersion: '未安装',
+    latestVersion: 'v6.20.1',
+    status: 'downloading',
+    progress: 25,
+    message: '正在下载官方组件',
+  };
+  const snapshot = {
+    mode: 'native',
+    devices: [],
+    plans: [],
+    runs: [],
+    updates: [update],
+    settings: settings(),
+    events: [],
+  };
+  assert.equal(validateSnapshot(snapshot), true);
+  for (const speed of [0, 512.5, 1048576]) {
+    assert.equal(
+      validateSnapshot({
+        ...snapshot,
+        updates: [{ ...update, downloadSpeedBytesPerSecond: speed }],
+      }),
+      true,
+    );
+  }
+  for (const speed of [-1, NaN, Infinity, null, '1024', true]) {
+    assert.equal(
+      validateSnapshot({
+        ...snapshot,
+        updates: [{ ...update, downloadSpeedBytesPerSecond: speed }],
+      }),
+      false,
+    );
+  }
 });
 
 test('missing defaults, invalid metadata and unknown model keys are rejected without coercion', () => {
