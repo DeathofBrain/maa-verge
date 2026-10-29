@@ -28,8 +28,9 @@ const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 
 function temp() {
   // macOS temp roots use /var aliases; Windows may use short path names.
-  // Snapshot fixtures need the canonical tree, just like installed generations.
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'maaverge-lifecycle-')));
+  // Bun's non-native sync resolver retains Windows 8.3 aliases, while the
+  // asynchronous integrity checks expand them. Use the same native spelling.
+  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'maaverge-lifecycle-')));
   roots.push(root);
   return root;
 }
