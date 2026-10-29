@@ -27,8 +27,8 @@ struct Policy {
     settings: Option<Value>,
     seen: HashSet<String>,
     recent: VecDeque<String>,
-    device_errors: HashSet<String>,
     update_states: HashMap<String, (String, String)>,
+    stopping: bool,
 }
 
 impl Policy {
@@ -36,7 +36,18 @@ impl Policy {
         self.settings = Some(settings["notifications"].clone());
     }
 
+    fn test_enabled(&self) -> bool {
+        !self.stopping
+            && self
+                .settings
+                .as_ref()
+                .is_some_and(|settings| settings["enabled"].as_bool().unwrap_or(true))
+    }
+
     fn allowed(&self, category: Category) -> bool {
+        if self.stopping {
+            return false;
+        }
         let Some(settings) = &self.settings else {
             return false;
         };
@@ -63,16 +74,11 @@ impl Policy {
     }
 
     fn event(&mut self, event: &Value) -> Option<Notice> {
+        if self.stopping {
+            return None;
+        }
         let kind = event["type"].as_str()?;
         let data = &event["data"];
-        let device = data["device"]["id"]
-            .as_str()
-            .or_else(|| data["deviceId"].as_str())
-            .unwrap_or("discovery");
-        if kind == "device.connected" {
-            self.device_errors.remove(device);
-            self.device_errors.remove("discovery");
-        }
         let (category, title, key) = match kind {
             "run.completed" | "run.failed" | "run.interrupted" | "tool.completed"
             | "tool.failed" | "tool.interrupted" => {
@@ -96,11 +102,21 @@ impl Policy {
                 };
                 (Category::RunResults, title, format!("{kind}:{id}"))
             }
-            "device.failed" | "device.connection_failed" | "device.auto_connect_failed" => {
-                if !self.device_errors.insert(device.to_owned()) {
+            "run.connection_failed" => {
+                if data["reason"] != "emulator_unavailable" {
                     return None;
                 }
-                (Category::DeviceErrors, "设备连接异常", String::new())
+                let request = data["requestId"]
+                    .as_str()
+                    .filter(|value| !value.is_empty())?;
+                let profile = data["profileId"]
+                    .as_str()
+                    .filter(|value| !value.is_empty())?;
+                (
+                    Category::DeviceErrors,
+                    "任务表目标模拟器未就绪",
+                    format!("{kind}:{request}:{profile}"),
+                )
             }
             "update.changed" => {
                 let channel = data["channel"].as_str()?;
@@ -168,9 +184,41 @@ impl DesktopNotifications {
             .expect("notification policy")
             .configure(settings);
     }
+
+    fn stop(&self) {
+        self.policy.lock().expect("notification policy").stopping = true;
+    }
+
+    fn dispatch(
+        &self,
+        category: Category,
+        send: impl FnOnce() -> Result<(), String>,
+    ) -> Result<(), String> {
+        let policy = self.policy.lock().expect("notification policy");
+        if !policy.allowed(category) {
+            return Ok(());
+        }
+        // Serialize the final native submission with stop/settings changes.
+        send()
+    }
+}
+
+pub fn stop(app: &AppHandle) {
+    if let Some(state) = app.try_state::<DesktopNotifications>() {
+        state.stop();
+    }
+}
+
+fn exiting(app: &AppHandle) -> bool {
+    app.try_state::<crate::DesktopLifecycle>()
+        .is_some_and(|lifecycle| lifecycle.exiting())
 }
 
 pub fn handle_event(app: &AppHandle, event: &Value) {
+    if exiting(app) {
+        stop(app);
+        return;
+    }
     let notice = app
         .state::<DesktopNotifications>()
         .policy
@@ -180,22 +228,16 @@ pub fn handle_event(app: &AppHandle, event: &Value) {
     if let Some(notice) = notice {
         let app = app.clone();
         tauri::async_runtime::spawn_blocking(move || {
-            // A user may disable a category while dispatch is waiting for a thread.
-            if !app
-                .state::<DesktopNotifications>()
-                .policy
-                .lock()
-                .expect("notification policy")
-                .allowed(notice.category)
-            {
+            // Cover normal exit and updater shutdown before native submission.
+            if exiting(&app) {
+                stop(&app);
                 return;
             }
             if let Err(error) = app
-                .notification()
-                .builder()
-                .title(format!("Maa Verge · {}", notice.title))
-                .body(notice.body)
-                .show()
+                .state::<DesktopNotifications>()
+                .dispatch(notice.category, || {
+                    crate::notification_sender::show(&app, notice.title, &notice.body)
+                })
             {
                 eprintln!("系统通知发送失败：{error}");
             }
@@ -225,15 +267,17 @@ pub fn desktop_notification_status(
 
 #[tauri::command]
 pub async fn desktop_test_notification(app: AppHandle) -> Result<(), String> {
+    if exiting(&app) {
+        stop(&app);
+        return Err("应用正在退出，已停止发送通知".into());
+    }
     let state = app.state::<DesktopNotifications>();
     // A manual test is governed by the master switch, independently of categories.
     let enabled = state
         .policy
         .lock()
         .expect("notification policy")
-        .settings
-        .as_ref()
-        .is_some_and(|settings| settings["enabled"].as_bool().unwrap_or(true));
+        .test_enabled();
     if !enabled {
         return Err("请先启用并保存系统通知设置".into());
     }
@@ -245,12 +289,21 @@ pub async fn desktop_test_notification(app: AppHandle) -> Result<(), String> {
         *last = Some(Instant::now());
     }
     tauri::async_runtime::spawn_blocking(move || {
-        app.notification()
-            .builder()
-            .title("Maa Verge · 测试通知")
-            .body("系统通知已发送。任务执行结果、设备异常、更新与定时提醒将按设置通知。")
-            .show()
-            .map_err(|error| format!("系统通知发送失败：{error}"))
+        if exiting(&app) {
+            stop(&app);
+            return Err("应用正在退出，已停止发送通知".into());
+        }
+        let state = app.state::<DesktopNotifications>();
+        let policy = state.policy.lock().expect("notification policy");
+        if !policy.test_enabled() {
+            return Err("系统通知已关闭或应用正在退出".into());
+        }
+        crate::notification_sender::show(
+            &app,
+            "测试通知",
+            "系统通知已发送。任务执行结果、目标实例未就绪、更新与定时提醒将按设置通知。",
+        )
+        .map_err(|error| format!("系统通知发送失败：{error}"))
     })
     .await
     .map_err(|error| error.to_string())?
@@ -308,26 +361,94 @@ mod tests {
     }
 
     #[test]
-    fn device_failure_retries_notify_again_only_after_connection_recovers() {
+    fn only_an_explicit_run_target_with_an_unavailable_emulator_notifies() {
         let mut policy = Policy::default();
         policy.configure(&json!({}));
-        let data = json!({"device": {"id": "device-1"}});
+        for kind in [
+            "device.failed",
+            "device.connection_failed",
+            "device.auto_connect_failed",
+            "device.disconnected",
+            "device.connected",
+        ] {
+            assert!(policy
+                .event(&event(kind, json!({"device": {"id": "device-1"}})))
+                .is_none());
+        }
+        let data = json!({"requestId": "request-1", "profileId": "profile-1", "profileName": "目标实例", "address": "127.0.0.1:16384", "reason": "emulator_unavailable"});
         assert!(policy
-            .event(&event("device.failed", data.clone()))
+            .event(&event("run.connection_failed", data.clone()))
             .is_some());
         assert!(policy
-            .event(&event("device.connection_failed", data.clone()))
+            .event(&event("run.connection_failed", data.clone()))
             .is_none());
+        let mut next = data.clone();
+        next["requestId"] = json!("request-2");
         assert!(policy
-            .event(&event("device.connecting", data.clone()))
-            .is_none());
+            .event(&event("run.connection_failed", next))
+            .is_some());
+        let mut other_reason = data.clone();
+        other_reason["requestId"] = json!("request-3");
+        other_reason["reason"] = json!("adb_error");
         assert!(policy
-            .event(&event("device.failed", data.clone()))
+            .event(&event("run.connection_failed", other_reason))
             .is_none());
+        let mut missing_request = data.clone();
+        missing_request.as_object_mut().unwrap().remove("requestId");
         assert!(policy
-            .event(&event("device.connected", data.clone()))
+            .event(&event("run.connection_failed", missing_request))
             .is_none());
-        assert!(policy.event(&event("device.failed", data)).is_some());
+        let mut missing_profile = data;
+        missing_profile.as_object_mut().unwrap().remove("profileId");
+        assert!(policy
+            .event(&event("run.connection_failed", missing_profile))
+            .is_none());
+    }
+
+    #[test]
+    fn exit_discards_queued_and_cleanup_notifications_even_after_settings_refresh() {
+        let state = DesktopNotifications::default();
+        state.configure(&json!({}));
+        let queued = state
+            .policy
+            .lock()
+            .unwrap()
+            .event(&event("run.completed", json!({"run": {"id": "run-1"}})))
+            .unwrap();
+        state.stop();
+        state.configure(&json!({"notifications": {"enabled": true}}));
+        state
+            .dispatch(queued.category, || {
+                panic!("queued native submission must be skipped")
+            })
+            .unwrap();
+        let mut policy = state.policy.lock().unwrap();
+        assert!(!policy.test_enabled());
+        assert!(policy
+            .event(&event("run.failed", json!({"run": {"id": "run-2"}})))
+            .is_none());
+        assert!(policy.event(&event("run.connection_failed", json!({"requestId": "request-1", "profileId": "profile-1", "reason": "emulator_unavailable"}))).is_none());
+    }
+
+    #[test]
+    fn muted_target_failures_do_not_replay_when_enabled_and_dispatch_failures_propagate() {
+        let state = DesktopNotifications::default();
+        state.configure(&json!({"notifications": {"deviceErrors": false}}));
+        let failed = event(
+            "run.connection_failed",
+            json!({"requestId": "request-1", "profileId": "profile-1", "reason": "emulator_unavailable"}),
+        );
+        assert!(state.policy.lock().unwrap().event(&failed).is_none());
+        state.configure(&json!({"notifications": {"deviceErrors": true}}));
+        assert!(state.policy.lock().unwrap().event(&failed).is_none());
+        assert_eq!(
+            state
+                .dispatch(Category::DeviceErrors, || Err(
+                    "synthetic native notification failure".into()
+                ))
+                .unwrap_err(),
+            "synthetic native notification failure"
+        );
     }
 
     #[test]

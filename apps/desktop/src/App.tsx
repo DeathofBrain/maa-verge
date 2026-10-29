@@ -338,33 +338,42 @@ export default function App() {
         const navigationRevision = detailRevision.current;
         let devices = snapshot?.devices || [];
         let deviceId = plan.deviceId || requestedDeviceId || selectedDevice;
+        let connectionFailure: unknown;
         if (
           !devices.some((item) => item.id === deviceId && item.state !== 'offline') &&
           snapshot?.settings.autoConnect
         ) {
-          const connection = await rpc('device.auto_connect', {});
-          const candidates = new Set(connection.devices.map((item) => item.id));
-          const deadline = Date.now() + 15_000;
-          while (true) {
-            devices = (await rpc('app.snapshot', {})).devices;
-            if (!deviceId)
-              deviceId =
-                devices.find((item) => candidates.has(item.id) && item.state === 'idle')?.id ||
-                deviceId;
-            if (devices.some((item) => item.id === deviceId && item.state === 'idle')) break;
-            if (Date.now() >= deadline || !connection.devices.length)
-              throw new Error(
-                connection.diagnostics.join('；') || '设备连接尚未就绪，请在设备页查看诊断后重试',
-              );
-            await new Promise((resolve) => window.setTimeout(resolve, 250));
+          try {
+            const connection = await rpc('device.auto_connect', {});
+            const candidates = new Set(connection.devices.map((item) => item.id));
+            const deadline = Date.now() + 15_000;
+            while (true) {
+              devices = (await rpc('app.snapshot', {})).devices;
+              if (!deviceId)
+                deviceId =
+                  devices.find((item) => candidates.has(item.id) && item.state === 'idle')?.id ||
+                  deviceId;
+              if (devices.some((item) => item.id === deviceId && item.state === 'idle')) break;
+              if (Date.now() >= deadline || !connection.devices.length)
+                throw new Error(
+                  connection.diagnostics.join('；') || '设备连接尚未就绪，请在设备页查看诊断后重试',
+                );
+              await new Promise((resolve) => window.setTimeout(resolve, 250));
+            }
+          } catch (cause) {
+            connectionFailure = cause;
           }
         }
-        if (!deviceId || !devices.some((item) => item.id === deviceId && item.state !== 'offline'))
+        if (!deviceId || !devices.some((item) => item.id === deviceId))
           throw new Error(
-            plan.deviceId
-              ? '绑定设备尚未连接，请在设备页连接后重试'
-              : '请先连接设备，或开启自动连接',
+            connectionFailure
+              ? errorMessage(connectionFailure)
+              : plan.deviceId
+                ? '绑定设备尚未连接，请在设备页连接后重试'
+                : '请先连接设备，或开启自动连接',
           );
+        // The service validates the requested target, including a launch-scoped
+        // notification when its local emulator endpoint is unavailable.
         await rpc('run.start', { planId: plan.id, deviceId, requestId: uid() });
         if (!requestedDeviceId && detailRevision.current === navigationRevision) {
           setSelectedDevice(deviceId);

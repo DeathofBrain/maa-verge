@@ -3,6 +3,7 @@ mod configuration;
 mod desktop_notifications;
 mod desktop_scheduler;
 mod external_links;
+mod notification_sender;
 mod runtime;
 
 use runtime::Runtime;
@@ -145,6 +146,7 @@ fn request_exit(app: &tauri::AppHandle) {
     if !app.state::<DesktopLifecycle>().begin_exit() {
         return;
     }
+    desktop_notifications::stop(app);
     show_main(app);
     let _ = app.emit("app-exit-started", ());
     let app = app.clone();

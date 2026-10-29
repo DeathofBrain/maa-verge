@@ -182,6 +182,7 @@ export class Runtime {
     string,
     { source: 'plan' | 'copilot'; identity: string; deviceId: string; promise: Promise<any> }
   >();
+  private unavailableRunRequests = new Set<string>();
   private connecting = new Set<string>();
   private connectingAddresses = new Set<string>();
   private suppressed = new Set<string>();
@@ -1229,7 +1230,16 @@ export class Runtime {
     const device = this.devices().find((d) => d.id === params.deviceId);
     if (!device) throw new RpcError(-32004, '设备不存在');
     const availability = this.availability(device.id, occurrence?.id);
-    if (!availability.available) throw new RpcError(-32011, availability.reason);
+    if (!availability.available) {
+      if (
+        snapshot.source === 'plan' &&
+        !occurrence &&
+        availability.owner === 'none' &&
+        !availability.connected
+      )
+        void this.notifyUnavailableRunDevice(params, device);
+      throw new RpcError(-32011, availability.reason);
+    }
     this.preview.invalidate(device.id);
     const worker = this.workers.get(device.id);
     if (!worker?.connected || !worker.safeIdle)
@@ -1287,6 +1297,54 @@ export class Runtime {
     this.store.put('device', device.id, device);
     await this.submitNativeTask(run, 0);
     return this.execution(id);
+  }
+  private async notifyUnavailableRunDevice(params: any, device: any) {
+    // A failed launch is the only connection-notification trigger. Passive reconnects,
+    // remote devices and other occupancy failures cannot establish a stopped emulator.
+    if (
+      !this.running ||
+      this.appUpdating ||
+      this.appUpdatePreparing ||
+      this.switching ||
+      !isLocalEmulator(device.address) ||
+      !localAdbServer()
+    )
+      return;
+    const combo = this.store.get('active', 'combo', {});
+    if (!combo.core || !combo.resource) return;
+    const probe =
+      this.options.probeDeviceEndpoint ??
+      (this.options.workerFactory || this.options.adbExecutable ? undefined : probeAdbEndpoint);
+    if (!probe) return;
+    const key = `${params.requestId}|${params.planId}|${device.id}`;
+    if (this.unavailableRunRequests.has(key)) return;
+    this.unavailableRunRequests.add(key);
+    if (this.unavailableRunRequests.size > 256)
+      this.unavailableRunRequests.delete(this.unavailableRunRequests.values().next().value!);
+    try {
+      if (await probe(device.address)) return;
+      if (
+        !this.running ||
+        this.appUpdating ||
+        this.appUpdatePreparing ||
+        this.switching ||
+        this.workers.get(device.id)?.connected ||
+        !this.store.get('device', device.id)
+      )
+        return;
+      const settings = parseSettings(this.store.get('settings', 'main'));
+      const profile = findDeviceProfile(settings, device.address);
+      this.emit('run.connection_failed', '任务表目标模拟器尚未连接，请确认对应实例已经启动', {
+        requestId: params.requestId,
+        deviceId: device.id,
+        profileId: profile?.id ?? device.id,
+        profileName: profile?.name ?? device.name,
+        address: device.address,
+        reason: 'emulator_unavailable',
+      });
+    } catch {
+      // Probe errors provide no evidence about the emulator; keep this path silent.
+    }
   }
   async stopRun(id: string) {
     const run = this.execution(id);
