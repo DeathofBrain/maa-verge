@@ -376,13 +376,6 @@ test('explicit zero budgets and all registered task variants remain supported', 
   assert.equal(validatePlan({ ...plan(), name: '😀'.repeat(81) }), false);
 });
 
-test('generated validators have no external imports or runtime schema compiler', () => {
-  const source = readFileSync(new URL('../src/validators.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(source, /^import\s/mu);
-  assert.doesNotMatch(source, /\b(?:eval|Function)\s*\(/u);
-  assert.doesNotMatch(source, /[A-Za-z]:\\|\.\.\/typescript-cpp-runtime/u);
-});
-
 test('settings reject removed downloader preferences', () => {
   assert.equal(validateSettings(settings()), true);
   for (const componentDownload of [

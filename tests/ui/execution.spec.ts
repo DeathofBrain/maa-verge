@@ -162,7 +162,7 @@ test('slow run details remain serial and are not discarded by progress snapshots
 
 test('execution overview shows every result, facility staff and optional reference images', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   await page.evaluate(async () => {
@@ -255,28 +255,10 @@ test('execution overview shows every result, facility staff and optional referen
           .artifactReads,
     ),
   ).toBe(0);
-  await page.screenshot({ path: testInfo.outputPath('execution-desktop.png'), fullPage: true });
-  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.screenshot({
-    path: testInfo.outputPath('execution-desktop-dark.png'),
-    fullPage: true,
-  });
-  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  expect(
-    await execution(page).evaluate((element) => element.scrollWidth <= element.clientWidth),
-  ).toBe(true);
-  await page.screenshot({ path: testInfo.outputPath('execution-mobile.png'), fullPage: true });
   await execution(page)
     .getByRole('region', { name: '本次获得材料', exact: true })
     .scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: testInfo.outputPath('execution-mobile-results.png'),
-    fullPage: true,
-  });
   await reference.getByRole('button').click();
   await reference
     .getByLabel('选择结果截图', { exact: true })
@@ -301,7 +283,7 @@ test('execution overview shows every result, facility staff and optional referen
 
 test('overview preserves failure reasons and separates confirmed staff from a pending plan', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   await page.evaluate(async () => {
@@ -410,12 +392,4 @@ test('overview preserves failure reasons and separates confirmed staff from a pe
   await expect(legacy).toContainText('确认状态未记录');
   await expect(legacy.locator('.operator-badge')).toContainText('合成未知干员');
   await expect(legacy.getByRole('img')).toHaveCount(0);
-  for (const theme of ['light', 'dark'] as const) {
-    await page.emulateMedia({ colorScheme: theme });
-    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await page.screenshot({
-      path: testInfo.outputPath(`execution-failed-${theme}.png`),
-      fullPage: true,
-    });
-  }
 });

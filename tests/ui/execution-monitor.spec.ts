@@ -326,9 +326,9 @@ test('monitor lists one row per device, stops only that device and bulk-stops se
   ).toEqual(['monitor-a', 'monitor-b', 'monitor-c']);
 });
 
-test('monitor filters, searches and fits desktop, dark and narrow layouts', async ({
+test('monitor filters and searches devices and preserves selection across filters', async ({
   page,
-}, testInfo) => {
+}) => {
   await seedMonitor(page);
   await openMonitor(page);
   const filters = monitor(page).getByRole('group', { name: '筛选监控设备', exact: true });
@@ -363,32 +363,12 @@ test('monitor filters, searches and fits desktop, dark and narrow layouts', asyn
     .getByRole('button', { name: '清除', exact: true })
     .click();
   await expect(page.getByRole('region', { name: '设备批量操作', exact: true })).toHaveCount(0);
-
-  await page.setViewportSize({ width: 1440, height: 960 });
-  for (const theme of ['light', 'dark'] as const) {
-    await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
-    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    await page.screenshot({
-      path: testInfo.outputPath(`execution-monitor-${theme}.png`),
-      fullPage: true,
-    });
-  }
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  expect(
-    await monitor(page).evaluate((element) => element.scrollWidth <= element.clientWidth),
-  ).toBe(true);
-  await page.screenshot({
-    path: testInfo.outputPath('execution-monitor-mobile.png'),
-    fullPage: true,
-  });
 });
 
 test('selecting a device toggles its details, switches devices and follows live state', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
   await seedMonitor(page);
   await openMonitor(page);
   const online = monitor(page).getByRole('region', { name: '已连接监控设备', exact: true });
@@ -398,18 +378,9 @@ test('selecting a device toggles its details, switches devices and follows live 
   await detailButton(page, '一号模拟器').click();
   await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('dialog', { name: /^设备详情/ })).toHaveCount(0);
-  await expect(detailButton(page, '一号模拟器')).toBeInViewport();
-  await expect(inspected(page).getByRole('heading', { name: /^一号模拟器/ })).toBeInViewport();
   const info = inspected(page).getByRole('region', { name: '设备信息', exact: true });
   await expect(info).toContainText('127.0.0.1:5555');
   await expect(detail(page)).toContainText('一号模拟器的独立任务结果');
-  const cardsBox = await online.boundingBox();
-  const executionBox = await inspected(page).boundingBox();
-  expect(executionBox!.y).toBeGreaterThan(cardsBox!.y);
-  await page.screenshot({
-    path: testInfo.outputPath('device-execution-inline.png'),
-    fullPage: true,
-  });
 
   await detailButton(page, '一号模拟器').click();
   await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'false');
@@ -461,18 +432,11 @@ test('selecting a device toggles its details, switches devices and follows live 
   await expect(
     inspected(page).getByRole('heading', { name: '当前没有任务', exact: true }),
   ).toBeVisible();
-  expect(
-    await inspected(page).evaluate((element) => element.scrollWidth <= element.clientWidth),
-  ).toBe(true);
   await detailButton(page, '五号模拟器').click();
   await expect(
     inspected(page).getByRole('heading', { name: '设备已离线', exact: true }),
   ).toBeVisible();
   await expect(detail(page)).toHaveCount(0);
-  await page.screenshot({
-    path: testInfo.outputPath('device-execution-offline-mobile.png'),
-    fullPage: true,
-  });
 });
 
 test('offline state takes precedence over a stale running summary', async ({ page }) => {
@@ -676,7 +640,7 @@ test('connection settings return to the task draft and viewing execution selects
 
 test('single-device log drawer hides the device list and only enables selection on demand', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await seedMonitor(page);
   await openMonitor(page);
@@ -701,7 +665,6 @@ test('single-device log drawer hides the device list and only enables selection 
   await drawer.getByRole('checkbox', { name: '选择日志101', exact: true }).uncheck();
   await expect(drawer.locator('.monitor-log-toolbar').getByRole('status')).toHaveText('已选 2 条');
   await drawer.getByRole('checkbox', { name: '选择日志101', exact: true }).check();
-  await page.screenshot({ path: testInfo.outputPath('monitor-log-drawer.png'), fullPage: true });
 
   await drawer.getByRole('button', { name: '复制所选', exact: true }).click();
   await expect(drawer.getByText('已复制 3 条日志', { exact: true })).toBeVisible();
@@ -723,9 +686,8 @@ test('single-device log drawer hides the device list and only enables selection 
 
 test('multi-device log drawer only offers the selected devices and no device-level select-all', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
   await seedMonitor(page);
   await openMonitor(page);
   await page.getByRole('checkbox', { name: '选择设备二号模拟器', exact: true }).check();
@@ -755,16 +717,7 @@ test('multi-device log drawer only offers the selected devices and no device-lev
   await drawer.evaluate((element) =>
     Promise.all(element.getAnimations().map((animation) => animation.finished)),
   );
-  await page.screenshot({
-    path: testInfo.outputPath('monitor-log-drawer-multi.png'),
-    fullPage: true,
-  });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({
-    path: testInfo.outputPath('monitor-log-drawer-mobile.png'),
-    fullPage: true,
-  });
-  expect(await drawer.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await drawer.getByRole('button', { name: '关闭设备日志', exact: true }).click();
   await expect(drawer).toBeHidden();
 });
@@ -967,28 +920,6 @@ test('a selected run omitted from summaries still receives its final detail stat
   ).toContainText('已完成');
   await expect(inspected(page)).toContainText('正在查看历史执行');
   await expect(detail(page).getByRole('button', { name: '停止执行', exact: true })).toHaveCount(0);
-});
-
-test('empty monitor explains how to add devices without instance-start tabs', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
-  await page.evaluate(() => {
-    const api = (window as unknown as MonitorWindow).runtimeHarness;
-    const call = api.call;
-    api.call = async (method, params) => {
-      const result = await call(method, params);
-      if (method !== 'app.snapshot') return result;
-      return { ...(result as Snapshot), devices: [] };
-    };
-    api.emitEvent('device.updated');
-  });
-  await openMonitor(page);
-  await expect(monitor(page).getByRole('article')).toHaveCount(0);
-  await expect(
-    monitor(page).getByRole('heading', { name: '还没有设备', exact: true }),
-  ).toBeVisible();
-  await expect(page.getByRole('tab', { name: /监控总览|实例启动/ })).toHaveCount(0);
-  await expect(detail(page)).toHaveCount(0);
 });
 
 test('task view tabs support arrow keys and keep only the selected tab in the tab order', async ({

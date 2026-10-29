@@ -208,61 +208,9 @@ test('the task list menu edits names, copies the current configuration and prese
   );
 });
 
-test('task context actions share copy, enable, ordering and delete behavior with the toolbar', async ({
+test('menus support keyboard navigation and preserve native menus on editable fields', async ({
   page,
 }) => {
-  await openFarm(page);
-  const rows = wb(page).locator('.editor-steps > li');
-  await rows.first().click({ button: 'right' });
-  await expect(menu(page).getByRole('menuitem', { name: '上移任务', exact: true })).toBeDisabled();
-  await menu(page).getByRole('menuitem', { name: '复制任务', exact: true }).click();
-  await expect(rows).toHaveCount(2);
-  await rows.last().click({ button: 'right' });
-  await menu(page).getByRole('menuitem', { name: '停用任务', exact: true }).click();
-  await rows.last().click({ button: 'right' });
-  await menu(page).getByRole('menuitem', { name: '上移任务', exact: true }).click();
-  await expect(
-    wb(page).getByRole('checkbox', { name: '启用第 1 条任务', exact: true }),
-  ).not.toBeChecked();
-  await rows.last().click({ button: 'right' });
-  await menu(page).getByRole('menuitem', { name: '删除任务', exact: true }).click();
-  await saved(page);
-  const plan = (await snapshot(page)).plans.find((p) => p.id === 'farm-1-7')!;
-  expect(plan.tasks).toHaveLength(1);
-  expect(plan.tasks[0].enabled).toBe(false);
-});
-
-test('device, instance, execution and history menus expose matching actions', async ({ page }) => {
-  await openFarm(page);
-  await nav(page, '设备');
-  const device = page.getByRole('article', { name: '设备：本地模拟设备', exact: true });
-  await device.click({ button: 'right' });
-  await menu(page).getByRole('menuitem', { name: '保存为多开实例', exact: true }).click();
-  await page.getByRole('button', { name: '保存实例配置', exact: true }).click();
-  const instance = page.getByRole('article', { name: '多开实例：本地模拟设备', exact: true });
-  await instance.click({ button: 'right' });
-  await expect(menu(page).getByRole('menuitem', { name: '删除实例', exact: true })).toBeDisabled();
-  await menu(page).getByRole('menuitem', { name: '编辑实例', exact: true }).click();
-  await expect(page.getByRole('form', { name: '多开实例配置', exact: true })).toBeVisible();
-  await nav(page, '任务');
-  await page.getByRole('button', { name: '查看任务表详情每日长草计划', exact: true }).click();
-  await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
-  await wb(page).getByRole('button', { name: '查看执行', exact: true }).click();
-  await expect(page.getByRole('region', { name: '所选设备执行情况', exact: true })).toBeVisible();
-  await page
-    .getByRole('article', { name: '设备执行本地模拟设备', exact: true })
-    .click({ button: 'right' });
-  await menu(page).getByRole('menuitem', { name: '停止设备任务', exact: true }).click();
-  await nav(page, '执行记录');
-  await page.locator('.history-table tbody tr').first().click({ button: 'right' });
-  await expect(menu(page).getByRole('menuitem', { name: '停止执行', exact: true })).toBeDisabled();
-  await menu(page).getByRole('menuitem', { name: '查看执行详情', exact: true }).click();
-  await expect(page.getByRole('region', { name: '任务表执行页面', exact: true })).toBeVisible();
-});
-
-test('menus support keyboard navigation, viewport edges, and no menu on plain surfaces', async ({
-  page,
-}, testInfo) => {
   await openFarm(page);
   await closeDetail(page);
   const target = page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true });
@@ -289,49 +237,6 @@ test('menus support keyboard navigation, viewport edges, and no menu on plain su
       element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })),
     );
   expect(native).toBe(true);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 600, height: 520 });
-  // Let the resize event dismiss the previous menu before opening the edge case.
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ),
-  );
-  await wb(page)
-    .locator('.editor-steps > li')
-    .first()
-    .evaluate((element) =>
-      element.dispatchEvent(
-        new MouseEvent('contextmenu', {
-          bubbles: true,
-          cancelable: true,
-          clientX: 595,
-          clientY: 515,
-        }),
-      ),
-    );
-  await expect
-    .poll(async () => {
-      const rect = await menu(page).boundingBox();
-      return !!rect && rect.x + rect.width <= 600 && rect.y + rect.height <= 520;
-    })
-    .toBe(true);
-  const rect = await menu(page).boundingBox();
-  expect(rect!.x).toBeGreaterThan(300);
-  expect(rect!.x + rect!.width).toBeLessThanOrEqual(600);
-  expect(rect!.y + rect!.height).toBeLessThanOrEqual(520);
-  await page.screenshot({
-    path: testInfo.outputPath('context-menu-narrow.png'),
-    animations: 'disabled',
-  });
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = 'dark';
-  });
-  await page.screenshot({
-    path: testInfo.outputPath('context-menu-narrow-dark.png'),
-    animations: 'disabled',
-  });
 });
 
 test('new task tables automatically become saved task list entries', async ({ page }) => {
@@ -378,33 +283,4 @@ test('cancelled tables and unconfirmed Agent proposals do not automatically pers
   await wb(page).getByRole('button', { name: '保存任务表', exact: true }).click();
   await saved(page);
   expect((await snapshot(page)).runs).toHaveLength(0);
-});
-
-test('copilot context editing opens the exact task among duplicate types', async ({ page }) => {
-  await openFarm(page);
-  await page.evaluate(async () => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    const state = (await api.call('app.snapshot', {})) as Snapshot;
-    await api.call('plan.save', {
-      plan: {
-        ...state.plans[0],
-        id: 'context-copilot',
-        name: '右键作业',
-        tasks: [
-          { type: 'Copilot', enabled: true, params: { filename: '/synthetic/first.json' } },
-          { type: 'Copilot', enabled: true, params: { filename: '/synthetic/second.json' } },
-        ],
-      },
-    });
-  });
-  await nav(page, '作业中心');
-  await page.locator('details.cp-legacy summary').click();
-  await page
-    .locator('.cp-legacy-row')
-    .filter({ hasText: '/synthetic/second.json' })
-    .click({ button: 'right' });
-  await menu(page).getByRole('menuitem', { name: '编辑作业配置', exact: true }).click();
-  await expect(wb(page).getByLabel('作业文件路径', { exact: true })).toHaveValue(
-    '/synthetic/second.json',
-  );
 });

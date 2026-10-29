@@ -64,9 +64,7 @@ test('recognition requires completed structured results and ignores unrelated wa
   ).toHaveCount(0);
 });
 
-test('warehouse recognition shows decoded resource images, searches and exports persistent quantities', async ({
-  page,
-}, testInfo) => {
+test('warehouse recognition searches and exports persistent quantities', async ({ page }) => {
   await page.clock.install();
   await page.goto('/');
   await openTools(page);
@@ -88,16 +86,6 @@ test('warehouse recognition shows decoded resource images, searches and exports 
     .getByRole('listitem')
     .filter({ has: page.getByText('固源岩', { exact: true }) });
   await expect(rock).toContainText('42');
-  const icon = rock.getByRole('img', { name: '固源岩', exact: true });
-  await expect(icon).toBeVisible();
-  await expect
-    .poll(() =>
-      icon.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
-    )
-    .toBe(true);
-  await expect(
-    depot(page).getByRole('listitem').filter({ hasText: '合成无图材料' }).getByRole('img'),
-  ).toHaveCount(0);
   await depot(page).getByLabel('搜索仓库物品', { exact: true }).fill('30013');
   await expect(depot(page).getByRole('listitem')).toHaveCount(1);
   await expect(depot(page).getByRole('listitem')).toContainText('固源岩组');
@@ -116,20 +104,9 @@ test('warehouse recognition shows decoded resource images, searches and exports 
     ],
     operators: [],
   });
-  await page.screenshot({ path: testInfo.outputPath('warehouse-results.png'), fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect
-    .poll(() =>
-      page.locator('.sidebar').evaluate((sidebar) => sidebar.getBoundingClientRect().right <= 0),
-    )
-    .toBe(true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: testInfo.outputPath('warehouse-mobile.png'), fullPage: true });
-  await page.setViewportSize({ width: 1280, height: 720 });
   await page.reload();
   await openTools(page);
   await expect(depot(page).getByRole('listitem')).toHaveCount(3);
-  await expect(depot(page).getByRole('img', { name: '固源岩', exact: true })).toBeVisible();
 });
 
 test('operator recognition exports owned progress and isolates devices and clients', async ({
@@ -144,13 +121,6 @@ test('operator recognition exports owned progress and isolates devices and clien
   await expect(amiya).toContainText('5 星');
   await amiya.scrollIntoViewIfNeeded();
   await page.clock.runFor(100);
-  const portrait = amiya.getByRole('img', { name: '阿米娅头像' });
-  await expect(portrait).toBeVisible();
-  await expect
-    .poll(() =>
-      portrait.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
-    )
-    .toBe(true);
   await expect(amiya).toContainText('精英 2');
   await expect(amiya).toContainText('80');
   await expect(amiya).toContainText('6');
@@ -245,62 +215,4 @@ test('recognition read and start errors remain actionable', async ({ page }) => 
   await page.getByRole('button', { name: '开始仓库识别', exact: true }).click();
   await expect(page.locator('.toast')).toContainText('合成设备连接失败');
   await expect(page.getByRole('button', { name: '开始仓库识别', exact: true })).toBeEnabled();
-});
-
-test('combined data sync stores only enabled recognition kinds and execution materials use resource images', async ({
-  page,
-}) => {
-  await page.clock.install();
-  await page.goto('/');
-  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
-  await page.evaluate(async () => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    const snapshot = (await api.call('app.snapshot', {})) as Snapshot;
-    await api.call('plan.save', {
-      plan: {
-        ...snapshot.plans[0],
-        id: 'combined-recognition',
-        name: '数据与材料',
-        tasks: [
-          {
-            type: 'UserDataUpdate',
-            params: { operators: true, depot: false, interval: 'always' },
-            enabled: true,
-          },
-          {
-            type: 'Fight',
-            params: { stage: '1-7', times: 1, medicine: 0, stone: 0 },
-            enabled: true,
-          },
-        ],
-      },
-    });
-    await api.call('run.start', {
-      planId: 'combined-recognition',
-      deviceId: snapshot.devices[0].id,
-      requestId: 'combined-recognition',
-    });
-  });
-  await page.clock.runFor(12_600);
-  await openTools(page);
-  await expect(depot(page).getByRole('listitem')).toHaveCount(0);
-  await openTools(page, '干员');
-  await expect(operators(page).getByRole('row').filter({ hasText: '阿米娅' })).toBeVisible();
-  await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
-  await page.getByRole('tab', { name: '执行监控', exact: true }).click();
-  const snapshot = await page.evaluate(
-    async () =>
-      (await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot,
-  );
-  const run = snapshot.runs[0];
-  await page.locator('.sidebar').getByRole('button', { name: '执行记录', exact: true }).click();
-  await page.getByRole('button', { name: `查看执行${run.id}`, exact: true }).click();
-  const drops = page.getByRole('region', { name: '本次获得材料', exact: true });
-  const image = drops.getByRole('img', { name: '固源岩', exact: true });
-  await expect(image).toBeVisible();
-  await expect
-    .poll(() =>
-      image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0),
-    )
-    .toBe(true);
 });

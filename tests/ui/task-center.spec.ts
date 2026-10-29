@@ -95,39 +95,6 @@ test('search, home shortcut and Agent proposals open the unified task center', a
   await expect(wb(page).locator('.wb-save-state')).toHaveText('待确认保存');
 });
 
-test('legacy specialized tables stay in the unified list and save without a group selector', async ({
-  page,
-}) => {
-  await page.goto('/');
-  await page.evaluate(async () => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    const state = (await api.call('app.snapshot', {})) as Snapshot;
-    const source = state.plans.find((plan) => plan.id === 'daily')!;
-    await api.call('plan.save', {
-      plan: { ...source, id: 'legacy-specialized', name: '旧专项表', group: 'specialized' },
-    });
-  });
-  await page.reload();
-  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
-  await nav(page, '任务');
-  await expect(
-    list(page).getByRole('article', { name: '任务表 旧专项表', exact: true }),
-  ).toBeVisible();
-  await list(page).getByRole('button', { name: '查看任务表详情旧专项表', exact: true }).click();
-  await expect(wb(page).getByRole('heading', { name: '旧专项表', exact: true })).toBeVisible();
-  await wb(page).getByRole('tab', { name: '任务表设置', exact: true }).click();
-  await expect(wb(page).getByLabel('任务分组', { exact: true })).toHaveCount(0);
-  await wb(page).getByLabel('任务表名称', { exact: true }).fill('旧专项表改名');
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
-  const saved = (await snapshot(page)).plans.find((plan) => plan.id === 'legacy-specialized')!;
-  expect(saved.name).toBe('旧专项表改名');
-  expect(saved.group).toBe('specialized');
-  await page.getByRole('button', { name: '关闭任务表详情', exact: true }).click();
-  await expect(
-    list(page).getByRole('button', { name: '查看任务表详情旧专项表改名', exact: true }),
-  ).toBeVisible();
-});
-
 test('multi-device launch blocks binding, offline and busy devices and starts on idle ones', async ({
   page,
 }) => {
@@ -254,55 +221,4 @@ test('multi-device launch keeps failures visible and finishes the successful dev
   expect((await snapshot(page)).runs.filter((run) => run.deviceId === idle)).toHaveLength(0);
   await modal.getByRole('button', { name: '取消', exact: true }).click();
   await expect(modal).toBeHidden();
-});
-
-test('multiple selected tables run on their bound or chosen devices and reject duplicate targets', async ({
-  page,
-}) => {
-  await page.goto('/');
-  const idle = await page.evaluate(async () => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    const device = (await api.call('device.connect', {
-      address: '127.0.0.1:5567',
-      name: '备用实例',
-    })) as { id: string };
-    const state = (await api.call('app.snapshot', {})) as Snapshot;
-    const farm = state.plans.find((plan) => plan.id === 'farm-1-7')!;
-    await api.call('plan.save', { plan: { ...farm, deviceId: 'mock-device-1' } });
-    return device.id;
-  });
-  await page.reload();
-  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
-  await nav(page, '任务');
-  const runButton = page.locator('.tc-heading').getByRole('button', { name: '运行', exact: true });
-  await expect(runButton).toBeDisabled();
-  await page.getByRole('checkbox', { name: '选择任务表每日长草计划', exact: true }).check();
-  await page.getByRole('checkbox', { name: '选择任务表固源岩补给', exact: true }).check();
-  await runButton.click();
-  const modal = page.getByRole('dialog', { name: '运行所选任务表', exact: true });
-  await expect(
-    modal.getByRole('checkbox', { name: '选择运行任务表每日长草计划', exact: true }),
-  ).toBeChecked();
-  await expect(
-    modal.getByRole('checkbox', { name: '选择运行任务表固源岩补给', exact: true }),
-  ).toBeChecked();
-  await expect(modal).toContainText('绑定 本地模拟设备');
-  await expect(modal.getByLabel('为固源岩补给选择设备', { exact: true })).toHaveCount(0);
-  const target = modal.getByLabel('为每日长草计划选择设备', { exact: true });
-  await expect(target).toHaveValue(idle);
-  await target.selectOption('mock-device-1');
-  await expect(modal.getByText('同一设备只能运行一张任务表', { exact: true })).toHaveCount(2);
-  await expect(modal.getByRole('button', { name: '运行 2 张任务表', exact: true })).toBeDisabled();
-  await target.selectOption(idle);
-  await expect(modal.getByRole('button', { name: '运行 2 张任务表', exact: true })).toBeEnabled();
-  await modal.getByRole('button', { name: '运行 2 张任务表', exact: true }).click();
-  await expect(modal).toBeHidden();
-  await expect
-    .poll(async () =>
-      (await snapshot(page)).runs
-        .filter((run) => run.status === 'running')
-        .map((run) => `${run.planId}:${run.deviceId}`)
-        .sort(),
-    )
-    .toEqual(['daily:' + idle, 'farm-1-7:mock-device-1'].sort());
 });

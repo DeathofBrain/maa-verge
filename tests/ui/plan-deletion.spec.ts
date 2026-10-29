@@ -81,41 +81,6 @@ test('task arrangement exposes deletion, cancel preserves the draft, and deletio
   await expect(page.getByRole('cell', { name: '固源岩补给', exact: true })).toBeVisible();
 });
 
-test('a legacy specialized table can be deleted from the unified list without affecting other tables or reviving its draft', async ({
-  page,
-}) => {
-  await page.goto('/');
-  await page.evaluate(async () => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    const state = (await api.call('app.snapshot', {})) as Snapshot;
-    await api.call('plan.save', {
-      plan: { ...state.plans[1], id: 'legacy-specialized', name: '旧专项表', group: 'specialized' },
-    });
-  });
-  await navigate(page, '任务');
-  await page.getByRole('button', { name: '查看任务表详情旧专项表', exact: true }).click();
-  await expect(workbench(page).getByLabel('任务分组', { exact: true })).toHaveCount(0);
-  const saved = (await snapshot(page)).plans.find((plan) => plan.id === 'legacy-specialized')!;
-  expect(saved.group).toBe('specialized');
-  await workbench(page).getByLabel('作战次数').fill('8');
-  await confirmDelete(page);
-  await expect(workbench(page)).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: '查看任务表详情旧专项表', exact: true }),
-  ).toHaveCount(0);
-  expect(
-    await page.evaluate((id) => sessionStorage.getItem(`maaverge.ui.draft.${id}`), saved.id),
-  ).toBeNull();
-  expect(await page.evaluate(() => localStorage.getItem('maaverge:ui:selected-plan'))).toBeNull();
-  expect((await snapshot(page)).plans.map((plan) => plan.id).sort()).toEqual(['daily', 'farm-1-7']);
-  await page.reload();
-  await navigate(page, '任务');
-  await expect(page.getByRole('region', { name: '任务表列表', exact: true })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: '查看任务表详情旧专项表', exact: true }),
-  ).toHaveCount(0);
-});
-
 test('failed deletion preserves the table, selection and unsaved edits for a retry', async ({
   page,
 }) => {

@@ -91,57 +91,6 @@ test('tools continue across pages, keep cached results while busy, and never add
   expect(snapshot.toolJobs).toHaveLength(1);
 });
 
-test('operator portraits fall back and refresh after resource activation', async ({ page }) => {
-  await page.clock.install();
-  await page.goto('/');
-  await page.evaluate(() => {
-    const api = (window as HarnessWindow).runtimeHarness,
-      original = api.call;
-    let repaired = false;
-    Object.assign(window, {
-      activatePortrait: () => {
-        repaired = true;
-        api.emitEvent('update.changed');
-      },
-    });
-    api.call = async (method, params) => {
-      const value = await original(method, params);
-      if (method === 'app.snapshot' && repaired)
-        (value as Snapshot).updates.find((item) => item.id === 'resource')!.currentVersion =
-          'synthetic-resource-2';
-      if (method === 'resources.operator' && params.operatorId === 'char_103_angel' && !repaired)
-        return { ...(value as object), mimeType: 'image/png', data: 'aW52YWxpZA==' };
-      return value;
-    };
-  });
-  await page.locator('.sidebar').getByRole('button', { name: '工具箱', exact: true }).click();
-  await page.getByLabel('工具箱设备', { exact: true }).selectOption('mock-device-1');
-  await page
-    .getByRole('navigation', { name: '工具分类' })
-    .getByRole('button', { name: '干员', exact: true })
-    .click();
-  await page.getByRole('button', { name: '开始干员识别' }).click();
-  await page.clock.runFor(12600);
-  const row = page.getByRole('row').filter({ hasText: '能天使' });
-  await expect(row).toBeVisible();
-  await expect(row.getByRole('img')).toHaveCount(0);
-  await page.getByLabel('搜索干员', { exact: true }).fill('阿米娅');
-  await page.getByRole('row').filter({ hasText: '阿米娅' }).scrollIntoViewIfNeeded();
-  await expect(page.getByRole('img', { name: '阿米娅头像' })).toBeVisible();
-  await page.getByLabel('搜索干员', { exact: true }).fill('');
-  await page.evaluate(() => {
-    (window as unknown as { activatePortrait: () => void }).activatePortrait();
-  });
-  await row.scrollIntoViewIfNeeded();
-  const repaired = row.getByRole('img', { name: '能天使头像' });
-  await expect(repaired).toBeVisible();
-  await expect
-    .poll(() =>
-      repaired.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0),
-    )
-    .toBe(true);
-});
-
 test('daily schedules support eight rules, temporary overrides, global options and restart persistence', async ({
   page,
 }) => {

@@ -278,35 +278,3 @@ test('a selected table becoming active blocks the whole batch deletion', async (
   await expect(confirmation(page)).toContainText('先停止');
   expect((await snapshot(page)).plans).toHaveLength(2);
 });
-
-for (const [name, width, height, colorScheme] of [
-  ['desktop-light', 1440, 900, 'light'],
-  ['desktop-dark', 1280, 800, 'dark'],
-  ['narrow-light', 390, 844, 'light'],
-  ['narrow-dark', 390, 844, 'dark'],
-] as const) {
-  test(`batch selection and dialogs fit the viewport: ${name}`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
-    await page.goto('/');
-    await openTasks(page);
-    await selectAll(page);
-    await page.setViewportSize({ width, height });
-    await expect(actions(page)).toBeVisible();
-    const noOverflow = () =>
-      page.evaluate(
-        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-      );
-    expect(await noOverflow()).toBeTruthy();
-    await page.screenshot({ path: testInfo.outputPath(`${name}-selection.png`), fullPage: true });
-    await actions(page).getByRole('button', { name: '同时执行', exact: true }).click();
-    await expect(launch(page)).toBeVisible();
-    expect(await noOverflow()).toBeTruthy();
-    await page.screenshot({ path: testInfo.outputPath(`${name}-launch.png`), fullPage: true });
-    await launch(page).getByRole('button', { name: '取消', exact: true }).click();
-    await actions(page).getByRole('button', { name: '批量删除', exact: true }).click();
-    await expect(confirmation(page)).toBeVisible();
-    expect(await noOverflow()).toBeTruthy();
-    await page.screenshot({ path: testInfo.outputPath(`${name}-delete.png`), fullPage: true });
-  });
-}

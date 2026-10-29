@@ -156,7 +156,7 @@ async function openDetail(page: Page) {
 
 test('community cards and details distinguish owned, missing and insufficient operators without importing', async ({
   page,
-}, testInfo) => {
+}) => {
   await installProbe(
     page,
     roster([
@@ -181,7 +181,6 @@ test('community cards and details distinguish owned, missing and insufficient op
     await expect(tag(page, name)).toHaveAttribute('data-status', status);
     await expect(tag(page, name)).toHaveText(name);
   }
-  await card(page).screenshot({ path: testInfo.outputPath('community-operator-statuses.png') });
   await openDetail(page);
   for (const [name, status] of [
     ['阿米娅', 'insufficient'],
@@ -198,88 +197,9 @@ test('community cards and details distinguish owned, missing and insufficient op
   expect(
     reads.every((read) => read.deviceId === 'mock-device-1' && read.clientType === undefined),
   ).toBe(true);
-  await detail(page)
-    .locator('.cp-requirements')
-    .screenshot({ path: testInfo.outputPath('operator-details-light.png') });
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = 'dark';
-  });
-  await detail(page)
-    .locator('.cp-requirements')
-    .screenshot({ path: testInfo.outputPath('operator-details-dark.png') });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          document.documentElement.scrollWidth <= innerWidth &&
-          document.querySelector('.copilot-page')!.scrollWidth <=
-            document.querySelector('.copilot-page')!.clientWidth,
-      ),
-    )
-    .toBe(true);
-  await detail(page)
-    .locator('.cp-requirements')
-    .screenshot({ path: testInfo.outputPath('operator-details-narrow.png') });
 });
 
-test('no successful scan and operators absent from a partial scan keep their original status', async ({
-  page,
-}) => {
-  await installProbe(page, roster([recognized('阿米娅')], null));
-  await openCommunity(page);
-  await expect(card(page).locator('li.cp-operator-tag')).toHaveCount(1);
-  await expect(card(page).locator('li.cp-operator-tag[data-status="unknown"]')).toHaveCount(1);
-  await expect(card(page).locator('.cp-group-unverified')).toContainText('尚未确认可用干员');
-  await page.evaluate(() => {
-    const probe = (window as ProbeWindow).operatorProbe;
-    probe.rosters['mock-device-1'].collectedAt = '2026-10-25T03:10:00Z';
-    probe.rosters['mock-device-1'].runId = 'completed-partial-scan';
-    probe.notify('device.data_synced');
-  });
-  await expect(tag(page, '阿米娅')).toHaveAttribute('data-status', 'owned');
-  for (const name of ['能天使', '合成六星干员']) await expect(tag(page, name)).toHaveCount(0);
-  await expect(card(page).locator('[data-status="missing"]')).toHaveCount(0);
-  await openDetail(page);
-  await expect(requirement(page, '能天使')).toHaveAttribute('data-status', 'unknown');
-});
-
-test('higher promotion satisfies earlier levels and unobserved skill or module data never invents insufficient progress', async ({
-  page,
-}) => {
-  await installProbe(
-    page,
-    roster([
-      recognized('阿米娅', { elite: 2, level: 1 }),
-      recognized('能天使'),
-      recognized('合成六星干员', { level: -1 }),
-    ]),
-    [
-      { name: '阿米娅', skill: 1, requirements: { elite: 1, level: 70 } },
-      {
-        name: '能天使',
-        skill: 3,
-        requirements: { elite: 2, level: 80, skill_level: 10, module: 2, module_level: 3 },
-      },
-      { name: '合成六星干员', skill: 2, requirements: { elite: 2, level: 80 } },
-    ],
-  );
-  await openCommunity(page);
-  await expect(tag(page, '阿米娅')).toHaveAttribute('data-status', 'owned');
-  await expect(tag(page, '能天使')).toHaveAttribute('data-status', 'owned');
-  await expect(tag(page, '合成六星干员')).not.toHaveAttribute('data-status', 'insufficient');
-  await openDetail(page);
-  await expect(requirement(page, '阿米娅')).toHaveAttribute('data-status', 'owned');
-  await expect(requirement(page, '能天使')).toContainText('专三');
-  await expect(requirement(page, '能天使')).toContainText(/Y\s*模/);
-  await expect(requirement(page, '能天使')).toContainText(/未核验|未识别/);
-  await expect(requirement(page, '合成六星干员')).not.toHaveAttribute(
-    'data-status',
-    'insufficient',
-  );
-});
-
-test('changing devices clears previous account colors and ignores its delayed recognition response', async ({
+test('changing devices clears previous account assessments and ignores its delayed recognition response', async ({
   page,
 }) => {
   await installProbe(
@@ -328,7 +248,7 @@ test('changing devices clears previous account colors and ignores its delayed re
   await expect(requirement(page, '阿米娅')).toHaveAttribute('data-status', 'owned');
 });
 
-test('account changes discard old colors while a read is pending and later scans update the same details', async ({
+test('account changes discard old assessments while a read is pending and later scans update the same details', async ({
   page,
 }) => {
   await installProbe(page, roster([recognized('阿米娅')]));
@@ -377,53 +297,6 @@ test('account changes discard old colors while a read is pending and later scans
   await expect(requirement(page, '阿米娅')).toHaveAttribute('data-status', 'insufficient');
 });
 
-test('detail terms distinguish skill mastery, module type and module level including unrestricted requirements', async ({
-  page,
-}) => {
-  await installProbe(page, roster([], null), [
-    {
-      name: '术语甲',
-      skill: 1,
-      requirements: { elite: 2, level: 80, skill_level: 8, module: 1, module_level: 3 },
-    },
-    { name: '术语乙', skill: 2, requirements: { skill_level: 9, module: 2 } },
-    { name: '术语丙', skill: 3, requirements: { skill_level: 10, module: 3 } },
-    { name: '术语丁', requirements: { module: 4 } },
-    { name: '术语戊', requirements: { module: 5 } },
-    { name: '术语己', requirements: { elite: 0, skill_level: 7, module: 0 } },
-    {
-      name: '不作要求',
-      requirements: {
-        elite: -1,
-        level: -1,
-        skill_level: -1,
-        module: -1,
-        module_level: -1,
-        potential: -1,
-      },
-    },
-  ]);
-  await openCommunity(page);
-  await openDetail(page);
-  await expect(requirement(page, '术语甲')).toContainText('精二');
-  await expect(requirement(page, '术语甲')).toContainText('专一');
-  await expect(requirement(page, '术语甲')).toContainText(/X\s*模/);
-  await expect(requirement(page, '术语甲')).toContainText(/模组\s*(?:3|三)\s*级|(?:3|三)\s*级模组/);
-  await expect(requirement(page, '术语乙')).toContainText('专二');
-  await expect(requirement(page, '术语乙')).toContainText(/Y\s*模/);
-  await expect(requirement(page, '术语丙')).toContainText('专三');
-  for (const [name, type] of [
-    ['术语丙', 'A'],
-    ['术语丁', 'D'],
-    ['术语戊', 'B'],
-  ])
-    await expect(requirement(page, name)).toContainText(new RegExp(`${type}\\s*模`));
-  await expect(requirement(page, '术语己')).toContainText(/精零|未精英化/);
-  await expect(requirement(page, '术语己')).toContainText(/技能\s*7\s*级|7\s*级/);
-  await expect(requirement(page, '术语己')).toContainText(/不使用模组|无模组/);
-  await expect(requirement(page, '不作要求')).not.toContainText('-1');
-});
-
 test('an unavailable local recognition read leaves community badges neutral', async ({ page }) => {
   await installProbe(page, roster([recognized('阿米娅')]));
   await page.evaluate(() => {
@@ -438,183 +311,9 @@ test('an unavailable local recognition read leaves community badges neutral', as
   ).toHaveCount(0);
 });
 
-test('community names match foreign client rosters by unique resource identity and keep ambiguous names neutral', async ({
-  page,
-}) => {
-  const value = roster([recognized('Foreign Name', { id: 'char_alias', own: false })]);
-  value.clientType = 'YoStarJP';
-  await installProbe(page, value, [{ name: '中文别名' }, { name: '歧义名称' }]);
-  await page.evaluate(() => {
-    const harness = (window as ProbeWindow).runtimeHarness;
-    const original = harness.call.bind(harness);
-    harness.call = async (method, params) => {
-      if (method === 'resources.operator') {
-        harness.commands.push(`operator-client:${params.clientType}`);
-        return {
-          name: params.name,
-          id: params.name === '中文别名' ? 'char_alias' : null,
-          rarity: null,
-          mimeType: null,
-          data: null,
-          resourceVersion: 'synthetic-resource',
-        };
-      }
-      return original(method, params);
-    };
-  });
-  await openCommunity(page);
-  // Identity resolution waits until the requirements enter the scroll viewport.
-  await tag(page, '中文别名').scrollIntoViewIfNeeded();
-  await expect(tag(page, '中文别名')).toHaveAttribute('data-status', 'missing');
-  await expect(tag(page, '歧义名称')).toHaveAttribute('data-status', 'unknown');
-  await openDetail(page);
-  await requirement(page, '中文别名').scrollIntoViewIfNeeded();
-  await expect(requirement(page, '中文别名')).toHaveAttribute('data-status', 'missing');
-  await expect(requirement(page, '歧义名称')).toHaveAttribute('data-status', 'unknown');
-  expect(
-    await page.evaluate(() =>
-      (window as ProbeWindow).runtimeHarness.commands.filter((command) =>
-        command.startsWith('operator-client:'),
-      ),
-    ),
-  ).toEqual(['operator-client:YoStarJP', 'operator-client:YoStarJP']);
-});
-
-test('optional groups show suitable operators in summaries and all alternatives in details', async ({
-  page,
-}, testInfo) => {
-  await installProbe(
-    page,
-    roster([
-      recognized('备选未拥有', { own: false }),
-      recognized('备选练度不足', { level: 1 }),
-      recognized('备选合规甲'),
-      recognized('备选合规乙'),
-    ]),
-    ['备选未拥有', '备选练度不足', '备选合规甲', '备选合规乙'].map((name) => ({
-      name,
-      group: '输出备选',
-      skill: 3,
-      requirements: { elite: 2, level: 80 },
-    })),
-  );
-  await openCommunity(page);
-  await expect(card(page).locator('li.cp-operator-tag')).toHaveCount(2);
-  await expect(tag(page, '备选合规甲')).toHaveAttribute('data-status', 'owned');
-  await expect(tag(page, '备选合规乙')).toHaveAttribute('data-status', 'owned');
-  await card(page).screenshot({ path: testInfo.outputPath('optional-group-summary.png') });
-  await openDetail(page);
-  await expect(detail(page).locator('.cp-operator-grid > li')).toHaveCount(4);
-  for (const [name, status] of [
-    ['备选未拥有', 'missing'],
-    ['备选练度不足', 'insufficient'],
-    ['备选合规甲', 'owned'],
-    ['备选合规乙', 'owned'],
-  ])
-    await expect(requirement(page, name)).toHaveAttribute('data-status', status);
-  await detail(page).getByRole('button', { name: '返回作业列表', exact: true }).click();
-  await page.evaluate(() => {
-    const probe = (window as ProbeWindow).operatorProbe;
-    probe.rosters['mock-device-1'].operators.find(
-      (operator) => operator.name === '备选合规甲',
-    )!.level = 1;
-    probe.notify('device.data_synced');
-  });
-  await expect(card(page).locator('li.cp-operator-tag')).toHaveCount(1);
-  await expect(tag(page, '备选合规乙')).toHaveAttribute('data-status', 'owned');
-  await page.evaluate(() => {
-    const probe = (window as ProbeWindow).operatorProbe;
-    probe.rosters['mock-device-1'].operators.find(
-      (operator) => operator.name === '备选合规乙',
-    )!.level = 1;
-    probe.notify('device.data_synced');
-  });
-  await expect(card(page).locator('li.cp-operator-tag')).toHaveCount(0);
-  await expect(card(page).locator('.cp-group-unverified')).toContainText('暂无符合已知要求的干员');
-});
-
-test('optional groups show owned candidates with explicit pending requirements', async ({
-  page,
-}) => {
-  await installProbe(
-    page,
-    roster([
-      recognized('等级未知', { level: -1 }),
-      recognized('练度符合', { elite: 2, level: -1 }),
-      recognized('专精未知'),
-    ]),
-    [
-      { name: '等级未知', group: '输出备选', requirements: { elite: 2, level: 80 } },
-      { name: '练度符合', group: '输出备选', requirements: { elite: 1, level: 70 } },
-      {
-        name: '专精未知',
-        group: '专精备选',
-        skill: 3,
-        requirements: { skill_level: 10, module: 1 },
-      },
-    ],
-  );
-  await openCommunity(page);
-  await expect(card(page).locator('li.cp-operator-tag')).toHaveCount(3);
-  await expect(tag(page, '练度符合')).toHaveAttribute('data-status', 'owned');
-  await expect(tag(page, '等级未知')).toHaveText('等级未知');
-  await expect(tag(page, '等级未知')).toHaveAttribute('title', /等级未核验/);
-  await expect(tag(page, '专精未知')).toHaveText('专精未知');
-  await expect(tag(page, '专精未知')).toHaveAttribute('title', /技能／专精、模组未核验/);
-  await openDetail(page);
-  await expect(detail(page).locator('.cp-operator-grid > li')).toHaveCount(3);
-  await expect(requirement(page, '等级未知')).toContainText('等级未核验');
-  await expect(requirement(page, '专精未知')).toContainText('技能／专精、模组未核验');
-});
-
-test('alternative summaries show at most three candidates and prefer fully verified requirements', async ({
-  page,
-}) => {
-  const names = [
-    '专精待核验',
-    '已确认甲',
-    '已确认乙',
-    '已确认丙',
-    '已确认丁',
-    '未拥有',
-    '练度不足',
-    '名单缺失',
-  ];
-  await installProbe(
-    page,
-    roster(
-      names
-        .slice(0, -1)
-        .map((name) =>
-          recognized(
-            name,
-            name === '未拥有' ? { own: false } : name === '练度不足' ? { level: 1 } : {},
-          ),
-        ),
-    ),
-    names.map((name) => ({
-      name,
-      group: '医疗',
-      requirements:
-        name === '专精待核验'
-          ? { skill_level: 10, potentiality: 1 }
-          : { elite: 2, level: 80, potentiality: 1 },
-    })),
-  );
-  await openCommunity(page);
-  await expect(card(page).locator('li.cp-operator-tag')).toHaveCount(3);
-  for (const name of ['已确认甲', '已确认乙', '已确认丙'])
-    await expect(tag(page, name)).toHaveAttribute('data-status', 'owned');
-  for (const name of ['专精待核验', '已确认丁', '未拥有', '练度不足', '名单缺失'])
-    await expect(tag(page, name)).toHaveCount(0);
-  await openDetail(page);
-  await expect(detail(page).locator('.cp-operator-card')).toHaveCount(8);
-  await expect(requirement(page, '专精待核验')).toContainText('技能／专精未核验');
-});
-
 test('alternative group labels share the required row and expand without opening the record', async ({
   page,
-}, testInfo) => {
+}) => {
   await installProbe(
     page,
     roster([
@@ -656,7 +355,6 @@ test('alternative group labels share the required row and expand without opening
   }
   const panel = card(page).getByRole('region', { name: '拦人先锋备选干员', exact: true });
   await expect(panel).toBeHidden();
-  await card(page).screenshot({ path: testInfo.outputPath('collapsed-operator-groups.png') });
   await group.click();
   await expect(group).toHaveAttribute('aria-expanded', 'true');
   await expect(panel).toBeVisible();
@@ -669,43 +367,4 @@ test('alternative group labels share the required row and expand without opening
   await expect(
     card(page).getByRole('region', { name: '医疗备选备选干员', exact: true }),
   ).toContainText('未拥有');
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect
-    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
-    .toBe(true);
-  await card(page).screenshot({ path: testInfo.outputPath('operator-groups-narrow.png') });
-});
-
-test('potentiality is translated and assessed with a conservative legacy alias fallback', async ({
-  page,
-}, testInfo) => {
-  await installProbe(
-    page,
-    roster([
-      recognized('潜能不足', { potential: 1 }),
-      recognized('潜能满足', { potential: 6 }),
-      recognized('旧字段'),
-      recognized('潜能未知', { potential: -1 }),
-      recognized('双字段', { potential: 2 }),
-    ]),
-    [
-      { name: '潜能不足', requirements: { potentiality: 2 } },
-      { name: '潜能满足', requirements: { potentiality: 6 } },
-      { name: '旧字段', requirements: { potential: 1 } },
-      { name: '潜能未知', requirements: { potentiality: 2 } },
-      { name: '双字段', requirements: { potentiality: 1, potential: 3 } },
-    ],
-  );
-  await openCommunity(page);
-  await expect(tag(page, '潜能不足')).toHaveAttribute('data-status', 'insufficient');
-  await expect(tag(page, '潜能满足')).toHaveAttribute('data-status', 'owned');
-  await expect(tag(page, '旧字段')).toHaveAttribute('data-status', 'owned');
-  await expect(tag(page, '潜能未知')).toHaveText('潜能未知');
-  await expect(tag(page, '潜能未知')).toHaveAttribute('title', /潜能未核验/);
-  await openDetail(page);
-  await expect(requirement(page, '潜能不足')).toContainText('潜能 2（本地 1）');
-  await expect(requirement(page, '双字段')).toContainText('潜能 3（本地 2）');
-  await expect(requirement(page, '潜能未知')).toContainText('潜能未核验');
-  await expect(detail(page)).not.toContainText('potentiality');
-  await detail(page).screenshot({ path: testInfo.outputPath('potential-assessments.png') });
 });

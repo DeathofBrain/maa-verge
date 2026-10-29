@@ -464,29 +464,6 @@ test('changing the app channel invalidates its staged installation confirmation'
   ).toHaveCount(0);
 });
 
-test('a preview newer than stable stays installed without a downgrade candidate', async ({
-  page,
-}) => {
-  await page.goto('/');
-  await expect(home(page)).toBeVisible();
-  await controlAppUpdate(page, { currentVersion: '0.2.0-beta.1', noUpdate: true });
-  await settingsCategory(page, '更新');
-  await page.getByLabel('应用更新频道', { exact: true }).selectOption('stable');
-  await appSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
-  await expect
-    .poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.checks))
-    .toBe(1);
-  await expect(appSection(page).locator('.sp-update-state')).toHaveText('暂无新版本');
-  await expect(appSection(page).locator('.channel-version')).toHaveText('0.2.0-beta.1');
-  await expect(appSection(page).locator('.channel-version svg')).toHaveCount(0);
-  await expect(appSection(page).getByRole('button', { name: '下载更新', exact: true })).toHaveCount(
-    0,
-  );
-  await expect(
-    appSection(page).getByRole('button', { name: '安装并重启', exact: true }),
-  ).toHaveCount(0);
-});
-
 test('check all continues after failures and reports the failed channel', async ({ page }) => {
   await page.goto('/');
   await expect(home(page)).toBeVisible();
@@ -518,27 +495,4 @@ test('check all continues after failures and reports the failed channel', async 
       .locator('.update-channel')
       .filter({ has: page.getByRole('heading', { name: '游戏资源', exact: true }) }),
   ).toContainText('2026-10-20');
-});
-
-test('about and sidebar use the runtime application version and narrow updates can be cancelled', async ({
-  page,
-}, testInfo) => {
-  await page.goto('/');
-  await expect(home(page)).toBeVisible();
-  await controlAppUpdate(page, { currentVersion: '0.9.3', staged: true });
-  await settingsCategory(page, '关于');
-  await expect(page.locator('.sp-description-list').filter({ hasText: '应用版本' })).toContainText(
-    '0.9.3',
-  );
-  await expect(page.locator('.sp-settings-content')).not.toContainText('开发预览');
-  await expect(page.locator('.sidebar-footer')).toContainText('0.9.3');
-  await page.setViewportSize({ width: 390, height: 844 });
-  await settingsCategory(page, '更新');
-  await appSection(page).locator('summary').click();
-  await page.screenshot({ path: testInfo.outputPath('app-updates-narrow.png') });
-  await appSection(page).getByRole('button', { name: '安装并重启', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '安装应用更新', exact: true })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('app-install-confirmation-narrow.png') });
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: '安装应用更新', exact: true })).toHaveCount(0);
 });

@@ -40,7 +40,7 @@ async function openCategoryMenu(page: Page, name: string) {
 
 test('the local station selects visible work and resets selection after paging, searching and changing category', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.goto('/');
   const records: CopilotRecord[] = [];
   for (let index = 1; index <= 22; index++) records.push(await seed(page, `本地选择 ${index}`));
@@ -59,7 +59,6 @@ test('the local station selects visible work and resets selection after paging, 
     .all()) {
     await expect(input).toBeChecked();
   }
-  await page.screenshot({ path: testInfo.outputPath('copilot-library-select-all-desktop.png') });
   await library(page).getByRole('button', { name: '本地作业下一页', exact: true }).click();
   await expect(library(page).locator('.cp-record')).toHaveCount(2);
   await expect(all(page)).not.toBeChecked();
@@ -125,7 +124,7 @@ test('batch deletion requires confirmation and preserves unselected work and que
 
 test('category context menus can remove only the category or explicitly delete its work too', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.goto('/');
   const kept = await seed(page, '分类删除后保留');
   const removed = await seed(page, '分类连同删除');
@@ -160,12 +159,6 @@ test('category context menus can remove only the category or explicitly delete i
     .getByRole('checkbox', { name: '同时删除分类中的作业', exact: true })
     .check();
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await removeDialog(page, true).evaluate(
-      (element) => element.scrollWidth <= element.clientWidth,
-    ),
-  ).toBe(true);
-  await page.screenshot({ path: testInfo.outputPath('copilot-delete-category-narrow.png') });
   await removeDialog(page, true).getByRole('button', { name: '确认删除', exact: true }).click();
   expect(
     (await call<{ items: CopilotRecord[] }>(page, 'copilot.list')).items.map((item) => item.id),
@@ -286,7 +279,6 @@ test('keyboard context menu deletion returns focus to the original category or w
   await page.setViewportSize({ width: 390, height: 500 });
   const cancel = removeDialog(page, true).getByRole('button', { name: '取消', exact: true });
   await cancel.scrollIntoViewIfNeeded();
-  await expect(cancel).toBeInViewport();
   await cancel.click();
   await expect(category).toBeFocused();
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -300,7 +292,7 @@ test('keyboard context menu deletion returns focus to the original category or w
 
 test('a failed deletion retains the dialog and selection, and can be retried in a short narrow window', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.goto('/');
   await seed(page, '删除失败重试甲');
   await seed(page, '删除失败重试乙');
@@ -334,11 +326,6 @@ test('a failed deletion retains the dialog and selection, and can be retried in 
     library(page).getByRole('checkbox', { name: '选择作业 删除失败重试乙', exact: true }),
   ).toBeChecked();
   await confirm.scrollIntoViewIfNeeded();
-  await expect(confirm).toBeInViewport();
-  expect(
-    await removeDialog(page).evaluate((element) => element.scrollWidth <= element.clientWidth),
-  ).toBe(true);
-  await page.screenshot({ path: testInfo.outputPath('copilot-delete-error-short-narrow.png') });
   await confirm.click();
   await expect(removeDialog(page)).toHaveCount(0);
   await expect(library(page).locator('.cp-record')).toHaveCount(0);

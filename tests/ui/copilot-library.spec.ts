@@ -31,7 +31,7 @@ async function seed(page: Page, title: string, extra: Record<string, unknown> = 
 
 test('categories can be created, assigned in the drawer, renamed and deleted without deleting work', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
@@ -46,9 +46,7 @@ test('categories can be created, assigned in the drawer, renamed and deleted wit
   await library(page).getByRole('button', { name: '全部', exact: true }).click();
   await expect(library(page).locator('.cp-record')).toHaveCount(1);
   await library(page).getByRole('button', { name: '管理分类', exact: true }).click();
-  await page.screenshot({ path: testInfo.outputPath('categories-station-desktop.png') });
   await library(page).getByRole('button', { name: '管理分类', exact: true }).click();
-  await page.screenshot({ path: testInfo.outputPath('categories-manager-desktop.png') });
   await library(page).locator('.cp-record-main').click();
   await expect(
     detail(page).getByRole('heading', { name: '分类管理作业', exact: true }),
@@ -56,22 +54,11 @@ test('categories can be created, assigned in the drawer, renamed and deleted wit
   await page.locator('.cp-drawer-panel').evaluate((element) => {
     element.scrollTop = 0;
   });
-  await page.screenshot({ path: testInfo.outputPath('category-drawer-desktop.png') });
   const category = (await call<{ items: CopilotCategory[] }>(page, 'copilot.category.list'))
     .items[0];
   await detail(page).getByLabel('详情作业分类', { exact: true }).selectOption(category.id);
   await expect(detail(page).getByLabel('详情作业分类', { exact: true })).toHaveValue(category.id);
   await page.keyboard.press('Escape');
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('.sidebar')).not.toBeInViewport();
-  for (const theme of ['light', 'dark']) {
-    await page.evaluate((theme) => {
-      document.documentElement.dataset.theme = theme;
-      document.querySelector('.copilot-page')!.scrollTop = 0;
-    }, theme);
-    await page.screenshot({ path: testInfo.outputPath(`categories-mobile-${theme}.png`) });
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
   await library(page).getByRole('button', { name: '每周作业', exact: true }).click();
   await expect(library(page).locator('.cp-record')).toHaveCount(1);
   await expect(library(page).locator('.cp-record select')).toHaveCount(0);

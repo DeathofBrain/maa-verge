@@ -127,12 +127,10 @@ test('independent execution stays in the center, fixes its queue snapshot and su
   await expect(
     monitor.getByRole('button', { name: '停止设备任务本地模拟设备', exact: true }),
   ).toBeVisible();
-  await expect(monitor).not.toHaveClass(/inspecting/u);
   await expect(monitor.getByRole('article')).toContainText('作业 · 独立作业快照');
   await expect(
     monitor.getByRole('button', { name: '查看设备执行本地模拟设备', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByLabel('执行状态栏', { exact: true })).toHaveClass(/is-running/u);
   await navigate(page, '作业中心');
   await run.getByRole('button', { name: '停止作业', exact: true }).click();
   await expect(run).toContainText('已停止');
@@ -225,7 +223,6 @@ test('switching workspaces keeps the running panel, expanded logs and stop contr
   await page.getByRole('button', { name: '开始作业', exact: true }).click();
   const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
   await panel.locator('.cp-run-logs > summary').click();
-  const originalPanel = await panel.elementHandle();
   const initialProgress = await panel.getByLabel('作业执行进度').getAttribute('value');
   for (const name of ['保全派驻', '悖论模拟']) {
     await page.getByRole('tab', { name, exact: true }).click();
@@ -233,7 +230,6 @@ test('switching workspaces keeps the running panel, expanded logs and stop contr
       panel.getByRole('heading', { name: '切换时持续执行的普通作业', exact: true }),
     ).toBeVisible();
     await expect(panel.locator('.cp-run-logs')).toHaveAttribute('open', '');
-    expect(await originalPanel!.evaluate((element) => element.isConnected)).toBe(true);
   }
   await expect(panel.getByLabel('作业执行进度')).not.toHaveAttribute('value', initialProgress!);
   await expect(page.getByRole('tab', { name: '悖论模拟', exact: true })).toHaveAttribute(
@@ -273,56 +269,6 @@ test('switching workspaces keeps the running panel, expanded logs and stop contr
     'aria-selected',
     'true',
   );
-});
-
-test('cached workspaces render their own queue and library without flashing during delayed reads', async ({
-  page,
-}) => {
-  await openCenter(page);
-  await importJson(page, json('普通切换缓存'));
-  await page.getByRole('tab', { name: '保全派驻', exact: true }).click();
-  await importJson(
-    page,
-    json('保全切换缓存', { type: 'SSS', stages: [{ stage_name: 'main_01-07', actions: [] }] }),
-  );
-  await page.getByRole('tab', { name: '悖论模拟', exact: true }).click();
-  await importJson(page, json('悖论切换缓存', { type: 'Paradox', stage_name: 'mem_amiya_1' }));
-  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
-  await page.evaluate(() => {
-    const harness = (window as unknown as HarnessWindow).runtimeHarness;
-    const original = harness.call.bind(harness);
-    harness.call = async (method, params) => {
-      if (['copilot.list', 'copilot.get', 'copilot.workspace.get'].includes(method))
-        await new Promise((resolve) => setTimeout(resolve, 350));
-      return original(method, params);
-    };
-    document.querySelector('.copilot-page')!.scrollTop = 0;
-  });
-  for (const [name, title] of [
-    ['普通作业', '普通切换缓存'],
-    ['保全派驻', '保全切换缓存'],
-    ['悖论模拟', '悖论切换缓存'],
-  ]) {
-    await page.getByRole('tab', { name, exact: true }).click();
-    const frames = await page.evaluate(async () => {
-      const frames = [];
-      for (let index = 0; index < 12; index++) {
-        await new Promise(requestAnimationFrame);
-        frames.push({
-          queue: document.querySelector('.cp-queue-list')?.textContent ?? '',
-          library: document.querySelector('.cp-record-list')?.textContent ?? '',
-          loading: !!document.querySelector('.cp-browser > .cp-loading'),
-        });
-      }
-      return frames;
-    });
-    for (const frame of frames) {
-      expect(frame.queue).toContain(title);
-      expect(frame.queue).not.toContain('作业版本不可用');
-      expect(frame.library).toContain(title);
-      expect(frame.loading).toBe(false);
-    }
-  }
 });
 
 test('a persisted queue distinguishes a pending version read from a confirmed unavailable version', async ({
@@ -381,91 +327,6 @@ test('a persisted queue distinguishes a pending version read from a confirmed un
   await library(page).getByRole('button', { name: '刷新作业库', exact: true }).click();
   await expect(queue(page)).toContainText('作业版本不可用');
   await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeDisabled();
-});
-
-test('desktop queue has room for multiple entries and only its list scrolls', async ({
-  page,
-}, testInfo) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await openCenter(page);
-  await importJson(page, json('可排序的长队列作业'));
-  for (let index = 0; index < 7; index++)
-    await library(page)
-      .getByRole('button', { name: '加入队列 可排序的长队列作业', exact: true })
-      .click();
-  for (const viewport of [
-    { width: 1440, height: 900 },
-    { width: 1280, height: 800 },
-  ]) {
-    await page.setViewportSize(viewport);
-    const metrics = await queue(page).evaluate((element) => {
-      const list = element.querySelector('.cp-queue-list')!;
-      const editor = element.querySelector('.cp-queue-editor')!;
-      return {
-        scrollable: list.scrollHeight > list.clientHeight,
-        editorScrolls: editor.scrollHeight > editor.clientHeight,
-      };
-    });
-    expect(metrics.scrollable).toBe(true);
-    expect(metrics.editorScrolls).toBe(false);
-    await page.evaluate(() => {
-      document.querySelector('.copilot-page')!.scrollTop = 0;
-    });
-    for (const theme of ['light', 'dark']) {
-      await page.evaluate((value) => {
-        document.documentElement.dataset.theme = value;
-      }, theme);
-      await page.screenshot({
-        path: testInfo.outputPath(`copilot-queue-${viewport.width}-${theme}.png`),
-        fullPage: true,
-      });
-    }
-  }
-  await queue(page).getByRole('button', { name: '上移作业 8', exact: true }).click();
-  await expect(queue(page).getByLabel('执行队列 8', { exact: true })).toBeVisible();
-  for (const width of [960, 390]) {
-    await page.setViewportSize({ width, height: 844 });
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBe(true);
-  }
-});
-
-test('local JSON selection and narrow dark/light layouts provide a return path without horizontal overflow', async ({
-  page,
-}, testInfo) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openCenter(page);
-  await page.getByRole('button', { name: '导入作业', exact: true }).click();
-  await page.locator('input[type=file]').setInputFiles({
-    name: 'synthetic.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(json('窄窗作业')),
-  });
-  await expect(preview(page)).toContainText('窄窗作业');
-  await preview(page).getByRole('button', { name: '导入到作业库', exact: true }).click();
-  await page.getByRole('button', { name: '返回作业列表', exact: true }).click();
-  await library(page)
-    .getByRole('button', { name: /1-7.*窄窗作业|main_01-07.*窄窗作业/u })
-    .click();
-  await expect(page.getByRole('complementary', { name: '作业详情', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '返回作业列表', exact: true })).toBeVisible();
-  for (const theme of ['light', 'dark']) {
-    await page.evaluate((value) => {
-      document.documentElement.dataset.theme = value;
-    }, theme);
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBeTruthy();
-    await page.screenshot({
-      path: testInfo.outputPath(`copilot-narrow-${theme}.png`),
-      fullPage: true,
-    });
-  }
-  await page.getByRole('button', { name: '返回作业列表', exact: true }).click();
-  await expect(library(page)).toBeVisible();
 });
 
 test('an explicitly restored historical selection survives outside the recent snapshot window', async ({

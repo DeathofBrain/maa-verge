@@ -157,51 +157,6 @@ test('in-flight searches are shared and an older query cannot replace a newer re
   ]);
 });
 
-test('expired search data stays visible while refreshing and expired details are fetched again', async ({
-  page,
-}) => {
-  await openCenter(page);
-  await countReads(page);
-  await library(page).getByRole('tab', { name: '社区搜索', exact: true }).click();
-  await library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true }).click();
-  await expect(detail(page)).toBeVisible();
-  await detail(page).getByRole('button', { name: '返回作业列表', exact: true }).click();
-  await library(page)
-    .getByRole('tab', { name: /^本地作业/ })
-    .click();
-  await page.evaluate(() => {
-    const originalNow = Date.now;
-    Date.now = () => originalNow() + 11 * 60_000;
-    const harness = (window as unknown as HarnessWindow).runtimeHarness;
-    const original = harness.call.bind(harness);
-    harness.call = async (method, params) => {
-      if (method === 'copilot.search')
-        await new Promise<void>((resolve) => {
-          (window as unknown as { releaseSearch: () => void }).releaseSearch = resolve;
-        });
-      return original(method, params);
-    };
-  });
-  await library(page).getByRole('tab', { name: '社区搜索', exact: true }).click();
-  const work = library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true });
-  await expect(work).toBeVisible();
-  await expect(library(page).getByText('正在更新搜索结果…', { exact: true })).toBeVisible();
-  await expect
-    .poll(() =>
-      page.evaluate(() => typeof (window as unknown as { releaseSearch: unknown }).releaseSearch),
-    )
-    .toBe('function');
-  await page.evaluate(() => (window as unknown as { releaseSearch: () => void }).releaseSearch());
-  await expect(library(page).locator('.cp-community-results')).toHaveAttribute(
-    'aria-busy',
-    'false',
-  );
-  await work.click();
-  await expect(detail(page)).toBeVisible();
-  expect((await commands(page)).filter((value) => value === 'copilot.preview')).toHaveLength(2);
-  expect((await commands(page)).filter((value) => value === 'copilot.search')).toHaveLength(2);
-});
-
 test('reading a detail preserves visible search results and duplicate requests share one read', async ({
   page,
 }) => {

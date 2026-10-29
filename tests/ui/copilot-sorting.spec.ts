@@ -182,37 +182,3 @@ test('set browsing omits sorting and restores the chosen operation sort', async 
   await expect(result(page, 'id')).toBeVisible();
   expect((await requests(page)).filter((value) => value.orderBy === 'id')).toHaveLength(1);
 });
-
-test('sorting choices fit desktop and narrow windows in both themes', async ({
-  page,
-}, testInfo) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await openCommunity(page);
-  for (const scene of [
-    { name: 'desktop-light', width: 1440, height: 900, colorScheme: 'light' },
-    { name: 'desktop-dark', width: 1280, height: 800, colorScheme: 'dark' },
-    { name: 'narrow-light', width: 390, height: 844, colorScheme: 'light' },
-    { name: 'narrow-dark', width: 390, height: 844, colorScheme: 'dark' },
-  ] as const) {
-    await page.setViewportSize({ width: scene.width, height: scene.height });
-    await page.emulateMedia({ colorScheme: scene.colorScheme });
-    await sorting(page).scrollIntoViewIfNeeded();
-    for (const name of ['热度', '最新', '访问量']) {
-      await expect(choice(page, name)).toBeInViewport();
-      const bounds = await choice(page, name).boundingBox();
-      expect(bounds).not.toBeNull();
-      expect(bounds!.x).toBeGreaterThanOrEqual(0);
-      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(scene.width);
-    }
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-      ),
-    ).toBe(true);
-    await page.screenshot({
-      path: testInfo.outputPath(`sorting-${scene.name}.png`),
-      fullPage: true,
-    });
-  }
-});

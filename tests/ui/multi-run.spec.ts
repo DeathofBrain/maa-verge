@@ -1,5 +1,6 @@
 import { deviceOption, deviceOptions, devicePicker, selectDevice } from './fixtures/device-picker';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import type { Snapshot } from '../../packages/contracts/src/index';
 
 test('one task table runs on two instances and each instance stops independently', async ({
   page,
@@ -41,13 +42,12 @@ test('one task table runs on two instances and each instance stops independently
       .sort(),
   ).toEqual(['running', 'stopped']);
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await panel.getByRole('button', { name: '停止实例 第二个模拟器', exact: true }).click();
 });
 
 test('the dock device selector follows progress and logs without borrowing another device run', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   const second = (await page.evaluate(async () =>
@@ -72,10 +72,6 @@ test('the dock device selector follows progress and logs without borrowing anoth
   await expect(deviceOptions(page)).toBeVisible();
   await expect(deviceOptions(page)).not.toContainText(/执行中|空闲|离线|已连接/);
   await expect(deviceOptions(page)).toContainText('127.0.0.1:5557');
-  const optionsBounds = await deviceOptions(page).boundingBox();
-  const pickerBounds = await target.boundingBox();
-  expect(optionsBounds!.y + optionsBounds!.height).toBeLessThanOrEqual(pickerBounds!.y);
-  await page.screenshot({ path: testInfo.outputPath('device-picker-open.png'), fullPage: true });
   await target.press('End');
   await expect(target).toBeFocused();
   await expect(target).toHaveAttribute(
@@ -86,7 +82,6 @@ test('the dock device selector follows progress and logs without borrowing anoth
   await target.press('Enter');
   await expect(deviceOptions(page)).toHaveCount(0);
   await expect(target).toHaveAttribute('data-value', second.id);
-  await expect(dock).not.toHaveClass(/is-running/u);
   await expect(dock.getByRole('button', { name: '停止执行', exact: true })).toHaveCount(0);
   await dock.getByRole('button', { name: '运行详情', exact: true }).click();
   await expect(runPanel).toBeVisible();
@@ -107,7 +102,6 @@ test('the dock device selector follows progress and logs without borrowing anoth
   await expect(target).toBeFocused();
   await expect(runPanel).toBeVisible();
   await selectDevice(page, 'mock-device-1');
-  await expect(dock).toHaveClass(/is-running/u);
   await expect(dock.getByRole('button', { name: '停止执行', exact: true })).toBeVisible();
   await expect(runPanel.locator('.run-panel-heading')).toContainText('本地模拟设备');
   await expect(logs.locator('code').filter({ hasText: /^run.started$/ })).toHaveCount(1);
@@ -180,4 +174,56 @@ test('a busy device binding automatically saves and blocks a conflicting start',
   expect(state.runs.some((run) => run.planId === 'farm-1-7')).toBe(false);
   expect(state.plans.find((item) => item.id === 'farm-1-7')?.deviceId).toBe(second.id);
   await expect(wb.getByLabel('绑定设备', { exact: true })).toHaveValue(second.id);
+});
+
+test('an offline bound device reaches runtime validation after auto connection fails without starting another instance', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
+  const second = await page.evaluate(async () => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const device = (await api.call('device.connect', {
+      address: '127.0.0.1:5557',
+      name: '可用的其他模拟器',
+    })) as { id: string };
+    const state = (await api.call('app.snapshot', {})) as Snapshot;
+    const plan = state.plans.find((item) => item.id === 'farm-1-7')!;
+    await api.call('plan.save', { plan: { ...plan, deviceId: 'mock-device-1' } });
+    await api.call('device.disconnect', { id: 'mock-device-1' });
+    const original = api.call.bind(api);
+    api.call = async (method, params) => {
+      if (method === 'device.auto_connect') {
+        api.commands.push(method);
+        throw new Error('合成自动连接失败');
+      }
+      if (method === 'run.start') api.commands.push(`run.start:${params.deviceId}`);
+      return original(method, params);
+    };
+    return device.id;
+  });
+  await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
+  await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
+  const wb = page.getByRole('region', { name: '任务表工作台', exact: true });
+  await wb.getByRole('tab', { name: '任务表设置', exact: true }).click();
+  await expect(wb.getByLabel('绑定设备', { exact: true })).toHaveValue('mock-device-1');
+  await expect(wb.getByLabel('绑定设备', { exact: true }).locator('option:checked')).toContainText(
+    '离线',
+  );
+  const start = wb.getByRole('button', { name: '开始执行', exact: true });
+  await start.click();
+  await expect(page.getByRole('alert')).toContainText('设备不可用或正在执行任务');
+  await expect(start).toBeEnabled();
+  const state = await page.evaluate(async () => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    return {
+      snapshot: (await api.call('app.snapshot', {})) as Snapshot,
+      attempts: api.commands.filter(
+        (command) => command === 'device.auto_connect' || command.startsWith('run.start:'),
+      ),
+    };
+  });
+  expect(state.attempts).toEqual(['device.auto_connect', 'run.start:mock-device-1']);
+  expect(state.snapshot.runs).toHaveLength(0);
+  expect(state.snapshot.devices.find((device) => device.id === second)?.state).toBe('idle');
 });

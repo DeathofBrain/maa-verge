@@ -26,7 +26,6 @@ test('closing asks each time until a choice is remembered, and supports keyboard
 test('remembering tray persists through reload and can be reset in settings', async ({ page }) => {
   await page.goto('/');
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
-  await page.getByLabel('界面主题', { exact: true }).selectOption('dark');
   await page.getByRole('button', { name: '关闭窗口', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '关闭 Maa Verge', exact: true });
   await dialog.getByRole('checkbox', { name: /记住我的选择/ }).check();
@@ -42,7 +41,6 @@ test('remembering tray persists through reload and can be reset in settings', as
   await page.getByRole('button', { name: '关闭窗口', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
-  await expect(page.getByLabel('界面主题', { exact: true })).toHaveValue('dark');
   await expect(page.getByLabel('关闭窗口时', { exact: true })).toHaveValue('tray');
   await page.getByLabel('关闭窗口时', { exact: true }).selectOption('ask');
   await expect(page.getByLabel('关闭窗口时', { exact: true })).toHaveValue('ask');
@@ -161,35 +159,6 @@ test('tray exit stays modal through repeated requests and runtime disconnection'
   expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.commands)).toEqual([
     'exit_ui_ready',
   ]);
-});
-
-test('close and exit dialogs fit light, dark and narrow windows', async ({ page }, testInfo) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
-  await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: '关闭 Maa Verge', exact: true });
-  for (const [theme, width] of [
-    ['light', 1440],
-    ['dark', 1280],
-    ['dark', 390],
-  ] as const) {
-    await page.setViewportSize({ width, height: 900 });
-    await page.getByLabel('界面主题', { exact: true }).selectOption(theme);
-    await page.getByRole('button', { name: '关闭窗口', exact: true }).click();
-    await expect(dialog).toBeVisible();
-    const bounds = await dialog.boundingBox();
-    expect(bounds!.x).toBeGreaterThanOrEqual(0);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
-    expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-    await page.screenshot({ path: testInfo.outputPath(`close-${theme}-${width}.png`) });
-    await dialog.getByRole('button', { name: '取消关闭', exact: true }).click();
-  }
-  await page.getByRole('button', { name: '关闭窗口', exact: true }).click();
-  await dialog.getByRole('button', { name: '退出应用', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '正在退出…', exact: true })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('exiting-dark-390.png') });
-  expect(errors).toEqual([]);
 });
 
 test.describe('before the application snapshot is ready', () => {

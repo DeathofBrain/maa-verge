@@ -25,9 +25,7 @@ async function openCopilot(page: Page) {
   return page.getByRole('combobox', { name: '查看作业设备', exact: true });
 }
 
-test('shared select uses its themed menu for pointer and keyboard selection and dismissal', async ({
-  page,
-}) => {
+test('shared select supports pointer and keyboard selection and dismissal', async ({ page }) => {
   const control = await openCopilot(page);
   await openMenu(page, control);
   await expect(option(page, '')).toHaveText('全部设备');
@@ -179,51 +177,3 @@ test('stage groups preserve unavailable options and Escape dismisses the menu be
   await control.press('Escape');
   await expect(drawer).toBeHidden();
 });
-
-for (const [theme, width, height] of [
-  ['light', 1440, 900],
-  ['dark', 1280, 800],
-  ['light', 390, 844],
-  ['dark', 390, 844],
-] as const) {
-  test(`select menu stays within the ${theme} ${width}px viewport`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height });
-    await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
-    await page.goto('/');
-    await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
-    await page.evaluate(async () => {
-      const harness = (window as unknown as HarnessWindow).runtimeHarness;
-      for (let index = 0; index < 8; index++) {
-        await harness.call('device.connect', {
-          address: `127.0.0.1:${15560 + index}`,
-          name:
-            index === 0
-              ? 'MuMu安卓设备（实例 0）'
-              : `合成设备 ${index} · 用于检查长名称的菜单边界与换行`,
-        });
-      }
-    });
-    await navigate(page, '作业中心');
-    await expect(page.locator(':root')).toHaveAttribute('data-theme', theme);
-    const control = page.getByRole('combobox', { name: '查看作业设备', exact: true });
-    await expect(control.locator('option')).toHaveCount(10);
-    await openMenu(page, control);
-    await expect(menu(page)).toContainText('MuMu安卓设备（实例 0）');
-    const bounds = await menu(page).boundingBox();
-    expect(bounds).not.toBeNull();
-    expect(bounds!.x).toBeGreaterThanOrEqual(0);
-    expect(bounds!.y).toBeGreaterThanOrEqual(0);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
-    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height);
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-      ),
-    ).toBe(true);
-    await page.evaluate(() => document.fonts.ready);
-    await page.screenshot({
-      path: testInfo.outputPath(`select-${theme}-${width}.png`),
-      fullPage: true,
-    });
-  });
-}

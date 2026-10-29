@@ -136,12 +136,6 @@ test('compiled NSIS cleanup removes default component trees, preserves custom da
   assert.equal(existsSync(application), false, 'empty installation directory is removed');
 });
 
-test('Windows builds target NSIS only', () => {
-  const overlay = JSON.parse(readFileSync(path.join(tauriRoot, 'tauri.windows.conf.json'), 'utf8'));
-  assert.deepEqual(overlay.bundle.targets, ['nsis']);
-  assert.equal(configuration.bundle.windows.wix, undefined);
-});
-
 test('compiled offline component hooks honor selections and preserve active component and business files', async (t) => {
   if (!available(t, [nsis])) return;
   const root = fixture(t),

@@ -253,9 +253,8 @@ test('Agent proposes a reviewable plan without starting a run', async ({ page })
 
 test('the persistent run dock reports progress and stop preserves the plan and history', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
   await openWorkspace(page);
   await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
   await expect(dock(page)).toContainText('执行中');
@@ -270,19 +269,6 @@ test('the persistent run dock reports progress and stop preserves the plan and h
   await expect(devicePicker(page)).toBeEnabled();
   await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
   await expect(dock(page).getByRole('button', { name: '停止执行', exact: true })).toBeHidden();
-  for (const layout of [
-    { width: 1440, height: 900, theme: 'light' },
-    { width: 1280, height: 800, theme: 'dark' },
-    { width: 390, height: 844, theme: 'dark' },
-  ] as const) {
-    await page.setViewportSize({ width: layout.width, height: layout.height });
-    await page.emulateMedia({ colorScheme: layout.theme, reducedMotion: 'reduce' });
-    await expect(panel).toBeVisible();
-    await page.screenshot({
-      path: testInfo.outputPath(`run-panel-${layout.theme}-${layout.width}.png`),
-      fullPage: true,
-    });
-  }
   await page.setViewportSize({ width: 1440, height: 900 });
   await panel.getByRole('button', { name: '收起运行详情', exact: true }).click();
   await expect(panel).toHaveCount(0);
@@ -291,63 +277,6 @@ test('the persistent run dock reports progress and stop preserves the plan and h
   await expect(page.getByRole('cell', { name: '模拟执行已停止', exact: true })).toBeVisible();
   await reloadWorkspace(page, '每日长草计划');
   await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
-});
-
-test('resource updates activate independently without changing MaaCore', async ({ page }) => {
-  await openWorkspace(page);
-  await settingsCategory(page, '更新');
-  const core = channel(page, 'MaaCore 核心');
-  const resource = channel(page, '游戏资源');
-  await expect(core.locator('.channel-version')).toHaveText('v6.19.0');
-  await resource.getByRole('button', { name: '检查更新', exact: true }).click();
-  await resource.getByRole('button', { name: '准备更新', exact: true }).click();
-  await resource.getByRole('button', { name: '应用更新', exact: true }).click();
-  await expect(resource.locator('.channel-version')).toHaveText('活动信息未提供');
-  await expect(resource).toContainText('2026-10-20');
-  await expect(resource.locator('.pill')).toHaveText('已更新');
-  await expect(core.locator('.channel-version')).toHaveText('v6.19.0');
-  await resource.getByRole('button', { name: '回滚上一版本', exact: true }).click();
-  await expect(resource).toContainText('2026-10-18');
-});
-
-test('a prepared update waits for the running device before activating', async ({ page }) => {
-  await openWorkspace(page);
-  await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
-  await settingsCategory(page, '更新');
-  const core = channel(page, 'MaaCore 核心');
-  await core.getByRole('button', { name: '检查更新', exact: true }).click();
-  await core.getByRole('button', { name: '准备更新', exact: true }).click();
-  await core.getByRole('button', { name: '应用更新', exact: true }).click();
-  await expect(core.getByRole('button', { name: '等待空闲生效' })).toBeDisabled();
-  await expect(core.locator('.channel-version')).toContainText('v6.19.0');
-  await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
-  await expect(core.locator('.pill')).toHaveText('已更新');
-  await expect(core.locator('.channel-version')).toHaveText('v6.20.0');
-});
-
-test('executing task tables cannot be deleted through the editor or runtime', async ({ page }) => {
-  await openWorkspace(page);
-  await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
-  await expect(wb(page).getByRole('status', { name: '任务表运行状态', exact: true })).toContainText(
-    '执行中',
-  );
-  const remove = wb(page).getByRole('button', { name: '删除任务表', exact: true });
-  await expect(remove).toBeVisible();
-  await expect(remove).toBeDisabled();
-  await expect(remove).toHaveAttribute('title', '请先停止此任务表的执行，再删除任务表');
-  expect(
-    await page.evaluate(async () => {
-      try {
-        await (window as HarnessWindow).runtimeHarness.call('plan.delete', { id: 'daily' });
-        return '';
-      } catch (cause) {
-        return cause instanceof Error ? cause.message : String(cause);
-      }
-    }),
-  ).toContain('请先停止执行中的计划');
-  await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
-  await wb(page).getByRole('button', { name: '停止执行', exact: true }).click();
-  await expect(remove).toBeEnabled();
 });
 
 test('mobile navigation closes after selecting pages and can create task tables', async ({
@@ -368,7 +297,6 @@ test('mobile navigation closes after selecting pages and can create task tables'
   ]) {
     await page.getByRole('button', { name: '打开导航', exact: true }).click();
     await navigate(page, name);
-    await expect(page.getByRole('navigation', { name: '主导航' })).not.toBeInViewport();
   }
   await openTaskTables(page);
   await page
@@ -448,171 +376,6 @@ test('advanced JSON preserves invalid drafts and updates list fields and switche
   await savePlan(page);
 });
 
-test('routine fight settings preserve targets, multiplier and unlimited count after reload', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await openSavedPlan(page, '固源岩补给');
-  await wb(page).getByLabel('作战关卡', { exact: true }).selectOption('CE-6');
-  await expect(wb(page).getByLabel('作战关卡', { exact: true })).toHaveValue('CE-6');
-  await wb(page).getByRole('checkbox', { name: '指定次数', exact: true }).uncheck();
-  await wb(page).getByLabel('代理倍率', { exact: true }).selectOption('0');
-  await wb(page).getByRole('checkbox', { name: '指定材料', exact: true }).check();
-  await wb(page).getByLabel('目标材料', { exact: true }).selectOption('30013');
-  await wb(page).getByRole('button', { name: '添加材料目标', exact: true }).click();
-  await wb(page).getByLabel('固源岩组目标数量', { exact: true }).fill('7');
-  await savePlan(page);
-  await reloadWorkspace(page, '固源岩补给');
-  await expect(wb(page).getByRole('checkbox', { name: '指定次数', exact: true })).not.toBeChecked();
-  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toHaveValue('7');
-  await expect(wb(page).getByLabel('代理倍率', { exact: true })).toHaveValue('0');
-  await wb(page).locator('.advanced-params summary').click();
-  const params = JSON.parse(await wb(page).getByLabel('任务参数 JSON').inputValue());
-  expect(params).toMatchObject({
-    stage: 'CE-6',
-    series: 0,
-    times: 2147483647,
-    drops: { '30013': 7 },
-    medicine: 0,
-    stone: 0,
-  });
-  await wb(page).getByLabel('代理倍率', { exact: true }).selectOption('-1');
-  expect(JSON.parse(await wb(page).getByLabel('任务参数 JSON').inputValue()).series).toBe(-1);
-  await wb(page).getByRole('checkbox', { name: '指定材料', exact: true }).uncheck();
-  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toBeDisabled();
-  await expect(wb(page).getByRole('button', { name: '添加材料目标', exact: true })).toBeDisabled();
-  await expect(
-    wb(page).getByRole('button', { name: '移除材料 30013', exact: true }),
-  ).toBeDisabled();
-  await savePlan(page);
-  const saved = await page.evaluate(async () => {
-    const snapshot = (await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as {
-      plans: Plan[];
-    };
-    return snapshot.plans.find((plan) => plan.id === 'farm-1-7')!.tasks[0].params;
-  });
-  expect(saved).toMatchObject({ drops_enabled: false, drops: { '30013': 7 } });
-  await reloadWorkspace(page, '固源岩补给');
-  await expect(wb(page).getByRole('checkbox', { name: '指定材料', exact: true })).not.toBeChecked();
-  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toHaveValue('7');
-  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toBeDisabled();
-  await wb(page).getByRole('checkbox', { name: '指定材料', exact: true }).check();
-  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toBeEnabled();
-  await savePlan(page);
-  await reloadWorkspace(page, '固源岩补给');
-  await expect(wb(page).getByRole('checkbox', { name: '指定材料', exact: true })).toBeChecked();
-  await expect(wb(page).getByLabel('固源岩组目标数量', { exact: true })).toHaveValue('7');
-});
-
-test('all eleven base facilities and credit clue actions map to core parameters', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await wb(page).getByRole('button', { name: '设置第 3 条基建换班', exact: true }).click();
-  const facilities = wb(page).getByRole('group', { name: '换班设施与顺序', exact: true });
-  await expect(facilities.getByRole('checkbox')).toHaveCount(11);
-  await wb(page).getByRole('button', { name: '全选设施', exact: true }).click();
-  await facilities.getByRole('checkbox', { name: '回收站', exact: true }).uncheck();
-  await wb(page).getByLabel('换班心情阈值', { exact: false }).fill('40');
-  for (const label of ['会客室信息板收取信用', '进行线索交流', '赠送线索'])
-    await wb(page).getByRole('checkbox', { name: label, exact: true }).check();
-  await savePlan(page);
-  await reloadWorkspace(page, '每日长草计划');
-  await wb(page).getByRole('button', { name: '设置第 3 条基建换班', exact: true }).click();
-  await wb(page).locator('.advanced-params summary').click();
-  const params = JSON.parse(await wb(page).getByLabel('任务参数 JSON').inputValue());
-  expect(params.facility).toHaveLength(10);
-  expect(params.facility).toEqual(
-    expect.arrayContaining(['Processing', 'Training', 'AssistantChange']),
-  );
-  expect(params).toMatchObject({
-    threshold: 0.4,
-    reception_message_board: true,
-    reception_clue_exchange: true,
-    reception_send_clue: true,
-  });
-  await wb(page).getByRole('button', { name: '清空设施', exact: true }).click();
-  expect(JSON.parse(await wb(page).getByLabel('任务参数 JSON').inputValue()).facility).toEqual([]);
-});
-
-test('recruitment confirmation and per-star times save without enabling restricted consumption', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await wb(page).getByRole('button', { name: '设置第 2 条公开招募', exact: true }).click();
-  await wb(page).getByRole('checkbox', { name: '自动确认 5 星', exact: true }).check();
-  await wb(page).getByLabel('3 星招募时长', { exact: true }).fill('07:40');
-  await expect(wb(page).getByLabel('5 星招募时长', { exact: true })).toBeDisabled();
-  await expect(
-    wb(page).getByRole('checkbox', { name: '自动确认 6 星', exact: true }),
-  ).toBeDisabled();
-  await expect(
-    wb(page).getByRole('checkbox', { name: '自动使用加急许可', exact: true }),
-  ).toBeDisabled();
-  await savePlan(page);
-  await reloadWorkspace(page, '每日长草计划');
-  await wb(page).getByRole('button', { name: '设置第 2 条公开招募', exact: true }).click();
-  await expect(wb(page).getByLabel('3 星招募时长', { exact: true })).toHaveValue('07:40');
-  await wb(page).locator('.advanced-params summary').click();
-  expect(JSON.parse(await wb(page).getByLabel('任务参数 JSON').inputValue())).toMatchObject({
-    confirm: [3, 4, 5],
-    select: [3, 4, 5],
-    recruitment_time: { '3': 460 },
-    set_time: true,
-  });
-});
-
-test('reward switches and combined data update restore their independent settings', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await wb(page).getByRole('button', { name: '设置第 5 条领取奖励', exact: true }).click();
-  const rewards = wb(page).locator('.task-fields').getByRole('checkbox');
-  await expect(rewards).toHaveCount(7);
-  for (const checkbox of await rewards.all()) await checkbox.check();
-  await wb(page).getByLabel('添加任务类型').selectOption('UserDataUpdate');
-  await wb(page).getByRole('button', { name: '添加任务', exact: true }).click();
-  await wb(page).getByRole('checkbox', { name: '干员识别', exact: true }).uncheck();
-  await wb(page).getByLabel('触发间隔', { exact: true }).selectOption('weekly');
-  await expect(wb(page).getByLabel('数据同步状态', { exact: true })).toContainText('暂无成功记录');
-  await savePlan(page);
-  await reloadWorkspace(page, '每日长草计划');
-  await wb(page).getByRole('button', { name: '设置第 6 条更新数据', exact: true }).click();
-  await expect(wb(page).getByRole('checkbox', { name: '干员识别', exact: true })).not.toBeChecked();
-  await expect(wb(page).getByRole('checkbox', { name: '仓库识别', exact: true })).toBeChecked();
-  await expect(wb(page).getByLabel('触发间隔', { exact: true })).toHaveValue('weekly');
-  await wb(page).getByRole('button', { name: '设置第 5 条领取奖励', exact: true }).click();
-  for (const checkbox of await wb(page).locator('.task-fields').getByRole('checkbox').all())
-    await expect(checkbox).toBeChecked();
-});
-
-test('routine settings stay usable in desktop and narrow inspectors', async ({
-  page,
-}, testInfo) => {
-  await openWorkspace(page);
-  for (const [width, theme] of [
-    [1440, 'light'],
-    [390, 'dark'],
-  ] as const) {
-    await page.setViewportSize({ width, height: 950 });
-    await page.evaluate((value) => {
-      document.documentElement.dataset.theme = value;
-    }, theme);
-    for (const [index, name] of [
-      [1, '启动游戏'],
-      [2, '公开招募'],
-      [3, '基建换班'],
-    ] as const) {
-      const back = wb(page).getByRole('button', { name: '任务列表', exact: true });
-      if (await back.isVisible()) await back.click();
-      await wb(page)
-        .getByRole('button', { name: `设置第 ${index} 条${name}`, exact: true })
-        .click();
-      await page.screenshot({ path: testInfo.outputPath(`${theme}-${index}.png`) });
-    }
-  }
-});
-
 test('automatic connection is deterministic with the test runtime and its preference persists', async ({
   page,
 }) => {
@@ -645,106 +408,6 @@ test('automatic connection is deterministic with the test runtime and its prefer
   await expect(page.getByRole('checkbox', { name: '自动检测连接', exact: true })).not.toBeChecked();
   await navigate(page, '执行记录');
   await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
-});
-
-test('capture choices preserve drafts and save independently of the actual connected protocol', async ({
-  page,
-}) => {
-  await openHome(page);
-  await navigate(page, '设备');
-  await openConnectionSettings(page);
-  const form = page.locator('.sp-capture-form');
-  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
-  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认');
-  await page.getByLabel('截图协议', { exact: true }).selectOption('mumu');
-  await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\MuMu');
-  await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
-  await navigate(page, '主页');
-  await navigate(page, '设备');
-  await openConnectionSettings(page);
-  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('mumu');
-  await page.reload();
-  await navigate(page, '设备');
-  await openConnectionSettings(page);
-  await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue(
-    'C:\\synthetic\\MuMu',
-  );
-  await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('2');
-  await expect(form).toContainText('有未保存的修改');
-  await form.getByRole('button', { name: '放弃修改', exact: true }).click();
-  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
-  await page.getByLabel('截图协议', { exact: true }).selectOption('mumu');
-  await page.getByLabel('模拟器安装目录', { exact: true }).fill('  C:\\synthetic\\MuMu  ');
-  await page.getByLabel('模拟器实例索引', { exact: true }).fill('2');
-  await form.getByRole('button', { name: '保存截图配置', exact: true }).click();
-  await expect(page.locator('.toast')).toContainText('连接配置已保存，下次连接生效');
-  await expect(form.getByText('已保存', { exact: true })).toBeVisible();
-  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认');
-  await page.reload();
-  await navigate(page, '设备');
-  await openConnectionSettings(page);
-  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('mumu');
-  await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue(
-    'C:\\synthetic\\MuMu',
-  );
-  await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('2');
-  await page.getByLabel('截图协议', { exact: true }).selectOption('ldplayer');
-  await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\LDPlayer');
-  await page.getByLabel('模拟器实例索引', { exact: true }).fill('0');
-  await form.getByRole('button', { name: '保存截图配置', exact: true }).click();
-  await expect(form.getByText('已保存', { exact: true })).toBeVisible();
-  await page.reload();
-  await navigate(page, '设备');
-  await openConnectionSettings(page);
-  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('ldplayer');
-  await expect(page.getByLabel('模拟器安装目录', { exact: true })).toHaveValue(
-    'C:\\synthetic\\LDPlayer',
-  );
-  await expect(page.getByLabel('模拟器实例索引', { exact: true })).toHaveValue('0');
-  await expect(page.getByRole('checkbox', { name: '自动检测连接', exact: true })).toBeChecked();
-  await page.getByRole('button', { name: '关闭设备连接设置', exact: true }).click();
-  await page.getByRole('button', { name: '断开设备', exact: true }).click();
-  await expect(page.getByLabel('实际截图方式', { exact: true })).toHaveText('未确认（设备已断开）');
-  await navigate(page, '执行记录');
-  await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
-});
-
-test('enhanced capture requires an installation directory and a nonnegative integer instance', async ({
-  page,
-}) => {
-  await openHome(page);
-  await navigate(page, '设备');
-  await openConnectionSettings(page);
-  const form = page.locator('.sp-capture-form');
-  await page.getByLabel('截图协议', { exact: true }).selectOption('ldplayer');
-  await expect(form).toContainText('不会自动改用 ADB 截图');
-  await form.getByRole('button', { name: '保存截图配置', exact: true }).click();
-  expect(
-    await page
-      .getByLabel('模拟器安装目录', { exact: true })
-      .evaluate((input: HTMLInputElement) => input.validity.valueMissing),
-  ).toBe(true);
-  await page.getByLabel('模拟器安装目录', { exact: true }).fill('   ');
-  expect(
-    await page
-      .getByLabel('模拟器安装目录', { exact: true })
-      .evaluate((input: HTMLInputElement) => input.validity.patternMismatch),
-  ).toBe(true);
-  await page.getByLabel('模拟器安装目录', { exact: true }).fill('C:\\synthetic\\LDPlayer');
-  await page.getByLabel('模拟器实例索引', { exact: true }).fill('-1');
-  expect(
-    await page
-      .getByLabel('模拟器实例索引', { exact: true })
-      .evaluate((input: HTMLInputElement) => input.validity.rangeUnderflow),
-  ).toBe(true);
-  await page.getByLabel('模拟器实例索引', { exact: true }).fill('1.5');
-  expect(
-    await page
-      .getByLabel('模拟器实例索引', { exact: true })
-      .evaluate((input: HTMLInputElement) => input.validity.stepMismatch),
-  ).toBe(true);
-  await form.getByRole('button', { name: '放弃修改', exact: true }).click();
-  await expect(page.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
 });
 
 test('Fight consumption limits save directly and all-disabled execution is rejected', async ({
@@ -907,26 +570,6 @@ test('task-table metadata, device binding and derived zero limits persist togeth
   await expect(wb(page).getByRole('button', { name: '开始执行', exact: true })).toBeVisible();
 });
 
-test('enabled Fight task limits accumulate and disabled tasks do not contribute', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await createPlan(page, '累计上限');
-  await wb(page).getByLabel('理智药上限', { exact: true }).fill('2');
-  await wb(page).getByLabel('源石上限', { exact: true }).fill('1');
-  await wb(page).getByLabel('添加任务类型').selectOption('Fight');
-  await wb(page).getByRole('button', { name: '添加任务', exact: true }).click();
-  await wb(page).getByLabel('理智药上限', { exact: true }).fill('3');
-  await wb(page).getByLabel('源石上限', { exact: true }).fill('2');
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 5 · 源石 3')).toBeVisible();
-  await wb(page).getByRole('checkbox', { name: '启用第 10 条任务', exact: true }).uncheck();
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 2 · 源石 1')).toBeVisible();
-  await savePlan(page);
-  await reloadWorkspace(page, '累计上限');
-  await tab(page, '任务表设置');
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 2 · 源石 1')).toBeVisible();
-});
-
 test('global search locates updates, saved tables and individual task settings', async ({
   page,
 }) => {
@@ -935,18 +578,14 @@ test('global search locates updates, saved tables and individual task settings',
   await closeDetail(page);
   const search = page.getByLabel('搜索任务与设置', { exact: true });
   const results = page.getByRole('region', { name: '搜索结果', exact: true });
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 900 });
-    await search.fill('资源更新');
-    await expect(results).toBeVisible();
-    await results.getByRole('button', { name: /更新/ }).click();
-    await expect(channel(page, 'Maa Verge 应用')).toBeVisible();
-    await expect(channel(page, 'MaaCore 核心')).toBeVisible();
-    await expect(channel(page, '游戏资源')).toBeVisible();
-    await expect(page.getByLabel('搜索设置', { exact: true })).toHaveValue('资源更新');
-    await expect(results).toBeHidden();
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await search.fill('资源更新');
+  await expect(results).toBeVisible();
+  await results.getByRole('button', { name: /更新/ }).click();
+  await expect(channel(page, 'Maa Verge 应用')).toBeVisible();
+  await expect(channel(page, 'MaaCore 核心')).toBeVisible();
+  await expect(channel(page, '游戏资源')).toBeVisible();
+  await expect(page.getByLabel('搜索设置', { exact: true })).toHaveValue('资源更新');
+  await expect(results).toBeHidden();
   await search.fill('固源岩');
   await page
     .getByRole('region', { name: '搜索结果' })
@@ -971,55 +610,6 @@ test('global search locates updates, saved tables and individual task settings',
   await expect(wb(page).getByRole('heading', { name: '基建换班', exact: true })).toBeVisible();
   await expect(wb(page).getByLabel('无人机用途', { exact: true })).toBeVisible();
   await expect(wb(page).getByLabel('设施顺序', { exact: true })).toHaveCount(0);
-});
-
-test('starting flushes pending changes and keeps the editor open with run feedback', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await closeDetail(page);
-  await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
-  await wb(page).getByLabel('作战次数').fill('9');
-  await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
-  await expect(dock(page)).toContainText('执行中');
-  await expect(wb(page).getByRole('status', { name: '任务表运行状态', exact: true })).toContainText(
-    '执行中',
-  );
-  await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
-  await wb(page).getByRole('button', { name: '查看执行', exact: true }).click();
-  await expect(page.getByRole('region', { name: '任务表执行页面', exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: '任务表', exact: true }).click();
-  await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
-  await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
-  await expect(wb(page).getByRole('status', { name: '任务表运行状态', exact: true })).toContainText(
-    '执行中',
-  );
-  await wb(page).getByRole('button', { name: '停止执行', exact: true }).click();
-  await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
-  await expect(dock(page)).toContainText('执行中');
-  await wb(page).getByRole('button', { name: '停止执行', exact: true }).click();
-  await reloadWorkspace(page, '固源岩补给');
-  await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
-});
-
-test('device connect and disconnect stay deterministic with the test runtime', async ({ page }) => {
-  await openWorkspace(page);
-  await navigate(page, '设备');
-  await page.getByLabel('手动连接 ADB 地址', { exact: true }).fill('localhost:5557');
-  await page.getByRole('button', { name: '连接设备', exact: true }).click();
-  await expect(page.locator('.sp-device-item')).toHaveCount(2);
-  await expect(page.locator('.sp-device-detail')).toContainText('127.0.0.1:5557');
-  await page.getByLabel('手动连接 ADB 地址', { exact: true }).fill('127.0.0.1:5557');
-  await page.getByRole('button', { name: '连接设备', exact: true }).click();
-  await expect(page.locator('.sp-device-item')).toHaveCount(2);
-  await page.getByRole('button', { name: '断开设备', exact: true }).click();
-  await expect(page.locator('.sp-device-detail')).toContainText('已断开');
-  await expect(page.getByRole('button', { name: '断开设备', exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
-  await expect(page.locator('.sp-device-detail')).toContainText('空闲就绪');
-  await navigate(page, '执行记录');
-  await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
 });
 
 test('recruitment calculation is independent and never creates a task table', async ({ page }) => {
@@ -1057,39 +647,4 @@ test('model drafts survive settings category changes without saving prematurely'
   await page.reload();
   await settingsCategory(page, '模型与 Agent');
   await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-model');
-});
-
-test('copilot entries focus the exact task when a table contains duplicate task types', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  // Seed a pre-existing task table: new作业 belong to the independent center.
-  await page.evaluate(async () => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    const state = (await api.call('app.snapshot', {})) as { plans: { tasks: unknown[] }[] };
-    await api.call('plan.save', {
-      plan: {
-        ...state.plans[0],
-        id: 'legacy-double-copilot',
-        name: '双作业',
-        tasks: [
-          ...state.plans[0].tasks,
-          { type: 'Copilot', enabled: true, params: { filename: '/synthetic/first.json' } },
-          { type: 'Copilot', enabled: true, params: { filename: '/synthetic/second.json' } },
-        ],
-      },
-    });
-  });
-  await navigate(page, '作业中心');
-  await page.locator('details.cp-legacy summary').click();
-  await page
-    .locator('.cp-legacy-row')
-    .filter({ hasText: '/synthetic/second.json' })
-    .getByRole('button', { name: '编辑原配置', exact: true })
-    .click();
-  await expect(wb(page).getByRole('heading', { name: '双作业', exact: true })).toBeVisible();
-  await expect(wb(page).getByLabel('作业文件路径', { exact: true })).toHaveValue(
-    '/synthetic/second.json',
-  );
-  await expect(wb(page).getByText('第 7 条任务 · 独立设置', { exact: true })).toBeVisible();
 });

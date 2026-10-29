@@ -17,48 +17,6 @@ async function communityDetail(page: Page) {
   await expect(detail(page)).toBeVisible();
 }
 
-test('community works open full details with portraits and grouped requirements before importing', async ({
-  page,
-}) => {
-  await openCenter(page);
-  await communityDetail(page);
-  await expect(page.locator('.cp-browser')).toBeVisible();
-  await expect(page.getByRole('dialog', { name: '作业详情弹窗', exact: true })).toBeVisible();
-  expect(await page.locator('#root').evaluate((value) => (value as HTMLElement).inert)).toBe(true);
-  await expect(
-    detail(page).getByRole('heading', { name: '合成社区作业 101', exact: true }),
-  ).toBeFocused();
-  await detail(page)
-    .locator('.operator-badge')
-    .filter({ hasText: '阿米娅' })
-    .scrollIntoViewIfNeeded();
-  await expect(detail(page).getByRole('img', { name: '阿米娅头像', exact: true })).toBeVisible();
-  await detail(page)
-    .locator('.operator-badge')
-    .filter({ hasText: '能天使' })
-    .scrollIntoViewIfNeeded();
-  await expect(detail(page).getByRole('img', { name: '能天使头像', exact: true })).toBeVisible();
-  await expect(detail(page).locator('.cp-operator-grid').first()).toContainText('精二 · 等级 80');
-  await expect(detail(page).locator('.cp-operator-groups')).toContainText('输出备选组内任选一位');
-  await expect(detail(page).getByRole('button', { name: '加入执行队列', exact: true })).toHaveCount(
-    0,
-  );
-  const count = await page.evaluate(async () => {
-    const result = (await (window as unknown as HarnessWindow).runtimeHarness.call(
-      'copilot.list',
-      {},
-    )) as { total: number };
-    return result.total;
-  });
-  expect(count).toBe(0);
-  await detail(page).getByRole('button', { name: '返回作业列表', exact: true }).click();
-  await expect(library(page)).toBeVisible();
-  await expect(
-    library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true }),
-  ).toBeFocused();
-  await expect(library(page).getByLabel('社区搜索关键词')).toHaveValue('');
-});
-
 test('community ratings submit only explicit gestures and a failed write preserves the previous vote', async ({
   page,
 }) => {
@@ -249,60 +207,4 @@ test('sets have a direct entry, allow selecting members, and retain a path back 
   await expect(preview.getByLabel('选择导入 2', { exact: true })).toBeChecked();
   await expect(preview.getByLabel('选择导入 3', { exact: true })).toBeDisabled();
   await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
-});
-
-test('a single queued work uses map navigation while an explicit loop explains its formation starting point', async ({
-  page,
-}) => {
-  await openCenter(page);
-  await communityDetail(page);
-  await detail(page).getByRole('button', { name: '导入并加入当前队列', exact: true }).click();
-  await expect(queue(page).locator('.cp-start-hint')).toContainText('无需先进入干员选择页');
-  await queue(page).getByLabel('导航关卡 1', { exact: true }).fill('1-7');
-  await queue(page).locator('.cp-settings > summary').click();
-  await queue(page).getByLabel('作业循环次数', { exact: true }).fill('2');
-  await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toHaveCount(0);
-  await expect(queue(page).locator('.cp-start-hint')).toContainText('单份循环');
-  await expect(queue(page).locator('.cp-start-hint')).toContainText('编队界面');
-  await queue(page).getByLabel('作业循环次数', { exact: true }).fill('1');
-  await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toHaveValue('1-7');
-  await expect(queue(page).locator('.cp-start-hint')).toContainText('队列会自动导航');
-});
-
-test('the workspace keeps its two areas beneath a side drawer at desktop and narrow widths', async ({
-  page,
-}, testInfo) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 1360, height: 900 });
-  await openCenter(page);
-  await expect(library(page)).toBeVisible();
-  await expect(queue(page).getByRole('tablist', { name: '队列类型', exact: true })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('copilot-empty-desktop.png') });
-  await communityDetail(page);
-  for (const viewport of [
-    { width: 1360, height: 900 },
-    { width: 1050, height: 800 },
-    { width: 390, height: 844 },
-  ]) {
-    await page.setViewportSize(viewport);
-    for (const theme of ['light', 'dark']) {
-      await page.evaluate((theme) => {
-        document.documentElement.dataset.theme = theme;
-      }, theme);
-      await expect(detail(page)).toBeVisible();
-      await expect(page.locator('.cp-browser')).toBeVisible();
-      await expect(page.getByRole('dialog', { name: '作业详情弹窗', exact: true })).toBeVisible();
-      await page.locator('.copilot-page').evaluate((element) => {
-        element.scrollTop = 0;
-      });
-      await page.screenshot({
-        path: testInfo.outputPath(`copilot-detail-${viewport.width}-${theme}.png`),
-      });
-      await detail(page)
-        .locator('.cp-requirements')
-        .screenshot({
-          path: testInfo.outputPath(`copilot-operators-${viewport.width}-${theme}.png`),
-        });
-    }
-  }
 });

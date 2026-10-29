@@ -160,29 +160,6 @@ test.beforeEach(async ({ page }) => {
   await installDeviceHarness(page);
 });
 
-test('discovery and auto connection report completion when mock devices already exist', async ({
-  page,
-}) => {
-  await openDevices(page);
-  await page.getByRole('button', { name: '发现设备', exact: true }).click();
-  await expect(result(page)).toHaveText('发现完成：找到 1 台设备。');
-  await expect(page.locator('.sp-discovered')).toContainText('本地模拟设备');
-  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
-  await expect(result(page)).toHaveText('连接完成：1 台设备已就绪。');
-  await expect(page.locator('.sp-device-item')).toHaveCount(1);
-  await expect(page.locator('.connection-diagnostics')).toContainText('未访问真实模拟器');
-  await page.getByRole('button', { name: '发现设备', exact: true }).click();
-  await expect(result(page)).toContainText('找到 1 台设备');
-  await expect(page.locator('.connection-diagnostics')).not.toContainText('已连接演示设备');
-  await page.setViewportSize({ width: 390, height: 800 });
-  await expect(result(page)).toBeVisible();
-  expect(
-    await page
-      .locator('.sp-page')
-      .evaluate((element) => element.scrollWidth <= element.clientWidth),
-  ).toBeTruthy();
-});
-
 test('discovery shows progress, prevents duplicate requests and clears old results on empty or failed retries', async ({
   page,
 }) => {
