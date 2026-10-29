@@ -190,13 +190,7 @@ try {
     MAAVERGE_LOG_DIR: path.join(temporary, 'logs'),
     CFFIXED_USER_HOME: profile,
   };
-  for (const key of [
-    'MAAVERGE_BACKEND',
-    'MAAVERGE_APP_DIR',
-    'MAAVERGE_CORE_WORKER_PATH',
-    'PYTHONPATH',
-  ])
-    delete env[key];
+  for (const key of ['MAAVERGE_APP_DIR', 'MAAVERGE_CORE_WORKER_PATH']) delete env[key];
   child = spawn(executable, [], {
     cwd: temporary,
     env,

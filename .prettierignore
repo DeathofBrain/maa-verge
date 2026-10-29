@@ -22,7 +22,6 @@ apps/desktop/src-tauri/installer/*.wxs
 # Upstream source, licenses and immutable release copy.
 3rdparty/
 tools/licenses/
-services/runtime/maaverge_runtime/vendor/
 **/LICENSE*
 **/NOTICE*
 **/THIRD_PARTY_NOTICES*
@@ -39,7 +38,6 @@ packages/contracts/src/validators.d.ts
 services/backend/src/casefold-data.json
 services/backend/src/product-knowledge.generated.json
 pnpm-lock.yaml
-uv.lock
 **/Cargo.lock
 
 # Local configuration and runtime data.

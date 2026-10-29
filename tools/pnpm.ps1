@@ -8,8 +8,6 @@ $nodeVersion = (Get-Content (Join-Path $projectRoot '.node-version') -Raw).Trim(
 $installedNode = if ($nodeExecutable) { try { & $nodeExecutable --version 2>$null } catch { '' } } else { '' }
 if ($installedNode -ne "v$nodeVersion") { throw "Node $nodeVersion is required. Run tools/bootstrap.ps1 to repair the checkout tools." }
 $env:PATH = "$(Split-Path -Parent $nodeExecutable);$env:PATH"
-$localUvDirectory = Join-Path $projectRoot '.tools/uv'
-if (Test-Path -LiteralPath (Join-Path $localUvDirectory 'uv.exe')) { $env:PATH = "$localUvDirectory;$env:PATH" }
 if (Test-Path -LiteralPath (Join-Path $projectRoot '.tools/rustup')) {
     $env:CARGO_HOME = Join-Path $projectRoot '.tools/cargo'
     $env:RUSTUP_HOME = Join-Path $projectRoot '.tools/rustup'

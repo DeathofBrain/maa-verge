@@ -1481,75 +1481,74 @@ test('WAL takeover backup is standalone, read-only accessible and preserves spar
 });
 
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
-const python = path.join(
-  repo,
-  process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python',
-);
-test.skipIf(!existsSync(python))(
-  'Python reference and Bun native service preserve shared plan/settings CRUD parity',
-  async () => {
-    const trace = [
-      [
-        'plan.save',
-        {
-          plan: {
-            id: 'fixture',
-            name: '保留未知参数',
-            tasks: [{ type: 'Award', params: { future: { 中文: [1, true] } } }],
-          },
+test('Bun stdio service preserves plan/settings CRUD and unknown parameters across restart', async () => {
+  const root = temp(),
+    offline = { autoConnect: false, autoUpdateCore: false, autoUpdateResource: false };
+  const initial = new Store(path.join(root, 'native'));
+  initial.put('settings', 'main', parseSettings(offline));
+  initial.put('meta', 'initialized', true);
+  initial.close();
+  const trace = [
+    [
+      'plan.save',
+      {
+        plan: {
+          id: 'fixture',
+          name: '保留未知参数',
+          tasks: [{ type: 'Award', params: { future: { 中文: [1, true] } } }],
         },
-      ],
-      ['settings.save', { settings: { theme: 'dark', budgets: { medicine: 2 } } }],
-      ['plan.delete', { id: 'fixture' }],
-    ].map(([method, params], i) => ({ jsonrpc: '2.0', id: i + 1, method, params }));
-    async function run(command: string[], root: string) {
-      const child = spawn(command[0]!, command.slice(1), {
-        cwd: repo,
-        env: {
-          ...process.env,
-          MAAVERGE_MODE: 'native',
-          MAAVERGE_DATA_DIR: root,
-          PYTHONPATH: path.join(repo, 'services/runtime'),
-        },
-        windowsHide: true,
-      });
-      let stdout = '',
-        stderr = '';
-      child.stdout.on('data', (b) => {
-        stdout += b;
-      });
-      child.stderr.on('data', (b) => {
-        stderr += b;
-      });
-      child.stdin.end(trace.map((value) => JSON.stringify(value)).join('\n') + '\n');
-      const code = await new Promise<number | null>((resolve, reject) => {
-        child.once('error', reject);
-        child.once('close', resolve);
-      });
-      expect(code, stderr).toBe(0);
-      return stdout
-        .trim()
-        .split(/\r?\n/)
-        .map((line) => JSON.parse(line))
-        .filter((item) => 'id' in item)
-        .sort((a, b) => a.id - b.id);
-    }
-    // The retained Python reference predates TypeScript-only component settings.
-    const normalize = (value: any): any =>
-      Array.isArray(value)
-        ? value.map(normalize)
-        : value && typeof value === 'object'
-          ? Object.fromEntries(
-              Object.entries(value)
-                .filter(([key]) => key !== 'componentPaths')
-                .map(([k, v]) => [k, k === 'createdAt' ? '<timestamp>' : normalize(v)]),
-            )
-          : value;
-    const py = await run([python, '-m', 'maaverge_runtime'], temp());
-    const ts = await run(
-      [process.execPath, path.join(repo, 'services/backend/src/entry.ts')],
-      temp(),
-    );
-    expect(normalize(ts)).toEqual(normalize(py));
-  },
-);
+      },
+    ],
+    ['settings.save', { settings: { ...offline, theme: 'dark', budgets: { medicine: 2 } } }],
+    ['app.snapshot', {}],
+  ].map(([method, params], i) => ({ jsonrpc: '2.0', id: i + 1, method, params }));
+  async function run(requests: typeof trace) {
+    const child = spawn(process.execPath, [path.join(repo, 'services/backend/src/entry.ts')], {
+      cwd: repo,
+      env: {
+        ...process.env,
+        MAAVERGE_MODE: 'native',
+        MAAVERGE_DATA_DIR: root,
+      },
+      windowsHide: true,
+    });
+    let stdout = '',
+      stderr = '';
+    child.stdout.on('data', (b) => {
+      stdout += b;
+    });
+    child.stderr.on('data', (b) => {
+      stderr += b;
+    });
+    child.stdin.end(requests.map((value) => JSON.stringify(value)).join('\n') + '\n');
+    const code = await new Promise<number | null>((resolve, reject) => {
+      child.once('error', reject);
+      child.once('close', resolve);
+    });
+    expect(code, stderr).toBe(0);
+    return stdout
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => JSON.parse(line))
+      .filter((item) => 'id' in item)
+      .sort((a, b) => a.id - b.id);
+  }
+  const responses = await run(trace);
+  const saved = responses[0].result;
+  expect(saved).toMatchObject({
+    id: 'fixture',
+    name: '保留未知参数',
+    tasks: [{ type: 'Award', params: { future: { 中文: [1, true] } }, enabled: true }],
+  });
+  expect(responses[1].result).toMatchObject({ theme: 'dark', budgets: { medicine: 2 } });
+  expect(responses[2].result.plans).toEqual([saved]);
+  const restarted = await run([{ jsonrpc: '2.0', id: 4, method: 'app.snapshot', params: {} }]);
+  expect(restarted[0].result.plans).toEqual([saved]);
+  expect(restarted[0].result.settings).toMatchObject({ theme: 'dark', budgets: { medicine: 2 } });
+  const removed = await run([
+    { jsonrpc: '2.0', id: 5, method: 'plan.delete', params: { id: 'fixture' } },
+    { jsonrpc: '2.0', id: 6, method: 'app.snapshot', params: {} },
+  ]);
+  expect(removed[0].error).toBeUndefined();
+  expect(removed[1].result.plans).toEqual([]);
+});

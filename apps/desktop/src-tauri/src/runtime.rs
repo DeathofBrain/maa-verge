@@ -381,22 +381,12 @@ pub struct Runtime {
 }
 
 fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
+    validate_backend(std::env::var("MAAVERGE_BACKEND").ok().as_deref())?;
     if cfg!(debug_assertions) {
         let project = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../..")
             .canonicalize()
             .map_err(|error| error.to_string())?;
-        if std::env::var("MAAVERGE_BACKEND").as_deref() == Ok("python") {
-            let python = project.join(if cfg!(windows) {
-                ".venv/Scripts/python.exe"
-            } else {
-                ".venv/bin/python"
-            });
-            if !python.is_file() {
-                return Err("Python 参考环境未准备，请运行 uv sync --frozen".into());
-            }
-            return Ok((python, vec!["-m".into(), "maaverge_runtime".into()]));
-        }
         let bun = project.join(if cfg!(windows) {
             ".tools/bun/bun.exe"
         } else {
@@ -431,6 +421,14 @@ fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
             return Err("应用安装包缺少本地服务，请重新安装 Maa Verge".into());
         }
         Ok((executable, vec![]))
+    }
+}
+
+fn validate_backend(value: Option<&str>) -> Result<(), String> {
+    if value.is_none_or(|value| value.is_empty() || value == "typescript") {
+        Ok(())
+    } else {
+        Err("MAAVERGE_BACKEND 仅支持 typescript，请清除不受支持的后端设置".into())
     }
 }
 
@@ -500,8 +498,6 @@ impl Runtime {
             .env_remove("BUN_BE_BUN")
             .env_remove("NODE_OPTIONS")
             .env_remove("NODE_PATH")
-            .env("PYTHONUNBUFFERED", "1")
-            .env("PYTHONUTF8", "1")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -755,6 +751,16 @@ impl Runtime {
 mod tests {
     use super::*;
     use std::io::{BufRead, BufReader, Write};
+
+    #[test]
+    fn unsupported_backend_selection_is_rejected_without_fallback() {
+        for value in [None, Some(""), Some("typescript")] {
+            assert!(validate_backend(value).is_ok());
+        }
+        for value in ["legacy", "unknown", "TypeScript"] {
+            assert!(validate_backend(Some(value)).is_err());
+        }
+    }
 
     #[test]
     fn frontend_cannot_call_any_host_only_method() {

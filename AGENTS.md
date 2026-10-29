@@ -2,15 +2,15 @@
 
 ## Context
 
-Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript, a TypeScript application service on pinned Bun, and a C++20 MaaCore worker. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese. See docs/runtime-migration.md for the Python reference and migration boundaries.
+Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript, a TypeScript application service on pinned Bun, and a C++20 MaaCore worker. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese. See docs/runtime-migration.md for runtime and data migration boundaries.
 
 ## Boundaries
 
 - React uses the typed transport in packages/contracts; it never executes shell, ADB or native calls.
 - TypeScript owns plans, persistence, policy, Agent proposals and updates. C++ owns MaaCore loading, device leases and native calls; it never writes the business database. JSON-RPC 2.0 uses newline-delimited JSON over stdio; stdout is protocol-only, diagnostics go to stderr.
 - JSON Schema in packages/contracts/schemas is authoritative; regenerate TypeScript types and standalone validators with pnpm contracts:generate. Native NDJSON output uses protocolVersion 1.
-- Production includes the Bun-compiled service and C++ worker, with no Python fallback. MAAVERGE_BACKEND=python selects the retained reference only in debug builds. Do not replace a failed service with another backend automatically.
-- Both services must hold the same dedicated SQLite data-root lease before opening business data. Never delete its lock file. Back up existing data with serialize, fsync, integrity validation and rename; preserve implicit rowids and persistent run.start requestId deduplication.
+- Development and production use the TypeScript service and C++ worker. Do not introduce a Python runtime, reference backend or automatic backend fallback.
+- Every application service instance must hold the same dedicated SQLite data-root lease before opening business data. Never delete its lock file. Back up existing data with serialize, fsync, integrity validation and rename; preserve implicit rowids and persistent run.start requestId deduplication.
 - Product runtimes use real devices, execution, screenshots and update sources. Only Agent proposals remain local and deterministic. Synthetic adapters belong in tests and must run without MaaCore, a simulator, model keys or paid requests.
 - A device has one controller. Never replace files referenced by active workers. Updates stage immutable core/resource generations, validate, then activate at idle boundaries with rollback.
 - AsstStop clears the native queue; it is not pause/resume. Task-completion messages alone do not prove action success.
@@ -36,9 +36,9 @@ Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, l
 ## Commands
 
 The root package.json is the command source of truth: pnpm dev, pnpm dev:ui, pnpm setup:bun, pnpm run doctor, pnpm check, pnpm test:runtime, pnpm test:packaging, pnpm test:desktop-runtime, pnpm test:e2e, pnpm build.
-Use .bun-version and tools/setup-bun.mjs for the pinned runtime; do not depend on a global Bun. C++: node tools/build-core-worker.mjs (synthetic CTest), or --production without Python. Python reference/fixture tests: uv sync --frozen; uv run pytest. Rust: cargo fmt --check and cargo clippy --locked when the native toolchain is available.
+Use .bun-version and tools/setup-bun.mjs for the pinned runtime; do not depend on a global Bun. C++: node tools/build-core-worker.mjs (Node-driven synthetic CTest), or --production to skip test fixtures. Rust: cargo fmt --check and cargo clippy --locked when the native toolchain is available.
 Use targeted checks while developing, then the relevant project checks. Do not modify formatting or dependencies unrelated to the task.
-Format touched files with the repository configuration: Prettier for TypeScript/JavaScript, JSON, styles and Markdown; clang-format for C++; rustfmt for Rust; Ruff for Python. VS Code setup and CLI commands are documented in docs/development.md. Do not format generated files or vendored code; regenerate outputs from their source.
+Format touched files with the repository configuration: Prettier for TypeScript/JavaScript, JSON, styles and Markdown; clang-format for C++; rustfmt for Rust. VS Code setup and CLI commands are documented in docs/development.md. Do not format generated files or vendored code; regenerate outputs from their source.
 
 ## Real-world effects
 

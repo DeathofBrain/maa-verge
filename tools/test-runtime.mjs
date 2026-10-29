@@ -24,17 +24,12 @@ async function main() {
   const core = ['Release/', '']
     .map((prefix) => path.join(root, 'build/native/fixtures/normal', prefix, coreName))
     .find(existsSync);
-  const python = path.join(
-    root,
-    process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python',
-  );
   await run(
     await ensureBun(),
     ['test', '--timeout', String(timeout), 'packages/agent/tests', 'services/backend/tests'],
     {
       env: {
         ...offlineAgentEnvironment(),
-        ...(existsSync(python) ? { MAAVERGE_REFERENCE_PYTHON: python } : {}),
         ...(worker && core
           ? {
               MAAVERGE_TEST_NATIVE_WORKER: worker,

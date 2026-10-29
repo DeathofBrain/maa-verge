@@ -4,8 +4,6 @@
     "esbenp.prettier-vscode",
     "ms-vscode.cpptools",
     "ms-vscode.cmake-tools",
-    "rust-lang.rust-analyzer",
-    "ms-python.python",
-    "charliermarsh.ruff"
+    "rust-lang.rust-analyzer"
   ]
 }

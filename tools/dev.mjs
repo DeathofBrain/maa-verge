@@ -18,12 +18,9 @@ async function main() {
   if (!Number.isInteger(port) || port < 1024 || port > 65535)
     throw new Error('MAAVERGE_DEV_PORT must be between 1024 and 65535');
   if (!uiOnly) {
-    if (process.env.MAAVERGE_BACKEND === 'python') await run('uv', ['sync', '--frozen']);
-    else {
-      await run('node', ['tools/setup-bun.mjs']);
-      await run('node', ['tools/doctor.mjs', '--native']);
-      await run('node', ['tools/build-core-worker.mjs', '--production']);
-    }
+    await run('node', ['tools/setup-bun.mjs']);
+    await run('node', ['tools/doctor.mjs', '--native']);
+    await run('node', ['tools/build-core-worker.mjs', '--production']);
     if (!existsSync(path.join(root, 'apps', 'desktop', 'src-tauri', 'Cargo.lock'))) {
       throw new Error(
         'Cargo.lock missing. Run cargo generate-lockfile --manifest-path apps/desktop/src-tauri/Cargo.toml',

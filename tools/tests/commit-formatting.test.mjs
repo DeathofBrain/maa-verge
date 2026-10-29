@@ -224,12 +224,11 @@ test('formatter failure blocks the commit and restores the index and working tre
   assert.equal(repo.git('stash', 'list'), '');
 });
 
-test('generated, third-party, vendor and Git-ignored files commit without formatting', (t) => {
+test('generated, third-party and Git-ignored files commit without formatting', (t) => {
   const repo = fixture(t);
   const files = {
     'packages/contracts/src/types.ts': 'generated TypeScript: deliberately not parseable\n',
     '3rdparty/upstream.cpp': 'upstream C++: deliberately not parseable\n',
-    'services/runtime/maaverge_runtime/vendor/upstream.py': 'upstream Python: not parseable\n',
     'apps/desktop/src-tauri/gen/generated.rs': 'generated Rust: deliberately not parseable\n',
   };
   for (const [file, content] of Object.entries(files)) repo.write(file, content);

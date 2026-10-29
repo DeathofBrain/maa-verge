@@ -8,13 +8,14 @@ export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 export const windows = process.platform === 'win32';
 export const workspaceId = createHash('sha256').update(root).digest('hex').slice(0, 8);
 export const pinnedNode = readFileSync(path.join(root, '.node-version'), 'utf8').trim();
-export const port = Number(process.env.MAAVERGE_DEV_PORT || 14000 + parseInt(workspaceId.slice(0, 4), 16) % 1000);
+export const port = Number(
+  process.env.MAAVERGE_DEV_PORT || 14000 + (parseInt(workspaceId.slice(0, 4), 16) % 1000),
+);
 export const desktop = path.join(root, 'apps', 'desktop');
 
 export function executable(name) {
   const local = {
     node: path.join(root, '.tools', 'node', windows ? 'node.exe' : 'bin/node'),
-    uv: path.join(root, '.tools', 'uv', windows ? 'uv.exe' : 'uv'),
     cargo: path.join(root, '.tools', 'cargo', 'bin', windows ? 'cargo.exe' : 'cargo'),
     rustc: path.join(root, '.tools', 'cargo', 'bin', windows ? 'rustc.exe' : 'rustc'),
   };
@@ -22,15 +23,20 @@ export function executable(name) {
 }
 
 export function devEnvironment() {
-  const localPaths = [path.dirname(executable('node')), path.join(root, '.tools', 'cmake', 'bin'), path.join(root, '.tools', 'uv'), path.join(root, '.tools', 'cargo', 'bin')]
-    .filter((entry) => entry !== '.');
+  const localPaths = [
+    path.dirname(executable('node')),
+    path.join(root, '.tools', 'cmake', 'bin'),
+    path.join(root, '.tools', 'cargo', 'bin'),
+  ].filter((entry) => entry !== '.');
   return {
     ...process.env,
     PATH: [...localPaths, process.env.PATH || ''].join(path.delimiter),
-    ...(existsSync(path.join(root, '.tools', 'rustup')) ? {
-      CARGO_HOME: path.join(root, '.tools', 'cargo'), RUSTUP_HOME: path.join(root, '.tools', 'rustup'),
-    } : {}),
-    ...(existsSync(path.join(root, '.tools', 'python')) ? { UV_PYTHON_INSTALL_DIR: path.join(root, '.tools', 'python') } : {}),
+    ...(existsSync(path.join(root, '.tools', 'rustup'))
+      ? {
+          CARGO_HOME: path.join(root, '.tools', 'cargo'),
+          RUSTUP_HOME: path.join(root, '.tools', 'rustup'),
+        }
+      : {}),
     MAAVERGE_MODE: process.env.MAAVERGE_MODE || 'native',
     MAAVERGE_DATA_DIR: process.env.MAAVERGE_DATA_DIR || path.join(root, 'config'),
     VITE_WORKSPACE_ID: workspaceId,
@@ -42,7 +48,9 @@ function command(name, args) {
   if (name === 'pnpm') {
     const lifecycle = process.env.npm_execpath;
     const candidates = [
-      ...(lifecycle && /^pnpm\.(?:cjs|mjs|js)$/iu.test(path.basename(lifecycle)) ? [lifecycle] : []),
+      ...(lifecycle && /^pnpm\.(?:cjs|mjs|js)$/iu.test(path.basename(lifecycle))
+        ? [lifecycle]
+        : []),
       path.join(root, '.tools', 'pnpm', 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
       path.join(root, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
     ];
@@ -50,7 +58,10 @@ function command(name, args) {
     if (entry) return [executable('node'), [entry, ...args]];
     if (windows) {
       const discovered = spawnSync('where.exe', ['pnpm'], {
-        env: devEnvironment(), encoding: 'utf8', windowsHide: true, timeout: 15000,
+        env: devEnvironment(),
+        encoding: 'utf8',
+        windowsHide: true,
+        timeout: 15000,
       });
       for (const shim of (discovered.stdout || '').trim().split(/\r?\n/u).filter(Boolean)) {
         if (path.extname(shim).toLowerCase() === '.exe' && existsSync(shim)) return [shim, args];
@@ -65,7 +76,9 @@ function command(name, args) {
         ].find((candidate) => existsSync(candidate));
         if (adjacent) return [executable('node'), [adjacent, ...args]];
       }
-      throw new Error('Cannot locate a pnpm JavaScript entry or executable. Run tools/bootstrap.ps1.');
+      throw new Error(
+        'Cannot locate a pnpm JavaScript entry or executable. Run tools/bootstrap.ps1.',
+      );
     }
   }
   return [executable(name), args];
@@ -74,9 +87,16 @@ function command(name, args) {
 export function run(name, args = [], options = {}) {
   const [program, arguments_] = command(name, args);
   return new Promise((resolve, reject) => {
-    const child = spawn(program, arguments_, { cwd: root, env: devEnvironment(), stdio: 'inherit', ...options });
+    const child = spawn(program, arguments_, {
+      cwd: root,
+      env: devEnvironment(),
+      stdio: 'inherit',
+      ...options,
+    });
     child.once('error', reject);
-    child.once('exit', (code, signal) => code === 0 ? resolve() : reject(new Error(`${name} exited ${code ?? signal}`)));
+    child.once('exit', (code, signal) =>
+      code === 0 ? resolve() : reject(new Error(`${name} exited ${code ?? signal}`)),
+    );
   });
 }
 
@@ -86,17 +106,35 @@ export function start(name, args = [], options = {}) {
   const [program, arguments_] = command(name, args);
   // A dedicated group lets cleanup reach grandchildren such as the Tauri app,
   // even when the package-manager/CLI process has already exited.
-  const child = spawn(program, arguments_, { cwd: root, env: devEnvironment(), stdio: 'inherit', ...options, ...(!windows ? { detached: true } : {}) });
+  const child = spawn(program, arguments_, {
+    cwd: root,
+    env: devEnvironment(),
+    stdio: 'inherit',
+    ...options,
+    ...(!windows ? { detached: true } : {}),
+  });
   if (!windows && child.pid) managedProcessGroups.set(child, child.pid);
   return child;
 }
 
 export function probe(name, args = ['--version']) {
   let program, arguments_;
-  try { [program, arguments_] = command(name, args); }
-  catch (error) { return { ok: false, output: error.message }; }
-  const result = spawnSync(program, arguments_, { cwd: root, env: devEnvironment(), encoding: 'utf8', windowsHide: true, timeout: 15000 });
-  return { ok: result.status === 0, output: (result.stdout || result.stderr || result.error?.message || '').trim() };
+  try {
+    [program, arguments_] = command(name, args);
+  } catch (error) {
+    return { ok: false, output: error.message };
+  }
+  const result = spawnSync(program, arguments_, {
+    cwd: root,
+    env: devEnvironment(),
+    encoding: 'utf8',
+    windowsHide: true,
+    timeout: 15000,
+  });
+  return {
+    ok: result.status === 0,
+    output: (result.stdout || result.stderr || result.error?.message || '').trim(),
+  };
 }
 
 export function terminate(child) {
@@ -104,14 +142,21 @@ export function terminate(child) {
   const group = managedProcessGroups.get(child);
   if (group) {
     managedProcessGroups.delete(child);
-    try { process.kill(-group, 'SIGTERM'); }
-    catch (error) { if (error.code !== 'ESRCH') throw error; }
+    try {
+      process.kill(-group, 'SIGTERM');
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
     return;
   }
   if (child.exitCode !== null || child.signalCode !== null) return;
   if (windows && child.pid) {
     // Only the process tree launched by this development script is targeted.
-    spawnSync('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore', windowsHide: true, timeout: 10000 });
+    spawnSync('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], {
+      stdio: 'ignore',
+      windowsHide: true,
+      timeout: 10000,
+    });
   } else child.kill('SIGTERM');
 }
 

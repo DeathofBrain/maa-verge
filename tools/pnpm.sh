@@ -9,7 +9,6 @@ if [[ -z "$node_executable" ]] || [[ "$("$node_executable" --version 2>/dev/null
   exit 1
 fi
 export PATH="$(dirname -- "$node_executable"):$PATH"
-if [[ -x "$project_root/.tools/uv/uv" ]]; then export PATH="$project_root/.tools/uv:$PATH"; fi
 if [[ -d "$project_root/.tools/rustup" ]]; then
   export CARGO_HOME="$project_root/.tools/cargo" RUSTUP_HOME="$project_root/.tools/rustup"
   export PATH="$CARGO_HOME/bin:$PATH"

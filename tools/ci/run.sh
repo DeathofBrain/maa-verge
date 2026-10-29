@@ -20,13 +20,11 @@ pnpm install --frozen-lockfile --store-dir /workspace/.cache/ci/pnpm
 
 case "$mode" in
   app)
-    uv sync --frozen
     node tools/check.mjs --app
     pnpm -r build
     pnpm test:e2e --workers=2
     ;;
   native)
-    uv sync --frozen
     node tools/check.mjs --native
     ;;
   release)

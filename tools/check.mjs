@@ -3,7 +3,6 @@ import { assertWorkspaceDependencies } from './environment.mjs';
 
 const toolTests = [
   'tools/tests/environment.test.mjs',
-  'tools/tests/sync-python.test.mjs',
   'tools/tests/setup-rust.test.mjs',
   'tools/tests/commit-formatting.test.mjs',
   'tools/tests/vite-cache.test.mjs',
@@ -37,10 +36,6 @@ async function applicationChecks() {
   await run('pnpm', ['contracts:check']);
   await run('pnpm', ['-r', 'check']);
   await run('node', ['--test', ...contractTests]);
-  await run('uv', ['run', '--frozen', 'ruff', 'check', 'services/runtime']);
-  for (const platform of ['linux', 'darwin', 'win32'])
-    await run('uv', ['run', '--frozen', 'mypy', '--platform', platform]);
-  await run('uv', ['run', '--frozen', 'pytest']);
 }
 
 async function nativeChecks() {

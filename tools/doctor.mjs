@@ -44,14 +44,7 @@ try {
 } catch (error) {
   report(false, 'Bun', `${error.message}; run pnpm setup:bun`);
 }
-const python = probe('uv', ['run', '--frozen', '--no-sync', 'python', '--version']);
-report(
-  python.ok && /^Python 3\.12\./u.test(python.output),
-  'Python reference tests (optional)',
-  python.output || 'Run uv sync --frozen for reference tests',
-  false,
-);
-for (const file of ['pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock']) {
+for (const file of ['pnpm-lock.yaml', 'apps/desktop/src-tauri/Cargo.lock']) {
   report(
     existsSync(path.join(root, file)),
     file,

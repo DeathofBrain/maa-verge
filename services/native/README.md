@@ -1,8 +1,8 @@
 # MaaCore 工作进程
 
-C++20 可执行文件 `maaverge-core-worker` 独立于 UI 和业务数据库。生产构建不需要
-Python；CTest 的开发测试使用 Python 3.12 和 filelock。仅将此文件夹作为 CMake
-source：
+C++20 可执行文件 `maaverge-core-worker` 独立于 UI 和业务数据库。构建与开发测试
+均不需要 Python；CTest 由 Node.js 驱动，设备锁测试使用独立原生探针。仅将此文件夹
+作为 CMake source：
 
 ```sh
 cmake -S services/native -B build/native -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
@@ -20,7 +20,7 @@ generator。Windows 的目标使用 `/MT`（Debug 为 `/MTd`）；Linux 静态�
 ## 协议
 
 stdin/stdout 使用 UTF-8 NDJSON，每条消息最多 4 MiB。所有输出包含
-`protocolVersion: 1`。为兼容 Python supervisor，输入可暂时省略版本；显式版本必须
+`protocolVersion: 1`。为兼容早期 supervisor，输入可暂时省略版本；显式版本必须
 为 1。原生日志的 CRT stdout 和系统 stdout handle 在加载动态库前改向 stderr，
 协议描述符不被原生子进程继承。调用者应继续对进程设置总体超时。
 
@@ -32,7 +32,7 @@ stdin/stdout 使用 UTF-8 NDJSON，每条消息最多 4 MiB。所有输出包含
   `{id,operation:"screencap"}`、`{id,operation:"frame"}`、
   `{id,operation:"click",x,y}` 或
   `{id,operation:"stop"}`。返回现有 `response`、`callback` 与 `status` 消息；异步调用的
-  ID、task ID、`pendingAsync` 和 `running` 与 Python 实现相同。参数、授权和预算仍由
+  ID、task ID、`pendingAsync` 和 `running` 保持既有协议语义。参数、授权和预算仍由
   确定性业务服务校验。AsstStop 清空原生队列，不提供暂停恢复。
 - `--validate`：读取一条 `{core,resource,version}`，在临时用户目录检查 11 个必需
   API、版本及资源加载。成功仅输出一条 `{version,resourceLoaded:true,protocolVersion:1}`。
@@ -41,8 +41,8 @@ stdin/stdout 使用 UTF-8 NDJSON，每条消息最多 4 MiB。所有输出包含
   `{type:"ready",mode:"lease-only",protocolVersion:1}`。stdin EOF 释放锁；不接受操作命令，
   不加载 MaaCore。仅用于独立租约测试，不承担业务数据根锁；产品设备控制使用 `--worker`。
 
-Windows 锁为相同文件 offset 0、length 1 的独占 LockFileEx，Unix 为 flock，兼容
-Python filelock。调用者计算现有规范化 ADB server/设备标识的哈希和共享锁目录；
+Windows 锁为相同文件 offset 0、length 1 的独占 LockFileEx，Unix 为 flock，保持
+既有共享租约格式。调用者计算现有规范化 ADB server/设备标识的哈希和共享锁目录；
 工作进程只持有传入的锁文件。无 soft-lock 回退，Unix 不删除锁文件。锁一直持有至
 AsstDestroy 和动态库卸载完成。EOF 先停止、销毁再退出；回调 context 在 Destroy
 返回前保持有效，借用字符串会立即复制到队列。
@@ -97,11 +97,16 @@ cmake --build build/native --config Release
 ctest --test-dir build/native -C Release --output-on-failure
 ```
 
-可用 `-DPython3_EXECUTABLE=/path/to/python` 指定开发解释器。测试现场编译两份
+可用 `-DNode_EXECUTABLE=/path/to/node` 指定 Node.js。根目录也可运行
+`node tools/build-core-worker.mjs` 完成构建和四组测试。测试现场编译三份
 `vsynthetic` 动态库，完全不连接 ADB、模拟器或游戏，不使用 MaaCore 下载与模型。
 四组 CTest 覆盖版本/符号/资源错误、协议隔离、Unicode 路径、回调复制、异步与原生
-调用超时、停止清队列、销毁回调寿命、Python/C++ 锁互斥及异常退出释放；另验证两类
+调用超时、停止清队列、销毁回调寿命、独立 OS 锁探针与 worker 的双向互斥及异常退出释放；另验证两类
 增强截图的参数及调用顺序、禁止降级、截图失败停止和未验证任务拦截。
+
+Windows 测试额外编译原生启动器，重新建立标准句柄并用 Job Object 约束子进程寿命，
+避免 Node 传递的 CRT 描述符元数据干扰静态 CRT 动态库的 stdout 重定向断言。
+启动器与锁探针仅用于测试，不随生产 worker 安装。
 
 Windows x64 已运行上述 Release 构建和合成测试；其他平台的代码和 CI 配置不代表
 对应平台原生加载或设备行为已经验收。

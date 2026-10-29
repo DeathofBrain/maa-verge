@@ -34,6 +34,7 @@ function fixture(t) {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const executable = () => process.execPath;
 export async function run(program, args) {
   const result = spawnSync(program, args, {
     cwd: root, env: process.env, stdio: 'inherit', windowsHide: true, timeout: 60000,
@@ -148,7 +149,7 @@ test(
 );
 
 test(
-  'CLI --fresh recovers a failed Ninja cache without requiring Ninja or Python',
+  'CLI --fresh recovers a failed Ninja cache with the platform toolchain',
   { timeout: 130000 },
   (t) => {
     const project = fixture(t);

@@ -49,7 +49,7 @@ test('platform assets cover all release architectures', () => {
   expect(platformAsset('Linux', 'x86_64')).toBe('linux-x86_64.tar.gz');
   expect(() => platformAsset('Windows', 'x86')).toThrow();
 });
-test('tree hashes preserve Python pathlib component ordering and Unicode code points', async () => {
+test('tree hashes preserve component ordering and Unicode code points', async () => {
   const root = await temp();
   await mkdir(path.join(root, 'a'));
   const contents = new Map([

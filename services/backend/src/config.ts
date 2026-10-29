@@ -63,7 +63,7 @@ export function legacyDataRoot(root: string, applicationDirectory?: string): str
       );
 }
 export function deviceLockPath(key: string): string {
-  // Shared across checkouts and data roots, including the Python reference.
+  // Shared across checkouts and data roots, preserving existing device leases.
   return path.join(
     process.env.MAAVERGE_DEVICE_LOCK_DIR || path.join(standardDataRoot(), 'device-locks'),
     createHash('sha256').update(key).digest('hex') + '.lock',

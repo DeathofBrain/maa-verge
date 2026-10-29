@@ -2,7 +2,6 @@
 # downloaded native runtimes and host-specific dependencies stay out.
 **
 !.node-version
-!.python-version
 !.bun-version
 !rust-toolchain.toml
 !package.json

@@ -21,10 +21,6 @@ const entry = path.join(repo, 'services/backend/src/entry.ts');
 const storeModule = pathToFileURL(path.join(repo, 'services/backend/src/storage.ts')).href;
 const runtimeModule = pathToFileURL(path.join(repo, 'services/backend/src/runtime.ts')).href;
 const workerModule = pathToFileURL(path.join(repo, 'services/backend/src/worker.ts')).href;
-const python = path.join(
-  repo,
-  process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python',
-);
 const roots: string[] = [];
 const children: ManagedChild[] = [];
 const nativeChildren = new Set<number>();
@@ -41,7 +37,6 @@ function temp() {
 function environment(root: string) {
   const env = {
     ...process.env,
-    PYTHONPATH: path.join(repo, 'services/runtime'),
     MAAVERGE_MODE: 'native',
     MAAVERGE_DATA_DIR: root,
     MAAVERGE_DEVICE_LOCK_DIR: path.join(root, 'device-locks'),
@@ -540,6 +535,7 @@ function seed(root: string) {
     store.put('plan', 'z', { id: 'z', value: 'first' });
     store.put('plan', 'a', { id: 'a', value: 'second' });
     store.put('plan', 'z', { id: 'z', value: 'updated' });
+    store.put('request', 'lease-request', { runId: 'seed-run' });
     store.event('seed', '保留原始事件序号');
   } finally {
     store.close();
@@ -552,13 +548,13 @@ const databaseImage = (root: string) =>
     return existsSync(file) ? readFileSync(file) : null;
   });
 
-const pythonHold = `import sys\nfrom pathlib import Path\nfrom maaverge_runtime.storage import Store\ns = Store(Path(sys.argv[1]))\nprint('{"ready":true}', flush=True)\nsys.stdin.read()\ns.close()\n`;
-
-describe.skipIf(!existsSync(python))('Python and Bun data root lease interoperability', () => {
-  test('Python ownership rejects Bun before backup or writes; Bun recovers after a crash', async () => {
+describe('cross-process SQLite data root leases', () => {
+  test('an independent SQLite owner rejects Store before backup or writes and recovers after a crash', async () => {
     const root = temp();
     seed(root);
-    const owner = new ManagedChild([python, '-c', pythonHold, root], root);
+    const lock = path.join(root, '.runtime-lock.sqlite3');
+    const hold = `import { Database } from 'bun:sqlite'; const lease = new Database(${JSON.stringify(lock)}, { create: true }); lease.exec('PRAGMA journal_mode=DELETE; BEGIN EXCLUSIVE'); console.log('{"ready":true}'); process.stdin.resume(); process.stdin.on('end', () => lease.close());`;
+    const owner = new ManagedChild([process.execPath, '--eval', hold], root);
     await owner.waitFor(() => owner.stdout.includes('"ready":true'));
     const original = databaseImage(root);
     expect(() => new Store(root)).toThrow('其他本地服务');
@@ -573,28 +569,37 @@ describe.skipIf(!existsSync(python))('Python and Bun data root lease interoperab
         { id: 'a', value: 'second' },
       ]);
       expect(recovered.event('recovered', '已重获锁').id).toBe(2);
+      expect(recovered.get('request', 'lease-request')).toEqual({ runId: 'seed-run' });
+      expect(
+        recovered.db.query("SELECT rowid,id FROM objects WHERE kind='plan' ORDER BY rowid").all(),
+      ).toEqual([
+        { rowid: 1, id: 'z' },
+        { rowid: 2, id: 'a' },
+      ]);
     } finally {
       recovered.close();
     }
+    expect(existsSync(lock)).toBe(true);
   }, 15000);
 
-  test('Bun ownership rejects Python without writes; Python recovers after a crash', async () => {
+  test('Store ownership rejects an independent SQLite contender and another process recovers after a crash', async () => {
     const root = temp();
     seed(root);
     const code = `import { Store } from ${JSON.stringify(storeModule)}; const store = new Store(${JSON.stringify(root)}); console.log('{"ready":true}'); process.stdin.resume(); process.stdin.on('end', () => store.close());`;
     const owner = new ManagedChild([process.execPath, '--eval', code], root);
     await owner.waitFor(() => owner.stdout.includes('"ready":true'));
     const original = databaseImage(root);
-    const contenderCode = `import json, sqlite3, sys\nfrom pathlib import Path\nfrom maaverge_runtime.storage import Store\ntry:\n s = Store(Path(sys.argv[1]))\nexcept sqlite3.OperationalError:\n print(json.dumps({'locked': True}))\nelse:\n s.put('plan', 'intruder', {})\n s.close()\n raise RuntimeError('unexpected concurrent ownership')\n`;
-    const contender = new ManagedChild([python, '-c', contenderCode, root], root);
+    const lock = path.join(root, '.runtime-lock.sqlite3');
+    const contenderCode = `import { Database } from 'bun:sqlite'; const lease = new Database(${JSON.stringify(lock)}); lease.exec('PRAGMA busy_timeout=0'); let locked = false; try { lease.exec('BEGIN EXCLUSIVE'); } catch { locked = true; } finally { lease.close(); } if (!locked) throw new Error('unexpected concurrent ownership'); console.log(JSON.stringify({ locked }));`;
+    const contender = new ManagedChild([process.execPath, '--eval', contenderCode], root);
     contender.child.stdin.end();
     expect((await contender.exit()).code, contender.stderr).toBe(0);
     expect(JSON.parse(contender.stdout)).toEqual({ locked: true });
     expect(databaseImage(root)).toEqual(original);
     expect(owner.child.exitCode).toBeNull();
     await owner.crash();
-    const inspect = `import json, sys\nfrom pathlib import Path\nfrom maaverge_runtime.storage import Store\ns = Store(Path(sys.argv[1]))\nprint(json.dumps({'rows': s.all('plan'), 'eventId': s.event('recovered', 'recovered')['id']}))\ns.close()\n`;
-    const recovered = new ManagedChild([python, '-c', inspect, root], root);
+    const inspect = `import { Store } from ${JSON.stringify(storeModule)}; const store = new Store(${JSON.stringify(root)}); console.log(JSON.stringify({ rows: store.all('plan'), request: store.get('request', 'lease-request'), eventId: store.event('recovered', 'recovered').id })); store.close();`;
+    const recovered = new ManagedChild([process.execPath, '--eval', inspect], root);
     recovered.child.stdin.end();
     expect((await recovered.exit()).code, recovered.stderr).toBe(0);
     expect(JSON.parse(recovered.stdout)).toEqual({
@@ -603,6 +608,8 @@ describe.skipIf(!existsSync(python))('Python and Bun data root lease interoperab
         { id: 'a', value: 'second' },
       ],
       eventId: 2,
+      request: { runId: 'seed-run' },
     });
+    expect(existsSync(lock)).toBe(true);
   }, 15000);
 });

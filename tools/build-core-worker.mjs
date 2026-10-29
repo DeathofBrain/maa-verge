@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { root, run, fail } from './project.mjs';
+import { root, run, fail, executable as projectExecutable } from './project.mjs';
 import { resolveCmake } from './environment.mjs';
 
 export async function buildCoreWorker({
@@ -10,10 +10,6 @@ export async function buildCoreWorker({
 } = {}) {
   const cmake = resolveCmake().executable,
     build = path.join(root, 'build/native');
-  const python = path.join(
-    root,
-    process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python',
-  );
   await run(cmake, [
     ...(fresh ? ['--fresh'] : []),
     '-S',
@@ -23,7 +19,7 @@ export async function buildCoreWorker({
     '-DCMAKE_BUILD_TYPE=Release',
     ...(process.platform === 'darwin' ? ['-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0'] : []),
     `-DBUILD_TESTING=${testing ? 'ON' : 'OFF'}`,
-    ...(testing && existsSync(python) ? [`-DPython3_EXECUTABLE=${python}`] : []),
+    ...(testing ? [`-DNode_EXECUTABLE=${projectExecutable('node')}`] : []),
   ]);
   await run(cmake, ['--build', build, '--config', 'Release', '--parallel', '2']);
   if (testing) {

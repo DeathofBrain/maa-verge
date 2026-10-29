@@ -113,7 +113,7 @@ jobs:
           path: |
             .cache/ci
             apps/desktop/src-tauri/target
-          key: linux-release-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
+          key: linux-release-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: linux-release-
       - uses: actions/cache@v4
         if: runner.os == 'Windows'

@@ -23,7 +23,6 @@
     "contracts:generate": "node tools/generate-contracts.mjs",
     "contracts:check": "node tools/generate-contracts.mjs --check",
     "test:e2e": "playwright test",
-    "test:python": "uv run pytest",
     "setup:bun": "node tools/setup-bun.mjs",
     "test:runtime": "node tools/test-runtime.mjs",
     "test:agent": "node tools/test-agent.mjs",

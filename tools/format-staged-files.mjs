@@ -3,7 +3,7 @@ import { getFileInfo } from 'prettier';
 import { root, run, fail } from './project.mjs';
 
 async function main() {
-  const groups = { prettier: [], cpp: [], rust: [], python: [] };
+  const groups = { prettier: [], cpp: [], rust: [] };
   for (const file of process.argv.slice(2)) {
     // Share the repository exclusions across languages, including generated files.
     const info = await getFileInfo(file, {
@@ -17,8 +17,6 @@ async function main() {
       groups.cpp.push(file);
     } else if (extension === '.rs') {
       groups.rust.push(file);
-    } else if (['.py', '.pyi'].includes(extension)) {
-      groups.python.push(file);
     } else if (info.inferredParser) {
       groups.prettier.push(file);
     }
@@ -41,19 +39,6 @@ async function main() {
       '--config',
       'skip_children=true',
       ...groups.rust,
-    ]);
-  }
-  if (groups.python.length) {
-    // A commit must not download tools or synchronize the Python environment.
-    await run('uv', [
-      'run',
-      '--offline',
-      '--frozen',
-      '--no-sync',
-      'ruff',
-      'format',
-      '--',
-      ...groups.python,
     ]);
   }
 }

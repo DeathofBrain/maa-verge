@@ -4,11 +4,9 @@ project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 tool_root="$project_root/.tools"
 mkdir -p "$tool_root"
 node_version="$(tr -d '\r\n' < "$project_root/.node-version")"
-skip_reference=false
 native=false
 for argument in "$@"; do
   case "$argument" in
-    --skip-reference) skip_reference=true ;;
     --native) native=true ;;
     *) printf 'Unknown option: %s\n' "$argument" >&2; exit 1 ;;
   esac
@@ -60,16 +58,6 @@ cd "$project_root"
 "$node_executable" "$pnpm_entry" install --frozen-lockfile
 "$node_executable" tools/setup-bun.mjs
 "$node_executable" tools/setup-rust.mjs
-if ! "$skip_reference"; then
-  if [[ -x "$tool_root/uv/uv" ]]; then export PATH="$tool_root/uv:$PATH"; fi
-  if ! command -v uv >/dev/null; then
-    curl --fail --location https://astral.sh/uv/install.sh --output "$tool_root/uv-install.sh"
-    UV_INSTALL_DIR="$tool_root/uv" UV_NO_MODIFY_PATH=1 sh "$tool_root/uv-install.sh"
-    export PATH="$tool_root/uv:$PATH"
-  fi
-  uv python install 3.12 --no-bin --no-registry
-  "$node_executable" tools/sync-python.mjs "$(command -v uv)"
-fi
 if "$native"; then
   "$node_executable" tools/doctor.mjs --native
 fi

@@ -79,7 +79,7 @@ corepack pnpm test:e2e
 3. 生成产物（仅在对应源变化时）：
    - 改了契约/JSON Schema：`corepack pnpm contracts:generate`
    - 改了 [generate-agent-knowledge.mjs](../../tools/generate-agent-knowledge.mjs) 的 `documentFiles` 列出的文档：`corepack pnpm knowledge:generate`
-4. `corepack pnpm check`。它会执行 `generate-agent-knowledge.mjs --check`、契约检查、TypeScript、CTest、Bun、Python 和 Rust；耗时较长，但这是提交前的完整检查。
+4. `corepack pnpm check`。它会执行 `generate-agent-knowledge.mjs --check`、契约检查、TypeScript、Node 驱动的 CTest、Bun 和 Rust；耗时较长，但这是提交前的完整检查。
 5. 全量 E2E：`corepack pnpm test:e2e`（隔离端口）。当前基线约 244 项，以实际输出为准；不要用上一次的数字代替本次结果。
 6. 截图核对（见下节）。
 7. 更新 [docs/STATUS.md](../../docs/STATUS.md)，记录实际命令、通过数、宿主平台、截图范围和未验证项。

@@ -5,7 +5,7 @@
 ```bash
 git switch -c codex/your-change
 pnpm install --frozen-lockfile
-uv sync --frozen
+pnpm setup:bun
 pnpm test:e2e
 ```
 

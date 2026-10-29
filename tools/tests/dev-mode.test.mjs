@@ -67,7 +67,6 @@ async function launch(
     ...process.env,
     PATH: [path.dirname(process.execPath), process.env.PATH || ''].join(path.delimiter),
     npm_execpath: entry,
-    MAAVERGE_BACKEND: 'typescript',
     MAAVERGE_DEV_PORT: String(await availablePort()),
     MAAVERGE_DATA_DIR: path.join(directory, 'data'),
     MAAVERGE_TEST_DEV_LOG: log,

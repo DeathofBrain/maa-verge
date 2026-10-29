@@ -24,7 +24,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/ci
-          key: linux-application-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
+          key: linux-application-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: linux-application-
       - name: Check application and browser fixtures in the Linux image
         run: |
@@ -62,22 +62,13 @@ jobs:
         if: runner.os == 'Linux'
       - uses: ./.github/actions/host-setup
         if: runner.os != 'Linux'
-      - uses: astral-sh/setup-uv@v6
-        if: runner.os != 'Linux'
-        with:
-          # Keep this aligned with tools/ci/Dockerfile.
-          version: '0.13.5'
-          enable-cache: true
-      - name: Install the Python 3.12 test environment
-        if: runner.os != 'Linux'
-        run: uv sync --frozen
       - uses: actions/cache@v4
         if: runner.os == 'Linux'
         with:
           path: |
             .cache/ci
             apps/desktop/src-tauri/target
-          key: linux-native-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
+          key: linux-native-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: linux-native-
       - name: Ensure the NSIS compiler is available
         if: runner.os == 'Windows'
