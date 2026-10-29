@@ -6,7 +6,7 @@
 
 已接入六类独立工具、设备选择与占用检查、干员资源头像、库存自动补货及独立每日定时，使用与边界见 [工具箱与定时计划](docs/toolbox-schedules.md)。工具不创建任务表，任务表/工具/定时共享设备独占，整表和异步操作全部结束后才释放；定时以 MAA v6.20.0 Windows 行为为基线，按“任务表＋设备”选目标。
 
-契约、合成后端、界面与 Windows 唤醒注册测试用于验证代码；实际休眠唤醒、真实游戏及 macOS/Linux 桌面验收继续单独记录，不据自动测试宣称完整替代原版。旧 Plan.schedule 不转换，新规则由 Schedule 保存；Python 参考不接入新增能力。
+契约、合成后端、界面与 Windows 唤醒注册测试用于验证代码；实际休眠唤醒、真实游戏及 macOS/Linux 桌面验收继续单独记录，不据自动测试宣称完整替代原版。旧 Plan.schedule 不转换，新规则由 Schedule 保存；开发与发行统一使用 TypeScript 服务。
 
 ## 本轮作业中心交付
 
@@ -51,7 +51,7 @@
 | 凭据         | 系统密钥环（待接入）                      | 用户模型密钥；不可用时只在当前会话持有                                           |
 | 本地通信     | JSON-RPC 2.0 over stdio、Tauri 命令与事件 | 类型化请求、响应和执行事件                                                       |
 
-发行服务由 Bun `--compile` 打包，内嵌 JavaScriptCore；用户无需安装 Python、Node 或 Bun。C++ worker 独立携带，MaaCore 与资源运行期安装。自包含仍依赖系统库与 WebView，不等于全静态机器码。开发桌面与发行包均使用真实原生链路，设备、执行、画面和更新不再提供产品 mock；Agent 保留本地确定性提案。Python 3.12 只保留为显式开发参考和合成测试工具；迁移、备份与发行重建边界见 [运行时迁移交接](docs/runtime-migration.md)。
+发行服务由 Bun `--compile` 打包，内嵌 JavaScriptCore；用户无需安装 Python、Node 或 Bun。C++ worker 独立携带，MaaCore 与资源运行期安装。自包含仍依赖系统库与 WebView，不等于全静态机器码。开发桌面与发行包均使用真实原生链路，设备、执行、画面和更新不再提供产品 mock；Agent 保留本地确定性提案。Python 参考后端及开发依赖已移除，合成测试由 Node/Bun 驱动；迁移、备份与发行重建边界见 [运行时迁移交接](docs/runtime-migration.md)。
 
 ### 1.3 进程与数据边界
 
@@ -76,7 +76,7 @@ flowchart TD
 - 以 `packages/contracts/schemas` 的 JSON Schema 为协议来源，生成 TypeScript 参数/结果类型和独立校验器；请求和运行分别有唯一标识，事件带递增序号。C++ worker 输出使用 `protocolVersion: 1`。
 - 设备、计划、执行、截图、Agent 和更新都通过业务接口访问；模型不能访问任意文件或构造任意系统命令。
 - SQLite 使用版本化 SQL 迁移。核心版本回滚不回滚业务数据库，工作进程协议须保持兼容。
-- TypeScript 与 Python 参考实现互斥持有同一专用 SQLite 数据根锁。首次接管现有数据库时先 serialize、fsync、检查完整性再原子改名备份，保留隐式 rowid 与已存请求去重键。
+- 所有应用服务实例互斥持有同一专用 SQLite 数据根锁。首次接管现有数据库时先 serialize、fsync、检查完整性再原子改名备份，保留隐式 rowid 与已存请求去重键；旧版本数据仍兼容。
 
 ## 2. 执行能力、Agent 与界面
 
@@ -176,7 +176,7 @@ flowchart TD
 
 应用与核心可分别选择正式版/预览版，默认应用预览、核心正式；切换频道取消旧候选，不自动降级。应用下载后需确认安装，核心/资源按原安全边界切换。平台差异、签名发行流程及 v0.1.0 一次性手动迁移见 [应用更新](docs/app-updates.md)。三者继续独立展示版本、进度和失败状态；固定版本 UI、完整更新说明/检查时间与定时抖动等后续目标按状态文档验收。
 
-MaaCore C API 当前没有更新入口，只有版本查询和资源加载。TypeScript 服务直接实现核心更新与资源更新；旧版官方 Python Updater 的行为保留作参考，发行路径不再调用它。核心版本相同仍须独立检查 MaaResource。
+MaaCore C API 当前没有更新入口，只有版本查询和资源加载。TypeScript 服务直接实现核心更新与资源更新，不调用上游独立更新器。核心版本相同仍须独立检查 MaaResource。
 
 ### 3.2 首次自动安装
 
@@ -236,7 +236,6 @@ maa-verge/
   apps/desktop/          React 与 Tauri，Rust 桥接位于 src-tauri
   services/backend/      TypeScript 应用服务、Agent、设备、数据与更新
   services/native/       C++20 MaaCore worker 与合成 CTest
-  services/runtime/      Python 参考实现，仅显式 debug 与回归比较
   packages/contracts/    JSON Schema、生成的 TypeScript 类型与校验器
   tests/fixtures/        合成或脱敏场景、事件与截图
   tools/                 环境引导、诊断、测试、打包脚本
@@ -265,11 +264,11 @@ M0 初始化 Git 仓库并建立公共主分支及功能分支流程；远程仓
 
 ### 4.3 工具链、锁文件与配置
 
-- Node 24 LTS、pnpm 10、固定 Bun 1.4.3、CMake 3.25+/C++20、Rust/rustup；Python 3.12/uv 用于参考与合成测试。
-- 提交 Node/Bun 版本文件、packageManager 字段、.python-version、rust-toolchain.toml 和所有依赖锁文件。
+- Node 24 LTS、pnpm 10、固定 Bun 1.4.3、CMake 3.25+/C++20、Rust/rustup；开发、构建与合成测试不依赖 Python/uv。
+- 提交 Node/Bun 版本文件、packageManager 字段、rust-toolchain.toml 和所有依赖锁文件。
 - Node 与 Rust 在首次环境验证后锁定具体补丁版本；CI 与引导脚本读取相同版本源。
-- 提交 pnpm-lock.yaml、uv.lock、Cargo.lock；持续集成使用 frozen/locked 模式。
-- 提供根 package.json、pnpm-workspace.yaml、Python pyproject.toml、Rust 配置、.editorconfig、.gitattributes 和 .gitignore。
+- 提交 pnpm-lock.yaml、Cargo.lock；持续集成使用 frozen/locked 模式。
+- 提供根 package.json、pnpm-workspace.yaml、Rust 配置、.editorconfig、.gitattributes 和 .gitignore。
 - 提供 .env.example 和本地设备配置示例；实际 .env、设备路径、模型凭据与本机覆盖配置不进入 Git。
 - 已保存配置与业务数据默认放在程序目录下的 `config`，开发版使用各 checkout 的 `config`；环境变量可覆盖。设备互斥锁继续使用共享标准用户目录；无盘符、用户名或特定 ADB 安装路径假设。
 - MaaCore、资源包、ADB、.venv、node_modules 和构建产物不提交 Git；发布记录及问题报告保存实际核心/资源版本。
@@ -303,7 +302,7 @@ doctor 的设备连接和云模型网络检查为显式选项，不在普通检�
 - 安装包和桌面 smoke 启动前由 `tools/test-support/seed-native.mjs` 在新建隔离目录预置设置，关闭自动连接和自动更新；产品入口不添加种子或测试开关，仍验证空设备、Agent 提案、保存与重启持久化和缺失设备拒绝。
 - 固定场景覆盖任务进度、失败、掉线、worker 崩溃、首次安装、核心更新、独立资源更新、空闲切换和回滚。
 - 视觉与坐标测试使用合成或脱敏图片；真实账号数据保持本地。
-- PR 检查包含 TypeScript 类型与服务测试、C++ 合成 CTest、Python 参考 lint/类型/测试、Rust fmt/clippy/测试、schema 一致性和 IPC 夹具端到端测试。
+- PR 检查包含 TypeScript 类型与服务测试、Node 驱动的 C++ 合成 CTest、Rust fmt/clippy/测试、schema 一致性和 IPC 夹具端到端测试。
 - Windows x64、Linux x64、macOS arm64/x64 在 Checks 中各自执行 Bun 独立运行探针与原生检查，不生成安装包；签名安装包只在发布流程构建。跨编译成功不替代宿主执行；未签名工件不替代实际安装验收。
 - 真实核心的加载及资源契约测试单独执行，普通 CI 不依赖模拟器、真实账号或付费模型。
 - 发布流水线执行签名、公证和发布元数据生成，凭据使用 CI secret，产物可追溯至提交和锁文件。

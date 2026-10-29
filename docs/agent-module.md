@@ -48,7 +48,7 @@ pnpm test:agent --compile
 
 独立测试使用内存模型运行真实 `createAgent` / `toolStrategy`，覆盖提案与工具循环、宿主校验、默认零调用、权限、越权字段、零消耗、调用去重、取消与超时。`--compile` 额外生成并运行含工具调用的当前宿主 Bun 单文件夹具，产物保存在忽略的 `.tools/agent-verification`。这些测试不需要 MaaCore、模拟器、模型密钥或付费请求。
 
-`pnpm test:runtime` 同时运行模块与 backend 测试，因此本地完整检查和 CI 都覆盖新模块。原 22 类规则语义与 Python 参考对照仍保留在 backend 测试中。新增间接依赖缺失的许可证原文按精确版本和 SHA-256 补齐，来源见 `tools/licenses/javascript-overrides.md`。
+`pnpm test:runtime` 同时运行模块与 backend 测试，因此本地完整检查和 CI 都覆盖新模块。原 22 类规则语义继续由固定输入与期望结果回归覆盖，不再启动旧参考后端。新增间接依赖缺失的许可证原文按精确版本和 SHA-256 补齐，来源见 `tools/licenses/javascript-overrides.md`。
 
 ## 后续接入顺序
 

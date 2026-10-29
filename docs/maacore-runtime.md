@@ -2,7 +2,7 @@
 
 Maa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完整归档，在不可变候选目录中选择性解压，再由独立 C++20 进程校验核心版本、API 和资源加载。首次安装和后续核心更新共用同一 TypeScript 提取规则；独立 MaaResource 覆盖包使用通用安全解压。发行路径不再调用官方 Python Updater。
 
-核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/updates.ts)。Python 原实现仍用于回归比较；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。
+核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/updates.ts)。旧参考实现已移除；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。
 
 ## 下载与安装目录
 
@@ -37,6 +37,8 @@ v0.1.3-alpha1 的 Windows EXE 包含 MaaCore（原生依赖与完整基础资源
 ## 后台下载与断点续传
 
 下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。
+
+更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。
 
 当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。
 

@@ -16,7 +16,7 @@
     },
     {
       "file": "docs/logging.md",
-      "sha256": "1680e893b9f8540869461750443ecd87020710581ce5c786e2321f5474a551df"
+      "sha256": "29155555642f84b50178d2cd11b3fb4593f3464754260f3fff094dd63cdb2e9a"
     },
     {
       "file": "docs/maa-compatibility.md",
@@ -28,7 +28,7 @@
     },
     {
       "file": "docs/maacore-runtime.md",
-      "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+      "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
     },
     {
       "file": "docs/multi-instance.md",
@@ -36,15 +36,15 @@
     },
     {
       "file": "docs/toolbox-schedules.md",
-      "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+      "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
     },
     {
       "file": "packages/contracts/schemas/rpc.schema.json",
-      "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+      "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
     },
     {
       "file": "packages/contracts/schemas/runtime.schema.json",
-      "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+      "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
     },
     {
       "file": "packages/contracts/src/tasks.ts",
@@ -381,20 +381,20 @@
         "日志导出与清理",
         "logging"
       ],
-      "text": "日志导出与清理\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n# 日志导出与清理\n\n在「设置 → 数据与诊断」点击「导出日志」。完成弹窗显示完整目录和文件路径，生成的 UTF-8 `.log` 可直接交给开发者阅读。每次使用独立文件名，不覆盖先前导出；失败显示路径及原因，部分文件无法读取或超过限额时在弹窗和文件末尾注明。\n\n| 环境           | 默认导出目录                                                                               |\n| -------------- | ------------------------------------------------------------------------------------------ |\n| Windows 安装版 | 主程序所在目录下的 `log`                                                                   |\n| macOS 安装版   | `~/Library/Logs/Maa Verge`                                                                 |\n| Linux 安装版   | `$XDG_STATE_HOME/maa-verge/log`，未配置或不是绝对路径时使用 `~/.local/state/maa-verge/log` |\n| 开发与合成测试 | 隔离数据根下的 `native/log`                                                                |\n\n`MAAVERGE_LOG_DIR` 可覆盖导出目录；安装目录不可写时明确报错，不请求提权或悄悄改位置。服务原始诊断始终保存在数据根的 `native/logs`，核心与工作进程日志保留在 `native/workers/<deviceId>`。\n\n导出包含应用/Bun/系统与协议版本、时区、组件状态和生效路径、每实例实际使用的核心/ADB/连接/截图配置与连接状态、最近 50 次执行摘要、最近 1000 条事件摘要、服务和原生文本日志。服务诊断按 UTC 时间记录 RPC 方法、请求 ID、执行去重 ID、耗时、错误码与堆栈，保留事件的设备/运行/任务关联。正常截图轮询不逐帧记录。\n\n导出不包含数据库文件、截图、模型设置或完整任务/账号结果；常见 API key、token、密码、Cookie、Authorization 和 URL 认证信息会脱敏。原生日志来自上游，仍应检查后再分享。日志是运行中的只读快照：最多读取 64 个文本文件，各取末尾 512 KiB，最终文件小于 8 MiB；截断及读取失败明确列在 `warnings`。服务日志每个进程每天最多 8 份、每份 2 MiB，达到上限暂停记录并在导出中注明。\n\n自动清理默认保留 7 天，可改为 14 天、30 天或关闭。启动时检查一次，运行期间每 24 小时检查；保存新的保留期后立即按新设置检查。按文件最后修改时间清理过期服务/核心日志及本功能生成的历史导出文件。「清理日志」确认后清理所有可删除的日志，不受保留期限制，并显示删除数量、释放空间和跳过数量。\n\n清理仅删除允许的日志文件名，不删除目录，不清除数据库中的事件或执行记录，也不处理截图、组件、锁文件及用户自行放置的导出目录文件。事件日志可在设备日志抽屉的显式选择模式中确认删除；该操作通过独立接口按事件 id 持久删除，不影响导出文件、执行记录或业务数据。当前服务正在写入的文件、本次服务会话启动过的所有 worker 目录都保留，包括已断开但可能仍在退出的 worker；这些历史文件在后续会话不再使用时才可清理。导出与清理在服务线程内串行处理，读取/删除前检查普通文件、链接祖先及文件身份，拒绝符号链接或 junction 导向其他目录。\n\n类型化接口由 `packages/contracts/schemas` 定义：`logs.info({})` 返回目录及保留期，`logs.export({})` 返回路径/大小/提示，`logs.clean({})` 返回清理统计/提示，`logs.delete({ ids })` 按事件 id 持久删除 1–1000 条日志并返回删除数量；目录不能通过 RPC 任意指定。`Settings.logRetentionDays` 对旧配置可缺省。Python 参考只保留该设置的读写兼容，日志功能属于 Bun 产品服务。\n\n覆盖边界：服务初始化后的 RPC/事件与 `console.error`、已有 worker stderr 和 MaaCore 文本日志可导出；数据根无法打开等初始化前错误、Tauri 宿主/渲染层错误以及进程级崩溃转储尚未统一归档。macOS/Linux 的默认目录由合成测试覆盖，实际宿主权限与文件系统行为仍需目标平台验收。",
+      "text": "日志导出与清理\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n# 日志导出与清理\n\n在「设置 → 数据与诊断」点击「导出日志」。完成弹窗显示完整目录和文件路径，生成的 UTF-8 `.log` 可直接交给开发者阅读。每次使用独立文件名，不覆盖先前导出；失败显示路径及原因，部分文件无法读取或超过限额时在弹窗和文件末尾注明。\n\n| 环境           | 默认导出目录                                                                               |\n| -------------- | ------------------------------------------------------------------------------------------ |\n| Windows 安装版 | 主程序所在目录下的 `log`                                                                   |\n| macOS 安装版   | `~/Library/Logs/Maa Verge`                                                                 |\n| Linux 安装版   | `$XDG_STATE_HOME/maa-verge/log`，未配置或不是绝对路径时使用 `~/.local/state/maa-verge/log` |\n| 开发与合成测试 | 隔离数据根下的 `native/log`                                                                |\n\n`MAAVERGE_LOG_DIR` 可覆盖导出目录；安装目录不可写时明确报错，不请求提权或悄悄改位置。服务原始诊断始终保存在数据根的 `native/logs`，核心与工作进程日志保留在 `native/workers/<deviceId>`。\n\n导出包含应用/Bun/系统与协议版本、时区、组件状态和生效路径、每实例实际使用的核心/ADB/连接/截图配置与连接状态、最近 50 次执行摘要、最近 1000 条事件摘要、服务和原生文本日志。服务诊断按 UTC 时间记录 RPC 方法、请求 ID、执行去重 ID、耗时、错误码与堆栈，保留事件的设备/运行/任务关联。正常截图轮询不逐帧记录。\n\n导出不包含数据库文件、截图、模型设置或完整任务/账号结果；常见 API key、token、密码、Cookie、Authorization 和 URL 认证信息会脱敏。原生日志来自上游，仍应检查后再分享。日志是运行中的只读快照：最多读取 64 个文本文件，各取末尾 512 KiB，最终文件小于 8 MiB；截断及读取失败明确列在 `warnings`。服务日志每个进程每天最多 8 份、每份 2 MiB，达到上限暂停记录并在导出中注明。\n\n自动清理默认保留 7 天，可改为 14 天、30 天或关闭。启动时检查一次，运行期间每 24 小时检查；保存新的保留期后立即按新设置检查。按文件最后修改时间清理过期服务/核心日志及本功能生成的历史导出文件。「清理日志」确认后清理所有可删除的日志，不受保留期限制，并显示删除数量、释放空间和跳过数量。\n\n清理仅删除允许的日志文件名，不删除目录，不清除数据库中的事件或执行记录，也不处理截图、组件、锁文件及用户自行放置的导出目录文件。事件日志可在设备日志抽屉的显式选择模式中确认删除；该操作通过独立接口按事件 id 持久删除，不影响导出文件、执行记录或业务数据。当前服务正在写入的文件、本次服务会话启动过的所有 worker 目录都保留，包括已断开但可能仍在退出的 worker；这些历史文件在后续会话不再使用时才可清理。导出与清理在服务线程内串行处理，读取/删除前检查普通文件、链接祖先及文件身份，拒绝符号链接或 junction 导向其他目录。\n\n类型化接口由 `packages/contracts/schemas` 定义：`logs.info({})` 返回目录及保留期，`logs.export({})` 返回路径/大小/提示，`logs.clean({})` 返回清理统计/提示，`logs.delete({ ids })` 按事件 id 持久删除 1–1000 条日志并返回删除数量；目录不能通过 RPC 任意指定。`Settings.logRetentionDays` 对旧配置可缺省。日志功能由 Bun 产品服务提供。\n\n覆盖边界：服务初始化后的 RPC/事件与 `console.error`、已有 worker stderr 和 MaaCore 文本日志可导出；数据根无法打开等初始化前错误、Tauri 宿主/渲染层错误以及进程级崩溃转储尚未统一归档。macOS/Linux 的默认目录由合成测试覆盖，实际宿主权限与文件系统行为仍需目标平台验收。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "日志导出与清理"
         ],
-        "content": "# 日志导出与清理\n\n在「设置 → 数据与诊断」点击「导出日志」。完成弹窗显示完整目录和文件路径，生成的 UTF-8 `.log` 可直接交给开发者阅读。每次使用独立文件名，不覆盖先前导出；失败显示路径及原因，部分文件无法读取或超过限额时在弹窗和文件末尾注明。\n\n| 环境           | 默认导出目录                                                                               |\n| -------------- | ------------------------------------------------------------------------------------------ |\n| Windows 安装版 | 主程序所在目录下的 `log`                                                                   |\n| macOS 安装版   | `~/Library/Logs/Maa Verge`                                                                 |\n| Linux 安装版   | `$XDG_STATE_HOME/maa-verge/log`，未配置或不是绝对路径时使用 `~/.local/state/maa-verge/log` |\n| 开发与合成测试 | 隔离数据根下的 `native/log`                                                                |\n\n`MAAVERGE_LOG_DIR` 可覆盖导出目录；安装目录不可写时明确报错，不请求提权或悄悄改位置。服务原始诊断始终保存在数据根的 `native/logs`，核心与工作进程日志保留在 `native/workers/<deviceId>`。\n\n导出包含应用/Bun/系统与协议版本、时区、组件状态和生效路径、每实例实际使用的核心/ADB/连接/截图配置与连接状态、最近 50 次执行摘要、最近 1000 条事件摘要、服务和原生文本日志。服务诊断按 UTC 时间记录 RPC 方法、请求 ID、执行去重 ID、耗时、错误码与堆栈，保留事件的设备/运行/任务关联。正常截图轮询不逐帧记录。\n\n导出不包含数据库文件、截图、模型设置或完整任务/账号结果；常见 API key、token、密码、Cookie、Authorization 和 URL 认证信息会脱敏。原生日志来自上游，仍应检查后再分享。日志是运行中的只读快照：最多读取 64 个文本文件，各取末尾 512 KiB，最终文件小于 8 MiB；截断及读取失败明确列在 `warnings`。服务日志每个进程每天最多 8 份、每份 2 MiB，达到上限暂停记录并在导出中注明。\n\n自动清理默认保留 7 天，可改为 14 天、30 天或关闭。启动时检查一次，运行期间每 24 小时检查；保存新的保留期后立即按新设置检查。按文件最后修改时间清理过期服务/核心日志及本功能生成的历史导出文件。「清理日志」确认后清理所有可删除的日志，不受保留期限制，并显示删除数量、释放空间和跳过数量。\n\n清理仅删除允许的日志文件名，不删除目录，不清除数据库中的事件或执行记录，也不处理截图、组件、锁文件及用户自行放置的导出目录文件。事件日志可在设备日志抽屉的显式选择模式中确认删除；该操作通过独立接口按事件 id 持久删除，不影响导出文件、执行记录或业务数据。当前服务正在写入的文件、本次服务会话启动过的所有 worker 目录都保留，包括已断开但可能仍在退出的 worker；这些历史文件在后续会话不再使用时才可清理。导出与清理在服务线程内串行处理，读取/删除前检查普通文件、链接祖先及文件身份，拒绝符号链接或 junction 导向其他目录。\n\n类型化接口由 `packages/contracts/schemas` 定义：`logs.info({})` 返回目录及保留期，`logs.export({})` 返回路径/大小/提示，`logs.clean({})` 返回清理统计/提示，`logs.delete({ ids })` 按事件 id 持久删除 1–1000 条日志并返回删除数量；目录不能通过 RPC 任意指定。`Settings.logRetentionDays` 对旧配置可缺省。Python 参考只保留该设置的读写兼容，日志功能属于 Bun 产品服务。\n\n覆盖边界：服务初始化后的 RPC/事件与 `console.error`、已有 worker stderr 和 MaaCore 文本日志可导出；数据根无法打开等初始化前错误、Tauri 宿主/渲染层错误以及进程级崩溃转储尚未统一归档。macOS/Linux 的默认目录由合成测试覆盖，实际宿主权限与文件系统行为仍需目标平台验收。",
+        "content": "# 日志导出与清理\n\n在「设置 → 数据与诊断」点击「导出日志」。完成弹窗显示完整目录和文件路径，生成的 UTF-8 `.log` 可直接交给开发者阅读。每次使用独立文件名，不覆盖先前导出；失败显示路径及原因，部分文件无法读取或超过限额时在弹窗和文件末尾注明。\n\n| 环境           | 默认导出目录                                                                               |\n| -------------- | ------------------------------------------------------------------------------------------ |\n| Windows 安装版 | 主程序所在目录下的 `log`                                                                   |\n| macOS 安装版   | `~/Library/Logs/Maa Verge`                                                                 |\n| Linux 安装版   | `$XDG_STATE_HOME/maa-verge/log`，未配置或不是绝对路径时使用 `~/.local/state/maa-verge/log` |\n| 开发与合成测试 | 隔离数据根下的 `native/log`                                                                |\n\n`MAAVERGE_LOG_DIR` 可覆盖导出目录；安装目录不可写时明确报错，不请求提权或悄悄改位置。服务原始诊断始终保存在数据根的 `native/logs`，核心与工作进程日志保留在 `native/workers/<deviceId>`。\n\n导出包含应用/Bun/系统与协议版本、时区、组件状态和生效路径、每实例实际使用的核心/ADB/连接/截图配置与连接状态、最近 50 次执行摘要、最近 1000 条事件摘要、服务和原生文本日志。服务诊断按 UTC 时间记录 RPC 方法、请求 ID、执行去重 ID、耗时、错误码与堆栈，保留事件的设备/运行/任务关联。正常截图轮询不逐帧记录。\n\n导出不包含数据库文件、截图、模型设置或完整任务/账号结果；常见 API key、token、密码、Cookie、Authorization 和 URL 认证信息会脱敏。原生日志来自上游，仍应检查后再分享。日志是运行中的只读快照：最多读取 64 个文本文件，各取末尾 512 KiB，最终文件小于 8 MiB；截断及读取失败明确列在 `warnings`。服务日志每个进程每天最多 8 份、每份 2 MiB，达到上限暂停记录并在导出中注明。\n\n自动清理默认保留 7 天，可改为 14 天、30 天或关闭。启动时检查一次，运行期间每 24 小时检查；保存新的保留期后立即按新设置检查。按文件最后修改时间清理过期服务/核心日志及本功能生成的历史导出文件。「清理日志」确认后清理所有可删除的日志，不受保留期限制，并显示删除数量、释放空间和跳过数量。\n\n清理仅删除允许的日志文件名，不删除目录，不清除数据库中的事件或执行记录，也不处理截图、组件、锁文件及用户自行放置的导出目录文件。事件日志可在设备日志抽屉的显式选择模式中确认删除；该操作通过独立接口按事件 id 持久删除，不影响导出文件、执行记录或业务数据。当前服务正在写入的文件、本次服务会话启动过的所有 worker 目录都保留，包括已断开但可能仍在退出的 worker；这些历史文件在后续会话不再使用时才可清理。导出与清理在服务线程内串行处理，读取/删除前检查普通文件、链接祖先及文件身份，拒绝符号链接或 junction 导向其他目录。\n\n类型化接口由 `packages/contracts/schemas` 定义：`logs.info({})` 返回目录及保留期，`logs.export({})` 返回路径/大小/提示，`logs.clean({})` 返回清理统计/提示，`logs.delete({ ids })` 按事件 id 持久删除 1–1000 条日志并返回删除数量；目录不能通过 RPC 任意指定。`Settings.logRetentionDays` 对旧配置可缺省。日志功能由 Bun 产品服务提供。\n\n覆盖边界：服务初始化后的 RPC/事件与 `console.error`、已有 worker stderr 和 MaaCore 文本日志可导出；数据根无法打开等初始化前错误、Tauri 宿主/渲染层错误以及进程级崩溃转储尚未统一归档。macOS/Linux 的默认目录由合成测试覆盖，实际宿主权限与文件系统行为仍需目标平台验收。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/logging.md",
         "pointer": "L1-L25",
-        "sha256": "1680e893b9f8540869461750443ecd87020710581ce5c786e2321f5474a551df"
+        "sha256": "29155555642f84b50178d2cd11b3fb4593f3464754260f3fff094dd63cdb2e9a"
       }
     },
     {
@@ -765,8 +765,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L97-L106",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "pointer": "L99-L108",
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -792,8 +792,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L53-L68",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "pointer": "L55-L70",
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -819,8 +819,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L69-L72",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "pointer": "L71-L74",
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -847,7 +847,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L7-L26",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -874,7 +874,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L27-L36",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -900,8 +900,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L91-L96",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "pointer": "L93-L98",
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -929,8 +929,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L73-L90",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "pointer": "L75-L92",
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -956,8 +956,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L115-L120",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "pointer": "L117-L122",
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -970,21 +970,21 @@
         "后台下载与断点续传",
         "maacore-runtime"
       ],
-      "text": "MaaCore 运行文件的选择性安装 > 后台下载与断点续传\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。MirrorChyan（Mirror酱）暂不接入，核心与资源继续使用官方公开来源。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
+      "text": "MaaCore 运行文件的选择性安装 > 后台下载与断点续传\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。MirrorChyan（Mirror酱）暂不接入，核心与资源继续使用官方公开来源。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "MaaCore 运行文件的选择性安装",
           "后台下载与断点续传"
         ],
-        "content": "## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。MirrorChyan（Mirror酱）暂不接入，核心与资源继续使用官方公开来源。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
+        "content": "## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。MirrorChyan（Mirror酱）暂不接入，核心与资源继续使用官方公开来源。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L37-L52",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "pointer": "L37-L54",
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -1010,8 +1010,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L107-L114",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "pointer": "L109-L116",
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -1023,20 +1023,20 @@
         "MaaCore 运行文件的选择性安装",
         "maacore-runtime"
       ],
-      "text": "MaaCore 运行文件的选择性安装\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n# MaaCore 运行文件的选择性安装\n\nMaa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完整归档，在不可变候选目录中选择性解压，再由独立 C++20 进程校验核心版本、API 和资源加载。首次安装和后续核心更新共用同一 TypeScript 提取规则；独立 MaaResource 覆盖包使用通用安全解压。发行路径不再调用官方 Python Updater。\n\n核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/updates.ts)。Python 原实现仍用于回归比较；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。",
+      "text": "MaaCore 运行文件的选择性安装\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n# MaaCore 运行文件的选择性安装\n\nMaa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完整归档，在不可变候选目录中选择性解压，再由独立 C++20 进程校验核心版本、API 和资源加载。首次安装和后续核心更新共用同一 TypeScript 提取规则；独立 MaaResource 覆盖包使用通用安全解压。发行路径不再调用官方 Python Updater。\n\n核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/updates.ts)。旧参考实现已移除；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "MaaCore 运行文件的选择性安装"
         ],
-        "content": "# MaaCore 运行文件的选择性安装\n\nMaa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完整归档，在不可变候选目录中选择性解压，再由独立 C++20 进程校验核心版本、API 和资源加载。首次安装和后续核心更新共用同一 TypeScript 提取规则；独立 MaaResource 覆盖包使用通用安全解压。发行路径不再调用官方 Python Updater。\n\n核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/updates.ts)。Python 原实现仍用于回归比较；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。",
+        "content": "# MaaCore 运行文件的选择性安装\n\nMaa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完整归档，在不可变候选目录中选择性解压，再由独立 C++20 进程校验核心版本、API 和资源加载。首次安装和后续核心更新共用同一 TypeScript 提取规则；独立 MaaResource 覆盖包使用通用安全解压。发行路径不再调用官方 Python Updater。\n\n核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/updates.ts)。旧参考实现已移除；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L1-L6",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -1062,8 +1062,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L121-L130",
-        "sha256": "0a85d3f880338f135d4551e5dd99989aac03f6b7ee12d4d0ee292603b5869240"
+        "pointer": "L123-L132",
+        "sha256": "47dddab41050aacdcdbd459280feb92f72d04b5ebddd8815b430ce329eab74d6"
       }
     },
     {
@@ -1196,7 +1196,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L45-L52",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     },
     {
@@ -1208,20 +1208,20 @@
         "工具箱与定时计划",
         "toolbox-schedules"
       ],
-      "text": "工具箱与定时计划\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n# 工具箱与定时计划\n\n行为基线为 MAA v6.20.0 Windows 客户端。以下功能由 TypeScript 服务执行，托盘驻留和切换页面不会停止调度或工具；Python 调试参考后端不提供新增接口。",
+      "text": "工具箱与定时计划\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n# 工具箱与定时计划\n\n行为基线为 MAA v6.20.0 Windows 客户端。以下功能由 TypeScript 服务执行，托盘驻留和切换页面不会停止调度或工具。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "工具箱与定时计划"
         ],
-        "content": "# 工具箱与定时计划\n\n行为基线为 MAA v6.20.0 Windows 客户端。以下功能由 TypeScript 服务执行，托盘驻留和切换页面不会停止调度或工具；Python 调试参考后端不提供新增接口。",
+        "content": "# 工具箱与定时计划\n\n行为基线为 MAA v6.20.0 Windows 客户端。以下功能由 TypeScript 服务执行，托盘驻留和切换页面不会停止调度或工具。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L1-L4",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     },
     {
@@ -1234,21 +1234,21 @@
         "工具箱",
         "toolbox-schedules"
       ],
-      "text": "工具箱与定时计划 > 工具箱\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 工具箱\n\n进入工具箱后，先在「目标设备」选择设备。页面随后检查连接与控制权，检查完成后开放工具操作。查询失败可点击「重新检查」。设备执行整张任务表、其他工具、人工点击、连接或核心切换时禁用启动；不会插队或排队。任务表内部两条任务之间的空闲也不会释放控制权。\n\n设备忙时，仍可查看、搜索和导出上次成功识别的数据。启动请求还会在服务端再次检查并取得独占权。切换设备后重新检查并读取该设备的数据；已经开始的工具继续使用启动时的设备、客户端和配置。不同设备可同时运行。\n\n| 工具 | 使用方式与结果 |\n| --- | --- |\n| 仓库 | 独立识别；展示数量和采集时间，支持搜索及 JSON、ArkPlanner、Lolicon、Markdown、CSV 导出 |\n| 干员 | 独立识别；展示头像、持有、星级、精英化、等级和潜能，支持搜索、持有筛选、复制及 JSON、Markdown、CSV 导出 |\n| 公招计算 | 识别设备标签或手动选择最多五个标签，列出最多三个标签的组合、最低星级和候选干员；已识别干员的潜能一并显示。不会确认招募、刷新或加急 |\n| 库存保持 | 每组最多 29 项目标，配置材料 ID、数量、明确关卡、顺序及药剂/源石上限；启动独立补货并显示逐项达标情况 |\n| 数据管理 | 按所选设备和客户端查看仓库/干员采集时间、当前资源版本；提供识别刷新、数据导出及活动与关卡导航刷新入口 |\n| 小游戏 | 根据已激活资源开放像素画和隐秘战线；设置结局/分支后直接开始，可停止。核心流程结束不代表已经验证游戏奖励，须核对设备结果 |\n\n这些操作保存为独立工具记录，不会创建任务表。原有快捷识别任务表保留，可继续手动使用。\n\n干员头像按干员 ID 从当前 MaaResource 读取，固定尺寸占位、按需加载并缓存；缺失或解码失败使用默认图标。启用新资源后刷新缓存，图片字节不存入业务结果或数据库。未持有条目来自核心最终完整名单，未识别的练度显示「未识别」。\n\n库存保持默认先刷新仓库，再计算缺口并按配置排序。支持按达成率排序、仅执行首个不足项、活动及资源收集全开期间跳过；导航判定关闭的关卡会跳过。药剂、源石默认均为零，未开放无法严格限量的临期药选项。\n\n库存以原始识别值为基准，累计已确认的掉落增量；重复回调不会重复累计。仓库中「掉落推算」与原始数量分别显示，采集时间保留。结果区分全部达标、部分完成、用户停止、失败或结果未知；成功流程仍有不足项时不会宣称全部完成。停止/失败不丢弃已确认掉落。\n\n有效配置即时保存。最终识别结果必须同时通过数据校验、任务成功和核心/异步调用空闲确认，随后原子保存；失败保留上次成功结果。结果按设备与客户端隔离，沿用现有确认换号时的缓存失效边界。",
+      "text": "工具箱与定时计划 > 工具箱\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 工具箱\n\n进入工具箱后，先在「目标设备」选择设备。页面随后检查连接与控制权，检查完成后开放工具操作。查询失败可点击「重新检查」。设备执行整张任务表、其他工具、人工点击、连接或核心切换时禁用启动；不会插队或排队。任务表内部两条任务之间的空闲也不会释放控制权。\n\n设备忙时，仍可查看、搜索和导出上次成功识别的数据。启动请求还会在服务端再次检查并取得独占权。切换设备后重新检查并读取该设备的数据；已经开始的工具继续使用启动时的设备、客户端和配置。不同设备可同时运行。\n\n| 工具     | 使用方式与结果                                                                                                                     |\n| -------- | ---------------------------------------------------------------------------------------------------------------------------------- |\n| 仓库     | 独立识别；展示数量和采集时间，支持搜索及 JSON、ArkPlanner、Lolicon、Markdown、CSV 导出                                             |\n| 干员     | 独立识别；展示头像、持有、星级、精英化、等级和潜能，支持搜索、持有筛选、复制及 JSON、Markdown、CSV 导出                            |\n| 公招计算 | 识别设备标签或手动选择最多五个标签，列出最多三个标签的组合、最低星级和候选干员；已识别干员的潜能一并显示。不会确认招募、刷新或加急 |\n| 库存保持 | 每组最多 29 项目标，配置材料 ID、数量、明确关卡、顺序及药剂/源石上限；启动独立补货并显示逐项达标情况                               |\n| 数据管理 | 按所选设备和客户端查看仓库/干员采集时间、当前资源版本；提供识别刷新、数据导出及活动与关卡导航刷新入口                              |\n| 小游戏   | 根据已激活资源开放像素画和隐秘战线；设置结局/分支后直接开始，可停止。核心流程结束不代表已经验证游戏奖励，须核对设备结果            |\n\n这些操作保存为独立工具记录，不会创建任务表。原有快捷识别任务表保留，可继续手动使用。\n\n干员头像按干员 ID 从当前 MaaResource 读取，固定尺寸占位、按需加载并缓存；缺失或解码失败使用默认图标。启用新资源后刷新缓存，图片字节不存入业务结果或数据库。未持有条目来自核心最终完整名单，未识别的练度显示「未识别」。\n\n库存保持默认先刷新仓库，再计算缺口并按配置排序。支持按达成率排序、仅执行首个不足项、活动及资源收集全开期间跳过；导航判定关闭的关卡会跳过。药剂、源石默认均为零，未开放无法严格限量的临期药选项。\n\n库存以原始识别值为基准，累计已确认的掉落增量；重复回调不会重复累计。仓库中「掉落推算」与原始数量分别显示，采集时间保留。结果区分全部达标、部分完成、用户停止、失败或结果未知；成功流程仍有不足项时不会宣称全部完成。停止/失败不丢弃已确认掉落。\n\n有效配置即时保存。最终识别结果必须同时通过数据校验、任务成功和核心/异步调用空闲确认，随后原子保存；失败保留上次成功结果。结果按设备与客户端隔离，沿用现有确认换号时的缓存失效边界。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "工具箱与定时计划",
           "工具箱"
         ],
-        "content": "## 工具箱\n\n进入工具箱后，先在「目标设备」选择设备。页面随后检查连接与控制权，检查完成后开放工具操作。查询失败可点击「重新检查」。设备执行整张任务表、其他工具、人工点击、连接或核心切换时禁用启动；不会插队或排队。任务表内部两条任务之间的空闲也不会释放控制权。\n\n设备忙时，仍可查看、搜索和导出上次成功识别的数据。启动请求还会在服务端再次检查并取得独占权。切换设备后重新检查并读取该设备的数据；已经开始的工具继续使用启动时的设备、客户端和配置。不同设备可同时运行。\n\n| 工具 | 使用方式与结果 |\n| --- | --- |\n| 仓库 | 独立识别；展示数量和采集时间，支持搜索及 JSON、ArkPlanner、Lolicon、Markdown、CSV 导出 |\n| 干员 | 独立识别；展示头像、持有、星级、精英化、等级和潜能，支持搜索、持有筛选、复制及 JSON、Markdown、CSV 导出 |\n| 公招计算 | 识别设备标签或手动选择最多五个标签，列出最多三个标签的组合、最低星级和候选干员；已识别干员的潜能一并显示。不会确认招募、刷新或加急 |\n| 库存保持 | 每组最多 29 项目标，配置材料 ID、数量、明确关卡、顺序及药剂/源石上限；启动独立补货并显示逐项达标情况 |\n| 数据管理 | 按所选设备和客户端查看仓库/干员采集时间、当前资源版本；提供识别刷新、数据导出及活动与关卡导航刷新入口 |\n| 小游戏 | 根据已激活资源开放像素画和隐秘战线；设置结局/分支后直接开始，可停止。核心流程结束不代表已经验证游戏奖励，须核对设备结果 |\n\n这些操作保存为独立工具记录，不会创建任务表。原有快捷识别任务表保留，可继续手动使用。\n\n干员头像按干员 ID 从当前 MaaResource 读取，固定尺寸占位、按需加载并缓存；缺失或解码失败使用默认图标。启用新资源后刷新缓存，图片字节不存入业务结果或数据库。未持有条目来自核心最终完整名单，未识别的练度显示「未识别」。\n\n库存保持默认先刷新仓库，再计算缺口并按配置排序。支持按达成率排序、仅执行首个不足项、活动及资源收集全开期间跳过；导航判定关闭的关卡会跳过。药剂、源石默认均为零，未开放无法严格限量的临期药选项。\n\n库存以原始识别值为基准，累计已确认的掉落增量；重复回调不会重复累计。仓库中「掉落推算」与原始数量分别显示，采集时间保留。结果区分全部达标、部分完成、用户停止、失败或结果未知；成功流程仍有不足项时不会宣称全部完成。停止/失败不丢弃已确认掉落。\n\n有效配置即时保存。最终识别结果必须同时通过数据校验、任务成功和核心/异步调用空闲确认，随后原子保存；失败保留上次成功结果。结果按设备与客户端隔离，沿用现有确认换号时的缓存失效边界。",
+        "content": "## 工具箱\n\n进入工具箱后，先在「目标设备」选择设备。页面随后检查连接与控制权，检查完成后开放工具操作。查询失败可点击「重新检查」。设备执行整张任务表、其他工具、人工点击、连接或核心切换时禁用启动；不会插队或排队。任务表内部两条任务之间的空闲也不会释放控制权。\n\n设备忙时，仍可查看、搜索和导出上次成功识别的数据。启动请求还会在服务端再次检查并取得独占权。切换设备后重新检查并读取该设备的数据；已经开始的工具继续使用启动时的设备、客户端和配置。不同设备可同时运行。\n\n| 工具     | 使用方式与结果                                                                                                                     |\n| -------- | ---------------------------------------------------------------------------------------------------------------------------------- |\n| 仓库     | 独立识别；展示数量和采集时间，支持搜索及 JSON、ArkPlanner、Lolicon、Markdown、CSV 导出                                             |\n| 干员     | 独立识别；展示头像、持有、星级、精英化、等级和潜能，支持搜索、持有筛选、复制及 JSON、Markdown、CSV 导出                            |\n| 公招计算 | 识别设备标签或手动选择最多五个标签，列出最多三个标签的组合、最低星级和候选干员；已识别干员的潜能一并显示。不会确认招募、刷新或加急 |\n| 库存保持 | 每组最多 29 项目标，配置材料 ID、数量、明确关卡、顺序及药剂/源石上限；启动独立补货并显示逐项达标情况                               |\n| 数据管理 | 按所选设备和客户端查看仓库/干员采集时间、当前资源版本；提供识别刷新、数据导出及活动与关卡导航刷新入口                              |\n| 小游戏   | 根据已激活资源开放像素画和隐秘战线；设置结局/分支后直接开始，可停止。核心流程结束不代表已经验证游戏奖励，须核对设备结果            |\n\n这些操作保存为独立工具记录，不会创建任务表。原有快捷识别任务表保留，可继续手动使用。\n\n干员头像按干员 ID 从当前 MaaResource 读取，固定尺寸占位、按需加载并缓存；缺失或解码失败使用默认图标。启用新资源后刷新缓存，图片字节不存入业务结果或数据库。未持有条目来自核心最终完整名单，未识别的练度显示「未识别」。\n\n库存保持默认先刷新仓库，再计算缺口并按配置排序。支持按达成率排序、仅执行首个不足项、活动及资源收集全开期间跳过；导航判定关闭的关卡会跳过。药剂、源石默认均为零，未开放无法严格限量的临期药选项。\n\n库存以原始识别值为基准，累计已确认的掉落增量；重复回调不会重复累计。仓库中「掉落推算」与原始数量分别显示，采集时间保留。结果区分全部达标、部分完成、用户停止、失败或结果未知；成功流程仍有不足项时不会宣称全部完成。停止/失败不丢弃已确认掉落。\n\n有效配置即时保存。最终识别结果必须同时通过数据校验、任务成功和核心/异步调用空闲确认，随后原子保存；失败保留上次成功结果。结果按设备与客户端隔离，沿用现有确认换号时的缓存失效边界。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L5-L29",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     },
     {
@@ -1275,7 +1275,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L30-L44",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     },
     {
@@ -1355,7 +1355,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -1444,7 +1444,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -1524,7 +1524,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/agent.message",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -1829,7 +1829,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/app.snapshot",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -1891,7 +1891,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.assign",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -1953,7 +1953,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2024,7 +2024,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2095,7 +2095,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2157,7 +2157,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2219,7 +2219,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.export",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2335,7 +2335,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2451,7 +2451,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.import",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2567,7 +2567,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2701,7 +2701,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.preview",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2781,7 +2781,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2861,7 +2861,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.set",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -2968,7 +2968,78 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.search",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+      }
+    },
+    {
+      "key": "product:rpc:copilot.stages",
+      "kind": "capability",
+      "id": "rpc:copilot.stages",
+      "name": "copilot.stages",
+      "aliases": [
+        "copilot",
+        "接口",
+        "参数",
+        "返回结果"
+      ],
+      "text": "copilot.stages\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n参数：{\"$ref\":\"#/$defs/EmptyParams\"}\n返回结果：{\"$ref\":\"#/$defs/CopilotStagesResult\"}",
+      "data": {
+        "category": "rpc",
+        "method": "copilot.stages",
+        "params": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/params/properties/copilot.stages"
+        },
+        "results": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/results/properties/copilot.stages"
+        },
+        "reachableSchemas": [
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/CopilotStagesResult"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/EmptyParams"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/params/properties/copilot.stages"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/results/properties/copilot.stages"
+          }
+        ],
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotStagesResult"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/EmptyParams"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.stages"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.stages"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.stages",
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3093,7 +3164,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.start",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3155,7 +3226,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.storage.info",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3253,7 +3324,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3351,7 +3422,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3440,7 +3511,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.auto_connect",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3502,7 +3573,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.availability",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3564,7 +3635,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.click",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3635,7 +3706,69 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.connect",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+      }
+    },
+    {
+      "key": "product:rpc:device.delete",
+      "kind": "capability",
+      "id": "rpc:device.delete",
+      "name": "device.delete",
+      "aliases": [
+        "device",
+        "接口",
+        "参数",
+        "返回结果"
+      ],
+      "text": "device.delete\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n参数：{\"$ref\":\"#/$defs/DeviceDeleteParams\"}\n返回结果：{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"deletedDeviceIds\"],\"properties\":{\"deletedDeviceIds\":{\"type\":\"array\",\"uniqueItems\":true,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}}}}",
+      "data": {
+        "category": "rpc",
+        "method": "device.delete",
+        "params": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/params/properties/device.delete"
+        },
+        "results": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/results/properties/device.delete"
+        },
+        "reachableSchemas": [
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/DeviceDeleteParams"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/params/properties/device.delete"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/results/properties/device.delete"
+          }
+        ],
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/DeviceDeleteParams"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/device.delete"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/device.delete"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/device.delete",
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3697,7 +3830,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.disconnect",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3768,7 +3901,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.discover",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3839,7 +3972,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.frame",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -3955,7 +4088,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/home.info",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4053,7 +4186,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.search",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4142,7 +4275,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.status",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4204,7 +4337,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.clean",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4266,7 +4399,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4328,7 +4461,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.export",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4390,7 +4523,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.info",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4452,7 +4585,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4532,7 +4665,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4630,7 +4763,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/recognition.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4710,7 +4843,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.item",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4790,7 +4923,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.operator",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4861,7 +4994,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.artifact",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -4977,7 +5110,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.detail",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5084,7 +5217,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.start",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5200,7 +5333,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.stop",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5262,7 +5395,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.cancel",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5324,7 +5457,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5377,7 +5510,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.host",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5457,7 +5590,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5528,7 +5661,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.override",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5599,7 +5732,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5760,7 +5893,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/settings.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5867,7 +6000,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/stages.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -5938,7 +6071,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.catalog",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6027,7 +6160,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6116,7 +6249,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6205,7 +6338,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6303,7 +6436,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.start",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6392,7 +6525,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.stop",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6472,7 +6605,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.activate",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6552,7 +6685,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.check",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6632,7 +6765,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.prepare",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6712,7 +6845,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.rollback",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -6984,7 +7117,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountKnowledgeSnapshot",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7046,7 +7179,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotListParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7169,7 +7302,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotListResult",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7226,7 +7359,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7386,7 +7519,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotSummary",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7473,7 +7606,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CalendarStatus",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7512,7 +7645,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ChannelParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7545,7 +7678,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ClientType",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7599,7 +7732,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCategory",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7655,7 +7788,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCategoryAssignParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7695,7 +7828,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCategoryDeleteParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7738,7 +7871,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCategorySaveParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7786,7 +7919,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCompatibility",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7876,7 +8009,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotDeleteParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7908,7 +8041,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotDifficulty",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7950,7 +8083,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotExportParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -7989,7 +8122,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotIdentityParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8035,7 +8168,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotImportParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8065,7 +8198,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotKind",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8122,7 +8255,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotListParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8172,7 +8305,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotOperator",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8261,7 +8394,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotOptions",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8317,7 +8450,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotPreview",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8379,7 +8512,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotPreviewEntry",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8431,7 +8564,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotPreviewParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8486,7 +8619,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotQueueEntry",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8542,7 +8675,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRating",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8583,7 +8716,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRatingParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8634,7 +8767,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRatingSetParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8665,7 +8798,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRatingValue",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8814,7 +8947,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRecord",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8912,7 +9045,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSearchItem",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -8925,7 +9058,7 @@
         "JSON Schema",
         "参数约束"
       ],
-      "text": "CopilotSearchParams\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"target\":{\"enum\":[\"copilot\",\"set\"]},\"keyword\":{\"type\":\"string\",\"maxLength\":300},\"page\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000000},\"stage\":{\"type\":\"string\",\"maxLength\":200}},\"required\":[\"target\"]}",
+      "text": "CopilotSearchParams\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"target\":{\"enum\":[\"copilot\",\"set\"]},\"orderBy\":{\"description\":\"社区作业按热度、最新编号或访问量降序排列，缺省按热度；作业集不使用此字段。\",\"enum\":[\"hot\",\"id\",\"views\"]},\"keyword\":{\"type\":\"string\",\"maxLength\":300},\"page\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":1000000},\"stage\":{\"type\":\"string\",\"maxLength\":200}},\"required\":[\"target\"]}",
       "data": {
         "category": "schema",
         "schema": {
@@ -8936,6 +9069,14 @@
               "enum": [
                 "copilot",
                 "set"
+              ]
+            },
+            "orderBy": {
+              "description": "社区作业按热度、最新编号或访问量降序排列，缺省按热度；作业集不使用此字段。",
+              "enum": [
+                "hot",
+                "id",
+                "views"
               ]
             },
             "keyword": {
@@ -8963,7 +9104,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSearchParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9024,7 +9165,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSearchResult",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9083,7 +9224,64 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSource",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/$defs/CopilotStagesResult",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotStagesResult",
+      "name": "接口定义 CopilotStagesResult",
+      "aliases": [
+        "CopilotStagesResult",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "CopilotStagesResult\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"description\":\"当前启用资源中可唯一映射到社区关卡标识的地图编号；不受活动开放时间或刷图导航预设限制。\",\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"stages\":{\"type\":\"array\",\"maxItems\":50000,\"items\":{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"value\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"label\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":500}},\"required\":[\"value\",\"label\"]}}},\"required\":[\"stages\"]}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "description": "当前启用资源中可唯一映射到社区关卡标识的地图编号；不受活动开放时间或刷图导航预设限制。",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stages": {
+              "type": "array",
+              "maxItems": 50000,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "value",
+                  "label"
+                ]
+              }
+            }
+          },
+          "required": [
+            "stages"
+          ]
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/$defs/CopilotStagesResult",
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9136,7 +9334,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotStartParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9199,7 +9397,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotWorkspace",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9240,7 +9438,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotWorkspaceParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9281,7 +9479,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotWorkspaceSaveParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9350,7 +9548,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceAvailability",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9411,7 +9609,50 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceClickParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/$defs/DeviceDeleteParams",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/$defs/DeviceDeleteParams",
+      "name": "接口定义 DeviceDeleteParams",
+      "aliases": [
+        "DeviceDeleteParams",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "DeviceDeleteParams\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"deviceIds\"],\"properties\":{\"deviceIds\":{\"type\":\"array\",\"minItems\":1,\"maxItems\":1000,\"uniqueItems\":true,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}}}}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "deviceIds"
+          ],
+          "properties": {
+            "deviceIds": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1000,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            }
+          }
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/$defs/DeviceDeleteParams",
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9448,7 +9689,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceFrameParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9491,7 +9732,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DiscoveredDevice",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9518,7 +9759,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/EmptyParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9645,7 +9886,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/HomeInfo",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9680,7 +9921,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/IdParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9763,7 +10004,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/InfrastructureEstimate",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9810,7 +10051,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ItemResourceParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9878,7 +10119,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ItemResourceResult",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9917,7 +10158,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeClientParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -9951,7 +10192,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeKind",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10086,7 +10327,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeRecord",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10153,7 +10394,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeSearchParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10235,7 +10476,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeSearchResult",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10298,7 +10539,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeSource",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10455,7 +10696,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeStatus",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10497,7 +10738,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/LogDeleteParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10549,7 +10790,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/OperatorResourceParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10628,7 +10869,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/OperatorResourceResult",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10681,7 +10922,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognitionParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10786,7 +11027,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognitionResult",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10840,7 +11081,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognizedItem",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10913,7 +11154,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognizedOperator",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10954,7 +11195,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RunArtifactImage",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -10996,7 +11237,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RunArtifactParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11086,7 +11327,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/Schedule",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11149,7 +11390,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScheduleList",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11194,7 +11435,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScheduleOverrideParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11235,7 +11476,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScheduleSaveParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11316,7 +11557,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScreenFrame",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11401,7 +11642,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageActivity",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11442,7 +11683,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageListParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11551,7 +11792,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageListResult",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11613,7 +11854,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageOption",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11724,7 +11965,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolCatalog",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11862,7 +12103,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolConfig",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11926,7 +12167,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolConfigParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -11981,7 +12222,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolIdentity",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12080,7 +12321,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolJob",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12113,7 +12354,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolKind",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12182,7 +12423,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolStartParams",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12214,7 +12455,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12246,7 +12487,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12286,7 +12527,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/agent.message",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12318,7 +12559,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/app.snapshot",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12350,7 +12591,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.assign",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12382,7 +12623,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12414,7 +12655,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12446,7 +12687,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12478,7 +12719,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12510,7 +12751,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.export",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12542,7 +12783,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12574,7 +12815,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.import",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12606,7 +12847,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12638,7 +12879,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.preview",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12670,7 +12911,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12702,7 +12943,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.set",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12734,7 +12975,39 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.search",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.stages",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/copilot.stages",
+      "name": "接口定义 copilot.stages",
+      "aliases": [
+        "copilot.stages",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.stages\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/EmptyParams\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/EmptyParams"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/copilot.stages",
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12766,7 +13039,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.start",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12798,7 +13071,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.storage.info",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12830,7 +13103,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12862,7 +13135,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12894,7 +13167,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.auto_connect",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12931,7 +13204,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.availability",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -12963,7 +13236,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.click",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13001,7 +13274,39 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.connect",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/params/properties/device.delete",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/device.delete",
+      "name": "接口定义 device.delete",
+      "aliases": [
+        "device.delete",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "device.delete\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/DeviceDeleteParams\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/DeviceDeleteParams"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/DeviceDeleteParams"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/device.delete",
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13033,7 +13338,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.disconnect",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13065,7 +13370,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.discover",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13097,7 +13402,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.frame",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13144,7 +13449,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/home.info",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13176,7 +13481,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.search",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13208,7 +13513,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.status",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13240,7 +13545,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.clean",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13272,7 +13577,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13304,7 +13609,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.export",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13336,7 +13641,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.info",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13368,7 +13673,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13409,7 +13714,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13441,7 +13746,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/recognition.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13473,7 +13778,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.item",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13505,7 +13810,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.operator",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13537,7 +13842,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.artifact",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13569,7 +13874,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.detail",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13614,7 +13919,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.start",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13646,7 +13951,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.stop",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13678,7 +13983,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.cancel",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13710,7 +14015,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13768,7 +14073,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.host",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13800,7 +14105,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13832,7 +14137,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.override",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13864,7 +14169,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13905,7 +14210,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/settings.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13937,7 +14242,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/stages.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -13976,7 +14281,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.catalog",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14008,7 +14313,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14040,7 +14345,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14072,7 +14377,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14104,7 +14409,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.start",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14136,7 +14441,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.stop",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14168,7 +14473,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.activate",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14200,7 +14505,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.check",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14232,7 +14537,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.prepare",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14264,7 +14569,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.rollback",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14303,7 +14608,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/account.snapshot.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14335,7 +14640,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/account.snapshot.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14387,7 +14692,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/agent.message",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14419,7 +14724,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/app.snapshot",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14456,7 +14761,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.category.assign",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14496,7 +14801,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.category.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14541,7 +14846,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.category.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14573,7 +14878,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.category.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14613,7 +14918,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14674,7 +14979,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.export",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14706,7 +15011,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14775,7 +15080,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.import",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14836,7 +15141,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14868,7 +15173,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.preview",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14900,7 +15205,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.rating.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14932,7 +15237,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.rating.set",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14964,7 +15269,39 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.search",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.stages",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/copilot.stages",
+      "name": "接口定义 copilot.stages",
+      "aliases": [
+        "copilot.stages",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "copilot.stages\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/CopilotStagesResult\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/CopilotStagesResult"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/CopilotStagesResult"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/results/properties/copilot.stages",
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -14996,7 +15333,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.start",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15032,7 +15369,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.storage.info",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15064,7 +15401,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.workspace.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15096,7 +15433,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.workspace.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15159,7 +15496,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.auto_connect",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15191,7 +15528,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.availability",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15226,7 +15563,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.click",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15258,7 +15595,48 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.connect",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/results/properties/device.delete",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/device.delete",
+      "name": "接口定义 device.delete",
+      "aliases": [
+        "device.delete",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "device.delete\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"deletedDeviceIds\"],\"properties\":{\"deletedDeviceIds\":{\"type\":\"array\",\"uniqueItems\":true,\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}}}}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "deletedDeviceIds"
+          ],
+          "properties": {
+            "deletedDeviceIds": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            }
+          }
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/results/properties/device.delete",
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15293,7 +15671,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.disconnect",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15328,7 +15706,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.discover",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15360,7 +15738,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.frame",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15392,7 +15770,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/home.info",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15424,7 +15802,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/knowledge.search",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15456,7 +15834,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/knowledge.status",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15509,7 +15887,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.clean",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15545,7 +15923,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15596,7 +15974,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.export",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15641,7 +16019,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.info",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15676,7 +16054,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/plan.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15708,7 +16086,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/plan.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15740,7 +16118,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/recognition.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15772,7 +16150,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/resources.item",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15804,7 +16182,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/resources.operator",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15836,7 +16214,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.artifact",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15868,7 +16246,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.detail",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15900,7 +16278,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.start",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15932,7 +16310,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.stop",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -15967,7 +16345,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.cancel",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16002,7 +16380,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.delete",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16037,7 +16415,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.host",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16069,7 +16447,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16101,7 +16479,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.override",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16133,7 +16511,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16165,7 +16543,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/settings.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16197,7 +16575,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/stages.list",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16229,7 +16607,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.catalog",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16261,7 +16639,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.config.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16293,7 +16671,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.config.save",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16325,7 +16703,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.get",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16357,7 +16735,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.start",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16389,7 +16767,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.stop",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16421,7 +16799,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.activate",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16453,7 +16831,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.check",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16485,7 +16863,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.prepare",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16517,7 +16895,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.rollback",
-        "sha256": "7f9ebcb48b91b9c19f70dccffb830ddbda65fa7217e051660cf57f6e58ea48c7"
+        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
       }
     },
     {
@@ -16646,7 +17024,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -16702,7 +17080,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Budgets",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -16768,7 +17146,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CaptureSettings",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -16810,7 +17188,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ComponentPaths",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -16904,7 +17282,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ConnectionSettings",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -16981,7 +17359,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CopilotRunEntry",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17023,7 +17401,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CopilotStorage",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17127,7 +17505,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Device",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17200,7 +17578,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/DeviceConnectionProfile",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17246,7 +17624,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/DownloadProxySettings",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17304,7 +17682,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Event",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17355,7 +17733,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/InfrastructureEstimateProfile",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17422,7 +17800,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/InfrastructureLine",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17472,7 +17850,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ModelSettings",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17601,7 +17979,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Plan",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17659,7 +18037,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ResourceActivityVersion",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17806,7 +18184,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Run",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17868,7 +18246,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunArtifact",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17925,7 +18303,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunDrop",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -17998,7 +18376,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunInfrastructure",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -18110,7 +18488,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunTask",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -18163,7 +18541,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/SchedulerSettings",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -18358,7 +18736,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Settings",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -18429,7 +18807,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Task",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -18527,7 +18905,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ToolJobSummary",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -18540,7 +18918,7 @@
         "JSON Schema",
         "参数约束"
       ],
-      "text": "UpdateChannel\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"additionalProperties\":false,\"properties\":{\"checkedAt\":{\"type\":\"string\",\"maxLength\":64},\"appCanInstall\":{\"type\":\"boolean\",\"description\":\"此安装形式是否支持签名自动更新。\"},\"appInstallOnStartup\":{\"type\":\"boolean\",\"description\":\"已验证的应用更新是否安排在下次启动安装；失败尝试保留包但不会自动循环安装。\"},\"appRelease\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"url\",\"notes\",\"publishedAt\",\"prerelease\"],\"properties\":{\"url\":{\"type\":\"string\",\"maxLength\":2048},\"notes\":{\"type\":\"string\",\"maxLength\":16384},\"publishedAt\":{\"type\":\"string\",\"maxLength\":64},\"prerelease\":{\"type\":\"boolean\"}}},\"installDirectory\":{\"type\":\"string\",\"maxLength\":4096},\"resourceActivities\":{\"type\":\"array\",\"maxItems\":6,\"items\":{\"$ref\":\"#/$defs/ResourceActivityVersion\"}},\"id\":{\"enum\":[\"app\",\"core\",\"resource\"],\"title\":\"Id\",\"type\":\"string\"},\"currentVersion\":{\"title\":\"Currentversion\",\"type\":\"string\"},\"latestVersion\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}],\"default\":null,\"title\":\"Latestversion\"},\"status\":{\"default\":\"idle\",\"enum\":[\"idle\",\"checking\",\"available\",\"downloading\",\"staged\",\"waiting_idle\",\"active\",\"failed\"],\"title\":\"Status\",\"type\":\"string\"},\"progress\":{\"default\":0,\"maximum\":100,\"minimum\":0,\"title\":\"Progress\",\"type\":\"integer\"},\"message\":{\"default\":\"\",\"title\":\"Message\",\"type\":\"string\"}},\"required\":[\"id\",\"currentVersion\",\"latestVersion\",\"status\",\"progress\",\"message\"],\"title\":\"UpdateChannel\",\"type\":\"object\"}",
+      "text": "UpdateChannel\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"additionalProperties\":false,\"properties\":{\"checkedAt\":{\"type\":\"string\",\"maxLength\":64},\"appCanInstall\":{\"type\":\"boolean\",\"description\":\"此安装形式是否支持签名自动更新。\"},\"appInstallOnStartup\":{\"type\":\"boolean\",\"description\":\"已验证的应用更新是否安排在下次启动安装；失败尝试保留包但不会自动循环安装。\"},\"appRelease\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"url\",\"notes\",\"publishedAt\",\"prerelease\"],\"properties\":{\"url\":{\"type\":\"string\",\"maxLength\":2048},\"notes\":{\"type\":\"string\",\"maxLength\":16384},\"publishedAt\":{\"type\":\"string\",\"maxLength\":64},\"prerelease\":{\"type\":\"boolean\"}}},\"installDirectory\":{\"type\":\"string\",\"maxLength\":4096},\"resourceActivities\":{\"type\":\"array\",\"maxItems\":6,\"items\":{\"$ref\":\"#/$defs/ResourceActivityVersion\"}},\"id\":{\"enum\":[\"app\",\"core\",\"resource\"],\"title\":\"Id\",\"type\":\"string\"},\"currentVersion\":{\"title\":\"Currentversion\",\"type\":\"string\"},\"latestVersion\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}],\"default\":null,\"title\":\"Latestversion\"},\"status\":{\"default\":\"idle\",\"enum\":[\"idle\",\"checking\",\"available\",\"downloading\",\"staged\",\"waiting_idle\",\"active\",\"failed\"],\"title\":\"Status\",\"type\":\"string\"},\"progress\":{\"default\":0,\"maximum\":100,\"minimum\":0,\"title\":\"Progress\",\"type\":\"integer\"},\"message\":{\"default\":\"\",\"title\":\"Message\",\"type\":\"string\"},\"downloadSpeedBytesPerSecond\":{\"description\":\"当前网络传输速度，单位为字节/秒；非传输阶段省略。\",\"type\":\"number\",\"minimum\":0}},\"required\":[\"id\",\"currentVersion\",\"latestVersion\",\"status\",\"progress\",\"message\"],\"title\":\"UpdateChannel\",\"type\":\"object\"}",
       "data": {
         "category": "schema",
         "schema": {
@@ -18647,6 +19025,11 @@
               "default": "",
               "title": "Message",
               "type": "string"
+            },
+            "downloadSpeedBytesPerSecond": {
+              "description": "当前网络传输速度，单位为字节/秒；非传输阶段省略。",
+              "type": "number",
+              "minimum": 0
             }
           },
           "required": [
@@ -18673,7 +19056,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/UpdateChannel",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -18720,7 +19103,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/UserDataSync",
-        "sha256": "6ac51e4012402966566913732ffd34c3926a794743787b705f216b260506213d"
+        "sha256": "6cd0fe3a864d32f8d0b211ad043fe62417fcb4657f9088b30b77e03f7a576c7f"
       }
     },
     {
@@ -19526,7 +19909,7 @@
         "工具箱",
         "独立工具"
       ],
-      "text": "独立工具：数据管理（data）\n| 数据管理 | 按所选设备和客户端查看仓库/干员采集时间、当前资源版本；提供识别刷新、数据导出及活动与关卡导航刷新入口 |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
+      "text": "独立工具：数据管理（data）\n| 数据管理 | 按所选设备和客户端查看仓库/干员采集时间、当前资源版本；提供识别刷新、数据导出及活动与关卡导航刷新入口                              |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
       "data": {
         "category": "tool",
         "toolKind": "data",
@@ -19551,7 +19934,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L17-L17",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     },
     {
@@ -19565,7 +19948,7 @@
         "工具箱",
         "独立工具"
       ],
-      "text": "独立工具：仓库（depot）\n| 仓库 | 独立识别；展示数量和采集时间，支持搜索及 JSON、ArkPlanner、Lolicon、Markdown、CSV 导出 |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
+      "text": "独立工具：仓库（depot）\n| 仓库     | 独立识别；展示数量和采集时间，支持搜索及 JSON、ArkPlanner、Lolicon、Markdown、CSV 导出                                             |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
       "data": {
         "category": "tool",
         "toolKind": "depot",
@@ -19590,7 +19973,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L13-L13",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     },
     {
@@ -19604,7 +19987,7 @@
         "工具箱",
         "独立工具"
       ],
-      "text": "独立工具：小游戏（games）\n| 小游戏 | 根据已激活资源开放像素画和隐秘战线；设置结局/分支后直接开始，可停止。核心流程结束不代表已经验证游戏奖励，须核对设备结果 |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
+      "text": "独立工具：小游戏（games）\n| 小游戏   | 根据已激活资源开放像素画和隐秘战线；设置结局/分支后直接开始，可停止。核心流程结束不代表已经验证游戏奖励，须核对设备结果            |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
       "data": {
         "category": "tool",
         "toolKind": "games",
@@ -19629,7 +20012,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L18-L18",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     },
     {
@@ -19643,7 +20026,7 @@
         "工具箱",
         "独立工具"
       ],
-      "text": "独立工具：库存保持（inventory）\n| 库存保持 | 每组最多 29 项目标，配置材料 ID、数量、明确关卡、顺序及药剂/源石上限；启动独立补货并显示逐项达标情况 |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
+      "text": "独立工具：库存保持（inventory）\n| 库存保持 | 每组最多 29 项目标，配置材料 ID、数量、明确关卡、顺序及药剂/源石上限；启动独立补货并显示逐项达标情况                               |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
       "data": {
         "category": "tool",
         "toolKind": "inventory",
@@ -19668,7 +20051,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L16-L16",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     },
     {
@@ -19682,7 +20065,7 @@
         "工具箱",
         "独立工具"
       ],
-      "text": "独立工具：干员（operators）\n| 干员 | 独立识别；展示头像、持有、星级、精英化、等级和潜能，支持搜索、持有筛选、复制及 JSON、Markdown、CSV 导出 |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
+      "text": "独立工具：干员（operators）\n| 干员     | 独立识别；展示头像、持有、星级、精英化、等级和潜能，支持搜索、持有筛选、复制及 JSON、Markdown、CSV 导出                            |\n工具记录不创建任务表，启动须检查设备独占。文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。",
       "data": {
         "category": "tool",
         "toolKind": "operators",
@@ -19707,7 +20090,7 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L14-L14",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     },
     {
@@ -19746,9 +20129,9 @@
       "source": {
         "file": "docs/toolbox-schedules.md",
         "pointer": "L15-L15",
-        "sha256": "9595106b88012cef94d3c8d7c1e91d45013040a8b00fe67dc38984173d39ce23"
+        "sha256": "fe639c6c40818801c97b21cf9ee1a9ca575f705a999b1160e9631543a8c1b41b"
       }
     }
   ],
-  "digest": "c9a1133efe93270f6384c15af3c673799771677fdc1826ad9ef62daba4c3d264"
+  "digest": "b08ace4fd4e840e187b5067332ae854a742ca02374ab13e128853d948d8b5dc7"
 }

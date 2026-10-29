@@ -1,6 +1,6 @@
 # TypeScript / C++ 运行时迁移交接
 
-更新日期：2026-10-22。默认桌面链路已由 Python 改为 TypeScript 应用服务与 C++20 MaaCore worker。发行服务由固定 Bun 1.4.3 编译为可执行文件；用户无需安装 Python、Node 或 Bun。迁移实现与目标平台的实际验证是两项记录，最新结果以 [STATUS.md](STATUS.md) 为准。
+更新日期：2026-10-29。旧 Python 参考后端与开发依赖已移除；桌面与合成测试统一采用 TypeScript 应用服务与 C++20 MaaCore worker。发行服务由固定 Bun 1.4.3 编译为可执行文件；用户无需安装 Python、Node 或 Bun。迁移实现与目标平台的实际验证是两项记录，最新结果以 [STATUS.md](STATUS.md) 为准。
 
 ## 进程与职责
 
@@ -23,7 +23,6 @@ flowchart LR
 | 原生调用     | `services/native`；C++20 动态加载 MaaCore，复制回调、持有设备锁、处理异步 ID、调用超时和销毁                                             |
 | 更新任务     | 包内服务 `--update-job`；选择性提取核心或合并固定提交的资源，调用 C++ `--validate`，不打开业务数据库                                     |
 | 协议来源     | `packages/contracts/schemas`；JSON Schema 生成 TypeScript 类型和独立 Ajv 校验器，生成过程不调用 Python                                   |
-| Python 参考  | `services/runtime` 与 `tests/python`；开发回归和显式 debug 比较，不进入发行目录                                                          |
 
 JSON-RPC 使用 UTF-8 换行 JSON，stdout 仅承载协议，日志进入 stderr。原生输出带 `protocolVersion: 1`。每个设备只有一个控制者；原生调用结果不明时停止并要求核对，不自动重放。`AsstStop` 清空队列，不能作为暂停恢复。
 
@@ -37,17 +36,17 @@ stdio 通知方法保留 `runtime.event`；Tauri 宿主将其映射为合法事�
 
 任务表执行页只展示按任务保存的结果截图，进入执行页、选择任务或跟随当前任务均不启动实时预览。需要查看连续画面时，显式打开底部「画面」入口；反馈截图仍由服务在收到任务结果后按需获取和保存。
 
-服务仅在内存中维护每设备最近 32 帧、最长 2 秒的控制记录，核验设备、worker、`canControl` 与空闲状态后接受点击；点击按会话内 `requestId` 缓存成功与失败结果，不持久化去重，也不自动重放未知动作。连续预览 PNG 不落盘；点击事件只携带操作元数据。Python debug 参考尚未实现这两个新接口，选中参考后会明确报错，不自动切换后端。详细接口及限制见 [画面预览与人工点击](emulator-connection.md#画面预览与人工点击)。
+服务仅在内存中维护每设备最近 32 帧、最长 2 秒的控制记录，核验设备、worker、`canControl` 与空闲状态后接受点击；点击按会话内 `requestId` 缓存成功与失败结果，不持久化去重，也不自动重放未知动作。连续预览 PNG 不落盘；点击事件只携带操作元数据。详细接口及限制见 [画面预览与人工点击](emulator-connection.md#画面预览与人工点击)。
 
 执行快照新增可选 `Run.planName` 与 `Run.tasks`，持久保存本次启用的任务、顺序、等待/执行/完成/失败/停止/跳过状态和各自结果；旧执行记录缺少任务快照时不补造。`app.snapshot` 和执行事件只带基础执行摘要；使用类型化 `run.detail({id})` 读取单次执行的完整持久结果，避免 100 次历史结果重复挤占传输行大小。每次执行的任务元数据低于 1 MiB，写结果时预留状态和截图元数据空间，达到上限后仅通知一次并停止保存后续新结果，状态继续更新。重复类型按顺序索引与当前 native task ID 隔离，成功仍要求当前任务链成功、队列结束和异步调用空闲。停止或失败后，后续任务保持等待，表示未执行。运行和常见 ProcessTask 动作使用共享中文 formatter。
 
 根据原版 v6.20.0 [回调协议](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/protocol/callback-schema.md)及 `StageDropsTaskPlugin` / `InfrastAbstractTask`，`StageDrops.stats` 作为每个作战任务的累计材料，重复通知不累加；基建按设施与房间整合产物、方案指定干员及确认回调，指定名单本身不证明换班成功。最多保留每任务 200 种材料和 100 个基建房间。回调原始识别图片没有通过 C API 返回，服务在收到有效结果后从现有 `frame` 链路获取反馈画面；运行中读取核心最近缓存，可能已进入后续画面，不能视为结算原图。安全任务边界最多等待当前反馈画面 750 毫秒，随后使超时的截图请求失效；任务、执行或 worker 更换后的迟到响应丢弃，不挪给其他任务。
 
-反馈 PNG 保存到当前数据根的 `run-artifacts/<runId>/<artifactId>.png`，每任务最多 3 张、每次执行最多 12 张，每张低于 3 MiB 且不超过 8192 边长/16777216 像素。SQLite、事件和快照只保存尺寸、标签与 ID，通过类型化 `run.artifact({runId,artifactId})` 显式读取 `{mimeType,data}`；核验执行归属，不接受路径，不上传图片。`capturedAt` 是服务取帧时间。取图失败保留实际核心结果并记录诊断；Python debug 参考没有执行产物接口。
+反馈 PNG 保存到当前数据根的 `run-artifacts/<runId>/<artifactId>.png`，每任务最多 3 张、每次执行最多 12 张，每张低于 3 MiB 且不超过 8192 边长/16777216 像素。SQLite、事件和快照只保存尺寸、标签与 ID，通过类型化 `run.artifact({runId,artifactId})` 显式读取 `{mimeType,data}`；核验执行归属，不接受路径，不上传图片。`capturedAt` 是服务取帧时间。取图失败保留实际核心结果并记录诊断。
 
 仓库/干员使用 `recognition.get({deviceId,kind,clientType?})` 按需读取本机快照，`kind` 为 `depot` / `operators`。返回设备、客户端、采集时间、来源执行 ID 和物品/干员数组；无成功采集时两个时间/执行字段为空、数组为空，不从旧事件推断库存。服务仅在有效的 `DepotInfo` / `OperBoxInfo` 最终回调、匹配任务成功且核心安全空闲后事务保存结果与同步时间；单次及 UserDataUpdate 均支持。按设备/客户端/类型隔离，确认账号或客户端切换后清除此设备的快照，失败不覆盖旧成功数据。物品最多 10000 项、干员最多 2000 项，保存的结果数组限制为 2 MiB；查询时从启用资源补全物品名称，响应限制为 3 MiB，仍低于桌面 NDJSON 上限。`own`、精英化、等级、潜能和星级保持核心值，潜能/星级从 1 开始；负数保留未识别语义。
 
-`resources.item({itemId,clientType?})` 只读取当前启用不可变 MaaResource 中的物品目录和 PNG，返回名称、资源版本、MIME 和 base64，缺失时名称/图像可为空。不接受文件路径，不联网下载；外服名称只读目标客户端索引，图片可回退共用模板，B服复用官服。固定目录读取拒绝链接、越界及超限文件，PNG 校验后最多 512 KiB；前端通过类型化 RPC 显示仓库与执行材料图，按资源版本缓存，缺图显示通用图标。Python debug 参考尚无这两个接口，明确报错而不切换后端。
+`resources.item({itemId,clientType?})` 只读取当前启用不可变 MaaResource 中的物品目录和 PNG，返回名称、资源版本、MIME 和 base64，缺失时名称/图像可为空。不接受文件路径，不联网下载；外服名称只读目标客户端索引，图片可回退共用模板，B服复用官服。固定目录读取拒绝链接、越界及超限文件，PNG 校验后最多 512 KiB；前端通过类型化 RPC 显示仓库与执行材料图，按资源版本缓存，缺图显示通用图标。
 
 `resources.operator({name,clientType?})` 从当前启用的不可变 MaaResource `battle_data.json` 干员目录精确匹配姓名，返回 `{name,id,rarity,mimeType,data,resourceVersion}`；星级从 1 开始，只接受 1–6。优先使用当前客户端名称，也接受目录中唯一对应的其他语言姓名；当前客户端缺少名称的条目不用于补全。同名多形态不猜头像，若所有候选星级相同仍返回该星级，冲突时星级为空。头像只读取固定 `template/avatar/<id>.png`，可使用外服覆盖目录，复用材料资源的有界读取、链接拒绝与 PNG 校验；缺失保留姓名，不联网获取。
 
@@ -57,17 +56,17 @@ stdio 通知方法保留 `runtime.event`；Tauri 宿主将其映射为合法事�
 
 核心精简提取的 `e6e8493` 和接入更新的 `103bc99` 已进入本次迁移基线，规则与测试已迁至 TypeScript；不需要另行重复应用。这部分只减少落盘范围，不减少官方完整包的下载流量。提取白名单和历史 Windows 数据见 [maacore-runtime.md](maacore-runtime.md)。
 
-Windows 运行中模拟器的动态多开枚举、监听归属、自动增强截图和独立实例清单由 TypeScript 服务实现。`Settings.capture.autoDetect` 与 `DeviceConnectionProfile.autoDetected` 仅用于业务配置和界面，调用 C++ worker 前剥离；雷电截图 PID 在每次连接时核实，不写业务设置。Python debug 参考没有这些新能力，不能用参考后端替代或验收该路径。完整规则见 [连接设置](connection-settings.md) 和 [多开说明](multi-instance.md)。
+Windows 运行中模拟器的动态多开枚举、监听归属、自动增强截图和独立实例清单由 TypeScript 服务实现。`Settings.capture.autoDetect` 与 `DeviceConnectionProfile.autoDetected` 仅用于业务配置和界面，调用 C++ worker 前剥离；雷电截图 PID 在每次连接时核实，不写业务设置。完整规则见 [连接设置](connection-settings.md) 和 [多开说明](multi-instance.md)。
 
-## 分阶段取消 Python 的落点
+## 迁移完成范围
 
 1. 固定协议：保留现有 JSON-RPC 方法和事件，改由独立 JSON Schema 生成类型与校验，先让语言切换不影响页面。
 2. 分离原生调用：C++20 worker 接管 MaaCore 加载、设备锁、回调及超时，应用服务只监督进程和维护业务队列。
 3. 迁移业务：TypeScript 接管配置默认值、未知任务参数保留、预算校验、运行去重、ADB 发现、安装更新和 mock 提案。
 4. 切换启动和打包：debug 默认固定 Bun，release 仅运行包内服务；更新辅助任务也使用同一自包含可执行文件。
-5. 保留参考比较：Python 测试与显式 debug selector 继续使用，直到真实核心及各目标平台的发行验收完成。删除 Python 参考与测试是后续独立变更。
+5. 移除参考实现：删除旧 Python 服务、依赖锁与调试选择入口；原生协议和锁测试改由 Node/C++ 驱动，业务边界继续使用固定期望与 Bun 跨进程回归验证。
 
-前四项已经实现；第五项用于继续验证兼容性。真实模型、定时调度、库存与专用识别结果等产品缺口没有因语言迁移而自动完成。普通测试不连接游戏、不使用真实账号或付费模型。
+以上代码迁移已完成；各目标平台和真实设备仍须独立验收。真实模型、定时调度、库存与专用识别结果等产品缺口没有因语言迁移而自动完成。普通测试不连接游戏、不使用真实账号或付费模型。
 
 ## 数据交接与回退
 
@@ -75,12 +74,12 @@ Windows 运行中模拟器的动态多开枚举、监听归属、自动增强截
 
 默认数据根现为程序目录下的 `config`（开发版为 checkout 下的 `config`），所以配置库为 `config/native/maaverge.sqlite3`。数据库集中保存 `settings/main`、任务表、设备连接和历史记录；缓存、服务日志与后续截图同属该数据根。WebView 内的最近任务表选择、预览帧率及未保存草稿仍是界面缓存，由 WebView 管理，不属于数据库备份。程序目录不可写时明确失败，不静默回退到用户目录；`MAAVERGE_DATA_DIR` 与 `--data-dir` 仍可显式指定其他根目录。
 
-默认 TypeScript 后端在新库不存在时，从旧标准用户目录 `MAAVerge/native`（开发版为 `MAAVerge-dev/<checkout-hash>/native`）导入：同时持有源、目标数据根租约，只读序列化旧库，按下文的 fsync、完整性校验和改名流程发布新库，并复制相对 ID 引用的 `run-artifacts` 截图。失败不创建空业务库，重试会替换上次复制不完整的截图；已有目标库时不再导入，显式数据根覆盖不会自动读取旧用户数据。源数据库、旧备份和日志均保留；核心、资源及用户外部文件的绝对路径引用保持原值，因此迁移后不要删除仍被引用的旧组件目录。Python debug 参考不执行这次自动导入，检测到旧开发库时提示先用默认后端迁移。
+默认 TypeScript 后端在新库不存在时，从旧标准用户目录 `MAAVerge/native`（开发版为 `MAAVerge-dev/<checkout-hash>/native`）导入：同时持有源、目标数据根租约，只读序列化旧库，按下文的 fsync、完整性校验和改名流程发布新库，并复制相对 ID 引用的 `run-artifacts` 截图。失败不创建空业务库，重试会替换上次复制不完整的截图；已有目标库时不再导入，显式数据根覆盖不会自动读取旧用户数据。源数据库、旧备份和日志均保留；核心、资源及用户外部文件的绝对路径引用保持原值，因此迁移后不要删除仍被引用的旧组件目录。
 
-| 锁           | 实现与生命周期                                                                                                                                            |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 数据目录独占 | TypeScript 与当前 Python 参考都直接打开同一 `.runtime-lock.sqlite3`，设置 DELETE journal、`busy_timeout=0` 并保持 `BEGIN EXCLUSIVE`；持锁服务退出后才释放 |
-| 设备控制权   | C++ worker 在共享设备锁目录持有文件锁；Windows 使用 LockFileEx，Unix 使用 flock，与 Python filelock 兼容；销毁核心后释放                                  |
+| 锁           | 实现与生命周期                                                                                                                           |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 数据目录独占 | 应用服务各实例直接打开同一 `.runtime-lock.sqlite3`，设置 DELETE journal、`busy_timeout=0` 并保持 `BEGIN EXCLUSIVE`；持锁服务退出后才释放 |
+| 设备控制权   | C++ worker 在共享设备锁目录持有文件锁；Windows 使用 LockFileEx，Unix 使用 flock，兼容旧版本的设备锁格式；销毁核心后释放                  |
 
 两个锁不共用文件，也不互相替代。不要删除或重建正在使用的锁文件。开发 worktree 的数据根各自隔离，设备锁目录由同机实例共享。旧版本尚无 SQLite 数据根租约，交接前必须先完全退出旧桌面和旧服务。
 
@@ -90,20 +89,7 @@ RPC、对象存取和原生任务发送使用数值 token 保留器：严格整�
 
 需要比较或恢复时，先退出所有相关服务，保全当前数据库及其 WAL/SHM 文件，再把 `pre-typescript.sqlite3` 复制为一个新隔离数据根的 `native/maaverge.sqlite3`，通过 `MAAVERGE_DATA_DIR` 指向该根。先用隔离测试或只读数据库检查比较计划顺序、参数和记录；若启动服务核对，须预先关闭该副本的自动连接与自动更新。不直接覆盖仍在使用的数据，也不通过旧 mock 模式比较真实记录。预迁移备份不包含迁移后的新增记录，恢复它也不会回滚 MaaCore/资源目录或游戏状态。
 
-Python 参考只在 debug 桌面构建中显式启用：
-
-```powershell
-$env:MAAVERGE_BACKEND = 'python'
-powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 dev
-# 下次切回默认服务前，在同一终端移除此 selector。
-Remove-Item Env:MAAVERGE_BACKEND
-```
-
-```bash
-MAAVERGE_BACKEND=python bash tools/pnpm.sh dev
-```
-
-selector 选择旧应用服务及其原生适配路径，用于比较；桌面比较也使用 native 数据目录，不恢复产品 mock。Python 参考测试内部仍保留旧 mock fixture，不能把它作为普通产品启动方式。release 忽略该 selector；包内服务缺失或启动失败会报错，不查找系统解释器，不自动降级到 Python。
+开发和发行均只使用 TypeScript 应用服务。旧后端 selector 不再提供 Python 启动入口；服务缺失或失败时明确报错，不查找系统解释器，也不自动切换实现。旧数据库备份与兼容规则继续保留。
 
 ## 自包含发行与系统依赖
 
@@ -123,7 +109,7 @@ pnpm test:desktop-runtime
 pnpm build
 ```
 
-`dist/runtime/maaverge-runtime` 包含应用服务和 C++ worker 两个可执行文件、`build-info.json` 和 `licenses/`。组件下载统一由 TypeScript 服务内置 HTTP 实现，保留断点续传、进度、代理和完整性校验；不再准备或打包 aria2，也不提供下载器选择或自定义可执行文件路径。已发布 v0.1.2 的包内 aria2 保持不变，当前源码构建布局见 [开发指南](development.md)。生产 CMake 使用 `BUILD_TESTING=OFF`，不需要 Python。测试构建使用 Python 3.12/filelock 驱动合成动态库与锁互斥测试；这不构成发行依赖。
+`dist/runtime/maaverge-runtime` 包含应用服务和 C++ worker 两个可执行文件、`build-info.json` 和 `licenses/`。组件下载统一由 TypeScript 服务内置 HTTP 实现，保留断点续传、进度、代理和完整性校验；不再准备或打包 aria2，也不提供下载器选择或自定义可执行文件路径。已发布 v0.1.2 的包内 aria2 保持不变，当前源码构建布局见 [开发指南](development.md)。生产 CMake 使用 `BUILD_TESTING=OFF`；测试构建使用 Node 与独立原生锁探针驱动合成动态库、协议和锁互斥测试，开发与发行均不依赖 Python。
 
 打包禁用自动加载 `.env` 与 `bunfig.toml`，启动时清理影响运行方式的 Node/Bun 环境选项。包内更新任务通过 `process.execPath` 重新启动同一服务的 `--update-job`，不依赖源码树或开发目录。最小探针检查空 PATH 下的 SQLite/WAL、保留 rowid 的备份、跨进程独占锁、子进程 NDJSON 与归档读取；包内 smoke 检查真实服务的空设备状态、Agent 提案、设置与计划保存、重启持久化、缺失设备拒绝和退出收尾，合成核心可用时继续验证 `--update-job` 的选择性归档提取与 C++ 校验。运行去重、空闲更新和回滚由注入合成适配器的服务测试覆盖。
 
@@ -163,10 +149,10 @@ Windows 使用 `.tools/bun/bun.exe` 和 `.exe` 输出名。记录自建 Bun/WebK
 
 ## 验证门槛与后续交接
 
-产品服务的日志 RPC、导出目录、保留期与诊断覆盖范围见[日志导出与清理](logging.md)。Python 参考仅兼容 `logRetentionDays` 设置的存储格式，不提供日志维护功能。
+产品服务的日志 RPC、导出目录、保留期与诊断覆盖范围见[日志导出与清理](logging.md)。
 
 `.github/workflows/ci.yml` 的 Bun gate 在四个原生宿主分别编译并执行：Windows x64、Ubuntu x64、macOS arm64、macOS x64；全部成功后原生矩阵才构建 C++ 合成测试、运行 TypeScript 测试、Rust 检查和桌面打包。`node tools/probe-bun.mjs --all-targets` 可以交叉生成四种探针，但只有当前宿主会执行，结果中的 `executed: false` 不能计作平台验收。
 
 此前运行时迁移在 Windows x64 开发主机、四平台宿主 CI 和 Ubuntu 22.04 干净容器记录过验证；历史结果不代表本次移除产品 mock 后已重新通过相同平台验收。`pnpm test:desktop-webview` 检查 Windows 实际 release 窗口；`pnpm test:clean-linux` 检查没有 Python/Node/Bun 的 Linux 容器后端。这些结果与干净系统安装、正式签名、公证和真实游戏行为分别记录。确切测试数量、包内 smoke、安装包及本次平台实况由 [STATUS.md](STATUS.md) 记录。
 
-后续先完成最低系统、正式签名与安装、真实核心的加载和资源组合验证，再安排用户明确选择的设备行为测试。只有这些门槛完成，才评估删除 Python 参考；云模型 harness、视觉工具和持续托管仍按产品计划独立交付。
+后续先完成最低系统、正式签名与安装、真实核心的加载和资源组合验证，再安排用户明确选择的设备行为测试。Python 参考的移除不替代这些验收；云模型 harness、视觉工具和持续托管仍按产品计划独立交付。

@@ -2,7 +2,11 @@
 
 `pnpm dev` 和发行桌面均使用真实原生服务；旧 `MAAVERGE_MODE=mock` / `--mode mock` 已移除并明确报错。无需设置模式，兼容保留的值仅为 `native`。没有设备时不生成演示设备，没有核心时显示「未安装」并通过真实更新源安装；Agent 本地提案仍可生成，保存后需连接真实设备才能手动执行。`pnpm dev:ui` 只启动前端，普通浏览器没有桌面服务时提示不可用。
 
-服务在启动并具备已启用 MaaCore 后自动发现模拟器，每 30 秒在空闲时重试。设置 `autoConnect` 默认开启；关闭后仅保留用户主动触发的连接。手动断开设备后，该设备不会立即被后台重连；重新开启自动连接、主动点击自动连接或重启应用可以解除抑制。后台发现期间关闭自动连接或手动断开设备，会阻止该轮随后建立新的核心连接。真实数据继续位于 `<data-root>/native`；旧 `mock` 目录保留，产品不读取、迁移或删除它。
+服务在启动并具备已启用 MaaCore 后自动发现模拟器。Windows、macOS、Linux 共用 ADB 状态订阅及历史目标端口检查：自动连接开启时，即使没有在线设备也保持 `host:track-devices` 订阅；历史模拟器或允许接入的本机设备上线后自动排队连接。尚未注册到 ADB 的离线历史目标及已保存本机实例，每 2 秒检查一次 TCP 端口，单次最多等待 200ms、最多并行检查 4 个地址；端口就绪后才执行固定 ADB 连接及设备状态确认，再建立 MaaCore 连接。周期检查本身不创建子进程、不枚举模拟器进程，也不反复解析 ADB 路径。
+
+后台连接最多并行 2 个目标，最终以 MaaCore 异步连接成功及空闲确认作为就绪依据，请求被接收不算连接成功。失败按 2、4、8、16、30 秒退避，之后保持 30 秒；设备租约占用时快速失败并等待 30 秒，不抢占其他实例。端口持续开放或重复 ADB 快照不会重置退避；新的就绪变化、配置修改及手动重试可以提前触发。其他设备执行任务不阻止历史目标重连，组件准备、核心切换、应用更新与退出仍会阻止新连接。原有每 30 秒空闲发现保留，用于尚未见过的新实例，不承担历史目标的快速重连。
+
+设置 `autoConnect` 默认开启；关闭后不再自动接入设备，但仍监听已连接设备掉线。手动断开或删除历史设备后，当前会话跳过该目标，别名或模拟器进程 PID 改变不会解除抑制；重新开启自动连接、主动点击自动连接或重启应用可以解除抑制。配置变更、关闭自动连接及退出会使旧检查和连接结果失效；连接恢复不会重放失败任务。自定义远程 ADB server 使用订阅及已有连接流程，不用本机端口探测推断远端设备是否就绪。真实数据继续位于 `<data-root>/native`；旧 `mock` 目录保留，产品不读取、迁移或删除它。
 
 没有实例清单或只有自动生成的实例配置时，自动连接持续发现新启动的本机实例。清单包含手动新增或编辑过的配置后，只逐项尝试清单中的地址和配置，单项失败不阻止其他实例。手动“发现设备”始终可以连接已监听的本机候选 ADB 地址，再刷新设备列表；此步骤只建立 ADB 传输连接，不取得 MaaCore 控制权。共享/逐实例设置见 [连接设置](connection-settings.md)，同表并行、分别停止与客户端资源隔离见 [多开说明](multi-instance.md)。
 
@@ -72,7 +76,7 @@ Windows 雷电从运行中的 `dnplayer.exe` 定位安装目录，以固定只�
 页面只经 `packages/contracts` 的类型化 transport 请求，接口由 JSON Schema 生成：
 
 ```ts
-rpc('device.frame', { deviceId }) // -> ScreenFrame
+rpc('device.frame', { deviceId }); // -> ScreenFrame
 type ScreenFrame = {
   deviceId: string;
   frameId: string;
@@ -84,7 +88,7 @@ type ScreenFrame = {
   canControl: boolean;
   latencyMs: number; // 应用服务取帧耗时，区别于页面测得的往返延迟
 };
-rpc('device.click', { deviceId, frameId, x, y, requestId }) // -> { accepted: true }
+rpc('device.click', { deviceId, frameId, x, y, requestId }); // -> { accepted: true }
 ```
 
 空闲时，worker 确认 `AsstAsyncScreencap` 成功后通过 `AsstGetImage` 读取新画面；任务执行中只读取 MaaCore 最近缓存，不额外启动截图，`canControl` 为 `false`，页面提示「任务执行中，显示核心最近画面，仅查看」。缓存可能停留在上次核心采集的画面，刷新页面频率不会让任务中的核心额外采集。

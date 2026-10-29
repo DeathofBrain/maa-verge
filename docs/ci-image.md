@@ -8,13 +8,12 @@
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Node、pnpm、Bun       | `.node-version`、`package.json#packageManager`、`.bun-version`；Bun 由现有 `setup-bun.mjs` 校验官方归档摘要                 |
 | Rust、rustfmt、clippy | `rust-toolchain.toml`；安装器固定 rustup 1.28.2                                                                             |
-| uv、Python            | Dockerfile 固定 uv 0.13.5，Python 按 `.python-version` 安装                                                                 |
-| CMake                 | 固定 3.31.10 的 PyPI 二进制 wheel；Ubuntu 22.04 默认 CMake 3.22 不满足项目 3.25+ 要求                                       |
+| CMake                 | 固定 3.31.10 的官方二进制归档，校验 SHA-256；Ubuntu 22.04 默认 CMake 3.22 不满足项目 3.25+ 要求                             |
 | 原生依赖              | C++20、pkg-config、WebKitGTK 4.1、GTK、OpenSSL、托盘、SVG、AppImage 打包与归档工具                                          |
 | 浏览器                | 从 `pnpm-lock.yaml` 读取精确 Playwright 版本，预装匹配的 Chromium 与系统依赖                                                |
 | 字符编码              | `LANG` 与 `LC_ALL` 固定为 Ubuntu 自带的 `C.UTF-8`，保证 Chromium 保留中文下载文件名；默认 `C/POSIX` 会将其退化为 `download` |
 
-Python 仅用于参考测试与合成 CTest。生产服务和 worker 继续由现有项目脚本构建，组件下载使用服务内置 HTTP，生产路径没有 Python fallback。镜像不预置 MaaCore、游戏资源、ADB、业务配置或模型密钥。
+工程不再安装 Python/uv；合成 CTest 由 Node 与原生锁探针驱动。生产服务和 worker 继续由现有项目脚本构建，组件下载使用服务内置 HTTP。镜像不预置 MaaCore、游戏资源、ADB、业务配置或模型密钥。
 
 ## CI 使用方式
 
@@ -22,7 +21,7 @@ Python 仅用于参考测试与合成 CTest。生产服务和 worker 继续由�
 
 `tools/ci/Dockerfile.dockerignore` 使用允许列表，只发送版本文件、pnpm 锁文件和必要安装脚本，禁止把本地 `.tools`、依赖、`.env`、`config`、数据库或构建产物带入镜像上下文。镜像内的 Bun 副本在运行时复制到 checkout `.tools/bun` 并再次检查版本，不依赖全局 Bun。
 
-各 job 在宿主执行 `docker run`，把 checkout 挂载到 `/workspace`，按宿主 UID/GID 写出文件，缓存放在 checkout 的 `.cache/ci`，不产生 root 所有的构建工件。镜像的默认用户是 `ci`（UID 1001）。项目依赖始终执行 `pnpm install --frozen-lockfile`；application 和 native 另执行 `uv sync --frozen`，为 Python 参考测试与 CTest 夹具准备 3.12 解释器；release 不执行。Cargo 使用现有 `--locked` 命令。application 保留工程、契约、TypeScript、Python 三个目标类型及回归、前端构建和 Chromium 夹具检查；Checks 的 native 只执行 Bun 探针、C++/Rust 检查和 Linux 打包夹具，不生成安装包；release 只构建 Linux 签名包，不再重复运行检查。
+各 job 在宿主执行 `docker run`，把 checkout 挂载到 `/workspace`，按宿主 UID/GID 写出文件，缓存放在 checkout 的 `.cache/ci`，不产生 root 所有的构建工件。镜像的默认用户是 `ci`（UID 1001）。项目依赖始终执行 `pnpm install --frozen-lockfile`。Cargo 使用现有 `--locked` 命令。application 保留工程、契约、TypeScript 类型及回归、前端构建和 Chromium 夹具检查；Checks 的 native 只执行 Bun 探针、C++/Rust 检查和 Linux 打包夹具，不生成安装包；release 只构建 Linux 签名包，不再重复运行检查。
 
 浏览器测试固定两个 worker，避免在较多 CPU 的 Docker 宿主上同时启动过多浏览器进程。本地验证结果及环境限制记录在 [开发状态](STATUS.md)。
 
@@ -32,7 +31,7 @@ Linux 打包后的 `tools/smoke-clean-linux.mjs` 仍在宿主 Node 上执行，�
 
 ## 本地复现
 
-在干净 checkout 中执行，避免复用 Windows/macOS 的 `node_modules`、`.venv`、`.tools/bun` 或 native/Cargo 构建输出。Docker Desktop 需选择 Linux 容器。以下命令从仓库根目录运行：
+在干净 checkout 中执行，避免复用 Windows/macOS 的 `node_modules`、`.tools/bun` 或 native/Cargo 构建输出。Docker Desktop 需选择 Linux 容器。以下命令从仓库根目录运行：
 
 ```bash
 docker build --platform linux/amd64 -f tools/ci/Dockerfile -t maa-verge-ci:local .
