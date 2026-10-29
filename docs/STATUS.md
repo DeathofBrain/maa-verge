@@ -1,8 +1,14 @@
 # 开发状态
 
-更新日期：2026-10-25。当前应用版本为 **0.1.2**。工程和首批功能已落地，[PLAN.md](../PLAN.md) 中的完整产品与研究路线尚未全部交付。
+更新日期：2026-10-29。当前 main 分支源码版本仍为 **0.1.2**；最新公开正式版为 **0.1.2**，另有 **[v0.1.3-alpha.1 预览版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha.1)**。工程和首批功能已落地，[PLAN.md](../PLAN.md) 中的完整产品与研究路线尚未全部交付。
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表从独立的“任务表”入口管理，保留页内编排、逐任务设置和常驻运行条；执行入口默认显示多表监控总览，开始或明确查看后进入单次详情，顶部保留其他运行状态。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。六类独立工具与每日定时已接入，使用方法见 [工具箱与定时计划](toolbox-schedules.md)；独立作业中心已接入本地与 PRTS Plus 导入，完整原 MAA 兼容继续按功能矩阵验收。
+
+## v0.1.3-alpha.1 预览版发行导航（2026-10-29）
+
+- 预览版的安装包、更新内容、迁移方法与已知限制见 [v0.1.3-alpha.1 Release](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha.1) 和[固定标签发行说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md)，源码见[对应标签](https://github.com/DeathofBrain/maa-verge/tree/v0.1.3-alpha.1)。最新正式版仍为 v0.1.2。
+- 本次 main 仅同步 README、发行导航与状态说明，不包含预览版源码合入。下方实现表、开发文档与既有验证记录继续对应 main 的 0.1.2 源码，不能用来描述预览版的新任务中心、下载器或安装包。
+- README 保留 v0.1.2 正式版安装表与操作步骤，另列预览版入口和差异；预览版使用文档固定到其标签，既有 Logo、品牌、Agent 暂不可用和旧截图说明保持不变。本次仅核对文档链接与差异空白，没有启动应用、操作游戏或执行平台安装验收。
 
 ## 已实现
 

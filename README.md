@@ -17,6 +17,8 @@ Maa Verge 是一款免费开源的明日方舟桌面助手，基于 [MAA](https:
 
 > 当前提供 **[v0.1.2 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)**，本页的安装与使用说明以该发行版为准。Agent 和部分上游功能仍在开发，完整更新与已知限制见 [版本说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.2/docs/releases/v0.1.2.md)。
 
+> 也可体验 **[v0.1.3-alpha.1 预览版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha.1)**，包含新的任务中心、设备监控、作业库和下载更新体验。预览版的安装包与界面有调整，升级前请阅读下方预览版说明及[完整版本说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md)。
+
 ## 下载与安装
 
 从 **[GitHub Releases](https://github.com/DeathofBrain/maa-verge/releases)** 下载软件，也可以点击下表直接下载 v0.1.2 安装包。
@@ -38,13 +40,26 @@ Maa Verge 是一款免费开源的明日方舟桌面助手，基于 [MAA](https:
 
 Windows 安装包尚无发布者签名；macOS 已采用完整的本地签名（ad-hoc），但尚无 Developer ID 签名与公证，首次打开可能需要在「系统设置 → 隐私与安全性」明确放行，详见 [macOS 安装说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.2/docs/app-updates.md#macos-签名与首次放行)。应用内更新会校验独立的更新签名；这与系统发布者签名不同。各平台的已知限制见版本说明。
 
+<details>
+<summary>体验 v0.1.3-alpha.1 预览版</summary>
+
+从[预览版 Release](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha.1) 下载对应系统与架构的安装包，包型及完整下载表见[本版下载与安装说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md#下载与安装)。Windows 提供 EXE 与完整 ZIP，不再提供 MSI；macOS 需要 15 或更新版本，Linux 继续提供 AppImage、DEB 与 RPM。
+
+- **安装与升级**：完全退出旧版，备份整个 `config` 和已有作业 JSON 目录。Windows EXE 默认选中 MaaCore 与 MaaResource 离线组件，可按需取消；完整 ZIP 包含两者，完全解压到可写目录后运行 `Maa Verge.exe`。首次启动会校验并导入随附组件；未附带组件时仍需联网下载。旧 MSI 用户须先卸载旧版，再安装 EXE 或使用 ZIP；安装过未公开的 `v0.1.3-alpha1` 测试包时，请手动安装本版。升级渠道与备份细节见[升级说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md#升级说明)。
+- **任务与设备**：从「任务」管理任务表，勾选后点击「运行」，在同页「执行监控」查看设备进度；底栏左侧切换设备后，可打开对应运行详情、日志与画面。
+- **下载与更新**：应用、MaaCore 和游戏资源统一使用内置 HTTP 下载，无需 aria2。在「设置 → 更新 → 下载代理」选择自动、手动 HTTP/HTTPS 代理或直连，下载时显示速度并支持续传。应用更新下载校验后可选择「立即更新并重启」或「下次启动时更新」；后者需真正退出并重新打开，最小化到托盘不会安装。ZIP 版仍需手动更新，详见[本版更新说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/app-updates.md)。
+
+预览版 Agent 仍暂不可用，真实游戏与各平台升级的验证范围见[已知问题与限制](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3-alpha.1/docs/releases/v0.1.3-alpha.1.md#已知问题与限制)。下文功能与操作步骤继续以 v0.1.2 正式版为准。
+
+</details>
+
 ## 能做什么
 
 - **安排日常任务**：在同一张表中添加、复制和排序任务，分别设置参数，按需启用或关闭；编辑后自动保存，常用操作也可通过右键菜单完成。
 - **管理与执行作业**：在「作业中心」导入本地或 PRTS Plus 的普通、保全、悖论作业及作业集，查看详情、安排独立队列并保留来源署名。
 - **同时监控多次执行**：在总览中筛选和搜索任务表、设备与执行结果，逐个查看进度、材料掉落、基建反馈与失败原因，分别停止任务；模拟器画面按需打开。
 - **管理模拟器多开**：为各实例保存连接配置，分别开始任务、查看进度和停止执行。
-- **下载与更新**：内置 aria2，组件下载中断后可重试续传；应用、MaaCore 和游戏资源分别更新，组件更新在空闲时生效。
+- **下载与更新**：v0.1.2 内置 aria2，组件下载中断后可重试续传；应用、MaaCore 和游戏资源分别更新，组件更新在空闲时生效。
 - **使用独立工具**：在「工具箱」选择设备，识别仓库与干员、计算公招标签或按目标补货，查看上次成功采集的数据并导出 JSON、Markdown、CSV 等格式。
 - **设置每日定时**：为已保存的任务表选择设备和时间，按电脑本地时间每天执行；Windows 还提供默认关闭的提前唤醒选项。
 - **保留本地记录**：任务表、设置与执行记录保存在本机；主页提供近期执行、活动日历和组件版本，支持浅色与深色主题。
@@ -93,13 +108,13 @@ Windows 安装包尚无发布者签名；macOS 已采用完整的本地签名（
 
 ### MaaCore 或资源下载失败怎么办？
 
-在「设置 → 更新」查看失败原因，检查网络和目录写入权限，再重试下载。安装包自带 aria2，无需另行安装；也可以在设置中选择内置 HTTP 下载器。核心与资源默认放在程序同级的 `MaaCore`、`MaaResource` 文件夹，目录不可写时可分别改为可写目录。组件文件被误删或损坏时，先按页面提示修复。
+在「设置 → 更新」查看失败原因，检查网络和目录写入权限，再重试下载。v0.1.2 安装包自带 aria2，无需另行安装；也可以在设置中选择内置 HTTP 下载器。核心与资源默认放在程序同级的 `MaaCore`、`MaaResource` 文件夹，目录不可写时可分别改为可写目录。组件文件被误删或损坏时，先按页面提示修复。
 
 ### 软件、核心和游戏资源怎么更新？
 
 v0.1.1 用户可在「设置 → 更新」下载并校验 v0.1.2，停止任务、关闭实时画面，并等待连接和组件操作空闲后确认「重启并安装」。**v0.1.0 用户须先完全退出应用，再从 [Releases](https://github.com/DeathofBrain/maa-verge/releases) 手动安装 v0.1.2。** macOS v0.1.1 无法启动时，可直接下载对应架构的 v0.1.2 DMG 替换安装；Linux DEB / RPM 继续通过包管理器或安装包更新。
 
-应用和 MaaCore 可分别选择正式版或预览版。MaaCore 与游戏资源各自准备更新，等待空闲生效；核心已经是最新版时，游戏资源仍可能有更新。应用更新暂不支持断点续传，组件下载支持。
+应用和 MaaCore 可分别选择正式版或预览版。MaaCore 与游戏资源各自准备更新，等待空闲生效；核心已经是最新版时，游戏资源仍可能有更新。v0.1.2 的应用更新不支持断点续传，组件下载支持。
 
 ### 支持定时执行和 AI 托管吗？
 
