@@ -959,14 +959,17 @@ test('global search locates updates, saved tables and individual task settings',
   const results = page.getByRole('region', { name: '搜索结果', exact: true });
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width);
     await expect(results).toBeVisible();
-    const inputBounds = await page.locator('.global-search').boundingBox();
-    const resultsBounds = await results.boundingBox();
-    expect(Math.abs(resultsBounds!.x - inputBounds!.x)).toBeLessThanOrEqual(1);
-    expect(resultsBounds!.x + resultsBounds!.width).toBeLessThanOrEqual(width);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-      true,
-    );
+    // Measure both elements in one layout after the responsive viewport changes.
+    const { inputBounds, resultsBounds, fitsViewport } = await page.evaluate(() => ({
+      inputBounds: document.querySelector('.global-search')!.getBoundingClientRect().toJSON(),
+      resultsBounds: document.querySelector('.search-results')!.getBoundingClientRect().toJSON(),
+      fitsViewport: document.documentElement.scrollWidth <= innerWidth,
+    }));
+    expect(Math.abs(resultsBounds.x - inputBounds.x)).toBeLessThanOrEqual(1);
+    expect(resultsBounds.x + resultsBounds.width).toBeLessThanOrEqual(width);
+    expect(fitsViewport).toBe(true);
     expect(
       await results.evaluate((element) => {
         const bounds = element.getBoundingClientRect();
