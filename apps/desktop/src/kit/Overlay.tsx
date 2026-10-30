@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { acquireModalEffects } from '../modal-effects';
+import { acquireModalEffects, type ScrollLock } from '../modal-effects';
 import IconButton from './IconButton';
 import { cx } from './cx';
 
@@ -13,6 +13,8 @@ type Props = {
   closeDisabled?: boolean;
   busy?: boolean;
   background?: (HTMLElement | null)[];
+  ariaHidden?: (HTMLElement | null)[];
+  scroll?: ScrollLock[];
   initialFocus?: HTMLElement | null;
   returnFocus?: HTMLElement | null;
   fallbackFocus?: () => HTMLElement | null | undefined;
@@ -32,6 +34,8 @@ export default function Overlay({
   closeDisabled = false,
   busy = false,
   background,
+  ariaHidden,
+  scroll,
   initialFocus,
   returnFocus,
   fallbackFocus,
@@ -61,6 +65,8 @@ export default function Overlay({
         document.querySelector<HTMLElement>('.main-shell'),
         document.querySelector<HTMLElement>('.run-dock'),
       ],
+      ariaHidden,
+      scroll,
       initialFocus: initialFocus ?? element.querySelector<HTMLElement>('[data-autofocus]'),
       returnFocus: returnFocus ?? undefined,
       fallbackFocus,

@@ -188,7 +188,7 @@ createPortal(
 | `SaveStateIndicator`                     | 5+ 套保存状态实现                                                                                                                                                               | 已实现 |
 | `DirectoryPicker`                        | `SupportPages.tsx`、`CopilotStorageSettings.tsx`、`ConfigurationSettings.tsx` 三套目录选择                                                                                      | 已实现 |
 | `Overlay` / `Modal` / `ConfirmDialog`    | 4 套抽屉、4 种弹层机制、3 处手写 Tab 陷阱                                                                                                                                       | 已实现 |
-| `Drawer`                                 | 4 套抽屉（`SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer`、`CopilotDetailDrawer`）                                                                                         | 计划   |
+| `Drawer`                                 | 4 套抽屉（`SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer`、`CopilotDetailDrawer`）                                                                                         | 已建   |
 | `ListRow` / `SelectableRow`              | 约 6 处重复的「复选框 + `button[aria-pressed].*-main` + 操作区」行骨架                                                                                                          | 已建   |
 
 **本轮不抽**：`TaskParameterField`（620 行、单一使用者、13 种参数）、`DevicePreview`（视频台刻意不随主题）、`OperatorBadge` / `MaterialIcon`（已有组件且测试耦合；`.operator-badge.rarity-*` 语义独立，不并入 `StatusPill`）。`Select.tsx` 不重写：它的可访问性面被 `tests/ui/fixtures/device-picker.ts` 锁死（combobox `选择设备`、listbox `设备列表`、`[role=option][data-value]`），且它把菜单 portal 到 `closest('dialog,[role=dialog]') ?? document.body`——这是「弹层内 Select 能正常工作」的机制，套装必须保留。
@@ -205,9 +205,9 @@ createPortal(
 
 ### 弹层现状
 
-`Overlay` 是唯一同时做 portal、遮罩、`acquireModalEffects` 租约与焦点落点的组件；`Modal` 与 `ConfirmDialog` 是它的薄组合。`Drawer` **尚未创建**：现有 `SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer`、`CopilotDetailDrawer` 各自保留外壳。三个手写 Tab 陷阱已删除：`App.tsx` 的删除确认、`SupportPages.tsx` 的安装确认、`RunTasksDialog.tsx` 的运行确认；它们现在由 `acquireModalEffects` 提供 Tab 循环、Escape、焦点还原、背景 inert 与滚动锁。
+`Overlay` 是唯一同时做 portal、遮罩、`acquireModalEffects` 租约与焦点落点的组件；`Modal` 与 `ConfirmDialog` 是它的薄组合。`Drawer` 已建但尚无采用方：它提供 `md` / `lg` 两档宽度、`dockOffset` 底栏避让、`header` 自定义或隐藏标题、独立遮罩标签，并透传 `ariaHidden` / `scroll` / 焦点目标；现有四个抽屉仍各自保留外壳。三个手写 Tab 陷阱已删除：`App.tsx` 的删除确认、`SupportPages.tsx` 的安装确认、`RunTasksDialog.tsx` 的运行确认；它们现在由 `acquireModalEffects` 提供 Tab 循环、Escape、焦点还原、背景 inert 与滚动锁。
 
-现有四个抽屉本来就调用 `acquireModalEffects`，没有手写陷阱，因此尚未改写为统一 `Drawer`：它们的层/面板/标题/内容各有宿主类名，需要 `Drawer` 提供宽度、底栏避让与可隐藏标题后再收编。`CopilotDeleteDialog` 已经正确使用 `acquireModalEffects`（含 `#root` 背景、`returnFocus`、`fallbackFocus`），同样等待弹层迁移。`kit/useNativeDialog.ts` 已存在，但 `DesktopLifecycle` 与 `LogSettings` 仍直接调用 `showModal()`，尚未接入该辅助。
+现有四个抽屉本来就调用 `acquireModalEffects`，没有手写陷阱，收编为统一 `Drawer` 时保留各自宽度、底栏避让与滚动策略。`CopilotDeleteDialog` 已经正确使用 `acquireModalEffects`（含 `#root` 背景、`returnFocus`、`fallbackFocus`），同样等待弹层迁移。`kit/useNativeDialog.ts` 已存在，但 `DesktopLifecycle` 与 `LogSettings` 仍直接调用 `showModal()`，尚未接入该辅助。
 
 ## 迁移带来的可见归一
 

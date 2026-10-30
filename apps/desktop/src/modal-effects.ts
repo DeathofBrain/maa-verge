@@ -1,5 +1,5 @@
-type ScrollLock = { element: HTMLElement; property?: 'overflow' | 'overflow-y' };
-type ModalOptions = {
+export type ScrollLock = { element: HTMLElement; property?: 'overflow' | 'overflow-y' };
+export type ModalOptions = {
   panel: HTMLElement;
   layer?: HTMLElement;
   background?: (HTMLElement | null)[];
