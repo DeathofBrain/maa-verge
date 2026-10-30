@@ -1,3 +1,5 @@
+import IconButton from '@/kit/IconButton';
+import SearchField from '@/kit/SearchField';
 import type { RefObject } from 'react';
 import { ArrowRight, Menu, Monitor, Search, Settings2 } from 'lucide-react';
 import type { Device } from '@maaverge/contracts';
@@ -109,19 +111,19 @@ export function AppTopbar({
     <>
       <header className="topbar" data-tauri-drag-region="deep">
         <div className="workspace-context">
-          <button className="icon-button mobile-menu" aria-label="打开导航" onClick={onOpenNav}>
+          <IconButton className="mobile-menu" label="打开导航" onClick={onOpenNav}>
             <Menu size={20} />
-          </button>
+          </IconButton>
           <div className="global-search" data-tauri-drag-region="false">
-            <Search size={15} />
-            <input
+            <SearchField
+              variant="inline"
               ref={searchInput}
               aria-label="搜索任务与设置"
               placeholder="搜索任务与设置"
               value={search}
               onFocus={() => setSearchOpen(true)}
-              onChange={(event) => {
-                setSearch(event.target.value);
+              onValueChange={(value) => {
+                setSearch(value);
                 setSearchOpen(true);
               }}
               onKeyDown={(event) => {

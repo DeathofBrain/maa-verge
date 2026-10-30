@@ -1,3 +1,5 @@
+import IconButton from '@/kit/IconButton';
+import ProgressBar from '@/kit/ProgressBar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Download, LoaderCircle, X } from 'lucide-react';
 import { errorMessage, rpc, type UpdateChannel } from '@maaverge/contracts';
@@ -151,13 +153,14 @@ export default function UpdateNotifications({
                 <Check size={18} />
               )}
               <strong>{names[channel.id]}</strong>
-              <button
-                className="icon-button"
-                aria-label={`关闭${names[channel.id]}下载通知`}
+              <IconButton
+                size="sm"
+                className="update-notification-dismiss"
+                label={`关闭${names[channel.id]}下载通知`}
                 onClick={() => onDismiss(channel.id)}
               >
                 <X size={15} />
-              </button>
+              </IconButton>
             </div>
             <div className="update-notification-status">
               <span>{title}</span>
@@ -171,9 +174,9 @@ export default function UpdateNotifications({
               )}
             </div>
             {downloading && (
-              <progress
-                aria-label={`${names[channel.id]}${channel.id === 'app' ? '下载' : '准备'}进度`}
-                max={100}
+              <ProgressBar
+                className="update-notification-progress"
+                label={`${names[channel.id]}${channel.id === 'app' ? '下载' : '准备'}进度`}
                 value={progressFor(channel)}
               />
             )}

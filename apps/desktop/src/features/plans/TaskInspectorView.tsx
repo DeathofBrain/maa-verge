@@ -81,16 +81,19 @@ export default function TaskInspectorView({
         <>
           <div className="wb-inspector-header">
             <div>
-              <button className="wb-mobile-back" onClick={() => setMobileDetail(false)}>
+              <Button
+                variant="text"
+                className="wb-mobile-back"
+                onClick={() => setMobileDetail(false)}
+              >
                 <ArrowLeft size={15} />
                 任务列表
-              </button>
+              </Button>
               <h2>{taskLabels[step.task.type] || step.task.type}</h2>
               <p>第 {selected + 1} 条任务 · 独立设置</p>
             </div>
             <div className="wb-step-tools">
               <IconButton
-                className="icon-button"
                 label="上移任务"
                 title="上移任务（Alt ↑）"
                 disabled={selected === 0}
@@ -99,7 +102,6 @@ export default function TaskInspectorView({
                 <ArrowUp size={16} />
               </IconButton>
               <IconButton
-                className="icon-button"
                 label="下移任务"
                 title="下移任务（Alt ↓）"
                 disabled={selected === draft.steps.length - 1}
@@ -108,7 +110,6 @@ export default function TaskInspectorView({
                 <ArrowDown size={16} />
               </IconButton>
               <IconButton
-                className="icon-button"
                 label="复制任务"
                 title="复制任务"
                 disabled={draft.steps.length >= 30}
@@ -117,7 +118,7 @@ export default function TaskInspectorView({
                 <Copy size={16} />
               </IconButton>
               <IconButton
-                className="icon-button danger-hover"
+                className="danger-hover"
                 label="删除任务"
                 title="删除任务"
                 onClick={() => deleteTask(selected)}
@@ -194,7 +195,6 @@ export default function TaskInspectorView({
                 <p>此旧任务继续兼容。新作业请在作业中心管理，复制不会删除或修改原任务。</p>
                 {plan !== 'new' && !unsaved && onCopyCopilot && (
                   <Button
-                    className="button"
                     disabled={dirty || saving || starting}
                     title={dirty ? '等待自动保存完成后复制' : undefined}
                     onClick={() => onCopyCopilot(draft.id, selected)}
@@ -242,9 +242,7 @@ export default function TaskInspectorView({
                 开始唤醒负责启动游戏与切换账号。请先在模拟器中启动实例并连接设备；ADB、触控与截图统一在设备页配置。
               </p>
               {onOpenDeviceSettings && (
-                <Button className="button" onClick={() => onOpenDeviceSettings(contextDeviceId)}>
-                  管理设备连接
-                </Button>
+                <Button onClick={() => onOpenDeviceSettings(contextDeviceId)}>管理设备连接</Button>
               )}
             </FieldSection>
           )}

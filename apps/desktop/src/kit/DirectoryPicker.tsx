@@ -10,6 +10,8 @@ type Props = {
   id?: string;
   disabled?: boolean;
   selecting?: boolean;
+  surface?: 'default' | 'subtle';
+  layout?: 'inline' | 'responsive';
   onPick: () => void;
   className?: string;
 };
@@ -22,12 +24,21 @@ export default function DirectoryPicker({
   id,
   disabled,
   selecting,
+  surface = 'default',
+  layout = 'inline',
   onPick,
   className,
 }: Props) {
   return (
-    <div className={cx('mv-directory', className)}>
+    <div
+      className={cx(
+        'mv-directory',
+        layout === 'responsive' && 'mv-directory--responsive',
+        className,
+      )}
+    >
       <TextField
+        className={cx('mv-directory-input', surface === 'subtle' && 'mv-directory-input--subtle')}
         id={id}
         aria-label={ariaLabel}
         value={value}
@@ -35,7 +46,7 @@ export default function DirectoryPicker({
         readOnly
         disabled={disabled || selecting}
       />
-      <Button disabled={disabled || selecting} onClick={onPick}>
+      <Button className="mv-directory-action" disabled={disabled || selecting} onClick={onPick}>
         {label}
       </Button>
     </div>

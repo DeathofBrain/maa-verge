@@ -1,3 +1,6 @@
+import Button from '@/kit/Button';
+import TextArea from '@/kit/TextArea';
+import Notice from '@/kit/Notice';
 import {
   ArrowRight,
   Bot,
@@ -37,6 +40,7 @@ export default function AgentPage({
   return (
     <section className="agent-page">
       <PageHeading
+        padding="page"
         title="Agent 助手"
         text="描述目标，检查计划，再交给任务表执行。"
         actions={
@@ -51,10 +55,10 @@ export default function AgentPage({
           />
         }
       />
-      <div className="agent-notice">
+      <Notice tone="neutral" size="sm" className="agent-notice">
         <Bot size={17} />
         <span>当前使用本地规则生成待审阅提案；云端模型与自主托管尚未接入。</span>
-      </div>
+      </Notice>
       <div className="agent-layout">
         <div className="chat-panel">
           <div className="chat-messages" aria-live="polite">
@@ -104,13 +108,10 @@ export default function AgentPage({
                         ))}
                       </ol>
                       <p className="muted">理智药 0 · 源石 0；请在工作台核对有效参数。</p>
-                      <button
-                        className="button primary"
-                        onClick={() => onReviewPlan(message.plan!)}
-                      >
+                      <Button variant="primary" onClick={() => onReviewPlan(message.plan!)}>
                         检查并保存计划
                         <ArrowRight size={14} />
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -130,7 +131,9 @@ export default function AgentPage({
               void sendMessage(agentQuery);
             }}
           >
-            <textarea
+            <TextArea
+              variant="embedded"
+              className="agent-composer-input"
               aria-label="给 Agent 的消息"
               placeholder="例如：今晚刷 6 次 1-7，不使用理智药"
               value={agentQuery}
@@ -142,13 +145,14 @@ export default function AgentPage({
                 }
               }}
             />
-            <button
+            <Button
+              variant="primary"
+              type="submit"
               aria-label="发送消息"
-              className="button primary"
               disabled={!agentQuery.trim() || pending.has('agent')}
             >
               <Send size={17} />
-            </button>
+            </Button>
           </form>
         </div>
         <aside className="agent-context">
@@ -166,10 +170,10 @@ export default function AgentPage({
               消耗设置<strong>由任务表内自动作战的用药与源石数量决定</strong>
             </span>
           </div>
-          <button className="text-button" onClick={onOpenSettings}>
+          <Button variant="text" onClick={onOpenSettings}>
             模型设置
             <ArrowRight size={14} />
-          </button>
+          </Button>
         </aside>
       </div>
     </section>

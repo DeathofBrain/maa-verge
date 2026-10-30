@@ -1,3 +1,4 @@
+import Checkbox from '@/kit/Checkbox';
 import type { ComponentProps, Dispatch, RefObject, SetStateAction } from 'react';
 import { Plus, RefreshCw, X } from 'lucide-react';
 import {
@@ -124,7 +125,6 @@ export default function CopilotImportPreview({
             <label className="cp-field">
               本次加入类型
               <Select
-                className="text-input"
                 aria-label="作业集入队类型"
                 value={queueKind}
                 onChange={(event) => setQueueKind(event.target.value as CopilotKind)}
@@ -165,8 +165,7 @@ export default function CopilotImportPreview({
         {preview.entries.map((entry, index) => (
           <div className={`cp-preview-entry ${entry.error ? 'is-error' : ''}`} key={entry.id}>
             <label>
-              <input
-                type="checkbox"
+              <Checkbox
                 aria-label={`选择导入 ${index + 1}`}
                 checked={previewSelection.includes(entry.id)}
                 disabled={importing || !entry.record || !!entry.error}

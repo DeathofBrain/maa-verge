@@ -46,7 +46,6 @@ export default function DeviceConnectionDrawer({
         <label className="sp-field">
           编辑配置
           <Select
-            className="text-input"
             aria-label="编辑设备连接配置"
             value={profile?.id || 'default'}
             onChange={(event) => setTarget(event.target.value)}

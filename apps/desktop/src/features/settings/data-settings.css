@@ -21,21 +21,6 @@
   margin: -8px 0 0;
 }
 
-.data-settings-directory-picker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.data-settings-directory-picker .text-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.data-settings-directory-picker .button {
-  flex: none;
-}
-
 .data-settings-location {
   display: flex;
   align-items: center;
@@ -118,16 +103,7 @@
 }
 
 @media (max-width: 640px) {
-  .data-settings-directory-picker {
-    flex-wrap: wrap;
-  }
-
-  .data-settings-directory-picker .text-input {
-    flex-basis: 100%;
-  }
-
-  .data-settings-directory-picker .button,
-  .data-settings-location .button {
+  .data-settings-open-directory {
     width: 100%;
   }
 }

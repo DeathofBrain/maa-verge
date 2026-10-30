@@ -1,3 +1,4 @@
+import Checkbox from '@/kit/Checkbox';
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Copy, Download, ListChecks, Terminal, Trash2, X } from 'lucide-react';
 import { errorMessage, localizeExecutionMessage, rpc, type Snapshot } from '@maaverge/contracts';
@@ -215,8 +216,7 @@ export default function MonitorLogDrawer({
                 key={device.id}
                 className={`monitor-log-device ${deviceIds.has(device.id) ? 'is-active' : ''}`}
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   aria-label={`查看设备日志${device.name}`}
                   checked={deviceIds.has(device.id)}
                   onChange={() => toggleDevice(device.id)}
@@ -315,8 +315,7 @@ export default function MonitorLogDrawer({
               <li key={row.event.id}>
                 {selecting ? (
                   <label className="monitor-log-entry">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       aria-label={`选择日志${row.event.id}`}
                       checked={selectedLogs.has(row.event.id)}
                       onChange={() => toggleLog(row.event.id)}

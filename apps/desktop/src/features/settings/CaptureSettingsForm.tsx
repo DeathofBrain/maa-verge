@@ -1,3 +1,7 @@
+import Button from '@/kit/Button';
+import TextField from '@/kit/TextField';
+import NumberField from '@/kit/NumberField';
+import Checkbox from '@/kit/Checkbox';
 import Select from '@/kit/Select';
 import { Info } from 'lucide-react';
 import type { Settings } from '@maaverge/contracts';
@@ -49,17 +53,12 @@ export function CaptureForm({
         </p>
         <div className="sp-form-actions">
           <span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span>
-          <button
-            className="button secondary"
-            type="button"
-            disabled={busy || !dirty}
-            onClick={resetDraft}
-          >
+          <Button type="button" disabled={busy || !dirty} onClick={resetDraft}>
             放弃修改
-          </button>
-          <button className="button primary" type="submit" disabled={busy}>
+          </Button>
+          <Button variant="primary" type="submit" disabled={busy}>
             保存截图配置
-          </button>
+          </Button>
         </div>
       </form>
     </Section>
@@ -86,7 +85,6 @@ export function CaptureFields({
       <label className="sp-field">
         截图协议
         <Select
-          className="text-input"
           aria-label="截图协议"
           value={automatic ? 'auto' : draft.method}
           disabled={busy}
@@ -136,8 +134,7 @@ export function CaptureFields({
           <div className="sp-capture-fields">
             <label className="sp-field">
               模拟器安装目录
-              <input
-                className="text-input"
+              <TextField
                 aria-label="模拟器安装目录"
                 placeholder="填写模拟器安装根目录"
                 value={draft.emulatorPath}
@@ -157,9 +154,7 @@ export function CaptureFields({
             </label>
             <label className="sp-field">
               模拟器实例索引
-              <input
-                className="text-input"
-                type="number"
+              <NumberField
                 aria-label="模拟器实例索引"
                 min={0}
                 step={1}
@@ -186,8 +181,7 @@ export function CaptureFields({
       {draft.method === 'mumu' && !automatic && (
         <>
           <label className="check-field">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={draft.mumuTouch ?? false}
               disabled={busy}
               onChange={(event) =>
@@ -201,8 +195,7 @@ export function CaptureFields({
             6.3.2+，支持后台保活；方舟专版与国际版暂不支持。核心在接口不可用时可能回退 Minitouch。
           </p>
           <label className="check-field">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={draft.mumuBridge ?? false}
               disabled={busy}
               onChange={(event) =>

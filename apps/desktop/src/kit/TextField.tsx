@@ -1,7 +1,7 @@
-import type { InputHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
 
-type Props = InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean };
+type Props = ComponentPropsWithRef<'input'> & { invalid?: boolean };
 
 export default function TextField({ invalid = false, className, type = 'text', ...rest }: Props) {
   return (

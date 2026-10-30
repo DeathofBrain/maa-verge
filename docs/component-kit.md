@@ -188,7 +188,9 @@ createPortal(
 | `IconButton`                          | `.icon-button`（60 处 / 27 文件）                                                                                                                                               | 已实现 |
 | `Spinner`                             | 约 25 处裸 `<LoaderCircle className="spin"/>`                                                                                                                                   | 已实现 |
 | `TextField` / `TextArea`              | 历史 `.text-input` 共 82 处 / 21 文件；当前用于产线、任务表设置及高级参数等表单                                                                                                 | 已实现 |
-| `NumberField`                         | 数值输入原语，尚未替换现有数字表单                                                                                                                                              | 已建   |
+| `NumberField`                         | 任务参数、工具、作业队列与执行配置中的数值输入                                                                                                                                  | 已实现 |
+| `RangeField`                          | 任务参数中的基建心情阈值滑块                                                                                                                                                    | 已实现 |
+| `ExternalLink`                        | 社区底部、原站、视频、外部服务官网及连接说明的外链样式与系统浏览器打开逻辑                                                                                                      | 已实现 |
 | `SearchField`                         | 全部 8 套搜索框克隆                                                                                                                                                             | 已实现 |
 | `Switch`                              | 全部 5 套 `role="switch"` 开关，以 `SupportPages.tsx` 的 `Toggle` 为准实现                                                                                                      | 已实现 |
 | `Checkbox`                            | 历史 40 处 `type="checkbox"`、约 10 种 wrapper 类族；当前窗口关闭提示已采用                                                                                                     | 已实现 |
@@ -250,7 +252,31 @@ createPortal(
 
 `SearchField` 的 `clearLabel` 同时是「是否渲染清除按钮」的开关：历史 8 套克隆中只有一部分带清除按钮，省略该 prop 可保证迁移不新增控件。`type` 默认 `text`，需要保留既有 `searchbox` 语义时显式传 `type="search"`，如作业本地搜索。`PageHeading` 的 `actionsClassName` 保留测试耦合的插槽类入口（历史 `.sp-heading-actions` 有 4 处断言），对应 spec 更新后再移除。
 
+`PageHeading` 的 `padding` 默认为 `none`，由宿主布局提供留白；独立页头使用 `padding="page"`（Agent 助手、执行记录），提供 `26px 28px 23px` 留白并避免被纵向 flex 压缩。760px 以下收窄为 `22px 20px 20px`，480px 以下为 `20px 17px 18px`，操作区移至标题说明下方；操作区保持自身宽度，避免按钮文案被挤压。
+
 `Button` 与 `IconButton` 透传 React 19 的原生 `ref`，日志结果弹层据此返回触发按钮。Toast 的尺寸、边框、语义色、内部图标与文字换行由 `kit.css` 的 `mv-toast-*` 控制，关闭按钮使用 `size="sm"`，堆叠使用 `--z-toast`；定位和入场动画仍归 `app/styles/styles.css`。Tabs 的标签保持单行且不被 flex 压缩，窄窗下由使用方容器提供横向滚动。
+
+### 页面采用与布局模式（2026-10-31）
+
+主页、任务、作业中心、工具箱、Agent 助手、执行记录、设备、设置，以及执行详情、日志、多开、定时和连接设置中的通用控件统一由 kit 提供。页面保留容器尺寸、网格、滚动、间距及插槽内容；不再依赖 `.button`、`.icon-button`、`.text-button`、`.text-input` 通用旧类。原生文件输入、窗口控制、导航、整卡选择、干员分组和任务队列行仍是领域组合，不能为了替换标签而套用普通按钮样式。带状态、描述和操作区的任务表编辑页头也保留业务结构。
+
+| 组件                                                                            | 布局与采用约定                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`                                                                        | `size="md"` 默认最小高 36px，`compact` 为 32px、12px 字号，`sm` 为 28px；`variant="text" size="sm"` 仅缩小文字，保留文字按钮的留白。默认 `type="button"`，表单提交与重置必须显式指定 `submit` / `reset`。                                                                                    |
+| `TextField` / `NumberField` / `TextArea` / `Checkbox` / `CheckField` / `Switch` | 透传原生 React 19 ref；复选框混合态仍设置原生 `indeterminate`。`TextArea variant="embedded"` 用于已有外框的聊天输入区，保留 55px 高、无边框和不可拖拽的输入。`Switch` 先执行原生 `onClick`，未被取消时才调用布尔值 `onChange`。                                                              |
+| `RangeField`                                                                    | 固定原生 `type="range"`，保留 min/max/step、标签和 ref，不套文本框的边框与内边距。                                                                                                                                                                                                           |
+| `SearchField`                                                                   | 默认保留搜索框配方；`size="sm"` 用于 32px 紧凑搜索，`variant="inline"` 用于 31px 顶栏搜索。原生输入 ref、focus、blur、键盘事件可透传；搜索结果仍由页面持有。                                                                                                                                 |
+| `PageHeading`                                                                   | `eyebrow` 接收标题上方的图标/说明插槽，`title` 支持 ReactNode；页面布局由根类负责，独立页头留白使用上文 `padding="page"`。                                                                                                                                                                   |
+| `Tabs`                                                                          | `variant="page"` 保留设备页的 17px 纵向留白，`workbench` 保留任务编辑页的 13px/12px 留白。`items[].ariaLabel` 可将计数与中文可访问名称分开；根容器的左右缩进、间距和滚动仍归页面。                                                                                                           |
+| `FilterChips`                                                                   | 默认胶囊；`variant="subtle"` 保留任务和执行监控的矩形筛选，选中项使用表面背景与边框。                                                                                                                                                                                                        |
+| `DirectoryPicker`                                                               | `surface="subtle"` 表达只读目录底色；默认 `layout="inline"`，`responsive` 在 560px 以下将输入移至整行、选择按钮右对齐。目录值不会因布局变化改写。                                                                                                                                            |
+| `ProgressBar`                                                                   | 原生 progress，`size="sm/md/lg"` 分别为 3/4/6px，默认 md；页面只保留宽度和外边距。                                                                                                                                                                                                           |
+| `Notice`                                                                        | 默认通知配方；`variant="banner"` 用于任务编辑页横幅，580px 以下收窄留白；`tone="neutral" size="sm"` 用于 Agent 本地规则提示。                                                                                                                                                                |
+| `EmptyState`                                                                    | 默认原有通用空态，`list` 保留作业列表的 300px 区域，`panel` 保留任务空态的 340px 区域；业务图标背景由 icon 插槽提供。                                                                                                                                                                        |
+| `ErrorBanner`                                                                   | 默认 p；`as="div"` 用于多个段落或带操作的错误内容，避免嵌套 p。                                                                                                                                                                                                                              |
+| `ExternalLink`                                                                  | `href` 与中文内容必填，自带统一外链图标与样式；点击、Enter、中键均经 `contracts.openExternalUrl` 打开系统默认浏览器，应用不导航。打开失败默认显示 `role="alert"`，已有页面错误区可传 `onOpenError`。HTTP(S)、长度与账号信息校验仍由类型化传输执行，页面不得直接调用 Tauri 或 `window.open`。 |
+
+本轮重新审计通用旧类与 `tests/ui` 的定位耦合后移除无作用的兼容类；中文可访问名称、href、任务面板 id 和业务卡片定位保留。外观通过合成截图人工检查，新增外链用例只断言行为。
 
 ## 可访问性契约
 
@@ -265,6 +291,7 @@ createPortal(
 | `Tabs`                               | roving tabindex + 方向键 + Home/End（ARIA APG）；`aria-label` 必填；面板仍由页面持有；`getByRole('tablist', { name: '设置分类' })`、`tab '社区搜索'` 等必须原样通过 |
 | `FilterChips`                        | `role="group"` 下的 `<button aria-pressed data-selected>`                                                                                                           |
 | `ProgressBar`                        | `label` prop 渲染为 `aria-label`                                                                                                                                    |
+| `ExternalLink`                       | 保留原生 link/href/键盘语义，图标 aria-hidden；尊重调用方取消点击，失败反馈使用 role=alert 或页面提供的 onOpenError                                                 |
 | `Toast`                              | `role={error ? 'alert' : 'status'}`，内部图标 `aria-hidden`，`data-tone` 控制语义色；`.toast` / `.error` 保持规范类名（历史 22 处测试耦合）                         |
 | `SaveStateIndicator`                 | `<span role="status" data-state>`；必须基于 `shared/lib/save-status.ts` 的 `autoSaveLabel('saved') === ''` 设计，**不得复活「已自动保存」文案**                     |
 | `Modal` / `Drawer` / `ConfirmDialog` | `role="dialog"` + `aria-modal="true"` + `aria-label={title}`，inert 背景、滚动锁、焦点陷阱与还原全部来自 `acquireModalEffects`                                      |
@@ -305,7 +332,7 @@ Chromium 夹具通过不等于原生 WebView 或安装包通过；三平台原�
 后续：
 
 1. 按业务场景继续拆分 App 的计划命令、Copilot 查询与执行状态；保持写入顺序、模块级缓存和挂载生命周期。数据解耦边界见 [前端架构](frontend-architecture.md)。
-2. 继续迁移现存原生表单与列表；`NumberField`、`CheckField`、`ListRow`、`SelectableRow` 仍只有原语定义，不能把存在文件视为页面采用。
+2. 评估领域列表是否适合复用 `CheckField`、`ListRow`、`SelectableRow`；三者仍只有原语定义，不能把存在文件视为页面采用。通用可见输入、复选与进度已完成本轮迁移，领域文件输入与组合行保留原生语义。
 3. 移除已迁完的保留类与死 CSS，对存活页面 CSS 做令牌回填。历史 `.cp-record`（27 处）、`.cp-queue-list`（14）、`.cp-save-state`（22）定位记录仅供审计起点，删类前重新检索。抽屉已统一使用 kit，但动画仍挂在全局旧类上；解除这些类耦合后再把关键帧从 `app/styles/styles.css` 迁入 `kit.css`。
 
-已退役全局 `.toggle` / `.segmented` / `.pill`：设置页开关改用 `Switch`，执行记录筛选改用 `FilterChips`，执行/更新/多开状态改用 `StatusPill`。`Select.tsx` 与 `ContextMenu.tsx` 位于 `kit/`，其非 `mv-*` 遗留样式已共置在 `kit/legacy/`；`shared/styles/support-pages.css` 和 `app/styles/styles.css` 仍含待迁移的旧页面样式，目录归档不等于 CSS 隔离完成。
+已退役全局 `.toggle` / `.segmented` / `.pill` / `.button` / `.icon-button` / `.text-button` / `.text-input`：通用控件改用 kit，执行记录筛选改用 `FilterChips`，执行/更新/多开状态改用 `StatusPill`。`Select.tsx` 与 `ContextMenu.tsx` 位于 `kit/`，其非 `mv-*` 遗留样式已共置在 `kit/legacy/`；`shared/styles/support-pages.css` 和 `app/styles/styles.css` 仍含待迁移的旧页面样式，目录归档不等于 CSS 隔离完成。

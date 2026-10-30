@@ -1,3 +1,6 @@
+import Button from '@/kit/Button';
+import PageHeading from '@/kit/PageHeading';
+import ProgressBar from '@/kit/ProgressBar';
 import Select from '@/kit/Select';
 import { useEffect, useState } from 'react';
 import {
@@ -108,9 +111,9 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
         <ListChecks size={36} />
         <h1>任务表执行</h1>
         <p>开始执行后，在这里查看各项任务结果、材料与基建换班。</p>
-        <button className="button primary" onClick={onPrepare}>
+        <Button variant="primary" onClick={onPrepare}>
           前往任务表
-        </button>
+        </Button>
       </section>
     );
 
@@ -156,17 +159,18 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
 
   return (
     <section className="exec-page" aria-label="任务表执行页面">
-      <header className="exec-header">
-        <div>
+      <PageHeading
+        className="exec-header"
+        title={runDisplayName(run, snapshot.plans)}
+        text={localizeExecutionMessage(run.message)}
+        eyebrow={
           <div className="exec-eyebrow">
             <ListChecks size={14} />
             {runSourceLabel(run)}执行
             <StatusPill tone={runStatusTones[run.status]} label={runStatusLabels[run.status]} />
           </div>
-          <h1>{runDisplayName(run, snapshot.plans)}</h1>
-          <p>{localizeExecutionMessage(run.message)}</p>
-        </div>
-      </header>
+        }
+      />
       {loadError && (
         <ErrorBanner className="error-banner">任务结果读取失败：{loadError}</ErrorBanner>
       )}
@@ -194,16 +198,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
               {completed} / {tasks.length}
             </span>
           </div>
-          <div
-            className="exec-progress"
-            role="progressbar"
-            aria-label="整表执行进度"
-            aria-valuenow={run.progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <i style={{ width: `${run.progress}%` }} />
-          </div>
+          <ProgressBar className="exec-progress" label="整表执行进度" value={run.progress} />
           {tasks.length ? (
             <ol className="exec-tasks">
               {tasks.map((task, index) => (
@@ -536,7 +531,6 @@ function ResultImages({
         <label>
           反馈截图
           <Select
-            className="text-input"
             aria-label="选择结果截图"
             value={artifact.id}
             onChange={(event) => setSelection(event.target.value)}
@@ -554,9 +548,7 @@ function ResultImages({
         <div className="exec-no-capture" role="alert">
           <TriangleAlert size={26} />
           <p>{error}</p>
-          <button className="button secondary" onClick={() => setRetry((value) => value + 1)}>
-            重新读取截图
-          </button>
+          <Button onClick={() => setRetry((value) => value + 1)}>重新读取截图</Button>
         </div>
       ) : data?.id === artifact.id ? (
         <figure>

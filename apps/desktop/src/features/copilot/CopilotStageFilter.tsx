@@ -1,3 +1,4 @@
+import TextField from '@/kit/TextField';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { rpc, type RpcResult } from '@maaverge/contracts';
@@ -116,10 +117,10 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
   return (
     <div className="cp-field cp-stage-filter">
       <label htmlFor={id}>关卡筛选</label>
-      <input
+      <TextField
         id={id}
         ref={input}
-        className="text-input"
+        className="cp-input"
         role="combobox"
         aria-label="社区关卡筛选"
         aria-autocomplete="list"

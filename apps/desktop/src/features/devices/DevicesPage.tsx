@@ -1,3 +1,4 @@
+import TextField from '@/kit/TextField';
 import { useContextMenu } from '@/kit/ContextMenu';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -397,6 +398,7 @@ export function DevicesPage({
       />
       <Tabs
         className="dp-tabs"
+        variant="page"
         aria-label="设备页面"
         idPrefix="dp"
         value={tab}
@@ -577,9 +579,9 @@ export function DevicesPage({
               >
                 <label htmlFor="manual-device-address">手动连接 ADB 地址</label>
                 <div>
-                  <input
+                  <TextField
                     id="manual-device-address"
-                    className="text-input"
+                    className="dp-connect-address"
                     placeholder="127.0.0.1:5555 或 USB 序列号"
                     value={address}
                     disabled={disabled}

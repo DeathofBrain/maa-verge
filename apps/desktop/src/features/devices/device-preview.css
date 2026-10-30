@@ -50,11 +50,6 @@
   min-width: 0;
   max-width: 100%;
 }
-.device-preview-controls .button {
-  min-height: 28px;
-  padding: 5px 9px;
-  font-size: 11px;
-}
 .device-preview-metrics {
   color: var(--muted);
   font-size: 11px;
@@ -85,10 +80,6 @@
 .device-preview-toggle:has(input:disabled) {
   color: var(--dim);
   cursor: default;
-}
-.device-preview-toggle input {
-  margin: 0 2px 0 0;
-  accent-color: var(--accent);
 }
 
 .device-preview-stage {
@@ -185,9 +176,8 @@
 .device-preview-error > svg {
   flex: none;
 }
-.device-preview-error .text-button {
+.device-preview-retry {
   flex: none;
-  font-size: 11px;
 }
 .device-preview-point {
   pointer-events: none;

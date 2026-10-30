@@ -1,8 +1,8 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
 
 type Props = Omit<
-  ButtonHTMLAttributes<HTMLButtonElement>,
+  ComponentPropsWithRef<'button'>,
   'onChange' | 'type' | 'role' | 'aria-checked'
 > & {
   checked: boolean;
@@ -13,6 +13,7 @@ type Props = Omit<
 export default function Switch({
   checked,
   onChange,
+  onClick,
   disabled,
   size = 'md',
   className,
@@ -25,7 +26,10 @@ export default function Switch({
       role="switch"
       aria-checked={checked}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) onChange(!checked);
+      }}
       className={cx('mv-switch', size !== 'md' && `mv-switch--${size}`, className)}
     >
       <i className="mv-switch-knob" />

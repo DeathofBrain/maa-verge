@@ -1,3 +1,8 @@
+import NumberField from '@/kit/NumberField';
+import Checkbox from '@/kit/Checkbox';
+import TextField from '@/kit/TextField';
+import IconButton from '@/kit/IconButton';
+import Button from '@/kit/Button';
 import { Plus, Trash2 } from 'lucide-react';
 import Select from '@/kit/Select';
 import type { CopilotKind, CopilotOptions } from '@maaverge/contracts';
@@ -21,10 +26,9 @@ export default function CopilotSettings({
       <summary>执行选项</summary>
       <label className="cp-field">
         循环次数
-        <input
-          className="text-input"
+        <NumberField
+          className="cp-input"
           aria-label="作业循环次数"
-          type="number"
           min={1}
           max={999}
           disabled={kind === 'ParadoxCopilot' || count > 1}
@@ -48,8 +52,7 @@ export default function CopilotSettings({
       {kind === 'Copilot' && (
         <>
           <label className="cp-check">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={options.formation}
               onChange={(event) =>
                 change({
@@ -73,7 +76,6 @@ export default function CopilotSettings({
               <label className="cp-field">
                 编队栏位
                 <Select
-                  className="text-input"
                   aria-label="作业编队栏位"
                   value={options.formationIndex}
                   onChange={(event) => change({ formationIndex: Number(event.target.value) })}
@@ -86,16 +88,14 @@ export default function CopilotSettings({
                 </Select>
               </label>
               <label className="cp-check">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={options.addTrust}
                   onChange={(event) => change({ addTrust: event.target.checked })}
                 />
                 补充低信赖干员
               </label>
               <label className="cp-check">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={options.ignoreRequirements}
                   onChange={(event) => change({ ignoreRequirements: event.target.checked })}
                 />
@@ -103,8 +103,8 @@ export default function CopilotSettings({
               </label>
               <label className="cp-field">
                 助战干员
-                <input
-                  className="text-input"
+                <TextField
+                  className="cp-input"
                   aria-label="助战干员"
                   disabled={options.loopTimes > 1}
                   value={options.supportUnitName}
@@ -120,8 +120,7 @@ export default function CopilotSettings({
                 <strong>追加干员</strong>
                 {operators.map((operator, index) => (
                   <div className="cp-additional-row" key={index}>
-                    <input
-                      className="text-input"
+                    <TextField
                       aria-label={`追加干员 ${index + 1}`}
                       value={operator.name}
                       maxLength={80}
@@ -134,7 +133,6 @@ export default function CopilotSettings({
                       }
                     />
                     <Select
-                      className="text-input"
                       aria-label={`追加技能 ${index + 1}`}
                       value={operator.skill}
                       onChange={(event) =>
@@ -151,31 +149,29 @@ export default function CopilotSettings({
                         </option>
                       ))}
                     </Select>
-                    <button
-                      className="icon-button"
-                      aria-label={`删除追加干员 ${index + 1}`}
+                    <IconButton
+                      label={`删除追加干员 ${index + 1}`}
                       onClick={() => additional(operators.filter((_, i) => i !== index))}
                     >
                       <Trash2 size={14} />
-                    </button>
+                    </IconButton>
                   </div>
                 ))}
-                <button
-                  className="cp-link"
+                <Button
+                  variant="text"
                   disabled={options.additionalOperators.length >= 12}
                   onClick={() => additional([...operators, { name: '', skill: 1 }])}
                 >
                   <Plus size={14} />
                   追加干员
-                </button>
+                </Button>
               </div>
             </>
           )}
         </>
       )}
       <label className="cp-check">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={options.autoLikeOnSuccess ?? false}
           onChange={(event) => change({ autoLikeOnSuccess: event.target.checked })}
         />

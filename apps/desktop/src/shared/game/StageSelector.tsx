@@ -1,3 +1,6 @@
+import IconButton from '@/kit/IconButton';
+import Checkbox from '@/kit/Checkbox';
+import TextField from '@/kit/TextField';
 import Select from '@/kit/Select';
 import { useEffect, useId, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
@@ -111,10 +114,9 @@ export default function StageSelector({
       <div className="stage-selector-heading">
         <label htmlFor={inputId}>{label}</label>
         <div className="stage-selector-actions">
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="刷新关卡目录"
+          <IconButton
+            size="sm"
+            label="刷新关卡目录"
             disabled={disabled || loading}
             onClick={() => {
               forceRefresh.current = true;
@@ -122,10 +124,9 @@ export default function StageSelector({
             }}
           >
             <RefreshCw size={13} className={loading ? 'spin' : ''} />
-          </button>
+          </IconButton>
           <label className="stage-selector-manual">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={manual}
               disabled={disabled}
               onChange={(event) => toggleManual(event.target.checked)}
@@ -135,9 +136,9 @@ export default function StageSelector({
         </div>
       </div>
       {manual ? (
-        <input
+        <TextField
           id={inputId}
-          className="text-input"
+          className="stage-selector-control"
           value={value}
           disabled={disabled}
           maxLength={200}
@@ -147,7 +148,7 @@ export default function StageSelector({
       ) : (
         <Select
           id={inputId}
-          className="text-input"
+          className="stage-selector-control"
           value={value}
           disabled={disabled}
           onChange={(event) => onChange(event.target.value)}

@@ -1,3 +1,4 @@
+import TextField from '@/kit/TextField';
 import Select from '@/kit/Select';
 import { useEffect, useState } from 'react';
 import { Database, Download, Play, RefreshCw, Search } from 'lucide-react';
@@ -148,7 +149,6 @@ export default function RecognitionPanel({
         </div>
         <div className="recognition-actions">
           <Select
-            className="text-input"
             aria-label="识别结果客户端"
             value={selectedClient}
             onChange={(event) => onClientChange(event.target.value as Client)}
@@ -207,8 +207,7 @@ export default function RecognitionPanel({
               <div className="recognition-toolbar">
                 <label>
                   <Search size={16} />
-                  <input
-                    className="text-input"
+                  <TextField
                     type="search"
                     aria-label={`搜索${kind === 'depot' ? '仓库物品' : '干员'}`}
                     placeholder="搜索名称或 ID"
@@ -223,7 +222,6 @@ export default function RecognitionPanel({
                   {count} {kind === 'depot' ? '种物品' : '名干员'}
                 </span>
                 <Select
-                  className="text-input"
                   aria-label="导出格式"
                   value={format}
                   onChange={(event) => setFormat(event.target.value as ExportFormat)}
@@ -249,7 +247,6 @@ export default function RecognitionPanel({
               {kind === 'operators' && (
                 <div className="recognition-toolbar">
                   <Select
-                    className="text-input"
                     aria-label="持有情况"
                     value={owned}
                     onChange={(event) => setOwned(event.target.value)}

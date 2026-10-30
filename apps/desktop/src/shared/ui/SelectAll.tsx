@@ -1,3 +1,4 @@
+import Checkbox from '@/kit/Checkbox';
 import './select-all.css';
 
 type Props = {
@@ -22,8 +23,7 @@ export default function SelectAll({
 
   return (
     <label className="cp-select-all">
-      <input
-        type="checkbox"
+      <Checkbox
         aria-label={label}
         aria-checked={indeterminate ? 'mixed' : checked}
         checked={checked}

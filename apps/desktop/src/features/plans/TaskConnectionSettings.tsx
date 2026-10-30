@@ -1,3 +1,7 @@
+import Checkbox from '@/kit/Checkbox';
+import Button from '@/kit/Button';
+import TextField from '@/kit/TextField';
+import ExternalLink from '@/kit/ExternalLink';
 import Select from '@/kit/Select';
 import { useState } from 'react';
 import { errorMessage, rpc, type Settings, type ScreenFrame } from '@maaverge/contracts';
@@ -120,8 +124,7 @@ function ConnectionSettingsBody({
         </div>
         {showAutomatic && (
           <label className="check-field">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={settings.autoConnect}
               disabled={disabled}
               onChange={(event) =>
@@ -146,22 +149,16 @@ function ConnectionSettingsBody({
           />
           <div className="sp-form-actions">
             <span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span>
-            <button
-              className="button secondary"
-              type="button"
-              disabled={disabled || !dirty}
-              onClick={reset}
-            >
+            <Button type="button" disabled={disabled || !dirty} onClick={reset}>
               放弃修改
-            </button>
-            <button className="button primary" type="submit" disabled={disabled}>
+            </Button>
+            <Button variant="primary" type="submit" disabled={disabled}>
               保存连接配置
-            </button>
+            </Button>
           </div>
         </form>
         <div className="sp-form-actions">
-          <button
-            className="button secondary"
+          <Button
             type="button"
             disabled={disabled || !draft.address.trim()}
             onClick={() =>
@@ -173,9 +170,8 @@ function ConnectionSettingsBody({
             }
           >
             连接此地址
-          </button>
-          <button
-            className="button secondary"
+          </Button>
+          <Button
             type="button"
             disabled={busy || pending || dirty}
             onClick={() =>
@@ -198,7 +194,7 @@ function ConnectionSettingsBody({
             }
           >
             截图测试
-          </button>
+          </Button>
         </div>
         {result && (
           <p className="sp-help" role="status">
@@ -222,13 +218,9 @@ function ConnectionSettingsBody({
         }
       />
       <p className="sp-help">
-        <a
-          href="https://docs.maa.plus/zh-cn/manual/connection.html"
-          target="_blank"
-          rel="noreferrer"
-        >
+        <ExternalLink href="https://docs.maa.plus/zh-cn/manual/connection.html">
           原版 MAA 连接设置说明
-        </a>
+        </ExternalLink>
       </p>
     </div>
   );
@@ -250,7 +242,7 @@ export function ConnectionFields({
       <label className="sp-field">
         连接配置
         <Select
-          className="text-input"
+          className="wb-parameter-control"
           aria-label="连接配置"
           value={draft.config}
           disabled={disabled}
@@ -265,8 +257,8 @@ export function ConnectionFields({
       </label>
       <label className="sp-field">
         ADB 路径
-        <input
-          className="text-input"
+        <TextField
+          className="wb-parameter-control"
           aria-label="ADB 路径"
           value={draft.adbPath}
           maxLength={4096}
@@ -281,8 +273,8 @@ export function ConnectionFields({
       </label>
       <label className="sp-field">
         连接地址
-        <input
-          className="text-input"
+        <TextField
+          className="wb-parameter-control"
           aria-label="连接地址"
           value={draft.address}
           maxLength={128}
@@ -296,7 +288,7 @@ export function ConnectionFields({
       <label className="sp-field">
         触控模式
         <Select
-          className="text-input"
+          className="wb-parameter-control"
           aria-label="触控模式"
           value={draft.touchMode}
           disabled={disabled}
@@ -315,7 +307,7 @@ export function ConnectionFields({
         <label className="sp-field">
           连接时的客户端
           <Select
-            className="text-input"
+            className="wb-parameter-control"
             aria-label="连接时的客户端"
             value={draft.clientType}
             disabled={disabled}
@@ -336,8 +328,7 @@ export function ConnectionFields({
         </label>
       )}
       <label className="check-field">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={draft.adbLite}
           disabled={disabled}
           onChange={(event) => patch({ adbLite: event.target.checked })}

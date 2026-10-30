@@ -16,10 +16,6 @@
   align-items: center;
   gap: 10px;
 }
-.stage-selector-actions .icon-button {
-  width: 24px;
-  height: 24px;
-}
 .stage-selector-manual {
   display: inline-flex;
   align-items: center;
@@ -28,11 +24,7 @@
   cursor: pointer;
   font-size: 12px;
 }
-.stage-selector-manual input {
-  margin: 0;
-  accent-color: var(--accent);
-}
-.stage-selector .text-input {
+.stage-selector-control {
   width: 100%;
   min-width: 0;
 }

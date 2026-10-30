@@ -47,7 +47,7 @@ export default function TaskTableSettings({
             <label className="param-field">
               <span className="field-label">任务表名称</span>
               <TextField
-                className="text-input"
+                className="wb-parameter-control"
                 aria-label="任务表名称"
                 maxLength={80}
                 placeholder="例如：晚间日常"
@@ -58,7 +58,7 @@ export default function TaskTableSettings({
             <label className="param-field wide">
               <span className="field-label">说明</span>
               <TextArea
-                className="text-input wb-description"
+                className="wb-parameter-control wb-description"
                 aria-label="任务表说明"
                 maxLength={500}
                 placeholder="记录这张表的用途"
@@ -87,9 +87,7 @@ export default function TaskTableSettings({
           />
           {draft.deviceIds.length > 0 && (
             <div className="wb-device-actions">
-              <Button className="button" onClick={() => patch({ deviceIds: [] })}>
-                解除全部绑定
-              </Button>
+              <Button onClick={() => patch({ deviceIds: [] })}>解除全部绑定</Button>
             </div>
           )}
           <p className="wb-helper">
@@ -113,15 +111,10 @@ export default function TaskTableSettings({
         <section id="wb-manage">
           <h2>任务表管理</h2>
           <div className="wb-management-actions">
-            <Button className="button" icon={<FileText size={15} />} onClick={onExport}>
+            <Button icon={<FileText size={15} />} onClick={onExport}>
               导出任务表
             </Button>
-            <Button
-              className="button"
-              icon={<RotateCcw size={15} />}
-              disabled={!dirty}
-              onClick={onRevert}
-            >
+            <Button icon={<RotateCcw size={15} />} disabled={!dirty} onClick={onRevert}>
               {plan === 'new' ? '恢复初始配置' : '恢复已保存配置'}
             </Button>
           </div>

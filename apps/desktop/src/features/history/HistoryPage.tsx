@@ -1,3 +1,5 @@
+import Button from '@/kit/Button';
+import IconButton from '@/kit/IconButton';
 import { ChevronRight, History, Search, Terminal } from 'lucide-react';
 import { localizeExecutionMessage, type Plan, type Run } from '@maaverge/contracts';
 import type { Snapshot } from '@maaverge/contracts';
@@ -55,13 +57,14 @@ export default function HistoryPage({
   return (
     <section className="history-page">
       <PageHeading
+        padding="page"
         title="执行记录"
         text="查看每次运行的结果、设备与失败原因。"
         actions={
-          <button className="button secondary" onClick={() => setRunPanel('logs')}>
+          <Button onClick={() => setRunPanel('logs')}>
             <Terminal size={15} />
             运行事件
-          </button>
+          </Button>
         }
       />
       <div className="history-toolbar">
@@ -148,13 +151,9 @@ export default function HistoryPage({
                   <td className="numeric">{formatDate(run.startedAt)}</td>
                   <td>{localizeExecutionMessage(run.message)}</td>
                   <td>
-                    <button
-                      className="icon-button"
-                      aria-label={`查看执行${run.id}`}
-                      onClick={() => showExecution(run)}
-                    >
+                    <IconButton label={`查看执行${run.id}`} onClick={() => showExecution(run)}>
                       <ChevronRight size={16} />
-                    </button>
+                    </IconButton>
                   </td>
                 </tr>
               ))}

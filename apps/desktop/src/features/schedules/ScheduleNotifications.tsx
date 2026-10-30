@@ -1,3 +1,4 @@
+import Button from '@/kit/Button';
 import { useEffect, useState } from 'react';
 import { errorMessage, rpc, subscribe } from '@maaverge/contracts';
 import './schedule-panel.css';
@@ -38,9 +39,7 @@ export default function ScheduleNotifications() {
       {notice && (
         <section role="status">
           <p>{notice}</p>
-          <button className="button secondary" onClick={() => setNotice('')}>
-            关闭通知
-          </button>
+          <Button onClick={() => setNotice('')}>关闭通知</Button>
         </section>
       )}
       {items.map((item) => (
@@ -51,8 +50,7 @@ export default function ScheduleNotifications() {
               : '正在等待设备安全结束并准备定时任务'}
           </strong>
           <p>将执行此定时绑定的任务表与设备。</p>
-          <button
-            className="button secondary"
+          <Button
             disabled={item.startCommitted === true}
             onClick={() => {
               void rpc('schedule.cancel', { id: String(item.id) }).then(
@@ -67,7 +65,7 @@ export default function ScheduleNotifications() {
             }}
           >
             取消本次定时
-          </button>
+          </Button>
         </section>
       ))}
       {error && <p role="alert">{error}</p>}

@@ -1,3 +1,5 @@
+import Checkbox from '@/kit/Checkbox';
+import TextField from '@/kit/TextField';
 import {
   ArrowDown,
   ArrowRight,
@@ -211,8 +213,7 @@ export default function CopilotQueueView({
                   ])}
                 >
                   <div className="cp-queue-row">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       aria-label={`执行队列 ${index + 1}`}
                       checked={entry.enabled}
                       onChange={(event) => changeQueueSelection(event.target.checked, entry.id)}
@@ -252,8 +253,7 @@ export default function CopilotQueueView({
                     <div className="cp-entry-options">
                       {
                         <label>
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={entry.isRaid}
                             onChange={(event) =>
                               queueChange(entry.id, { isRaid: event.target.checked })
@@ -265,8 +265,8 @@ export default function CopilotQueueView({
                       {
                         <label>
                           导航关卡
-                          <input
-                            className="text-input"
+                          <TextField
+                            className="cp-entry-input"
                             aria-label={`导航关卡 ${index + 1}`}
                             value={entry.navName}
                             onChange={(event) =>
@@ -316,7 +316,6 @@ export default function CopilotQueueView({
         <label className="cp-field">
           目标设备
           <Select
-            className="text-input"
             aria-label="作业目标设备"
             value={selectedDevice}
             onChange={(event) => onSelectDevice(event.target.value)}

@@ -1,3 +1,4 @@
+import Checkbox from '@/kit/Checkbox';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { GripVertical, Plus } from 'lucide-react';
 import { taskEnabled, taskLabels } from '@maaverge/contracts';
@@ -96,8 +97,7 @@ export default function TaskQueueView({
             className={`${index === selected ? 'selected' : ''} ${!taskEnabled(entry.task) ? 'wb-disabled-step' : ''} ${dragKey === entry.key ? 'wb-dragging' : ''}`}
           >
             <GripVertical className="wb-grip" size={14} aria-hidden="true" />
-            <input
-              type="checkbox"
+            <Checkbox
               aria-label={`启用第 ${index + 1} 条任务`}
               checked={taskEnabled(entry.task)}
               onChange={(event) => onToggle(index, event.target.checked)}
@@ -136,7 +136,7 @@ export default function TaskQueueView({
         </label>
         <Select
           id="task-type"
-          className="text-input"
+          className="wb-parameter-control"
           value={
             filteredTypes.some(([type]) => type === addType) ? addType : filteredTypes[0]?.[0] || ''
           }
@@ -149,7 +149,6 @@ export default function TaskQueueView({
           ))}
         </Select>
         <Button
-          className="button"
           icon={<Plus size={15} />}
           disabled={steps.length >= 30 || !filteredTypes.length}
           onClick={onAdd}

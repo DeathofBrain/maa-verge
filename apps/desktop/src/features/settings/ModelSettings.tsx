@@ -1,3 +1,4 @@
+import TextField from '@/kit/TextField';
 import type { Settings } from '@maaverge/contracts';
 import SaveStateIndicator from '@/kit/SaveStateIndicator';
 import StatusPill from '@/kit/StatusPill';
@@ -44,8 +45,7 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
       >
         <label className="sp-field">
           模型提供商
-          <input
-            className="text-input"
+          <TextField
             aria-label="模型提供商"
             placeholder="例如：openai-compatible"
             value={draft.provider}
@@ -58,8 +58,7 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
         </label>
         <label className="sp-field">
           API 地址
-          <input
-            className="text-input"
+          <TextField
             type="url"
             aria-label="模型 API 地址"
             placeholder="https://example.com/v1"
@@ -73,8 +72,7 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
         </label>
         <label className="sp-field">
           模型名称
-          <input
-            className="text-input"
+          <TextField
             aria-label="模型名称"
             placeholder="填写提供商支持的模型名称"
             value={draft.model}

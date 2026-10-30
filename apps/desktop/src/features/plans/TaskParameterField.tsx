@@ -1,3 +1,9 @@
+import Checkbox from '@/kit/Checkbox';
+import Button from '@/kit/Button';
+import TextField from '@/kit/TextField';
+import RangeField from '@/kit/RangeField';
+import NumberField from '@/kit/NumberField';
+import IconButton from '@/kit/IconButton';
 import Select from '@/kit/Select';
 import { useEffect, useState } from 'react';
 import type { RpcParams } from '@maaverge/contracts';
@@ -71,8 +77,7 @@ export default function TaskParameterField({
         <div className="wb-facilities" role="group" aria-label={field.label}>
           {facilities.map(([key, label]) => (
             <label className="param-check" key={key}>
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={selected.includes(key)}
                 onChange={(event) =>
                   set(
@@ -87,9 +92,9 @@ export default function TaskParameterField({
           ))}
         </div>
         <div className="wb-field-actions">
-          <button
+          <Button
+            variant="text"
             type="button"
-            className="text-button"
             onClick={() =>
               set([
                 ...selected,
@@ -98,16 +103,16 @@ export default function TaskParameterField({
             }
           >
             全选设施
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="text"
             type="button"
-            className="text-button"
             onClick={() =>
               set(selected.filter((key) => !known.has(key as (typeof facilities)[number][0])))
             }
           >
             清空设施
-          </button>
+          </Button>
         </div>
         {Number(params.mode ?? 0) === 0 ? (
           <small>常规模式由核心自动安排设施顺序。</small>
@@ -126,8 +131,7 @@ export default function TaskParameterField({
         <div className="wb-star-options" role="group" aria-label={field.label}>
           {[1, 2, 3, 4, 5, 6].map((star) => (
             <label className="param-check" key={star}>
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={selected.includes(star)}
                 onChange={(event) =>
                   set(
@@ -158,8 +162,7 @@ export default function TaskParameterField({
             return (
               <div className="wb-recruit-row" key={star}>
                 <label className="param-check">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     disabled={star === 6 && !selected.includes(6)}
                     checked={selected.includes(star)}
                     onChange={(event) => {
@@ -181,8 +184,8 @@ export default function TaskParameterField({
                   />
                   自动确认 {star} 星
                 </label>
-                <input
-                  className="text-input"
+                <TextField
+                  className="wb-parameter-control"
                   type="time"
                   min="01:00"
                   max="09:00"
@@ -227,9 +230,8 @@ export default function TaskParameterField({
         <label className="field-label" htmlFor={id}>
           {field.label}：{Math.round(Number(value ?? 0.3) * 100)}%
         </label>
-        <input
+        <RangeField
           id={id}
-          type="range"
           min={0}
           max={100}
           step={1}
@@ -245,8 +247,7 @@ export default function TaskParameterField({
     return (
       <div className="param-field">
         <label className="param-check">
-          <input
-            type="checkbox"
+          <Checkbox
             aria-label={isTimes ? '指定次数' : field.key === 'medicine' ? '使用药剂' : '使用源石'}
             checked={enabled}
             onChange={(event) =>
@@ -258,10 +259,9 @@ export default function TaskParameterField({
         <label className="wb-sr-only" htmlFor={id}>
           {field.label}
         </label>
-        <input
+        <NumberField
           id={id}
-          className="text-input"
-          type="number"
+          className="wb-parameter-control"
           min={field.min}
           max={field.max}
           step={1}
@@ -280,8 +280,7 @@ export default function TaskParameterField({
     return (
       <div className="param-field wide">
         <label className="param-check">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={accountEnabled || textValue.length > 0}
             onChange={(event) => {
               setAccountEnabled(event.target.checked);
@@ -295,9 +294,9 @@ export default function TaskParameterField({
             <label className="field-label" htmlFor={id}>
               {field.label}
             </label>
-            <input
+            <TextField
               id={id}
-              className="text-input"
+              className="wb-parameter-control"
               value={textValue}
               placeholder="已登录账号显示名的唯一片段"
               onChange={(event) => {
@@ -314,9 +313,8 @@ export default function TaskParameterField({
     return (
       <div className="param-field">
         <label className="param-check" htmlFor={id}>
-          <input
+          <Checkbox
             id={id}
-            type="checkbox"
             aria-label={field.label}
             disabled={field.disabled}
             ref={(input) => {
@@ -352,7 +350,7 @@ export default function TaskParameterField({
       {field.kind === 'select' ? (
         <Select
           id={id}
-          className="text-input"
+          className="wb-parameter-control"
           value={textValue}
           onChange={(event) =>
             set(
@@ -381,9 +379,9 @@ export default function TaskParameterField({
       ) : field.kind === 'list' || field.kind === 'numbers' ? (
         <ListInput id={id} value={textValue} numeric={field.kind === 'numbers'} onChange={set} />
       ) : (
-        <input
+        <TextField
           id={id}
-          className="text-input"
+          className="wb-parameter-control"
           type={field.kind === 'number' ? 'number' : 'text'}
           min={field.min}
           max={field.max}
@@ -420,9 +418,9 @@ function FacilityOrder({
           <span>
             {index + 1}. {facilities.find(([id]) => id === key)?.[1] || key}
           </span>
-          <button
-            type="button"
-            aria-label={`上移${facilities.find(([id]) => id === key)?.[1] || key}`}
+          <IconButton
+            size="sm"
+            label={`上移${facilities.find(([id]) => id === key)?.[1] || key}`}
             disabled={index === 0}
             onClick={() => {
               const next = [...selected];
@@ -431,10 +429,10 @@ function FacilityOrder({
             }}
           >
             ↑
-          </button>
-          <button
-            type="button"
-            aria-label={`下移${facilities.find(([id]) => id === key)?.[1] || key}`}
+          </IconButton>
+          <IconButton
+            size="sm"
+            label={`下移${facilities.find(([id]) => id === key)?.[1] || key}`}
             disabled={index === selected.length - 1}
             onClick={() => {
               const next = [...selected];
@@ -443,7 +441,7 @@ function FacilityOrder({
             }}
           >
             ↓
-          </button>
+          </IconButton>
         </div>
       ))}
     </div>
@@ -472,30 +470,24 @@ function DropTargets({
   return (
     <div className="param-field wide">
       <label className="param-check" id={`${id}-label`}>
-        <input
-          id={id}
-          type="checkbox"
-          checked={active}
-          onChange={(event) => onToggle(event.target.checked)}
-        />
+        <Checkbox id={id} checked={active} onChange={(event) => onToggle(event.target.checked)} />
         指定材料
       </label>
       <fieldset aria-labelledby={`${id}-label`} className="wb-drop-targets" disabled={!active}>
         {Object.entries(drops).map(([key, count]) => (
           <div className="wb-drop-row" key={key}>
             <span>{materialName(key)}</span>
-            <input
-              className="text-input"
-              type="number"
+            <NumberField
+              className="wb-parameter-control"
               min={1}
               max={unlimited}
               aria-label={`${materialName(key)}目标数量`}
               value={String(count)}
               onChange={(event) => onChange({ ...drops, [key]: Number(event.target.value) })}
             />
-            <button
+            <Button
+              variant="text"
               type="button"
-              className="text-button"
               aria-label={`移除材料 ${key}`}
               onClick={() => {
                 const next = { ...drops };
@@ -504,12 +496,12 @@ function DropTargets({
               }}
             >
               移除
-            </button>
+            </Button>
           </div>
         ))}
         <div className="wb-drop-row">
           <Select
-            className="text-input"
+            className="wb-parameter-control"
             aria-label="目标材料"
             value={custom ? '__custom' : itemId}
             onChange={(event) => {
@@ -525,18 +517,17 @@ function DropTargets({
             ))}
             <option value="__custom">其他材料（物品 ID）</option>
           </Select>
-          <button
-            className="button secondary"
+          <Button
             type="button"
             disabled={!itemId.trim() || itemId.trim() in drops}
             onClick={() => onChange({ ...drops, [itemId.trim()]: 1 })}
           >
             添加材料目标
-          </button>
+          </Button>
         </div>
         {custom && (
-          <input
-            className="text-input"
+          <TextField
+            className="wb-parameter-control"
             aria-label="目标材料物品 ID"
             value={itemId}
             placeholder="输入其他材料的物品 ID"
@@ -577,9 +568,9 @@ function ListInput({
     setDraft((previous) => (canonical(previous) === canonical(value) ? previous : value));
   }, [value]);
   return (
-    <input
+    <TextField
       id={id}
-      className="text-input"
+      className="wb-parameter-control"
       value={draft}
       onChange={(event) => {
         const next = event.target.value;

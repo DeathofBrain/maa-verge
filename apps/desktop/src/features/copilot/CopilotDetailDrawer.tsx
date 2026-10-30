@@ -1,6 +1,8 @@
+import ErrorBanner from '@/kit/ErrorBanner';
+import ExternalLink from '@/kit/ExternalLink';
 import IconButton from '@/kit/IconButton';
 import Button from '@/kit/Button';
-import { useEffect, useRef, type ComponentProps, type MouseEvent } from 'react';
+import { useEffect, useRef, type ComponentProps } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,7 +10,6 @@ import {
   Check,
   ChevronRight,
   Download,
-  ExternalLink,
   Plus,
   RefreshCw,
   X,
@@ -71,7 +72,7 @@ type Props = {
   exportRecord: (record: CopilotRecord) => Promise<boolean>;
   importPreview: (queue: boolean, ids?: string[]) => Promise<void>;
   assignCategory: (record: CopilotRecord, categoryId: string) => Promise<void>;
-  openLink: (event: MouseEvent<HTMLAnchorElement>) => void;
+  onOpenError: (cause: unknown) => void;
 };
 
 export default function CopilotDetailDrawer({
@@ -102,11 +103,12 @@ export default function CopilotDetailDrawer({
   exportRecord,
   importPreview,
   assignCategory,
-  openLink,
+  onOpenError,
 }: Props) {
   const heading = useRef<HTMLHeadingElement>(null);
   const background = document.getElementById('root');
   const page = document.querySelector<HTMLElement>('.copilot-page');
+  const sourceUrl = safeLink(current.source.url);
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
   }, [current.id, current.versionId]);
@@ -130,7 +132,7 @@ export default function CopilotDetailDrawer({
     >
       <aside className="cp-detail sp-section" aria-label="作业详情">
         <nav className="cp-station-nav" aria-label="作业站导航">
-          <Button variant="text" className="cp-back cp-link" disabled={importing} onClick={onClose}>
+          <Button variant="text" className="cp-back" disabled={importing} onClick={onClose}>
             <ArrowLeft size={15} />
             {origin === 'preview' && preview && preview.entries.length > 1
               ? '返回导入预览'
@@ -140,12 +142,12 @@ export default function CopilotDetailDrawer({
           <span>作业详情</span>
         </nav>
         {error && (
-          <div className="error-banner cp-feedback" role="alert">
+          <ErrorBanner as="div" className="error-banner cp-feedback">
             {error}
             <IconButton label="关闭详情错误" onClick={() => onClearError()}>
               <X size={15} />
             </IconButton>
-          </div>
+          </ErrorBanner>
         )}
         {notice && (
           <p className="cp-notice" role="status">
@@ -158,7 +160,6 @@ export default function CopilotDetailDrawer({
           {origin === 'preview' && previewParams?.code && (
             <Button
               variant="text"
-              className="cp-link"
               disabled={importing}
               onClick={() =>
                 void requestPreview(previewParams!, preview?.entries.length === 1, true)
@@ -245,12 +246,7 @@ export default function CopilotDetailDrawer({
         {current.kind !== kind && (
           <p className="cp-queue-mismatch">
             这是{kindLabel(current.kind)}，需加入对应类型的执行队列。
-            <Button
-              variant="text"
-              className="cp-link"
-              disabled={importing}
-              onClick={() => onSelectKind(current.kind)}
-            >
+            <Button variant="text" disabled={importing} onClick={() => onSelectKind(current.kind)}>
               切换到{kindLabel(current.kind)}队列
               <ArrowRight size={14} />
             </Button>
@@ -284,7 +280,6 @@ export default function CopilotDetailDrawer({
           <label className="cp-drawer-category cp-field">
             本地分类
             <Select
-              className="text-input"
               aria-label="详情作业分类"
               value={current.categoryId ?? ''}
               disabled={categoryBusy}
@@ -320,7 +315,6 @@ export default function CopilotDetailDrawer({
           {current.source.setId && (
             <Button
               variant="text"
-              className="cp-link"
               disabled={importing}
               onClick={() => void requestPreview({ code: `s${current.source.setId}` })}
             >
@@ -328,32 +322,21 @@ export default function CopilotDetailDrawer({
               查看所属作业集 #{current.source.setId}
             </Button>
           )}
-          {safeLink(current.source.url) && (
-            <a
-              href={safeLink(current.source.url)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={openLink}
-            >
-              <ExternalLink size={14} />
+          {sourceUrl && (
+            <ExternalLink href={sourceUrl} onOpenError={onOpenError}>
               查看原站
-            </a>
+            </ExternalLink>
           )}
-          {current.videos.map(
-            (video, index) =>
-              safeLink(video) && (
-                <a
-                  key={video}
-                  href={safeLink(video)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={openLink}
-                >
-                  <ExternalLink size={14} />
+          {current.videos.map((video, index) => {
+            const href = safeLink(video);
+            return (
+              href && (
+                <ExternalLink key={video} href={href} onOpenError={onOpenError}>
                   参考视频{index + 1}
-                </a>
-              ),
-          )}
+                </ExternalLink>
+              )
+            );
+          })}
         </div>
       </aside>
     </Drawer>

@@ -4,10 +4,10 @@ import Spinner from './Spinner';
 
 type Props = Omit<ComponentPropsWithRef<'button'>, 'type'> & {
   variant?: 'primary' | 'secondary' | 'danger' | 'text';
-  size?: 'md' | 'sm';
+  size?: 'md' | 'sm' | 'compact';
   busy?: boolean;
   icon?: ReactNode;
-  type?: 'button' | 'submit';
+  type?: 'button' | 'submit' | 'reset';
 };
 
 export default function Button({
@@ -29,6 +29,7 @@ export default function Button({
         'mv-button',
         `mv-button--${variant}`,
         size !== 'md' && `mv-button--${size}`,
+        variant === 'text' && size === 'sm' && 'mv-button--text-sm',
         className,
       )}
     >

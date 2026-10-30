@@ -1,3 +1,11 @@
+import Button from '@/kit/Button';
+import Checkbox from '@/kit/Checkbox';
+import IconButton from '@/kit/IconButton';
+import PageHeading from '@/kit/PageHeading';
+import Tabs from '@/kit/Tabs';
+import FilterChips from '@/kit/FilterChips';
+import SearchField from '@/kit/SearchField';
+import EmptyState from '@/kit/EmptyState';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   FileJson,
@@ -160,78 +168,66 @@ export default function TasksPage({
 
   return (
     <section className="tc-page" aria-label="任务中心">
-      <header className="tc-heading">
-        <div>
+      <PageHeading
+        className="tc-heading"
+        actionsClassName="tc-heading-actions"
+        title="任务"
+        text="管理任务表与设备绑定，开始执行并查看进度。"
+        eyebrow={
           <div className="tc-eyebrow">
             <ListChecks size={14} />
             任务中心
           </div>
-          <h1>任务</h1>
-          <p>管理任务表与设备绑定，开始执行并查看进度。</p>
-        </div>
-        <div className="tc-heading-actions">
-          <button
-            className="button secondary"
-            aria-label="运行"
-            title={selectedPlans.length ? '运行所选任务表' : '请先勾选任务表'}
-            onClick={() => setRunningDialog(true)}
-            disabled={!selectedPlans.length}
-          >
-            <Play size={15} />
-            运行
-          </button>
-          <button className="button primary" onClick={onCreatePlan}>
-            <Plus size={15} />
-            新建任务表
-          </button>
-        </div>
-      </header>
-      <div
+        }
+        actions={
+          <>
+            <Button
+              aria-label="运行"
+              title={selectedPlans.length ? '运行所选任务表' : '请先勾选任务表'}
+              onClick={() => setRunningDialog(true)}
+              disabled={!selectedPlans.length}
+            >
+              <Play size={15} />
+              运行
+            </Button>
+            <Button variant="primary" onClick={onCreatePlan}>
+              <Plus size={15} />
+              新建任务表
+            </Button>
+          </>
+        }
+      />
+      <Tabs
         className="tc-view-tabs"
-        role="tablist"
         aria-label="任务视图"
-        onKeyDown={(event) => {
-          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-          event.preventDefault();
-          const next =
-            event.key === 'Home'
-              ? 'plans'
-              : event.key === 'End'
-                ? 'execution'
-                : view === 'plans'
-                  ? 'execution'
-                  : 'plans';
-          onView(next);
-          event.currentTarget
-            .querySelectorAll<HTMLButtonElement>('[role=tab]')
-            [next === 'plans' ? 0 : 1]?.focus();
-        }}
-      >
-        <button
-          role="tab"
-          id="tc-tab-plans"
-          aria-controls="tc-panel-plans"
-          aria-label="任务表"
-          aria-selected={view === 'plans'}
-          tabIndex={view === 'plans' ? 0 : -1}
-          onClick={() => onView('plans')}
-        >
-          <ListChecks size={16} />
-          任务表<span>{counts.all}</span>
-        </button>
-        <button
-          role="tab"
-          id="tc-tab-execution"
-          aria-controls="tc-panel-execution"
-          aria-label="执行监控"
-          aria-selected={view === 'execution'}
-          tabIndex={view === 'execution' ? 0 : -1}
-          onClick={() => onView('execution')}
-        >
-          <Monitor size={16} />
-          执行监控<span>{counts.running}</span>
-        </button>
-      </div>
+        idPrefix="tc"
+        value={view}
+        onChange={(id) => onView(id as Props['view'])}
+        items={[
+          {
+            id: 'plans',
+            label: (
+              <>
+                <ListChecks size={16} />
+                任务表
+              </>
+            ),
+            ariaLabel: '任务表',
+            count: counts.all,
+          },
+          {
+            id: 'execution',
+            label: (
+              <>
+                <Monitor size={16} />
+                执行监控
+              </>
+            ),
+            ariaLabel: '执行监控',
+            count: counts.running,
+          },
+        ]}
+      />
       {view === 'execution' ? (
         <div
           className="tc-execution-panel"
@@ -256,81 +252,80 @@ export default function TasksPage({
                 selected={plans.filter((plan) => selectedPlanIds.has(plan.id)).length}
                 onChange={selectVisible}
               />
-              <div className="tc-filters" role="group" aria-label="筛选任务表">
-                {filters.map(([id, label]) => (
-                  <button
-                    key={id}
-                    aria-pressed={filter === id}
-                    className={filter === id ? 'selected' : ''}
-                    onClick={() => setFilter(id)}
-                  >
-                    {label}
-                    <span>{counts[id]}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <label className="tc-search">
-              <Search size={15} />
-              <input
-                aria-label="搜索任务表"
-                placeholder="搜索任务表、说明或设备"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
+              <FilterChips
+                variant="subtle"
+                aria-label="筛选任务表"
+                value={filter}
+                onChange={(id) => setFilter(id as typeof filter)}
+                items={filters.map(([id, label]) => ({ id, label, count: counts[id] }))}
               />
-            </label>
+            </div>
+            <SearchField
+              className="tc-search"
+              aria-label="搜索任务表"
+              placeholder="搜索任务表、说明或设备"
+              value={query}
+              onValueChange={setQuery}
+            />
           </div>
           {selectedPlans.length > 0 && (
             <div className="tc-selection-actions" role="group" aria-label="所选任务表操作">
               <strong aria-live="polite">已选 {selectedPlans.length} 张任务表</strong>
               <div>
-                <button className="button primary" onClick={() => setRunningDialog(true)}>
+                <Button variant="primary" onClick={() => setRunningDialog(true)}>
                   <Play size={14} />
                   同时执行
-                </button>
-                <button
-                  className="button danger"
+                </Button>
+                <Button
+                  variant="danger"
                   disabled={pending.has('delete-plan')}
                   onClick={() => onDeleteMany(selectedPlans)}
                 >
                   <Trash2 size={14} />
                   批量删除
-                </button>
-                <button className="button secondary" onClick={() => setSelectedPlanIds(new Set())}>
-                  取消选择
-                </button>
+                </Button>
+                <Button onClick={() => setSelectedPlanIds(new Set())}>取消选择</Button>
               </div>
             </div>
           )}
           {!snapshot.plans.length ? (
-            <div className="tc-empty">
-              <span className="tc-empty-icon">
-                <ListChecks size={30} />
-              </span>
-              <h2>创建第一张任务表</h2>
-              <p>把启动游戏、基建、公招与作战按顺序安排好，再绑定设备开始执行。</p>
-              <button className="button primary" onClick={onCreatePlan}>
-                <Plus size={16} />
-                新建任务表
-              </button>
-            </div>
+            <EmptyState
+              variant="panel"
+              icon={
+                <span className="tc-empty-icon">
+                  <ListChecks size={30} />
+                </span>
+              }
+              title="创建第一张任务表"
+              text="把启动游戏、基建、公招与作战按顺序安排好，再绑定设备开始执行。"
+              action={
+                <Button variant="primary" onClick={onCreatePlan}>
+                  <Plus size={16} />
+                  新建任务表
+                </Button>
+              }
+            />
           ) : !plans.length ? (
-            <div className="tc-empty">
-              <span className="tc-empty-icon">
-                <Search size={28} />
-              </span>
-              <h2>没有匹配的任务表</h2>
-              <p>调整筛选条件或搜索其他任务表、设备。</p>
-              <button
-                className="button secondary"
-                onClick={() => {
-                  setFilter('all');
-                  setQuery('');
-                }}
-              >
-                清除筛选
-              </button>
-            </div>
+            <EmptyState
+              variant="panel"
+              icon={
+                <span className="tc-empty-icon">
+                  <Search size={28} />
+                </span>
+              }
+              title="没有匹配的任务表"
+              text="调整筛选条件或搜索其他任务表、设备。"
+              action={
+                <Button
+                  onClick={() => {
+                    setFilter('all');
+                    setQuery('');
+                  }}
+                >
+                  清除筛选
+                </Button>
+              }
+            />
           ) : (
             <section className="tc-plan-list" aria-label="任务表列表">
               {plans.map((plan) => {
@@ -354,8 +349,7 @@ export default function TasksPage({
                     {...contextMenu('任务表菜单', menuItems(plan))}
                   >
                     <label className="tc-plan-check">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         aria-label={`选择任务表${plan.name}`}
                         checked={selectedPlanIds.has(plan.id)}
                         onChange={() => togglePlan(plan.id)}
@@ -401,12 +395,18 @@ export default function TasksPage({
                     </div>
                     <div className="tc-plan-actions">
                       {active && (
-                        <button className="button secondary" onClick={() => onShowRun(active)}>
+                        <Button
+                          className="tc-plan-main-action"
+                          size="compact"
+                          onClick={() => onShowRun(active)}
+                        >
                           查看执行
-                        </button>
+                        </Button>
                       )}
-                      <button
-                        className="button primary"
+                      <Button
+                        className="tc-plan-main-action"
+                        size="compact"
+                        variant="primary"
                         disabled={starting}
                         onClick={() => void onStart(plan)}
                       >
@@ -416,28 +416,29 @@ export default function TasksPage({
                           <Play size={14} />
                         )}
                         {starting ? '正在开始…' : '开始执行'}
-                      </button>
-                      <button
-                        className="button secondary"
+                      </Button>
+                      <Button
+                        className="tc-plan-main-action"
+                        size="compact"
                         aria-label={`查看任务表详情${plan.name}`}
                         onClick={() => onOpenPlan(plan)}
                       >
                         详情
-                      </button>
+                      </Button>
                       {active && (
-                        <button
-                          className="button danger"
+                        <Button
+                          size="compact"
+                          variant="danger"
                           disabled={activeRuns.some((run) => pending.has(`stop-${run.id}`))}
                           aria-label={`停止任务表${plan.name}`}
                           onClick={() => void Promise.all(activeRuns.map((run) => onStop(run)))}
                         >
                           <Square size={12} />
                           停止
-                        </button>
+                        </Button>
                       )}
-                      <button
-                        className="icon-button"
-                        aria-label={`更多任务表操作${plan.name}`}
+                      <IconButton
+                        label={`更多任务表操作${plan.name}`}
                         title="更多操作"
                         onClick={(event) => {
                           const rect = event.currentTarget.getBoundingClientRect();
@@ -451,7 +452,7 @@ export default function TasksPage({
                         }}
                       >
                         <MoreHorizontal size={18} />
-                      </button>
+                      </IconButton>
                     </div>
                   </article>
                 );

@@ -7,10 +7,6 @@
   border-radius: 10px;
 }
 
-.settings-workspace .sp-settings-search .icon-button {
-  flex: none;
-}
-
 .settings-workspace .sp-settings-layout {
   grid-template-columns: 190px minmax(0, 1fr);
   border-top: 0;
@@ -125,25 +121,12 @@
   margin: 0;
 }
 
-.settings-directory-control {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.settings-directory-control input {
-  flex: 1;
-  min-width: 0;
-  background: var(--surface-subtle);
-  cursor: default;
-}
-
-.settings-directory-control .button {
-  flex: none;
-}
-
-.settings-directory .settings-save-state > .text-button:last-child {
+.settings-directory-reset {
   margin-left: auto;
+}
+
+.settings-update-progress {
+  margin-top: 13px;
 }
 
 .settings-advanced {
@@ -272,17 +255,5 @@
 
   .settings-workspace .sp-inline-select {
     width: 130px;
-  }
-
-  .settings-directory-control {
-    flex-wrap: wrap;
-  }
-
-  .settings-directory-control input {
-    flex-basis: 100%;
-  }
-
-  .settings-directory-control .button {
-    margin-left: auto;
   }
 }

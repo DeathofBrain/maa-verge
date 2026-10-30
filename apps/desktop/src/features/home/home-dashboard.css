@@ -154,7 +154,7 @@
   line-height: 1.7;
   margin: 6px 0 0;
 }
-.home-panel-heading .text-button {
+.home-panel-action {
   font-size: 10px;
   white-space: nowrap;
 }
@@ -172,15 +172,6 @@
   font-weight: 500;
   margin: 14px 0 0;
   color: var(--text);
-}
-.home-empty p {
-  font-size: 11px;
-  line-height: 1.8;
-  color: var(--muted);
-  margin: 7px 0 0;
-}
-.home-empty > .text-button {
-  margin-top: 12px;
 }
 .home-empty-history {
   flex-direction: row;
@@ -342,12 +333,12 @@
   gap: 10px;
   margin-top: 18px;
 }
-.home-current-actions .button {
+.home-stop-action {
   min-height: 28px;
   font-size: 10px;
   padding: 5px 9px;
 }
-.home-current-actions .text-button {
+.home-run-details {
   font-size: 10px;
 }
 .home-device-body {

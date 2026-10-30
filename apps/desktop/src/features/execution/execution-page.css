@@ -24,12 +24,15 @@
   margin: 9px 0 6px;
   font-size: 25px;
   letter-spacing: -0.6px;
+  font-weight: 700;
+  line-height: inherit;
   overflow-wrap: anywhere;
 }
 .exec-header p {
   color: var(--muted);
   font-size: 13px;
   margin: 0;
+  line-height: inherit;
   overflow-wrap: anywhere;
 }
 .exec-meta {
@@ -106,17 +109,8 @@
   white-space: nowrap;
 }
 .exec-progress {
-  height: 4px;
+  width: calc(100% - 36px);
   margin: 0 18px 16px;
-  background: var(--hover);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.exec-progress i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.3s;
 }
 .exec-tasks {
   list-style: none;

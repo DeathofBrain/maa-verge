@@ -1,3 +1,5 @@
+import Checkbox from '@/kit/Checkbox';
+import EmptyState from '@/kit/EmptyState';
 import type { ComponentProps, Dispatch, SetStateAction } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { BookOpen, Plus, Search, Upload } from 'lucide-react';
@@ -141,8 +143,7 @@ export default function CopilotLibraryList({
               ])}
             >
               <label className="cp-record-select">
-                <input
-                  type="checkbox"
+                <Checkbox
                   aria-label={`选择作业 ${record.title}`}
                   checked={selectedLibraryIds.includes(record.id)}
                   disabled={loading || deleting}
@@ -201,33 +202,34 @@ export default function CopilotLibraryList({
           ))}
         </div>
       ) : (
-        <div className="cp-empty">
-          <BookOpen size={29} />
-          <h3>
-            {query ? '没有匹配的作业' : categoryFilter ? '此分类还没有作业' : '还没有本地作业'}
-          </h3>
-          <p>
-            {query
+        <EmptyState
+          variant="list"
+          icon={<BookOpen size={29} />}
+          title={query ? '没有匹配的作业' : categoryFilter ? '此分类还没有作业' : '还没有本地作业'}
+          text={
+            query
               ? '当前页没有匹配结果，可翻页或清除搜索。'
               : categoryFilter
                 ? '在作业详情或右键菜单中归类，也可以导入社区作业集。'
-                : '导入本地 JSON，或搜索社区作业。浏览和导入无需连接设备。'}
-          </p>
-          {!query && (
-            <div className="cp-empty-actions">
-              <Button
-                variant="primary"
-                icon={<Search size={15} />}
-                onClick={() => showLibrary('community')}
-              >
-                去社区找作业
-              </Button>
-              <Button icon={<Upload size={15} />} disabled={savingImport} onClick={openImport}>
-                导入本地作业
-              </Button>
-            </div>
-          )}
-        </div>
+                : '导入本地 JSON，或搜索社区作业。浏览和导入无需连接设备。'
+          }
+          action={
+            !query && (
+              <div className="cp-empty-actions">
+                <Button
+                  variant="primary"
+                  icon={<Search size={15} />}
+                  onClick={() => showLibrary('community')}
+                >
+                  去社区找作业
+                </Button>
+                <Button icon={<Upload size={15} />} disabled={savingImport} onClick={openImport}>
+                  导入本地作业
+                </Button>
+              </div>
+            )
+          }
+        />
       )}
       <div className="cp-pagination">
         <Button

@@ -1,3 +1,4 @@
+import Button from '@/kit/Button';
 import { useEffect, useState } from 'react';
 import {
   errorMessage,
@@ -88,7 +89,7 @@ export default function CopilotStorageSettings({ settings, busy, onSave }: Props
         <div className="sp-field">
           <label htmlFor="copilot-storage-directory-input">作业 JSON 存放目录</label>
           <DirectoryPicker
-            className="data-settings-directory-picker"
+            layout="responsive"
             id="copilot-storage-directory-input"
             label="选择作业目录"
             ariaLabel="作业 JSON 存放目录"
@@ -108,14 +109,14 @@ export default function CopilotStorageSettings({ settings, busy, onSave }: Props
         {error && (
           <p className="sp-help" role="alert">
             {error}
-            <button
+            <Button
+              variant="text"
               type="button"
-              className="text-button"
               disabled={disabled}
               onClick={() => setRevision((value) => value + 1)}
             >
               重试
-            </button>
+            </Button>
           </p>
         )}
         <div className="data-settings-switch-row">
@@ -138,18 +139,17 @@ export default function CopilotStorageSettings({ settings, busy, onSave }: Props
         <div className="sp-form-actions settings-actions">
           <span className="sp-help">{autoSaveLabel(status)}</span>
           {status === 'error' && (
-            <button className="button secondary" type="button" disabled={disabled} onClick={retry}>
+            <Button type="button" disabled={disabled} onClick={retry}>
               重试保存作业设置
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             type="button"
-            className="button secondary"
             disabled={disabled || !draft.directory}
             onClick={() => setDraft((value) => ({ ...value, directory: '' }), 0)}
           >
             恢复默认目录
-          </button>
+          </Button>
         </div>
       </form>
     </section>

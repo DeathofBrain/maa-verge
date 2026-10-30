@@ -1,3 +1,7 @@
+import Button from '@/kit/Button';
+import IconButton from '@/kit/IconButton';
+import PageHeading from '@/kit/PageHeading';
+import ProgressBar from '@/kit/ProgressBar';
 import { runDisplayName } from '@/shared/lib/run-source';
 import { useContextMenu } from '@/kit/ContextMenu';
 import {
@@ -102,20 +106,23 @@ export default function HomeDashboard({
   return (
     <section className="home-dashboard" aria-label="主页仪表盘">
       <div className="home-container">
-        <header className="home-heading">
-          <div>
+        <PageHeading
+          className="home-heading"
+          title="主页"
+          text="设备状态与执行动态，一目了然。"
+          eyebrow={
             <div className="home-eyebrow">
               <span className="status-dot" />
               工作空间总览
             </div>
-            <h1>主页</h1>
-            <p>设备状态与执行动态，一目了然。</p>
-          </div>
-          <span className="home-date">
-            <CalendarDays size={14} />
-            {now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })}
-          </span>
-        </header>
+          }
+          actions={
+            <span className="home-date">
+              <CalendarDays size={14} />
+              {now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })}
+            </span>
+          }
+        />
         <div className="home-metrics">
           {metrics.map(({ label, aria, value, detail, icon: Icon, tone }) => (
             <div className="home-metric" aria-label={aria} key={aria}>
@@ -167,34 +174,30 @@ export default function HomeDashboard({
                     <span>任务进度</span>
                     <strong className="numeric">{currentRun.progress}%</strong>
                   </div>
-                  <div
-                    className="run-progress"
-                    role="progressbar"
-                    aria-label="当前执行进度"
-                    aria-valuenow={currentRun.progress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <i style={{ width: `${currentRun.progress}%` }} />
-                  </div>
+                  <ProgressBar label="当前执行进度" value={currentRun.progress} />
                   <div className="home-current-actions">
-                    <button className="text-button" onClick={() => onShowRun(currentRun)}>
+                    <Button
+                      variant="text"
+                      className="home-run-details"
+                      onClick={() => onShowRun(currentRun)}
+                    >
                       查看运行详情
                       <ArrowRight size={13} />
-                    </button>
-                    <button
-                      className="button danger"
+                    </Button>
+                    <Button
+                      variant="danger"
+                      className="home-stop-action"
                       disabled={stopping}
                       onClick={() => onStopRun(currentRun)}
                     >
                       <Square size={12} />
                       停止执行
-                    </button>
+                    </Button>
                   </div>
                   {activeRuns.length > 1 && (
-                    <button className="text-button" onClick={() => onNavigate('history')}>
+                    <Button variant="text" onClick={() => onNavigate('history')}>
                       另有 {activeRuns.length - 1} 项执行，查看全部
-                    </button>
+                    </Button>
                   )}
                 </div>
               ) : (
@@ -210,10 +213,14 @@ export default function HomeDashboard({
             <section className="home-panel home-recent" aria-label="最近执行">
               <div className="home-panel-heading">
                 <h2>最近执行</h2>
-                <button className="text-button" onClick={() => onNavigate('history')}>
+                <Button
+                  variant="text"
+                  className="home-panel-action"
+                  onClick={() => onNavigate('history')}
+                >
                   全部记录
                   <ArrowRight size={13} />
-                </button>
+                </Button>
               </div>
               {recentRuns.length ? (
                 <div className="home-recent-list">
@@ -268,10 +275,14 @@ export default function HomeDashboard({
             <section className="home-panel home-device" aria-label="当前设备">
               <div className="home-panel-heading">
                 <h2>当前设备</h2>
-                <button className="text-button" onClick={() => onNavigate('devices')}>
+                <Button
+                  variant="text"
+                  className="home-panel-action"
+                  onClick={() => onNavigate('devices')}
+                >
                   管理
                   <ArrowRight size={13} />
-                </button>
+                </Button>
               </div>
               <div className="home-device-body">
                 <div className="home-device-identity">
@@ -300,27 +311,23 @@ export default function HomeDashboard({
                   </span>
                 </div>
                 {(!device || device.state === 'offline') && (
-                  <button
-                    className="button secondary home-connect"
+                  <Button
+                    variant="secondary"
+                    className="home-connect"
                     onClick={() => onNavigate('devices')}
                   >
                     前往连接设备
                     <ArrowRight size={14} />
-                  </button>
+                  </Button>
                 )}
               </div>
             </section>
             <section className="home-panel home-updates" aria-label="组件版本">
               <div className="home-panel-heading">
                 <h2>组件版本</h2>
-                <button
-                  className="icon-button"
-                  aria-label="打开更新设置"
-                  title="打开更新设置"
-                  onClick={onUpdates}
-                >
+                <IconButton label="打开更新设置" title="打开更新设置" onClick={onUpdates}>
                   <Settings2 size={15} />
-                </button>
+                </IconButton>
               </div>
               <div className="home-version-list">
                 {snapshot.updates.map((channel) => (

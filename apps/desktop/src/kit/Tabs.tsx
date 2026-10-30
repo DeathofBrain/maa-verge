@@ -4,6 +4,7 @@ import { cx } from './cx';
 export type TabItem = {
   id: string;
   label: ReactNode;
+  ariaLabel?: string;
   disabled?: boolean;
   count?: number;
 };
@@ -14,6 +15,7 @@ type Props = {
   onChange: (id: string) => void;
   'aria-label': string;
   orientation?: 'horizontal' | 'vertical';
+  variant?: 'default' | 'page' | 'workbench';
   idPrefix: string;
   className?: string;
 };
@@ -23,6 +25,7 @@ export default function Tabs({
   value,
   onChange,
   orientation = 'horizontal',
+  variant = 'default',
   idPrefix,
   className,
   ...rest
@@ -55,13 +58,19 @@ export default function Tabs({
       role="tablist"
       aria-label={rest['aria-label']}
       aria-orientation={orientation}
-      className={cx('mv-tabs', orientation === 'vertical' && 'mv-tabs--vertical', className)}
+      className={cx(
+        'mv-tabs',
+        variant !== 'default' && `mv-tabs--${variant}`,
+        orientation === 'vertical' && 'mv-tabs--vertical',
+        className,
+      )}
     >
       {items.map((item) => (
         <button
           key={item.id}
           type="button"
           role="tab"
+          aria-label={item.ariaLabel}
           id={`${idPrefix}-tab-${item.id}`}
           aria-selected={value === item.id}
           aria-controls={`${idPrefix}-panel-${item.id}`}
@@ -72,7 +81,11 @@ export default function Tabs({
           onKeyDown={(event) => move(event, item.id)}
         >
           {item.label}
-          {item.count !== undefined && <span className="mv-tabs-count">{item.count}</span>}
+          {item.count !== undefined && (
+            <span className={cx('mv-tabs-count', variant === 'page' && 'mv-tabs-count--page')}>
+              {item.count}
+            </span>
+          )}
         </button>
       ))}
     </div>

@@ -12,10 +12,3 @@
   opacity: 0.5;
   cursor: default;
 }
-
-.cp-select-all input {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: var(--accent);
-}

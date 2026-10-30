@@ -1,3 +1,5 @@
+import TextField from '@/kit/TextField';
+import ProgressBar from '@/kit/ProgressBar';
 import Select from '@/kit/Select';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -46,6 +48,7 @@ import {
 } from '@/shared/lib/update-display';
 import Button from '@/kit/Button';
 import DirectoryPicker from '@/kit/DirectoryPicker';
+import ExternalLink from '@/kit/ExternalLink';
 import PageHeading from '@/kit/PageHeading';
 import SaveStateIndicator from '@/kit/SaveStateIndicator';
 import SearchField from '@/kit/SearchField';
@@ -290,7 +293,7 @@ export function SettingsPage({
                       title="界面主题"
                       control={
                         <Select
-                          className="text-input sp-inline-select"
+                          className="sp-inline-select"
                           aria-label="界面主题"
                           value={general.draft.theme}
                           disabled={busy}
@@ -315,7 +318,7 @@ export function SettingsPage({
                       description="最小化到托盘时继续运行"
                       control={
                         <Select
-                          className="text-input sp-inline-select"
+                          className="sp-inline-select"
                           aria-label="关闭窗口时"
                           value={
                             !general.draft.rememberCloseAction
@@ -378,9 +381,7 @@ export function SettingsPage({
                     <div>
                       <dt>社区作业服务</dt>
                       <dd>
-                        <a href="https://prts.plus/" target="_blank" rel="noopener noreferrer">
-                          PRTS Plus
-                        </a>
+                        <ExternalLink href="https://prts.plus/">PRTS Plus</ExternalLink>
                         <p className="sp-help">
                           搜索与导入时发送关键词或作业编号，本地浏览无需联网。
                         </p>
@@ -394,9 +395,9 @@ export function SettingsPage({
                       <dt>MirrorChyan 加速</dt>
                       <dd>
                         用户端高速下载为付费服务，需要有效 CDK。
-                        <button className="text-button" onClick={() => setCategory('updates')}>
+                        <Button variant="text" onClick={() => setCategory('updates')}>
                           前往更新设置
-                        </button>
+                        </Button>
                       </dd>
                     </div>
                     <div>
@@ -426,14 +427,10 @@ export function SettingsPage({
                       <h2>更新</h2>
                       <p>应用重启安装，核心与资源在空闲时生效。</p>
                     </div>
-                    <button
-                      className="button secondary"
-                      disabled={busy || updating}
-                      onClick={() => void checkAll()}
-                    >
+                    <Button disabled={busy || updating} onClick={() => void checkAll()}>
                       <RefreshCw size={15} />
                       检查全部更新
-                    </button>
+                    </Button>
                   </div>
                   {snapshot.updates.map((channel) => (
                     <UpdateSection
@@ -551,7 +548,8 @@ function ComponentPathForm({
       <label className="sp-field">
         下载与安装目录
         <DirectoryPicker
-          className="settings-directory-control"
+          layout="responsive"
+          surface="subtle"
           label="选择文件夹"
           ariaLabel={updateChannelLabels[channel.id] + '下载目录'}
           value={draft.path}
@@ -565,6 +563,7 @@ function ComponentPathForm({
         <SaveStateIndicator status={status} onRetry={() => void retry()} retryDisabled={busy} />
         <Button
           variant="text"
+          className="settings-directory-reset"
           disabled={busy || selecting}
           onClick={() => setDraft({ path: '' }, 0)}
         >
@@ -626,7 +625,6 @@ function DownloadProxyForm({
         <label className="sp-field">
           连接方式
           <Select
-            className="text-input"
             aria-label="下载代理模式"
             value={draft.mode}
             disabled={busy || readbackFailed}
@@ -648,8 +646,7 @@ function DownloadProxyForm({
         {draft.mode === 'manual' && (
           <label className="sp-field">
             手动代理地址
-            <input
-              className="text-input"
+            <TextField
               type="text"
               inputMode="url"
               aria-label="手动下载代理地址"
@@ -675,9 +672,9 @@ function DownloadProxyForm({
         {readbackFailed && (
           <p className="sp-help" role="alert">
             下载代理已保存，但读取当前设置失败。
-            <button
+            <Button
+              variant="text"
               type="button"
-              className="text-button"
               disabled={busy}
               onClick={() =>
                 void rpc('app.snapshot', {}).then(
@@ -690,7 +687,7 @@ function DownloadProxyForm({
               }
             >
               重新读取下载代理
-            </button>
+            </Button>
           </p>
         )}
         <SaveStateIndicator
@@ -851,12 +848,11 @@ function UpdateSection({
           </details>
         )}
         {working && (
-          <div
-            className="sp-update-progress"
-            aria-label={`${updateChannelLabels[channel.id]}更新进度`}
-          >
-            <span style={{ width: `${Math.max(0, Math.min(100, channel.progress))}%` }} />
-          </div>
+          <ProgressBar
+            className="settings-update-progress"
+            label={`${updateChannelLabels[channel.id]}更新进度`}
+            value={Math.max(0, Math.min(100, channel.progress))}
+          />
         )}
         {downloadSpeed && (
           <p className="sp-help numeric" aria-label={`${updateChannelLabels[channel.id]}下载速度`}>
@@ -869,8 +865,7 @@ function UpdateSection({
       </div>
       <div className="sp-channel-actions">
         {['idle', 'available', 'active', 'failed'].includes(channel.status) && (
-          <button
-            className="button secondary"
+          <Button
             disabled={busy || updatesBlocked}
             onClick={() =>
               void onAction(`check-${channel.id}`, () =>
@@ -880,15 +875,15 @@ function UpdateSection({
           >
             <RefreshCw size={14} />
             检查更新
-          </button>
+          </Button>
         )}
         {(channel.status === 'available' ||
           (channel.status === 'failed' &&
             channel.latestVersion &&
             channel.latestVersion !== channel.currentVersion)) &&
           canInstall && (
-            <button
-              className="button primary"
+            <Button
+              variant="primary"
               disabled={busy || preparing}
               onClick={() => void onPrepare(channel)}
             >
@@ -900,11 +895,11 @@ function UpdateSection({
                   : channel.currentVersion
                     ? '准备更新'
                     : '下载安装'}
-            </button>
+            </Button>
           )}
         {staged && canInstall && (
-          <button
-            className="button primary"
+          <Button
+            variant="primary"
             disabled={
               isApp ? appActionBusy : busy || updatesBlocked || channel.status === 'waiting_idle'
             }
@@ -920,7 +915,7 @@ function UpdateSection({
           >
             <Check size={14} />
             {isApp ? '安装并重启' : channel.status === 'waiting_idle' ? '等待空闲生效' : '应用更新'}
-          </button>
+          </Button>
         )}
         {working && (
           <span className="sp-working">
@@ -929,8 +924,7 @@ function UpdateSection({
           </span>
         )}
         {channel.id !== 'app' && ['active', 'staged', 'waiting_idle'].includes(channel.status) && (
-          <button
-            className="button secondary"
+          <Button
             disabled={busy || updatesBlocked || hasActiveRun}
             onClick={() =>
               void onAction(
@@ -942,14 +936,13 @@ function UpdateSection({
           >
             <RotateCcw size={14} />
             回滚上一版本
-          </button>
+          </Button>
         )}
       </div>
       {channel.id === 'resource' && (
         <label className="sp-resource-client sp-field">
           资源客户端
           <Select
-            className="text-input"
             aria-label="资源版本客户端"
             value={resourceClient}
             onChange={(event) => setResourceClient(event.target.value as ResourceClient)}
@@ -970,7 +963,7 @@ function UpdateSection({
             description={staged ? '切换频道将取消已准备的版本。' : '预览版包含尚在验证中的新功能。'}
             control={
               <Select
-                className="text-input sp-inline-select"
+                className="sp-inline-select"
                 aria-label={isApp ? '应用更新频道' : 'MaaCore 更新频道'}
                 value={preferences.draft.releaseChannel}
                 disabled={busy || working}

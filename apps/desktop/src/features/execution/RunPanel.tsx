@@ -1,3 +1,4 @@
+import IconButton from '@/kit/IconButton';
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import './run-panel.css';
@@ -27,9 +28,9 @@ export default function RunPanel({
       <header className="run-panel-heading">
         <strong>{title}</strong>
         {deviceName && <span>{deviceName}</span>}
-        <button className="icon-button" aria-label="收起运行详情" onClick={onClose}>
+        <IconButton label="收起运行详情" onClick={onClose}>
           <ChevronDown size={18} />
-        </button>
+        </IconButton>
       </header>
       <div className="run-panel-content">{children}</div>
     </section>

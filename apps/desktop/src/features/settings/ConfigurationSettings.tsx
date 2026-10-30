@@ -1,3 +1,4 @@
+import Button from '@/kit/Button';
 import { useEffect, useState } from 'react';
 import {
   errorMessage,
@@ -56,14 +57,14 @@ export default function ConfigurationSettings({ busy }: { busy: boolean }) {
       {error && (
         <p className="sp-help" role="alert">
           {error}{' '}
-          <button
-            className="text-button"
+          <Button
+            variant="text"
             type="button"
             disabled={busy || loading}
             onClick={() => void refresh()}
           >
             重新读取配置目录
-          </button>
+          </Button>
         </p>
       )}
       {locations && (
@@ -148,14 +149,14 @@ function ConfigurationForm({
           <span>当前配置目录</span>
           <code>{locations.directory}</code>
         </div>
-        <button
-          className="button secondary"
+        <Button
+          className="data-settings-open-directory"
           type="button"
           disabled={disabled}
           onClick={() => void open()}
         >
           打开当前配置目录
-        </button>
+        </Button>
       </div>
       {locations.restartRequired && (
         <div className="data-settings-pending">
@@ -166,7 +167,7 @@ function ConfigurationForm({
       <div className="sp-field">
         <label htmlFor="configuration-directory-input">配置目录（重启后生效）</label>
         <DirectoryPicker
-          className="data-settings-directory-picker"
+          layout="responsive"
           id="configuration-directory-input"
           label="选择配置目录"
           ariaLabel="配置目录"
@@ -205,12 +206,11 @@ function ConfigurationForm({
       <div className="sp-form-actions settings-actions">
         <span className="sp-help">{autoSaveLabel(status)}</span>
         {status === 'error' && (
-          <button className="button secondary" type="button" disabled={disabled} onClick={retry}>
+          <Button type="button" disabled={disabled} onClick={retry}>
             重试保存配置目录
-          </button>
+          </Button>
         )}
-        <button
-          className="button secondary"
+        <Button
           type="button"
           disabled={
             disabled || locations.overridden || (!locations.configuredDirectory && !draft.directory)
@@ -218,7 +218,7 @@ function ConfigurationForm({
           onClick={() => setDraft({ directory: '' }, 0)}
         >
           恢复默认配置目录
-        </button>
+        </Button>
       </div>
     </form>
   );

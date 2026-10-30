@@ -60,11 +60,6 @@
 .multi-run-card > strong {
   font-size: 13px;
 }
-.multi-run-card progress {
-  width: 100%;
-  accent-color: var(--accent);
-  height: 7px;
-}
 .multi-run-actions {
   display: flex;
   gap: 8px;

@@ -1,7 +1,7 @@
-import type { InputHTMLAttributes, ReactNode } from 'react';
+import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { cx } from './cx';
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
+type Props = Omit<ComponentPropsWithRef<'input'>, 'type'> & {
   label: ReactNode;
   description?: ReactNode;
 };

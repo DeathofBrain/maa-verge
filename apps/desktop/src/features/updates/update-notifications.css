@@ -34,9 +34,7 @@
 .update-notification-heading strong {
   flex: 1;
 }
-.update-notification-heading .icon-button {
-  width: 24px;
-  height: 24px;
+.update-notification-dismiss {
   pointer-events: auto;
 }
 .update-notification-status {
@@ -51,22 +49,8 @@
   margin-left: auto;
   white-space: nowrap;
 }
-.update-notification progress {
-  display: block;
-  width: 100%;
-  height: 5px;
+.update-notification-progress {
   margin-top: 9px;
-  border: 0;
-  border-radius: 5px;
-  overflow: hidden;
-  accent-color: var(--accent);
-  background: var(--line);
-}
-.update-notification progress::-webkit-progress-bar {
-  background: var(--line);
-}
-.update-notification progress::-webkit-progress-value {
-  background: var(--accent);
 }
 .update-notification p {
   margin: 9px 0 0;

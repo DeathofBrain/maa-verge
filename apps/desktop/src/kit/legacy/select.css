@@ -7,11 +7,12 @@
   min-height: 36px;
   padding: 8px 32px 8px 10px;
   border: 1px solid var(--line-strong);
-  border-radius: 6px;
+  border-radius: 5px;
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
   line-height: 1.5;
+  cursor: pointer;
   vertical-align: middle;
   transition:
     border-color 0.16s var(--ease-out),

@@ -48,7 +48,7 @@ export default function CopilotRunMonitor({
           <label className="cp-run-select">
             查看设备
             <Select
-              className="text-input"
+              className="cp-run-control"
               aria-label="查看作业设备"
               value={monitorDevice}
               onChange={(event) => selectMonitorDevice(event.target.value)}
@@ -64,7 +64,7 @@ export default function CopilotRunMonitor({
           <label className="cp-run-select cp-run-history">
             执行记录
             <Select
-              className="text-input"
+              className="cp-run-control cp-run-history-control"
               aria-label="查看作业记录"
               value={runId}
               onChange={(event) => selectMonitorRun(event.target.value)}

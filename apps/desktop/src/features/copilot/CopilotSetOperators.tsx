@@ -1,3 +1,4 @@
+import Button from '@/kit/Button';
 import { useEffect, useRef, useState } from 'react';
 import { errorMessage, type CopilotPreview } from '@maaverge/contracts';
 import CopilotOperators from './CopilotOperators';
@@ -145,13 +146,13 @@ export default function CopilotSetOperators({
             {current?.error && (
               <>
                 <p className="cp-set-operator-error">{current.error}</p>
-                <button
+                <Button
+                  variant="text"
                   type="button"
-                  className="cp-link"
                   onClick={() => setAttempt((value) => value + 1)}
                 >
                   重试读取干员要求
-                </button>
+                </Button>
               </>
             )}
             {entries.map((entry, index) => (
@@ -185,14 +186,15 @@ export default function CopilotSetOperators({
               <p className="cp-set-operator-note">作业集暂无成员，无法核对干员要求。</p>
             )}
             {additional > 0 && (
-              <button
+              <Button
+                variant="text"
                 type="button"
-                className="cp-link cp-set-operator-more"
+                className="cp-set-operator-more"
                 aria-expanded={showAll}
                 onClick={() => setShowAllKey(showAll ? undefined : key)}
               >
                 {showAll ? '收起更多作业' : `显示其余 ${additional} 项作业`}
-              </button>
+              </Button>
             )}
           </div>
         )}

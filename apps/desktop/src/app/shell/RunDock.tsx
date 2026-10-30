@@ -1,3 +1,5 @@
+import Button from '@/kit/Button';
+import IconButton from '@/kit/IconButton';
 import {
   ChevronDown,
   ChevronUp,
@@ -92,10 +94,16 @@ export default function RunDock({
           <span>多开执行{activeRunsCount > 1 ? ` · ${activeRunsCount}` : ''}</span>
         </button>
         {dockExecution && device?.state !== 'offline' && (
-          <button className="button danger dock-stop" disabled={stopDisabled} onClick={onStopDock}>
+          <Button
+            variant="danger"
+            size="sm"
+            className="dock-stop"
+            disabled={stopDisabled}
+            onClick={onStopDock}
+          >
             <Square size={12} />
-            停止执行
-          </button>
+            <span>停止执行</span>
+          </Button>
         )}
         <button
           aria-label="运行详情"
@@ -127,16 +135,16 @@ export default function RunDock({
           <Monitor size={16} />
           <span>画面</span>
         </button>
-        <button
-          className="icon-button"
-          aria-label={runPanel ? '收起运行面板' : '展开运行面板'}
+        <IconButton
+          className="dock-panel-toggle"
+          label={runPanel ? '收起运行面板' : '展开运行面板'}
           onClick={() => {
             if (runPanel) onClosePanel();
             else onTogglePanel('progress');
           }}
         >
           {runPanel ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
-        </button>
+        </IconButton>
       </div>
     </footer>
   );

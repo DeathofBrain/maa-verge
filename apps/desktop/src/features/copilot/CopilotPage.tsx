@@ -1,3 +1,9 @@
+import ErrorBanner from '@/kit/ErrorBanner';
+import ExternalLink from '@/kit/ExternalLink';
+import Button from '@/kit/Button';
+import TextField from '@/kit/TextField';
+import TextArea from '@/kit/TextArea';
+import PageHeading from '@/kit/PageHeading';
 import Select from '@/kit/Select';
 import Tabs from '@/kit/Tabs';
 import SearchField from '@/kit/SearchField';
@@ -10,12 +16,10 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type MouseEvent,
 } from 'react';
 import {
   BookOpen,
   Check,
-  ExternalLink,
   FileJson,
   FolderOpen,
   LoaderCircle,
@@ -28,7 +32,6 @@ import {
 } from 'lucide-react';
 import {
   errorMessage,
-  openExternalUrl,
   rpc,
   RuntimeRequestError,
   taskLabels,
@@ -167,10 +170,7 @@ export default function CopilotPage({
   const [finishedLibrary, setFinishedLibrary] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const openLink = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    void openExternalUrl(event.currentTarget.href).catch((cause) => setError(errorText(cause)));
-  };
+  const reportOpenError = (cause: unknown) => setError(errorText(cause));
   const [revision, setRevision] = useState(0);
   const [availability, setAvailability] = useState<{
     deviceId: string;
@@ -1077,16 +1077,18 @@ export default function CopilotPage({
           onConfirm={(deleteCopilots) => void confirmDelete(deleteCopilots)}
         />
       )}
-      <header className="sp-page-heading">
-        <div>
-          <h1>作业中心</h1>
-          <p>找到合适的作业，确认干员要求，再加入队列执行。</p>
-        </div>
-        <button className="button secondary" disabled={savingImport} onClick={openImport}>
-          <Upload size={16} />
-          导入作业
-        </button>
-      </header>
+      <PageHeading
+        className="sp-page-heading"
+        actionsClassName="cp-heading-actions"
+        title="作业中心"
+        text="找到合适的作业，确认干员要求，再加入队列执行。"
+        actions={
+          <Button variant="secondary" disabled={savingImport} onClick={openImport}>
+            <Upload size={16} />
+            导入作业
+          </Button>
+        }
+      />
       <div className="cp-content">
         <CopilotRunMonitor
           panelRef={runPanel}
@@ -1130,14 +1132,14 @@ export default function CopilotPage({
               <FileJson size={25} />
               <strong>选择或拖入 JSON</strong>
               <p>保留原始内容，每次导入保存独立版本。</p>
-              <button
-                className="button secondary"
+              <Button
+                variant="secondary"
                 disabled={importing}
                 onClick={() => fileInput.current?.click()}
               >
                 <FolderOpen size={15} />
                 选择 JSON 文件
-              </button>
+              </Button>
               <input
                 ref={fileInput}
                 type="file"
@@ -1154,8 +1156,8 @@ export default function CopilotPage({
             >
               <label className="cp-field">
                 编号或原站链接
-                <input
-                  className="text-input"
+                <TextField
+                  className="cp-input"
                   aria-label="社区作业代码"
                   value={code}
                   maxLength={2048}
@@ -1164,23 +1166,22 @@ export default function CopilotPage({
                 />
               </label>
               <p className="sp-help">也支持 prts://12345、prts://s12345 和 PRTS Plus 原站链接。</p>
-              <button className="button secondary" disabled={importing || !code.trim()}>
+              <Button type="submit" variant="secondary" disabled={importing || !code.trim()}>
                 <Search size={15} />
                 解析代码
-              </button>
+              </Button>
               <details className="cp-json-input">
                 <summary>粘贴 JSON</summary>
-                <textarea
-                  className="text-input"
+                <TextArea
                   aria-label="作业 JSON"
                   rows={5}
                   value={json}
                   onChange={(event) => setJson(event.target.value)}
                   placeholder='{"stage_name":"main_01-07","actions":[]}'
                 />
-                <button
+                <Button
+                  variant="secondary"
                   type="button"
-                  className="button secondary"
                   disabled={!json.trim() || importing}
                   onClick={() => {
                     if (new TextEncoder().encode(json).byteLength > localSizeLimit) {
@@ -1191,19 +1192,19 @@ export default function CopilotPage({
                   }}
                 >
                   预览 JSON
-                </button>
+                </Button>
               </details>
             </form>
           </div>
         </details>
 
         {error && !detailOpen && (
-          <div className="error-banner cp-feedback" role="alert">
+          <ErrorBanner as="div" className="error-banner cp-feedback">
             {error}
-            <button className="icon-button" aria-label="关闭作业错误" onClick={() => setError('')}>
+            <IconButton label="关闭作业错误" onClick={() => setError('')}>
               <X size={15} />
-            </button>
-          </div>
+            </IconButton>
+          </ErrorBanner>
         )}
         {notice && !detailOpen && (
           <p className="cp-notice" role="status">
@@ -1212,11 +1213,11 @@ export default function CopilotPage({
           </p>
         )}
         {!!importReport.length && (
-          <div className="error-banner" role="alert">
+          <ErrorBanner as="div" className="error-banner">
             {importReport.map((message, index) => (
               <p key={index}>{message}</p>
             ))}
-          </div>
+          </ErrorBanner>
         )}
         <div className="cp-workspace">
           <div className="cp-main">
@@ -1366,21 +1367,22 @@ export default function CopilotPage({
                           </button>
                         ))}
                       </div>
-                      <button
-                        className="cp-link cp-category-toggle"
+                      <Button
+                        variant="text"
+                        className="cp-category-toggle"
                         aria-expanded={categoryManagerOpen}
                         onClick={() => setCategoryManagerOpen((value) => !value)}
                       >
                         管理分类
-                      </button>
+                      </Button>
                     </div>
                   </div>
                   {categoryManagerOpen && (
                     <section className="cp-category-manager" aria-label="管理本地分类">
                       <label className="cp-field">
                         分类名称
-                        <input
-                          className="text-input"
+                        <TextField
+                          className="cp-input"
                           aria-label="分类名称"
                           value={newCategoryName}
                           maxLength={300}
@@ -1388,22 +1390,25 @@ export default function CopilotPage({
                         />
                       </label>
                       <div className="cp-category-actions">
-                        <button
-                          className="button secondary"
+                        <Button
+                          variant="secondary"
+                          className="cp-category-action"
                           disabled={categoryBusy || !newCategoryName.trim()}
                           onClick={() => void saveCategory(false)}
                         >
                           新建分类
-                        </button>
-                        <button
-                          className="button secondary"
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="cp-category-action"
                           disabled={categoryBusy || !selectedCategory || !newCategoryName.trim()}
                           onClick={() => void saveCategory(true)}
                         >
                           重命名分类
-                        </button>
-                        <button
-                          className="cp-link"
+                        </Button>
+                        <Button
+                          variant="text"
+                          className="cp-category-delete"
                           disabled={categoryBusy || !selectedCategory}
                           onClick={() =>
                             selectedCategory &&
@@ -1415,7 +1420,7 @@ export default function CopilotPage({
                           }
                         >
                           删除分类
-                        </button>
+                        </Button>
                       </div>
                     </section>
                   )}
@@ -1424,7 +1429,7 @@ export default function CopilotPage({
                       <label>
                         入队类型
                         <Select
-                          className="text-input"
+                          className="cp-category-kind"
                           aria-label="分类入队类型"
                           value={categoryQueueKind}
                           onChange={(event) =>
@@ -1439,14 +1444,15 @@ export default function CopilotPage({
                           ))}
                         </Select>
                       </label>
-                      <button
-                        className="button secondary"
+                      <Button
+                        variant="secondary"
+                        className="cp-category-enqueue-action"
                         disabled={categoryBusy || importing}
                         onClick={() => void enqueueCategory()}
                       >
                         <Plus size={15} />
                         整类加入队列
-                      </button>
+                      </Button>
                       <p className="sp-help">
                         包含分类的全部分页；混合类型请分别选择，按库内顺序追加。
                       </p>
@@ -1464,8 +1470,9 @@ export default function CopilotPage({
                       }
                     />
                     <span className="sp-help">已选 {selectedLibraryRecords.length} 项</span>
-                    <button
-                      className="button secondary cp-library-delete-selected"
+                    <Button
+                      variant="secondary"
+                      className="cp-library-delete-selected"
                       disabled={
                         !selectedLibraryRecords.length || loading || categoryBusy || importing
                       }
@@ -1478,7 +1485,7 @@ export default function CopilotPage({
                     >
                       <Trash2 size={14} />
                       删除所选
-                    </button>
+                    </Button>
                   </div>
                   <CopilotLibraryList
                     libraryReady={libraryReady}
@@ -1546,14 +1553,9 @@ export default function CopilotPage({
               )}
               <p className="cp-community-note" aria-label="社区服务与内容归属">
                 社区服务由{' '}
-                <a
-                  href="https://prts.plus/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={openLink}
-                >
-                  PRTS Plus <ExternalLink size={11} />
-                </a>{' '}
+                <ExternalLink href="https://prts.plus/" onOpenError={reportOpenError}>
+                  PRTS Plus
+                </ExternalLink>{' '}
                 提供。作业、说明和视频权利归各权利人；转载请遵循原作者声明，不因导入而改用本项目
                 AGPL。
               </p>
@@ -1587,7 +1589,7 @@ export default function CopilotPage({
                 exportRecord={exportRecord}
                 importPreview={importPreview}
                 assignCategory={assignCategory}
-                openLink={openLink}
+                onOpenError={reportOpenError}
               />
             )}
           </div>
@@ -1655,16 +1657,17 @@ export default function CopilotPage({
                   </span>
                   <small>{String(task.params.filename ?? '作业列表')}</small>
                 </div>
-                <button className="cp-link" onClick={() => onOpenPlan(plan, task.type, taskIndex)}>
+                <Button variant="text" onClick={() => onOpenPlan(plan, task.type, taskIndex)}>
                   编辑原配置
-                </button>
+                </Button>
                 {task.type !== 'VideoRecognition' && (
-                  <button
-                    className="button secondary"
+                  <Button
+                    variant="secondary"
+                    className="cp-legacy-copy"
                     onClick={() => void requestPreview({ planId: plan.id, taskIndex })}
                   >
                     复制到作业库
-                  </button>
+                  </Button>
                 )}
               </div>
             ))}

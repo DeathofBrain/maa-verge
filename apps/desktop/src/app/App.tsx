@@ -1,3 +1,4 @@
+import Button from '@/kit/Button';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, LoaderCircle, Trash2, Wifi } from 'lucide-react';
 import {
@@ -482,12 +483,12 @@ export default function App() {
             : error || '正在连接本地应用服务…'}
         </p>
         {error && (
-          <button
-            className="button primary"
+          <Button
+            variant="primary"
             onClick={() => (moduleLoadFailed ? window.location.reload() : void refresh())}
           >
             {moduleLoadFailed ? '重新加载界面' : '重新连接'}
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -537,9 +538,9 @@ export default function App() {
               <ErrorBanner className="error-banner">
                 <Wifi size={16} />
                 <span>本地服务连接异常：{error}</span>
-                <button className="text-button" onClick={() => void refresh()}>
+                <Button variant="text" onClick={() => void refresh()}>
                   重试
-                </button>
+                </Button>
               </ErrorBanner>
             )}
             {page === 'home' && (

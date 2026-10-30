@@ -1,3 +1,10 @@
+import Button from '@/kit/Button';
+import IconButton from '@/kit/IconButton';
+import TextField from '@/kit/TextField';
+import Tabs from '@/kit/Tabs';
+import ProgressBar from '@/kit/ProgressBar';
+import Notice from '@/kit/Notice';
+import ErrorBanner from '@/kit/ErrorBanner';
 import { useEffect, useRef, useState } from 'react';
 import {
   CalendarClock,
@@ -515,8 +522,7 @@ export default function PlanEditor({
         </div>
         <div className="wb-header-actions">
           {plan === 'new' && onClose && (
-            <button
-              className="button secondary"
+            <Button
               disabled={saving}
               onClick={() => {
                 discardOnLeave.current = true;
@@ -529,39 +535,34 @@ export default function PlanEditor({
               }}
             >
               取消新建
-            </button>
+            </Button>
           )}
           {hasSavedPlan && onDelete && (
-            <button
-              className="button secondary wb-danger"
+            <Button
+              className="wb-danger"
               disabled={running || starting}
               title={running ? '请先停止此任务表的执行，再删除任务表' : '删除当前任务表'}
               onClick={() => onDelete(plan)}
             >
               <Trash2 size={15} />
               删除任务表
-            </button>
+            </Button>
           )}
           {(unsaved || formError) && (
-            <button
-              className="button secondary"
-              data-save-plan
-              disabled={saving}
-              onClick={() => void save()}
-            >
+            <Button data-save-plan disabled={saving} onClick={() => void save()}>
               <Check size={15} />
               {unsaved ? '保存任务表' : '重试保存'}
-            </button>
+            </Button>
           )}
           {onStart && (
-            <button
-              className="button primary"
+            <Button
+              variant="primary"
               disabled={startUnavailable || starting || suspended}
               onClick={() => void start()}
             >
               <Play size={15} fill="currentColor" />
               {starting ? '正在开始…' : '开始执行'}
-            </button>
+            </Button>
           )}
         </div>
       </header>
@@ -589,80 +590,74 @@ export default function PlanEditor({
             <b>{activeRun.progress}%</b>
           </div>
           <p>{localizeExecutionMessage(activeRun.message) || '正在等待执行反馈'}</p>
-          <div
+          <ProgressBar
             className="wb-active-run-bar"
-            role="progressbar"
-            aria-label="任务表执行进度"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={activeRun.progress}
-          >
-            <i style={{ width: `${activeRun.progress}%` }} />
-          </div>
+            label="任务表执行进度"
+            value={activeRun.progress}
+          />
           <div className="wb-active-run-actions">
             {onViewRun && (
-              <button className="button secondary" onClick={() => onViewRun(activeRun)}>
+              <Button size="compact" onClick={() => onViewRun(activeRun)}>
                 查看执行
-              </button>
+              </Button>
             )}
             {activeRun.status === 'running' && onStopRun && (
-              <button
-                className="button danger"
+              <Button
+                size="compact"
+                variant="danger"
                 disabled={stopping}
                 onClick={() => onStopRun(activeRun)}
               >
                 <Square size={12} />
                 停止执行
-              </button>
+              </Button>
             )}
           </div>
         </div>
       )}
-      <div className="wb-tabs" role="tablist" aria-label="任务表页面">
-        {(
+      <Tabs
+        className="wb-tabs"
+        variant="workbench"
+        aria-label="任务表页面"
+        idPrefix="wb"
+        value={tab}
+        onChange={(id) => patch({ tab: id as Draft['tab'] })}
+        items={(
           [
             ['tasks', '任务编排', ListChecks],
             ['settings', '任务表设置', Settings2],
             ['schedule', '定时计划', CalendarClock],
           ] as const
-        ).map(([id, label, Icon]) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={tab === id}
-            aria-controls={`wb-panel-${id}`}
-            id={`wb-tab-${id}`}
-            onClick={() => patch({ tab: id })}
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
-      </div>
+        ).map(([id, label, Icon]) => ({
+          id,
+          label: (
+            <>
+              <Icon size={16} />
+              {label}
+            </>
+          ),
+        }))}
+      />
       {running && (
-        <div className="wb-running-note">
+        <Notice variant="banner">
           <Info size={15} />
           当前执行使用启动时配置。这里的修改用于下次执行。
-        </div>
+        </Notice>
       )}
       {dirty && !unsaved && plan !== 'new' && draft.base !== sourceVersion && (
-        <div className="wb-running-note">
+        <Notice variant="banner">
           <Info size={15} />
           已保存配置有更新，当前草稿已保留。保存将以这份草稿替换已保存配置。
-        </div>
+        </Notice>
       )}
       {formError && (
-        <div className="wb-form-error" role="alert">
+        <ErrorBanner as="div" className="wb-form-error">
           <Info size={16} />
           <span>{formError}</span>
-          <button
-            className="icon-button"
-            aria-label="关闭参数错误"
-            onClick={() => setFormError('')}
-          >
+          <IconButton label="关闭参数错误" onClick={() => setFormError('')}>
             <X size={15} />
-          </button>
-        </div>
+          </IconButton>
+        </ErrorBanner>
       )}
       <span className="wb-sr-only" role="status">
         {notice}
@@ -745,9 +740,9 @@ export default function PlanEditor({
       {plan === 'new' && tab === 'tasks' && (
         <div className="wb-new-name">
           <label htmlFor="wb-new-name">任务表名称</label>
-          <input
+          <TextField
             id="wb-new-name"
-            className="text-input"
+            className="wb-parameter-control"
             value={draft.name}
             placeholder="先给任务表起一个名字"
             maxLength={80}

@@ -1,3 +1,5 @@
+import Checkbox from '@/kit/Checkbox';
+import Button from '@/kit/Button';
 import { useRef, useState } from 'react';
 import { LoaderCircle, Play, TriangleAlert } from 'lucide-react';
 import {
@@ -221,8 +223,7 @@ export default function RunTasksDialog({
               const active = included.has(plan.id);
               return (
                 <div className={`tc-launch-plan ${active ? '' : 'is-excluded'}`} key={plan.id}>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     aria-label={`选择运行任务表${plan.name}`}
                     disabled={submitting}
                     checked={active}
@@ -280,17 +281,17 @@ export default function RunTasksDialog({
         </p>
       </div>
       <div className="modal-actions">
-        <button className="button secondary" disabled={submitting} onClick={onClose}>
+        <Button disabled={submitting} onClick={onClose}>
           取消
-        </button>
-        <button
-          className="button primary"
+        </Button>
+        <Button
+          variant="primary"
           disabled={submitting || blocked || !requests.length}
           onClick={() => void submit()}
         >
           {submitting ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
           {submitting ? '正在运行…' : submitLabel}
-        </button>
+        </Button>
       </div>
     </Modal>
   );

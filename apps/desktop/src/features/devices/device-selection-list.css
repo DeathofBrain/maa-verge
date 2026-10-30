@@ -88,14 +88,6 @@
   cursor: default;
 }
 
-.device-selection-row > input {
-  flex: none;
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  accent-color: var(--accent);
-}
-
 .device-selection-copy {
   display: flex;
   flex: 1;

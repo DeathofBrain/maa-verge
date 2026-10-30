@@ -1,3 +1,5 @@
+import Button from '@/kit/Button';
+import Checkbox from '@/kit/Checkbox';
 import Select from '@/kit/Select';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import {
@@ -350,18 +352,17 @@ export default function DevicePreview({
               ))}
             </Select>
           </label>
-          <button
-            className="button secondary"
+          <Button
+            size="sm"
             disabled={!online || !!error}
             onClick={() => setPaused((value) => !value)}
           >
             {paused ? <Play size={13} /> : <Pause size={13} />}
             {paused ? '恢复刷新' : '暂停刷新'}
-          </button>
+          </Button>
           {!readOnly && (
             <label className="device-preview-toggle">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={allowClicks}
                 disabled={
                   !online ||
@@ -385,10 +386,10 @@ export default function DevicePreview({
         <div className="device-preview-error" role="alert">
           <AlertCircle size={15} />
           <span>画面更新失败：{error}</span>
-          <button className="text-button" onClick={retryFrame}>
+          <Button variant="text" size="sm" className="device-preview-retry" onClick={retryFrame}>
             <RefreshCw size={13} />
             重试画面
-          </button>
+          </Button>
         </div>
       )}
       {actionError && (

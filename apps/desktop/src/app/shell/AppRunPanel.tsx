@@ -5,6 +5,7 @@ import MonitorLogDrawer from '@/features/execution/MonitorLogDrawer';
 import MultiRunPanel from '@/features/execution/MultiRunPanel';
 import RunPanel from '@/features/execution/RunPanel';
 import StatusPill from '@/kit/StatusPill';
+import ProgressBar from '@/kit/ProgressBar';
 import { runStatusLabels, runStatusTones } from '@/kit/labels';
 import { deviceActivity, type RunPanelTab } from '@/app/model/device-activity';
 
@@ -76,7 +77,7 @@ export default function AppRunPanel({
               label={runStatusLabels[panelTool.status]}
             />
             <p>{localizeExecutionMessage(panelTool.message)}</p>
-            <progress max={100} value={panelTool.progress} aria-label="工具执行进度" />
+            <ProgressBar value={panelTool.progress} label="工具执行进度" />
           </section>
         ) : (
           <div className="run-panel-empty">

@@ -37,10 +37,6 @@
   flex-wrap: wrap;
 }
 
-.sp-heading-actions .button {
-  white-space: nowrap;
-}
-
 .sp-heading-actions .app-select {
   max-width: 180px;
 }
@@ -244,15 +240,6 @@
   gap: 10px;
 }
 
-.sp-connect-form .text-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.sp-connect-form .button {
-  white-space: nowrap;
-}
-
 .sp-discovered {
   margin-top: 22px;
 }
@@ -410,10 +397,6 @@
 
 .sp-content-heading p {
   margin-top: 5px;
-}
-
-.sp-content-heading .button {
-  flex: none;
 }
 
 .sp-settings-content > .sp-content-heading {
@@ -636,11 +619,6 @@
   min-width: 132px;
 }
 
-.sp-channel-actions .button {
-  white-space: nowrap;
-  font-size: 12px;
-}
-
 .sp-update-preference {
   grid-column: 1/-1;
 }
@@ -659,21 +637,6 @@
 
 .sp-component-path .sp-form-actions {
   flex-wrap: wrap;
-}
-
-.sp-update-progress {
-  height: 4px;
-  background: var(--border, #dde3ec);
-  border-radius: 4px;
-  margin-top: 13px;
-  overflow: hidden;
-}
-
-.sp-update-progress > span {
-  display: block;
-  height: 100%;
-  background: var(--accent, #4965d4);
-  transition: width 0.2s;
 }
 
 .sp-working {
@@ -851,9 +814,6 @@
   .sp-heading-actions {
     gap: 8px;
   }
-  .sp-heading-actions .button {
-    font-size: 12px;
-  }
   .sp-heading-actions .app-select {
     max-width: 160px;
   }
@@ -886,14 +846,8 @@
   .sp-device-detail-heading {
     flex-wrap: wrap;
   }
-  .sp-device-detail-heading .button {
-    margin-left: 42px;
-  }
   .sp-connect-form > div {
     flex-direction: column;
-  }
-  .sp-connect-form .button {
-    align-self: flex-start;
   }
   .sp-capture-fields {
     grid-template-columns: 1fr;
@@ -936,9 +890,6 @@
 
   .sp-form-actions {
     flex-wrap: wrap;
-  }
-  .sp-page .button {
-    min-height: 34px;
   }
   .sp-empty {
     padding: 28px 18px;

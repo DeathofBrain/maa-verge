@@ -101,9 +101,6 @@
   overflow-wrap: anywhere;
   margin: 16px 0 0;
 }
-.recognition-panel > .button {
-  margin-top: 14px;
-}
 @media (max-width: 600px) {
   .recognition-actions {
     width: 100%;

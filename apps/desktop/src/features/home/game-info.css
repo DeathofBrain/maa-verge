@@ -125,12 +125,8 @@
 .game-production > div > span.is-full {
   color: var(--accent);
 }
-.game-production progress {
-  display: block;
-  width: 100%;
-  height: 5px;
+.game-production-progress {
   margin: 10px 0 7px;
-  accent-color: var(--accent);
 }
 .game-production > small {
   color: var(--dim);

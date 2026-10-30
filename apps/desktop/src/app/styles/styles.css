@@ -189,122 +189,6 @@ svg {
   color: var(--accent);
 }
 
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 36px;
-  padding: 8px 13px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  text-decoration: none;
-  transition:
-    background 0.18s var(--ease-out),
-    border-color 0.18s var(--ease-out),
-    box-shadow 0.18s var(--ease-out),
-    transform 0.16s var(--ease-out);
-}
-
-.button:hover:not(:disabled) {
-  background: var(--hover);
-  border-color: var(--line-strong);
-  transform: translateY(-1px);
-}
-
-.button:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
-}
-
-.button.primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-:root[data-theme='dark'] .button.primary {
-  color: #17213d;
-}
-
-.button.primary:hover:not(:disabled) {
-  filter: brightness(0.94);
-  background: var(--accent);
-}
-
-.button.secondary {
-  background: var(--surface);
-}
-
-.button.danger {
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger), transparent 65%);
-  background: var(--danger-soft);
-}
-
-.icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--muted);
-  padding: 4px;
-  flex: none;
-  transition:
-    background 0.18s var(--ease-out),
-    color 0.18s var(--ease-out),
-    transform 0.18s var(--ease-out);
-}
-
-.icon-button:hover:not(:disabled) {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.text-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  background: none;
-  padding: 4px 0;
-  color: var(--accent);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.text-input {
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--text);
-  border-radius: 5px;
-  padding: 8px 10px;
-  min-height: 36px;
-  max-width: 100%;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.text-input::placeholder {
-  color: var(--dim);
-}
-
-.app-select.text-input {
-  cursor: pointer;
-}
-
-textarea.text-input {
-  resize: vertical;
-}
-
 .field-label {
   font-size: 12px;
   line-height: 1.6;
@@ -663,17 +547,6 @@ textarea.text-input {
   position: relative;
 }
 
-.global-search input {
-  border: 0;
-  background: transparent;
-  outline: 0;
-  color: var(--text);
-  font-size: 11px;
-  min-width: 0;
-  flex: 1;
-  padding: 6px 0;
-}
-
 .search-dismiss {
   position: fixed;
   inset: 57px 0 0;
@@ -926,7 +799,7 @@ textarea.text-input {
   flex: none;
 }
 
-.dock-actions > button:not(.button) {
+.dock-actions > button:not(.dock-stop) {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -940,12 +813,6 @@ textarea.text-input {
 
 .dock-actions > button.selected {
   color: var(--accent);
-}
-
-.dock-actions > .dock-stop {
-  font-size: 11px;
-  min-height: 29px;
-  padding: 5px 10px;
 }
 
 .run-progress {
@@ -971,16 +838,6 @@ textarea.text-input {
 }
 
 .agent-notice {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.8;
-  background: var(--surface-subtle);
-  padding: 10px 15px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
   margin: 0 28px 20px;
   flex: none;
 }
@@ -1175,17 +1032,9 @@ textarea.text-input {
   border-color: var(--accent);
 }
 
-.chat-composer textarea {
+.agent-composer-input {
   flex: 1;
   min-width: 0;
-  resize: none;
-  height: 55px;
-  border: 0;
-  background: none;
-  outline: 0;
-  font-size: 12px;
-  line-height: 1.8;
-  color: var(--text);
 }
 
 .agent-context {
@@ -1527,16 +1376,6 @@ textarea.text-input {
   .dock-actions > button > span {
     display: none;
   }
-  .dock-actions > .dock-stop {
-    min-width: 28px;
-    font-size: 0;
-    gap: 0;
-    padding: 6px;
-  }
-  .dock-actions > .dock-stop svg {
-    width: 14px;
-    height: 14px;
-  }
   .run-dock {
     padding: 0 15px;
     gap: 9px;
@@ -1581,12 +1420,6 @@ textarea.text-input {
   .global-search {
     width: 138px;
   }
-  .global-search input {
-    font-size: 10px;
-  }
-  .global-search > svg {
-    width: 13px;
-  }
   .topbar {
     padding-inline: 10px;
     gap: 6px;
@@ -1604,7 +1437,7 @@ textarea.text-input {
   .dock-actions {
     gap: 11px;
   }
-  .dock-actions > .icon-button {
+  .dock-panel-toggle {
     display: none;
   }
   .run-dock {
@@ -1629,10 +1462,4 @@ textarea.text-input {
   .history-toolbar {
     padding-inline: 17px;
   }
-}
-
-.sp-settings-search .text-input {
-  flex: 1;
-  width: 100%;
-  min-width: 0;
 }

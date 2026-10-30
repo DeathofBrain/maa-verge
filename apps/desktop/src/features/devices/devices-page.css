@@ -1,27 +1,7 @@
 .dp-tabs {
-  display: flex;
   gap: 24px;
   padding: 0 32px;
-  border-bottom: 1px solid var(--border);
 }
-.dp-tabs > button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 17px 0;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 13px;
-  white-space: nowrap;
-}
-.dp-tabs > button[aria-selected='true'] {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-.dp-tabs > button > span,
 .dp-section-heading h2 > span {
   font-size: 11px;
   font-weight: 500;
@@ -44,6 +24,10 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 14px;
+}
+.dp-connect-address {
+  flex: 1;
+  min-width: 0;
 }
 .dp-device-card {
   min-width: 0;
@@ -154,10 +138,6 @@
   .dp-tabs {
     gap: 18px;
     padding: 0 16px;
-  }
-  .dp-tabs > button {
-    gap: 5px;
-    font-size: 12px;
   }
   .dp-section-heading {
     flex-direction: column;

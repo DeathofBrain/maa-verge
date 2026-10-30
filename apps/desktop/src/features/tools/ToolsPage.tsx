@@ -1,3 +1,8 @@
+import Checkbox from '@/kit/Checkbox';
+import TextField from '@/kit/TextField';
+import NumberField from '@/kit/NumberField';
+import PageHeading from '@/kit/PageHeading';
+import ProgressBar from '@/kit/ProgressBar';
 import Select from '@/kit/Select';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -267,17 +272,15 @@ export default function ToolsPage({
   const active = tools.find((item) => item.id === kind)!;
   return (
     <div className="sp-page toolbox-page">
-      <header className="sp-page-heading">
-        <div>
-          <h1>工具箱</h1>
-          <p>选择设备，确认空闲，再开始工具操作。</p>
-        </div>
-      </header>
+      <PageHeading
+        className="sp-page-heading"
+        title="工具箱"
+        text="选择设备，确认空闲，再开始工具操作。"
+      />
       <section className="sp-section toolbox-device" aria-label="工具箱目标设备">
         <label>
           目标设备
           <Select
-            className="text-input"
             aria-label="工具箱设备"
             value={deviceId}
             onChange={(event) => {
@@ -361,7 +364,12 @@ export default function ToolsPage({
                   <strong>
                     {job.status === 'failed' ? errorMessage(job.message) : job.message}
                   </strong>
-                  <progress max={100} value={job.progress} aria-label="工具执行进度" />
+                  <ProgressBar
+                    className="tool-operation-progress"
+                    size="lg"
+                    value={job.progress}
+                    label="工具执行进度"
+                  />
                   <p>
                     {new Date(job.startedAt).toLocaleString('zh-CN')} ·{' '}
                     {tools.find((tool) => tool.id === job.kind)?.label}
@@ -423,7 +431,6 @@ export default function ToolsPage({
                 <label className="tool-field">
                   游戏客户端
                   <Select
-                    className="text-input"
                     value={client}
                     onChange={(event) => setClient(event.target.value as RecognitionClient)}
                   >
@@ -450,7 +457,6 @@ export default function ToolsPage({
                         <label className="tool-field">
                           输入方式
                           <Select
-                            className="text-input"
                             value={config.mode ?? 'device'}
                             onChange={(event) =>
                               patch({ mode: event.target.value as Config['mode'] })
@@ -464,8 +470,7 @@ export default function ToolsPage({
                           <div className="tool-tags">
                             {catalog?.tags.map((tag) => (
                               <label key={tag}>
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   checked={selectedTags.includes(tag) ?? false}
                                   disabled={
                                     !selectedTags.includes(tag) && (config.tags?.length ?? 0) >= 5
@@ -500,8 +505,7 @@ export default function ToolsPage({
                             ] as const
                           ).map(([field, label, fallback]) => (
                             <label key={field}>
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={config[field] ?? fallback}
                                 onChange={(event) => patch({ [field]: event.target.checked })}
                               />
@@ -525,8 +529,7 @@ export default function ToolsPage({
                               {config.targets?.map((target, index) => (
                                 <tr key={target.id}>
                                   <td>
-                                    <input
-                                      className="text-input"
+                                    <TextField
                                       aria-label={`关卡 ${index + 1}`}
                                       list="tool-stages"
                                       value={target.stage}
@@ -536,8 +539,7 @@ export default function ToolsPage({
                                     />
                                   </td>
                                   <td>
-                                    <input
-                                      className="text-input"
+                                    <TextField
                                       aria-label={`材料 ID ${index + 1}`}
                                       value={target.itemId}
                                       onChange={(event) =>
@@ -547,9 +549,7 @@ export default function ToolsPage({
                                   </td>
                                   {(['quantity', 'medicine', 'stone'] as const).map((field) => (
                                     <td key={field}>
-                                      <input
-                                        className="text-input"
-                                        type="number"
+                                      <NumberField
                                         aria-label={`${field} ${index + 1}`}
                                         min={field === 'quantity' ? 1 : 0}
                                         max={field === 'quantity' ? 2147483647 : 100}
@@ -630,8 +630,7 @@ export default function ToolsPage({
                       <>
                         <div className="tool-options">
                           <label>
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               disabled={blocked}
                               checked={config.operators !== false}
                               onChange={(event) => patch({ operators: event.target.checked })}
@@ -639,8 +638,7 @@ export default function ToolsPage({
                             刷新干员
                           </label>
                           <label>
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               disabled={blocked}
                               checked={config.depot !== false}
                               onChange={(event) => patch({ depot: event.target.checked })}
@@ -716,7 +714,6 @@ export default function ToolsPage({
                         <label className="tool-field">
                           小游戏
                           <Select
-                            className="text-input"
                             value={config.game ?? 'pixelpaint'}
                             onChange={(event) =>
                               patch({ game: event.target.value as Config['game'] })
@@ -741,7 +738,6 @@ export default function ToolsPage({
                             <label className="tool-field">
                               目标结局
                               <Select
-                                className="text-input"
                                 value={config.ending ?? 'A'}
                                 onChange={(event) =>
                                   patch({ ending: event.target.value as Config['ending'] })
@@ -754,8 +750,7 @@ export default function ToolsPage({
                             </label>
                             <label className="tool-field">
                               事件分支
-                              <input
-                                className="text-input"
+                              <TextField
                                 value={config.branch ?? ''}
                                 maxLength={80}
                                 onChange={(event) => patch({ branch: event.target.value })}

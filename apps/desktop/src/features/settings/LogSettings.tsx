@@ -159,7 +159,7 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
           control={
             <Select
               id="log-retention-days"
-              className="text-input sp-inline-select"
+              className="sp-inline-select"
               value={draft.days}
               disabled={disabled}
               onChange={(event) =>

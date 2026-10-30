@@ -112,11 +112,7 @@ export default function MultiRunPanel({
                   <>
                     <strong>{runDisplayName(run, plans)}</strong>
                     <p>{localizeExecutionMessage(run.message)}</p>
-                    <ProgressBar
-                      className="multi-run-progress"
-                      label={`${device.name}执行进度`}
-                      value={run.progress}
-                    />
+                    <ProgressBar size="lg" label={`${device.name}执行进度`} value={run.progress} />
                     <div className="multi-run-actions">
                       <Button className="multi-run-action" onClick={() => onInspect(run)}>
                         查看此实例
@@ -140,7 +136,6 @@ export default function MultiRunPanel({
                     </label>
                     <Select
                       id={`instance-plan-${device.id}`}
-                      className="text-input"
                       aria-label={`${device.name}使用的任务表`}
                       value={selected?.id || ''}
                       onChange={(event) =>

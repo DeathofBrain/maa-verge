@@ -1,3 +1,5 @@
+import Button from '@/kit/Button';
+import Checkbox from '@/kit/Checkbox';
 import { useState } from 'react';
 import { LoaderCircle, Trash2 } from 'lucide-react';
 import Overlay from '@/kit/Overlay';
@@ -50,17 +52,13 @@ export default function CopilotDeleteDialog({
       className="modal confirm-dialog cp-delete-dialog"
       footer={
         <div className="modal-actions">
-          <button className="button secondary" data-autofocus disabled={busy} onClick={onClose}>
+          <Button variant="secondary" data-autofocus disabled={busy} onClick={onClose}>
             取消
-          </button>
-          <button
-            className="button danger"
-            disabled={busy}
-            onClick={() => onConfirm(deleteCopilots)}
-          >
+          </Button>
+          <Button variant="danger" disabled={busy} onClick={() => onConfirm(deleteCopilots)}>
             {busy ? <LoaderCircle size={15} className="spin" /> : <Trash2 size={15} />}
             确认删除
-          </button>
+          </Button>
         </div>
       }
     >
@@ -68,8 +66,7 @@ export default function CopilotDeleteDialog({
         <>
           <p>确定删除分类「{target.name}」？</p>
           <label className="cp-delete-check">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={deleteCopilots}
               disabled={busy}
               onChange={(event) => setDeleteCopilots(event.target.checked)}

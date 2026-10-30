@@ -73,11 +73,6 @@
   font-size: 12px;
 }
 
-.run-panel-tool progress {
-  width: 100%;
-  accent-color: var(--accent);
-}
-
 .run-dock > .dock-device-picker {
   flex: none;
   max-width: 28%;

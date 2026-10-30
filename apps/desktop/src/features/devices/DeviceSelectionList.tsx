@@ -1,3 +1,4 @@
+import Checkbox from '@/kit/Checkbox';
 import { useState } from 'react';
 import type { Device } from '@maaverge/contracts';
 import Select from '@/kit/Select';
@@ -113,8 +114,7 @@ export default function DeviceSelectionList({
                 className={`device-selection-row ${unavailable ? 'is-unavailable' : ''}`}
                 key={item.id}
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   aria-label={checkboxLabel(item)}
                   checked={checked}
                   disabled={unavailable}

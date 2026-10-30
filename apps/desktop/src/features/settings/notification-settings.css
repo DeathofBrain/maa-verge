@@ -133,10 +133,6 @@
   border-top: 1px solid var(--line);
 }
 
-.notification-actions > .primary {
-  margin-left: auto;
-}
-
 .notification-feedback {
   margin: 14px 0 0;
   color: var(--muted);
@@ -166,11 +162,7 @@
     flex: 1 1 100%;
   }
 
-  .notification-channel-actions .button {
+  .notification-channel-action {
     flex: 1;
-  }
-
-  .notification-actions > .primary {
-    width: 100%;
   }
 }

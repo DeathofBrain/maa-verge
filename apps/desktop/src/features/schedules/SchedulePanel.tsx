@@ -1,3 +1,8 @@
+import Button from '@/kit/Button';
+import IconButton from '@/kit/IconButton';
+import Checkbox from '@/kit/Checkbox';
+import TextField from '@/kit/TextField';
+import NumberField from '@/kit/NumberField';
 import Select from '@/kit/Select';
 import { useEffect, useState } from 'react';
 import { CalendarClock, Plus, RefreshCw, Trash2 } from 'lucide-react';
@@ -108,16 +113,12 @@ export default function SchedulePanel({
           </p>
         </div>
         <div>
-          <button className="button secondary" onClick={() => setAll((value) => !value)}>
+          <Button onClick={() => setAll((value) => !value)}>
             {all ? '只看本表' : '查看全部定时'}
-          </button>
-          <button
-            className="icon-button"
-            aria-label="刷新定时计划"
-            onClick={() => setRevision((value) => value + 1)}
-          >
+          </Button>
+          <IconButton label="刷新定时计划" onClick={() => setRevision((value) => value + 1)}>
             <RefreshCw size={16} />
-          </button>
+          </IconButton>
         </div>
       </header>
       {error && <ErrorBanner className="error-banner">{error}</ErrorBanner>}
@@ -144,8 +145,7 @@ export default function SchedulePanel({
               return (
                 <tr key={schedule.id}>
                   <td>
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       aria-label={`启用定时 ${schedule.id}`}
                       checked={schedule.enabled}
                       disabled={busy}
@@ -155,8 +155,7 @@ export default function SchedulePanel({
                     />
                   </td>
                   <td>
-                    <input
-                      className="text-input"
+                    <TextField
                       aria-label={`定时时间 ${schedule.id}`}
                       type="time"
                       value={`${String(schedule.hour).padStart(2, '0')}:${String(schedule.minute).padStart(2, '0')}`}
@@ -170,7 +169,6 @@ export default function SchedulePanel({
                   </td>
                   <td>
                     <Select
-                      className="text-input"
                       aria-label={`定时任务表 ${schedule.id}`}
                       value={targetPlanId}
                       disabled={busy}
@@ -200,7 +198,6 @@ export default function SchedulePanel({
                   </td>
                   <td>
                     <Select
-                      className="text-input"
                       aria-label={`定时设备 ${schedule.id}`}
                       value={currentEligible ? schedule.deviceId : ''}
                       disabled={busy}
@@ -238,7 +235,6 @@ export default function SchedulePanel({
                   <td>{schedule.disabledReason ?? String(schedule.last?.message ?? '尚未触发')}</td>
                   <td>
                     <Select
-                      className="text-input"
                       aria-label={`临时启停 ${schedule.id}`}
                       value={schedule.override ?? 'clear'}
                       disabled={busy}
@@ -257,16 +253,15 @@ export default function SchedulePanel({
                     </Select>
                   </td>
                   <td>
-                    <button
-                      className="icon-button"
-                      aria-label={`删除定时 ${schedule.id}`}
+                    <IconButton
+                      label={`删除定时 ${schedule.id}`}
                       disabled={busy}
                       onClick={() => {
                         void action(() => rpc('schedule.delete', { id: schedule.id }));
                       }}
                     >
                       <Trash2 size={16} />
-                    </button>
+                    </IconButton>
                   </td>
                 </tr>
               );
@@ -279,7 +274,6 @@ export default function SchedulePanel({
       )}
       <div className="schedule-create">
         <Select
-          className="text-input"
           aria-label="新增定时任务表"
           value={newPlan}
           onChange={(event) => {
@@ -298,7 +292,6 @@ export default function SchedulePanel({
             ))}
         </Select>
         <Select
-          className="text-input"
           aria-label="新增定时设备"
           value={newDevice}
           onChange={(event) => setNewDevice(event.target.value)}
@@ -310,15 +303,14 @@ export default function SchedulePanel({
             </option>
           ))}
         </Select>
-        <input
-          className="text-input"
+        <TextField
           type="time"
           aria-label="新增定时时间"
           value={newTime}
           onChange={(event) => setNewTime(event.target.value)}
         />
-        <button
-          className="button primary"
+        <Button
+          variant="primary"
           disabled={
             busy ||
             !newPlan ||
@@ -343,14 +335,13 @@ export default function SchedulePanel({
         >
           <Plus size={15} />
           添加定时
-        </button>
+        </Button>
       </div>
       <section className="sp-section">
         <h3>全局定时选项</h3>
         <div className="schedule-options">
           <label>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={options.forceScheduledStart}
               disabled={busy}
               onChange={(event) => settingsChange({ forceScheduledStart: event.target.checked })}
@@ -362,8 +353,7 @@ export default function SchedulePanel({
             秒取消倒计时，然后停止目标设备当前任务或工具，关闭游戏并执行目标任务表。需要启动游戏时，请启用表内“开始唤醒”。
           </p>
           <label>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={options.showWindowBeforeForceScheduledStart}
               disabled={busy}
               onChange={(event) =>
@@ -373,8 +363,7 @@ export default function SchedulePanel({
             强制启动前显示窗口
           </label>
           <label>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={options.notifyBeforeScheduledStart}
               disabled={busy}
               onChange={(event) =>
@@ -385,9 +374,7 @@ export default function SchedulePanel({
           </label>
           <label>
             提前分钟数
-            <input
-              className="text-input"
-              type="number"
+            <NumberField
               min={1}
               max={1439}
               value={options.notificationMinutes}
@@ -400,8 +387,7 @@ export default function SchedulePanel({
             />
           </label>
           <label>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={options.scheduledWakeUp}
               disabled={busy || data?.wake.supported !== true}
               onChange={(event) => settingsChange({ scheduledWakeUp: event.target.checked })}

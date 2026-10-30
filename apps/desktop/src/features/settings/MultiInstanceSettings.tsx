@@ -1,3 +1,5 @@
+import Button from '@/kit/Button';
+import TextField from '@/kit/TextField';
 import { useContextMenu } from '@/kit/ContextMenu';
 import { useEffect, useState } from 'react';
 import {
@@ -102,8 +104,8 @@ export function MultiInstanceSettings({
       <div className="sp-section-title">
         <div className="sp-instance-heading">
           <h2>多开管理</h2>
-          <button
-            className="button primary"
+          <Button
+            variant="primary"
             disabled={busy || !!pending || !!editing || profiles.length >= 32}
             onClick={() => {
               setError('');
@@ -111,7 +113,7 @@ export function MultiInstanceSettings({
             }}
           >
             添加多开实例
-          </button>
+          </Button>
         </div>
         <p>
           先在模拟器的多开管理器中启动实例，再到“当前设备”发现并保存，或手动添加连接地址。每个实例独立保存连接与截图设置，可分别连接和断开。
@@ -245,8 +247,7 @@ export function MultiInstanceSettings({
                 <p className="sp-help">请先停止当前执行，再断开此实例。</p>
               )}
               <div className="sp-instance-actions">
-                <button
-                  className="button secondary"
+                <Button
                   disabled={busy || !!pending || !!connecting || device?.state === 'running'}
                   title={device?.state === 'running' ? '请先停止当前执行，再断开此实例' : undefined}
                   onClick={() => void operate(profile, device)}
@@ -258,19 +259,12 @@ export function MultiInstanceSettings({
                       : online
                         ? '断开实例'
                         : '连接实例'}
-                </button>
-                {device && (
-                  <button className="button secondary" onClick={() => onSelectDevice(device.id)}>
-                    选择设备
-                  </button>
-                )}
+                </Button>
+                {device && <Button onClick={() => onSelectDevice(device.id)}>选择设备</Button>}
                 {device && onConfigure && (
-                  <button className="button secondary" onClick={() => onConfigure(device)}>
-                    连接设置
-                  </button>
+                  <Button onClick={() => onConfigure(device)}>连接设置</Button>
                 )}
-                <button
-                  className="button secondary"
+                <Button
                   disabled={busy || !!pending}
                   onClick={() => {
                     setError('');
@@ -278,9 +272,8 @@ export function MultiInstanceSettings({
                   }}
                 >
                   编辑实例
-                </button>
-                <button
-                  className="button secondary"
+                </Button>
+                <Button
                   disabled={busy || !!pending || !!connecting || online}
                   title={
                     online
@@ -297,7 +290,7 @@ export function MultiInstanceSettings({
                   }
                 >
                   删除实例
-                </button>
+                </Button>
               </div>
             </article>
           );
@@ -388,8 +381,7 @@ function InstanceProfileEditor({
       <h3>实例独立配置</h3>
       <label className="sp-field">
         实例名称
-        <input
-          className="text-input"
+        <TextField
           aria-label="实例名称"
           value={draft.name}
           maxLength={80}
@@ -428,8 +420,7 @@ function InstanceProfileEditor({
         </p>
       )}
       <div className="sp-form-actions">
-        <button
-          className="button secondary"
+        <Button
           type="button"
           disabled={busy}
           onClick={() => {
@@ -439,10 +430,10 @@ function InstanceProfileEditor({
           }}
         >
           取消编辑
-        </button>
-        <button className="button primary" type="submit" disabled={busy}>
+        </Button>
+        <Button variant="primary" type="submit" disabled={busy}>
           保存实例配置
-        </button>
+        </Button>
       </div>
     </form>
   );

@@ -142,7 +142,6 @@ export default function CopilotRating({
           <span>{error || loadError}</span>
           <Button
             variant="text"
-            className="cp-link"
             disabled={loading || submitting}
             onClick={() => setRevision((previous) => previous + 1)}
           >

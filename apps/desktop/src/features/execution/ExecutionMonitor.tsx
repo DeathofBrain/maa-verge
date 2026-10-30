@@ -1,3 +1,5 @@
+import Checkbox from '@/kit/Checkbox';
+import IconButton from '@/kit/IconButton';
 import { runDisplayName, runSourceLabel } from '@/shared/lib/run-source';
 import { useContextMenu, useContextMenuShow, type MenuItem } from '@/kit/ContextMenu';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -376,6 +378,7 @@ export default function ExecutionMonitor({
               onChange={selectVisible}
             />
             <FilterChips
+              variant="subtle"
               className="monitor-filters"
               aria-label="筛选监控设备"
               value={filter}
@@ -403,14 +406,14 @@ export default function ExecutionMonitor({
             <span role="status">已选 {selected.size} 台设备</span>
             <div>
               <Button
-                className="button"
+                size="compact"
                 icon={<Terminal size={14} />}
                 onClick={() => setLogDevices([...selected])}
               >
                 查看日志
               </Button>
               <Button
-                className="button"
+                size="compact"
                 variant="danger"
                 icon={<Square size={12} />}
                 busy={bulkStopping}
@@ -420,7 +423,7 @@ export default function ExecutionMonitor({
                 停止所选
               </Button>
               <Button
-                className="button"
+                size="compact"
                 variant="danger"
                 icon={<Trash2 size={14} />}
                 busy={deleting}
@@ -430,7 +433,7 @@ export default function ExecutionMonitor({
               >
                 批量删除
               </Button>
-              <Button className="text-button" variant="text" onClick={() => setSelected(new Set())}>
+              <Button variant="text" onClick={() => setSelected(new Set())}>
                 清除
               </Button>
             </div>
@@ -465,7 +468,6 @@ export default function ExecutionMonitor({
               text="调整筛选条件，或搜索其他设备、任务与反馈。"
               action={
                 <Button
-                  className="button"
                   onClick={() => {
                     setFilter('all');
                     setQuery('');
@@ -523,8 +525,7 @@ export default function ExecutionMonitor({
                       {...contextMenu('设备执行菜单', menuItems)}
                     >
                       <label className="monitor-device-check">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           aria-label={`选择设备${device.name}`}
                           checked={selected.has(device.id)}
                           onChange={() => toggle(device.id)}
@@ -607,7 +608,7 @@ export default function ExecutionMonitor({
                       </button>
                       <div className="monitor-device-actions">
                         <Button
-                          className="button"
+                          className="monitor-device-action"
                           icon={<Terminal size={14} />}
                           aria-label={`查看设备日志${device.name}`}
                           onClick={() => setLogDevices([device.id])}
@@ -616,7 +617,7 @@ export default function ExecutionMonitor({
                         </Button>
                         {active && (
                           <Button
-                            className="button"
+                            className="monitor-device-action"
                             variant="danger"
                             icon={<Square size={12} />}
                             busy={run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)}
@@ -632,9 +633,9 @@ export default function ExecutionMonitor({
                             停止
                           </Button>
                         )}
-                        <button
-                          className="icon-button monitor-device-menu"
-                          aria-label={`设备操作${device.name}`}
+                        <IconButton
+                          className="monitor-device-menu"
+                          label={`设备操作${device.name}`}
                           aria-haspopup="menu"
                           title="更多操作"
                           onClick={(event) => {
@@ -649,7 +650,7 @@ export default function ExecutionMonitor({
                           }}
                         >
                           <MoreHorizontal size={18} />
-                        </button>
+                        </IconButton>
                       </div>
                     </article>
                   );
@@ -715,7 +716,6 @@ export default function ExecutionMonitor({
                       : ' · 当前没有任务'}
                 </span>
                 <Button
-                  className="text-button"
                   variant="text"
                   onClick={() => {
                     setHistoryToolId('');
@@ -759,7 +759,6 @@ export default function ExecutionMonitor({
                 </dl>
                 {displayedTool.status === 'running' && currentCategory !== 'offline' && (
                   <Button
-                    className="button"
                     variant="danger"
                     icon={<Square size={12} />}
                     disabled={toolPending.has(displayedTool.id)}
@@ -788,7 +787,6 @@ export default function ExecutionMonitor({
                 </p>
                 {(latestRun || latestTool) && (
                   <Button
-                    className="button"
                     onClick={() => {
                       if (latestIsTool) {
                         setHistoryToolId(latestTool!.id);

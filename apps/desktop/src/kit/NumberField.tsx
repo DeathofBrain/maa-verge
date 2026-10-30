@@ -1,7 +1,7 @@
-import type { InputHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { invalid?: boolean };
+type Props = Omit<ComponentPropsWithRef<'input'>, 'type'> & { invalid?: boolean };
 
 export default function NumberField({ invalid = false, className, ...rest }: Props) {
   return (

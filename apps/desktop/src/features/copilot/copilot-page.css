@@ -11,7 +11,7 @@
   padding-bottom: 20px;
   padding-inline: var(--cp-gutter);
 }
-.copilot-page .sp-page-heading > .button {
+.cp-heading-actions {
   flex-shrink: 0;
 }
 .cp-queue-heading {
@@ -129,14 +129,6 @@
   font-size: 11px;
   line-height: 1.8;
 }
-.cp-community-note a {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-  text-decoration: none;
-}
-
 .cp-record-list {
   display: grid;
   gap: 12px;
@@ -212,31 +204,6 @@
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-.cp-empty {
-  min-height: 300px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 14px;
-  padding: 28px;
-  color: var(--muted);
-}
-.cp-empty h3 {
-  font-size: 16px;
-  color: var(--text);
-  margin: 0;
-}
-.cp-empty p {
-  font-size: 12px;
-  margin: 0;
-  line-height: 1.9;
-  max-width: 320px;
-}
-.cp-empty > svg {
-  color: var(--dim);
-}
 .cp-empty-actions {
   display: flex;
   flex-wrap: wrap;
@@ -269,17 +236,6 @@
   margin-bottom: 16px;
   border-radius: 8px;
 }
-.cp-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border: 0;
-  padding: 4px 0;
-  background: none;
-  color: var(--accent);
-  font-size: 12px;
-}
 .cp-field {
   display: flex;
   flex-direction: column;
@@ -288,7 +244,7 @@
   font-weight: 600;
   min-width: 0;
 }
-.cp-field > .text-input,
+.cp-field > .cp-input,
 .cp-field .app-select {
   min-width: 0;
   width: 100%;
@@ -306,10 +262,6 @@
 .cp-pagination > span {
   font-size: 11px;
   color: var(--muted);
-}
-.cp-pagination > .button {
-  padding: 7px 10px;
-  font-size: 11px;
 }
 .cp-community-controls {
   padding: 20px;
@@ -622,13 +574,6 @@
   gap: 12px 20px;
   margin-top: 20px;
 }
-.cp-detail-links a {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  text-decoration: none;
-  font-size: 12px;
-}
 .cp-import:not([open]) {
   display: none;
 }
@@ -880,7 +825,7 @@
   flex: 1;
   min-width: 0;
 }
-.cp-entry-options .text-input {
+.cp-entry-input {
   flex: 1;
   min-width: 0;
   font-size: 10px;
@@ -1014,7 +959,7 @@
   font-size: 11px;
   min-width: 0;
 }
-.cp-run-select .text-input {
+.cp-run-control {
   width: 170px;
   min-width: 0;
   padding: 7px 9px;
@@ -1023,7 +968,7 @@
 .cp-run-history {
   flex: 0 1 370px;
 }
-.cp-run-history .text-input {
+.cp-run-history-control {
   width: 100%;
   flex: 1;
 }
@@ -1156,7 +1101,7 @@
   font-size: 11px;
   color: var(--muted);
 }
-.cp-legacy-row .button {
+.cp-legacy-copy {
   font-size: 11px;
 }
 .cp-rating {
@@ -1205,12 +1150,6 @@
 .cp-queue-editor > header > div {
   min-width: 0;
   flex: 1;
-}
-.cp-queue-editor > header > .cp-link {
-  max-width: 66px;
-  flex-shrink: 0;
-  font-size: 11px;
-  line-height: 1.8;
 }
 .cp-queue-empty > svg {
   display: none;
@@ -1328,7 +1267,7 @@
   .cp-run-select {
     flex: 1 1 100%;
   }
-  .cp-run-select .text-input {
+  .cp-run-control {
     flex: 1;
     width: 100%;
   }
@@ -1451,7 +1390,7 @@
   margin: 0;
   font-size: 11px;
 }
-.cp-category-manager .text-input {
+.cp-category-manager .cp-input {
   background: var(--surface);
   font-size: 12px;
 }
@@ -1461,11 +1400,11 @@
   gap: 8px 12px;
   align-items: center;
 }
-.cp-category-actions .button {
+.cp-category-action {
   padding: 8px 12px;
   font-size: 11px;
 }
-.cp-category-actions > .cp-link {
+.cp-category-delete {
   margin-left: auto;
   color: var(--danger);
   font-size: 11px;
@@ -1489,13 +1428,13 @@
   color: var(--muted);
   font-size: 11px;
 }
-.cp-category-enqueue .text-input {
+.cp-category-kind {
   width: 120px;
   padding: 7px;
   font-size: 12px;
   background: var(--surface);
 }
-.cp-category-enqueue .button {
+.cp-category-enqueue-action {
   margin-left: auto;
   font-size: 11px;
   padding: 8px 12px;
@@ -1544,7 +1483,7 @@
   .cp-record-main strong {
     font-size: 13px;
   }
-  .cp-category-actions > .cp-link {
+  .cp-category-delete {
     margin-left: 0;
   }
 }

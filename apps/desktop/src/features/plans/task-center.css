@@ -22,19 +22,7 @@
   gap: 7px;
   font-size: 11px;
   color: var(--muted);
-}
-
-.tc-heading h1 {
-  font-size: 25px;
-  letter-spacing: -0.6px;
-  margin: 8px 0;
-}
-
-.tc-heading p {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 0;
-  line-height: 1.8;
+  margin-bottom: 8px;
 }
 
 .tc-heading-actions {
@@ -50,32 +38,6 @@
   border-bottom: 1px solid var(--line);
   padding: 0 30px;
   flex: none;
-}
-
-.tc-view-tabs > button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 2px 13px;
-  background: transparent;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.tc-view-tabs > button[aria-selected='true'] {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-  font-weight: 600;
-}
-
-.tc-view-tabs > button > span {
-  border-radius: 5px;
-  background: var(--accent-soft);
-  font-size: 11px;
-  padding: 1px 6px;
-  font-variant-numeric: tabular-nums;
 }
 
 .tc-plans-scroll {
@@ -144,75 +106,10 @@
   overflow-wrap: anywhere;
 }
 
-.tc-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.tc-filters button {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid transparent;
-  background: transparent;
-  padding: 7px 10px;
-  border-radius: 6px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.tc-filters button:hover {
-  background: var(--hover);
-}
-
-.tc-filters button.selected {
-  background: var(--surface);
-  border-color: var(--line);
-  color: var(--text);
-  box-shadow: 0 1px 2px #00000005;
-}
-
-.tc-filters button > span {
-  font-size: 11px;
-  color: var(--dim);
-  font-variant-numeric: tabular-nums;
-}
-
 .tc-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   min-width: 0;
   width: 264px;
   max-width: 100%;
-  padding: 8px 11px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--dim);
-}
-
-.tc-search input {
-  background: transparent;
-  border: 0;
-  min-width: 0;
-  width: 100%;
-  color: var(--text);
-  font-size: 12px;
-}
-
-.tc-search input::placeholder {
-  color: var(--dim);
-}
-
-.tc-search:focus-within {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.tc-search input:focus-visible {
-  outline: none;
 }
 
 .tc-plan-list {
@@ -352,24 +249,6 @@
   flex: none;
 }
 
-.tc-plan-actions .button {
-  min-height: 34px;
-  padding: 7px 11px;
-  font-size: 12px;
-}
-
-.tc-empty {
-  min-height: 340px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 12px;
-  color: var(--muted);
-  padding: 30px 18px;
-}
-
 .tc-empty-icon {
   display: inline-flex;
   align-items: center;
@@ -380,19 +259,6 @@
   background: var(--surface);
   border: 1px solid var(--line);
   color: var(--dim);
-}
-
-.tc-empty h2 {
-  font-size: 17px;
-  color: var(--text);
-  margin: 6px 0 0;
-}
-
-.tc-empty p {
-  font-size: 12px;
-  line-height: 1.9;
-  max-width: 430px;
-  margin: 0 0 8px;
 }
 
 .tc-footnote {
@@ -442,11 +308,6 @@
   background: var(--surface-subtle);
   color: var(--muted);
   font-size: 12px;
-}
-
-.tc-drawer-bar .icon-button {
-  width: 32px;
-  height: 32px;
 }
 
 .tc-drawer-body {
@@ -573,7 +434,7 @@
   overflow-wrap: anywhere;
 }
 
-.tc-launch-plan-main .text-input {
+.tc-launch-plan-main .wb-parameter-control {
   max-width: 300px;
   padding: 7px 9px;
   font-size: 12px;
@@ -629,9 +490,6 @@
     align-items: flex-start;
     flex-wrap: wrap;
   }
-  .tc-heading h1 {
-    font-size: 22px;
-  }
   .tc-plan-row {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 13px;
@@ -641,14 +499,13 @@
   }
   .tc-plan-actions {
     grid-column: 1 / -1;
+    flex-wrap: wrap;
     justify-content: flex-end;
     border-top: 1px solid var(--line);
     padding-top: 12px;
   }
-  .tc-plan-actions .button.primary,
-  .tc-plan-actions .button.secondary {
+  .tc-plan-main-action {
     min-width: 108px;
-    justify-content: center;
   }
 }
 
@@ -659,7 +516,7 @@
   .tc-heading-actions {
     width: 100%;
   }
-  .tc-heading-actions .button {
+  .tc-heading-actions > button {
     flex: 1;
     justify-content: center;
   }
@@ -678,10 +535,6 @@
   }
   .tc-plan-meta {
     gap: 3px 12px;
-  }
-  .tc-plan-actions .button {
-    font-size: 11px;
-    padding-inline: 10px;
   }
   .tc-drawer-layer {
     inset: 0 0 var(--dock-height);

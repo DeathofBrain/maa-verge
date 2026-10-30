@@ -137,15 +137,6 @@
   box-shadow: 0 1px 2px #00000005;
 }
 
-.monitor-log-device input,
-.monitor-log-entry input {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: var(--accent);
-}
-
 .monitor-log-device > span {
   flex: 1;
   min-width: 0;

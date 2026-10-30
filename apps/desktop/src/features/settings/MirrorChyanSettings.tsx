@@ -1,3 +1,6 @@
+import TextField from '@/kit/TextField';
+import Button from '@/kit/Button';
+import ExternalLink from '@/kit/ExternalLink';
 import type { Settings } from '@maaverge/contracts';
 import SettingRow from '@/kit/SettingRow';
 import Switch from '@/kit/Switch';
@@ -54,8 +57,7 @@ export default function MirrorChyanSettings({
         />
         <label className="sp-field">
           Mirror酱 CDK
-          <input
-            className="text-input"
+          <TextField
             aria-label="Mirror酱 CDK"
             type="password"
             autoComplete="off"
@@ -70,24 +72,15 @@ export default function MirrorChyanSettings({
         </label>
         <p className="sp-help">CDK 保存在本机，检查和下载时发送给 Mirror酱，诊断日志会脱敏。</p>
         <div className="sp-form-actions settings-actions">
-          <a
-            href="https://mirrorchyan.com?source=maa_verge_settings"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <ExternalLink href="https://mirrorchyan.com?source=maa_verge_settings">
             Mirror酱官网与 CDK
-          </a>
+          </ExternalLink>
           <span className="settings-save-status" aria-live="polite">
             {saveStatus === 'saved' ? '' : saveStatus === 'error' ? '保存失败' : '正在保存…'}
             {saveStatus === 'error' && (
-              <button
-                className="settings-retry"
-                type="button"
-                disabled={busy}
-                onClick={() => void retry()}
-              >
+              <Button variant="text" type="button" disabled={busy} onClick={() => void retry()}>
                 重试
-              </button>
+              </Button>
             )}
           </span>
         </div>

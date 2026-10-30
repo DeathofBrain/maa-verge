@@ -1,3 +1,4 @@
+import Button from '@/kit/Button';
 import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import {
@@ -139,8 +140,8 @@ export default function NotificationSettings({ settings, busy, onSave }: Props) 
         </div>
         <div className="notification-actions">
           <div className="notification-channel-actions">
-            <button
-              className="button secondary"
+            <Button
+              className="notification-channel-action"
               type="button"
               disabled={disabled || !desktop}
               onClick={() =>
@@ -150,9 +151,9 @@ export default function NotificationSettings({ settings, busy, onSave }: Props) 
               }
             >
               检查通知权限
-            </button>
-            <button
-              className="button secondary"
+            </Button>
+            <Button
+              className="notification-channel-action"
               type="button"
               disabled={
                 disabled ||
@@ -169,19 +170,14 @@ export default function NotificationSettings({ settings, busy, onSave }: Props) 
               }
             >
               发送测试通知
-            </button>
+            </Button>
           </div>
           <span className="settings-save-status" aria-live="polite">
             {saveStatus === 'saved' ? '' : saveStatus === 'error' ? '保存失败' : '正在保存…'}
             {saveStatus === 'error' && (
-              <button
-                className="settings-retry"
-                type="button"
-                disabled={disabled}
-                onClick={() => void retry()}
-              >
+              <Button variant="text" type="button" disabled={disabled} onClick={() => void retry()}>
                 重试
-              </button>
+              </Button>
             )}
           </span>
         </div>

@@ -6,7 +6,7 @@
   margin: 0 20px 16px;
 }
 
-.cp-library-selection .button {
+.cp-library-delete-selected {
   margin-left: auto;
   padding: 7px 10px;
   font-size: 11px;
@@ -23,13 +23,6 @@
   display: flex;
   align-items: center;
   min-height: 18px;
-}
-
-.cp-record-select input {
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  accent-color: var(--accent);
 }
 
 .cp-record.is-marked {
@@ -56,8 +49,4 @@
   gap: 8px;
   margin-top: 18px;
   font-size: 13px;
-}
-
-.cp-delete-check input {
-  accent-color: var(--accent);
 }

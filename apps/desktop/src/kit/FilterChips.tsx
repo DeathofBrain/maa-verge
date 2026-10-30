@@ -12,17 +12,25 @@ type Props = {
   items: FilterChip[];
   value: string;
   onChange: (id: string) => void;
+  variant?: 'pill' | 'subtle';
   'aria-label': string;
   className?: string;
 };
 
-export default function FilterChips({ items, value, onChange, className, ...rest }: Props) {
+export default function FilterChips({
+  items,
+  value,
+  onChange,
+  variant = 'pill',
+  className,
+  ...rest
+}: Props) {
   return (
     <div
       {...rest}
       role="group"
       aria-label={rest['aria-label']}
-      className={cx('mv-chips', className)}
+      className={cx('mv-chips', variant === 'subtle' && 'mv-chips--subtle', className)}
     >
       {items.map((item) => {
         const selected = item.id === value;
@@ -33,11 +41,17 @@ export default function FilterChips({ items, value, onChange, className, ...rest
             aria-label={item.ariaLabel}
             aria-pressed={selected}
             data-selected={selected || undefined}
-            className="mv-chip"
+            className={cx('mv-chip', variant === 'subtle' && 'mv-chip--subtle')}
             onClick={() => onChange(item.id)}
           >
             {item.label}
-            {item.count !== undefined && <span className="mv-chip-count">{item.count}</span>}
+            {item.count !== undefined && (
+              <span
+                className={cx('mv-chip-count', variant === 'subtle' && 'mv-chip-count--subtle')}
+              >
+                {item.count}
+              </span>
+            )}
           </button>
         );
       })}

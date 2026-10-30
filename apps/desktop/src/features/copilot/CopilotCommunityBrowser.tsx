@@ -2,6 +2,8 @@ import type { ComponentProps, Dispatch, SetStateAction } from 'react';
 import { ChevronRight, Clock3, Eye, Flame, LoaderCircle, RefreshCw, Search } from 'lucide-react';
 import type { CopilotKind, RpcParams, RpcResult } from '@maaverge/contracts';
 import Button from '@/kit/Button';
+import EmptyState from '@/kit/EmptyState';
+import ErrorBanner from '@/kit/ErrorBanner';
 import FilterChips from '@/kit/FilterChips';
 import IconButton from '@/kit/IconButton';
 import SearchField from '@/kit/SearchField';
@@ -138,14 +140,14 @@ export default function CopilotCommunityBrowser({
       </div>
       <div className="cp-community-results" aria-busy={searching}>
         {searchError && (
-          <div className="error-banner" role="alert">
+          <ErrorBanner as="div" className="error-banner">
             {searchError}
             <p>
               {searchResult
                 ? '已保留上次搜索结果，可点击刷新重试。'
                 : '可点击刷新重试，已导入的本地作业仍可使用。'}
             </p>
-          </div>
+          </ErrorBanner>
         )}
         {searchResult?.items.length ? (
           <div className="cp-record-list">
@@ -195,11 +197,12 @@ export default function CopilotCommunityBrowser({
             ))}
           </div>
         ) : !searching && !searchError ? (
-          <div className="cp-empty">
-            <Search size={26} />
-            <h3>没有匹配结果</h3>
-            <p>调整关键词或关卡，或使用编号定位。</p>
-          </div>
+          <EmptyState
+            variant="list"
+            icon={<Search size={26} />}
+            title="没有匹配结果"
+            text="调整关键词或关卡，或使用编号定位。"
+          />
         ) : null}
       </div>
       <div className="cp-pagination">

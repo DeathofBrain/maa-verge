@@ -4,6 +4,7 @@ import { CalendarClock, Factory, RefreshCw } from 'lucide-react';
 import type { Device, Settings } from '@maaverge/contracts';
 import IconButton from '@/kit/IconButton';
 import StatusPill from '@/kit/StatusPill';
+import ProgressBar from '@/kit/ProgressBar';
 import InfrastructureEditor from './InfrastructureEditor';
 import { useHomeInfo, type HomeInfoClient as Client } from './useHomeInfo';
 import { formatDate as time } from '@/kit/format';
@@ -177,10 +178,11 @@ export default function GameInfoPanel({
                     : `约 ${Math.floor(line.estimatedQuantity || 0).toLocaleString('zh-CN')} / ${line.capacity.toLocaleString('zh-CN')} ${line.unit}`}
                 </span>
               </div>
-              <progress
+              <ProgressBar
+                className="game-production-progress"
                 max={line.capacity}
                 value={line.estimatedQuantity || 0}
-                aria-label={`${line.name}估算容量`}
+                label={`${line.name}估算容量`}
               />
               <small>
                 {line.error ||
