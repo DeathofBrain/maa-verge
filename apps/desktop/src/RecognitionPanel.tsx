@@ -2,7 +2,7 @@ import Select from './Select';
 import { useEffect, useState } from 'react';
 import { Database, Download, Play, RefreshCw, Search } from 'lucide-react';
 import { errorMessage, rpc, type RpcParams, type RpcResult } from '@maaverge/contracts';
-import type { SupportPageProps } from './SupportPages';
+import type { SupportPageProps } from './app/page-types';
 import MaterialIcon from './MaterialIcon';
 import OperatorBadge from './OperatorBadge';
 import Button from './kit/Button';

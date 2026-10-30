@@ -24,10 +24,7 @@ import {
   pickDirectory,
   rpc,
   type DownloadProxySettings,
-  type Plan,
   type Settings,
-  type Snapshot,
-  type Task,
   type UpdateChannel,
 } from '@maaverge/contracts';
 import './support-pages.css';
@@ -57,19 +54,7 @@ import SettingRow from './kit/SettingRow';
 import Switch from './kit/Switch';
 import { formatDate } from './kit/format';
 import { updateChannelLabels, updateStatusLabels } from './kit/labels';
-
-export interface SupportPageProps {
-  snapshot: Snapshot;
-  selectedDevice: string;
-  onSelectDevice: (id: string) => void;
-  busy: boolean;
-  onAction: (key: string, call: () => Promise<unknown>, success?: string) => Promise<boolean>;
-  onPrepareUpdate: (channel: UpdateChannel) => Promise<void>;
-  preparingUpdates: ReadonlySet<UpdateChannel['id']>;
-  onOpenPlan: (plan: Plan, taskType?: Task['type'], taskIndex?: number) => void;
-  onCreateTaskPlan: (type: Task['type'], params?: Task['params']) => void;
-  searchQuery?: string;
-}
+import type { SupportPageProps } from './app/page-types';
 
 function Empty({
   title,
@@ -1112,7 +1097,3 @@ function AppInstallConfirmation({
     </Modal>
   );
 }
-
-export { default as CopilotPage } from './CopilotPage';
-
-export { default as ToolsPage } from './ToolsPage';

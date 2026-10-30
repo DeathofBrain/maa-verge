@@ -18,7 +18,7 @@ import {
   rpc,
   type Device,
 } from '@maaverge/contracts';
-import type { SupportPageProps } from './SupportPages';
+import type { SupportPageProps } from './app/page-types';
 import DeviceConnectionDrawer from './DeviceConnectionDrawer';
 import { MultiInstanceSettings } from './MultiInstanceSettings';
 import { deviceIsConnecting } from './device-association';

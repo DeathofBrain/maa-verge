@@ -16,7 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { errorMessage, rpc, type RpcParams, type RpcResult } from '@maaverge/contracts';
-import type { SupportPageProps } from './SupportPages';
+import type { SupportPageProps } from './app/page-types';
 import RecognitionPanel, { type RecognitionClient } from './RecognitionPanel';
 import OperatorBadge from './OperatorBadge';
 import Button from './kit/Button';

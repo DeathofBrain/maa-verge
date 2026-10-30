@@ -49,7 +49,9 @@ import PlanEditor, {
 } from './PlanEditor';
 import { useContextMenu } from './ContextMenu';
 import ScheduleNotifications from './ScheduleNotifications';
-import { CopilotPage, SettingsPage, ToolsPage } from './SupportPages';
+import { SettingsPage } from './SupportPages';
+import CopilotPage from './CopilotPage';
+import ToolsPage from './ToolsPage';
 import HomeDashboard from './HomeDashboard';
 import WindowControls from './WindowControls';
 import DevicePreview from './DevicePreview';

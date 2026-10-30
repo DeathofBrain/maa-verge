@@ -55,7 +55,7 @@ import {
   type RpcParams,
   type RpcResult,
 } from '@maaverge/contracts';
-import type { SupportPageProps } from './SupportPages';
+import type { SupportPageProps } from './app/page-types';
 import { useContextMenu } from './ContextMenu';
 import CopilotOperators, { useCopilotRoster } from './CopilotOperators';
 import CopilotSetOperators from './CopilotSetOperators';
