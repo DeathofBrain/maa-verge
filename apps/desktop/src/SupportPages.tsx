@@ -1,5 +1,5 @@
 import Select from './Select';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -9,7 +9,6 @@ import {
   Cpu,
   Database,
   Download,
-  FolderOpen,
   HardDrive,
   Info,
   LoaderCircle,
@@ -17,7 +16,6 @@ import {
   RotateCcw,
   Search,
   Settings2,
-  X,
 } from 'lucide-react';
 import {
   errorMessage,
@@ -49,33 +47,14 @@ import Button from './kit/Button';
 import DirectoryPicker from './kit/DirectoryPicker';
 import PageHeading from './kit/PageHeading';
 import SaveStateIndicator from './kit/SaveStateIndicator';
+import SearchField from './kit/SearchField';
+import EmptyState from './kit/EmptyState';
 import Section from './kit/Section';
 import SettingRow from './kit/SettingRow';
 import Switch from './kit/Switch';
 import { formatDate } from './kit/format';
 import { updateChannelLabels, updateStatusLabels } from './kit/labels';
 import type { SupportPageProps } from './app/page-types';
-
-function Empty({
-  title,
-  text,
-  icon = <FolderOpen size={28} />,
-  action,
-}: {
-  title: string;
-  text: string;
-  icon?: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="sp-empty">
-      {icon}
-      <h3>{title}</h3>
-      <p>{text}</p>
-      {action}
-    </div>
-  );
-}
 
 function Toggle({
   label,
@@ -249,20 +228,15 @@ export function SettingsPage({
         text="修改自动保存。"
       />
       <div className="sp-settings-search">
-        <Search size={18} />
-        <input
-          className="text-input"
-          type="search"
+        <SearchField
+          className="sp-settings-input"
           aria-label="搜索设置"
           placeholder="搜索主题、通知、更新或存储目录…"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onValueChange={setQuery}
+          clearLabel="清空设置搜索"
+          icon={<Search size={18} />}
         />
-        {query && (
-          <button className="icon-button" aria-label="清空设置搜索" onClick={() => setQuery('')}>
-            <X size={16} />
-          </button>
-        )}
         {query && <span>{matches.length} 个分类匹配</span>}
       </div>
       {query && selected && (
@@ -290,7 +264,8 @@ export function SettingsPage({
         </nav>
         <div className="sp-settings-content settings-category-content">
           {!selected ? (
-            <Empty
+            <EmptyState
+              className="sp-empty"
               title="没有匹配的设置"
               text="试试“主题”“模型”或“资源更新”。"
               icon={<Search size={28} />}

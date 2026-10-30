@@ -26,6 +26,7 @@ import './support-pages.css';
 import Button from './kit/Button';
 import PageHeading from './kit/PageHeading';
 import Spinner from './kit/Spinner';
+import Tabs from './kit/Tabs';
 import './devices-page.css';
 
 type Tab = 'current' | 'instances';
@@ -385,27 +386,28 @@ export function DevicesPage({
           </>
         }
       />
-      <div className="dp-tabs" role="tablist" aria-label="设备页面">
-        {(
+      <Tabs
+        className="dp-tabs"
+        aria-label="设备页面"
+        idPrefix="dp"
+        value={tab}
+        onChange={(id) => switchTab(id as Tab)}
+        items={(
           [
             ['current', '当前设备', Monitor, connected.length + connecting.length],
             ['instances', '多开管理', Layers, profiles.length],
           ] as const
-        ).map(([id, label, Icon, count]) => (
-          <button
-            key={id}
-            role="tab"
-            id={`dp-tab-${id}`}
-            aria-controls={`dp-panel-${id}`}
-            aria-selected={tab === id}
-            onClick={() => switchTab(id)}
-          >
-            <Icon size={16} />
-            {label}
-            {count !== null && <span>{count}</span>}
-          </button>
-        ))}
-      </div>
+        ).map(([id, label, Icon, count]) => ({
+          id,
+          label: (
+            <>
+              <Icon size={16} />
+              {label}
+            </>
+          ),
+          count,
+        }))}
+      />
       {operation && (
         <div
           className="sp-notice"

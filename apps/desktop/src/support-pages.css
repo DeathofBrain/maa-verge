@@ -334,6 +334,11 @@
   max-width: 480px;
 }
 
+.sp-settings-input {
+  flex: 1;
+  max-width: 480px;
+}
+
 .sp-settings-search > span {
   font-size: 12px;
   white-space: nowrap;

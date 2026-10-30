@@ -28,7 +28,12 @@ import {
 import CopilotSelectAll from './CopilotSelectAll';
 import ExecutionPage from './ExecutionPage';
 import MonitorLogDrawer from './MonitorLogDrawer';
+import Button from './kit/Button';
+import EmptyState from './kit/EmptyState';
 import ErrorBanner from './kit/ErrorBanner';
+import FilterChips from './kit/FilterChips';
+import ProgressBar from './kit/ProgressBar';
+import SearchField from './kit/SearchField';
 import './execution-monitor.css';
 
 type Props = {
@@ -370,60 +375,64 @@ export default function ExecutionMonitor({
               selected={visibleDevices.filter((device) => selected.has(device.id)).length}
               onChange={selectVisible}
             />
-            <div className="monitor-filters" role="group" aria-label="筛选监控设备">
-              {filters.map((item) => (
-                <button
-                  key={item.id}
-                  aria-label={item.label}
-                  aria-pressed={filter === item.id}
-                  className={filter === item.id ? 'selected' : ''}
-                  onClick={() => setFilter(item.id)}
-                >
-                  {item.label}
-                  <span>{item.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <label className="monitor-search">
-            <Search size={15} />
-            <input
-              aria-label="搜索监控设备"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索设备、任务或反馈"
+            <FilterChips
+              className="monitor-filters"
+              aria-label="筛选监控设备"
+              value={filter}
+              onChange={(id) => setFilter(id as DeviceFilter)}
+              items={filters.map((item) => ({
+                id: item.id,
+                label: item.label,
+                ariaLabel: item.label,
+                count: item.count,
+              }))}
             />
-          </label>
+          </div>
+          <SearchField
+            className="monitor-search"
+            aria-label="搜索监控设备"
+            value={query}
+            onValueChange={setQuery}
+            placeholder="搜索设备、任务或反馈"
+            icon={<Search size={15} />}
+          />
         </div>
         {operationError && <ErrorBanner className="error-banner">{operationError}</ErrorBanner>}
         {selected.size > 0 && (
           <div className="monitor-bulk-bar" role="region" aria-label="设备批量操作">
             <span role="status">已选 {selected.size} 台设备</span>
             <div>
-              <button className="button secondary" onClick={() => setLogDevices([...selected])}>
-                <Terminal size={14} />
+              <Button
+                className="button"
+                icon={<Terminal size={14} />}
+                onClick={() => setLogDevices([...selected])}
+              >
                 查看日志
-              </button>
-              <button
-                className="button danger"
+              </Button>
+              <Button
+                className="button"
+                variant="danger"
+                icon={<Square size={12} />}
+                busy={bulkStopping}
                 disabled={(!selectedRuns.length && !selectedTools.length) || bulkStopping}
                 onClick={() => void stopSelected()}
               >
-                {bulkStopping ? <LoaderCircle size={14} className="spin" /> : <Square size={12} />}
                 停止所选
-              </button>
-              <button
-                className="button danger"
+              </Button>
+              <Button
+                className="button"
+                variant="danger"
+                icon={<Trash2 size={14} />}
+                busy={deleting}
                 disabled={!canDeleteSelected || deleting}
                 title={!canDeleteSelected ? '仅可删除离线历史设备' : '删除所选历史设备'}
                 onClick={() => void deleteDevices([...selected])}
               >
-                {deleting ? <LoaderCircle size={14} className="spin" /> : <Trash2 size={14} />}
                 批量删除
-              </button>
-              <button className="text-button" onClick={() => setSelected(new Set())}>
+              </Button>
+              <Button className="text-button" variant="text" onClick={() => setSelected(new Set())}>
                 清除
-              </button>
+              </Button>
             </div>
             {!canDeleteSelected && <p className="monitor-bulk-hint">仅可删除离线历史设备</p>}
           </div>
@@ -442,26 +451,30 @@ export default function ExecutionMonitor({
             </div>
           </header>
           {!snapshot.devices.length ? (
-            <div className="monitor-empty">
-              <Monitor size={34} />
-              <h2>还没有设备</h2>
-              <p>请先在设备页添加并连接模拟器实例，执行状态会显示在这里。</p>
-            </div>
+            <EmptyState
+              className="monitor-empty"
+              icon={<Monitor size={34} />}
+              title="还没有设备"
+              text="请先在设备页添加并连接模拟器实例，执行状态会显示在这里。"
+            />
           ) : !visibleDevices.length ? (
-            <div className="monitor-empty">
-              <Search size={30} />
-              <h2>没有匹配的设备</h2>
-              <p>调整筛选条件，或搜索其他设备、任务与反馈。</p>
-              <button
-                className="button secondary"
-                onClick={() => {
-                  setFilter('all');
-                  setQuery('');
-                }}
-              >
-                清除筛选
-              </button>
-            </div>
+            <EmptyState
+              className="monitor-empty"
+              icon={<Search size={30} />}
+              title="没有匹配的设备"
+              text="调整筛选条件，或搜索其他设备、任务与反馈。"
+              action={
+                <Button
+                  className="button"
+                  onClick={() => {
+                    setFilter('all');
+                    setQuery('');
+                  }}
+                >
+                  清除筛选
+                </Button>
+              }
+            />
           ) : (
             <div className="monitor-device-list-scroll">
               <div className="monitor-device-list">
@@ -555,16 +568,11 @@ export default function ExecutionMonitor({
                           </span>
                         </span>
                         {active && (
-                          <span
+                          <ProgressBar
                             className="monitor-progress"
-                            role="progressbar"
-                            aria-label={`${device.name}执行进度`}
-                            aria-valuemin={0}
-                            aria-valuemax={100}
-                            aria-valuenow={active.progress}
-                          >
-                            <i style={{ width: `${active.progress}%` }} />
-                          </span>
+                            value={active.progress}
+                            label={`${device.name}执行进度`}
+                          />
                         )}
                         <span className="monitor-device-meta">
                           <span>{device.address}</span>
@@ -598,17 +606,20 @@ export default function ExecutionMonitor({
                         </span>
                       </button>
                       <div className="monitor-device-actions">
-                        <button
-                          className="button secondary"
+                        <Button
+                          className="button"
+                          icon={<Terminal size={14} />}
                           aria-label={`查看设备日志${device.name}`}
                           onClick={() => setLogDevices([device.id])}
                         >
-                          <Terminal size={14} />
                           日志
-                        </button>
+                        </Button>
                         {active && (
-                          <button
-                            className="button danger"
+                          <Button
+                            className="button"
+                            variant="danger"
+                            icon={<Square size={12} />}
+                            busy={run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)}
                             aria-label={`停止设备任务${device.name}`}
                             disabled={
                               run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)
@@ -618,13 +629,8 @@ export default function ExecutionMonitor({
                               else if (job) void stopTool(job);
                             }}
                           >
-                            {(run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)) ? (
-                              <LoaderCircle size={13} className="spin" />
-                            ) : (
-                              <Square size={12} />
-                            )}
                             停止
-                          </button>
+                          </Button>
                         )}
                         <button
                           className="icon-button monitor-device-menu"
@@ -708,15 +714,16 @@ export default function ExecutionMonitor({
                       ? ' · 当前设备另有执行'
                       : ' · 当前没有任务'}
                 </span>
-                <button
+                <Button
                   className="text-button"
+                  variant="text"
                   onClick={() => {
                     setHistoryToolId('');
                     onOverview();
                   }}
                 >
                   查看当前执行
-                </button>
+                </Button>
               </div>
             )}
             {displayedRun ? (
@@ -737,7 +744,7 @@ export default function ExecutionMonitor({
                   </span>
                 </header>
                 <p>{localizeExecutionMessage(displayedTool.message)}</p>
-                <progress max={100} value={displayedTool.progress} aria-label="工具执行进度" />
+                <ProgressBar value={displayedTool.progress} label="工具执行进度" />
                 <dl className="monitor-tool-times">
                   <div>
                     <dt>开始时间</dt>
@@ -751,14 +758,15 @@ export default function ExecutionMonitor({
                   )}
                 </dl>
                 {displayedTool.status === 'running' && currentCategory !== 'offline' && (
-                  <button
-                    className="button danger"
+                  <Button
+                    className="button"
+                    variant="danger"
+                    icon={<Square size={12} />}
                     disabled={toolPending.has(displayedTool.id)}
                     onClick={() => void stopTool(displayedTool)}
                   >
-                    <Square size={12} />
                     停止工具
-                  </button>
+                  </Button>
                 )}
               </section>
             ) : (
@@ -779,8 +787,8 @@ export default function ExecutionMonitor({
                       : '在任务页或作业中心开始执行后，进度与结果会显示在这里。'}
                 </p>
                 {(latestRun || latestTool) && (
-                  <button
-                    className="button secondary"
+                  <Button
+                    className="button"
                     onClick={() => {
                       if (latestIsTool) {
                         setHistoryToolId(latestTool!.id);
@@ -789,7 +797,7 @@ export default function ExecutionMonitor({
                     }}
                   >
                     查看上次执行
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

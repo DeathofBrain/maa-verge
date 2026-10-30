@@ -20,6 +20,7 @@ import type { SupportPageProps } from './app/page-types';
 import RecognitionPanel, { type RecognitionClient } from './RecognitionPanel';
 import OperatorBadge from './OperatorBadge';
 import Button from './kit/Button';
+import EmptyState from './kit/EmptyState';
 import IconButton from './kit/IconButton';
 import Spinner from './kit/Spinner';
 import { downloadRecognition } from './tool-exports';
@@ -316,11 +317,12 @@ export default function ToolsPage({
         )}
       </section>
       {!deviceId ? (
-        <div className="recognition-empty">
-          <Database size={30} />
-          <h2>先选择目标设备</h2>
-          <p>工具配置、执行及保存结果都属于所选设备。</p>
-        </div>
+        <EmptyState
+          className="recognition-empty"
+          icon={<Database size={30} />}
+          title="先选择目标设备"
+          text="工具配置、执行及保存结果都属于所选设备。"
+        />
       ) : (
         <div className="sp-tools-layout">
           <nav className="sp-category-nav" aria-label="工具分类">

@@ -92,7 +92,8 @@
 .monitor-filters button:hover {
   background: var(--hover);
 }
-.monitor-filters button.selected {
+.monitor-filters button.selected,
+.monitor-filters button[data-selected] {
   background: var(--surface);
   border-color: var(--line);
   color: var(--text);
@@ -514,7 +515,8 @@
   color: var(--dim);
   text-align: center;
 }
-.monitor-empty h2 {
+.monitor-empty h2,
+.monitor-empty h3 {
   font-size: 17px;
   color: var(--text);
   margin: 18px 0 0;

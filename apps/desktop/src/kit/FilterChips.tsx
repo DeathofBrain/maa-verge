@@ -4,6 +4,7 @@ import { cx } from './cx';
 export type FilterChip = {
   id: string;
   label: ReactNode;
+  ariaLabel?: string;
   count?: number;
 };
 
@@ -29,6 +30,7 @@ export default function FilterChips({ items, value, onChange, className, ...rest
           <button
             key={item.id}
             type="button"
+            aria-label={item.ariaLabel}
             aria-pressed={selected}
             data-selected={selected || undefined}
             className="mv-chip"
