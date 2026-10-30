@@ -47,7 +47,7 @@ import { discardPlanDraft } from './features/plans/plan-draft';
 import { taskFieldSearch } from './features/plans/task-fields';
 import { useContextMenu } from './ContextMenu';
 import ScheduleNotifications from './ScheduleNotifications';
-import { SettingsPage } from './SupportPages';
+import { SettingsPage } from './features/settings/SettingsPage';
 import CopilotPage from './CopilotPage';
 import ToolsPage from './ToolsPage';
 import HomeDashboard from './HomeDashboard';

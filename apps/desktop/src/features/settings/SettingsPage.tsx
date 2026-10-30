@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from '../../Select';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
@@ -25,16 +25,16 @@ import {
   type Settings,
   type UpdateChannel,
 } from '@maaverge/contracts';
-import './support-pages.css';
-import './settings-page.css';
-import { useAutoSaveDraft } from './settings-autosave';
-import ModelSettings from './ModelSettings';
-import LogSettings from './LogSettings';
-import Modal from './kit/Modal';
-import CopilotStorageSettings from './CopilotStorageSettings';
-import ConfigurationSettings from './ConfigurationSettings';
-import NotificationSettings from './NotificationSettings';
-import MirrorChyanSettings from './MirrorChyanSettings';
+import '../../support-pages.css';
+import '../../settings-page.css';
+import { useAutoSaveDraft } from '../../settings-autosave';
+import ModelSettings from '../../ModelSettings';
+import LogSettings from '../../LogSettings';
+import Modal from '../../kit/Modal';
+import CopilotStorageSettings from '../../CopilotStorageSettings';
+import ConfigurationSettings from '../../ConfigurationSettings';
+import NotificationSettings from '../../NotificationSettings';
+import MirrorChyanSettings from '../../MirrorChyanSettings';
 import {
   downloadSpeedLabel,
   resourceClientFor,
@@ -42,19 +42,19 @@ import {
   resourceVersionDetail,
   resourceVersionLabel,
   type ResourceClient,
-} from './update-display';
-import Button from './kit/Button';
-import DirectoryPicker from './kit/DirectoryPicker';
-import PageHeading from './kit/PageHeading';
-import SaveStateIndicator from './kit/SaveStateIndicator';
-import SearchField from './kit/SearchField';
-import EmptyState from './kit/EmptyState';
-import Section from './kit/Section';
-import SettingRow from './kit/SettingRow';
-import Switch from './kit/Switch';
-import { formatDate } from './kit/format';
-import { updateChannelLabels, updateStatusLabels } from './kit/labels';
-import type { SupportPageProps } from './app/page-types';
+} from '../../update-display';
+import Button from '../../kit/Button';
+import DirectoryPicker from '../../kit/DirectoryPicker';
+import PageHeading from '../../kit/PageHeading';
+import SaveStateIndicator from '../../kit/SaveStateIndicator';
+import SearchField from '../../kit/SearchField';
+import EmptyState from '../../kit/EmptyState';
+import Section from '../../kit/Section';
+import SettingRow from '../../kit/SettingRow';
+import Switch from '../../kit/Switch';
+import { formatDate } from '../../kit/format';
+import { updateChannelLabels, updateStatusLabels } from '../../kit/labels';
+import type { SupportPageProps } from '../../app/page-types';
 
 function Toggle({
   label,
