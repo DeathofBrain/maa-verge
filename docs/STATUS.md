@@ -1267,7 +1267,8 @@
 - App：`features/app/navigation-model.ts`、`AppNavigation.tsx`、`AgentPage.tsx`、`HistoryPage.tsx`、`RunDock.tsx`；快照刷新、`refreshSequence`、`planWrites` 与 `deletedPlans` 协调仍留在 `App.tsx`。
 - 已退役 `styles.css` 的 `.toggle` / `.segmented` / `.pill`，`Select` 与 `ContextMenu` 已迁入 `kit/`；其遗留样式表因类名不是 `mv-*` 暂留 `src/`。
 - 测试：Playwright 收集由 **249 项降至 246 项**；三条白名单用例合并进 `task-center` 与 `autosave-context-menu`，新增 `tests/ui/fixtures/navigation.ts` 统一导航与类型化快照读取。定向验证：设置/设备/监控 **33/33**、弹层相关 **56/56**、任务编辑器 **33/33**、作业中心 **35/35**、多数 App 相关 **37/37** 通过。
-- 本轮未执行真实设备、模型、下载或发布操作；截图矩阵与原生 WebView 未重新验收。全量 E2E 与 `pnpm check` 的结果以本次最终运行记录为准，不把基线通过数当作本轮通过数。
+- 最终验证（Windows x64 / Microsoft Edge 146，隔离合成夹具）：`tsc -p apps/desktop --noEmit`、`check-kit-css` 单元与门禁、`pnpm run check:app`、`pnpm --filter @maaverge/desktop build` 全部通过；全量 Playwright **246/246 通过**（4 workers，4.3 分钟），用例数由基线 249 减少 3 条（白名单合并），无新增 skip。
+- 本轮未执行真实设备、模型、下载或发布操作；未重新执行截图矩阵、原生 WebView、macOS/Linux 与安装包验收。`Select`/`ContextMenu` 已迁入 `kit/`，其遗留 `select.css`/`context-menu.css` 因类名不是 `mv-*` 暂留 `src/`；新增 kit 样式均写入 `kit.css`。
 
 ## 尚未实现及边界
 
