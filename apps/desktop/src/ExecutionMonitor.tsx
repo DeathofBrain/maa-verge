@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,
   Check,
+  CircleCheck,
   Clock3,
   LoaderCircle,
   Monitor,
@@ -351,20 +352,6 @@ export default function ExecutionMonitor({
     .find((job) => job.deviceId === deviceId && job.status !== 'running');
   const latestIsTool = latestTool && (!latestRun || newestFirst(latestTool, latestRun) < 0);
   const boundPlans = snapshot.plans.filter((plan) => planDeviceIds(plan).includes(deviceId));
-  const groups = [
-    {
-      id: 'online',
-      title: '已连接设备',
-      label: '已连接监控设备',
-      devices: visibleDevices.filter((device) => device.state !== 'offline'),
-    },
-    {
-      id: 'offline',
-      title: '历史离线设备',
-      label: '历史离线监控设备',
-      devices: visibleDevices.filter((device) => device.state === 'offline'),
-    },
-  ];
   const filters: { id: DeviceFilter; label: string; count: number }[] = [
     { id: 'all', label: '全部', count: counts.all },
     { id: 'running', label: '执行中', count: counts.running },
@@ -374,24 +361,6 @@ export default function ExecutionMonitor({
   return (
     <section className="execution-monitor" aria-label="任务表执行监控">
       <div className="monitor-scroll" ref={monitorScroll}>
-        <header className="monitor-heading">
-          <div>
-            <div className="monitor-eyebrow">
-              <Monitor size={14} />
-              设备监控
-            </div>
-            <p>选择上方设备，在下方查看当前执行；日志从右侧打开。</p>
-          </div>
-          <div className="monitor-summary" role="status">
-            <span>
-              <b>{counts.all}</b> 台设备
-            </span>
-            <span className="running">
-              <i className="monitor-live-dot" />
-              {counts.running} 台执行中
-            </span>
-          </div>
-        </header>
         <div className="monitor-toolbar">
           <div className="monitor-toolbar-main">
             <CopilotSelectAll
@@ -462,230 +431,230 @@ export default function ExecutionMonitor({
             {!canDeleteSelected && <p className="monitor-bulk-hint">仅可删除离线历史设备</p>}
           </div>
         )}
-        {!snapshot.devices.length ? (
-          <div className="monitor-empty">
-            <Monitor size={34} />
-            <h2>还没有设备</h2>
-            <p>请先在设备页添加并连接模拟器实例，执行状态会显示在这里。</p>
-          </div>
-        ) : !visibleDevices.length ? (
-          <div className="monitor-empty">
-            <Search size={30} />
-            <h2>没有匹配的设备</h2>
-            <p>调整筛选条件，或搜索其他设备、任务与反馈。</p>
-            <button
-              className="button secondary"
-              onClick={() => {
-                setFilter('all');
-                setQuery('');
-              }}
-            >
-              清除筛选
-            </button>
-          </div>
-        ) : (
-          <section className="monitor-device-groups" aria-label="设备执行列表">
-            {groups
-              .filter((group) => group.devices.length)
-              .map((group) => (
-                <section className="monitor-device-group" key={group.id} aria-label={group.label}>
-                  <h2>
-                    {group.title}
-                    <span>{group.devices.length}</span>
-                  </h2>
-                  {group.id === 'offline' && (
-                    <p>保留曾连接的设备，可从右侧菜单或右键删除。删除不影响实例配置与执行记录。</p>
-                  )}
-                  <div className="monitor-device-list">
-                    {group.devices.map((device) => {
-                      const run = activeByDevice.get(device.id);
-                      const job = activeToolsByDevice.get(device.id);
-                      const active = run || job;
-                      const latest = latestByDevice.get(device.id);
-                      const latestJob = latestToolsByDevice.get(device.id);
-                      const recentTool =
-                        latestJob && (!latest || newestFirst(latestJob, latest) < 0)
-                          ? latestJob
-                          : undefined;
-                      const recent = recentTool ? latestJob : latest;
-                      const category = categories.get(device.id)!;
-                      const isCurrent = deviceId === device.id;
-                      const menuItems: MenuItem[] = [
-                        { label: '查看设备执行', action: () => chooseDevice(device.id) },
-                        { label: '查看设备日志', action: () => setLogDevices([device.id]) },
-                        {
-                          label: '停止设备任务',
-                          danger: true,
-                          disabled:
-                            !active ||
-                            (run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)),
-                          action: () => {
-                            if (run) void onStop(run);
-                            else if (job) void stopTool(job);
+        <section className="monitor-devices" aria-label="设备执行列表">
+          <header className="monitor-device-list-heading">
+            <h2>设备列表</h2>
+            <div className="monitor-summary" role="status">
+              <span>
+                <b>{counts.all}</b> 台设备
+              </span>
+              <span className="running">
+                <i className="monitor-live-dot" />
+                {counts.running} 台执行中
+              </span>
+            </div>
+          </header>
+          {!snapshot.devices.length ? (
+            <div className="monitor-empty">
+              <Monitor size={34} />
+              <h2>还没有设备</h2>
+              <p>请先在设备页添加并连接模拟器实例，执行状态会显示在这里。</p>
+            </div>
+          ) : !visibleDevices.length ? (
+            <div className="monitor-empty">
+              <Search size={30} />
+              <h2>没有匹配的设备</h2>
+              <p>调整筛选条件，或搜索其他设备、任务与反馈。</p>
+              <button
+                className="button secondary"
+                onClick={() => {
+                  setFilter('all');
+                  setQuery('');
+                }}
+              >
+                清除筛选
+              </button>
+            </div>
+          ) : (
+            <div className="monitor-device-list-scroll">
+              <div className="monitor-device-list">
+                {visibleDevices.map((device) => {
+                  const run = activeByDevice.get(device.id);
+                  const job = activeToolsByDevice.get(device.id);
+                  const active = run || job;
+                  const latest = latestByDevice.get(device.id);
+                  const latestJob = latestToolsByDevice.get(device.id);
+                  const recentTool =
+                    latestJob && (!latest || newestFirst(latestJob, latest) < 0)
+                      ? latestJob
+                      : undefined;
+                  const recent = recentTool ? latestJob : latest;
+                  const category = categories.get(device.id)!;
+                  const isCurrent = deviceId === device.id;
+                  const menuItems: MenuItem[] = [
+                    { label: '查看设备执行', action: () => chooseDevice(device.id) },
+                    { label: '查看设备日志', action: () => setLogDevices([device.id]) },
+                    {
+                      label: '停止设备任务',
+                      danger: true,
+                      disabled:
+                        !active || (run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)),
+                      action: () => {
+                        if (run) void onStop(run);
+                        else if (job) void stopTool(job);
+                      },
+                    },
+                    ...(category === 'offline'
+                      ? [
+                          {
+                            label: '删除历史设备',
+                            danger: true,
+                            disabled: deleting,
+                            action: () => void deleteDevices([device.id]),
                           },
-                        },
-                        ...(category === 'offline'
-                          ? [
-                              {
-                                label: '删除历史设备',
-                                danger: true,
-                                disabled: deleting,
-                                action: () => void deleteDevices([device.id]),
-                              },
-                            ]
-                          : []),
-                      ];
-                      return (
-                        <article
-                          className={`monitor-device-row ${category} ${selected.has(device.id) ? 'is-selected' : ''} ${isCurrent ? 'is-current' : ''}`}
-                          key={device.id}
-                          aria-label={`设备执行${device.name}`}
-                          {...contextMenu('设备执行菜单', menuItems)}
-                        >
-                          <label className="monitor-device-check">
-                            <input
-                              type="checkbox"
-                              aria-label={`选择设备${device.name}`}
-                              checked={selected.has(device.id)}
-                              onChange={() => toggle(device.id)}
-                            />
-                          </label>
-                          <button
-                            className="monitor-device-main"
-                            aria-label={`查看设备执行${device.name}`}
-                            aria-pressed={isCurrent}
-                            aria-expanded={isCurrent}
-                            aria-controls="monitor-selected-device"
-                            onClick={() => chooseDevice(isCurrent ? '' : device.id)}
-                          >
-                            <span className="monitor-device-name">
-                              <span className="monitor-device-icon">
-                                <Monitor size={17} />
-                              </span>
-                              <span className="monitor-device-copy">
-                                <strong>
-                                  {device.name}
-                                  <small className={`monitor-device-state ${category}`}>
-                                    {category === 'offline'
-                                      ? '离线'
-                                      : category === 'running'
-                                        ? '执行中'
-                                        : '空闲'}
-                                  </small>
-                                </strong>
-                                <small>
-                                  {active
-                                    ? localizeExecutionMessage(active.message) ||
-                                      statusNames[active.status]
-                                    : category === 'offline'
-                                      ? '设备已离线'
-                                      : category === 'running'
-                                        ? '设备已被占用，等待执行状态'
-                                        : '当前没有任务'}
+                        ]
+                      : []),
+                  ];
+                  return (
+                    <article
+                      className={`monitor-device-row ${category} ${selected.has(device.id) ? 'is-selected' : ''} ${isCurrent ? 'is-current' : ''}`}
+                      key={device.id}
+                      aria-label={`设备执行${device.name}`}
+                      {...contextMenu('设备执行菜单', menuItems)}
+                    >
+                      <label className="monitor-device-check">
+                        <input
+                          type="checkbox"
+                          aria-label={`选择设备${device.name}`}
+                          checked={selected.has(device.id)}
+                          onChange={() => toggle(device.id)}
+                        />
+                      </label>
+                      <button
+                        className="monitor-device-main"
+                        aria-label={`查看设备执行${device.name}`}
+                        aria-pressed={isCurrent}
+                        aria-expanded={isCurrent}
+                        aria-controls="monitor-selected-device"
+                        onClick={() => chooseDevice(isCurrent ? '' : device.id)}
+                      >
+                        <span className="monitor-device-name">
+                          <span className="monitor-device-icon">
+                            <Monitor size={17} />
+                          </span>
+                          <span className="monitor-device-copy">
+                            <strong>
+                              {device.name}
+                              <small
+                                className={`monitor-device-connection ${category === 'offline' ? 'offline' : 'connected'}`}
+                              >
+                                {category !== 'offline' && <CircleCheck size={12} />}
+                                {category === 'offline' ? '已离线' : '已连接'}
+                              </small>
+                              {category !== 'offline' && (
+                                <small className={`monitor-device-state ${category}`}>
+                                  {category === 'running' ? '执行中' : '空闲'}
                                 </small>
-                              </span>
-                            </span>
-                            {active && (
-                              <span
-                                className="monitor-progress"
-                                role="progressbar"
-                                aria-label={`${device.name}执行进度`}
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                                aria-valuenow={active.progress}
-                              >
-                                <i style={{ width: `${active.progress}%` }} />
-                              </span>
-                            )}
-                            <span className="monitor-device-meta">
-                              <span>{device.address}</span>
-                              {active ? (
-                                <>
-                                  <span className="monitor-status running">
-                                    <LoaderCircle size={12} className="spin" />
-                                    {active.progress}%
-                                  </span>
-                                  <span>
-                                    {run
-                                      ? `${runSourceLabel(run)} · ${runDisplayName(run, snapshot.plans)}`
-                                      : `工具 · ${toolNames[job!.kind]}`}
-                                  </span>
-                                  <span>
-                                    <Clock3 size={12} />
-                                    {elapsed(active, clock)}
-                                  </span>
-                                </>
-                              ) : (
-                                <span>
-                                  {recent
-                                    ? `最近执行：${recentTool ? toolNames[recentTool.kind] : runDisplayName(latest!, snapshot.plans)}${recent.status === 'running' ? '' : ` · ${statusNames[recent.status]}`}`
-                                    : '尚未执行任务'}
-                                </span>
                               )}
-                            </span>
-                            <span className="monitor-device-open">
-                              {isCurrent ? '收起执行' : '查看执行'}
-                              <ArrowDown size={12} />
-                            </span>
-                          </button>
-                          <div className="monitor-device-actions">
-                            <button
-                              className="button secondary"
-                              aria-label={`查看设备日志${device.name}`}
-                              onClick={() => setLogDevices([device.id])}
-                            >
-                              <Terminal size={14} />
-                              日志
-                            </button>
-                            {active && (
-                              <button
-                                className="button danger"
-                                aria-label={`停止设备任务${device.name}`}
-                                disabled={
-                                  run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)
-                                }
-                                onClick={() => {
-                                  if (run) void onStop(run);
-                                  else if (job) void stopTool(job);
-                                }}
-                              >
-                                {(
-                                  run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)
-                                ) ? (
-                                  <LoaderCircle size={13} className="spin" />
-                                ) : (
-                                  <Square size={12} />
-                                )}
-                                停止
-                              </button>
+                            </strong>
+                            {(active || category === 'running') && (
+                              <small>
+                                {active
+                                  ? localizeExecutionMessage(active.message) ||
+                                    statusNames[active.status]
+                                  : '等待执行状态'}
+                              </small>
                             )}
-                            <button
-                              className="icon-button monitor-device-menu"
-                              aria-label={`设备操作${device.name}`}
-                              aria-haspopup="menu"
-                              title="更多操作"
-                              onClick={(event) => {
-                                const rect = event.currentTarget.getBoundingClientRect();
-                                showMenu({
-                                  x: rect.right - 180,
-                                  y: rect.bottom + 4,
-                                  target: event.currentTarget,
-                                  items: menuItems,
-                                  label: '设备执行菜单',
-                                });
-                              }}
-                            >
-                              <MoreHorizontal size={18} />
-                            </button>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-          </section>
-        )}
+                          </span>
+                        </span>
+                        {active && (
+                          <span
+                            className="monitor-progress"
+                            role="progressbar"
+                            aria-label={`${device.name}执行进度`}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={active.progress}
+                          >
+                            <i style={{ width: `${active.progress}%` }} />
+                          </span>
+                        )}
+                        <span className="monitor-device-meta">
+                          <span>{device.address}</span>
+                          {active ? (
+                            <>
+                              <span className="monitor-status running">
+                                <LoaderCircle size={12} className="spin" />
+                                {active.progress}%
+                              </span>
+                              <span>
+                                {run
+                                  ? `${runSourceLabel(run)} · ${runDisplayName(run, snapshot.plans)}`
+                                  : `工具 · ${toolNames[job!.kind]}`}
+                              </span>
+                              <span>
+                                <Clock3 size={12} />
+                                {elapsed(active, clock)}
+                              </span>
+                            </>
+                          ) : (
+                            <span>
+                              {recent
+                                ? `最近执行：${recentTool ? toolNames[recentTool.kind] : runDisplayName(latest!, snapshot.plans)}${recent.status === 'running' ? '' : ` · ${statusNames[recent.status]}`}`
+                                : '尚未执行任务'}
+                            </span>
+                          )}
+                        </span>
+                        <span className="monitor-device-open">
+                          {isCurrent ? '收起执行' : '查看执行'}
+                          <ArrowDown size={12} />
+                        </span>
+                      </button>
+                      <div className="monitor-device-actions">
+                        <button
+                          className="button secondary"
+                          aria-label={`查看设备日志${device.name}`}
+                          onClick={() => setLogDevices([device.id])}
+                        >
+                          <Terminal size={14} />
+                          日志
+                        </button>
+                        {active && (
+                          <button
+                            className="button danger"
+                            aria-label={`停止设备任务${device.name}`}
+                            disabled={
+                              run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)
+                            }
+                            onClick={() => {
+                              if (run) void onStop(run);
+                              else if (job) void stopTool(job);
+                            }}
+                          >
+                            {(run ? pending.has(`stop-${run.id}`) : toolPending.has(job!.id)) ? (
+                              <LoaderCircle size={13} className="spin" />
+                            ) : (
+                              <Square size={12} />
+                            )}
+                            停止
+                          </button>
+                        )}
+                        <button
+                          className="icon-button monitor-device-menu"
+                          aria-label={`设备操作${device.name}`}
+                          aria-haspopup="menu"
+                          title="更多操作"
+                          onClick={(event) => {
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            showMenu({
+                              x: rect.right - 180,
+                              y: rect.bottom + 4,
+                              target: event.currentTarget,
+                              items: menuItems,
+                              label: '设备执行菜单',
+                            });
+                          }}
+                        >
+                          <MoreHorizontal size={18} />
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
         {currentDevice ? (
           <section
             id="monitor-selected-device"
@@ -850,14 +819,8 @@ export default function ExecutionMonitor({
             <div className="monitor-empty monitor-select-prompt">
               <Monitor size={30} />
               <h2>选择一台设备</h2>
-              <p>选择上方已连接或历史离线设备，在这里查看执行情况。</p>
             </div>
           )
-        )}
-        {snapshot.devices.length > 0 && (
-          <p className="monitor-footnote">
-            每台设备同时只允许一个执行。停止只影响对应设备；任务表、作业和工具共享设备占用。
-          </p>
         )}
       </div>
       {logDevices && (

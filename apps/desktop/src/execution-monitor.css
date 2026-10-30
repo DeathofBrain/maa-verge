@@ -11,32 +11,26 @@
   flex: 1;
   min-height: 0;
 }
-.monitor-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
+.monitor-devices {
   max-width: 1680px;
-  margin: 0 auto 22px;
+  margin: 0 auto;
 }
-.monitor-eyebrow {
+.monitor-device-list-heading {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 11px;
-  color: var(--muted);
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 12px;
 }
-.monitor-heading p {
-  color: var(--muted);
+.monitor-device-list-heading h2 {
+  margin: 0;
   font-size: 13px;
-  margin: 6px 0 0;
-  line-height: 1.8;
 }
 .monitor-summary {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex: none;
+  flex-wrap: wrap;
+  gap: 8px 16px;
   color: var(--muted);
   font-size: 12px;
 }
@@ -246,33 +240,10 @@
   font-size: 11px;
   color: var(--accent);
 }
-.monitor-device-groups {
-  max-width: 1680px;
-  margin: 0 auto;
-  max-height: clamp(160px, 28vh, 260px);
+.monitor-device-list-scroll {
+  max-height: clamp(180px, 38vh, 420px);
   overflow-y: auto;
   padding: 3px;
-}
-.monitor-device-group + .monitor-device-group {
-  margin-top: 24px;
-}
-.monitor-device-group > h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 12px;
-  font-size: 13px;
-}
-.monitor-device-group > h2 > span {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 400;
-}
-.monitor-device-group > p {
-  margin: -4px 0 12px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
 }
 .monitor-selected-device {
   max-width: 1680px;
@@ -404,8 +375,13 @@
   flex: none;
   border-radius: 8px;
   background: var(--surface-subtle);
-  color: var(--accent);
+  color: var(--dim);
   border: 1px solid var(--line);
+}
+.monitor-device-row:not(.offline) .monitor-device-icon {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 25%, var(--line));
+  background: color-mix(in srgb, var(--success) 9%, var(--surface));
 }
 .monitor-device-copy {
   display: flex;
@@ -416,7 +392,8 @@
 .monitor-device-copy strong {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   min-width: 0;
   font-size: 15px;
   line-height: 1.5;
@@ -430,7 +407,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.monitor-device-connection,
 .monitor-device-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex: none;
   font-size: 10px;
   font-weight: 400;
@@ -439,10 +420,23 @@
   color: var(--muted);
   background: var(--surface-subtle);
 }
+.monitor-device-connection {
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.monitor-device-connection.connected {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--success) 24%, transparent);
+}
 .monitor-device-state.running {
   color: var(--accent);
   background: var(--accent-soft);
 }
+.monitor-device-connection.offline,
 .monitor-device-state.offline {
   color: var(--dim);
   background: var(--hover);
@@ -532,13 +526,6 @@
   max-width: 420px;
   margin: 12px 0 20px;
 }
-.monitor-footnote {
-  max-width: 1680px;
-  margin: 20px auto 0;
-  font-size: 11px;
-  color: var(--dim);
-  line-height: 1.8;
-}
 .monitor-device-info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -577,14 +564,6 @@
   overflow-wrap: anywhere;
 }
 @media (max-width: 900px) {
-  .monitor-heading {
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  .monitor-summary {
-    width: 100%;
-  }
   .monitor-toolbar-main {
     width: 100%;
   }
@@ -612,9 +591,6 @@
 @media (max-width: 760px) {
   .monitor-scroll {
     padding: 22px 16px 30px;
-  }
-  .monitor-heading p {
-    font-size: 12px;
   }
   .monitor-filters {
     gap: 1px;

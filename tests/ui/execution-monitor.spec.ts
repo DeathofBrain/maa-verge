@@ -290,7 +290,6 @@ test('monitor lists one row per device, stops only that device and bulk-stops se
     .click();
   await expect(row(page, '一号模拟器')).toContainText('已停止');
   await expect(row(page, '一号模拟器')).toContainText('最近执行：共同日常');
-  await expect(row(page, '一号模拟器')).toContainText('当前没有任务');
   await expect(row(page, '二号模拟器')).toContainText('执行中');
   await expect(row(page, '三号模拟器')).toContainText('执行中');
   expect(
@@ -371,10 +370,6 @@ test('selecting a device toggles its details, switches devices and follows live 
   await page.setViewportSize({ width: 1440, height: 900 });
   await seedMonitor(page);
   await openMonitor(page);
-  const online = monitor(page).getByRole('region', { name: '已连接监控设备', exact: true });
-  const offline = monitor(page).getByRole('region', { name: '历史离线监控设备', exact: true });
-  await expect(online.getByRole('article')).toHaveCount(4);
-  await expect(offline.getByRole('article')).toHaveCount(1);
   await detailButton(page, '一号模拟器').click();
   await expect(detailButton(page, '一号模拟器')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('dialog', { name: /^设备详情/ })).toHaveCount(0);
@@ -495,9 +490,6 @@ test('offline state takes precedence over a stale running summary', async ({ pag
     inspected(page).getByRole('heading', { name: '设备已离线', exact: true }),
   ).toBeVisible();
   await expect(detail(page)).toHaveCount(0);
-  await expect(
-    monitor(page).getByRole('region', { name: '历史离线监控设备', exact: true }),
-  ).toContainText('一号模拟器');
   await expect(
     row(page, '一号模拟器').getByRole('button', { name: '停止设备任务一号模拟器', exact: true }),
   ).toHaveCount(0);
