@@ -725,7 +725,7 @@ export default function ExecutionMonitor({
                   <dd>{boundPlan?.name || '未绑定'}</dd>
                 </div>
               </dl>
-              {currentDevice.connectionError && (
+              {currentDevice.state === 'offline' && currentDevice.connectionError && (
                 <p className="monitor-device-error" role="alert">
                   {errorMessage(currentDevice.connectionError)}
                 </p>

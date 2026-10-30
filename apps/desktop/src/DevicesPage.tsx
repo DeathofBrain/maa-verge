@@ -664,7 +664,7 @@ export function DevicesPage({
               <dd>{detailDevice.resourceVersion || '尚未加载'}</dd>
             </div>
           </dl>
-          {detailDevice.connectionError && (
+          {detailDevice.state === 'offline' && detailDevice.connectionError && (
             <p className="sp-instance-error" role="alert">
               {errorMessage(detailDevice.connectionError)}
             </p>

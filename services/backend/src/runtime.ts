@@ -455,6 +455,10 @@ export class Runtime {
     }
     if (!worker || !(await worker.waitConnected(30_000, () => !this.running)))
       throw new RpcError(-32011, '定时设备连接失败');
+    if (!this.running || this.workers.get(id) !== worker || !worker.connected)
+      throw new RpcError(-32011, '定时设备连接状态已改变');
+    if (this.hasExecution(id) || !worker.safeIdle)
+      throw new RpcError(-32011, '设备仍有未结束的执行');
     const current = this.store.get('device', id);
     current.state = 'idle';
     this.store.put('device', id, current);
@@ -1522,10 +1526,10 @@ export class Runtime {
       if (signal.aborted) cancel();
     });
     try {
-      return await Promise.race([
-        worker.waitConnected(30_000, () => finished || signal.aborted),
-        stopped,
-      ]);
+      await Promise.race([worker.waitConnected(30_000, () => finished || signal.aborted), stopped]);
+      // A connection callback can win at the timeout boundary, or a task can
+      // already own the connected worker. Neither is a failed connection.
+      return !signal.aborted && worker.connected;
     } finally {
       finished = true;
       clearTimeout(timer);
@@ -1599,6 +1603,18 @@ export class Runtime {
         state.lastError = undefined;
         state.worker = undefined;
       } catch (error) {
+        const current = this.automaticWorker(state);
+        if (current?.[1].connected) {
+          // Another path may have connected this target while registration or
+          // the waiter was pending. A late failure must not close its controller
+          // or overwrite a successful connection with an old error.
+          resolveStarted(this.store.get('device', current[0]));
+          state.failures = 0;
+          state.retryAt = 0;
+          state.lastError = undefined;
+          state.worker = undefined;
+          return;
+        }
         rejectStarted(error);
         const worker = state.worker;
         if (worker) {
@@ -1629,11 +1645,11 @@ export class Runtime {
               .find(
                 (item) => this.lockAddress(item.address) === this.lockAddress(state.target.address),
               );
-            if (device) {
+            if (device && !this.workers.get(device.id)?.connected) {
               device.connectionError = failure;
               this.store.put('device', device.id, device);
               this.emit('device.failed', failure, { device });
-            } else if (profile)
+            } else if (!device && profile)
               this.emit('device.connection_failed', failure, {
                 profileId: profile.id,
                 address: state.target.address,

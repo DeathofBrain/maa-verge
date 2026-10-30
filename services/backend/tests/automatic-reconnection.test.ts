@@ -20,6 +20,7 @@ class FakeWorker {
   connected = false;
   safeIdle = true;
   closed = false;
+  submitted: any[] = [];
   private resolveConnection!: (connected: boolean) => void;
   private connection = new Promise<boolean>((resolve) => {
     this.resolveConnection = resolve;
@@ -40,9 +41,18 @@ class FakeWorker {
     });
     this.resolveConnection(connected);
   }
-  async task() {
+  async task(task: any) {
+    this.submitted.push(task);
     this.safeIdle = false;
-    return { taskId: 1 };
+    return { taskId: this.submitted.length };
+  }
+  completeTask(taskId = 1) {
+    this.events.push(
+      { type: 'callback', message: 10002, details: { taskid: taskId } },
+      { type: 'callback', message: 3, details: { taskid: taskId } },
+      { type: 'status', running: false, pendingAsync: [] },
+    );
+    this.safeIdle = true;
   }
   async stop() {
     this.safeIdle = true;
@@ -180,6 +190,12 @@ async function cycle(runtime: Runtime) {
   await runtime.tick(true);
   await runtime.automaticConnections();
   await settle(runtime);
+}
+async function startAward(runtime: Runtime, deviceId: string, requestId: string) {
+  await runtime.handle('plan.save', {
+    plan: { id: requestId, name: '合成连接回归', tasks: [{ type: 'Award' }] },
+  });
+  return runtime.handle('run.start', { planId: requestId, deviceId, requestId });
 }
 function latestObserver(observers: Observer[]) {
   return observers.filter((observer) => !observer.closed).at(-1)!;
@@ -503,6 +519,131 @@ test('an unconfirmed native connection is closed and enters failure backoff', as
   advance(1);
   await cycle(runtime);
   expect(workers).toHaveLength(2);
+});
+
+test('a late false connection wait preserves the connected worker and its running task', async () => {
+  const waiting = deferred();
+  const waitResult = deferred();
+  const worker = new FakeWorker();
+  worker.waitConnected = async () => {
+    waiting.resolve();
+    await waitResult.promise;
+    return false;
+  };
+  const { runtime } = fixture({
+    probeDeviceEndpoint: async () => true,
+    workerFactory: async () => worker,
+  });
+  const device = history(runtime);
+  await cycle(runtime);
+  await waiting.promise;
+  expect(runtime.store.get('device', device.id).state).toBe('idle');
+  const run = await startAward(runtime, device.id, 'connection-wait-race');
+  expect(worker.safeIdle).toBe(false);
+  expect(runtime.store.get('device', device.id).state).toBe('running');
+
+  waitResult.resolve();
+  await settle(runtime);
+  expect(worker.closed).toBe(false);
+  expect(runtime.workers.get(device.id)).toBe(worker);
+  expect(runtime.store.get('device', device.id).connectionError).toBeUndefined();
+  expect(runtime.store.events().some((event) => event.type === 'device.failed')).toBe(false);
+  expect(runtime.store.get('run', run.id).status).toBe('running');
+  expect(worker.submitted).toHaveLength(1);
+
+  worker.completeTask();
+  await runtime.tick(true);
+  expect(runtime.store.get('run', run.id).status).toBe('completed');
+  expect(runtime.store.get('device', device.id).state).toBe('idle');
+  expect(runtime.workers.get(device.id)).toBe(worker);
+  expect(worker.closed).toBe(false);
+});
+
+test('a late alias transport failure cannot poison a manually connected running device', async () => {
+  const manualEntered = deferred();
+  const manualResult = deferred();
+  const transportEntered = deferred();
+  const transportResult = deferred();
+  const primary = '127.0.0.1:5555';
+  const alias = '127.0.0.1:5557';
+  const worker = new FakeWorker();
+  const configurations: any[] = [];
+  const { runtime } = fixture({
+    probeDeviceEndpoint: async (address) => address === alias,
+    connectDeviceTransport: async (_adb, address) => {
+      expect(address).toBe(alias);
+      transportEntered.resolve();
+      await transportResult.promise;
+      throw new Error('late synthetic registration failure');
+    },
+    workerFactory: async (configuration) => {
+      configurations.push(configuration);
+      manualEntered.resolve();
+      await manualResult.promise;
+      return worker;
+    },
+  });
+  history(runtime, 'alias-history', alias);
+  runtime.store.put('device-alias', alias, primary);
+  const manual = runtime.connectDevice({ address: primary });
+  await manualEntered.promise;
+  await cycle(runtime);
+  await transportEntered.promise;
+  expect(runtime.workers.size).toBe(0);
+
+  manualResult.resolve();
+  const device = await manual;
+  await settle(runtime);
+  const run = await startAward(runtime, device.id, 'alias-registration-race');
+  expect(runtime.store.get('device', device.id).state).toBe('running');
+  transportResult.resolve();
+  await settle(runtime);
+  expect(configurations).toHaveLength(1);
+  expect(worker.closed).toBe(false);
+  expect(runtime.workers.get(device.id)).toBe(worker);
+  expect(runtime.store.get('device', device.id).state).toBe('running');
+  expect(runtime.store.get('device', device.id).connectionError).toBeUndefined();
+  expect(runtime.store.events().some((event) => event.type === 'device.failed')).toBe(false);
+  expect(runtime.store.get('run', run.id).status).toBe('running');
+  expect(worker.submitted).toHaveLength(1);
+
+  worker.completeTask();
+  await runtime.tick(true);
+  expect(runtime.store.get('run', run.id).status).toBe('completed');
+  expect(runtime.store.get('device', device.id).state).toBe('idle');
+  expect(runtime.workers.get(device.id)).toBe(worker);
+});
+
+test('scheduled preparation cannot reset a device that became busy while connecting', async () => {
+  const waiting = deferred();
+  const waitResult = deferred();
+  const worker = new FakeWorker(null);
+  worker.waitConnected = async () => {
+    waiting.resolve();
+    await waitResult.promise;
+    return true;
+  };
+  const { runtime } = fixture({ workerFactory: async () => worker });
+  const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
+  const preparation = (runtime as any).prepareScheduledDevice(device.id).then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+  await waiting.promise;
+  worker.complete(true);
+  await settle(runtime);
+  const run = await startAward(runtime, device.id, 'scheduled-connection-race');
+  waitResult.resolve();
+  expect(await preparation).toMatchObject({ code: -32011 });
+
+  expect(runtime.store.get('device', device.id).state).toBe('running');
+  expect(runtime.store.get('run', run.id).status).toBe('running');
+  expect(worker.submitted).toHaveLength(1);
+  expect(runtime.workers.get(device.id)).toBe(worker);
+  expect(worker.closed).toBe(false);
+  worker.completeTask();
+  await runtime.tick(true);
+  expect(runtime.store.get('run', run.id).status).toBe('completed');
 });
 
 test.each(['initializingComponents', 'appUpdating', 'switching', 'appUpdatePreparation'])(

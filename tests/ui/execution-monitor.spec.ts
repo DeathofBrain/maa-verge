@@ -439,6 +439,46 @@ test('selecting a device toggles its details, switches devices and follows live 
   await expect(detail(page)).toHaveCount(0);
 });
 
+test('connected devices ignore historical connection failures while offline failures remain actionable', async ({
+  page,
+}) => {
+  await seedMonitor(page);
+  const failure = '核心设备连接失败或超时';
+  await page.evaluate((failure) => {
+    const target = window as unknown as MonitorWindow;
+    for (const index of [0, 3, 4]) target.monitorState.devices[index].connectionError = failure;
+    target.runtimeHarness.emitEvent('device.updated');
+  }, failure);
+  await openMonitor(page);
+  await detailButton(page, '一号模拟器').click();
+  await expect(detail(page)).toContainText('一号模拟器的独立任务结果');
+  const info = inspected(page).getByRole('region', { name: '设备信息', exact: true });
+  await expect(info.getByRole('alert')).toHaveCount(0);
+  await detailButton(page, '四号模拟器').click();
+  await expect(
+    inspected(page).getByRole('heading', { name: '当前没有任务', exact: true }),
+  ).toBeVisible();
+  await expect(info.getByRole('alert')).toHaveCount(0);
+  await detailButton(page, '五号模拟器').click();
+  await expect(
+    inspected(page).getByRole('heading', { name: '设备已离线', exact: true }),
+  ).toBeVisible();
+  await expect(info.getByRole('alert')).toHaveText(failure);
+
+  await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
+  const deviceDetails = page.getByRole('region', { name: '所选设备详情', exact: true });
+  await expect(
+    deviceDetails.getByRole('heading', { name: '五号模拟器', exact: true }),
+  ).toBeVisible();
+  await expect(deviceDetails.getByRole('alert')).toHaveText(failure);
+  await selectDevice(page, 'monitor-device-4');
+  await expect(deviceDetails).toContainText('空闲就绪');
+  await expect(deviceDetails.getByRole('alert')).toHaveCount(0);
+  await selectDevice(page, 'monitor-device-1');
+  await expect(deviceDetails).toContainText('执行中');
+  await expect(deviceDetails.getByRole('alert')).toHaveCount(0);
+});
+
 test('offline state takes precedence over a stale running summary', async ({ page }) => {
   await seedMonitor(page);
   await openMonitor(page);
