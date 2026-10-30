@@ -22,6 +22,7 @@ type Props = {
   ariaHidden?: (HTMLElement | null)[];
   scroll?: ScrollLock[];
   initialFocus?: HTMLElement | null;
+  initialFocusSelector?: string;
   returnFocus?: HTMLElement | null;
   fallbackFocus?: () => HTMLElement | null | undefined;
   className?: string;
@@ -48,6 +49,7 @@ export default function Drawer({
   ariaHidden,
   scroll,
   initialFocus,
+  initialFocusSelector,
   returnFocus,
   fallbackFocus,
   className,
@@ -75,7 +77,9 @@ export default function Drawer({
       ],
       ariaHidden,
       scroll,
-      initialFocus: initialFocus ?? element.querySelector<HTMLElement>('[data-autofocus]'),
+      initialFocus:
+        initialFocus ??
+        element.querySelector<HTMLElement>(initialFocusSelector ?? '[data-autofocus]'),
       returnFocus: returnFocus ?? undefined,
       fallbackFocus,
       onEscape: () => {
@@ -118,7 +122,7 @@ export default function Drawer({
             <h2 className="mv-overlay-heading">{title}</h2>
             <IconButton
               label={closeLabel}
-              data-autofocus={!initialFocus || undefined}
+              data-autofocus={!initialFocus && !initialFocusSelector ? true : undefined}
               disabled={closeDisabled}
               onClick={() => close.current()}
             >

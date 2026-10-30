@@ -1,7 +1,7 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { acquireModalEffects } from './modal-effects';
+import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+import Drawer from './kit/Drawer';
+import IconButton from './kit/IconButton';
 import './task-center.css';
 
 export default function TaskDetailDrawer({
@@ -11,52 +11,29 @@ export default function TaskDetailDrawer({
   children: ReactNode;
   onClose: () => void;
 }) {
-  const panel = useRef<HTMLDivElement>(null);
-  const close = useRef(onClose);
-  close.current = onClose;
-  useLayoutEffect(() => {
-    if (!panel.current) return;
-    return acquireModalEffects({
-      panel: panel.current,
-      layer: panel.current.parentElement ?? undefined,
-      background: [
-        document.querySelector<HTMLElement>('.sidebar'),
-        document.querySelector<HTMLElement>('.main-shell'),
-        document.querySelector<HTMLElement>('.run-dock'),
-      ],
-      initialFocus: panel.current.querySelector<HTMLElement>('[data-autofocus]'),
-      onEscape: () => close.current(),
-    });
-  }, []);
-  return createPortal(
-    <div className="tc-drawer-layer">
-      <button
-        className="tc-drawer-backdrop"
-        tabIndex={-1}
-        aria-label="关闭任务表详情遮罩"
-        onClick={() => close.current()}
-      />
-      <div
-        className="tc-drawer-panel"
-        ref={panel}
-        role="dialog"
-        aria-modal="true"
-        aria-label="任务表详情"
-      >
-        <div className="tc-drawer-bar">
+  return (
+    <Drawer
+      title="任务表详情"
+      onClose={onClose}
+      closeLabel="关闭任务表详情"
+      backdropLabel="关闭任务表详情遮罩"
+      width="md"
+      dockOffset
+      layerClassName="tc-drawer-layer"
+      className="tc-drawer-panel"
+      backdropClassName="tc-drawer-backdrop"
+      headerClassName="tc-drawer-bar"
+      bodyClassName="tc-drawer-body"
+      header={
+        <>
           <span>任务表详情</span>
-          <button
-            className="icon-button"
-            data-autofocus
-            aria-label="关闭任务表详情"
-            onClick={() => close.current()}
-          >
+          <IconButton label="关闭任务表详情" data-autofocus onClick={onClose}>
             <X size={18} />
-          </button>
-        </div>
-        <div className="tc-drawer-body">{children}</div>
-      </div>
-    </div>,
-    document.body,
+          </IconButton>
+        </>
+      }
+    >
+      {children}
+    </Drawer>
   );
 }

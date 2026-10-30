@@ -10,8 +10,6 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
-import { acquireModalEffects } from './modal-effects';
 import {
   ArrowDown,
   ArrowLeft,
@@ -62,6 +60,7 @@ import CopilotSetOperators from './CopilotSetOperators';
 import CopilotDifficulty from './CopilotDifficulty';
 import CopilotSelectAll from './CopilotSelectAll';
 import CopilotStageFilter from './CopilotStageFilter';
+import Drawer from './kit/Drawer';
 import CopilotDeleteDialog, { type CopilotDeleteTarget } from './CopilotDeleteDialog';
 import {
   cachedCommunityPreview,
@@ -2837,42 +2836,27 @@ export default function CopilotPage({
 }
 
 function CopilotDetailDrawer({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  const container = useRef<HTMLDivElement>(null);
-  const close = useRef(onClose);
-  close.current = onClose;
-  useLayoutEffect(() => {
-    if (!container.current) return;
-    const background = document.getElementById('root');
-    const page = document.querySelector<HTMLElement>('.copilot-page');
-    return acquireModalEffects({
-      panel: container.current,
-      layer: container.current.parentElement ?? undefined,
-      background: [background],
-      ariaHidden: [background],
-      scroll: page ? [{ element: page, property: 'overflow-y' }] : [],
-      initialFocus: container.current.querySelector<HTMLElement>('h2[tabindex]'),
-      onEscape: () => close.current(),
-    });
-  }, []);
-  return createPortal(
-    <div className="cp-drawer-layer">
-      <button
-        className="cp-drawer-backdrop"
-        tabIndex={-1}
-        aria-label="关闭作业详情"
-        onClick={() => close.current()}
-      />
-      <div
-        className="cp-drawer-panel"
-        ref={container}
-        role="dialog"
-        aria-modal="true"
-        aria-label="作业详情弹窗"
-      >
-        {children}
-      </div>
-    </div>,
-    document.body,
+  const background = document.getElementById('root');
+  const page = document.querySelector<HTMLElement>('.copilot-page');
+  return (
+    <Drawer
+      title="作业详情弹窗"
+      onClose={onClose}
+      closeLabel="关闭作业详情弹窗"
+      backdropLabel="关闭作业详情"
+      header={false}
+      width="md"
+      bodyScroll={false}
+      layerClassName="cp-drawer-layer"
+      className="cp-drawer-panel"
+      backdropClassName="cp-drawer-backdrop"
+      background={[background]}
+      ariaHidden={[background]}
+      scroll={page ? [{ element: page, property: 'overflow-y' }] : []}
+      initialFocusSelector="h2[tabindex]"
+    >
+      {children}
+    </Drawer>
   );
 }
 

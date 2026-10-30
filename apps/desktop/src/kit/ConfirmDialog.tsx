@@ -21,6 +21,7 @@ type Props = {
   bodyClassName?: string;
   background?: (HTMLElement | null)[];
   initialFocus?: HTMLElement | null;
+  initialFocusSelector?: string;
   returnFocus?: HTMLElement | null;
   fallbackFocus?: () => HTMLElement | null | undefined;
   children?: ReactNode;
@@ -45,6 +46,7 @@ export default function ConfirmDialog({
   bodyClassName,
   background,
   initialFocus,
+  initialFocusSelector,
   returnFocus,
   fallbackFocus,
   children,
@@ -59,6 +61,7 @@ export default function ConfirmDialog({
       busy={busy}
       background={background}
       initialFocus={initialFocus}
+      initialFocusSelector={initialFocusSelector}
       returnFocus={returnFocus}
       fallbackFocus={fallbackFocus}
       className={className}

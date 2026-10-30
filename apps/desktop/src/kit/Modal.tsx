@@ -10,6 +10,7 @@ type Props = {
   busy?: boolean;
   background?: (HTMLElement | null)[];
   initialFocus?: HTMLElement | null;
+  initialFocusSelector?: string;
   returnFocus?: HTMLElement | null;
   fallbackFocus?: () => HTMLElement | null | undefined;
   width?: 'sm' | 'md';

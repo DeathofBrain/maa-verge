@@ -1,10 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { acquireModalEffects } from './modal-effects';
+import { useEffect, useMemo, useState } from 'react';
 import { Check, Copy, Download, ListChecks, Terminal, Trash2, X } from 'lucide-react';
 import { errorMessage, localizeExecutionMessage, rpc, type Snapshot } from '@maaverge/contracts';
 import CopilotSelectAll from './CopilotSelectAll';
 import Button from './kit/Button';
+import Drawer from './kit/Drawer';
 import IconButton from './kit/IconButton';
 import Spinner from './kit/Spinner';
 import { formatDateTime, formatDateTimeFull } from './kit/format';
@@ -27,9 +26,6 @@ export default function MonitorLogDrawer({
   onClose,
   embedded = false,
 }: Props) {
-  const panel = useRef<HTMLDivElement>(null);
-  const close = useRef(onClose);
-  close.current = onClose;
   const [deviceIds, setDeviceIds] = useState<Set<string>>(
     () =>
       new Set(initialDeviceIds.filter((id) => snapshot.devices.some((device) => device.id === id))),
@@ -119,20 +115,6 @@ export default function MonitorLogDrawer({
   useEffect(() => {
     if (!selectedLogs.size) setConfirmDelete(false);
   }, [selectedLogs]);
-  useLayoutEffect(() => {
-    if (embedded || !panel.current) return;
-    return acquireModalEffects({
-      panel: panel.current,
-      layer: panel.current.parentElement ?? undefined,
-      background: [
-        document.querySelector<HTMLElement>('.sidebar'),
-        document.querySelector<HTMLElement>('.main-shell'),
-        document.querySelector<HTMLElement>('.run-dock'),
-      ],
-      initialFocus: panel.current.querySelector<HTMLElement>('[data-autofocus]'),
-      onEscape: () => close.current(),
-    });
-  }, [embedded]);
   const toggleDevice = (deviceId: string) =>
     setDeviceIds((previous) => {
       const next = new Set(previous);
@@ -220,184 +202,184 @@ export default function MonitorLogDrawer({
     : !selectedDeviceCount
       ? '在左侧勾选一台或多台设备，合并查看它们的日志。'
       : '连接、保存、执行与更新事件会显示在这里。';
-  const content = (
-    <div className={embedded ? 'monitor-log-embedded' : 'monitor-log-layer'}>
-      {!embedded && (
-        <button
-          className="monitor-log-backdrop"
-          tabIndex={-1}
-          aria-label="关闭设备日志遮罩"
-          onClick={() => close.current()}
-        />
-      )}
-      <div
-        className="monitor-log-panel"
-        ref={panel}
-        role={embedded ? 'region' : 'dialog'}
-        aria-modal={embedded ? undefined : true}
-        aria-label="设备日志"
-      >
-        {!embedded && (
-          <div className="monitor-log-bar">
-            <div className="monitor-log-title">
-              <Terminal size={17} />
-              <div>
-                <strong>设备日志</strong>
-                <small>
-                  {single ? devices[0].device.name : `${selectedDeviceCount} 台设备`} ·{' '}
-                  {rows.length} 条日志
-                </small>
-              </div>
-            </div>
-            <IconButton label="关闭设备日志" data-autofocus onClick={() => close.current()}>
-              <X size={18} />
-            </IconButton>
+  const body = (
+    <>
+      {!single && (
+        <section className="monitor-log-devices" aria-label="选择日志设备">
+          <div className="monitor-log-section-heading">
+            <h2>设备</h2>
           </div>
-        )}
-        <div className={`monitor-log-body ${single ? 'is-single' : ''}`}>
-          {!single && (
-            <section className="monitor-log-devices" aria-label="选择日志设备">
-              <div className="monitor-log-section-heading">
-                <h2>设备</h2>
-              </div>
-              <div className="monitor-log-device-list">
-                {devices.map(({ device, count }) => (
-                  <label
-                    key={device.id}
-                    className={`monitor-log-device ${deviceIds.has(device.id) ? 'is-active' : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      aria-label={`查看设备日志${device.name}`}
-                      checked={deviceIds.has(device.id)}
-                      onChange={() => toggleDevice(device.id)}
-                    />
-                    <span>{device.name}</span>
-                    <small>{count}</small>
-                  </label>
-                ))}
-              </div>
-            </section>
+          <div className="monitor-log-device-list">
+            {devices.map(({ device, count }) => (
+              <label
+                key={device.id}
+                className={`monitor-log-device ${deviceIds.has(device.id) ? 'is-active' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  aria-label={`查看设备日志${device.name}`}
+                  checked={deviceIds.has(device.id)}
+                  onChange={() => toggleDevice(device.id)}
+                />
+                <span>{device.name}</span>
+                <small>{count}</small>
+              </label>
+            ))}
+          </div>
+        </section>
+      )}
+      <section className="monitor-log-content" aria-label="设备日志内容">
+        <div className="monitor-log-toolbar">
+          <Button
+            size="sm"
+            aria-pressed={selecting}
+            disabled={!rows.length}
+            onClick={selecting ? stopSelecting : startSelecting}
+          >
+            {selecting ? <Check size={14} /> : <ListChecks size={14} />}
+            {selecting ? '完成选择' : '选择日志'}
+          </Button>
+          {selecting && (
+            <CopilotSelectAll
+              label="全选日志"
+              total={rows.length}
+              selected={selectedRows.length}
+              text="全选日志"
+              onChange={selectLogs}
+            />
           )}
-          <section className="monitor-log-content" aria-label="设备日志内容">
-            <div className="monitor-log-toolbar">
+          <span role="status">
+            {selecting ? `已选 ${selectedRows.length} 条` : `共 ${rows.length} 条`}
+          </span>
+          {selecting && (
+            <div>
+              <Button size="sm" disabled={!selectedRows.length} onClick={() => void copySelected()}>
+                <Copy size={14} />
+                复制所选
+              </Button>
+              <Button size="sm" disabled={!selectedRows.length} onClick={exportSelected}>
+                <Download size={14} />
+                导出所选
+              </Button>
               <Button
                 size="sm"
-                aria-pressed={selecting}
-                disabled={!rows.length}
-                onClick={selecting ? stopSelecting : startSelecting}
+                variant="danger"
+                disabled={!selectedRows.length || deleting}
+                onClick={() => setConfirmDelete(true)}
               >
-                {selecting ? <Check size={14} /> : <ListChecks size={14} />}
-                {selecting ? '完成选择' : '选择日志'}
+                <Trash2 size={14} />
+                删除所选
               </Button>
-              {selecting && (
-                <CopilotSelectAll
-                  label="全选日志"
-                  total={rows.length}
-                  selected={selectedRows.length}
-                  text="全选日志"
-                  onChange={selectLogs}
-                />
-              )}
-              <span role="status">
-                {selecting ? `已选 ${selectedRows.length} 条` : `共 ${rows.length} 条`}
-              </span>
-              {selecting && (
-                <div>
-                  <Button
-                    size="sm"
-                    disabled={!selectedRows.length}
-                    onClick={() => void copySelected()}
-                  >
-                    <Copy size={14} />
-                    复制所选
-                  </Button>
-                  <Button size="sm" disabled={!selectedRows.length} onClick={exportSelected}>
-                    <Download size={14} />
-                    导出所选
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    disabled={!selectedRows.length || deleting}
-                    onClick={() => setConfirmDelete(true)}
-                  >
-                    <Trash2 size={14} />
-                    删除所选
-                  </Button>
-                </div>
-              )}
             </div>
-            {confirmDelete && selectedRows.length > 0 && (
-              <div className="monitor-log-confirm" role="region" aria-label="确认删除日志">
-                <span>删除所选 {selectedRows.length} 条日志？删除后无法恢复。</span>
-                <div>
-                  <Button size="sm" disabled={deleting} onClick={() => setConfirmDelete(false)}>
-                    取消
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    disabled={deleting}
-                    onClick={() => void deleteSelected()}
-                  >
-                    {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
-                    确认删除
-                  </Button>
-                </div>
-              </div>
-            )}
-            {notice && (
-              <p
-                className={`monitor-log-notice ${notice.error ? 'error' : ''}`}
-                role={notice.error ? 'alert' : 'status'}
+          )}
+        </div>
+        {confirmDelete && selectedRows.length > 0 && (
+          <div className="monitor-log-confirm" role="region" aria-label="确认删除日志">
+            <span>删除所选 {selectedRows.length} 条日志？删除后无法恢复。</span>
+            <div>
+              <Button size="sm" disabled={deleting} onClick={() => setConfirmDelete(false)}>
+                取消
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={deleting}
+                onClick={() => void deleteSelected()}
               >
-                {notice.text}
-              </p>
-            )}
-            {!rows.length ? (
-              <div className="monitor-log-empty">
-                <Terminal size={30} />
-                <h2>{emptyTitle}</h2>
-                <p>{emptyText}</p>
-              </div>
-            ) : (
-              <ol
-                className={`monitor-log-list ${selecting ? 'is-selecting' : ''}`}
-                aria-label="设备日志列表"
-              >
-                {rows.map((row) => (
-                  <li key={row.event.id}>
-                    {selecting ? (
-                      <label className="monitor-log-entry">
-                        <input
-                          type="checkbox"
-                          aria-label={`选择日志${row.event.id}`}
-                          checked={selectedLogs.has(row.event.id)}
-                          onChange={() => toggleLog(row.event.id)}
-                        />
-                        <LogContent row={row} />
-                      </label>
-                    ) : (
-                      <div className="monitor-log-entry">
-                        <LogContent row={row} />
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            )}
-            {matchedRows.length > 200 && (
-              <p className="monitor-log-footnote">
-                显示最近 200 条日志；可缩小设备范围查看更早记录。
-              </p>
-            )}
-          </section>
+                {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
+                确认删除
+              </Button>
+            </div>
+          </div>
+        )}
+        {notice && (
+          <p
+            className={`monitor-log-notice ${notice.error ? 'error' : ''}`}
+            role={notice.error ? 'alert' : 'status'}
+          >
+            {notice.text}
+          </p>
+        )}
+        {!rows.length ? (
+          <div className="monitor-log-empty">
+            <Terminal size={30} />
+            <h2>{emptyTitle}</h2>
+            <p>{emptyText}</p>
+          </div>
+        ) : (
+          <ol
+            className={`monitor-log-list ${selecting ? 'is-selecting' : ''}`}
+            aria-label="设备日志列表"
+          >
+            {rows.map((row) => (
+              <li key={row.event.id}>
+                {selecting ? (
+                  <label className="monitor-log-entry">
+                    <input
+                      type="checkbox"
+                      aria-label={`选择日志${row.event.id}`}
+                      checked={selectedLogs.has(row.event.id)}
+                      onChange={() => toggleLog(row.event.id)}
+                    />
+                    <LogContent row={row} />
+                  </label>
+                ) : (
+                  <div className="monitor-log-entry">
+                    <LogContent row={row} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+        {matchedRows.length > 200 && (
+          <p className="monitor-log-footnote">显示最近 200 条日志；可缩小设备范围查看更早记录。</p>
+        )}
+      </section>
+    </>
+  );
+  if (embedded) {
+    return (
+      <div className="monitor-log-embedded">
+        <div className="monitor-log-panel" role="region" aria-label="设备日志">
+          <div className={`monitor-log-body ${single ? 'is-single' : ''}`}>{body}</div>
         </div>
       </div>
-    </div>
+    );
+  }
+  return (
+    <Drawer
+      title="设备日志"
+      onClose={onClose}
+      closeLabel="关闭设备日志"
+      backdropLabel="关闭设备日志遮罩"
+      width="md"
+      layerClassName="monitor-log-layer"
+      className="monitor-log-panel"
+      backdropClassName="monitor-log-backdrop"
+      headerClassName="monitor-log-bar"
+      bodyClassName={`monitor-log-body ${single ? 'is-single' : ''}`}
+      header={
+        <>
+          <div className="monitor-log-title">
+            <Terminal size={17} />
+            <div>
+              <strong>设备日志</strong>
+              <small>
+                {single ? devices[0].device.name : `${selectedDeviceCount} 台设备`} · {rows.length}{' '}
+                条日志
+              </small>
+            </div>
+          </div>
+          <IconButton label="关闭设备日志" data-autofocus onClick={onClose}>
+            <X size={18} />
+          </IconButton>
+        </>
+      }
+    >
+      {body}
+    </Drawer>
   );
-  return embedded ? content : createPortal(content, document.body);
 }
 
 function LogContent({ row }: { row: LogRow }) {
