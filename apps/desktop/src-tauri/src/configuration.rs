@@ -235,13 +235,15 @@ fn locations(configuration: &StartupConfiguration) -> Result<Value, String> {
     };
     let current_directory = &configuration.directory;
     let canonical_next = fs::canonicalize(effective_next).unwrap_or(effective_next.clone());
+    // Keep canonical roots for identity checks; expose shell-compatible paths
+    // where removing Windows' verbatim prefix preserves the path's meaning.
     Ok(json!({
-        "directory": current_directory,
-        "database": current_directory.join("native/maaverge.sqlite3"),
-        "defaultDirectory": default_directory,
-        "configuredDirectory": saved,
-        "nextDirectory": effective_next,
-        "selectorFile": configuration.application_directory.join(SELECTOR_FILE),
+        "directory": dunce::simplified(current_directory),
+        "database": dunce::simplified(&current_directory.join("native/maaverge.sqlite3")),
+        "defaultDirectory": dunce::simplified(&default_directory),
+        "configuredDirectory": saved.as_deref().map(dunce::simplified),
+        "nextDirectory": dunce::simplified(effective_next),
+        "selectorFile": dunce::simplified(&configuration.application_directory.join(SELECTOR_FILE)),
         "overridden": overridden,
         "source": configuration.source,
         "restartRequired": canonical_next != *current_directory,
