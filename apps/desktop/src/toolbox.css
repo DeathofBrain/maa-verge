@@ -130,7 +130,7 @@
 }
 .tool-operation p {
   margin: 6px 0 0;
-  color: var(--text-muted);
+  color: var(--muted);
   font-size: 12px;
 }
 .tool-operation .sp-table-scroll {

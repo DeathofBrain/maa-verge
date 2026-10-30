@@ -4,6 +4,15 @@
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表统一从“任务”入口管理：列表 + 右侧详情抽屉保留逐任务设置和常驻运行条，执行监控为同页页签，开始执行不跳转；勾选任务表后由页头「运行」启动，每张表均可选择多台设备，已绑定表限绑定范围，未绑定表临时选择。执行监控统一列出在线与曾连接的离线设备，列表标题旁显示设备总数与执行中数量，已连接设备用绿色「已连接」标记，执行状态单独显示；点击设备后在下方查看当前任务表、作业或独立工具，再次点击收起；离线显示“已离线”，空闲与历史记录明确分开。任务表「查看执行」定位同一设备，设备卡日志及连接设置从右侧打开；底栏运行详情、日志、画面与多开执行向上展开，并通过底栏左侧设备选择器切换。支持设备多选停止及日志复制、导出和确认删除。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。六类独立工具与每日定时已接入，使用方法见 [工具箱与定时计划](toolbox-schedules.md)；独立作业中心已接入本地与 PRTS Plus 导入，完整原 MAA 兼容继续按功能矩阵验收。
 
+## 本次设计令牌与变量缺陷修复（macOS arm64，2026-10-30）
+
+- `styles.css` 的 `:root` 与深色块补齐设计令牌：spacing（4px 基准 6 级）、radius（现有 18 种取值归并为 5 级）、typography（约 20 种字号归并为 7 级）、shadow 两级、统一焦点环 `--focus-ring`、遮罩 `--backdrop` / `--backdrop-blur`、z-index 有序标度（抽屉 1000 < 模态 1100 < Select 浮层 1200 < 右键菜单 1300 < toast 1400）、duration 3 级，以及 `--warning` / `--info` 语义色与深色值。新标度只约束 `kit.css`，页面样式在因迁移被打开时顺路收敛，不做全量回填。
+- 修复三个从未定义的变量：`toolbox.css` 与 `schedule-panel.css` 的 `var(--text-muted)`、`schedule-panel.css` 的 `var(--text-primary)` 分别改为 `var(--muted)` / `var(--text)`，在使用点修而不定义别名。这会**改变实际渲染色**：相关说明文字此前因变量缺失而继承父级颜色，现在回落到 muted 灰。
+- 修复深色模式下失效的硬编码色：`support-pages.css` 的 `.sp-state.idle`（`#238159`）与 `.sp-update-state.is-error`（`#c44747` / `#fff0ef`）、`home-dashboard.css` 主页指标的紫 / 琥珀（`#8565cb` / `#9878d7`、`#bc8a35` / `#b78a3c`）改用语义令牌，主页指标图标由此获得此前不存在的深色变体。
+- macOS arm64：`tsc -p apps/desktop --noEmit`、`tools/check-kit-css.mjs` 门禁与修改范围 Prettier 通过；Chromium 全量 E2E **249/249**，工具箱 / 工作台 / 应用更新 / 组件更新定向 **44/44** 通过（独立端口 15541）。
+- 人工核对渲染结果：用合成夹具在 1440×900 浅色与深色下读取 computed style 并截图主页、设备、任务表定时页签、工具箱与设置更新页，确认 `--muted` / `--success` / `--info` / `--warning` 在两种主题下解析正确、`scrollWidth <= clientWidth` 无横向溢出；截图存于被忽略的 `test-results/`，未提交。`.tool-operation p` 与 `.sp-update-state.is-error` 需要真实工具执行与更新失败状态才能渲染，未逐点截图，其声明与已验证的 `.schedule-panel p` 机制相同。
+- 未连接真实设备、调用模型或构建发行安装包；Windows/Linux 宿主与原生 WebView 仍未验收，Chromium 夹具通过不等于原生验收。下一步为共享格式化与中文标签映射（`kit/format.ts`、`kit/labels.ts`）。
+
 ## 本次组件套装脚手架与抽屉动画去重（macOS arm64，2026-10-30）
 
 - 设置页不再显示「已自动保存」成功提示：`autoSaveLabel('saved')` 返回空串，Mirror酱与通知设置同步置空，避免每次自动保存都闪一条无信息量的状态。更新分类下「下载设置」组（下载代理 + Mirror酱）前置到「更新」之前，先配置来源再看渠道。三个 spec 的保存状态断言由类选择器文本改为 `runtimeHarness.call('app.snapshot')` 行为轮询。该笔改动已提交并推送至 `origin/dev`。

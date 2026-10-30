@@ -110,17 +110,17 @@ node tools/check-kit-css.mjs
 
 令牌定义在 `styles.css` 的 `:root` 与 `:root[data-theme='dark']`，取值由现有分布归并而来。新标度只约束 `kit.css`；页面 CSS 在因迁移被打开时顺路收敛，不做全量回填——仓库禁止外观断言测试，大面积像素漂移无法验证。
 
-| 类别       | 令牌                                                                                              | 归并来源                                                                       |
-| ---------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| spacing    | `--space-1..6` = 4 / 8 / 12 / 16 / 24 / 32px                                                      | 4px 基准                                                                       |
-| radius     | `--radius-xs/sm/md/lg/full` = 4 / 6 / 8 / 12 / 999px                                              | 现有 18 种取值：2/3/4→xs，5/6/7→sm，8/9/10→md，12/14→lg，20/999→full           |
-| typography | `--text-xs/sm/md/base/lg/xl/2xl` = 10 / 11 / 12 / 13 / 14 / 16 / 20px                             | 现有约 20 种字号；字重收敛到 400/500/600/700，450/550/650/750 在迁移时就近归档 |
-| shadow     | 保留 `--shadow`，补 `--shadow-sm`、`--shadow-lg`                                                  | —                                                                              |
-| focus      | `--focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent), transparent 70%)`                      | 替代现有 5 种焦点环写法                                                        |
-| z-index    | `--z-sticky/dock/drawer/modal/popover/context/toast` = 40 / 60 / 1000 / 1100 / 1200 / 1300 / 1400 | 现有 20 种取值；顺序为抽屉 < 模态 < Select 浮层 < 右键菜单 < toast             |
-| duration   | `--duration-1/2/3` = 0.12 / 0.18 / 0.28s                                                          | 现有 0.15–0.4s 硬编码；`--ease-out` 已存在                                     |
-| overlay    | `--backdrop: #10182780`、`--backdrop-blur: 1px`（深色 `#0b0e1499`）                               | 统一为 4 个抽屉都在用的配方；`.modal-backdrop` 的 `#11182759` 是少数派         |
-| 语义色     | `--warning` / `--warning-soft`、`--info` / `--info-soft`                                          | 为当前在深色模式下失效的硬编码色提供令牌                                       |
+| 类别       | 令牌                                                                                              | 归并来源                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| spacing    | `--space-1..6` = 4 / 8 / 12 / 16 / 24 / 32px                                                      | 4px 基准                                                                                                |
+| radius     | `--radius-xs/sm/md/lg/full` = 4 / 6 / 8 / 12 / 999px                                              | 现有 18 种取值：2/3/4→xs，5/6/7→sm，8/9/10→md，12/14→lg，20/999→full                                    |
+| typography | `--text-xs/sm/md/base/lg/xl/2xl` = 10 / 11 / 12 / 13 / 14 / 16 / 20px                             | 现有约 20 种字号；字重收敛到 400/500/600/700，450/550/650/750 在迁移时就近归档                          |
+| shadow     | 保留 `--shadow`，补 `--shadow-sm`、`--shadow-lg`                                                  | —                                                                                                       |
+| focus      | `--focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent)`                      | 替代现有 5 种焦点环写法；取 `select.css` / `device-picker.css` 的 `:focus-visible` 配方，迁移时视觉不变 |
+| z-index    | `--z-sticky/dock/drawer/modal/popover/context/toast` = 40 / 60 / 1000 / 1100 / 1200 / 1300 / 1400 | 现有 20 种取值；顺序为抽屉 < 模态 < Select 浮层 < 右键菜单 < toast                                      |
+| duration   | `--duration-1/2/3` = 0.12 / 0.18 / 0.28s                                                          | 现有 0.15–0.4s 硬编码；`--ease-out` 已存在                                                              |
+| overlay    | `--backdrop: #10182780`、`--backdrop-blur: 1px`（深色 `#0b0e1499`）                               | 统一为 4 个抽屉都在用的配方；`.modal-backdrop` 的 `#11182759` 是少数派                                  |
+| 语义色     | `--warning` / `--warning-soft`、`--info` / `--info-soft`                                          | 为当前在深色模式下失效的硬编码色提供令牌                                                                |
 
 z-index 标度顺带修掉一个潜在缺陷：`ContextMenu` portal 到 body 且 z=1000，低于 side-drawer 的 1100，抽屉内开右键菜单目前只靠 DOM 顺序侥幸生效；新标度把右键菜单提到 1300。旧值（85 / 160 / 1000 / 1100）在各自组件迁移前保持不动，标度只需内部自洽。
 

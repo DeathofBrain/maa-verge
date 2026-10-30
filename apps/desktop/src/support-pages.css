@@ -248,7 +248,7 @@
 }
 
 .sp-state.idle {
-  color: #238159;
+  color: var(--success);
 }
 
 .sp-state.running {
@@ -646,8 +646,8 @@
 }
 
 .sp-update-state.is-error {
-  color: #c44747;
-  background: #fff0ef;
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .sp-channel-version {
