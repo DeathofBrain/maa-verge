@@ -644,8 +644,7 @@
   min-height: 36px;
 }
 
-.wb-workbench .param-check input,
-.wb-checkbox-row input {
+.wb-workbench .param-check input {
   width: 15px;
   height: 15px;
   accent-color: var(--accent, #4965d4);
@@ -863,25 +862,14 @@
   font-size: 13px;
 }
 
-.wb-checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  line-height: 1.6;
-  margin-top: 14px;
-}
-
-.wb-checkbox-row small {
-  font-size: 11px;
-  color: var(--muted, #697587);
-  margin-left: 8px;
-}
-
 .wb-management-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 9px;
+}
+
+.wb-device-actions {
+  margin-top: 12px;
 }
 
 .wb-workbench .wb-danger {
@@ -1046,12 +1034,6 @@
   .wb-new-name {
     padding-inline: 22px;
   }
-  .wb-checkbox-row {
-    flex-wrap: wrap;
-  }
-  .wb-checkbox-row small {
-    margin-left: 23px;
-  }
 }
 
 @media (max-width: 580px) {
@@ -1167,10 +1149,6 @@
   }
   .wb-management-actions .button {
     font-size: 12px;
-  }
-  .wb-checkbox-row small {
-    margin-left: 0;
-    width: 100%;
   }
 }
 

@@ -36,7 +36,7 @@ var require_ucs2length = __commonJS({
 
 // validators.generated.js
 var validateSnapshot = validate10;
-var schema11 = { "$schema": "http://json-schema.org/draft-07/schema#", "$id": "https://maaverge.local/contracts/runtime.schema.json", "$comment": "Authoritative runtime contract. Edit this source, then run pnpm contracts:generate. Defaults are applied by the application models, not validators.", "$defs": { "Budgets": { "additionalProperties": false, "properties": { "originium": { "default": 0, "maximum": 100, "minimum": 0, "title": "Originium", "type": "integer" }, "medicine": { "default": 0, "maximum": 100, "minimum": 0, "title": "Medicine", "type": "integer" }, "expedited": { "default": 0, "maximum": 100, "minimum": 0, "title": "Expedited", "type": "integer" } }, "required": ["originium", "medicine", "expedited"], "title": "Budgets", "type": "object" }, "CaptureSettings": { "type": "object", "additionalProperties": false, "properties": { "method": { "type": "string", "enum": ["adb", "mumu", "ldplayer"], "default": "adb" }, "autoDetect": { "type": "boolean", "description": "\u8FDE\u63A5\u65F6\u81EA\u52A8\u8BC6\u522B\u6A21\u62DF\u5668\u5E76\u914D\u7F6E\u589E\u5F3A\u622A\u56FE\uFF1B\u7701\u7565\u65F6 adb \u4E3A\u81EA\u52A8\uFF0C\u5DF2\u6709\u589E\u5F3A\u622A\u56FE\u4E3A\u624B\u52A8\u3002" }, "emulatorPath": { "type": "string", "maxLength": 4096, "default": "" }, "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 }, "mumuTouch": { "type": "boolean", "default": false }, "mumuBridge": { "type": "boolean", "default": false } }, "required": ["method", "emulatorPath", "instanceIndex"] }, "ConnectionSettings": { "type": "object", "additionalProperties": false, "properties": { "adbPath": { "type": "string", "maxLength": 4096, "default": "" }, "address": { "type": "string", "maxLength": 128, "default": "" }, "config": { "type": "string", "enum": ["General", "BlueStacks", "MuMuEmulator12", "MuMuArm", "LDPlayer", "Nox", "XYAZ", "Compatible", "SecondResolution", "CompatMac", "CompatPOSIXShell", "Waydroid", "AVD", "Androws", "WSA"], "default": "General" }, "touchMode": { "type": "string", "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"], "default": "maatouch" }, "adbLite": { "type": "boolean", "default": false }, "clientType": { "type": "string", "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"], "default": "Official" } }, "required": ["adbPath", "address", "config", "touchMode", "adbLite", "clientType"] }, "DeviceConnectionProfile": { "type": "object", "additionalProperties": false, "required": ["id", "name", "address", "connection", "capture"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[A-Za-z0-9_-]+$" }, "autoDetected": { "type": "boolean", "description": "\u7531\u8FD0\u884C\u4E2D\u7684\u6A21\u62DF\u5668\u81EA\u52A8\u53D1\u73B0\u521B\u5EFA\uFF1B\u7528\u6237\u7F16\u8F91\u4FDD\u5B58\u540E\u8F6C\u4E3A\u624B\u52A8\u7BA1\u7406\u3002" }, "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "address": { "type": "string", "minLength": 1, "maxLength": 128 }, "connection": { "$ref": "#/$defs/ConnectionSettings" }, "capture": { "$ref": "#/$defs/CaptureSettings" } } }, "Device": { "additionalProperties": false, "properties": { "connectionProfileId": { "type": "string", "maxLength": 80 }, "connectionError": { "type": "string", "maxLength": 4096 }, "id": { "title": "Id", "type": "string" }, "name": { "title": "Name", "type": "string" }, "address": { "title": "Address", "type": "string" }, "state": { "enum": ["idle", "running", "offline"], "title": "State", "type": "string" }, "coreVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Coreversion" }, "captureMethod": { "type": "string", "maxLength": 128 }, "dataSync": { "$ref": "#/$defs/UserDataSync" }, "resourceVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Resourceversion" } }, "required": ["id", "name", "address", "state", "coreVersion", "resourceVersion"], "title": "Device", "type": "object" }, "Event": { "additionalProperties": false, "properties": { "id": { "title": "Id", "type": "integer" }, "type": { "title": "Type", "type": "string" }, "message": { "title": "Message", "type": "string" }, "createdAt": { "title": "Createdat", "type": "string" }, "data": { "additionalProperties": true, "title": "Data", "type": "object" } }, "required": ["id", "type", "message", "createdAt", "data"], "title": "Event", "type": "object" }, "ModelSettings": { "additionalProperties": false, "properties": { "provider": { "default": "none", "title": "Provider", "type": "string" }, "baseUrl": { "default": "", "title": "Baseurl", "type": "string" }, "model": { "default": "", "title": "Model", "type": "string" } }, "required": ["provider", "baseUrl", "model"], "title": "ModelSettings", "type": "object" }, "Plan": { "additionalProperties": false, "properties": { "id": { "default": "", "title": "Id", "type": "string" }, "name": { "maxLength": 80, "minLength": 1, "title": "Name", "type": "string" }, "description": { "default": "", "maxLength": 500, "title": "Description", "type": "string" }, "deviceId": { "anyOf": [{ "maxLength": 200, "minLength": 1, "type": "string" }, { "type": "null" }], "default": null, "title": "Deviceid" }, "group": { "default": "daily", "enum": ["daily", "specialized"], "title": "Group", "type": "string" }, "budgets": { "anyOf": [{ "$ref": "#/$defs/Budgets" }, { "type": "null" }], "default": null }, "tasks": { "items": { "$ref": "#/$defs/Task" }, "maxItems": 30, "minItems": 1, "title": "Tasks", "type": "array" }, "schedule": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Schedule" }, "enabled": { "default": true, "title": "Enabled", "type": "boolean" } }, "required": ["id", "name", "description", "deviceId", "group", "budgets", "tasks", "schedule", "enabled"], "title": "Plan", "type": "object" }, "Run": { "additionalProperties": false, "properties": { "planName": { "type": "string", "maxLength": 80 }, "tasks": { "type": "array", "maxItems": 31, "items": { "$ref": "#/$defs/RunTask" } }, "id": { "title": "Id", "type": "string" }, "planId": { "title": "Planid", "type": ["string", "null"] }, "deviceId": { "title": "Deviceid", "type": "string" }, "status": { "enum": ["running", "completed", "failed", "stopped"], "title": "Status", "type": "string" }, "progress": { "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "title": "Message", "type": "string" }, "startedAt": { "title": "Startedat", "type": "string" }, "finishedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Finishedat" }, "scheduleId": { "type": "string", "minLength": 1, "maxLength": 200 }, "scheduledFor": { "type": "string", "minLength": 1, "maxLength": 80 }, "source": { "enum": ["plan", "copilot"] }, "sourceName": { "type": "string", "maxLength": 300 }, "copilotEntries": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/CopilotRunEntry" } }, "copilotKind": { "enum": ["Copilot", "SSSCopilot", "ParadoxCopilot"] } }, "required": ["id", "planId", "deviceId", "status", "progress", "message", "startedAt", "finishedAt"], "title": "Run", "type": "object" }, "RunTask": { "type": "object", "additionalProperties": false, "required": ["index", "type", "status", "message", "startedAt", "finishedAt", "drops", "infrastructure", "artifacts"], "properties": { "index": { "type": "integer", "minimum": 0, "maximum": 30 }, "type": { "type": "string", "maxLength": 80 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": ["string", "null"] }, "finishedAt": { "type": ["string", "null"] }, "drops": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/RunDrop" } }, "infrastructure": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/RunInfrastructure" } }, "artifacts": { "type": "array", "maxItems": 3, "items": { "$ref": "#/$defs/RunArtifact" } } } }, "RunDrop": { "type": "object", "additionalProperties": false, "required": ["itemId", "name", "quantity", "stage", "at"], "properties": { "itemId": { "type": "string", "minLength": 1, "maxLength": 200 }, "name": { "type": "string", "maxLength": 200 }, "quantity": { "type": "integer", "minimum": 0, "maximum": 2147483647 }, "stage": { "type": "string", "maxLength": 200 }, "at": { "type": "string" } } }, "RunInfrastructure": { "type": "object", "additionalProperties": false, "required": ["facility", "room", "operators", "product", "message", "at"], "properties": { "facility": { "type": "string", "maxLength": 80 }, "room": { "type": "integer", "minimum": 0, "maximum": 100 }, "operators": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 80 } }, "staffingStatus": { "description": "Latest staffing evidence; configured names are not an independently recognized final roster.", "enum": ["planned", "confirmed", "unavailable"] }, "product": { "type": "string", "maxLength": 200 }, "message": { "type": "string", "maxLength": 500 }, "at": { "type": "string" } } }, "RunArtifact": { "description": "Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.", "type": "object", "additionalProperties": false, "required": ["id", "kind", "label", "capturedAt", "width", "height"], "properties": { "id": { "type": "string", "pattern": "^[a-f0-9-]{36}$" }, "kind": { "const": "screenshot" }, "label": { "type": "string", "maxLength": 100 }, "capturedAt": { "type": "string" }, "width": { "type": "integer", "minimum": 1, "maximum": 8192 }, "height": { "type": "integer", "minimum": 1, "maximum": 8192 } } }, "InfrastructureLine": { "type": "object", "additionalProperties": false, "required": ["id", "name", "unit", "hourlyRate", "capacity", "lastCollectedAt"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 100 }, "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "unit": { "type": "string", "minLength": 1, "maxLength": 20 }, "hourlyRate": { "type": "number", "minimum": 0, "maximum": 1e9 }, "capacity": { "type": "number", "exclusiveMinimum": 0, "maximum": 1e9 }, "lastCollectedAt": { "type": "string", "minLength": 20, "maxLength": 40 } } }, "InfrastructureEstimateProfile": { "type": "object", "additionalProperties": false, "required": ["deviceId", "lines"], "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "lines": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/InfrastructureLine" } } } }, "ComponentPaths": { "description": "Absolute installation/download roots. An empty string restores the application default on settings.save.", "type": "object", "additionalProperties": false, "required": ["core", "resource"], "properties": { "core": { "type": "string", "maxLength": 4096 }, "resource": { "type": "string", "maxLength": 4096 } } }, "DownloadProxySettings": { "description": "Shared HTTP proxy policy for application, MaaCore and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.", "type": "object", "additionalProperties": false, "required": ["mode", "url"], "properties": { "mode": { "enum": ["auto", "manual", "direct"] }, "url": { "type": "string", "maxLength": 4096, "description": "Manual HTTP/HTTPS proxy address. settings.save accepts host:port with an implicit http:// scheme and normalizes it to a complete URL; other modes clear this field. A root slash is allowed; other paths, queries and fragments are rejected." } } }, "MirrorChyanSettings": { "type": "object", "additionalProperties": false, "required": ["enabled", "cdk"], "properties": { "enabled": { "type": "boolean", "default": true }, "cdk": { "type": "string", "maxLength": 256, "pattern": "^[^\\r\\n\\u0000]*$", "description": "Shared MirrorChyan CDK for the application, MaaCore and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports." } } }, "ResourceActivityVersion": { "type": "object", "additionalProperties": false, "required": ["clientType", "name", "lastUpdated"], "properties": { "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "name": { "type": ["string", "null"], "maxLength": 300 }, "lastUpdated": { "type": ["string", "null"], "maxLength": 200 } } }, "NotificationSettings": { "type": "object", "additionalProperties": false, "properties": { "enabled": { "type": "boolean", "default": true }, "runResults": { "type": "boolean", "default": true }, "deviceErrors": { "type": "boolean", "default": true }, "updates": { "type": "boolean", "default": true }, "schedules": { "type": "boolean", "default": true } }, "required": ["enabled", "runResults", "deviceErrors", "updates", "schedules"] }, "Settings": { "additionalProperties": false, "properties": { "componentPaths": { "$ref": "#/$defs/ComponentPaths" }, "downloadProxy": { "$ref": "#/$defs/DownloadProxySettings" }, "mirrorChyan": { "$ref": "#/$defs/MirrorChyanSettings" }, "notifications": { "$ref": "#/$defs/NotificationSettings" }, "infrastructureEstimates": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/InfrastructureEstimateProfile" } }, "capture": { "$ref": "#/$defs/CaptureSettings" }, "connection": { "$ref": "#/$defs/ConnectionSettings" }, "deviceProfiles": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/DeviceConnectionProfile" } }, "logRetentionDays": { "type": "integer", "enum": [0, 7, 14, 30], "default": 7, "description": "Log retention in days; zero disables automatic cleanup." }, "autoConnect": { "default": true, "title": "Autoconnect", "type": "boolean" }, "autoUpdateApp": { "type": "boolean", "default": true, "description": "\u542F\u52A8\u65F6\u8054\u7F51\u68C0\u67E5\u5E94\u7528\u66F4\u65B0\uFF1B\u4E0B\u8F7D\u7531\u7528\u6237\u786E\u8BA4\uFF0C\u5DF2\u4E0B\u8F7D\u5E76\u9A8C\u8BC1\u7684\u66F4\u65B0\u5728\u4E0B\u6B21\u542F\u52A8\u65F6\u81EA\u52A8\u5B89\u88C5\u3002" }, "appUpdateChannel": { "type": "string", "enum": ["stable", "preview"], "default": "preview" }, "coreUpdateChannel": { "type": "string", "enum": ["stable", "preview"], "default": "stable" }, "autoUpdateCore": { "default": true, "title": "Autoupdatecore", "type": "boolean" }, "autoUpdateResource": { "default": true, "title": "Autoupdateresource", "type": "boolean" }, "minimizeToTray": { "default": true, "title": "Minimizetotray", "type": "boolean" }, "rememberCloseAction": { "type": "boolean", "default": false, "description": "\u8BB0\u4F4F minimizeToTray \u6307\u5B9A\u7684\u5173\u95ED\u65B9\u5F0F\uFF1B\u7F3A\u5931\u6216 false \u65F6\u6BCF\u6B21\u5173\u95ED\u7A97\u53E3\u5747\u8BE2\u95EE\u3002" }, "theme": { "default": "system", "enum": ["dark", "light", "system"], "title": "Theme", "type": "string" }, "budgets": { "$ref": "#/$defs/Budgets" }, "model": { "$ref": "#/$defs/ModelSettings" }, "scheduler": { "$ref": "#/$defs/SchedulerSettings" }, "copilotStorage": { "$ref": "#/$defs/CopilotStorage" } }, "required": ["autoConnect", "autoUpdateCore", "autoUpdateResource", "minimizeToTray", "theme", "budgets", "model"], "title": "Settings", "type": "object" }, "UserDataSync": { "type": "object", "additionalProperties": false, "properties": { "operatorsAt": { "type": ["string", "null"], "maxLength": 64 }, "depotAt": { "type": ["string", "null"], "maxLength": 64 } }, "required": ["operatorsAt", "depotAt"] }, "Task": { "additionalProperties": false, "properties": { "type": { "enum": ["StartUp", "CloseDown", "Fight", "Recruit", "Infrast", "Mall", "Award", "SwitchTheme", "Roguelike", "Copilot", "SSSCopilot", "ParadoxCopilot", "Depot", "OperBox", "Reclamation", "Custom", "SingleStep", "VideoRecognition", "OperProgress", "UserDataUpdate"], "title": "Type", "type": "string" }, "params": { "additionalProperties": true, "title": "Params", "type": "object" }, "enabled": { "default": true, "title": "Enabled", "type": "boolean" } }, "required": ["type", "params", "enabled"], "title": "Task", "type": "object" }, "UpdateChannel": { "additionalProperties": false, "properties": { "checkedAt": { "type": "string", "maxLength": 64 }, "appCanInstall": { "type": "boolean", "description": "\u6B64\u5B89\u88C5\u5F62\u5F0F\u662F\u5426\u652F\u6301\u7B7E\u540D\u81EA\u52A8\u66F4\u65B0\u3002" }, "appInstallOnStartup": { "type": "boolean", "description": "\u5DF2\u9A8C\u8BC1\u7684\u5E94\u7528\u66F4\u65B0\u662F\u5426\u5B89\u6392\u5728\u4E0B\u6B21\u542F\u52A8\u5B89\u88C5\uFF1B\u5931\u8D25\u5C1D\u8BD5\u4FDD\u7559\u5305\u4F46\u4E0D\u4F1A\u81EA\u52A8\u5FAA\u73AF\u5B89\u88C5\u3002" }, "appRelease": { "type": "object", "additionalProperties": false, "required": ["url", "notes", "publishedAt", "prerelease"], "properties": { "url": { "type": "string", "maxLength": 2048 }, "notes": { "type": "string", "maxLength": 16384 }, "publishedAt": { "type": "string", "maxLength": 64 }, "prerelease": { "type": "boolean" } } }, "installDirectory": { "type": "string", "maxLength": 4096 }, "resourceActivities": { "type": "array", "maxItems": 6, "items": { "$ref": "#/$defs/ResourceActivityVersion" } }, "id": { "enum": ["app", "core", "resource"], "title": "Id", "type": "string" }, "currentVersion": { "title": "Currentversion", "type": "string" }, "latestVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Latestversion" }, "status": { "default": "idle", "enum": ["idle", "checking", "available", "downloading", "staged", "waiting_idle", "active", "failed"], "title": "Status", "type": "string" }, "progress": { "default": 0, "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "default": "", "title": "Message", "type": "string" }, "downloadSpeedBytesPerSecond": { "description": "\u5F53\u524D\u7F51\u7EDC\u4F20\u8F93\u901F\u5EA6\uFF0C\u5355\u4F4D\u4E3A\u5B57\u8282/\u79D2\uFF1B\u975E\u4F20\u8F93\u9636\u6BB5\u7701\u7565\u3002", "type": "number", "minimum": 0 } }, "required": ["id", "currentVersion", "latestVersion", "status", "progress", "message"], "title": "UpdateChannel", "type": "object" }, "SchedulerSettings": { "type": "object", "additionalProperties": false, "properties": { "forceScheduledStart": { "type": "boolean" }, "showWindowBeforeForceScheduledStart": { "type": "boolean" }, "notifyBeforeScheduledStart": { "type": "boolean" }, "notificationMinutes": { "type": "integer", "minimum": 1, "maximum": 1439 }, "scheduledWakeUp": { "type": "boolean" } }, "required": ["forceScheduledStart", "showWindowBeforeForceScheduledStart", "notifyBeforeScheduledStart", "notificationMinutes", "scheduledWakeUp"] }, "ToolJobSummary": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "kind": { "enum": ["depot", "operators", "recruit", "inventory", "data", "games"] }, "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "status": { "enum": ["running", "completed", "failed", "stopped"] }, "progress": { "type": "integer", "minimum": 0, "maximum": 100 }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": "string", "minLength": 1, "maxLength": 40 }, "finishedAt": { "type": ["string", "null"] } }, "required": ["id", "kind", "deviceId", "clientType", "status", "progress", "message", "startedAt", "finishedAt"] }, "CopilotRunEntry": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "versionId": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "title": { "type": "string", "maxLength": 300 }, "nativeId": { "type": "integer", "minimum": 1, "maximum": 100 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "verdict": { "enum": ["unknown", "success", "failure"] }, "message": { "type": "string", "maxLength": 1e3 } }, "required": ["id", "versionId", "title", "nativeId", "status", "verdict", "message"] }, "CopilotStorage": { "type": "object", "additionalProperties": false, "properties": { "directory": { "type": "string", "maxLength": 4096, "description": "Absolute directory for imported library JSON copies. Empty restores application cache/copilot." }, "deleteJsonFiles": { "type": "boolean", "default": false } }, "required": ["directory", "deleteJsonFiles"] } }, "additionalProperties": false, "properties": { "mode": { "enum": ["native"], "title": "Mode", "type": "string" }, "devices": { "items": { "$ref": "#/$defs/Device" }, "title": "Devices", "type": "array" }, "plans": { "items": { "$ref": "#/$defs/Plan" }, "title": "Plans", "type": "array" }, "runs": { "items": { "$ref": "#/$defs/Run" }, "title": "Runs", "type": "array" }, "updates": { "items": { "$ref": "#/$defs/UpdateChannel" }, "title": "Updates", "type": "array" }, "settings": { "$ref": "#/$defs/Settings" }, "events": { "items": { "$ref": "#/$defs/Event" }, "title": "Events", "type": "array" }, "toolJobs": { "type": "array", "items": { "$ref": "#/$defs/ToolJobSummary" } } }, "required": ["mode", "devices", "plans", "runs", "updates", "settings", "events"], "title": "Snapshot", "type": "object" };
+var schema11 = { "$schema": "http://json-schema.org/draft-07/schema#", "$id": "https://maaverge.local/contracts/runtime.schema.json", "$comment": "Authoritative runtime contract. Edit this source, then run pnpm contracts:generate. Defaults are applied by the application models, not validators.", "$defs": { "Budgets": { "additionalProperties": false, "properties": { "originium": { "default": 0, "maximum": 100, "minimum": 0, "title": "Originium", "type": "integer" }, "medicine": { "default": 0, "maximum": 100, "minimum": 0, "title": "Medicine", "type": "integer" }, "expedited": { "default": 0, "maximum": 100, "minimum": 0, "title": "Expedited", "type": "integer" } }, "required": ["originium", "medicine", "expedited"], "title": "Budgets", "type": "object" }, "CaptureSettings": { "type": "object", "additionalProperties": false, "properties": { "method": { "type": "string", "enum": ["adb", "mumu", "ldplayer"], "default": "adb" }, "autoDetect": { "type": "boolean", "description": "\u8FDE\u63A5\u65F6\u81EA\u52A8\u8BC6\u522B\u6A21\u62DF\u5668\u5E76\u914D\u7F6E\u589E\u5F3A\u622A\u56FE\uFF1B\u7701\u7565\u65F6 adb \u4E3A\u81EA\u52A8\uFF0C\u5DF2\u6709\u589E\u5F3A\u622A\u56FE\u4E3A\u624B\u52A8\u3002" }, "emulatorPath": { "type": "string", "maxLength": 4096, "default": "" }, "instanceIndex": { "type": "integer", "minimum": 0, "maximum": 65535, "default": 0 }, "mumuTouch": { "type": "boolean", "default": false }, "mumuBridge": { "type": "boolean", "default": false } }, "required": ["method", "emulatorPath", "instanceIndex"] }, "ConnectionSettings": { "type": "object", "additionalProperties": false, "properties": { "adbPath": { "type": "string", "maxLength": 4096, "default": "" }, "address": { "type": "string", "maxLength": 128, "default": "" }, "config": { "type": "string", "enum": ["General", "BlueStacks", "MuMuEmulator12", "MuMuArm", "LDPlayer", "Nox", "XYAZ", "Compatible", "SecondResolution", "CompatMac", "CompatPOSIXShell", "Waydroid", "AVD", "Androws", "WSA"], "default": "General" }, "touchMode": { "type": "string", "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"], "default": "maatouch" }, "adbLite": { "type": "boolean", "default": false }, "clientType": { "type": "string", "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"], "default": "Official" } }, "required": ["adbPath", "address", "config", "touchMode", "adbLite", "clientType"] }, "DeviceConnectionProfile": { "type": "object", "additionalProperties": false, "required": ["id", "name", "address", "connection", "capture"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[A-Za-z0-9_-]+$" }, "autoDetected": { "type": "boolean", "description": "\u7531\u8FD0\u884C\u4E2D\u7684\u6A21\u62DF\u5668\u81EA\u52A8\u53D1\u73B0\u521B\u5EFA\uFF1B\u7528\u6237\u7F16\u8F91\u4FDD\u5B58\u540E\u8F6C\u4E3A\u624B\u52A8\u7BA1\u7406\u3002" }, "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "address": { "type": "string", "minLength": 1, "maxLength": 128 }, "connection": { "$ref": "#/$defs/ConnectionSettings" }, "capture": { "$ref": "#/$defs/CaptureSettings" } } }, "Device": { "additionalProperties": false, "properties": { "connectionProfileId": { "type": "string", "maxLength": 80 }, "connectionError": { "type": "string", "maxLength": 4096 }, "id": { "title": "Id", "type": "string" }, "name": { "title": "Name", "type": "string" }, "address": { "title": "Address", "type": "string" }, "state": { "enum": ["idle", "running", "offline"], "title": "State", "type": "string" }, "coreVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Coreversion" }, "captureMethod": { "type": "string", "maxLength": 128 }, "dataSync": { "$ref": "#/$defs/UserDataSync" }, "resourceVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Resourceversion" } }, "required": ["id", "name", "address", "state", "coreVersion", "resourceVersion"], "title": "Device", "type": "object" }, "Event": { "additionalProperties": false, "properties": { "id": { "title": "Id", "type": "integer" }, "type": { "title": "Type", "type": "string" }, "message": { "title": "Message", "type": "string" }, "createdAt": { "title": "Createdat", "type": "string" }, "data": { "additionalProperties": true, "title": "Data", "type": "object" } }, "required": ["id", "type", "message", "createdAt", "data"], "title": "Event", "type": "object" }, "ModelSettings": { "additionalProperties": false, "properties": { "provider": { "default": "none", "title": "Provider", "type": "string" }, "baseUrl": { "default": "", "title": "Baseurl", "type": "string" }, "model": { "default": "", "title": "Model", "type": "string" } }, "required": ["provider", "baseUrl", "model"], "title": "ModelSettings", "type": "object" }, "Plan": { "additionalProperties": false, "properties": { "id": { "default": "", "title": "Id", "type": "string" }, "name": { "maxLength": 80, "minLength": 1, "title": "Name", "type": "string" }, "description": { "default": "", "maxLength": 500, "title": "Description", "type": "string" }, "deviceId": { "anyOf": [{ "maxLength": 200, "minLength": 1, "type": "string" }, { "type": "null" }], "default": null, "title": "Deviceid", "description": "\u65E7\u7248\u5355\u8BBE\u5907\u7ED1\u5B9A\u517C\u5BB9\u5B57\u6BB5\uFF1B\u89C4\u8303\u5316\u540E\u4E3A deviceIds \u7B2C\u4E00\u9879\u6216 null\u3002" }, "deviceIds": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 200 }, "uniqueItems": true, "maxItems": 100, "description": "\u4EFB\u52A1\u8868\u7ED1\u5B9A\u7684\u8BBE\u5907\u5217\u8868\uFF1B\u4E00\u53F0\u8BBE\u5907\u53EF\u88AB\u591A\u5F20\u8868\u7ED1\u5B9A\u3002\u7A7A\u6570\u7EC4\u8868\u793A\u4E0D\u9884\u7ED1\u5B9A\uFF0C\u6267\u884C\u65F6\u9009\u62E9\u8BBE\u5907\u3002\u5B57\u6BB5\u7F3A\u7701\u65F6\u6CBF\u7528\u65E7\u7248 deviceId\u3002" }, "group": { "default": "daily", "enum": ["daily", "specialized"], "title": "Group", "type": "string" }, "budgets": { "anyOf": [{ "$ref": "#/$defs/Budgets" }, { "type": "null" }], "default": null }, "tasks": { "items": { "$ref": "#/$defs/Task" }, "maxItems": 30, "minItems": 1, "title": "Tasks", "type": "array" }, "schedule": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Schedule" }, "enabled": { "default": true, "title": "Enabled", "description": "\u65E7\u7248\u517C\u5BB9\u5B57\u6BB5\uFF1B\u670D\u52A1\u8BFB\u53D6\u548C\u4FDD\u5B58\u65F6\u7EDF\u4E00\u8FD4\u56DE true\uFF0C\u5386\u53F2\u503C\u4E0D\u5F71\u54CD\u4EFB\u52A1\u8868\u6267\u884C\u3002\u5355\u9879\u4EFB\u52A1\u4E0E\u5B9A\u65F6\u89C4\u5219\u5404\u81EA\u4FDD\u7559\u542F\u505C\u8BBE\u7F6E\u3002", "type": "boolean" } }, "required": ["id", "name", "description", "deviceId", "group", "budgets", "tasks", "schedule", "enabled"], "title": "Plan", "type": "object" }, "Run": { "additionalProperties": false, "properties": { "planName": { "type": "string", "maxLength": 80 }, "tasks": { "type": "array", "maxItems": 31, "items": { "$ref": "#/$defs/RunTask" } }, "id": { "title": "Id", "type": "string" }, "planId": { "title": "Planid", "type": ["string", "null"] }, "deviceId": { "title": "Deviceid", "type": "string" }, "status": { "enum": ["running", "completed", "failed", "stopped"], "title": "Status", "type": "string" }, "progress": { "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "title": "Message", "type": "string" }, "startedAt": { "title": "Startedat", "type": "string" }, "finishedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Finishedat" }, "scheduleId": { "type": "string", "minLength": 1, "maxLength": 200 }, "scheduledFor": { "type": "string", "minLength": 1, "maxLength": 80 }, "source": { "enum": ["plan", "copilot"] }, "sourceName": { "type": "string", "maxLength": 300 }, "copilotEntries": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/CopilotRunEntry" } }, "copilotKind": { "enum": ["Copilot", "SSSCopilot", "ParadoxCopilot"] } }, "required": ["id", "planId", "deviceId", "status", "progress", "message", "startedAt", "finishedAt"], "title": "Run", "type": "object" }, "RunTask": { "type": "object", "additionalProperties": false, "required": ["index", "type", "status", "message", "startedAt", "finishedAt", "drops", "infrastructure", "artifacts"], "properties": { "index": { "type": "integer", "minimum": 0, "maximum": 30 }, "type": { "type": "string", "maxLength": 80 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": ["string", "null"] }, "finishedAt": { "type": ["string", "null"] }, "drops": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/RunDrop" } }, "infrastructure": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/RunInfrastructure" } }, "artifacts": { "type": "array", "maxItems": 3, "items": { "$ref": "#/$defs/RunArtifact" } } } }, "RunDrop": { "type": "object", "additionalProperties": false, "required": ["itemId", "name", "quantity", "stage", "at"], "properties": { "itemId": { "type": "string", "minLength": 1, "maxLength": 200 }, "name": { "type": "string", "maxLength": 200 }, "quantity": { "type": "integer", "minimum": 0, "maximum": 2147483647 }, "stage": { "type": "string", "maxLength": 200 }, "at": { "type": "string" } } }, "RunInfrastructure": { "type": "object", "additionalProperties": false, "required": ["facility", "room", "operators", "product", "message", "at"], "properties": { "facility": { "type": "string", "maxLength": 80 }, "room": { "type": "integer", "minimum": 0, "maximum": 100 }, "operators": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 80 } }, "staffingStatus": { "description": "Latest staffing evidence; configured names are not an independently recognized final roster.", "enum": ["planned", "confirmed", "unavailable"] }, "product": { "type": "string", "maxLength": 200 }, "message": { "type": "string", "maxLength": 500 }, "at": { "type": "string" } } }, "RunArtifact": { "description": "Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.", "type": "object", "additionalProperties": false, "required": ["id", "kind", "label", "capturedAt", "width", "height"], "properties": { "id": { "type": "string", "pattern": "^[a-f0-9-]{36}$" }, "kind": { "const": "screenshot" }, "label": { "type": "string", "maxLength": 100 }, "capturedAt": { "type": "string" }, "width": { "type": "integer", "minimum": 1, "maximum": 8192 }, "height": { "type": "integer", "minimum": 1, "maximum": 8192 } } }, "InfrastructureLine": { "type": "object", "additionalProperties": false, "required": ["id", "name", "unit", "hourlyRate", "capacity", "lastCollectedAt"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 100 }, "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "unit": { "type": "string", "minLength": 1, "maxLength": 20 }, "hourlyRate": { "type": "number", "minimum": 0, "maximum": 1e9 }, "capacity": { "type": "number", "exclusiveMinimum": 0, "maximum": 1e9 }, "lastCollectedAt": { "type": "string", "minLength": 20, "maxLength": 40 } } }, "InfrastructureEstimateProfile": { "type": "object", "additionalProperties": false, "required": ["deviceId", "lines"], "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "lines": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/InfrastructureLine" } } } }, "ComponentPaths": { "description": "Absolute installation/download roots. An empty string restores the application default on settings.save.", "type": "object", "additionalProperties": false, "required": ["core", "resource"], "properties": { "core": { "type": "string", "maxLength": 4096 }, "resource": { "type": "string", "maxLength": 4096 } } }, "DownloadProxySettings": { "description": "Shared HTTP proxy policy for application, MaaCore and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.", "type": "object", "additionalProperties": false, "required": ["mode", "url"], "properties": { "mode": { "enum": ["auto", "manual", "direct"] }, "url": { "type": "string", "maxLength": 4096, "description": "Manual HTTP/HTTPS proxy address. settings.save accepts host:port with an implicit http:// scheme and normalizes it to a complete URL; other modes clear this field. A root slash is allowed; other paths, queries and fragments are rejected." } } }, "MirrorChyanSettings": { "type": "object", "additionalProperties": false, "required": ["enabled", "cdk"], "properties": { "enabled": { "type": "boolean", "default": true }, "cdk": { "type": "string", "maxLength": 256, "pattern": "^[^\\r\\n\\u0000]*$", "description": "Shared MirrorChyan CDK for the application, MaaCore and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports." } } }, "ResourceActivityVersion": { "type": "object", "additionalProperties": false, "required": ["clientType", "name", "lastUpdated"], "properties": { "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "name": { "type": ["string", "null"], "maxLength": 300 }, "lastUpdated": { "type": ["string", "null"], "maxLength": 200 } } }, "NotificationSettings": { "type": "object", "additionalProperties": false, "properties": { "enabled": { "type": "boolean", "default": true }, "runResults": { "type": "boolean", "default": true }, "deviceErrors": { "type": "boolean", "default": true }, "updates": { "type": "boolean", "default": true }, "schedules": { "type": "boolean", "default": true } }, "required": ["enabled", "runResults", "deviceErrors", "updates", "schedules"] }, "Settings": { "additionalProperties": false, "properties": { "componentPaths": { "$ref": "#/$defs/ComponentPaths" }, "downloadProxy": { "$ref": "#/$defs/DownloadProxySettings" }, "mirrorChyan": { "$ref": "#/$defs/MirrorChyanSettings" }, "notifications": { "$ref": "#/$defs/NotificationSettings" }, "infrastructureEstimates": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/InfrastructureEstimateProfile" } }, "capture": { "$ref": "#/$defs/CaptureSettings" }, "connection": { "$ref": "#/$defs/ConnectionSettings" }, "deviceProfiles": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/DeviceConnectionProfile" } }, "logRetentionDays": { "type": "integer", "enum": [0, 7, 14, 30], "default": 7, "description": "Log retention in days; zero disables automatic cleanup." }, "autoConnect": { "default": true, "title": "Autoconnect", "type": "boolean" }, "autoUpdateApp": { "type": "boolean", "default": true, "description": "\u542F\u52A8\u65F6\u8054\u7F51\u68C0\u67E5\u5E94\u7528\u66F4\u65B0\uFF1B\u4E0B\u8F7D\u7531\u7528\u6237\u786E\u8BA4\uFF0C\u5DF2\u4E0B\u8F7D\u5E76\u9A8C\u8BC1\u7684\u66F4\u65B0\u5728\u4E0B\u6B21\u542F\u52A8\u65F6\u81EA\u52A8\u5B89\u88C5\u3002" }, "appUpdateChannel": { "type": "string", "enum": ["stable", "preview"], "default": "preview" }, "coreUpdateChannel": { "type": "string", "enum": ["stable", "preview"], "default": "stable" }, "autoUpdateCore": { "default": true, "title": "Autoupdatecore", "type": "boolean" }, "autoUpdateResource": { "default": true, "title": "Autoupdateresource", "type": "boolean" }, "minimizeToTray": { "default": true, "title": "Minimizetotray", "type": "boolean" }, "rememberCloseAction": { "type": "boolean", "default": false, "description": "\u8BB0\u4F4F minimizeToTray \u6307\u5B9A\u7684\u5173\u95ED\u65B9\u5F0F\uFF1B\u7F3A\u5931\u6216 false \u65F6\u6BCF\u6B21\u5173\u95ED\u7A97\u53E3\u5747\u8BE2\u95EE\u3002" }, "theme": { "default": "system", "enum": ["dark", "light", "system"], "title": "Theme", "type": "string" }, "budgets": { "$ref": "#/$defs/Budgets" }, "model": { "$ref": "#/$defs/ModelSettings" }, "scheduler": { "$ref": "#/$defs/SchedulerSettings" }, "copilotStorage": { "$ref": "#/$defs/CopilotStorage" } }, "required": ["autoConnect", "autoUpdateCore", "autoUpdateResource", "minimizeToTray", "theme", "budgets", "model"], "title": "Settings", "type": "object" }, "UserDataSync": { "type": "object", "additionalProperties": false, "properties": { "operatorsAt": { "type": ["string", "null"], "maxLength": 64 }, "depotAt": { "type": ["string", "null"], "maxLength": 64 } }, "required": ["operatorsAt", "depotAt"] }, "Task": { "additionalProperties": false, "properties": { "type": { "enum": ["StartUp", "CloseDown", "Fight", "Recruit", "Infrast", "Mall", "Award", "SwitchTheme", "Roguelike", "Copilot", "SSSCopilot", "ParadoxCopilot", "Depot", "OperBox", "Reclamation", "Custom", "SingleStep", "VideoRecognition", "OperProgress", "UserDataUpdate"], "title": "Type", "type": "string" }, "params": { "additionalProperties": true, "title": "Params", "type": "object" }, "enabled": { "default": true, "title": "Enabled", "type": "boolean" } }, "required": ["type", "params", "enabled"], "title": "Task", "type": "object" }, "UpdateChannel": { "additionalProperties": false, "properties": { "checkedAt": { "type": "string", "maxLength": 64 }, "appCanInstall": { "type": "boolean", "description": "\u6B64\u5B89\u88C5\u5F62\u5F0F\u662F\u5426\u652F\u6301\u7B7E\u540D\u81EA\u52A8\u66F4\u65B0\u3002" }, "appInstallOnStartup": { "type": "boolean", "description": "\u5DF2\u9A8C\u8BC1\u7684\u5E94\u7528\u66F4\u65B0\u662F\u5426\u5B89\u6392\u5728\u4E0B\u6B21\u542F\u52A8\u5B89\u88C5\uFF1B\u5931\u8D25\u5C1D\u8BD5\u4FDD\u7559\u5305\u4F46\u4E0D\u4F1A\u81EA\u52A8\u5FAA\u73AF\u5B89\u88C5\u3002" }, "appRelease": { "type": "object", "additionalProperties": false, "required": ["url", "notes", "publishedAt", "prerelease"], "properties": { "url": { "type": "string", "maxLength": 2048 }, "notes": { "type": "string", "maxLength": 16384 }, "publishedAt": { "type": "string", "maxLength": 64 }, "prerelease": { "type": "boolean" } } }, "installDirectory": { "type": "string", "maxLength": 4096 }, "resourceActivities": { "type": "array", "maxItems": 6, "items": { "$ref": "#/$defs/ResourceActivityVersion" } }, "id": { "enum": ["app", "core", "resource"], "title": "Id", "type": "string" }, "currentVersion": { "title": "Currentversion", "type": "string" }, "latestVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Latestversion" }, "status": { "default": "idle", "enum": ["idle", "checking", "available", "downloading", "staged", "waiting_idle", "active", "failed"], "title": "Status", "type": "string" }, "progress": { "default": 0, "maximum": 100, "minimum": 0, "title": "Progress", "type": "integer" }, "message": { "default": "", "title": "Message", "type": "string" }, "downloadSpeedBytesPerSecond": { "description": "\u5F53\u524D\u7F51\u7EDC\u4F20\u8F93\u901F\u5EA6\uFF0C\u5355\u4F4D\u4E3A\u5B57\u8282/\u79D2\uFF1B\u975E\u4F20\u8F93\u9636\u6BB5\u7701\u7565\u3002", "type": "number", "minimum": 0 } }, "required": ["id", "currentVersion", "latestVersion", "status", "progress", "message"], "title": "UpdateChannel", "type": "object" }, "SchedulerSettings": { "type": "object", "additionalProperties": false, "properties": { "forceScheduledStart": { "type": "boolean" }, "showWindowBeforeForceScheduledStart": { "type": "boolean" }, "notifyBeforeScheduledStart": { "type": "boolean" }, "notificationMinutes": { "type": "integer", "minimum": 1, "maximum": 1439 }, "scheduledWakeUp": { "type": "boolean" } }, "required": ["forceScheduledStart", "showWindowBeforeForceScheduledStart", "notifyBeforeScheduledStart", "notificationMinutes", "scheduledWakeUp"] }, "ToolJobSummary": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "kind": { "enum": ["depot", "operators", "recruit", "inventory", "data", "games"] }, "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "status": { "enum": ["running", "completed", "failed", "stopped"] }, "progress": { "type": "integer", "minimum": 0, "maximum": 100 }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": "string", "minLength": 1, "maxLength": 40 }, "finishedAt": { "type": ["string", "null"] } }, "required": ["id", "kind", "deviceId", "clientType", "status", "progress", "message", "startedAt", "finishedAt"] }, "CopilotRunEntry": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "versionId": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "title": { "type": "string", "maxLength": 300 }, "nativeId": { "type": "integer", "minimum": 1, "maximum": 100 }, "status": { "enum": ["waiting", "running", "completed", "failed", "stopped", "skipped"] }, "verdict": { "enum": ["unknown", "success", "failure"] }, "message": { "type": "string", "maxLength": 1e3 } }, "required": ["id", "versionId", "title", "nativeId", "status", "verdict", "message"] }, "CopilotStorage": { "type": "object", "additionalProperties": false, "properties": { "directory": { "type": "string", "maxLength": 4096, "description": "Absolute directory for imported library JSON copies. Empty restores application cache/copilot." }, "deleteJsonFiles": { "type": "boolean", "default": false } }, "required": ["directory", "deleteJsonFiles"] } }, "additionalProperties": false, "properties": { "mode": { "enum": ["native"], "title": "Mode", "type": "string" }, "devices": { "items": { "$ref": "#/$defs/Device" }, "title": "Devices", "type": "array" }, "plans": { "items": { "$ref": "#/$defs/Plan" }, "title": "Plans", "type": "array" }, "runs": { "items": { "$ref": "#/$defs/Run" }, "title": "Runs", "type": "array" }, "updates": { "items": { "$ref": "#/$defs/UpdateChannel" }, "title": "Updates", "type": "array" }, "settings": { "$ref": "#/$defs/Settings" }, "events": { "items": { "$ref": "#/$defs/Event" }, "title": "Events", "type": "array" }, "toolJobs": { "type": "array", "items": { "$ref": "#/$defs/ToolJobSummary" } } }, "required": ["mode", "devices", "plans", "runs", "updates", "settings", "events"], "title": "Snapshot", "type": "object" };
 var schema42 = { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 200 }, "kind": { "enum": ["depot", "operators", "recruit", "inventory", "data", "games"] }, "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "clientType": { "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"] }, "status": { "enum": ["running", "completed", "failed", "stopped"] }, "progress": { "type": "integer", "minimum": 0, "maximum": 100 }, "message": { "type": "string", "maxLength": 1e3 }, "startedAt": { "type": "string", "minLength": 1, "maxLength": 40 }, "finishedAt": { "type": ["string", "null"] } }, "required": ["id", "kind", "deviceId", "clientType", "status", "progress", "message", "startedAt", "finishedAt"] };
 var schema12 = { "additionalProperties": false, "properties": { "connectionProfileId": { "type": "string", "maxLength": 80 }, "connectionError": { "type": "string", "maxLength": 4096 }, "id": { "title": "Id", "type": "string" }, "name": { "title": "Name", "type": "string" }, "address": { "title": "Address", "type": "string" }, "state": { "enum": ["idle", "running", "offline"], "title": "State", "type": "string" }, "coreVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Coreversion" }, "captureMethod": { "type": "string", "maxLength": 128 }, "dataSync": { "$ref": "#/$defs/UserDataSync" }, "resourceVersion": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Resourceversion" } }, "required": ["id", "name", "address", "state", "coreVersion", "resourceVersion"], "title": "Device", "type": "object" };
 var schema13 = { "type": "object", "additionalProperties": false, "properties": { "operatorsAt": { "type": ["string", "null"], "maxLength": 64 }, "depotAt": { "type": ["string", "null"], "maxLength": 64 } }, "required": ["operatorsAt", "depotAt"] };
@@ -429,7 +429,7 @@ function validate11(data, { instancePath = "", parentData, parentDataProperty, r
   validate11.errors = vErrors;
   return errors === 0;
 }
-var schema14 = { "additionalProperties": false, "properties": { "id": { "default": "", "title": "Id", "type": "string" }, "name": { "maxLength": 80, "minLength": 1, "title": "Name", "type": "string" }, "description": { "default": "", "maxLength": 500, "title": "Description", "type": "string" }, "deviceId": { "anyOf": [{ "maxLength": 200, "minLength": 1, "type": "string" }, { "type": "null" }], "default": null, "title": "Deviceid" }, "group": { "default": "daily", "enum": ["daily", "specialized"], "title": "Group", "type": "string" }, "budgets": { "anyOf": [{ "$ref": "#/$defs/Budgets" }, { "type": "null" }], "default": null }, "tasks": { "items": { "$ref": "#/$defs/Task" }, "maxItems": 30, "minItems": 1, "title": "Tasks", "type": "array" }, "schedule": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Schedule" }, "enabled": { "default": true, "title": "Enabled", "type": "boolean" } }, "required": ["id", "name", "description", "deviceId", "group", "budgets", "tasks", "schedule", "enabled"], "title": "Plan", "type": "object" };
+var schema14 = { "additionalProperties": false, "properties": { "id": { "default": "", "title": "Id", "type": "string" }, "name": { "maxLength": 80, "minLength": 1, "title": "Name", "type": "string" }, "description": { "default": "", "maxLength": 500, "title": "Description", "type": "string" }, "deviceId": { "anyOf": [{ "maxLength": 200, "minLength": 1, "type": "string" }, { "type": "null" }], "default": null, "title": "Deviceid", "description": "\u65E7\u7248\u5355\u8BBE\u5907\u7ED1\u5B9A\u517C\u5BB9\u5B57\u6BB5\uFF1B\u89C4\u8303\u5316\u540E\u4E3A deviceIds \u7B2C\u4E00\u9879\u6216 null\u3002" }, "deviceIds": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 200 }, "uniqueItems": true, "maxItems": 100, "description": "\u4EFB\u52A1\u8868\u7ED1\u5B9A\u7684\u8BBE\u5907\u5217\u8868\uFF1B\u4E00\u53F0\u8BBE\u5907\u53EF\u88AB\u591A\u5F20\u8868\u7ED1\u5B9A\u3002\u7A7A\u6570\u7EC4\u8868\u793A\u4E0D\u9884\u7ED1\u5B9A\uFF0C\u6267\u884C\u65F6\u9009\u62E9\u8BBE\u5907\u3002\u5B57\u6BB5\u7F3A\u7701\u65F6\u6CBF\u7528\u65E7\u7248 deviceId\u3002" }, "group": { "default": "daily", "enum": ["daily", "specialized"], "title": "Group", "type": "string" }, "budgets": { "anyOf": [{ "$ref": "#/$defs/Budgets" }, { "type": "null" }], "default": null }, "tasks": { "items": { "$ref": "#/$defs/Task" }, "maxItems": 30, "minItems": 1, "title": "Tasks", "type": "array" }, "schedule": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null, "title": "Schedule" }, "enabled": { "default": true, "title": "Enabled", "description": "\u65E7\u7248\u517C\u5BB9\u5B57\u6BB5\uFF1B\u670D\u52A1\u8BFB\u53D6\u548C\u4FDD\u5B58\u65F6\u7EDF\u4E00\u8FD4\u56DE true\uFF0C\u5386\u53F2\u503C\u4E0D\u5F71\u54CD\u4EFB\u52A1\u8868\u6267\u884C\u3002\u5355\u9879\u4EFB\u52A1\u4E0E\u5B9A\u65F6\u89C4\u5219\u5404\u81EA\u4FDD\u7559\u542F\u505C\u8BBE\u7F6E\u3002", "type": "boolean" } }, "required": ["id", "name", "description", "deviceId", "group", "budgets", "tasks", "schedule", "enabled"], "title": "Plan", "type": "object" };
 var schema16 = { "additionalProperties": false, "properties": { "type": { "enum": ["StartUp", "CloseDown", "Fight", "Recruit", "Infrast", "Mall", "Award", "SwitchTheme", "Roguelike", "Copilot", "SSSCopilot", "ParadoxCopilot", "Depot", "OperBox", "Reclamation", "Custom", "SingleStep", "VideoRecognition", "OperProgress", "UserDataUpdate"], "title": "Type", "type": "string" }, "params": { "additionalProperties": true, "title": "Params", "type": "object" }, "enabled": { "default": true, "title": "Enabled", "type": "boolean" } }, "required": ["type", "params", "enabled"], "title": "Task", "type": "object" };
 function validate13(data, { instancePath = "", parentData, parentDataProperty, rootData = data } = {}) {
   let vErrors = null;
@@ -659,139 +659,152 @@ function validate13(data, { instancePath = "", parentData, parentDataProperty, r
         }
       }
     }
-    if (data.group !== void 0) {
-      let data4 = data.group;
-      if (typeof data4 !== "string") {
-        const err21 = { instancePath: instancePath + "/group", schemaPath: "#/properties/group/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+    if (data.deviceIds !== void 0) {
+      let data4 = data.deviceIds;
+      if (Array.isArray(data4)) {
+        if (data4.length > 100) {
+          const err21 = { instancePath: instancePath + "/deviceIds", schemaPath: "#/properties/deviceIds/maxItems", keyword: "maxItems", params: { limit: 100 }, message: "must NOT have more than 100 items" };
+          if (vErrors === null) {
+            vErrors = [err21];
+          } else {
+            vErrors.push(err21);
+          }
+          errors++;
+        }
+        const len0 = data4.length;
+        for (let i0 = 0; i0 < len0; i0++) {
+          let data5 = data4[i0];
+          if (typeof data5 === "string") {
+            if (func3(data5) > 200) {
+              const err22 = { instancePath: instancePath + "/deviceIds/" + i0, schemaPath: "#/properties/deviceIds/items/maxLength", keyword: "maxLength", params: { limit: 200 }, message: "must NOT have more than 200 characters" };
+              if (vErrors === null) {
+                vErrors = [err22];
+              } else {
+                vErrors.push(err22);
+              }
+              errors++;
+            }
+            if (func3(data5) < 1) {
+              const err23 = { instancePath: instancePath + "/deviceIds/" + i0, schemaPath: "#/properties/deviceIds/items/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
+              if (vErrors === null) {
+                vErrors = [err23];
+              } else {
+                vErrors.push(err23);
+              }
+              errors++;
+            }
+          } else {
+            const err24 = { instancePath: instancePath + "/deviceIds/" + i0, schemaPath: "#/properties/deviceIds/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+            if (vErrors === null) {
+              vErrors = [err24];
+            } else {
+              vErrors.push(err24);
+            }
+            errors++;
+          }
+        }
+        let i1 = data4.length;
+        let j0;
+        if (i1 > 1) {
+          const indices0 = {};
+          for (; i1--; ) {
+            let item0 = data4[i1];
+            if (typeof item0 !== "string") {
+              continue;
+            }
+            if (typeof indices0[item0] == "number") {
+              j0 = indices0[item0];
+              const err25 = { instancePath: instancePath + "/deviceIds", schemaPath: "#/properties/deviceIds/uniqueItems", keyword: "uniqueItems", params: { i: i1, j: j0 }, message: "must NOT have duplicate items (items ## " + j0 + " and " + i1 + " are identical)" };
+              if (vErrors === null) {
+                vErrors = [err25];
+              } else {
+                vErrors.push(err25);
+              }
+              errors++;
+              break;
+            }
+            indices0[item0] = i1;
+          }
+        }
+      } else {
+        const err26 = { instancePath: instancePath + "/deviceIds", schemaPath: "#/properties/deviceIds/type", keyword: "type", params: { type: "array" }, message: "must be array" };
         if (vErrors === null) {
-          vErrors = [err21];
+          vErrors = [err26];
         } else {
-          vErrors.push(err21);
+          vErrors.push(err26);
         }
         errors++;
       }
-      if (!(data4 === "daily" || data4 === "specialized")) {
-        const err22 = { instancePath: instancePath + "/group", schemaPath: "#/properties/group/enum", keyword: "enum", params: { allowedValues: schema14.properties.group.enum }, message: "must be equal to one of the allowed values" };
+    }
+    if (data.group !== void 0) {
+      let data6 = data.group;
+      if (typeof data6 !== "string") {
+        const err27 = { instancePath: instancePath + "/group", schemaPath: "#/properties/group/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
-          vErrors = [err22];
+          vErrors = [err27];
         } else {
-          vErrors.push(err22);
+          vErrors.push(err27);
+        }
+        errors++;
+      }
+      if (!(data6 === "daily" || data6 === "specialized")) {
+        const err28 = { instancePath: instancePath + "/group", schemaPath: "#/properties/group/enum", keyword: "enum", params: { allowedValues: schema14.properties.group.enum }, message: "must be equal to one of the allowed values" };
+        if (vErrors === null) {
+          vErrors = [err28];
+        } else {
+          vErrors.push(err28);
         }
         errors++;
       }
     }
     if (data.budgets !== void 0) {
-      let data5 = data.budgets;
-      const _errs17 = errors;
-      let valid2 = false;
-      const _errs18 = errors;
-      if (data5 && typeof data5 == "object" && !Array.isArray(data5)) {
-        if (data5.originium === void 0) {
-          const err23 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "originium" }, message: "must have required property 'originium'" };
+      let data7 = data.budgets;
+      const _errs21 = errors;
+      let valid5 = false;
+      const _errs22 = errors;
+      if (data7 && typeof data7 == "object" && !Array.isArray(data7)) {
+        if (data7.originium === void 0) {
+          const err29 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "originium" }, message: "must have required property 'originium'" };
           if (vErrors === null) {
-            vErrors = [err23];
+            vErrors = [err29];
           } else {
-            vErrors.push(err23);
+            vErrors.push(err29);
           }
           errors++;
         }
-        if (data5.medicine === void 0) {
-          const err24 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "medicine" }, message: "must have required property 'medicine'" };
+        if (data7.medicine === void 0) {
+          const err30 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "medicine" }, message: "must have required property 'medicine'" };
           if (vErrors === null) {
-            vErrors = [err24];
+            vErrors = [err30];
           } else {
-            vErrors.push(err24);
+            vErrors.push(err30);
           }
           errors++;
         }
-        if (data5.expedited === void 0) {
-          const err25 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "expedited" }, message: "must have required property 'expedited'" };
+        if (data7.expedited === void 0) {
+          const err31 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "expedited" }, message: "must have required property 'expedited'" };
           if (vErrors === null) {
-            vErrors = [err25];
+            vErrors = [err31];
           } else {
-            vErrors.push(err25);
+            vErrors.push(err31);
           }
           errors++;
         }
-        for (const key1 in data5) {
+        for (const key1 in data7) {
           if (!(key1 === "originium" || key1 === "medicine" || key1 === "expedited")) {
-            const err26 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" };
+            const err32 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" };
             if (vErrors === null) {
-              vErrors = [err26];
+              vErrors = [err32];
             } else {
-              vErrors.push(err26);
+              vErrors.push(err32);
             }
             errors++;
           }
         }
-        if (data5.originium !== void 0) {
-          let data6 = data5.originium;
-          if (!(typeof data6 == "number" && (!(data6 % 1) && !isNaN(data6)) && isFinite(data6))) {
-            const err27 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
-            if (vErrors === null) {
-              vErrors = [err27];
-            } else {
-              vErrors.push(err27);
-            }
-            errors++;
-          }
-          if (typeof data6 == "number" && isFinite(data6)) {
-            if (data6 > 100 || isNaN(data6)) {
-              const err28 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
-              if (vErrors === null) {
-                vErrors = [err28];
-              } else {
-                vErrors.push(err28);
-              }
-              errors++;
-            }
-            if (data6 < 0 || isNaN(data6)) {
-              const err29 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
-              if (vErrors === null) {
-                vErrors = [err29];
-              } else {
-                vErrors.push(err29);
-              }
-              errors++;
-            }
-          }
-        }
-        if (data5.medicine !== void 0) {
-          let data7 = data5.medicine;
-          if (!(typeof data7 == "number" && (!(data7 % 1) && !isNaN(data7)) && isFinite(data7))) {
-            const err30 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
-            if (vErrors === null) {
-              vErrors = [err30];
-            } else {
-              vErrors.push(err30);
-            }
-            errors++;
-          }
-          if (typeof data7 == "number" && isFinite(data7)) {
-            if (data7 > 100 || isNaN(data7)) {
-              const err31 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
-              if (vErrors === null) {
-                vErrors = [err31];
-              } else {
-                vErrors.push(err31);
-              }
-              errors++;
-            }
-            if (data7 < 0 || isNaN(data7)) {
-              const err32 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
-              if (vErrors === null) {
-                vErrors = [err32];
-              } else {
-                vErrors.push(err32);
-              }
-              errors++;
-            }
-          }
-        }
-        if (data5.expedited !== void 0) {
-          let data8 = data5.expedited;
+        if (data7.originium !== void 0) {
+          let data8 = data7.originium;
           if (!(typeof data8 == "number" && (!(data8 % 1) && !isNaN(data8)) && isFinite(data8))) {
-            const err33 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+            const err33 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
             if (vErrors === null) {
               vErrors = [err33];
             } else {
@@ -801,7 +814,7 @@ function validate13(data, { instancePath = "", parentData, parentDataProperty, r
           }
           if (typeof data8 == "number" && isFinite(data8)) {
             if (data8 > 100 || isNaN(data8)) {
-              const err34 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
+              const err34 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
               if (vErrors === null) {
                 vErrors = [err34];
               } else {
@@ -810,7 +823,7 @@ function validate13(data, { instancePath = "", parentData, parentDataProperty, r
               errors++;
             }
             if (data8 < 0 || isNaN(data8)) {
-              const err35 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
+              const err35 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
               if (vErrors === null) {
                 vErrors = [err35];
               } else {
@@ -820,77 +833,61 @@ function validate13(data, { instancePath = "", parentData, parentDataProperty, r
             }
           }
         }
-      } else {
-        const err36 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/type", keyword: "type", params: { type: "object" }, message: "must be object" };
-        if (vErrors === null) {
-          vErrors = [err36];
-        } else {
-          vErrors.push(err36);
-        }
-        errors++;
-      }
-      var _valid1 = _errs18 === errors;
-      valid2 = valid2 || _valid1;
-      if (!valid2) {
-        const _errs28 = errors;
-        if (data5 !== null) {
-          const err37 = { instancePath: instancePath + "/budgets", schemaPath: "#/properties/budgets/anyOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
-          if (vErrors === null) {
-            vErrors = [err37];
-          } else {
-            vErrors.push(err37);
+        if (data7.medicine !== void 0) {
+          let data9 = data7.medicine;
+          if (!(typeof data9 == "number" && (!(data9 % 1) && !isNaN(data9)) && isFinite(data9))) {
+            const err36 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+            if (vErrors === null) {
+              vErrors = [err36];
+            } else {
+              vErrors.push(err36);
+            }
+            errors++;
           }
-          errors++;
-        }
-        var _valid1 = _errs28 === errors;
-        valid2 = valid2 || _valid1;
-      }
-      if (!valid2) {
-        const err38 = { instancePath: instancePath + "/budgets", schemaPath: "#/properties/budgets/anyOf", keyword: "anyOf", params: {}, message: "must match a schema in anyOf" };
-        if (vErrors === null) {
-          vErrors = [err38];
-        } else {
-          vErrors.push(err38);
-        }
-        errors++;
-      } else {
-        errors = _errs17;
-        if (vErrors !== null) {
-          if (_errs17) {
-            vErrors.length = _errs17;
-          } else {
-            vErrors = null;
+          if (typeof data9 == "number" && isFinite(data9)) {
+            if (data9 > 100 || isNaN(data9)) {
+              const err37 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
+              if (vErrors === null) {
+                vErrors = [err37];
+              } else {
+                vErrors.push(err37);
+              }
+              errors++;
+            }
+            if (data9 < 0 || isNaN(data9)) {
+              const err38 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
+              if (vErrors === null) {
+                vErrors = [err38];
+              } else {
+                vErrors.push(err38);
+              }
+              errors++;
+            }
           }
         }
-      }
-    }
-    if (data.tasks !== void 0) {
-      let data9 = data.tasks;
-      if (Array.isArray(data9)) {
-        if (data9.length > 30) {
-          const err39 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/maxItems", keyword: "maxItems", params: { limit: 30 }, message: "must NOT have more than 30 items" };
-          if (vErrors === null) {
-            vErrors = [err39];
-          } else {
-            vErrors.push(err39);
+        if (data7.expedited !== void 0) {
+          let data10 = data7.expedited;
+          if (!(typeof data10 == "number" && (!(data10 % 1) && !isNaN(data10)) && isFinite(data10))) {
+            const err39 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+            if (vErrors === null) {
+              vErrors = [err39];
+            } else {
+              vErrors.push(err39);
+            }
+            errors++;
           }
-          errors++;
-        }
-        if (data9.length < 1) {
-          const err40 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" };
-          if (vErrors === null) {
-            vErrors = [err40];
-          } else {
-            vErrors.push(err40);
-          }
-          errors++;
-        }
-        const len0 = data9.length;
-        for (let i0 = 0; i0 < len0; i0++) {
-          let data10 = data9[i0];
-          if (data10 && typeof data10 == "object" && !Array.isArray(data10)) {
-            if (data10.type === void 0) {
-              const err41 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "type" }, message: "must have required property 'type'" };
+          if (typeof data10 == "number" && isFinite(data10)) {
+            if (data10 > 100 || isNaN(data10)) {
+              const err40 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
+              if (vErrors === null) {
+                vErrors = [err40];
+              } else {
+                vErrors.push(err40);
+              }
+              errors++;
+            }
+            if (data10 < 0 || isNaN(data10)) {
+              const err41 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
               if (vErrors === null) {
                 vErrors = [err41];
               } else {
@@ -898,143 +895,223 @@ function validate13(data, { instancePath = "", parentData, parentDataProperty, r
               }
               errors++;
             }
-            if (data10.params === void 0) {
-              const err42 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "params" }, message: "must have required property 'params'" };
+          }
+        }
+      } else {
+        const err42 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+        if (vErrors === null) {
+          vErrors = [err42];
+        } else {
+          vErrors.push(err42);
+        }
+        errors++;
+      }
+      var _valid1 = _errs22 === errors;
+      valid5 = valid5 || _valid1;
+      if (!valid5) {
+        const _errs32 = errors;
+        if (data7 !== null) {
+          const err43 = { instancePath: instancePath + "/budgets", schemaPath: "#/properties/budgets/anyOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
+          if (vErrors === null) {
+            vErrors = [err43];
+          } else {
+            vErrors.push(err43);
+          }
+          errors++;
+        }
+        var _valid1 = _errs32 === errors;
+        valid5 = valid5 || _valid1;
+      }
+      if (!valid5) {
+        const err44 = { instancePath: instancePath + "/budgets", schemaPath: "#/properties/budgets/anyOf", keyword: "anyOf", params: {}, message: "must match a schema in anyOf" };
+        if (vErrors === null) {
+          vErrors = [err44];
+        } else {
+          vErrors.push(err44);
+        }
+        errors++;
+      } else {
+        errors = _errs21;
+        if (vErrors !== null) {
+          if (_errs21) {
+            vErrors.length = _errs21;
+          } else {
+            vErrors = null;
+          }
+        }
+      }
+    }
+    if (data.tasks !== void 0) {
+      let data11 = data.tasks;
+      if (Array.isArray(data11)) {
+        if (data11.length > 30) {
+          const err45 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/maxItems", keyword: "maxItems", params: { limit: 30 }, message: "must NOT have more than 30 items" };
+          if (vErrors === null) {
+            vErrors = [err45];
+          } else {
+            vErrors.push(err45);
+          }
+          errors++;
+        }
+        if (data11.length < 1) {
+          const err46 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" };
+          if (vErrors === null) {
+            vErrors = [err46];
+          } else {
+            vErrors.push(err46);
+          }
+          errors++;
+        }
+        const len1 = data11.length;
+        for (let i2 = 0; i2 < len1; i2++) {
+          let data12 = data11[i2];
+          if (data12 && typeof data12 == "object" && !Array.isArray(data12)) {
+            if (data12.type === void 0) {
+              const err47 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "type" }, message: "must have required property 'type'" };
               if (vErrors === null) {
-                vErrors = [err42];
+                vErrors = [err47];
               } else {
-                vErrors.push(err42);
+                vErrors.push(err47);
               }
               errors++;
             }
-            if (data10.enabled === void 0) {
-              const err43 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "enabled" }, message: "must have required property 'enabled'" };
+            if (data12.params === void 0) {
+              const err48 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "params" }, message: "must have required property 'params'" };
               if (vErrors === null) {
-                vErrors = [err43];
+                vErrors = [err48];
               } else {
-                vErrors.push(err43);
+                vErrors.push(err48);
               }
               errors++;
             }
-            for (const key2 in data10) {
+            if (data12.enabled === void 0) {
+              const err49 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "enabled" }, message: "must have required property 'enabled'" };
+              if (vErrors === null) {
+                vErrors = [err49];
+              } else {
+                vErrors.push(err49);
+              }
+              errors++;
+            }
+            for (const key2 in data12) {
               if (!(key2 === "type" || key2 === "params" || key2 === "enabled")) {
-                const err44 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" };
+                const err50 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" };
                 if (vErrors === null) {
-                  vErrors = [err44];
+                  vErrors = [err50];
                 } else {
-                  vErrors.push(err44);
+                  vErrors.push(err50);
                 }
                 errors++;
               }
             }
-            if (data10.type !== void 0) {
-              let data11 = data10.type;
-              if (typeof data11 !== "string") {
-                const err45 = { instancePath: instancePath + "/tasks/" + i0 + "/type", schemaPath: "#/$defs/Task/properties/type/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+            if (data12.type !== void 0) {
+              let data13 = data12.type;
+              if (typeof data13 !== "string") {
+                const err51 = { instancePath: instancePath + "/tasks/" + i2 + "/type", schemaPath: "#/$defs/Task/properties/type/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                 if (vErrors === null) {
-                  vErrors = [err45];
+                  vErrors = [err51];
                 } else {
-                  vErrors.push(err45);
+                  vErrors.push(err51);
                 }
                 errors++;
               }
-              if (!(data11 === "StartUp" || data11 === "CloseDown" || data11 === "Fight" || data11 === "Recruit" || data11 === "Infrast" || data11 === "Mall" || data11 === "Award" || data11 === "SwitchTheme" || data11 === "Roguelike" || data11 === "Copilot" || data11 === "SSSCopilot" || data11 === "ParadoxCopilot" || data11 === "Depot" || data11 === "OperBox" || data11 === "Reclamation" || data11 === "Custom" || data11 === "SingleStep" || data11 === "VideoRecognition" || data11 === "OperProgress" || data11 === "UserDataUpdate")) {
-                const err46 = { instancePath: instancePath + "/tasks/" + i0 + "/type", schemaPath: "#/$defs/Task/properties/type/enum", keyword: "enum", params: { allowedValues: schema16.properties.type.enum }, message: "must be equal to one of the allowed values" };
+              if (!(data13 === "StartUp" || data13 === "CloseDown" || data13 === "Fight" || data13 === "Recruit" || data13 === "Infrast" || data13 === "Mall" || data13 === "Award" || data13 === "SwitchTheme" || data13 === "Roguelike" || data13 === "Copilot" || data13 === "SSSCopilot" || data13 === "ParadoxCopilot" || data13 === "Depot" || data13 === "OperBox" || data13 === "Reclamation" || data13 === "Custom" || data13 === "SingleStep" || data13 === "VideoRecognition" || data13 === "OperProgress" || data13 === "UserDataUpdate")) {
+                const err52 = { instancePath: instancePath + "/tasks/" + i2 + "/type", schemaPath: "#/$defs/Task/properties/type/enum", keyword: "enum", params: { allowedValues: schema16.properties.type.enum }, message: "must be equal to one of the allowed values" };
                 if (vErrors === null) {
-                  vErrors = [err46];
+                  vErrors = [err52];
                 } else {
-                  vErrors.push(err46);
+                  vErrors.push(err52);
                 }
                 errors++;
               }
             }
-            if (data10.params !== void 0) {
-              let data12 = data10.params;
-              if (data12 && typeof data12 == "object" && !Array.isArray(data12)) {
+            if (data12.params !== void 0) {
+              let data14 = data12.params;
+              if (data14 && typeof data14 == "object" && !Array.isArray(data14)) {
               } else {
-                const err47 = { instancePath: instancePath + "/tasks/" + i0 + "/params", schemaPath: "#/$defs/Task/properties/params/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+                const err53 = { instancePath: instancePath + "/tasks/" + i2 + "/params", schemaPath: "#/$defs/Task/properties/params/type", keyword: "type", params: { type: "object" }, message: "must be object" };
                 if (vErrors === null) {
-                  vErrors = [err47];
+                  vErrors = [err53];
                 } else {
-                  vErrors.push(err47);
+                  vErrors.push(err53);
                 }
                 errors++;
               }
             }
-            if (data10.enabled !== void 0) {
-              if (typeof data10.enabled !== "boolean") {
-                const err48 = { instancePath: instancePath + "/tasks/" + i0 + "/enabled", schemaPath: "#/$defs/Task/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+            if (data12.enabled !== void 0) {
+              if (typeof data12.enabled !== "boolean") {
+                const err54 = { instancePath: instancePath + "/tasks/" + i2 + "/enabled", schemaPath: "#/$defs/Task/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
                 if (vErrors === null) {
-                  vErrors = [err48];
+                  vErrors = [err54];
                 } else {
-                  vErrors.push(err48);
+                  vErrors.push(err54);
                 }
                 errors++;
               }
             }
           } else {
-            const err49 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+            const err55 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/type", keyword: "type", params: { type: "object" }, message: "must be object" };
             if (vErrors === null) {
-              vErrors = [err49];
+              vErrors = [err55];
             } else {
-              vErrors.push(err49);
+              vErrors.push(err55);
             }
             errors++;
           }
         }
       } else {
-        const err50 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+        const err56 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/type", keyword: "type", params: { type: "array" }, message: "must be array" };
         if (vErrors === null) {
-          vErrors = [err50];
+          vErrors = [err56];
         } else {
-          vErrors.push(err50);
+          vErrors.push(err56);
         }
         errors++;
       }
     }
     if (data.schedule !== void 0) {
-      let data14 = data.schedule;
-      const _errs44 = errors;
-      let valid9 = false;
-      const _errs45 = errors;
-      if (typeof data14 !== "string") {
-        const err51 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf/0/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+      let data16 = data.schedule;
+      const _errs48 = errors;
+      let valid12 = false;
+      const _errs49 = errors;
+      if (typeof data16 !== "string") {
+        const err57 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf/0/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
-          vErrors = [err51];
+          vErrors = [err57];
         } else {
-          vErrors.push(err51);
+          vErrors.push(err57);
         }
         errors++;
       }
-      var _valid2 = _errs45 === errors;
-      valid9 = valid9 || _valid2;
-      if (!valid9) {
-        const _errs47 = errors;
-        if (data14 !== null) {
-          const err52 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
+      var _valid2 = _errs49 === errors;
+      valid12 = valid12 || _valid2;
+      if (!valid12) {
+        const _errs51 = errors;
+        if (data16 !== null) {
+          const err58 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
           if (vErrors === null) {
-            vErrors = [err52];
+            vErrors = [err58];
           } else {
-            vErrors.push(err52);
+            vErrors.push(err58);
           }
           errors++;
         }
-        var _valid2 = _errs47 === errors;
-        valid9 = valid9 || _valid2;
+        var _valid2 = _errs51 === errors;
+        valid12 = valid12 || _valid2;
       }
-      if (!valid9) {
-        const err53 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf", keyword: "anyOf", params: {}, message: "must match a schema in anyOf" };
+      if (!valid12) {
+        const err59 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf", keyword: "anyOf", params: {}, message: "must match a schema in anyOf" };
         if (vErrors === null) {
-          vErrors = [err53];
+          vErrors = [err59];
         } else {
-          vErrors.push(err53);
+          vErrors.push(err59);
         }
         errors++;
       } else {
-        errors = _errs44;
+        errors = _errs48;
         if (vErrors !== null) {
-          if (_errs44) {
-            vErrors.length = _errs44;
+          if (_errs48) {
+            vErrors.length = _errs48;
           } else {
             vErrors = null;
           }
@@ -1043,21 +1120,21 @@ function validate13(data, { instancePath = "", parentData, parentDataProperty, r
     }
     if (data.enabled !== void 0) {
       if (typeof data.enabled !== "boolean") {
-        const err54 = { instancePath: instancePath + "/enabled", schemaPath: "#/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+        const err60 = { instancePath: instancePath + "/enabled", schemaPath: "#/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
         if (vErrors === null) {
-          vErrors = [err54];
+          vErrors = [err60];
         } else {
-          vErrors.push(err54);
+          vErrors.push(err60);
         }
         errors++;
       }
     }
   } else {
-    const err55 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err61 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err55];
+      vErrors = [err61];
     } else {
-      vErrors.push(err55);
+      vErrors.push(err61);
     }
     errors++;
   }
@@ -10235,139 +10312,152 @@ function validate151(data, { instancePath = "", parentData, parentDataProperty, 
         }
       }
     }
-    if (data.group !== void 0) {
-      let data4 = data.group;
-      if (typeof data4 !== "string") {
-        const err21 = { instancePath: instancePath + "/group", schemaPath: "#/properties/group/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+    if (data.deviceIds !== void 0) {
+      let data4 = data.deviceIds;
+      if (Array.isArray(data4)) {
+        if (data4.length > 100) {
+          const err21 = { instancePath: instancePath + "/deviceIds", schemaPath: "#/properties/deviceIds/maxItems", keyword: "maxItems", params: { limit: 100 }, message: "must NOT have more than 100 items" };
+          if (vErrors === null) {
+            vErrors = [err21];
+          } else {
+            vErrors.push(err21);
+          }
+          errors++;
+        }
+        const len0 = data4.length;
+        for (let i0 = 0; i0 < len0; i0++) {
+          let data5 = data4[i0];
+          if (typeof data5 === "string") {
+            if (func3(data5) > 200) {
+              const err22 = { instancePath: instancePath + "/deviceIds/" + i0, schemaPath: "#/properties/deviceIds/items/maxLength", keyword: "maxLength", params: { limit: 200 }, message: "must NOT have more than 200 characters" };
+              if (vErrors === null) {
+                vErrors = [err22];
+              } else {
+                vErrors.push(err22);
+              }
+              errors++;
+            }
+            if (func3(data5) < 1) {
+              const err23 = { instancePath: instancePath + "/deviceIds/" + i0, schemaPath: "#/properties/deviceIds/items/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
+              if (vErrors === null) {
+                vErrors = [err23];
+              } else {
+                vErrors.push(err23);
+              }
+              errors++;
+            }
+          } else {
+            const err24 = { instancePath: instancePath + "/deviceIds/" + i0, schemaPath: "#/properties/deviceIds/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+            if (vErrors === null) {
+              vErrors = [err24];
+            } else {
+              vErrors.push(err24);
+            }
+            errors++;
+          }
+        }
+        let i1 = data4.length;
+        let j0;
+        if (i1 > 1) {
+          const indices0 = {};
+          for (; i1--; ) {
+            let item0 = data4[i1];
+            if (typeof item0 !== "string") {
+              continue;
+            }
+            if (typeof indices0[item0] == "number") {
+              j0 = indices0[item0];
+              const err25 = { instancePath: instancePath + "/deviceIds", schemaPath: "#/properties/deviceIds/uniqueItems", keyword: "uniqueItems", params: { i: i1, j: j0 }, message: "must NOT have duplicate items (items ## " + j0 + " and " + i1 + " are identical)" };
+              if (vErrors === null) {
+                vErrors = [err25];
+              } else {
+                vErrors.push(err25);
+              }
+              errors++;
+              break;
+            }
+            indices0[item0] = i1;
+          }
+        }
+      } else {
+        const err26 = { instancePath: instancePath + "/deviceIds", schemaPath: "#/properties/deviceIds/type", keyword: "type", params: { type: "array" }, message: "must be array" };
         if (vErrors === null) {
-          vErrors = [err21];
+          vErrors = [err26];
         } else {
-          vErrors.push(err21);
+          vErrors.push(err26);
         }
         errors++;
       }
-      if (!(data4 === "daily" || data4 === "specialized")) {
-        const err22 = { instancePath: instancePath + "/group", schemaPath: "#/properties/group/enum", keyword: "enum", params: { allowedValues: schema14.properties.group.enum }, message: "must be equal to one of the allowed values" };
+    }
+    if (data.group !== void 0) {
+      let data6 = data.group;
+      if (typeof data6 !== "string") {
+        const err27 = { instancePath: instancePath + "/group", schemaPath: "#/properties/group/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
-          vErrors = [err22];
+          vErrors = [err27];
         } else {
-          vErrors.push(err22);
+          vErrors.push(err27);
+        }
+        errors++;
+      }
+      if (!(data6 === "daily" || data6 === "specialized")) {
+        const err28 = { instancePath: instancePath + "/group", schemaPath: "#/properties/group/enum", keyword: "enum", params: { allowedValues: schema14.properties.group.enum }, message: "must be equal to one of the allowed values" };
+        if (vErrors === null) {
+          vErrors = [err28];
+        } else {
+          vErrors.push(err28);
         }
         errors++;
       }
     }
     if (data.budgets !== void 0) {
-      let data5 = data.budgets;
-      const _errs17 = errors;
-      let valid2 = false;
-      const _errs18 = errors;
-      if (data5 && typeof data5 == "object" && !Array.isArray(data5)) {
-        if (data5.originium === void 0) {
-          const err23 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "originium" }, message: "must have required property 'originium'" };
+      let data7 = data.budgets;
+      const _errs21 = errors;
+      let valid5 = false;
+      const _errs22 = errors;
+      if (data7 && typeof data7 == "object" && !Array.isArray(data7)) {
+        if (data7.originium === void 0) {
+          const err29 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "originium" }, message: "must have required property 'originium'" };
           if (vErrors === null) {
-            vErrors = [err23];
+            vErrors = [err29];
           } else {
-            vErrors.push(err23);
+            vErrors.push(err29);
           }
           errors++;
         }
-        if (data5.medicine === void 0) {
-          const err24 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "medicine" }, message: "must have required property 'medicine'" };
+        if (data7.medicine === void 0) {
+          const err30 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "medicine" }, message: "must have required property 'medicine'" };
           if (vErrors === null) {
-            vErrors = [err24];
+            vErrors = [err30];
           } else {
-            vErrors.push(err24);
+            vErrors.push(err30);
           }
           errors++;
         }
-        if (data5.expedited === void 0) {
-          const err25 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "expedited" }, message: "must have required property 'expedited'" };
+        if (data7.expedited === void 0) {
+          const err31 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/required", keyword: "required", params: { missingProperty: "expedited" }, message: "must have required property 'expedited'" };
           if (vErrors === null) {
-            vErrors = [err25];
+            vErrors = [err31];
           } else {
-            vErrors.push(err25);
+            vErrors.push(err31);
           }
           errors++;
         }
-        for (const key1 in data5) {
+        for (const key1 in data7) {
           if (!(key1 === "originium" || key1 === "medicine" || key1 === "expedited")) {
-            const err26 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" };
+            const err32 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" };
             if (vErrors === null) {
-              vErrors = [err26];
+              vErrors = [err32];
             } else {
-              vErrors.push(err26);
+              vErrors.push(err32);
             }
             errors++;
           }
         }
-        if (data5.originium !== void 0) {
-          let data6 = data5.originium;
-          if (!(typeof data6 == "number" && (!(data6 % 1) && !isNaN(data6)) && isFinite(data6))) {
-            const err27 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
-            if (vErrors === null) {
-              vErrors = [err27];
-            } else {
-              vErrors.push(err27);
-            }
-            errors++;
-          }
-          if (typeof data6 == "number" && isFinite(data6)) {
-            if (data6 > 100 || isNaN(data6)) {
-              const err28 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
-              if (vErrors === null) {
-                vErrors = [err28];
-              } else {
-                vErrors.push(err28);
-              }
-              errors++;
-            }
-            if (data6 < 0 || isNaN(data6)) {
-              const err29 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
-              if (vErrors === null) {
-                vErrors = [err29];
-              } else {
-                vErrors.push(err29);
-              }
-              errors++;
-            }
-          }
-        }
-        if (data5.medicine !== void 0) {
-          let data7 = data5.medicine;
-          if (!(typeof data7 == "number" && (!(data7 % 1) && !isNaN(data7)) && isFinite(data7))) {
-            const err30 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
-            if (vErrors === null) {
-              vErrors = [err30];
-            } else {
-              vErrors.push(err30);
-            }
-            errors++;
-          }
-          if (typeof data7 == "number" && isFinite(data7)) {
-            if (data7 > 100 || isNaN(data7)) {
-              const err31 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
-              if (vErrors === null) {
-                vErrors = [err31];
-              } else {
-                vErrors.push(err31);
-              }
-              errors++;
-            }
-            if (data7 < 0 || isNaN(data7)) {
-              const err32 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
-              if (vErrors === null) {
-                vErrors = [err32];
-              } else {
-                vErrors.push(err32);
-              }
-              errors++;
-            }
-          }
-        }
-        if (data5.expedited !== void 0) {
-          let data8 = data5.expedited;
+        if (data7.originium !== void 0) {
+          let data8 = data7.originium;
           if (!(typeof data8 == "number" && (!(data8 % 1) && !isNaN(data8)) && isFinite(data8))) {
-            const err33 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+            const err33 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
             if (vErrors === null) {
               vErrors = [err33];
             } else {
@@ -10377,7 +10467,7 @@ function validate151(data, { instancePath = "", parentData, parentDataProperty, 
           }
           if (typeof data8 == "number" && isFinite(data8)) {
             if (data8 > 100 || isNaN(data8)) {
-              const err34 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
+              const err34 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
               if (vErrors === null) {
                 vErrors = [err34];
               } else {
@@ -10386,7 +10476,7 @@ function validate151(data, { instancePath = "", parentData, parentDataProperty, 
               errors++;
             }
             if (data8 < 0 || isNaN(data8)) {
-              const err35 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
+              const err35 = { instancePath: instancePath + "/budgets/originium", schemaPath: "#/$defs/Budgets/properties/originium/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
               if (vErrors === null) {
                 vErrors = [err35];
               } else {
@@ -10396,77 +10486,61 @@ function validate151(data, { instancePath = "", parentData, parentDataProperty, 
             }
           }
         }
-      } else {
-        const err36 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/type", keyword: "type", params: { type: "object" }, message: "must be object" };
-        if (vErrors === null) {
-          vErrors = [err36];
-        } else {
-          vErrors.push(err36);
-        }
-        errors++;
-      }
-      var _valid1 = _errs18 === errors;
-      valid2 = valid2 || _valid1;
-      if (!valid2) {
-        const _errs28 = errors;
-        if (data5 !== null) {
-          const err37 = { instancePath: instancePath + "/budgets", schemaPath: "#/properties/budgets/anyOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
-          if (vErrors === null) {
-            vErrors = [err37];
-          } else {
-            vErrors.push(err37);
+        if (data7.medicine !== void 0) {
+          let data9 = data7.medicine;
+          if (!(typeof data9 == "number" && (!(data9 % 1) && !isNaN(data9)) && isFinite(data9))) {
+            const err36 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+            if (vErrors === null) {
+              vErrors = [err36];
+            } else {
+              vErrors.push(err36);
+            }
+            errors++;
           }
-          errors++;
-        }
-        var _valid1 = _errs28 === errors;
-        valid2 = valid2 || _valid1;
-      }
-      if (!valid2) {
-        const err38 = { instancePath: instancePath + "/budgets", schemaPath: "#/properties/budgets/anyOf", keyword: "anyOf", params: {}, message: "must match a schema in anyOf" };
-        if (vErrors === null) {
-          vErrors = [err38];
-        } else {
-          vErrors.push(err38);
-        }
-        errors++;
-      } else {
-        errors = _errs17;
-        if (vErrors !== null) {
-          if (_errs17) {
-            vErrors.length = _errs17;
-          } else {
-            vErrors = null;
+          if (typeof data9 == "number" && isFinite(data9)) {
+            if (data9 > 100 || isNaN(data9)) {
+              const err37 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
+              if (vErrors === null) {
+                vErrors = [err37];
+              } else {
+                vErrors.push(err37);
+              }
+              errors++;
+            }
+            if (data9 < 0 || isNaN(data9)) {
+              const err38 = { instancePath: instancePath + "/budgets/medicine", schemaPath: "#/$defs/Budgets/properties/medicine/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
+              if (vErrors === null) {
+                vErrors = [err38];
+              } else {
+                vErrors.push(err38);
+              }
+              errors++;
+            }
           }
         }
-      }
-    }
-    if (data.tasks !== void 0) {
-      let data9 = data.tasks;
-      if (Array.isArray(data9)) {
-        if (data9.length > 30) {
-          const err39 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/maxItems", keyword: "maxItems", params: { limit: 30 }, message: "must NOT have more than 30 items" };
-          if (vErrors === null) {
-            vErrors = [err39];
-          } else {
-            vErrors.push(err39);
+        if (data7.expedited !== void 0) {
+          let data10 = data7.expedited;
+          if (!(typeof data10 == "number" && (!(data10 % 1) && !isNaN(data10)) && isFinite(data10))) {
+            const err39 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+            if (vErrors === null) {
+              vErrors = [err39];
+            } else {
+              vErrors.push(err39);
+            }
+            errors++;
           }
-          errors++;
-        }
-        if (data9.length < 1) {
-          const err40 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" };
-          if (vErrors === null) {
-            vErrors = [err40];
-          } else {
-            vErrors.push(err40);
-          }
-          errors++;
-        }
-        const len0 = data9.length;
-        for (let i0 = 0; i0 < len0; i0++) {
-          let data10 = data9[i0];
-          if (data10 && typeof data10 == "object" && !Array.isArray(data10)) {
-            if (data10.type === void 0) {
-              const err41 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "type" }, message: "must have required property 'type'" };
+          if (typeof data10 == "number" && isFinite(data10)) {
+            if (data10 > 100 || isNaN(data10)) {
+              const err40 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/maximum", keyword: "maximum", params: { comparison: "<=", limit: 100 }, message: "must be <= 100" };
+              if (vErrors === null) {
+                vErrors = [err40];
+              } else {
+                vErrors.push(err40);
+              }
+              errors++;
+            }
+            if (data10 < 0 || isNaN(data10)) {
+              const err41 = { instancePath: instancePath + "/budgets/expedited", schemaPath: "#/$defs/Budgets/properties/expedited/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
               if (vErrors === null) {
                 vErrors = [err41];
               } else {
@@ -10474,143 +10548,223 @@ function validate151(data, { instancePath = "", parentData, parentDataProperty, 
               }
               errors++;
             }
-            if (data10.params === void 0) {
-              const err42 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "params" }, message: "must have required property 'params'" };
+          }
+        }
+      } else {
+        const err42 = { instancePath: instancePath + "/budgets", schemaPath: "#/$defs/Budgets/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+        if (vErrors === null) {
+          vErrors = [err42];
+        } else {
+          vErrors.push(err42);
+        }
+        errors++;
+      }
+      var _valid1 = _errs22 === errors;
+      valid5 = valid5 || _valid1;
+      if (!valid5) {
+        const _errs32 = errors;
+        if (data7 !== null) {
+          const err43 = { instancePath: instancePath + "/budgets", schemaPath: "#/properties/budgets/anyOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
+          if (vErrors === null) {
+            vErrors = [err43];
+          } else {
+            vErrors.push(err43);
+          }
+          errors++;
+        }
+        var _valid1 = _errs32 === errors;
+        valid5 = valid5 || _valid1;
+      }
+      if (!valid5) {
+        const err44 = { instancePath: instancePath + "/budgets", schemaPath: "#/properties/budgets/anyOf", keyword: "anyOf", params: {}, message: "must match a schema in anyOf" };
+        if (vErrors === null) {
+          vErrors = [err44];
+        } else {
+          vErrors.push(err44);
+        }
+        errors++;
+      } else {
+        errors = _errs21;
+        if (vErrors !== null) {
+          if (_errs21) {
+            vErrors.length = _errs21;
+          } else {
+            vErrors = null;
+          }
+        }
+      }
+    }
+    if (data.tasks !== void 0) {
+      let data11 = data.tasks;
+      if (Array.isArray(data11)) {
+        if (data11.length > 30) {
+          const err45 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/maxItems", keyword: "maxItems", params: { limit: 30 }, message: "must NOT have more than 30 items" };
+          if (vErrors === null) {
+            vErrors = [err45];
+          } else {
+            vErrors.push(err45);
+          }
+          errors++;
+        }
+        if (data11.length < 1) {
+          const err46 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" };
+          if (vErrors === null) {
+            vErrors = [err46];
+          } else {
+            vErrors.push(err46);
+          }
+          errors++;
+        }
+        const len1 = data11.length;
+        for (let i2 = 0; i2 < len1; i2++) {
+          let data12 = data11[i2];
+          if (data12 && typeof data12 == "object" && !Array.isArray(data12)) {
+            if (data12.type === void 0) {
+              const err47 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "type" }, message: "must have required property 'type'" };
               if (vErrors === null) {
-                vErrors = [err42];
+                vErrors = [err47];
               } else {
-                vErrors.push(err42);
+                vErrors.push(err47);
               }
               errors++;
             }
-            if (data10.enabled === void 0) {
-              const err43 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "enabled" }, message: "must have required property 'enabled'" };
+            if (data12.params === void 0) {
+              const err48 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "params" }, message: "must have required property 'params'" };
               if (vErrors === null) {
-                vErrors = [err43];
+                vErrors = [err48];
               } else {
-                vErrors.push(err43);
+                vErrors.push(err48);
               }
               errors++;
             }
-            for (const key2 in data10) {
+            if (data12.enabled === void 0) {
+              const err49 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/required", keyword: "required", params: { missingProperty: "enabled" }, message: "must have required property 'enabled'" };
+              if (vErrors === null) {
+                vErrors = [err49];
+              } else {
+                vErrors.push(err49);
+              }
+              errors++;
+            }
+            for (const key2 in data12) {
               if (!(key2 === "type" || key2 === "params" || key2 === "enabled")) {
-                const err44 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" };
+                const err50 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" };
                 if (vErrors === null) {
-                  vErrors = [err44];
+                  vErrors = [err50];
                 } else {
-                  vErrors.push(err44);
+                  vErrors.push(err50);
                 }
                 errors++;
               }
             }
-            if (data10.type !== void 0) {
-              let data11 = data10.type;
-              if (typeof data11 !== "string") {
-                const err45 = { instancePath: instancePath + "/tasks/" + i0 + "/type", schemaPath: "#/$defs/Task/properties/type/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+            if (data12.type !== void 0) {
+              let data13 = data12.type;
+              if (typeof data13 !== "string") {
+                const err51 = { instancePath: instancePath + "/tasks/" + i2 + "/type", schemaPath: "#/$defs/Task/properties/type/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                 if (vErrors === null) {
-                  vErrors = [err45];
+                  vErrors = [err51];
                 } else {
-                  vErrors.push(err45);
+                  vErrors.push(err51);
                 }
                 errors++;
               }
-              if (!(data11 === "StartUp" || data11 === "CloseDown" || data11 === "Fight" || data11 === "Recruit" || data11 === "Infrast" || data11 === "Mall" || data11 === "Award" || data11 === "SwitchTheme" || data11 === "Roguelike" || data11 === "Copilot" || data11 === "SSSCopilot" || data11 === "ParadoxCopilot" || data11 === "Depot" || data11 === "OperBox" || data11 === "Reclamation" || data11 === "Custom" || data11 === "SingleStep" || data11 === "VideoRecognition" || data11 === "OperProgress" || data11 === "UserDataUpdate")) {
-                const err46 = { instancePath: instancePath + "/tasks/" + i0 + "/type", schemaPath: "#/$defs/Task/properties/type/enum", keyword: "enum", params: { allowedValues: schema16.properties.type.enum }, message: "must be equal to one of the allowed values" };
+              if (!(data13 === "StartUp" || data13 === "CloseDown" || data13 === "Fight" || data13 === "Recruit" || data13 === "Infrast" || data13 === "Mall" || data13 === "Award" || data13 === "SwitchTheme" || data13 === "Roguelike" || data13 === "Copilot" || data13 === "SSSCopilot" || data13 === "ParadoxCopilot" || data13 === "Depot" || data13 === "OperBox" || data13 === "Reclamation" || data13 === "Custom" || data13 === "SingleStep" || data13 === "VideoRecognition" || data13 === "OperProgress" || data13 === "UserDataUpdate")) {
+                const err52 = { instancePath: instancePath + "/tasks/" + i2 + "/type", schemaPath: "#/$defs/Task/properties/type/enum", keyword: "enum", params: { allowedValues: schema16.properties.type.enum }, message: "must be equal to one of the allowed values" };
                 if (vErrors === null) {
-                  vErrors = [err46];
+                  vErrors = [err52];
                 } else {
-                  vErrors.push(err46);
+                  vErrors.push(err52);
                 }
                 errors++;
               }
             }
-            if (data10.params !== void 0) {
-              let data12 = data10.params;
-              if (data12 && typeof data12 == "object" && !Array.isArray(data12)) {
+            if (data12.params !== void 0) {
+              let data14 = data12.params;
+              if (data14 && typeof data14 == "object" && !Array.isArray(data14)) {
               } else {
-                const err47 = { instancePath: instancePath + "/tasks/" + i0 + "/params", schemaPath: "#/$defs/Task/properties/params/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+                const err53 = { instancePath: instancePath + "/tasks/" + i2 + "/params", schemaPath: "#/$defs/Task/properties/params/type", keyword: "type", params: { type: "object" }, message: "must be object" };
                 if (vErrors === null) {
-                  vErrors = [err47];
+                  vErrors = [err53];
                 } else {
-                  vErrors.push(err47);
+                  vErrors.push(err53);
                 }
                 errors++;
               }
             }
-            if (data10.enabled !== void 0) {
-              if (typeof data10.enabled !== "boolean") {
-                const err48 = { instancePath: instancePath + "/tasks/" + i0 + "/enabled", schemaPath: "#/$defs/Task/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+            if (data12.enabled !== void 0) {
+              if (typeof data12.enabled !== "boolean") {
+                const err54 = { instancePath: instancePath + "/tasks/" + i2 + "/enabled", schemaPath: "#/$defs/Task/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
                 if (vErrors === null) {
-                  vErrors = [err48];
+                  vErrors = [err54];
                 } else {
-                  vErrors.push(err48);
+                  vErrors.push(err54);
                 }
                 errors++;
               }
             }
           } else {
-            const err49 = { instancePath: instancePath + "/tasks/" + i0, schemaPath: "#/$defs/Task/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+            const err55 = { instancePath: instancePath + "/tasks/" + i2, schemaPath: "#/$defs/Task/type", keyword: "type", params: { type: "object" }, message: "must be object" };
             if (vErrors === null) {
-              vErrors = [err49];
+              vErrors = [err55];
             } else {
-              vErrors.push(err49);
+              vErrors.push(err55);
             }
             errors++;
           }
         }
       } else {
-        const err50 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+        const err56 = { instancePath: instancePath + "/tasks", schemaPath: "#/properties/tasks/type", keyword: "type", params: { type: "array" }, message: "must be array" };
         if (vErrors === null) {
-          vErrors = [err50];
+          vErrors = [err56];
         } else {
-          vErrors.push(err50);
+          vErrors.push(err56);
         }
         errors++;
       }
     }
     if (data.schedule !== void 0) {
-      let data14 = data.schedule;
-      const _errs44 = errors;
-      let valid9 = false;
-      const _errs45 = errors;
-      if (typeof data14 !== "string") {
-        const err51 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf/0/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+      let data16 = data.schedule;
+      const _errs48 = errors;
+      let valid12 = false;
+      const _errs49 = errors;
+      if (typeof data16 !== "string") {
+        const err57 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf/0/type", keyword: "type", params: { type: "string" }, message: "must be string" };
         if (vErrors === null) {
-          vErrors = [err51];
+          vErrors = [err57];
         } else {
-          vErrors.push(err51);
+          vErrors.push(err57);
         }
         errors++;
       }
-      var _valid2 = _errs45 === errors;
-      valid9 = valid9 || _valid2;
-      if (!valid9) {
-        const _errs47 = errors;
-        if (data14 !== null) {
-          const err52 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
+      var _valid2 = _errs49 === errors;
+      valid12 = valid12 || _valid2;
+      if (!valid12) {
+        const _errs51 = errors;
+        if (data16 !== null) {
+          const err58 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
           if (vErrors === null) {
-            vErrors = [err52];
+            vErrors = [err58];
           } else {
-            vErrors.push(err52);
+            vErrors.push(err58);
           }
           errors++;
         }
-        var _valid2 = _errs47 === errors;
-        valid9 = valid9 || _valid2;
+        var _valid2 = _errs51 === errors;
+        valid12 = valid12 || _valid2;
       }
-      if (!valid9) {
-        const err53 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf", keyword: "anyOf", params: {}, message: "must match a schema in anyOf" };
+      if (!valid12) {
+        const err59 = { instancePath: instancePath + "/schedule", schemaPath: "#/properties/schedule/anyOf", keyword: "anyOf", params: {}, message: "must match a schema in anyOf" };
         if (vErrors === null) {
-          vErrors = [err53];
+          vErrors = [err59];
         } else {
-          vErrors.push(err53);
+          vErrors.push(err59);
         }
         errors++;
       } else {
-        errors = _errs44;
+        errors = _errs48;
         if (vErrors !== null) {
-          if (_errs44) {
-            vErrors.length = _errs44;
+          if (_errs48) {
+            vErrors.length = _errs48;
           } else {
             vErrors = null;
           }
@@ -10619,21 +10773,21 @@ function validate151(data, { instancePath = "", parentData, parentDataProperty, 
     }
     if (data.enabled !== void 0) {
       if (typeof data.enabled !== "boolean") {
-        const err54 = { instancePath: instancePath + "/enabled", schemaPath: "#/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+        const err60 = { instancePath: instancePath + "/enabled", schemaPath: "#/properties/enabled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
         if (vErrors === null) {
-          vErrors = [err54];
+          vErrors = [err60];
         } else {
-          vErrors.push(err54);
+          vErrors.push(err60);
         }
         errors++;
       }
     }
   } else {
-    const err55 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err61 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err55];
+      vErrors = [err61];
     } else {
-      vErrors.push(err55);
+      vErrors.push(err61);
     }
     errors++;
   }

@@ -42,7 +42,7 @@ test('one task entry combines the table list, detail drawer and execution tab', 
   await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
   await wb(page).getByRole('tab', { name: '任务表设置', exact: true }).click();
   await expect(wb(page).getByLabel('任务分组', { exact: true })).toHaveCount(0);
-  await expect(wb(page).getByLabel('绑定设备', { exact: true })).toBeVisible();
+  await expect(wb(page).getByRole('group', { name: '绑定设备', exact: true })).toBeVisible();
   await wb(page).getByLabel('任务表说明', { exact: true }).fill('抽屉自动保存');
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
 
@@ -116,7 +116,7 @@ test('multi-device launch blocks binding, offline and busy devices and starts on
     })) as { id: string };
     const state = (await api.call('app.snapshot', {})) as Snapshot;
     const farm = state.plans.find((plan) => plan.id === 'farm-1-7')!;
-    await api.call('plan.save', { plan: { ...farm, deviceId: 'mock-device-1' } });
+    await api.call('plan.save', { plan: { ...farm, deviceIds: ['mock-device-1'] } });
     return { busy: busy.id, idle: idle.id };
   });
   await page.reload();
@@ -207,7 +207,7 @@ test('multi-device launch keeps failures visible and finishes the successful dev
   await modal.getByRole('checkbox', { name: '选择设备失败实例', exact: true }).check();
   await modal.getByRole('button', { name: '在 2 台设备运行', exact: true }).click();
   await expect(modal).toBeVisible();
-  await expect(modal.getByRole('status')).toContainText('已在 1 台设备开始执行，1 台失败。');
+  await expect(modal.getByRole('status')).toContainText('已启动 1 项执行，1 项失败');
   await expect(
     modal.getByText('启动失败，请查看提示或连接状态后重试', { exact: true }),
   ).toHaveCount(1);

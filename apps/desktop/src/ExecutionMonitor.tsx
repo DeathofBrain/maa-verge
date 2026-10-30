@@ -17,6 +17,7 @@ import {
 import {
   errorMessage,
   localizeExecutionMessage,
+  planDeviceIds,
   rpc,
   type Device,
   type Run,
@@ -209,8 +210,8 @@ export default function ExecutionMonitor({
       if (!term) return true;
       const run = activeByDevice.get(device.id) || latestByDevice.get(device.id);
       const tool = activeToolsByDevice.get(device.id) || latestToolsByDevice.get(device.id);
-      const bound = snapshot.plans.find((plan) => plan.deviceId === device.id);
-      return `${device.name} ${device.address} ${run ? runDisplayName(run, snapshot.plans) : ''} ${run ? localizeExecutionMessage(run.message) : ''} ${tool ? toolNames[tool.kind] + ' ' + localizeExecutionMessage(tool.message) : ''} ${bound?.name || ''}`
+      const bound = snapshot.plans.filter((plan) => planDeviceIds(plan).includes(device.id));
+      return `${device.name} ${device.address} ${run ? runDisplayName(run, snapshot.plans) : ''} ${run ? localizeExecutionMessage(run.message) : ''} ${tool ? toolNames[tool.kind] + ' ' + localizeExecutionMessage(tool.message) : ''} ${bound.map((plan) => plan.name).join(' ')}`
         .toLocaleLowerCase()
         .includes(term);
     })
@@ -349,7 +350,7 @@ export default function ExecutionMonitor({
     .sort(newestFirst)
     .find((job) => job.deviceId === deviceId && job.status !== 'running');
   const latestIsTool = latestTool && (!latestRun || newestFirst(latestTool, latestRun) < 0);
-  const boundPlan = snapshot.plans.find((plan) => plan.deviceId === deviceId);
+  const boundPlans = snapshot.plans.filter((plan) => planDeviceIds(plan).includes(deviceId));
   const groups = [
     {
       id: 'online',
@@ -722,7 +723,7 @@ export default function ExecutionMonitor({
                 </div>
                 <div>
                   <dt>绑定任务表</dt>
-                  <dd>{boundPlan?.name || '未绑定'}</dd>
+                  <dd>{boundPlans.map((plan) => plan.name).join('、') || '未绑定'}</dd>
                 </div>
               </dl>
               {currentDevice.state === 'offline' && currentDevice.connectionError && (

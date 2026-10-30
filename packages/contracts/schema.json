@@ -358,7 +358,19 @@
             }
           ],
           "default": null,
-          "title": "Deviceid"
+          "title": "Deviceid",
+          "description": "旧版单设备绑定兼容字段；规范化后为 deviceIds 第一项或 null。"
+        },
+        "deviceIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "uniqueItems": true,
+          "maxItems": 100,
+          "description": "任务表绑定的设备列表；一台设备可被多张表绑定。空数组表示不预绑定，执行时选择设备。字段缺省时沿用旧版 deviceId。"
         },
         "group": {
           "default": "daily",
@@ -404,6 +416,7 @@
         "enabled": {
           "default": true,
           "title": "Enabled",
+          "description": "旧版兼容字段；服务读取和保存时统一返回 true，历史值不影响任务表执行。单项任务与定时规则各自保留启停设置。",
           "type": "boolean"
         }
       },

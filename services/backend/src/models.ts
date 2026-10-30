@@ -90,7 +90,15 @@ export function parsePlan(input: any): Plan {
   value.enabled = boolean(value.enabled);
   value.budgets = budgets(value.budgets);
   if (!validatePlan(value)) throw new RpcError(-32602, '请求参数无效', validatePlan.errors);
-  return value as Plan;
+  const deviceIds = input.deviceIds ?? (value.deviceId ? [value.deviceId] : []);
+  // Plan-level enablement is retired; keep the wire field for older clients.
+  // Task and schedule enablement remain independent controls.
+  return {
+    ...value,
+    enabled: true,
+    deviceIds: [...deviceIds],
+    deviceId: deviceIds[0] ?? null,
+  } as Plan;
 }
 export function parseSettings(input: any = {}): Settings {
   if (!record(input)) throw new RpcError(-32602, '请求参数无效');

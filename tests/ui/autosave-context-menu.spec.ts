@@ -38,7 +38,7 @@ test('valid parameters and metadata automatically persist without manual saving'
   await wb(page).getByRole('tab', { name: '任务表设置', exact: true }).click();
   await wb(page).getByLabel('任务表名称', { exact: true }).fill('自动保存的表');
   await wb(page).getByLabel('任务表说明', { exact: true }).fill('自动保存说明');
-  await wb(page).getByLabel('绑定设备', { exact: true }).selectOption('mock-device-1');
+  await wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }).check();
   await saved(page);
   await page.reload();
   await nav(page, '任务');
@@ -46,7 +46,9 @@ test('valid parameters and metadata automatically persist without manual saving'
   await wb(page).getByRole('tab', { name: '任务表设置', exact: true }).click();
   await expect(wb(page).getByLabel('任务表名称', { exact: true })).toHaveValue('自动保存的表');
   await expect(wb(page).getByLabel('任务表说明', { exact: true })).toHaveValue('自动保存说明');
-  await expect(wb(page).getByLabel('绑定设备', { exact: true })).toHaveValue('mock-device-1');
+  await expect(
+    wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }),
+  ).toBeChecked();
 });
 
 test('leaving before the debounce saves the outgoing table without redirecting navigation', async ({

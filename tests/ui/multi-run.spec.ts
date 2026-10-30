@@ -2,16 +2,74 @@ import { deviceOption, deviceOptions, devicePicker, selectDevice } from './fixtu
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 import type { Snapshot } from '../../packages/contracts/src/index';
 
+test('tables can share device bindings and removing one binding preserves all other relationships after reload', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const second = await page.evaluate(async () => {
+    const device = (await (window as HarnessWindow).runtimeHarness.call('device.connect', {
+      address: '127.0.0.1:5557',
+      name: '共享模拟器',
+    })) as { id: string };
+    return device.id;
+  });
+  const open = async (name: string) => {
+    await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
+    await page.getByRole('button', { name: `查看任务表详情${name}`, exact: true }).click();
+    await page.getByRole('tab', { name: '任务表设置', exact: true }).click();
+  };
+  const wb = page.getByRole('region', { name: '任务表工作台', exact: true });
+  const local = wb.getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true });
+  const shared = wb.getByRole('checkbox', { name: '绑定设备共享模拟器', exact: true });
+  await open('固源岩补给');
+  await local.check();
+  await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
+  await shared.check();
+  await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
+  await wb.getByRole('button', { name: '开始执行', exact: true }).click();
+  const launch = page.getByRole('dialog', { name: '运行任务表', exact: true });
+  await expect(
+    launch.getByRole('checkbox', { name: '选择设备本地模拟设备', exact: true }),
+  ).toBeChecked();
+  await expect(
+    launch.getByRole('checkbox', { name: '选择设备共享模拟器', exact: true }),
+  ).toBeChecked();
+  await launch.getByRole('button', { name: '取消', exact: true }).click();
+  await page.getByRole('button', { name: '关闭任务表详情', exact: true }).click();
+  await open('每日长草计划');
+  await shared.check();
+  await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
+  await page.reload();
+  await open('固源岩补给');
+  await expect(local).toBeChecked();
+  await expect(shared).toBeChecked();
+  await local.uncheck();
+  await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
+  const state = (await page.evaluate(async () =>
+    (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}),
+  )) as Snapshot;
+  expect(state.plans.find((plan) => plan.id === 'farm-1-7')?.deviceIds).toEqual([second]);
+  expect(state.plans.find((plan) => plan.id === 'daily')?.deviceIds).toEqual([second]);
+  await page.reload();
+  await open('固源岩补给');
+  await expect(local).not.toBeChecked();
+  await expect(shared).toBeChecked();
+});
+
 test('one task table runs on two instances and each instance stops independently', async ({
   page,
 }) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
   await page.evaluate(async () => {
-    await (window as HarnessWindow).runtimeHarness.call('device.connect', {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const device = (await api.call('device.connect', {
       address: '127.0.0.1:5557',
       name: '第二个模拟器',
-    });
+    })) as { id: string };
+    const state = (await api.call('app.snapshot', {})) as Snapshot;
+    const plan = state.plans.find((plan) => plan.id === 'farm-1-7')!;
+    await api.call('plan.save', { plan: { ...plan, deviceIds: ['mock-device-1', device.id] } });
   });
   await page
     .getByRole('contentinfo', { name: '执行状态栏' })
@@ -154,7 +212,7 @@ test('a busy device binding automatically saves and blocks a conflicting start',
       plans: { id: string; deviceId: string | null }[];
     };
     const plan = snapshot.plans.find((item) => item.id === 'farm-1-7')!;
-    await api.call('plan.save', { plan: { ...plan, deviceId: 'mock-device-1' } });
+    await api.call('plan.save', { plan: { ...plan, deviceIds: ['mock-device-1'] } });
     await api.call('run.start', { planId: 'daily', deviceId: device.id, requestId: 'busy-draft' });
     return device;
   });
@@ -162,7 +220,9 @@ test('a busy device binding automatically saves and blocks a conflicting start',
   await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
   const wb = page.getByRole('region', { name: '任务表工作台', exact: true });
   await wb.getByRole('tab', { name: '任务表设置', exact: true }).click();
-  await wb.getByLabel('绑定设备', { exact: true }).selectOption(second.id);
+  await wb.getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }).uncheck();
+  await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
+  await wb.getByRole('checkbox', { name: '绑定设备忙碌模拟器', exact: true }).check();
   await expect(wb.getByRole('button', { name: '开始执行', exact: true })).toBeDisabled();
   await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
   const state = (await page.evaluate(async () =>
@@ -173,7 +233,7 @@ test('a busy device binding automatically saves and blocks a conflicting start',
   };
   expect(state.runs.some((run) => run.planId === 'farm-1-7')).toBe(false);
   expect(state.plans.find((item) => item.id === 'farm-1-7')?.deviceId).toBe(second.id);
-  await expect(wb.getByLabel('绑定设备', { exact: true })).toHaveValue(second.id);
+  await expect(wb.getByRole('checkbox', { name: '绑定设备忙碌模拟器', exact: true })).toBeChecked();
 });
 
 test('an offline bound device reaches runtime validation after auto connection fails without starting another instance', async ({
@@ -189,7 +249,7 @@ test('an offline bound device reaches runtime validation after auto connection f
     })) as { id: string };
     const state = (await api.call('app.snapshot', {})) as Snapshot;
     const plan = state.plans.find((item) => item.id === 'farm-1-7')!;
-    await api.call('plan.save', { plan: { ...plan, deviceId: 'mock-device-1' } });
+    await api.call('plan.save', { plan: { ...plan, deviceIds: ['mock-device-1'] } });
     await api.call('device.disconnect', { id: 'mock-device-1' });
     const original = api.call.bind(api);
     api.call = async (method, params) => {
@@ -206,10 +266,9 @@ test('an offline bound device reaches runtime validation after auto connection f
   await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
   const wb = page.getByRole('region', { name: '任务表工作台', exact: true });
   await wb.getByRole('tab', { name: '任务表设置', exact: true }).click();
-  await expect(wb.getByLabel('绑定设备', { exact: true })).toHaveValue('mock-device-1');
-  await expect(wb.getByLabel('绑定设备', { exact: true }).locator('option:checked')).toContainText(
-    '离线',
-  );
+  await expect(
+    wb.getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }),
+  ).toBeChecked();
   const start = wb.getByRole('button', { name: '开始执行', exact: true });
   await start.click();
   await expect(page.getByRole('alert')).toContainText('设备不可用或正在执行任务');

@@ -13,6 +13,7 @@ import type {
 import { taskLabels } from '../../../packages/contracts/src/tasks';
 import { taskEnabled, validatePlan } from '../../../packages/contracts/src/task-policy';
 import { matchingDeviceProfile } from '../../../packages/contracts/src/device-profiles';
+import { planAllowsDevice, planDeviceIds } from '../../../packages/contracts/src/plan-devices';
 import { mockPreviewImage } from '../../fixtures/preview-image';
 import { stagePresets } from '../../../packages/contracts/src/stages';
 import {
@@ -163,10 +164,11 @@ const defaults = (): Snapshot => ({
 
 function normalizePlan(plan: Plan): Plan {
   if (plan.description === undefined) plan.description = '';
-  plan.deviceId ??= null;
+  plan.deviceIds = [...planDeviceIds(plan)];
+  plan.deviceId = plan.deviceIds[0] ?? null;
   if (plan.group === undefined) plan.group = 'daily';
   plan.budgets ??= null;
-  if (plan.enabled === undefined) plan.enabled = true;
+  plan.enabled = true;
   if (plan.schedule === undefined) plan.schedule = null;
   if (plan.budgets && typeof plan.budgets === 'object' && !Array.isArray(plan.budgets)) {
     plan.budgets = Object.assign({ originium: 0, medicine: 0, expedited: 0 }, plan.budgets);
@@ -204,6 +206,7 @@ function restore(): Snapshot {
 }
 
 let state = restore();
+state.plans.forEach(normalizePlan);
 type ToolJob = RpcResult<'tool.get'>;
 type ToolConfig = RpcResult<'tool.config.get'>;
 type Schedule = RpcResult<'schedule.save'>;
@@ -253,6 +256,23 @@ function fixtureAvailability(deviceId: string) {
   };
 }
 let sequence = Math.max(0, ...state.events.map((event) => Number(event.id) || 0));
+function invalidateSchedules() {
+  for (const schedule of toolData.schedules) {
+    const plan = state.plans.find((item) => item.id === schedule.planId);
+    const reason = !plan
+      ? '关联任务表已删除'
+      : !state.devices.some((device) => device.id === schedule.deviceId)
+        ? '关联设备已删除'
+        : !planAllowsDevice(plan, schedule.deviceId)
+          ? '定时设备不在任务表绑定范围内'
+          : null;
+    if (reason) {
+      schedule.enabled = false;
+      schedule.disabledReason = reason;
+      overrides.delete(schedule.id);
+    }
+  }
+}
 function persist() {
   localStorage.setItem(key, JSON.stringify(state));
   localStorage.setItem(recognitionKey, JSON.stringify(recognition));
@@ -600,11 +620,15 @@ export async function fixtureRpc(
         diagnostics: [],
       };
     case 'schedule.list':
+      invalidateSchedules();
       return {
         schedules: toolData.schedules.map((item) => ({
           ...item,
           override: overrides.get(item.id) ?? null,
-          nextAt: new Date(Date.now() + 86400000).toISOString(),
+          nextAt:
+            item.enabled && !item.disabledReason
+              ? new Date(Date.now() + 86400000).toISOString()
+              : null,
         })),
         occurrences: [],
         timezone: 'Asia/Shanghai',
@@ -612,6 +636,11 @@ export async function fixtureRpc(
       };
     case 'schedule.save': {
       const item = clone(params.schedule as Schedule);
+      const plan = state.plans.find((plan) => plan.id === item.planId);
+      if (!plan || !state.devices.some((device) => device.id === item.deviceId))
+        throw new Error('请选择存在的任务表和设备');
+      if (!planAllowsDevice(plan, item.deviceId)) throw new Error('定时设备必须在任务表绑定范围内');
+      item.disabledReason = null;
       item.id ||= 'schedule-' + crypto.randomUUID();
       const index = toolData.schedules.findIndex((value) => value.id === item.id);
       if (index >= 0) toolData.schedules[index] = item;
@@ -914,12 +943,17 @@ export async function fixtureRpc(
       });
     }
     case 'plan.save': {
-      const plan = normalizePlan(clone(params.plan) as Plan);
+      const input = clone(params.plan) as Plan;
+      const saved = state.plans.find((item) => item.id === input.id);
+      if (input.deviceIds === undefined && saved && input.deviceId === saved.deviceId)
+        input.deviceIds = [...planDeviceIds(saved)];
+      const plan = normalizePlan(input);
       validatePlan(plan, state.settings);
       plan.id ||= crypto.randomUUID();
       const index = state.plans.findIndex((item) => item.id === plan.id);
       if (index >= 0) state.plans[index] = plan;
       else state.plans.push(plan);
+      invalidateSchedules();
       emit('plan.saved', '已保存计划：' + plan.name);
       return clone(plan);
     }
@@ -952,8 +986,8 @@ export async function fixtureRpc(
       const device = state.devices.find((item) => item.id === params.deviceId);
       if (!plan?.enabled) throw new Error('计划不存在或尚未启用');
       validatePlan(plan, state.settings);
-      if (plan.deviceId !== null && plan.deviceId !== params.deviceId)
-        throw new Error('任务表已绑定其他设备，请使用绑定设备执行');
+      if (!planAllowsDevice(plan, String(params.deviceId)))
+        throw new Error('执行设备不在任务表绑定范围内');
       if (!plan.tasks.some(taskEnabled)) throw new Error('任务表至少需要启用一条任务才能执行');
       if (!device || device.state !== 'idle') throw new Error('设备不可用或正在执行任务');
       const run: Run = {

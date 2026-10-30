@@ -137,7 +137,7 @@ test('StartUp keeps game actions local and opens its bound device settings witho
     };
     await harness.call('settings.save', { settings });
     await harness.call('plan.save', {
-      plan: { ...snapshot.plans[0], deviceId: snapshot.devices[0].id },
+      plan: { ...snapshot.plans[0], deviceIds: [snapshot.devices[0].id] },
     });
     return settings;
   });
@@ -151,7 +151,6 @@ test('StartUp keeps game actions local and opens its bound device settings witho
   await wb.getByRole('button', { name: /^设置第 1 条/ }).click();
   await expect(wb.getByLabel('ADB 路径', { exact: true })).toHaveCount(0);
   await expect(wb.getByLabel('截图协议', { exact: true })).toHaveCount(0);
-  await expect(wb).toContainText('本表绑定设备：本地模拟设备');
   await wb.getByLabel('游戏客户端', { exact: true }).selectOption('YoStarJP');
   await wb.getByRole('button', { name: '管理设备连接', exact: true }).click();
   const connection = page.getByRole('dialog', { name: '设备连接设置', exact: true });

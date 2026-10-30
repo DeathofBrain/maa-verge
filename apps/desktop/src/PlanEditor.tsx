@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import {
   localizeExecutionMessage,
+  planDeviceIds,
   taskDefaults,
   defaultDailyTaskTypes,
   taskEnabled,
@@ -39,6 +40,7 @@ import TaskParameterField, { type Field } from './TaskParameterField';
 import { useContextMenu } from './ContextMenu';
 import './plan-workbench.css';
 import SchedulePanel from './SchedulePanel';
+import DeviceSelectionList from './DeviceSelectionList';
 
 type Task = Plan['tasks'][number];
 type Step = { key: string; task: Task; json: string };
@@ -365,9 +367,8 @@ type Draft = {
   id: string;
   name: string;
   description: string;
-  deviceId: string | null;
+  deviceIds: string[];
   budgets: Budgets | null;
-  enabled: boolean;
   steps: Step[];
   selected: number;
   tab: Tab;
@@ -438,9 +439,8 @@ function fingerprint(plan: WorkbenchPlan): string {
   return stable({
     name: plan.name,
     description: plan.description || '',
-    deviceId: plan.deviceId || null,
+    deviceIds: planDeviceIds(plan),
     budgets: plan.budgets || null,
-    enabled: plan.enabled,
     tasks: plan.tasks,
   });
 }
@@ -475,9 +475,8 @@ function createDraft(
     id: current?.id || crypto.randomUUID(),
     name: current?.name || defaultName,
     description: current?.description || '',
-    deviceId: current?.deviceId || null,
+    deviceIds: current ? [...planDeviceIds(current)] : [],
     budgets: current?.budgets ? structuredClone(current.budgets) : null,
-    enabled: current?.enabled ?? true,
     steps,
     selected:
       requestedIndex >= 0
@@ -512,7 +511,11 @@ function loadDraft(
       ) &&
       ['tasks', 'settings', 'schedule'].includes(value.tab)
     )
-      return initialTab ? { ...value, tab: initialTab } : value;
+      return {
+        ...value,
+        deviceIds: [...planDeviceIds(value as Draft & Plan)],
+        ...(initialTab ? { tab: initialTab } : {}),
+      };
   } catch {
     /* Session recovery is optional; saved plans remain in the runtime. */
   }
@@ -538,10 +541,11 @@ function draftPlan(
     id: draft.id,
     name: draft.name.trim(),
     tasks: tasks as Plan['tasks'],
-    enabled: draft.enabled,
+    enabled: true,
     schedule: source === 'new' ? null : source.schedule,
     description: draft.description,
-    deviceId: draft.deviceId,
+    deviceId: draft.deviceIds[0] ?? null,
+    deviceIds: draft.deviceIds,
     group: source === 'new' ? 'daily' : source.group,
     budgets: draft.budgets,
   };
@@ -786,7 +790,10 @@ export default function PlanEditor({
       return '请检查自动作战任务的消耗参数。';
     }
   })();
-  const syncDevice = devices.find((device) => device.id === (draft.deviceId || selectedDeviceId));
+  const contextDeviceId = draft.deviceIds.includes(selectedDeviceId || '')
+    ? selectedDeviceId
+    : draft.deviceIds[0] || selectedDeviceId;
+  const syncDevice = devices.find((device) => device.id === contextDeviceId);
   const precedingClient = [...draft.steps.slice(0, selected)]
     .reverse()
     .find((entry) => entry.task.type === 'StartUp' && taskEnabled(entry.task))?.task
@@ -799,7 +806,8 @@ export default function PlanEditor({
   const taskClient = (
     clients.some(([id]) => id === requestedClient) ? requestedClient : 'Official'
   ) as NonNullable<RpcParams<'stages.list'>['clientType']>;
-  const draftTargetBusy = busyDeviceIds.includes(draft.deviceId || selectedDeviceId || '');
+  const draftTargetBusy =
+    draft.deviceIds.length > 1 ? false : busyDeviceIds.includes(contextDeviceId || '');
   const hasSavedPlan = plan !== 'new' && !unsaved;
   const startUnavailable = draftTargetBusy;
   const contentVersion = draftVersion(draft);
@@ -1562,8 +1570,8 @@ export default function PlanEditor({
                     summary={syncDevice?.name || '尚未选择设备'}
                   >
                     <p className="wb-helper">
-                      {draft.deviceId
-                        ? `本表绑定设备：${syncDevice?.name || '设备暂不可用'}`
+                      {draft.deviceIds.length
+                        ? `本表绑定 ${draft.deviceIds.length} 台设备，当前查看：${syncDevice?.name || '设备暂不可用'}`
                         : `使用底栏所选设备：${syncDevice?.name || '尚未选择'}`}
                       {syncDevice ? `（${syncDevice.address}）` : ''}
                     </p>
@@ -1574,7 +1582,7 @@ export default function PlanEditor({
                       <button
                         className="button secondary"
                         type="button"
-                        onClick={() => onOpenDeviceSettings(draft.deviceId || selectedDeviceId)}
+                        onClick={() => onOpenDeviceSettings(contextDeviceId)}
                       >
                         管理设备连接
                       </button>
@@ -1688,39 +1696,40 @@ export default function PlanEditor({
                   />
                 </label>
               </div>
-              <label className="wb-checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={draft.enabled}
-                  onChange={(event) => patch({ enabled: event.target.checked })}
-                />
-                启用任务表<small>停用后仍保留全部任务和参数</small>
-              </label>
             </section>
             <section id="wb-device">
               <h2>设备绑定</h2>
-              <label className="param-field">
-                <span className="field-label">绑定设备</span>
-                <Select
-                  className="text-input"
-                  aria-label="绑定设备"
-                  value={draft.deviceId || ''}
-                  onChange={(event) => patch({ deviceId: event.target.value || null })}
-                >
-                  <option value="">执行时使用底栏选中的设备</option>
-                  {draft.deviceId && !devices.some((device) => device.id === draft.deviceId) && (
-                    <option value={draft.deviceId}>已绑定设备（当前未发现）</option>
-                  )}
-                  {devices.map((device) => (
-                    <option key={device.id} value={device.id}>
-                      {device.name}
-                      {device.state === 'offline' ? ' · 离线' : ''}
-                    </option>
-                  ))}
-                </Select>
-              </label>
+              <DeviceSelectionList
+                ariaLabel="绑定设备"
+                items={[
+                  ...devices,
+                  ...draft.deviceIds
+                    .filter((id) => !devices.some((device) => device.id === id))
+                    .map((id) => ({ id, name: id, state: 'missing' as const })),
+                ]}
+                selectedIds={draft.deviceIds}
+                selectedLabel="已绑定"
+                checkboxLabel={(device) => `绑定设备${device.name}`}
+                maxSelected={100}
+                emptyMessage="暂无设备，请先在设备页添加。"
+                onChange={(deviceIds) => patch({ deviceIds })}
+              />
+              {draft.deviceIds.length > 0 && (
+                <div className="wb-device-actions">
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => patch({ deviceIds: [] })}
+                  >
+                    解除全部绑定
+                  </button>
+                </div>
+              )}
               <p className="wb-helper">
-                绑定只影响这张任务表。游戏客户端在启动／关闭游戏任务中设置，切换底栏设备不会改写绑定。
+                一张任务表可绑定多台设备，一台设备也可绑定多张任务表；绑定不占用设备。运行时可选择绑定设备，未绑定时可临时选择任意设备，同一设备同时只执行一项操作。切换底栏设备不会改写绑定。
+              </p>
+              <p className="wb-helper">
+                所有绑定设备共用本表的任务、游戏客户端和账号设置；每台设备独立计算本次执行的消耗上限。需要不同配置时请复制任务表。
               </p>
             </section>
             <section id="wb-consumption">

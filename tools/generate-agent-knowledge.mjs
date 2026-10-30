@@ -14,6 +14,7 @@ const documentFiles = [
   'docs/maa-task-settings.md',
   'docs/maa-compatibility.md',
   'docs/toolbox-schedules.md',
+  'docs/task-device-bindings.md',
   'docs/connection-settings.md',
   'docs/multi-instance.md',
   'docs/game-reminders.md',

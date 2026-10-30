@@ -3,7 +3,14 @@ import { runDisplayName } from './run-source';
 import { useContextMenu } from './ContextMenu';
 import { useState } from 'react';
 import { Monitor, Play, Square } from 'lucide-react';
-import { localizeExecutionMessage, type Device, type Plan, type Run } from '@maaverge/contracts';
+import {
+  localizeExecutionMessage,
+  planAllowsDevice,
+  planDeviceIds,
+  type Device,
+  type Plan,
+  type Run,
+} from '@maaverge/contracts';
 import './multi-run.css';
 
 export default function MultiRunPanel({
@@ -33,7 +40,7 @@ export default function MultiRunPanel({
         <div>
           <h2>多开执行</h2>
           <p>
-            每个实例独立执行与停止。可为不同实例选择不同任务表，也可同时运行同一张未绑定的任务表。
+            每个实例独立执行与停止。一张任务表可在多个绑定设备上运行，每个设备也可选择不同任务表。
           </p>
         </div>
         <button className="button secondary" onClick={onConnect}>
@@ -49,12 +56,10 @@ export default function MultiRunPanel({
               (item) => item.deviceId === device.id && item.status === 'running',
             );
             const lastRun = runs.find((item) => item.deviceId === device.id);
-            const choices = plans.filter(
-              (plan) => plan.enabled && (!plan.deviceId || plan.deviceId === device.id),
-            );
+            const choices = plans.filter((plan) => planAllowsDevice(plan, device.id));
             const selected =
               choices.find((plan) => plan.id === selectedPlans[device.id]) ||
-              choices.find((plan) => plan.deviceId === device.id) ||
+              choices.find((plan) => planDeviceIds(plan).includes(device.id)) ||
               choices[0];
             return (
               <article
@@ -146,7 +151,7 @@ export default function MultiRunPanel({
                       {choices.map((plan) => (
                         <option key={plan.id} value={plan.id}>
                           {plan.name}
-                          {plan.deviceId ? ' · 已绑定' : ''}
+                          {planDeviceIds(plan).includes(device.id) ? ' · 已绑定' : ''}
                         </option>
                       ))}
                     </Select>

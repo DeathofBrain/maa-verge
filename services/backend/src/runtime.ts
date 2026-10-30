@@ -48,6 +48,7 @@ import { homeInfo } from './home-info';
 import { ActivityCalendar, type ActivityCalendarOptions } from './activity-calendar';
 import { localizeExecutionMessage } from '../../../packages/contracts/src/execution';
 import { taskLabels } from '../../../packages/contracts/src/tasks';
+import { planAllowsDevice } from '../../../packages/contracts/src/plan-devices';
 import type { RunTask } from '../../../packages/contracts/src/types';
 import { recordDrops, recordInfrastructure, RunArtifacts } from './execution-evidence';
 import { validateRunArtifactParams } from '../../../packages/contracts/src/validators.js';
@@ -988,11 +989,17 @@ export class Runtime {
       case 'plan.save': {
         required('plan');
         const plan = parsePlan(params.plan);
+        const previous = plan.id ? this.store.get('plan', plan.id) : undefined;
+        if (previous && !Object.hasOwn(params.plan, 'deviceIds')) {
+          const saved = parsePlan(previous);
+          if (plan.deviceId === saved.deviceId) plan.deviceIds = saved.deviceIds;
+        }
         if (plan.schedule)
           throw new RpcError(-32030, '旧 schedule 字符串不受支持，请使用定时计划页签配置');
         this.validatePolicy(plan);
         if (!plan.id) plan.id = ident('plan');
         this.store.put('plan', plan.id, plan);
+        this.scheduler.invalidate();
         this.emit('plan.saved', '计划已保存', { planId: plan.id });
         return plan;
       }
@@ -1161,9 +1168,8 @@ export class Runtime {
     if (!saved) throw new RpcError(-32004, '计划不存在');
     const plan = parsePlan(saved);
     this.validatePolicy(plan);
-    if (plan.deviceId !== null && plan.deviceId !== params.deviceId)
-      throw new RpcError(-32011, '任务表已绑定其他设备，请使用绑定设备执行');
-    if (!plan.enabled) throw new RpcError(-32011, '计划已禁用');
+    if (!planAllowsDevice(plan, params.deviceId))
+      throw new RpcError(-32011, '设备不在任务表绑定范围内，请使用绑定设备执行');
     plan.tasks = plan.tasks.filter(
       (task) => task.enabled && task.params.enable !== false,
     ) as Plan['tasks'];

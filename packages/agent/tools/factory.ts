@@ -1,5 +1,6 @@
 import { Validator } from '@cfworker/json-schema';
 import type { Plan, Run } from '../../contracts/src/types';
+import { planAllowsDevice, planDeviceIds } from '../../contracts/src/plan-devices';
 import type { CopilotWorkspace, RpcContract } from '../../contracts/src/rpc-types';
 import { maaTaskCatalog } from './catalog';
 import { MaaToolError } from './errors';
@@ -235,15 +236,16 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
     async () => ({
       content: {
         plans: (await host.listPlans())
-          .filter((plan) => !deviceId || !plan.deviceId || plan.deviceId === deviceId)
+          .filter((plan) => !deviceId || planAllowsDevice(plan, deviceId))
           .slice(0, 100)
-          .map(({ id, name, enabled, deviceId, group, tasks }) => ({
-            id,
-            name,
-            enabled,
-            deviceId,
-            group,
-            taskTypes: tasks.map((task) => task.type),
+          .map((plan) => ({
+            id: plan.id,
+            name: plan.name,
+            enabled: plan.enabled,
+            deviceId: plan.deviceId,
+            deviceIds: planDeviceIds(plan),
+            group: plan.group,
+            taskTypes: plan.tasks.map((task) => task.type),
           })),
       },
     }),
@@ -322,7 +324,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
       const plan =
         (await host.listPlans()).find((plan) => plan.id === input.planId) ??
         fail('not_found', '任务表不存在');
-      if (plan.deviceId && plan.deviceId !== deviceId) fail('scope_denied', '任务表绑定了其他设备');
+      if (!planAllowsDevice(plan, deviceId!)) fail('scope_denied', '任务表未绑定当前设备');
       assertAgentExecutablePlan(plan, clientType);
       const expected = structuredClone(plan);
       await permit('maa_start_plan', 'execute', { plan: expected }, requestId, invocation);

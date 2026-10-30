@@ -1119,6 +1119,49 @@ describe('parallel device execution', () => {
     runtime.workers.set(deviceB.id, second);
     return { r: runtime, first, second, deviceA, deviceB };
   }
+  test('many-to-many bindings admit every linked device while retaining per-device exclusivity and immutable runs', async () => {
+    const { r, first, second, deviceA, deviceB } = await dual();
+    const plan = await r.handle('plan.save', {
+      plan: {
+        id: 'bound-shared',
+        name: '共享绑定',
+        deviceIds: [deviceA.id, deviceB.id],
+        tasks: [{ type: 'Award' }],
+      },
+    });
+    const other = await r.handle('plan.save', {
+      plan: { ...plan, id: 'other-bound', name: '同设备另一张表' },
+    });
+    const requestA = { planId: plan.id, deviceId: deviceA.id, requestId: 'bound-a' };
+    const [runA, runB] = await Promise.all([
+      r.startRun(requestA),
+      r.startRun({ planId: plan.id, deviceId: deviceB.id, requestId: 'bound-b' }),
+    ]);
+    expect(runA.status).toBe('running');
+    expect(runB.status).toBe('running');
+    await expect(
+      r.startRun({ planId: other.id, deviceId: deviceA.id, requestId: 'occupied-bound' }),
+    ).rejects.toMatchObject({ code: -32011 });
+    await expect(
+      r.startRun({ planId: plan.id, deviceId: 'outside-bindings', requestId: 'outside-bound' }),
+    ).rejects.toThrow('绑定范围');
+    await r.handle('plan.save', { plan: { ...plan, deviceIds: [deviceB.id] } });
+    expect((await r.startRun(requestA)).id).toBe(runA.id);
+    expect(r.store.get('run_plan', runA.id).deviceIds).toEqual([deviceA.id, deviceB.id]);
+    first.complete(1);
+    await r.tick(true);
+    expect(r.store.get('run', runB.id).status).toBe('running');
+    await expect(
+      r.startRun({ planId: plan.id, deviceId: deviceA.id, requestId: 'removed-bound' }),
+    ).rejects.toThrow('绑定范围');
+    const next = await r.startRun({
+      planId: other.id,
+      deviceId: deviceA.id,
+      requestId: 'next-bound',
+    });
+    expect(next.status).toBe('running');
+    expect(second.submitted).toHaveLength(1);
+  });
   test('one unbound plan runs concurrently with independent snapshots and stopping one device preserves the other', async () => {
     const { r, first, second, deviceA, deviceB } = await dual();
     const save = (stage: string, times: number) =>

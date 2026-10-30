@@ -265,10 +265,6 @@
   accent-color: var(--accent);
 }
 
-.tc-plan-row.is-disabled .tc-plan-name strong {
-  color: var(--muted);
-}
-
 .tc-plan-main {
   min-width: 0;
   display: flex;
@@ -320,16 +316,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.tc-plan-state {
-  flex: none;
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--danger);
-  background: var(--danger-soft);
-  border-radius: 4px;
-  padding: 1px 5px;
 }
 
 .tc-plan-meta {
@@ -622,76 +608,6 @@
   font-weight: 600;
 }
 
-.tc-launch-devices > legend span {
-  margin-left: 10px;
-  color: var(--muted);
-  font-weight: 400;
-  font-size: 11px;
-}
-
-.tc-launch-device {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 13px;
-  border-top: 1px solid var(--line);
-  cursor: pointer;
-}
-
-.tc-launch-devices > legend + .tc-launch-device {
-  border-top: 0;
-}
-
-.tc-launch-device.is-unavailable {
-  cursor: not-allowed;
-  background: var(--surface-subtle);
-}
-
-.tc-launch-device input {
-  accent-color: var(--accent);
-  width: 16px;
-  height: 16px;
-  margin: 0;
-}
-
-.tc-launch-device-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.tc-launch-device-copy strong {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-
-.tc-launch-device-copy small {
-  color: var(--muted);
-  font-size: 11px;
-  overflow-wrap: anywhere;
-}
-
-.tc-launch-device-copy small.is-running {
-  color: var(--accent);
-}
-
-.tc-launch-reason {
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.tc-launch-reason.is-blocked {
-  color: var(--dim);
-}
-
 .tc-launch-notice {
   display: flex;
   align-items: flex-start;
@@ -793,18 +709,7 @@
   .tc-launch {
     max-height: calc(100dvh - 32px);
   }
-  .tc-launch-device {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
   .tc-launch-plan {
     grid-template-columns: auto minmax(0, 1fr);
-  }
-  .tc-launch-plan .tc-launch-reason {
-    grid-column: 2;
-    white-space: normal;
-  }
-  .tc-launch-reason {
-    grid-column: 2;
-    white-space: normal;
   }
 }

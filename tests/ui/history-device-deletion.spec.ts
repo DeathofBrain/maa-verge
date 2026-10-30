@@ -54,7 +54,7 @@ async function seedHistory(page: Page) {
     const devices: Device[] = [];
     for (const profile of profiles)
       devices.push((await api.call('device.connect', { address: profile.address })) as Device);
-    await api.call('plan.save', { plan: { ...base.plans[0], deviceId: devices[0].id } });
+    await api.call('plan.save', { plan: { ...base.plans[0], deviceIds: [devices[0].id] } });
     const run = (await api.call('run.start', {
       planId: base.plans[0].id,
       deviceId: devices[0].id,

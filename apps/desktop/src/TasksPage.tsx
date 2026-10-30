@@ -11,7 +11,13 @@ import {
   Square,
   Trash2,
 } from 'lucide-react';
-import { localizeExecutionMessage, type Plan, type Run, type Snapshot } from '@maaverge/contracts';
+import {
+  localizeExecutionMessage,
+  planDeviceIds,
+  type Plan,
+  type Run,
+  type Snapshot,
+} from '@maaverge/contracts';
 import { useContextMenu, useContextMenuShow } from './ContextMenu';
 import CopilotSelectAll from './CopilotSelectAll';
 import RunTasksDialog from './RunTasksDialog';
@@ -31,7 +37,7 @@ type Props = {
   onCommand: (plan: Plan, command: 'settings' | 'rename' | 'duplicate' | 'export') => void;
   onDelete: (plan: Plan) => void;
   onDeleteMany: (plans: Plan[]) => void;
-  onStart: (plan: Plan, deviceId?: string) => Promise<boolean>;
+  onStart: (plan: Plan, deviceId?: string, requestId?: string) => Promise<boolean>;
   onStop: (run: Run) => Promise<boolean>;
   onShowRun: (run: Run) => void;
   onCloseDetail: () => void;
@@ -83,8 +89,9 @@ export default function TasksPage({
     [snapshot.runs],
   );
   const runningByPlan = useMemo(() => {
-    const map = new Map<string, Run>();
-    for (const run of planRuns) if (run.status === 'running') map.set(run.planId, run);
+    const map = new Map<string, Run[]>();
+    for (const run of planRuns)
+      if (run.status === 'running') map.set(run.planId, [...(map.get(run.planId) || []), run]);
     return map;
   }, [planRuns]);
   const lastByPlan = useMemo(() => {
@@ -105,8 +112,8 @@ export default function TasksPage({
   const plans = snapshot.plans.filter((plan) => {
     if (filter === 'running' && !runningByPlan.has(plan.id)) return false;
     if (!term) return true;
-    const device = snapshot.devices.find((item) => item.id === plan.deviceId);
-    return `${plan.name} ${plan.description || ''} ${device?.name || ''}`
+    const devices = snapshot.devices.filter((item) => planDeviceIds(plan).includes(item.id));
+    return `${plan.name} ${plan.description || ''} ${devices.map((device) => device.name).join(' ')}`
       .toLowerCase()
       .includes(term);
   });
@@ -122,7 +129,10 @@ export default function TasksPage({
       action: () => onDelete(plan),
     },
   ];
-  const startKey = (plan: Plan) => `start-plan-${plan.deviceId || selectedDeviceId}`;
+  const startPending = (plan: Plan) =>
+    (planDeviceIds(plan).length ? planDeviceIds(plan) : [selectedDeviceId]).some((id) =>
+      pending.has(`start-plan-${id}`),
+    );
   const togglePlan = (planId: string) =>
     setSelectedPlanIds((previous) => {
       const next = new Set(previous);
@@ -324,14 +334,20 @@ export default function TasksPage({
           ) : (
             <section className="tc-plan-list" aria-label="任务表列表">
               {plans.map((plan) => {
-                const active = runningByPlan.get(plan.id);
+                const activeRuns = runningByPlan.get(plan.id) || [];
+                const active = activeRuns[0];
                 const last = lastByPlan.get(plan.id);
                 const enabled = plan.tasks.filter((task) => task.enabled !== false).length;
-                const bound = snapshot.devices.find((device) => device.id === plan.deviceId);
-                const startPending = pending.has(startKey(plan));
+                const bindings = planDeviceIds(plan);
+                const boundNames = bindings.map(
+                  (id) =>
+                    snapshot.devices.find((device) => device.id === id)?.name ||
+                    `未发现的设备（${id}）`,
+                );
+                const starting = startPending(plan);
                 return (
                   <article
-                    className={`tc-plan-row ${selectedPlanIds.has(plan.id) ? 'is-checked' : ''} ${!plan.enabled ? 'is-disabled' : ''}`}
+                    className={`tc-plan-row ${selectedPlanIds.has(plan.id) ? 'is-checked' : ''}`}
                     key={plan.id}
                     aria-label={`任务表 ${plan.name}`}
                     tabIndex={0}
@@ -351,10 +367,7 @@ export default function TasksPage({
                           <FileJson size={17} />
                         </span>
                         <span className="tc-plan-copy">
-                          <strong>
-                            {plan.name}
-                            {!plan.enabled && <small className="tc-plan-state">停用</small>}
-                          </strong>
+                          <strong>{plan.name}</strong>
                           <small>
                             {plan.description || '按顺序执行任务；点击详情打开并编辑。'}
                           </small>
@@ -366,12 +379,14 @@ export default function TasksPage({
                         </span>
                         <span>
                           <Monitor size={13} />
-                          {bound ? `绑定 ${bound.name}` : '未绑定设备'}
+                          {bindings.length
+                            ? `绑定 ${bindings.length} 台 · ${boundNames.slice(0, 2).join('、')}${bindings.length > 2 ? ' 等' : ''}`
+                            : '未绑定设备'}
                         </span>
                         {active ? (
                           <span className="tc-last-run running">
                             <LoaderCircle size={13} className="spin" />
-                            {statusNames[active.status]} ·{' '}
+                            {statusNames[active.status]} · {activeRuns.length} 台设备 ·{' '}
                             {localizeExecutionMessage(active.message) || '等待反馈'}
                           </span>
                         ) : last ? (
@@ -385,25 +400,23 @@ export default function TasksPage({
                       </div>
                     </div>
                     <div className="tc-plan-actions">
-                      {active ? (
+                      {active && (
                         <button className="button secondary" onClick={() => onShowRun(active)}>
                           查看执行
                         </button>
-                      ) : (
-                        <button
-                          className="button primary"
-                          disabled={!plan.enabled || startPending}
-                          title={!plan.enabled ? '启用任务表后可开始执行' : undefined}
-                          onClick={() => void onStart(plan)}
-                        >
-                          {startPending ? (
-                            <LoaderCircle size={14} className="spin" />
-                          ) : (
-                            <Play size={14} />
-                          )}
-                          {startPending ? '正在开始…' : '开始执行'}
-                        </button>
                       )}
+                      <button
+                        className="button primary"
+                        disabled={starting}
+                        onClick={() => void onStart(plan)}
+                      >
+                        {starting ? (
+                          <LoaderCircle size={14} className="spin" />
+                        ) : (
+                          <Play size={14} />
+                        )}
+                        {starting ? '正在开始…' : '开始执行'}
+                      </button>
                       <button
                         className="button secondary"
                         aria-label={`查看任务表详情${plan.name}`}
@@ -414,9 +427,9 @@ export default function TasksPage({
                       {active && (
                         <button
                           className="button danger"
-                          disabled={pending.has(`stop-${active.id}`)}
+                          disabled={activeRuns.some((run) => pending.has(`stop-${run.id}`))}
                           aria-label={`停止任务表${plan.name}`}
-                          onClick={() => void onStop(active)}
+                          onClick={() => void Promise.all(activeRuns.map((run) => onStop(run)))}
                         >
                           <Square size={12} />
                           停止

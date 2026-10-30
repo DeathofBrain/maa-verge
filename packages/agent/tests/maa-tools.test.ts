@@ -217,6 +217,23 @@ const validInputs: Record<string, Record<string, unknown>> = {
   maa_start_copilot: { kind: 'Copilot' },
 };
 
+test('plan tools include and execute shared plans on a secondary bound device', async () => {
+  const { invoke, state, calls } = fixture({ authorize: () => true });
+  state.plans[0] = plan({ deviceId: 'other-device', deviceIds: ['other-device', deviceId] });
+  expect(((await invoke('maa_list_plans')).content as any).plans).toMatchObject([
+    { id: 'saved-plan', deviceIds: ['other-device', deviceId] },
+  ]);
+  await invoke('maa_start_plan', { planId: 'saved-plan' });
+  expect(calls.find((call) => call.name === 'startPlan')?.args[0]).toMatchObject({ deviceId });
+
+  state.plans[0] = plan({ deviceId, deviceIds: ['other-device'] });
+  expect(((await invoke('maa_list_plans')).content as any).plans).toEqual([]);
+  await expect(invoke('maa_start_plan', { planId: 'saved-plan' })).rejects.toMatchObject({
+    code: 'scope_denied',
+  });
+  expect(calls.filter((call) => call.name === 'startPlan')).toHaveLength(1);
+});
+
 test('all sixteen tools reject extra model arguments before consulting the host', async () => {
   const { tools, calls, host } = fixture();
   expect(tools.definitions.map((item) => item.name).sort()).toEqual(

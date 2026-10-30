@@ -42,6 +42,7 @@ export {
 } from './tasks';
 export { stagePresets } from './stages';
 export { taskEnabled, taskConsumableLimits } from './task-policy';
+export { planDeviceIds, planAllowsDevice } from './plan-devices';
 export { localizeExecutionMessage } from './execution';
 export {
   desktopPlatform,

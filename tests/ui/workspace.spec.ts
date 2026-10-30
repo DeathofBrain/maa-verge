@@ -553,7 +553,7 @@ test('task-table metadata, device binding and derived zero limits persist togeth
   await tab(page, '任务表设置');
   await wb(page).getByLabel('任务表名称', { exact: true }).fill('晚间日常');
   await wb(page).getByLabel('任务表说明', { exact: true }).fill('先收取，再换班；不使用消耗品。');
-  await wb(page).getByLabel('绑定设备', { exact: true }).selectOption('mock-device-1');
+  await wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }).check();
   await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
   await expect(wb(page).getByLabel('任务表理智药上限', { exact: true })).toHaveCount(0);
   await savePlan(page);
@@ -563,7 +563,9 @@ test('task-table metadata, device binding and derived zero limits persist togeth
   await expect(wb(page).getByLabel('任务表说明', { exact: true })).toHaveValue(
     '先收取，再换班；不使用消耗品。',
   );
-  await expect(wb(page).getByLabel('绑定设备', { exact: true })).toHaveValue('mock-device-1');
+  await expect(
+    wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }),
+  ).toBeChecked();
   await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
   await tab(page, '定时计划');
   await expect(wb(page).getByRole('heading', { name: '定时计划', exact: true })).toBeVisible();

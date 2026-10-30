@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { CalendarClock, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import {
   errorMessage,
+  planAllowsDevice,
   rpc,
   type Device,
   type Plan,
@@ -29,6 +30,7 @@ export default function SchedulePanel({
   const [newDevice, setNewDevice] = useState('');
   const [newTime, setNewTime] = useState('04:10');
   const [newPlan, setNewPlan] = useState(planId ?? '');
+  const [planDrafts, setPlanDrafts] = useState<Record<string, string>>({});
   useEffect(() => {
     setNewPlan(planId ?? '');
   }, [planId]);
@@ -87,6 +89,10 @@ export default function SchedulePanel({
     });
   };
   const visible = data?.schedules.filter((schedule) => all || schedule.planId === planId) ?? [];
+  const eligibleDevices = (id: string) => {
+    const plan = plans.find((item) => item.id === id);
+    return plan ? devices.filter((device) => planAllowsDevice(plan, device.id)) : [];
+  };
   return (
     <section className="schedule-panel" aria-label="定时计划">
       <header>
@@ -134,106 +140,140 @@ export default function SchedulePanel({
             </tr>
           </thead>
           <tbody>
-            {visible.map((schedule) => (
-              <tr key={schedule.id}>
-                <td>
-                  <input
-                    type="checkbox"
-                    aria-label={`启用定时 ${schedule.id}`}
-                    checked={schedule.enabled}
-                    disabled={busy}
-                    onChange={(event) => {
-                      void save(schedule, { enabled: event.target.checked });
-                    }}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="text-input"
-                    aria-label={`定时时间 ${schedule.id}`}
-                    type="time"
-                    value={`${String(schedule.hour).padStart(2, '0')}:${String(schedule.minute).padStart(2, '0')}`}
-                    disabled={busy}
-                    onChange={(event) => {
-                      const [hour, minute] = event.target.value.split(':').map(Number);
-                      if (Number.isInteger(hour) && Number.isInteger(minute))
-                        void save(schedule, { hour, minute });
-                    }}
-                  />
-                </td>
-                <td>
-                  <Select
-                    className="text-input"
-                    aria-label={`定时任务表 ${schedule.id}`}
-                    value={schedule.planId}
-                    disabled={busy}
-                    onChange={(event) => {
-                      void save(schedule, { planId: event.target.value });
-                    }}
-                  >
-                    {!plans.some((plan) => plan.id === schedule.planId) && (
-                      <option value={schedule.planId}>已删除</option>
-                    )}
-                    {plans.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name}
-                      </option>
-                    ))}
-                  </Select>
-                </td>
-                <td>
-                  <Select
-                    className="text-input"
-                    aria-label={`定时设备 ${schedule.id}`}
-                    value={schedule.deviceId}
-                    disabled={busy}
-                    onChange={(event) => {
-                      void save(schedule, { deviceId: event.target.value });
-                    }}
-                  >
-                    {devices.map((device) => (
-                      <option key={device.id} value={device.id}>
-                        {device.name}
-                      </option>
-                    ))}
-                  </Select>
-                </td>
-                <td>{schedule.nextAt ? new Date(schedule.nextAt).toLocaleString('zh-CN') : '—'}</td>
-                <td>{schedule.disabledReason ?? String(schedule.last?.message ?? '尚未触发')}</td>
-                <td>
-                  <Select
-                    className="text-input"
-                    aria-label={`临时启停 ${schedule.id}`}
-                    value={schedule.override ?? 'clear'}
-                    disabled={busy}
-                    onChange={(event) => {
-                      void action(() =>
-                        rpc('schedule.override', {
-                          id: schedule.id,
-                          mode: event.target.value as 'enable' | 'skip' | 'clear',
-                        }),
-                      );
-                    }}
-                  >
-                    <option value="clear">按保存设置</option>
-                    <option value="enable">仅本次启用</option>
-                    <option value="skip">仅本次跳过</option>
-                  </Select>
-                </td>
-                <td>
-                  <button
-                    className="icon-button"
-                    aria-label={`删除定时 ${schedule.id}`}
-                    disabled={busy}
-                    onClick={() => {
-                      void action(() => rpc('schedule.delete', { id: schedule.id }));
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {visible.map((schedule) => {
+              const targetPlanId = planDrafts[schedule.id] ?? schedule.planId;
+              const choices = eligibleDevices(targetPlanId);
+              const currentEligible = choices.some((device) => device.id === schedule.deviceId);
+              return (
+                <tr key={schedule.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`启用定时 ${schedule.id}`}
+                      checked={schedule.enabled}
+                      disabled={busy}
+                      onChange={(event) => {
+                        void save(schedule, { enabled: event.target.checked });
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="text-input"
+                      aria-label={`定时时间 ${schedule.id}`}
+                      type="time"
+                      value={`${String(schedule.hour).padStart(2, '0')}:${String(schedule.minute).padStart(2, '0')}`}
+                      disabled={busy}
+                      onChange={(event) => {
+                        const [hour, minute] = event.target.value.split(':').map(Number);
+                        if (Number.isInteger(hour) && Number.isInteger(minute))
+                          void save(schedule, { hour, minute });
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <Select
+                      className="text-input"
+                      aria-label={`定时任务表 ${schedule.id}`}
+                      value={targetPlanId}
+                      disabled={busy}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (
+                          eligibleDevices(value).some((device) => device.id === schedule.deviceId)
+                        ) {
+                          setPlanDrafts((previous) => {
+                            const next = { ...previous };
+                            delete next[schedule.id];
+                            return next;
+                          });
+                          void save(schedule, { planId: value });
+                        } else setPlanDrafts((previous) => ({ ...previous, [schedule.id]: value }));
+                      }}
+                    >
+                      {!plans.some((plan) => plan.id === schedule.planId) && (
+                        <option value={schedule.planId}>已删除</option>
+                      )}
+                      {plans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </td>
+                  <td>
+                    <Select
+                      className="text-input"
+                      aria-label={`定时设备 ${schedule.id}`}
+                      value={currentEligible ? schedule.deviceId : ''}
+                      disabled={busy}
+                      onChange={(event) => {
+                        const deviceId = event.target.value;
+                        void action(async () => {
+                          await rpc('schedule.save', {
+                            schedule: { ...schedule, planId: targetPlanId, deviceId },
+                          });
+                          setPlanDrafts((previous) => {
+                            const next = { ...previous };
+                            delete next[schedule.id];
+                            return next;
+                          });
+                        });
+                      }}
+                    >
+                      {!currentEligible && (
+                        <option value="">
+                          {planDrafts[schedule.id]
+                            ? '为新任务表选择设备后保存'
+                            : '原设备不可用，请重新选择'}
+                        </option>
+                      )}
+                      {choices.map((device) => (
+                        <option key={device.id} value={device.id}>
+                          {device.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </td>
+                  <td>
+                    {schedule.nextAt ? new Date(schedule.nextAt).toLocaleString('zh-CN') : '—'}
+                  </td>
+                  <td>{schedule.disabledReason ?? String(schedule.last?.message ?? '尚未触发')}</td>
+                  <td>
+                    <Select
+                      className="text-input"
+                      aria-label={`临时启停 ${schedule.id}`}
+                      value={schedule.override ?? 'clear'}
+                      disabled={busy}
+                      onChange={(event) => {
+                        void action(() =>
+                          rpc('schedule.override', {
+                            id: schedule.id,
+                            mode: event.target.value as 'enable' | 'skip' | 'clear',
+                          }),
+                        );
+                      }}
+                    >
+                      <option value="clear">按保存设置</option>
+                      <option value="enable">仅本次启用</option>
+                      <option value="skip">仅本次跳过</option>
+                    </Select>
+                  </td>
+                  <td>
+                    <button
+                      className="icon-button"
+                      aria-label={`删除定时 ${schedule.id}`}
+                      disabled={busy}
+                      onClick={() => {
+                        void action(() => rpc('schedule.delete', { id: schedule.id }));
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -245,7 +285,11 @@ export default function SchedulePanel({
           className="text-input"
           aria-label="新增定时任务表"
           value={newPlan}
-          onChange={(event) => setNewPlan(event.target.value)}
+          onChange={(event) => {
+            const value = event.target.value;
+            setNewPlan(value);
+            if (!eligibleDevices(value).some((device) => device.id === newDevice)) setNewDevice('');
+          }}
         >
           <option value="">选择任务表</option>
           {plans
@@ -263,7 +307,7 @@ export default function SchedulePanel({
           onChange={(event) => setNewDevice(event.target.value)}
         >
           <option value="">选择设备</option>
-          {devices.map((device) => (
+          {eligibleDevices(newPlan).map((device) => (
             <option key={device.id} value={device.id}>
               {device.name}
             </option>
@@ -278,7 +322,12 @@ export default function SchedulePanel({
         />
         <button
           className="button primary"
-          disabled={busy || !newPlan || !newDevice || !newTime}
+          disabled={
+            busy ||
+            !newPlan ||
+            !eligibleDevices(newPlan).some((device) => device.id === newDevice) ||
+            !newTime
+          }
           onClick={() => {
             const [hour, minute] = newTime.split(':').map(Number);
             void action(() =>

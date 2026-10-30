@@ -141,6 +141,61 @@ test('daily schedules support eight rules, temporary overrides, global options a
   await expect(panel.getByRole('row')).toHaveCount(8);
 });
 
+test('a shared table schedules either bound device and removing that relationship disables only its schedule', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const second = await page.evaluate(async () => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const device = (await api.call('device.connect', {
+      address: '127.0.0.1:5557',
+      name: '共享定时设备',
+    })) as { id: string };
+    await api.call('device.connect', { address: '127.0.0.1:5559', name: '未绑定设备' });
+    const state = (await api.call('app.snapshot', {})) as Snapshot;
+    const plan = state.plans.find((plan) => plan.id === 'daily')!;
+    await api.call('plan.save', { plan: { ...plan, deviceIds: ['mock-device-1', device.id] } });
+    return device.id;
+  });
+  await page.locator('.sidebar').getByRole('button', { name: '任务', exact: true }).click();
+  await page.getByRole('button', { name: '查看任务表详情每日长草计划', exact: true }).click();
+  await page.getByRole('tab', { name: '定时计划', exact: true }).click();
+  const panel = page.getByRole('region', { name: '定时计划', exact: true });
+  const picker = panel.getByLabel('新增定时设备', { exact: true });
+  await expect
+    .poll(() =>
+      picker.locator('option').evaluateAll((options) =>
+        options
+          .map((option) => (option as HTMLOptionElement).value)
+          .filter(Boolean)
+          .sort(),
+      ),
+    )
+    .toEqual(['mock-device-1', second].sort());
+  for (const device of ['mock-device-1', second]) {
+    await picker.selectOption(device);
+    await panel.getByRole('button', { name: '添加定时', exact: true }).click();
+  }
+  await expect(panel.getByRole('row')).toHaveCount(3);
+  await page.getByRole('tab', { name: '任务表设置', exact: true }).click();
+  const wb = page.getByRole('region', { name: '任务表工作台', exact: true });
+  await wb.getByRole('checkbox', { name: '绑定设备共享定时设备', exact: true }).uncheck();
+  await expect(wb.locator('.wb-save-state')).toHaveText('已保存');
+  await page.getByRole('tab', { name: '定时计划', exact: true }).click();
+  await expect(panel).toContainText('定时设备不在任务表绑定范围内');
+  const schedules = await page.evaluate(
+    async () =>
+      (await (window as HarnessWindow).runtimeHarness.call('schedule.list', {})) as {
+        schedules: { deviceId: string; enabled: boolean; disabledReason?: string | null }[];
+      },
+  );
+  expect(schedules.schedules.find((item) => item.deviceId === 'mock-device-1')?.enabled).toBe(true);
+  expect(schedules.schedules.find((item) => item.deviceId === second)).toMatchObject({
+    enabled: false,
+    disabledReason: '定时设备不在任务表绑定范围内',
+  });
+});
+
 test('force countdown keeps a rejected cancellation visible and locks cancellation after start commits', async ({
   page,
 }) => {

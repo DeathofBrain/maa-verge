@@ -96,8 +96,11 @@ test('passive device errors and task validation failures never trigger launch no
   });
   runtime.emit('device.failed', 'background failure', { deviceId: request.deviceId });
   runtime.emit('device.connection_failed', 'background retry', { profileId: 'profile' });
-  runtime.store.put('plan', plan.id, { ...plan, enabled: false });
-  await expect(runtime.startRun(request)).rejects.toThrow('计划已禁用');
+  runtime.store.put('plan', plan.id, {
+    ...plan,
+    tasks: plan.tasks.map((task) => ({ ...task, enabled: false })),
+  });
+  await expect(runtime.startRun(request)).rejects.toThrow('至少需要启用一条任务');
   await flush();
   expect(probes).toBe(0);
   expect(notices()).toHaveLength(0);

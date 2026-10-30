@@ -54,7 +54,7 @@ test('two tables bound to the same device cannot start together', async ({ page 
     const api = (window as HarnessWindow).runtimeHarness;
     const state = (await api.call('app.snapshot', {})) as Snapshot;
     for (const plan of state.plans)
-      await api.call('plan.save', { plan: { ...plan, deviceId: 'mock-device-1' } });
+      await api.call('plan.save', { plan: { ...plan, deviceIds: ['mock-device-1'] } });
   });
   await openTasks(page);
   await selectAll(page);
@@ -84,7 +84,7 @@ test('tables bound to different devices submit concurrently with distinct reques
     const state = (await api.call('app.snapshot', {})) as Snapshot;
     for (const plan of state.plans)
       await api.call('plan.save', {
-        plan: { ...plan, deviceId: plan.id === 'daily' ? 'mock-device-1' : device.id },
+        plan: { ...plan, deviceIds: [plan.id === 'daily' ? 'mock-device-1' : device.id] },
       });
     target.batchStarts = [];
     const original = api.call;
@@ -121,6 +121,105 @@ test('tables bound to different devices submit concurrently with distinct reques
     'aria-selected',
     'true',
   );
+});
+
+test('one table bound to two devices reuses each request after a lost response without starting another execution', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const secondDevice = await page.evaluate(async () => {
+    const target = window as BatchHarnessWindow;
+    const api = target.runtimeHarness;
+    const device = (await api.call('device.connect', {
+      address: '127.0.0.1:5581',
+      name: '绑定的第二实例',
+    })) as { id: string };
+    const state = (await api.call('app.snapshot', {})) as Snapshot;
+    const plan = state.plans.find((plan) => plan.id === 'farm-1-7')!;
+    await api.call('plan.save', { plan: { ...plan, deviceIds: ['mock-device-1', device.id] } });
+    target.batchStarts = [];
+    const original = api.call;
+    let failed = false;
+    api.call = async (method, params) => {
+      if (method === 'run.start') {
+        target.batchStarts.push(params as (typeof target.batchStarts)[number]);
+        if (params.deviceId === device.id && !failed) {
+          failed = true;
+          const accepted = (await original(method, params)) as Run;
+          await original('run.stop', { id: accepted.id });
+          throw new Error('合成单设备启动故障');
+        }
+      }
+      return original(method, params);
+    };
+    return device.id;
+  });
+  await openTasks(page);
+  await page.getByRole('checkbox', { name: '选择任务表固源岩补给', exact: true }).check();
+  await actions(page).getByRole('button', { name: '同时执行', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '运行任务表', exact: true });
+  await expect(
+    dialog.getByRole('checkbox', { name: '选择设备本地模拟设备', exact: true }),
+  ).toBeChecked();
+  await expect(
+    dialog.getByRole('checkbox', { name: '选择设备绑定的第二实例', exact: true }),
+  ).toBeChecked();
+  await dialog.getByRole('button', { name: '在 2 台设备运行', exact: true }).click();
+  await expect(dialog).toContainText('重试仅包含失败的任务表与设备');
+  expect(
+    (await snapshot(page)).runs
+      .filter((run) => run.status === 'running')
+      .map((run) => run.deviceId),
+  ).toEqual(['mock-device-1']);
+  await dialog.getByRole('button', { name: '在 1 台设备运行', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect((await snapshot(page)).runs.map((run) => run.deviceId).sort()).toEqual(
+    ['mock-device-1', secondDevice].sort(),
+  );
+  const requests = await page.evaluate(() => (window as BatchHarnessWindow).batchStarts);
+  expect(requests.filter((request) => request.deviceId === 'mock-device-1')).toHaveLength(1);
+  expect(requests.filter((request) => request.deviceId === secondDevice)).toHaveLength(2);
+  const retried = requests.filter((request) => request.deviceId === secondDevice);
+  expect(retried[0].requestId).toBe(retried[1].requestId);
+  expect(requests.every((request) => request.planId === 'farm-1-7')).toBe(true);
+  expect(requests[0].requestId).not.toBe(requests[1].requestId);
+});
+
+test('monitor search includes every shared binding and stopping a table stops all of its device runs', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const secondDevice = await page.evaluate(async () => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const device = (await api.call('device.connect', {
+      address: '127.0.0.1:5581',
+      name: '共享执行实例',
+    })) as { id: string };
+    const state = (await api.call('app.snapshot', {})) as Snapshot;
+    for (const plan of state.plans)
+      await api.call('plan.save', { plan: { ...plan, deviceIds: ['mock-device-1', device.id] } });
+    return device.id;
+  });
+  await openTasks(page);
+  await page.getByRole('tab', { name: '执行监控', exact: true }).click();
+  await page.getByLabel('搜索监控设备', { exact: true }).fill('固源岩补给');
+  const devices = page.getByRole('region', { name: '设备执行列表', exact: true });
+  await expect(devices.getByRole('article')).toHaveCount(2);
+  await page.evaluate(async (secondDevice) => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    for (const deviceId of ['mock-device-1', secondDevice])
+      await api.call('run.start', {
+        planId: 'farm-1-7',
+        deviceId,
+        requestId: `stop-shared-${deviceId}`,
+      });
+  }, secondDevice);
+  await page.getByRole('tab', { name: '任务表', exact: true }).click();
+  await page.getByRole('button', { name: '停止任务表固源岩补给', exact: true }).click();
+  await expect
+    .poll(async () => (await snapshot(page)).runs.map((run) => run.status))
+    .toEqual(['stopped', 'stopped']);
+  expect((await snapshot(page)).devices.every((device) => device.state === 'idle')).toBe(true);
 });
 
 test('a selected device going offline blocks launch but can be deselected to run on the remaining device', async ({

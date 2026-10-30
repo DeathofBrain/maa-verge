@@ -36,6 +36,8 @@ import {
   taskEnabled,
   taskLabels,
   nextPlanName,
+  planDeviceIds,
+  planAllowsDevice,
   type Plan,
   type Run,
   type Snapshot,
@@ -57,6 +59,7 @@ import MultiRunPanel from './MultiRunPanel';
 import ExecutionMonitor from './ExecutionMonitor';
 import ExecutionPage from './ExecutionPage';
 import TasksPage from './TasksPage';
+import RunTasksDialog from './RunTasksDialog';
 import DeviceConnectionDrawer from './DeviceConnectionDrawer';
 import RunPanel from './RunPanel';
 import DevicePicker from './DevicePicker';
@@ -121,6 +124,7 @@ export default function App() {
   const [focusTaskIndex, setFocusTaskIndex] = useState<number>();
   const [initialParams, setInitialParams] = useState<Task['params']>();
   const [proposal, setProposal] = useState<Plan | null>(null);
+  const [startSelection, setStartSelection] = useState<Plan | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -331,13 +335,24 @@ export default function App() {
       return false;
     }
   };
-  const startPlan = (plan: Plan, requestedDeviceId?: string) =>
-    action(
-      `start-plan-${plan.deviceId || requestedDeviceId || selectedDevice}`,
+  const startPlan = (
+    plan: Plan,
+    requestedDeviceId?: string,
+    requestId?: string,
+  ): Promise<boolean> => {
+    const bindings = planDeviceIds(plan);
+    if (!requestedDeviceId && bindings.length > 1) {
+      setStartSelection(plan);
+      return Promise.resolve(false);
+    }
+    return action(
+      `start-plan-${requestedDeviceId || bindings[0] || selectedDevice}`,
       async () => {
         const navigationRevision = detailRevision.current;
         let devices = snapshot?.devices || [];
-        let deviceId = plan.deviceId || requestedDeviceId || selectedDevice;
+        let deviceId = requestedDeviceId || bindings[0] || selectedDevice;
+        if (deviceId && !planAllowsDevice(plan, deviceId))
+          throw new Error('请选择本任务表绑定的设备');
         let connectionFailure: unknown;
         if (
           !devices.some((item) => item.id === deviceId && item.state !== 'offline') &&
@@ -368,19 +383,20 @@ export default function App() {
           throw new Error(
             connectionFailure
               ? errorMessage(connectionFailure)
-              : plan.deviceId
+              : bindings.length
                 ? '绑定设备尚未连接，请在设备页连接后重试'
                 : '请先连接设备，或开启自动连接',
           );
         // The service validates the requested target, including a launch-scoped
         // notification when its local emulator endpoint is unavailable.
-        await rpc('run.start', { planId: plan.id, deviceId, requestId: uid() });
+        await rpc('run.start', { planId: plan.id, deviceId, requestId: requestId || uid() });
         if (!requestedDeviceId && detailRevision.current === navigationRevision) {
           setSelectedDevice(deviceId);
         }
       },
       '任务表已开始执行',
     );
+  };
   const stopRun = (run: Run) =>
     action(`stop-${run.id}`, () => rpc('run.stop', { id: run.id }), '执行已停止，保存的配置已保留');
   const stopMany = useCallback(
@@ -925,7 +941,7 @@ export default function App() {
                 onCommand={(plan, type) => editPlan(plan, type)}
                 onDelete={(plan) => requestDeletePlans([plan])}
                 onDeleteMany={(plans) => requestDeletePlans(plans, true)}
-                onStart={(plan, deviceId) => startPlan(plan, deviceId)}
+                onStart={startPlan}
                 onStop={stopRun}
                 onShowRun={showExecution}
                 onCloseDetail={closeTaskDetail}
@@ -1427,6 +1443,16 @@ export default function App() {
           </button>
         </div>
       </footer>
+      {startSelection && (
+        <RunTasksDialog
+          snapshot={snapshot}
+          plans={[snapshot.plans.find((plan) => plan.id === startSelection.id) || startSelection]}
+          selectedDeviceId={selectedDevice}
+          pending={pending}
+          onStart={startPlan}
+          onClose={() => setStartSelection(null)}
+        />
+      )}
       {deleting && (
         <ConfirmDialog
           title={deleting.batch ? '删除所选任务表' : '删除任务表'}

@@ -11,6 +11,9 @@ export type Devices = Device[];
 export type Id1 = string;
 export type Name1 = string;
 export type Description = string;
+/**
+ * 旧版单设备绑定兼容字段；规范化后为 deviceIds 第一项或 null。
+ */
 export type Deviceid = string | null;
 export type Group = 'daily' | 'specialized';
 export type Originium = number;
@@ -44,6 +47,9 @@ export type Enabled = boolean;
  */
 export type Tasks = Task[];
 export type Schedule = string | null;
+/**
+ * 旧版兼容字段；服务读取和保存时统一返回 true，历史值不影响任务表执行。单项任务与定时规则各自保留启停设置。
+ */
 export type Enabled1 = boolean;
 export type Plans = Plan[];
 export type Id2 = string;
@@ -108,6 +114,12 @@ export interface Plan {
   name: Name1;
   description: Description;
   deviceId: Deviceid;
+  /**
+   * 任务表绑定的设备列表；一台设备可被多张表绑定。空数组表示不预绑定，执行时选择设备。字段缺省时沿用旧版 deviceId。
+   *
+   * @maxItems 100
+   */
+  deviceIds?: string[];
   group: Group;
   budgets: Budgets | null;
   tasks: Tasks;
