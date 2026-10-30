@@ -1,10 +1,13 @@
 import { expect, test } from 'bun:test';
 import { createDefaultDailyTasks, nextPlanName } from '../../../packages/contracts/src/tasks';
-import { parsePlan, parseSettings } from '../src/models';
-import { validatePlan } from '../src/task-policy';
+import { parsePlan, parseSettings } from '../src/modules/settings/models';
+import { validatePlan } from '../src/modules/plans/task-policy';
 
 test('the upstream daily template passes runtime policy with zero consumable budgets and independent parameters', () => {
-  const first = parsePlan({ name: nextPlanName(['日常表1', '日常表2']), tasks: createDefaultDailyTasks() });
+  const first = parsePlan({
+    name: nextPlanName(['日常表1', '日常表2']),
+    tasks: createDefaultDailyTasks(),
+  });
   expect(first.name).toBe('日常表3');
   expect(() => validatePlan(first, parseSettings())).not.toThrow();
   const second = createDefaultDailyTasks();

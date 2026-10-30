@@ -2,8 +2,8 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { CopilotLibrary } from '../src/copilot';
-import { Store } from '../src/storage';
+import { CopilotLibrary } from '../src/modules/copilot/copilot';
+import { Store } from '../src/infrastructure/storage/storage';
 
 const roots: string[] = [];
 const stores: Store[] = [];

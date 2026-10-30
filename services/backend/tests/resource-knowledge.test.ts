@@ -3,8 +3,11 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { buildResourceKnowledge, resourceKnowledgeParserVersion } from '../src/resource-knowledge';
-import type { ResourceKnowledgePack } from '../src/knowledge-types';
+import {
+  buildResourceKnowledge,
+  resourceKnowledgeParserVersion,
+} from '../src/modules/knowledge/resource-knowledge';
+import type { ResourceKnowledgePack } from '../src/modules/knowledge/knowledge-types';
 
 const roots: string[] = [];
 const temporary = () => {

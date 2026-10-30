@@ -12,15 +12,19 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { Store } from '../src/storage';
-import { parseSettings } from '../src/models';
-import { snapshotIntegrity } from '../src/snapshot-integrity';
+import { Store } from '../src/infrastructure/storage/storage';
+import { parseSettings } from '../src/modules/settings/models';
+import { snapshotIntegrity } from '../src/infrastructure/filesystem/snapshot-integrity';
 
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const entry = path.join(repo, 'services/backend/src/entry.ts');
-const storeModule = pathToFileURL(path.join(repo, 'services/backend/src/storage.ts')).href;
-const runtimeModule = pathToFileURL(path.join(repo, 'services/backend/src/runtime.ts')).href;
-const workerModule = pathToFileURL(path.join(repo, 'services/backend/src/worker.ts')).href;
+const storeModule = pathToFileURL(
+  path.join(repo, 'services/backend/src/infrastructure/storage/storage.ts'),
+).href;
+const runtimeModule = pathToFileURL(path.join(repo, 'services/backend/src/app/runtime.ts')).href;
+const workerModule = pathToFileURL(
+  path.join(repo, 'services/backend/src/infrastructure/native/worker.ts'),
+).href;
 const roots: string[] = [];
 const children: ManagedChild[] = [];
 const nativeChildren = new Set<number>();

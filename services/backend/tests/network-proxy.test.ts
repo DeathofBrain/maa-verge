@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
-import { createDownloadProxyResolver, ProxyConfigurationError } from '../src/network-proxy';
+import {
+  createDownloadProxyResolver,
+  ProxyConfigurationError,
+} from '../src/infrastructure/network/network-proxy';
 
 const target = 'https://github.com/MaaAssistantArknights/MaaResource/archive.zip';
 const settings = (patch: Record<string, unknown> = {}) =>

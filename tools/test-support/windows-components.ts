@@ -19,11 +19,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { withDependencyTar } from './dependency-tar.mjs';
-import { extractArchive } from '../../services/backend/src/archives.ts';
-import { downloadArchive } from '../../services/backend/src/download.ts';
-import { nativeWorkerPath } from '../../services/backend/src/native-path.ts';
-import { snapshotIntegrity } from '../../services/backend/src/snapshot-integrity.ts';
-import { runUpdateJob, validateNative } from '../../services/backend/src/updates.ts';
+import { extractArchive } from '../../services/backend/src/infrastructure/filesystem/archives.ts';
+import { downloadArchive } from '../../services/backend/src/infrastructure/network/download.ts';
+import { nativeWorkerPath } from '../../services/backend/src/infrastructure/native/native-path.ts';
+import { snapshotIntegrity } from '../../services/backend/src/infrastructure/filesystem/snapshot-integrity.ts';
+import {
+  runUpdateJob,
+  validateNative,
+} from '../../services/backend/src/modules/updates/updates.ts';
 
 type LockedArchive = { version: string; url: string; size: number; sha256: string };
 export type WindowsComponentsLock = {

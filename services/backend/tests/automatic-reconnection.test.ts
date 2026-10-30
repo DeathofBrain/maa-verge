@@ -3,10 +3,13 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Device } from '../../../packages/contracts/src/types';
-import type { AdbDevice } from '../src/adb';
-import { defaultConnection, parseSettings } from '../src/models';
-import { Runtime } from '../src/runtime';
-import { emptyEmulatorInventory, type EmulatorInventory } from '../src/windows-emulators';
+import type { AdbDevice } from '../src/infrastructure/native/adb';
+import { defaultConnection, parseSettings } from '../src/modules/settings/models';
+import { Runtime } from '../src/app/runtime';
+import {
+  emptyEmulatorInventory,
+  type EmulatorInventory,
+} from '../src/infrastructure/native/windows-emulators';
 
 type Options = NonNullable<ConstructorParameters<typeof Runtime>[1]>;
 type Observer = {

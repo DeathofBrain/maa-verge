@@ -14,7 +14,7 @@
 | `tools/policy.ts`                          | 有限次数、零药石加急、禁止任意文件和命令、客户端约束                       |
 | `tools/catalog.ts`                         | 全部 20 类任务的名称、入口与未开放原因                                     |
 | `@maaverge/agent/tools/langchain`          | 标准 LangChain 工具、调用 ID、取消和本机 artifact 桥接                     |
-| `services/backend/src/agent-tools.ts`      | `createMaaToolHost(runtime)`，通过具名端口复用业务校验、设备独占和执行去重 |
+| `services/backend/src/app/agent-tools.ts`  | `createMaaToolHost(runtime)`，通过具名端口复用业务校验、设备独占和执行去重 |
 
 依赖方向为 backend → agent → contracts。框架无关入口不导入 LangChain；默认产品服务不会因增加 tools 而加载模型 SDK。新增 Schema 不另建副本，也没有新增面向 UI 的 RPC。
 

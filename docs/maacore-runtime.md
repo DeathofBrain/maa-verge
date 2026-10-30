@@ -2,7 +2,7 @@
 
 Maa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完整归档，在不可变候选目录中选择性解压，再由独立 C++20 进程校验核心版本、API 和资源加载。首次安装和后续核心更新共用同一 TypeScript 提取规则；独立 MaaResource 覆盖包使用通用安全解压。发行路径不再调用官方 Python Updater。
 
-核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/updates.ts)。旧参考实现已移除；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。
+核心精简提取和接入提交（`e6e8493`、`103bc99`）已包含在迁移基线中。其保留范围已迁至 [archives.ts](../services/backend/src/infrastructure/filesystem/archives.ts)，安装、独立资源更新和空闲切换位于 [updates.ts](../services/backend/src/modules/updates/updates.ts)。旧参考实现已移除；进程与数据库交接见 [runtime-migration.md](runtime-migration.md)。
 
 ## 下载与安装目录
 

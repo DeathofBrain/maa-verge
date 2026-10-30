@@ -26,9 +26,9 @@
 | -------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | 作业页面       | `apps/desktop/src/SupportPages.tsx` 的 `CopilotPage` 只是任务表中作业参数的索引，操作会打开任务表编辑器 | 替换为独立作业工作区                                         |
 | 工具箱识别     | `RecognitionPanel.tsx` 会保存或复用单项任务表，再调用 `run.start`                                       | 可参考交互和占用限制，不能照搬其任务表存储方式               |
-| 执行服务       | `services/backend/src/runtime.ts` 的启动、快照和部分展示逻辑依赖 `planId`、`planName`、`run_plan`       | 抽出共用执行入口，兼容旧任务表运行                           |
+| 执行服务       | `services/backend/src/app/runtime.ts` 的启动、快照和部分展示逻辑依赖 `planId`、`planName`、`run_plan`   | 抽出共用执行入口，兼容旧任务表运行                           |
 | 设备与原生核心 | 已有每设备 worker、共享设备租约、异步调用及空闲判定、停止和更新门禁                                     | 复用现有控制权机制，不另建相互独立的锁                       |
-| 持久化         | `services/backend/src/storage.ts` 使用带数据根租约的 SQLite，业务对象以种类区分                         | 独立存储作业与工作区，保留旧记录、rowid 和请求去重           |
+| 持久化         | `services/backend/src/infrastructure/storage/storage.ts` 使用带数据根租约的 SQLite，业务对象以种类区分  | 独立存储作业与工作区，保留旧记录、rowid 和请求去重           |
 | 公共契约       | `packages/contracts/schemas` 是类型与校验器的权威来源                                                   | 修改 Schema 后运行 `pnpm contracts:generate`，不手改生成文件 |
 | 全局展示       | `App.tsx`、主页、执行监控和历史记录存在任务表名称及跳转假设                                             | 根据执行来源展示和导航，保留已有菜单与跨页停止               |
 

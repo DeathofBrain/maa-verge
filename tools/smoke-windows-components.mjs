@@ -273,8 +273,8 @@ export async function smokeWindowsComponents({ staging } = {}) {
     };
     const helper = async (seed) => {
       const source = [
-        `import { Store } from ${JSON.stringify(pathToFileURL(path.join(root, 'services/backend/src/storage.ts')).href)};`,
-        `import { parseSettings } from ${JSON.stringify(pathToFileURL(path.join(root, 'services/backend/src/models.ts')).href)};`,
+        `import { Store } from ${JSON.stringify(pathToFileURL(path.join(root, 'services/backend/src/infrastructure/storage/storage.ts')).href)};`,
+        `import { parseSettings } from ${JSON.stringify(pathToFileURL(path.join(root, 'services/backend/src/modules/settings/models.ts')).href)};`,
         `const store = new Store(${JSON.stringify(path.join(temporary, 'native'))});`,
         'try {',
         ...(seed

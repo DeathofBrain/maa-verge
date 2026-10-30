@@ -21,7 +21,7 @@ import {
   validateDeviceClickParams,
   validateDeviceFrameParams,
 } from '../../../packages/contracts/src/validators.js';
-import { homeInfo } from '../../../services/backend/src/home-info';
+import { homeInfo } from '../../../services/backend/src/modules/home/home-info';
 import type { RpcResult } from '../../../packages/contracts/src/index';
 
 const workspace =

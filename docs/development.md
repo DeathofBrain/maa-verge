@@ -1,5 +1,7 @@
 # 开发环境与多机协作
 
+代码目录、职责与扩展边界见[桌面前端 README](../apps/desktop/README.md)和[本地应用服务 README](../services/backend/README.md)。设计依据分别记录在[前端架构](frontend-architecture.md)与[后端架构](backend-architecture.md)。
+
 ## 统一版本与恢复
 
 版本来源为 `.node-version`（Node 24）、`package.json#packageManager`（pnpm 10）、`.bun-version`（Bun 1.4.3）和 `rust-toolchain.toml`。C++ worker 使用 CMake 3.25+ 与 C++20。开发、构建与测试统一使用 Node/Bun 和原生工具链，不需要 Python 或 uv。依赖由 `pnpm-lock.yaml`、`apps/desktop/src-tauri/Cargo.lock` 及 CMake 中的源码哈希锁定。

@@ -17,10 +17,14 @@ import {
   copyBundledPayload,
   readBundledComponents,
   type BundledComponents,
-} from '../src/bundled-components';
-import { snapshotIntegrity } from '../src/snapshot-integrity';
-import { Runtime } from '../src/runtime';
-import { UpdateService, type UpdateOptions, type UpdateStore } from '../src/updates';
+} from '../src/modules/updates/bundled-components';
+import { snapshotIntegrity } from '../src/infrastructure/filesystem/snapshot-integrity';
+import { Runtime } from '../src/app/runtime';
+import {
+  UpdateService,
+  type UpdateOptions,
+  type UpdateStore,
+} from '../src/modules/updates/updates';
 
 class MemoryStore implements UpdateStore {
   rows = new Map<string, any>();

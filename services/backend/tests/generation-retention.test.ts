@@ -13,7 +13,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pruneGenerations } from '../src/generation-retention.ts';
+import { pruneGenerations } from '../src/infrastructure/filesystem/generation-retention.ts';
 
 const temporary: string[] = [];
 async function temp() {

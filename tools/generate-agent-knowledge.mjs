@@ -6,7 +6,7 @@ import { transform } from 'esbuild';
 import ts from 'typescript';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outputFile = 'services/backend/src/product-knowledge.generated.json';
+const outputFile = 'services/backend/src/modules/knowledge/product-knowledge.generated.json';
 const rpcFile = 'packages/contracts/schemas/rpc.schema.json';
 const runtimeFile = 'packages/contracts/schemas/runtime.schema.json';
 const taskFile = 'packages/contracts/src/tasks.ts';

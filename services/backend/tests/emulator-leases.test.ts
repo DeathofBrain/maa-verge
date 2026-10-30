@@ -2,10 +2,10 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/runtime';
-import { CoreWorker } from '../src/worker';
-import type { EmulatorInventory } from '../src/windows-emulators';
-import { defaultConnection, parseSettings } from '../src/models';
+import { Runtime } from '../src/app/runtime';
+import { CoreWorker } from '../src/infrastructure/native/worker';
+import type { EmulatorInventory } from '../src/infrastructure/native/windows-emulators';
+import { defaultConnection, parseSettings } from '../src/modules/settings/models';
 
 const runtimes: Runtime[] = [];
 const worker = () => ({

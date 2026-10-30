@@ -25,9 +25,9 @@ test('configuration directory saves for restart and can be restored without swit
   await expect(form).toContainText('/fixture/app/config/native/maaverge.sqlite3');
   await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('');
   await form.getByRole('button', { name: '打开当前配置目录' }).click();
-  expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.commands)).toContain(
-    'open_configuration_directory',
-  );
+  await expect
+    .poll(() => page.evaluate(() => (window as HarnessWindow).runtimeHarness.commands))
+    .toContain('open_configuration_directory');
   await selectConfigurationDirectory(page, null);
   expect(
     await page.evaluate(() => (window as HarnessWindow).runtimeHarness.configurationWrites),

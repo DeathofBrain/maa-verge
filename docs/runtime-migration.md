@@ -15,14 +15,14 @@ flowchart LR
     Worker --> Core[动态加载 MaaCore / ADB]
 ```
 
-| 范围         | 当前入口与约束                                                                                                                           |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 页面与 Tauri | 页面只使用 `packages/contracts` 的 transport；Rust 管理服务进程、窗口和系统集成                                                          |
-| 应用服务     | `services/backend/src/entry.ts`；计划、策略、SQLite、设备发现、执行监督、画面令牌与人工点击准入、三条独立更新通道                        |
-| Agent        | `services/backend/src/agent.ts`；原生服务中保留本地确定性 mock 提案，需要审阅、保存后手动执行；真实云模型、持续托管及视觉 Agent 尚未接入 |
-| 原生调用     | `services/native`；C++20 动态加载 MaaCore，复制回调、持有设备锁、处理异步 ID、调用超时和销毁                                             |
-| 更新任务     | 包内服务 `--update-job`；选择性提取核心或合并固定提交的资源，调用 C++ `--validate`，不打开业务数据库                                     |
-| 协议来源     | `packages/contracts/schemas`；JSON Schema 生成 TypeScript 类型和独立 Ajv 校验器，生成过程不调用 Python                                   |
+| 范围         | 当前入口与约束                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 页面与 Tauri | 页面只使用 `packages/contracts` 的 transport；Rust 管理服务进程、窗口和系统集成                                                                        |
+| 应用服务     | `services/backend/src/entry.ts`；计划、策略、SQLite、设备发现、执行监督、画面令牌与人工点击准入、三条独立更新通道                                      |
+| Agent        | `services/backend/src/modules/agent/agent.ts`；原生服务中保留本地确定性 mock 提案，需要审阅、保存后手动执行；真实云模型、持续托管及视觉 Agent 尚未接入 |
+| 原生调用     | `services/native`；C++20 动态加载 MaaCore，复制回调、持有设备锁、处理异步 ID、调用超时和销毁                                                           |
+| 更新任务     | 包内服务 `--update-job`；选择性提取核心或合并固定提交的资源，调用 C++ `--validate`，不打开业务数据库                                                   |
+| 协议来源     | `packages/contracts/schemas`；JSON Schema 生成 TypeScript 类型和独立 Ajv 校验器，生成过程不调用 Python                                                 |
 
 JSON-RPC 使用 UTF-8 换行 JSON，stdout 仅承载协议，日志进入 stderr。原生输出带 `protocolVersion: 1`。每个设备只有一个控制者；原生调用结果不明时停止并要求核对，不自动重放。`AsstStop` 清空队列，不能作为暂停恢复。
 

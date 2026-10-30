@@ -11,8 +11,12 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { CopilotLibrary, defaultCopilotOptions, parseCopilotCode } from '../src/copilot';
-import { Store } from '../src/storage';
+import {
+  CopilotLibrary,
+  defaultCopilotOptions,
+  parseCopilotCode,
+} from '../src/modules/copilot/copilot';
+import { Store } from '../src/infrastructure/storage/storage';
 import type {
   CopilotDifficulty,
   CopilotKind,

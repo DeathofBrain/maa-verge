@@ -2,7 +2,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { UpdateService, type UpdateStore } from '../src/updates.ts';
+import { UpdateService, type UpdateStore } from '../src/modules/updates/updates.ts';
 
 class MemoryStore implements UpdateStore {
   rows = new Map<string, any>();

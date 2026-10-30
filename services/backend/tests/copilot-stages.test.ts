@@ -2,9 +2,9 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { CopilotLibrary } from '../src/copilot';
-import { Runtime } from '../src/runtime';
-import { Store } from '../src/storage';
+import { CopilotLibrary } from '../src/modules/copilot/copilot';
+import { Runtime } from '../src/app/runtime';
+import { Store } from '../src/infrastructure/storage/storage';
 import { validateCopilotStagesResult } from '../../../packages/contracts/src/validators.js';
 
 const roots: string[] = [];

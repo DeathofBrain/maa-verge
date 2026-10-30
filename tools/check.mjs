@@ -15,6 +15,7 @@ const toolTests = [
   'tools/tests/runtime-notices.test.mjs',
   'tools/tests/check-kit-css.test.mjs',
   'tools/tests/check-frontend-architecture.test.mjs',
+  'tools/tests/check-backend-architecture.test.mjs',
 ];
 const contractTests = [
   'packages/contracts/test/validators.test.mjs',
@@ -40,6 +41,7 @@ async function applicationChecks() {
   await run('node', ['--test', ...toolTests]);
   await run('node', ['tools/check-kit-css.mjs']);
   await run('node', ['tools/check-frontend-architecture.mjs']);
+  await run('node', ['tools/check-backend-architecture.mjs']);
   await run('pnpm', ['contracts:check']);
   await run('pnpm', ['-r', 'check']);
   await run('node', ['--test', ...contractTests]);

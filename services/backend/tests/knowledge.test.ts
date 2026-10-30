@@ -11,9 +11,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/runtime';
-import { buildKnowledgeFiles } from '../src/knowledge-build';
-import { validResourceKnowledgePack } from '../src/resource-knowledge';
+import { Runtime } from '../src/app/runtime';
+import { buildKnowledgeFiles } from '../src/modules/knowledge/knowledge-build';
+import { validResourceKnowledgePack } from '../src/modules/knowledge/resource-knowledge';
 import {
   validateKnowledgeRecord,
   validateKnowledgeSearchResult,

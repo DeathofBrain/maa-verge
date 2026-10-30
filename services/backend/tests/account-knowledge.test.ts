@@ -2,10 +2,10 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { AccountKnowledge } from '../src/account-knowledge';
-import { Store } from '../src/storage';
-import { Runtime } from '../src/runtime';
-import { recognitionKey } from '../src/recognition';
+import { AccountKnowledge } from '../src/modules/knowledge/account-knowledge';
+import { Store } from '../src/infrastructure/storage/storage';
+import { Runtime } from '../src/app/runtime';
+import { recognitionKey } from '../src/modules/recognition/recognition';
 import {
   validateAccountKnowledgeSnapshot,
   validateAccountSnapshotListResult,

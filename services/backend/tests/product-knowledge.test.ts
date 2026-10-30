@@ -23,8 +23,8 @@ import {
   productKnowledgeDigest,
   productKnowledgeSources,
   productKnowledgeVersion,
-} from '../src/product-knowledge';
-import generated from '../src/product-knowledge.generated.json';
+} from '../src/modules/knowledge/product-knowledge';
+import generated from '../src/modules/knowledge/product-knowledge.generated.json';
 
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const rpcFile = 'packages/contracts/schemas/rpc.schema.json';
@@ -158,7 +158,7 @@ test('callers cannot mutate the static catalogue and manifest', () => {
 // Seven isolated CLI invocations share this test's overall deadline.
 test('offline generator is deterministic and check detects source drift without changing output', () => {
   const temporary = mkdtempSync(path.join(os.tmpdir(), 'maaverge-product-knowledge-'));
-  const output = 'services/backend/src/product-knowledge.generated.json';
+  const output = 'services/backend/src/modules/knowledge/product-knowledge.generated.json';
   try {
     for (const file of [
       ...productKnowledgeSources.map((source) => source.file),

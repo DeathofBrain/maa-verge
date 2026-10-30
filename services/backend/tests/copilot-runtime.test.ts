@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/runtime';
-import { Store } from '../src/storage';
+import { Runtime } from '../src/app/runtime';
+import { Store } from '../src/infrastructure/storage/storage';
 import type { CopilotKind } from '../../../packages/contracts/src/rpc-types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 

@@ -1,6 +1,10 @@
 import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import net from 'node:net';
-import { connectAdbTransport, localAdbServer, probeAdbEndpoint } from '../src/adb-transport';
+import {
+  connectAdbTransport,
+  localAdbServer,
+  probeAdbEndpoint,
+} from '../src/infrastructure/native/adb-transport';
 
 const servers: net.Server[] = [];
 const sockets = new Set<net.Socket>();

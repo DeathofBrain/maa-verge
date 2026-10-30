@@ -2,7 +2,11 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { lstat, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { extractArchive, extractCoreArchive, normalizeRuntimeRoot } from '../src/archives.ts';
+import {
+  extractArchive,
+  extractCoreArchive,
+  normalizeRuntimeRoot,
+} from '../src/infrastructure/filesystem/archives.ts';
 import safetyCases from '../../../tests/fixtures/archive-safety.json';
 import { writeArchive, type FixtureMember } from './archive-fixture.ts';
 

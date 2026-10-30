@@ -62,7 +62,7 @@ SemVer 允许 `0.y.z` 阶段快速变化，不承诺公共 API 稳定，也未�
 ### 本项目当前工具边界
 
 - [tools/release-assets.mjs](../../tools/release-assets.mjs) 的 `releaseVersion()` 是实际发行标签入口：要求 `v` 前缀、完整标签最长 128 字符，允许合法预发布，**不接受 `+build`**。标准合法与项目可发行需分别判定；不为一次升版放宽校验器或更改资产命名协议。
-- [services/backend/src/release-version.ts](../../services/backend/src/release-version.ts) 提供组件版本解析和 `compareReleaseVersions()`；[services/backend/src/app-release.ts](../../services/backend/src/app-release.ts) 提供应用版本比较与频道候选选择。先读当前实现与测试，按场景复用，数字比较避免精度丢失，不新增一套排序逻辑。
+- [services/backend/src/shared/release-version.ts](../../services/backend/src/shared/release-version.ts) 提供组件版本解析和 `compareReleaseVersions()`；[services/backend/src/modules/updates/app-release.ts](../../services/backend/src/modules/updates/app-release.ts) 提供应用版本比较与频道候选选择。先读当前实现与测试，按场景复用，数字比较避免精度丢失，不新增一套排序逻辑。
 - 应用正式频道排除预发布，预览频道允许预发布；频道不改变版本优先级，也不代表可以自动降级。不要假定任意新预发布格式都已通过各平台打包验收。
 
 ## 同步应用版本

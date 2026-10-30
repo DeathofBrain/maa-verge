@@ -11,9 +11,9 @@ import {
   UpdateService,
   type UpdateSource,
   type UpdateStore,
-} from '../src/updates.ts';
+} from '../src/modules/updates/updates.ts';
 import { zipBytes } from './archive-fixture.ts';
-import { resourceActivityVersions } from '../src/resource-version';
+import { resourceActivityVersions } from '../src/modules/updates/resource-version';
 
 class MemoryStore implements UpdateStore {
   rows = new Map<string, any>();
@@ -1307,7 +1307,7 @@ test.skipIf(!process.env.MAAVERGE_TEST_NATIVE_WORKER || !process.env.MAAVERGE_TE
       ]),
     );
     const child = Bun.spawn(
-      [process.execPath, path.resolve(import.meta.dir, '../src/update-job.ts')],
+      [process.execPath, path.resolve(import.meta.dir, '../src/modules/updates/update-job.ts')],
       {
         stdin: new Blob([
           JSON.stringify({

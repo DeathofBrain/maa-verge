@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { downloadArchive } from '../src/download.ts';
+import { downloadArchive } from '../src/infrastructure/network/download.ts';
 
 const roots: string[] = [];
 const payload = Buffer.from('verified archive');

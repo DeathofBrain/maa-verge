@@ -3,9 +3,9 @@ import { mkdtempSync } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { defaultComponentPaths } from '../src/config';
-import { parseSettings } from '../src/models';
-import { Runtime } from '../src/runtime';
+import { defaultComponentPaths } from '../src/infrastructure/config';
+import { parseSettings } from '../src/modules/settings/models';
+import { Runtime } from '../src/app/runtime';
 import {
   resourceVersionDetail,
   resourceVersionLabel,

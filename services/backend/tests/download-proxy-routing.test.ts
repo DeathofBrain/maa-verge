@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Duplex } from 'node:stream';
 import { pathToFileURL } from 'node:url';
-import type { DownloadOptions } from '../src/download.ts';
+import type { DownloadOptions } from '../src/infrastructure/network/download.ts';
 
 // Public, test-only loopback identity. Trust is confined to each child process.
 const key = `-----BEGIN PRIVATE KEY-----
@@ -256,7 +256,9 @@ async function fixture({
       proxy = { mode: 'auto', url: '' },
     }: { trust?: boolean; proxy?: DownloadOptions['proxy'] } = {},
   ) {
-    const module = pathToFileURL(path.resolve(import.meta.dir, '../src/download.ts')).href;
+    const module = pathToFileURL(
+      path.resolve(import.meta.dir, '../src/infrastructure/network/download.ts'),
+    ).href;
     const script = `
       import { downloadArchive } from ${JSON.stringify(module)};
       try {
@@ -275,7 +277,9 @@ async function fixture({
       closeOnHeaders = false,
     }: { proxy?: DownloadOptions['proxy']; closeOnHeaders?: boolean } = {},
   ) {
-    const module = pathToFileURL(path.resolve(import.meta.dir, '../src/updates.ts')).href;
+    const module = pathToFileURL(
+      path.resolve(import.meta.dir, '../src/modules/updates/updates.ts'),
+    ).href;
     const script = `
       import { OfficialSource } from ${JSON.stringify(module)};
       const source = new OfficialSource(undefined, () => (${JSON.stringify(proxy)}));

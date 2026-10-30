@@ -6,7 +6,10 @@ try {
   const bun = await ensureBun({ download: false });
   await run(
     bun,
-    [path.join(root, 'services/backend/src/knowledge-build.ts'), ...process.argv.slice(2)],
+    [
+      path.join(root, 'services/backend/src/modules/knowledge/knowledge-build.ts'),
+      ...process.argv.slice(2),
+    ],
     { env: cleanRuntimeEnvironment() },
   );
 } catch (error) {

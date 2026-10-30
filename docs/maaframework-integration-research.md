@@ -32,7 +32,7 @@ MaaCore 有比整项业务任务更细的接口，也有未充分公开的内部
 - [同文件:962](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaCore/Task/Infrast/InfrastAbstractTask.cpp#L962) 确认后提交内部记录、清空 pending，再发送不带名单的确认事件。
 - [InfrastProductionTask.cpp:1173](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaCore/Task/Infrast/InfrastProductionTask.cpp#L1173) 在普通生产设施选人过程中缓存 `operator_id`；[缓存实现](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/src/MaaCore/Task/Infrast/InfrastAbstractTask.cpp#L41) 说明部分信息已在核心内部。
 
-本项目的 [execution-evidence.ts](../services/backend/src/execution-evidence.ts) 已按设施和房间合并这些事件，区分 `planned`、`confirmed` 和 `unavailable`。[ExecutionPage.tsx](../apps/desktop/src/features/execution/ExecutionPage.tsx) 已展示设施、房间、方案干员及确认状态，没有人员信息时提示“本次反馈未提供干员名单”。当前边界亦记录在 [运行时迁移说明](runtime-migration.md)。已有合成测试覆盖这些语义，本次没有重新运行或新增真实设备验收。
+本项目的 [execution-evidence.ts](../services/backend/src/modules/execution/execution-evidence.ts) 已按设施和房间合并这些事件，区分 `planned`、`confirmed` 和 `unavailable`。[ExecutionPage.tsx](../apps/desktop/src/features/execution/ExecutionPage.tsx) 已展示设施、房间、方案干员及确认状态，没有人员信息时提示“本次反馈未提供干员名单”。当前边界亦记录在 [运行时迁移说明](runtime-migration.md)。已有合成测试覆盖这些语义，本次没有重新运行或新增真实设备验收。
 
 ### 针对此需求的建议
 

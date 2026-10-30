@@ -24,7 +24,9 @@ async function scenario(name, project) {
   const { prepareWindowsComponentPayloads: prepare, readWindowsComponentsLock: readLock } =
     await load('tools/test-support/windows-components.ts');
   const { zipBytes, tarBytes } = await load('services/backend/tests/archive-fixture.ts');
-  const { snapshotIntegrity } = await load('services/backend/src/snapshot-integrity.ts');
+  const { snapshotIntegrity } = await load(
+    'services/backend/src/infrastructure/filesystem/snapshot-integrity.ts',
+  );
   const root = await realpath(await mkdtemp(path.join(tmpdir(), 'maa verge component build-')));
   const output = path.join(root, 'dist/windows-components');
   const cache = path.join(root, 'cache');

@@ -14,19 +14,19 @@ Maa Verge 当前不支持用户安装第三方插件：没有插件包规范、�
 
 源码核查以开发基线 `d9e4fec` 及同日工作区为范围；工作区包含正在整合的作业中心与诊断改动。这里描述开发架构，不把未提交内容视为公开发行能力。后续开发以最新 [开发状态](STATUS.md) 为准。
 
-| 核查点        | 当前入口与行为                                                                                                                                                                          | 判断                                                            |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Tauri plugins | [lib.rs](../apps/desktop/src-tauri/src/lib.rs) 的 `.plugin(...)` 注册单实例、应用更新和通知                                                                                             | 开发者集成的构建依赖；没有用户下载后加载的机制                  |
-| 业务 RPC      | [runtime.ts](../services/backend/src/runtime.ts) 的 `handle` 使用固定方法分派；[transport.ts](../packages/contracts/src/transport.ts) 绑定生成契约                                      | 没有动态注册、插件调用身份或插件权限检查                        |
-| 任务与工具    | [runtime.schema.json](../packages/contracts/schemas/runtime.schema.json)、[tasks.ts](../packages/contracts/src/tasks.ts)、[toolbox.ts](../services/backend/src/toolbox.ts) 定义既有类型 | 安装外部文件不能新增任意任务类型或工具                          |
-| Custom        | [task-policy.ts](../services/backend/src/task-policy.ts) 仅允许审核过的小游戏链                                                                                                         | 不是通用脚本入口，不能借此放开原生能力                          |
-| 界面          | [App.tsx](../apps/desktop/src/app/App.tsx) 固定导航和页面；[tauri.conf.json](../apps/desktop/src-tauri/tauri.conf.json) 限制脚本与连接来源                                              | 没有插件页面、面板、命令注册机制                                |
-| 作业导入      | 开发中的 [copilot.ts](../services/backend/src/copilot.ts) 预览、验证限定 JSON、按 SHA-256 保存不可变版本                                                                                | 属于既有执行器的数据输入，可借鉴导入流程；不提供插件代码或新 UI |
-| 资源与原生库  | [updates.ts](../services/backend/src/updates.ts) 安装官方核心和资源，worker 加载对应 MaaCore                                                                                            | 官方资源及 MaaCore 控制单元动态库不构成 Maa Verge 用户插件 API  |
+| 核查点        | 当前入口与行为                                                                                                                                                                                        | 判断                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Tauri plugins | [lib.rs](../apps/desktop/src-tauri/src/lib.rs) 的 `.plugin(...)` 注册单实例、应用更新和通知                                                                                                           | 开发者集成的构建依赖；没有用户下载后加载的机制                  |
+| 业务 RPC      | [runtime.ts](../services/backend/src/app/runtime.ts) 的 `handle` 使用固定方法分派；[transport.ts](../packages/contracts/src/transport.ts) 绑定生成契约                                                | 没有动态注册、插件调用身份或插件权限检查                        |
+| 任务与工具    | [runtime.schema.json](../packages/contracts/schemas/runtime.schema.json)、[tasks.ts](../packages/contracts/src/tasks.ts)、[toolbox.ts](../services/backend/src/modules/tools/toolbox.ts) 定义既有类型 | 安装外部文件不能新增任意任务类型或工具                          |
+| Custom        | [task-policy.ts](../services/backend/src/modules/plans/task-policy.ts) 仅允许审核过的小游戏链                                                                                                         | 不是通用脚本入口，不能借此放开原生能力                          |
+| 界面          | [App.tsx](../apps/desktop/src/app/App.tsx) 固定导航和页面；[tauri.conf.json](../apps/desktop/src-tauri/tauri.conf.json) 限制脚本与连接来源                                                            | 没有插件页面、面板、命令注册机制                                |
+| 作业导入      | 开发中的 [copilot.ts](../services/backend/src/modules/copilot/copilot.ts) 预览、验证限定 JSON、按 SHA-256 保存不可变版本                                                                              | 属于既有执行器的数据输入，可借鉴导入流程；不提供插件代码或新 UI |
+| 资源与原生库  | [updates.ts](../services/backend/src/modules/updates/updates.ts) 安装官方核心和资源，worker 加载对应 MaaCore                                                                                          | 官方资源及 MaaCore 控制单元动态库不构成 Maa Verge 用户插件 API  |
 
 可复用的基础包括 Schema 生成与校验、下载和归档处理、不可变版本、运行快照、持久请求去重、预算策略、设备仲裁及空闲切换。需要新增的是插件身份、包规范、权限代理、生命周期、贡献点、兼容策略、签名信任及市场治理。
 
-现有 [archives.ts](../services/backend/src/archives.ts) 为核心包保留部分合法链接，大小限额也面向大型原生资产。插件安装不能直接沿用其全部许可范围；应在复用底层校验时设置更严格的包类型与限额。
+现有 [archives.ts](../services/backend/src/infrastructure/filesystem/archives.ts) 为核心包保留部分合法链接，大小限额也面向大型原生资产。插件安装不能直接沿用其全部许可范围；应在复用底层校验时设置更严格的包类型与限额。
 
 ## 3. 首批扩展的产品范围
 

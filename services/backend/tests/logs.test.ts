@@ -12,10 +12,15 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Diagnostics, Logs, logExportDirectory, redactLog } from '../src/logs';
-import { Runtime } from '../src/runtime';
-import { processRequest } from '../src/entry';
-import { parseSettings } from '../src/models';
+import {
+  Diagnostics,
+  Logs,
+  logExportDirectory,
+  redactLog,
+} from '../src/infrastructure/logging/logs';
+import { Runtime } from '../src/app/runtime';
+import { processRequest } from '../src/transport/json-rpc';
+import { parseSettings } from '../src/modules/settings/models';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

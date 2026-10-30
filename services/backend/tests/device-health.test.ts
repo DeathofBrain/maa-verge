@@ -3,9 +3,9 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Device } from '../../../packages/contracts/src/types';
-import type { AdbDevice } from '../src/adb';
-import { Runtime } from '../src/runtime';
-import { parseSettings } from '../src/models';
+import type { AdbDevice } from '../src/infrastructure/native/adb';
+import { Runtime } from '../src/app/runtime';
+import { parseSettings } from '../src/modules/settings/models';
 
 type Observer = {
   onDevices: (devices: AdbDevice[]) => void;

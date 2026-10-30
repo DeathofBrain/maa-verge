@@ -2,9 +2,9 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime, type RuntimeOptions } from '../src/runtime';
-import { parseSettings } from '../src/models';
-import { snapshotIntegrity } from '../src/snapshot-integrity';
+import { Runtime, type RuntimeOptions } from '../src/app/runtime';
+import { parseSettings } from '../src/modules/settings/models';
+import { snapshotIntegrity } from '../src/infrastructure/filesystem/snapshot-integrity';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

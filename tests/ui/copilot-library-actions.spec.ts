@@ -287,6 +287,13 @@ test('keyboard context menu deletion returns focus to the original category or w
   const name = '长分类'.repeat(100);
   await call(page, 'copilot.category.save', { name });
   await enter(page);
+  const record = library(page).locator('.cp-record');
+  await record.focus();
+  await page.keyboard.press('Shift+F10');
+  await page.getByRole('menuitem', { name: '从作业库移除', exact: true }).click();
+  await removeDialog(page).getByRole('button', { name: '取消', exact: true }).click();
+  await expect(record).toBeFocused();
+
   const category = library(page).getByRole('button', { name, exact: true });
   await category.focus();
   await page.keyboard.press('Shift+F10');
@@ -296,13 +303,6 @@ test('keyboard context menu deletion returns focus to the original category or w
   await cancel.scrollIntoViewIfNeeded();
   await cancel.click();
   await expect(category).toBeFocused();
-  await page.setViewportSize({ width: 1280, height: 800 });
-  const record = library(page).locator('.cp-record');
-  await record.focus();
-  await page.keyboard.press('Shift+F10');
-  await page.getByRole('menuitem', { name: '从作业库移除', exact: true }).click();
-  await removeDialog(page).getByRole('button', { name: '取消', exact: true }).click();
-  await expect(record).toBeFocused();
 });
 
 test('a failed deletion retains the dialog and selection, and can be retried in a short narrow window', async ({

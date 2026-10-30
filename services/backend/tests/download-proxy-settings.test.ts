@@ -2,8 +2,8 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { parseSettings } from '../src/models';
-import { Runtime } from '../src/runtime';
+import { parseSettings } from '../src/modules/settings/models';
+import { Runtime } from '../src/app/runtime';
 
 const runtimes: Runtime[] = [],
   roots: string[] = [];

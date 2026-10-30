@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { CoreWorker } from '../src/worker';
+import { CoreWorker } from '../src/infrastructure/native/worker';
 
 test('a confirmed connection stays ready when a task starts before the connection waiter resumes', async () => {
   const worker = new CoreWorker();

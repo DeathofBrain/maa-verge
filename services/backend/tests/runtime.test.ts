@@ -5,12 +5,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { Runtime } from '../src/runtime';
-import { Store } from '../src/storage';
-import { parsePlan, parseSettings } from '../src/models';
-import { validatePlan, nativeTask } from '../src/task-policy';
-import { processRequest } from '../src/entry';
-import { syncDue, userDataSteps } from '../src/user-data-sync';
+import { Runtime } from '../src/app/runtime';
+import { Store } from '../src/infrastructure/storage/storage';
+import { parsePlan, parseSettings } from '../src/modules/settings/models';
+import { validatePlan, nativeTask } from '../src/modules/plans/task-policy';
+import { processRequest } from '../src/transport/json-rpc';
+import { syncDue, userDataSteps } from '../src/modules/recognition/user-data-sync';
 import {
   taskConsumableLimits,
   validatePlan as validateSharedPlan,

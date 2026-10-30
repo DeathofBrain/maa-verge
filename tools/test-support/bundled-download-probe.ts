@@ -2,7 +2,7 @@
 // a Runtime, business database, automatic updater or device connection.
 import assert from 'node:assert/strict';
 import { createInterface } from 'node:readline';
-import { downloadArchive } from '../../services/backend/src/download.ts';
+import { downloadArchive } from '../../services/backend/src/infrastructure/network/download.ts';
 
 assert(
   Bun.isStandaloneExecutable,

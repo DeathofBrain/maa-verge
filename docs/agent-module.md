@@ -16,8 +16,8 @@
 | `packages/agent/src/langchain.ts`                 | `@maaverge/agent/langchain` 独立入口：注入模型、调用次数与时间上限、结构化输出、取消和宿主校验               |
 | `packages/agent/src/proposal-schema.ts`           | 从 `packages/contracts/schemas/runtime.schema.json` 复用名称、任务及参数结构；模型只提供说明、名称和任务列表 |
 | `packages/agent/tools`                            | 16 个框架无关业务工具、宿主授权、会话范围与零消耗策略；`./tools/langchain` 单独桥接 SDK                      |
-| `services/backend/src/agent-tools.ts`             | MaaCore 工具宿主端口，复用已有执行、识别、画面与作业服务                                                     |
-| `services/backend/src/agent.ts`                   | 宿主适配：规范化计划、执行现有策略检查、映射 RPC 错误                                                        |
+| `services/backend/src/app/agent-tools.ts`         | MaaCore 工具宿主端口，复用已有执行、识别、画面与作业服务                                                     |
+| `services/backend/src/modules/agent/agent.ts`     | 宿主适配：规范化计划、执行现有策略检查、映射 RPC 错误                                                        |
 | backend 的 `knowledge.ts`、`account-knowledge.ts` | 继续持有本机数据库、资源快照与账号隔离；后续通过明确的只读端口提供给 Agent                                   |
 
 依赖方向为 backend → Agent → contracts。Agent 不导入 backend、Tauri transport、SQLite、MaaCore 或 ADB，不持有 Runtime。保存、开始执行、设备租约及更新仍由应用服务负责。
@@ -26,7 +26,7 @@ LangChain 固定为 `1.5.19`，`@langchain/core` 固定为 `1.3.0`，`langsmith`
 
 ## 接入与校验约定
 
-`proposeDeterministic(message, preparePlan)` 与 `createLangChainProposer({ model, preparePlan, maxModelCalls, timeoutMs, maaTools? })` 均要求宿主提供 `preparePlan`。它必须先按权威 Schema 规范化，再使用与表单相同的策略验证；只有校验成功的计划可以返回。backend 当前实现见 `services/backend/src/agent.ts`，不能以直接类型断言代替这一步。
+`proposeDeterministic(message, preparePlan)` 与 `createLangChainProposer({ model, preparePlan, maxModelCalls, timeoutMs, maaTools? })` 均要求宿主提供 `preparePlan`。它必须先按权威 Schema 规范化，再使用与表单相同的策略验证；只有校验成功的计划可以返回。backend 当前实现见 `services/backend/src/modules/agent/agent.ts`，不能以直接类型断言代替这一步。
 
 LangChain 模型不能设置已有计划 ID、设备、定时或预算。宿主填入新草稿 ID 与默认值；模块另对任务参数强制零源石、零理智药和零加急，连未启用任务中的非零配置也拒绝，避免仅靠提示词或旧版 `Plan.budgets` 字段约束模型。非法任务、结构化输出或策略拒绝会直接失败。结果始终带 `requiresConfirmation: true`，提案本身不保存、不执行。模型错误也不会转成规则提案。
 

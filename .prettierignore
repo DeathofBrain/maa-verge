@@ -38,8 +38,8 @@ packages/contracts/src/rpc-types.ts
 packages/contracts/src/worker-types.ts
 packages/contracts/src/validators.js
 packages/contracts/src/validators.d.ts
-services/backend/src/casefold-data.json
-services/backend/src/product-knowledge.generated.json
+services/backend/src/shared/casefold-data.json
+services/backend/src/modules/knowledge/product-knowledge.generated.json
 pnpm-lock.yaml
 **/Cargo.lock
 

@@ -116,7 +116,9 @@ async function fixture(handler: RequestListener) {
     );
     env.HTTPS_PROXY = `https://127.0.0.1:${proxyPort}`;
     if (trust) env.NODE_EXTRA_CA_CERTS = certificatePath;
-    const module = pathToFileURL(path.resolve(import.meta.dir, '../src/download.ts')).href;
+    const module = pathToFileURL(
+      path.resolve(import.meta.dir, '../src/infrastructure/network/download.ts'),
+    ).href;
     const script = `
       import { downloadArchive } from ${JSON.stringify(module)};
       try {
