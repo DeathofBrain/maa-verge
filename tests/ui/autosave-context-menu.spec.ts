@@ -1,22 +1,10 @@
 import type { Page } from '@playwright/test';
 import type { Snapshot } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { navigate as nav, readSnapshot as snapshot } from './fixtures/navigation';
 
 const wb = (page: Page) => page.getByRole('region', { name: '任务表工作台', exact: true });
-const closeDetail = async (page: Page) => {
-  const close = page.getByRole('button', { name: '关闭任务表详情', exact: true });
-  if (await close.isVisible()) await close.click();
-};
-const nav = async (page: Page, name: string) => {
-  await closeDetail(page);
-  await page.locator('.sidebar').getByRole('button', { name, exact: true }).click();
-};
 const menu = (page: Page) => page.getByRole('menu');
-const snapshot = (page: Page) =>
-  page.evaluate(
-    async () =>
-      (await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot,
-  );
 async function openFarm(page: Page) {
   await page.goto('/');
   await nav(page, '任务');
@@ -39,6 +27,8 @@ test('valid parameters and metadata automatically persist without manual saving'
   await wb(page).getByLabel('任务表名称', { exact: true }).fill('自动保存的表');
   await wb(page).getByLabel('任务表说明', { exact: true }).fill('自动保存说明');
   await wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }).check();
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
+  await expect(wb(page).getByLabel('任务表理智药上限', { exact: true })).toHaveCount(0);
   await saved(page);
   await page.reload();
   await nav(page, '任务');
@@ -49,6 +39,7 @@ test('valid parameters and metadata automatically persist without manual saving'
   await expect(
     wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }),
   ).toBeChecked();
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
 });
 
 test('leaving before the debounce saves the outgoing table without redirecting navigation', async ({
@@ -250,6 +241,7 @@ test('new task tables automatically become saved task list entries', async ({ pa
     .click();
   await wb(page).getByLabel('任务表名称', { exact: true }).fill('新建自动保存');
   await wb(page).getByLabel('作战次数', { exact: true }).fill('7');
+  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
   await saved(page);
   await expect(
     page.getByRole('button', { name: '查看任务表详情新建自动保存', exact: true }),
@@ -257,6 +249,16 @@ test('new task tables automatically become saved task list entries', async ({ pa
   const plan = (await snapshot(page)).plans.find((p) => p.name === '新建自动保存')!;
   expect(plan.tasks).toHaveLength(9);
   expect(plan.tasks.find((task) => task.type === 'Fight')?.params.times).toBe(7);
+
+  await wb(page).getByRole('tab', { name: '任务表设置', exact: true }).click();
+  await wb(page).getByLabel('任务表名称', { exact: true }).fill('新建自动保存（改）');
+  await wb(page).getByRole('tab', { name: '任务编排', exact: true }).click();
+  await wb(page).getByLabel('作战次数', { exact: true }).fill('8');
+  await saved(page);
+  await page.reload();
+  await nav(page, '任务');
+  await page.getByRole('button', { name: '查看任务表详情新建自动保存（改）', exact: true }).click();
+  await expect(wb(page).getByLabel('作战次数', { exact: true })).toHaveValue('8');
 });
 
 test('cancelled tables and unconfirmed Agent proposals do not automatically persist', async ({

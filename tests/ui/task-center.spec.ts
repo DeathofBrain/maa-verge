@@ -1,24 +1,12 @@
 import type { Page } from '@playwright/test';
 import type { Snapshot } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { navigate as nav, readSnapshot as snapshot } from './fixtures/navigation';
 
 const center = (page: Page) => page.getByRole('region', { name: '任务中心', exact: true });
 const list = (page: Page) => page.getByRole('region', { name: '任务表列表', exact: true });
 const drawer = (page: Page) => page.getByRole('dialog', { name: '任务表详情', exact: true });
 const wb = (page: Page) => page.getByRole('region', { name: '任务表工作台', exact: true });
-const snapshot = (page: Page) =>
-  page.evaluate(
-    async () =>
-      (await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot,
-  );
-const nav = async (page: Page, name: string) => {
-  const close = page.getByRole('button', { name: '关闭任务表详情', exact: true });
-  if (await close.isVisible()) await close.click();
-  await page
-    .locator('.sidebar')
-    .getByRole('button', { name, exact: name !== 'Agent 助手' })
-    .click();
-};
 test('one task entry combines the table list, detail drawer and execution tab', async ({
   page,
 }) => {
@@ -45,6 +33,9 @@ test('one task entry combines the table list, detail drawer and execution tab', 
   await expect(wb(page).getByRole('group', { name: '绑定设备', exact: true })).toBeVisible();
   await wb(page).getByLabel('任务表说明', { exact: true }).fill('抽屉自动保存');
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
+  await wb(page).getByRole('tab', { name: '定时计划', exact: true }).click();
+  await expect(wb(page).getByRole('heading', { name: '定时计划', exact: true })).toBeVisible();
+  await expect(wb(page).getByRole('button', { name: '开始执行', exact: true })).toBeVisible();
 
   await page.keyboard.press('Escape');
   await expect(drawer(page)).toBeHidden();
@@ -93,6 +84,14 @@ test('search, home shortcut and Agent proposals open the unified task center', a
   await expect(drawer(page)).toBeVisible();
   await expect(wb(page).getByLabel('作战关卡')).toHaveValue('1-7');
   await expect(wb(page).locator('.wb-save-state')).toHaveText('待确认保存');
+
+  await nav(page, '设置');
+  await expect(
+    page
+      .getByRole('navigation', { name: '设置分类' })
+      .getByRole('button', { name: '执行与消耗', exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel('理智药预算', { exact: true })).toHaveCount(0);
 });
 
 test('multi-device launch blocks binding, offline and busy devices and starts on idle ones', async ({

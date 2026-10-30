@@ -2,6 +2,7 @@ import { devicePicker } from './fixtures/device-picker';
 import type { Page } from '@playwright/test';
 import type { Plan, Snapshot } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { closeTaskDetail as closeDetail, navigate } from './fixtures/navigation';
 
 const wb = (page: Page) => page.getByRole('region', { name: '任务表工作台', exact: true });
 const dock = (page: Page) => page.getByRole('contentinfo', { name: '执行状态栏', exact: true });
@@ -34,19 +35,6 @@ async function reloadWorkspace(page: Page, name: string) {
   await page.reload();
   await expect(home(page)).toBeVisible();
   await openSavedPlan(page, name);
-}
-async function closeDetail(page: Page) {
-  const close = page.getByRole('button', { name: '关闭任务表详情', exact: true });
-  if (await close.isVisible()) await close.click();
-}
-async function navigate(page: Page, name: string) {
-  const closeSettings = page.getByRole('button', { name: '关闭设备连接设置', exact: true });
-  if (await closeSettings.isVisible()) await closeSettings.click();
-  await closeDetail(page);
-  await page
-    .locator('.sidebar')
-    .getByRole('button', { name, exact: name !== 'Agent 助手' })
-    .click();
 }
 async function openConnectionSettings(page: Page) {
   await page
@@ -213,27 +201,6 @@ test('home remains useful without task tables and new tables can be added throug
 });
 
 // Preserve the original persistence, policy, task coverage and update scenarios.
-test('create, edit and restore a zero-consumption task table', async ({ page }) => {
-  await openWorkspace(page);
-  await createPlan(page, '测试：每日固源岩');
-  await wb(page).getByLabel('作战次数').fill('3');
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
-  await savePlan(page);
-  await expect(
-    page.getByRole('button', { name: '查看任务表详情测试：每日固源岩', exact: true }),
-  ).toBeVisible();
-  await tab(page, '任务表设置');
-  await wb(page).getByLabel('任务表名称', { exact: true }).fill('测试：更新后的计划');
-  await tab(page, '任务编排');
-  await wb(page).getByLabel('作战次数').fill('4');
-  await savePlan(page);
-  await reloadWorkspace(page, '测试：更新后的计划');
-  await expect(
-    wb(page).getByRole('heading', { name: '测试：更新后的计划', exact: true }),
-  ).toBeVisible();
-  await expect(wb(page).getByLabel('作战次数')).toHaveValue('4');
-});
-
 test('Agent proposes a reviewable plan without starting a run', async ({ page }) => {
   await openWorkspace(page);
   await navigate(page, 'Agent 助手');
@@ -504,25 +471,6 @@ test('new task entries exclude copilot while legacy task settings remain editabl
   }
 });
 
-test('consumption settings live in task tables and the home shortcut opens the task center', async ({
-  page,
-}) => {
-  await openHome(page);
-  await home(page)
-    .getByRole('button', { name: /任务消耗设置/ })
-    .click();
-  await expect(page.getByRole('region', { name: '任务中心', exact: true })).toBeVisible();
-  await expect(wb(page)).toHaveCount(0);
-  await navigate(page, '设置');
-  await expect(
-    page
-      .getByRole('navigation', { name: '设置分类' })
-      .getByRole('button', { name: '执行与消耗', exact: true }),
-  ).toHaveCount(0);
-  await expect(page.getByLabel('理智药预算', { exact: true })).toHaveCount(0);
-});
-
-// New workbench behavior: drafts, scoped settings, search, and common tool entry points.
 test('unsaved task drafts survive navigation and page reloads without corrupting saved data', async ({
   page,
 }) => {
@@ -544,32 +492,6 @@ test('unsaved task drafts survive navigation and page reloads without corrupting
   await wb(page).getByRole('button', { name: '恢复已保存配置', exact: true }).click();
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
-});
-
-test('task-table metadata, device binding and derived zero limits persist together', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await tab(page, '任务表设置');
-  await wb(page).getByLabel('任务表名称', { exact: true }).fill('晚间日常');
-  await wb(page).getByLabel('任务表说明', { exact: true }).fill('先收取，再换班；不使用消耗品。');
-  await wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }).check();
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
-  await expect(wb(page).getByLabel('任务表理智药上限', { exact: true })).toHaveCount(0);
-  await savePlan(page);
-  await reloadWorkspace(page, '晚间日常');
-  await tab(page, '任务表设置');
-  await expect(wb(page).getByLabel('任务表名称', { exact: true })).toHaveValue('晚间日常');
-  await expect(wb(page).getByLabel('任务表说明', { exact: true })).toHaveValue(
-    '先收取，再换班；不使用消耗品。',
-  );
-  await expect(
-    wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }),
-  ).toBeChecked();
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
-  await tab(page, '定时计划');
-  await expect(wb(page).getByRole('heading', { name: '定时计划', exact: true })).toBeVisible();
-  await expect(wb(page).getByRole('button', { name: '开始执行', exact: true })).toBeVisible();
 });
 
 test('global search locates updates, saved tables and individual task settings', async ({
