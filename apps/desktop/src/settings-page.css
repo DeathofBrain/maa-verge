@@ -95,34 +95,6 @@
   background: var(--surface-subtle);
 }
 
-.settings-workspace .toggle {
-  width: 40px;
-  height: 24px;
-}
-
-.settings-workspace .toggle:after {
-  width: 18px;
-  height: 18px;
-}
-
-.settings-workspace .toggle[aria-checked='true']:after,
-.settings-workspace .toggle.on:after {
-  transform: translateX(16px);
-}
-
-.settings-workspace .sp-setting-row {
-  gap: 20px;
-  padding: 16px 0;
-}
-
-.settings-workspace .sp-setting-row.settings-master {
-  padding: 16px 18px;
-}
-
-.settings-workspace .sp-setting-row > div {
-  min-width: 0;
-}
-
 .settings-actions,
 .settings-save-state,
 .settings-save-status {
@@ -247,18 +219,6 @@
   background: var(--surface-subtle);
 }
 
-.settings-workspace .sp-update-preference .sp-setting-row {
-  padding: 14px 0;
-}
-
-.settings-workspace .sp-update-preference .sp-setting-row > div {
-  display: block;
-}
-
-.settings-workspace .sp-update-preference .sp-setting-row p {
-  margin-top: 4px;
-}
-
 .settings-workspace .sp-component-path {
   margin-top: 0;
   padding: 16px 0;
@@ -314,11 +274,7 @@
     padding: 8px 14px;
   }
 
-  .settings-workspace .sp-setting-row {
-    gap: 12px;
-  }
-
-  .settings-workspace .sp-setting-row .sp-inline-select {
+  .settings-workspace .sp-inline-select {
     width: 130px;
   }
 

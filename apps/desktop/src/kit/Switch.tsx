@@ -1,13 +1,13 @@
+import type { ButtonHTMLAttributes } from 'react';
 import { cx } from './cx';
 
-type Props = {
+type Props = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'onChange' | 'type' | 'role' | 'aria-checked'
+> & {
   checked: boolean;
   onChange: (value: boolean) => void;
-  disabled?: boolean;
   size?: 'md' | 'lg';
-  'aria-label'?: string;
-  'aria-labelledby'?: string;
-  className?: string;
 };
 
 export default function Switch({

@@ -1,4 +1,6 @@
 import type { Settings } from '@maaverge/contracts';
+import SettingRow from './kit/SettingRow';
+import Switch from './kit/Switch';
 import { useAutoSaveDraft } from './settings-autosave';
 
 type Preferences = NonNullable<Settings['mirrorChyan']>;
@@ -37,22 +39,19 @@ export default function MirrorChyanSettings({
           void flush();
         }}
       >
-        <div className="sp-setting-row settings-master">
-          <div>
-            <strong>使用 Mirror酱</strong>
-          </div>
-          <button
-            type="button"
-            className={`toggle ${draft.enabled ? 'on' : ''}`}
-            role="switch"
-            aria-label="使用 Mirror酱"
-            aria-checked={draft.enabled}
-            disabled={busy}
-            onClick={() => setDraft((value) => ({ ...value, enabled: !value.enabled }), 0)}
-          >
-            <i />
-          </button>
-        </div>
+        <SettingRow
+          className="settings-master"
+          title="使用 Mirror酱"
+          control={
+            <Switch
+              size="lg"
+              aria-label="使用 Mirror酱"
+              checked={draft.enabled}
+              disabled={busy}
+              onChange={(value) => setDraft((previous) => ({ ...previous, enabled: value }), 0)}
+            />
+          }
+        />
         <label className="sp-field">
           Mirror酱 CDK
           <input

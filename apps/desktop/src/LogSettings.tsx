@@ -11,6 +11,7 @@ import { acquireModalEffects } from './modal-effects';
 import { Download, LoaderCircle, Trash2, X } from 'lucide-react';
 import { errorMessage, rpc, type RpcResult, type Settings } from '@maaverge/contracts';
 import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
+import SettingRow from './kit/SettingRow';
 import './log-settings.css';
 import './data-settings.css';
 
@@ -176,31 +177,31 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
           void flush();
         }}
       >
-        <div className="sp-setting-row">
-          <div>
-            <label htmlFor="log-retention-days">
-              <strong>自动清理日志</strong>
-            </label>
-            <p>每天清理过期日志，保留本次会话文件。</p>
-          </div>
-          <Select
-            id="log-retention-days"
-            className="text-input sp-inline-select"
-            value={draft.days}
-            disabled={disabled}
-            onChange={(event) =>
-              setDraft(
-                { days: Number(event.target.value) as NonNullable<Settings['logRetentionDays']> },
-                0,
-              )
-            }
-          >
-            <option value="0">关闭</option>
-            <option value="7">保留 7 天</option>
-            <option value="14">保留 14 天</option>
-            <option value="30">保留 30 天</option>
-          </Select>
-        </div>
+        <SettingRow
+          className="log-retention-row"
+          padding="flush"
+          title={<label htmlFor="log-retention-days">自动清理日志</label>}
+          description="每天清理过期日志，保留本次会话文件。"
+          control={
+            <Select
+              id="log-retention-days"
+              className="text-input sp-inline-select"
+              value={draft.days}
+              disabled={disabled}
+              onChange={(event) =>
+                setDraft(
+                  { days: Number(event.target.value) as NonNullable<Settings['logRetentionDays']> },
+                  0,
+                )
+              }
+            >
+              <option value="0">关闭</option>
+              <option value="7">保留 7 天</option>
+              <option value="14">保留 14 天</option>
+              <option value="30">保留 30 天</option>
+            </Select>
+          }
+        />
         <div className="sp-form-actions settings-actions">
           <span className="sp-help">{autoSaveLabel(status)}</span>
           {status === 'error' && (

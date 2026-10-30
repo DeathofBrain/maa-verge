@@ -6,6 +6,7 @@ import {
   type RpcResult,
   type Settings,
 } from '@maaverge/contracts';
+import DirectoryPicker from './kit/DirectoryPicker';
 import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
 import './copilot-library-actions.css';
 import './data-settings.css';
@@ -85,25 +86,16 @@ export default function CopilotStorageSettings({ settings, busy, onSave }: Props
       >
         <div className="sp-field">
           <label htmlFor="copilot-storage-directory-input">作业 JSON 存放目录</label>
-          <div className="data-settings-directory-picker">
-            <input
-              id="copilot-storage-directory-input"
-              className="text-input"
-              aria-label="作业 JSON 存放目录"
-              value={draft.directory}
-              placeholder={info?.directory ?? '留空使用程序目录下的 cache/copilot'}
-              disabled={disabled}
-              readOnly
-            />
-            <button
-              className="button secondary"
-              type="button"
-              disabled={disabled}
-              onClick={() => void choose()}
-            >
-              选择作业目录
-            </button>
-          </div>
+          <DirectoryPicker
+            className="data-settings-directory-picker"
+            id="copilot-storage-directory-input"
+            label="选择作业目录"
+            ariaLabel="作业 JSON 存放目录"
+            value={draft.directory}
+            placeholder={info?.directory ?? '留空使用程序目录下的 cache/copilot'}
+            disabled={disabled}
+            onPick={() => void choose()}
+          />
         </div>
         <p className="sp-help">所选目录仅用于后续导入，已有文件不会搬移。</p>
         <div className="data-settings-location">

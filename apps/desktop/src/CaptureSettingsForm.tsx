@@ -1,40 +1,14 @@
 import Select from './Select';
-import type { ReactNode } from 'react';
 import { Info } from 'lucide-react';
 import type { Settings } from '@maaverge/contracts';
+import Notice from './kit/Notice';
+import Section from './kit/Section';
 import { useSettingsDraft } from './settings-draft';
 const captureLabels = {
   adb: 'ADB 默认截图',
   mumu: 'MuMu 增强截图',
   ldplayer: '雷电增强截图',
 } as const;
-function Section({
-  title,
-  children,
-  description,
-}: {
-  title: string;
-  children: ReactNode;
-  description?: string;
-}) {
-  return (
-    <section className="sp-section">
-      <div className="sp-section-title">
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
-      {children}
-    </section>
-  );
-}
-function Notice({ children }: { children: ReactNode }) {
-  return (
-    <div className="sp-notice">
-      <Info size={17} />
-      <div>{children}</div>
-    </div>
-  );
-}
 export function CaptureForm({
   settings,
   busy,
@@ -54,7 +28,11 @@ export function CaptureForm({
   const [draft, setDraft, resetDraft] = useSettingsDraft(draftKey, saved);
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   return (
-    <Section title="截图方式" description="保存后用于下一次连接；已连接设备继续使用当前截图方式。">
+    <Section
+      className="sp-section"
+      title="截图方式"
+      description="保存后用于下一次连接；已连接设备继续使用当前截图方式。"
+    >
       <form
         className="sp-capture-form"
         onSubmit={(event) => {
@@ -135,18 +113,24 @@ export function CaptureFields({
         </Select>
       </label>
       {automatic && (
-        <Notice>
-          {enhanced
-            ? `已自动识别：${captureLabels[draft.method]}。安装目录和实例编号由连接的模拟器提供，重新连接时会再次核对。`
-            : '连接时自动识别 MuMu、雷电等模拟器的增强截图能力，并为每个多开实例配置对应目录和编号。其他设备使用 ADB 截图。'}
+        <Notice className="sp-notice">
+          <Info size={17} />
+          <div>
+            {enhanced
+              ? `已自动识别：${captureLabels[draft.method]}。安装目录和实例编号由连接的模拟器提供，重新连接时会再次核对。`
+              : '连接时自动识别 MuMu、雷电等模拟器的增强截图能力，并为每个多开实例配置对应目录和编号。其他设备使用 ADB 截图。'}
+          </div>
         </Notice>
       )}
       {enhanced && (
         <>
           {!automatic && (
-            <Notice>
-              增强截图使用模拟器提供的快速接口，仅支持相应的 Windows
-              模拟器。连接时若增强接口不可用，将明确报错，不会自动改用 ADB 截图。
+            <Notice className="sp-notice">
+              <Info size={17} />
+              <div>
+                增强截图使用模拟器提供的快速接口，仅支持相应的 Windows
+                模拟器。连接时若增强接口不可用，将明确报错，不会自动改用 ADB 截图。
+              </div>
             </Notice>
           )}
           <div className="sp-capture-fields">

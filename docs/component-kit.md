@@ -216,6 +216,8 @@ createPortal(
 | 设备选择搜索框                | `type="search"`（role `searchbox`）            | `type="text"`（role `textbox`），同步改 3 处 spec 断言 | WebKit 原生清除按钮装饰不一致；套装自带清除按钮时再启用                            |
 | 设备选择动作按钮              | 28px、`5px 8px`、11px（页面覆盖）              | `size="sm"` 同值                                       | 覆盖改 prop                                                                        |
 
+设置页的 `.sp-setting-row` 覆盖链已在本轮删除：`support-pages.css` 的基础行、`settings-page.css` 的 `.settings-workspace` 两级 padding、`.sp-update-preference` 的三条复合规则、`log-settings.css` 的重置，共 6 组选择器，全部由 `SettingRow` 的 `padding` prop 与 kit 内部结构取代。迁移后实测：普通行 16px 0、更新偏好行 14px 0、Mirror酱主行 16px 18px（保留 `.settings-master` 单类卡片样式）、日志保留行 0；窄屏 560px 下行间距 12px。此后再出现「标签被祖先规则静默推偏」只能来自新写的宿主复合选择器，而门禁会拒绝页面样式表引用 `.mv-`。
+
 `SearchField` 的 `clearLabel` 同时是「是否渲染清除按钮」的开关：现有 8 套克隆中只有一部分带清除按钮，省略该 prop 可保证迁移不新增控件。`PageHeading` 的 `actionsClassName` 是唯一为测试耦合保留的插槽类入口（`.sp-heading-actions` 有 4 处断言），spec 更新后删除。
 
 ## 可访问性契约

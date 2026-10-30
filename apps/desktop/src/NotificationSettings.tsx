@@ -9,6 +9,7 @@ import {
   type DesktopNotificationStatus,
   type Settings,
 } from '@maaverge/contracts';
+import Switch from './kit/Switch';
 import { useAutoSaveDraft } from './settings-autosave';
 import './notification-settings.css';
 
@@ -98,15 +99,13 @@ export default function NotificationSettings({ settings, busy, onSave }: Props) 
             <strong id="notification-master-label">启用系统通知</strong>
             <p id="notification-master-description">关闭后仍保留应用内提醒</p>
           </div>
-          <button
-            className="toggle notification-switch"
-            type="button"
-            role="switch"
+          <Switch
+            size="lg"
             aria-labelledby="notification-master-label"
             aria-describedby="notification-master-description"
-            aria-checked={draft.enabled}
+            checked={draft.enabled}
             disabled={disabled}
-            onClick={() => setDraft((value) => ({ ...value, enabled: !value.enabled }), 0)}
+            onChange={(value) => setDraft((previous) => ({ ...previous, enabled: value }), 0)}
           />
         </div>
         <fieldset className="notification-categories" disabled={disabled || !draft.enabled}>
@@ -119,16 +118,14 @@ export default function NotificationSettings({ settings, busy, onSave }: Props) 
                   <p id="notification-schedule-description">提前提醒需在定时计划中开启</p>
                 )}
               </div>
-              <button
-                className="toggle notification-switch"
-                type="button"
-                role="switch"
+              <Switch
+                size="lg"
                 aria-labelledby={`notification-${key}-label`}
                 aria-describedby={
                   key === 'schedules' ? 'notification-schedule-description' : undefined
                 }
-                aria-checked={draft[key]}
-                onClick={() => setDraft((value) => ({ ...value, [key]: !value[key] }), 0)}
+                checked={draft[key]}
+                onChange={(value) => setDraft((previous) => ({ ...previous, [key]: value }), 0)}
               />
             </div>
           ))}

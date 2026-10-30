@@ -4,6 +4,16 @@
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表统一从“任务”入口管理：列表 + 右侧详情抽屉保留逐任务设置和常驻运行条，执行监控为同页页签，开始执行不跳转；勾选任务表后由页头「运行」启动，每张表均可选择多台设备，已绑定表限绑定范围，未绑定表临时选择。执行监控统一列出在线与曾连接的离线设备，列表标题旁显示设备总数与执行中数量，已连接设备用绿色「已连接」标记，执行状态单独显示；点击设备后在下方查看当前任务表、作业或独立工具，再次点击收起；离线显示“已离线”，空闲与历史记录明确分开。任务表「查看执行」定位同一设备，设备卡日志及连接设置从右侧打开；底栏运行详情、日志、画面与多开执行向上展开，并通过底栏左侧设备选择器切换。支持设备多选停止及日志复制、导出和确认删除。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。六类独立工具与每日定时已接入，使用方法见 [工具箱与定时计划](toolbox-schedules.md)；独立作业中心已接入本地与 PRTS Plus 导入，完整原 MAA 兼容继续按功能矩阵验收。
 
+## 本次设置页集群迁移与覆盖链删除（macOS arm64，2026-10-30）
+
+- 新增 `SettingRow`（`padding: md/compact/card/flush`）、`SaveStateIndicator`（基于 `autoSaveLabel`，`saved` 为空串）与 `DirectoryPicker` 三个套装组件。
+- 删除历史 bug 的根源——`.sp-setting-row` 的四层特异性覆盖链：`support-pages.css` 的基础 17px 行、`settings-page.css` 的 `.settings-workspace` 16px 与 `.settings-master` 16px 18px、`.sp-update-preference` 的三条复合规则、`log-settings.css` 的重置与响应式塌陷、以及 560px 下两处重复的间距规则；同时删除 `.settings-workspace .toggle` 的三条开关尺寸覆盖。全部改由 `SettingRow` 的 `padding` prop、`Switch` 的 `size="lg"` 与 kit 内部结构表达。
+- `SupportPages.tsx` 删除本地 `PageHeading` 与 `Section` 两个重复定义，改用套装版本（页头仍传 `.sp-page-heading`、动作容器仍传 `.sp-heading-actions` 以保住 4 处测试断言）；`ComponentPathForm` 改用 `DirectoryPicker`。通用与外观、更新偏好的 5 处保存状态改用 `SaveStateIndicator`；`ModelSettings` 同样迁移。Mirror酱与通知设置的保存状态文案（`保存失败` / `正在保存…`）不在 `autoSaveLabel` 中，按「不得静默改文案」保留原样。
+- 通知设置的两个开关改用 `Switch size="lg"`（`aria-labelledby` + `aria-describedby` 原样传递），删除 `.notification-switch` 的尺寸覆盖；`ConfigurationSettings` 与 `CopilotStorageSettings` 的目录选择改用 `DirectoryPicker`；`CaptureSettingsForm` 的本地 `Section`/`Notice` 改用套装（保留 `.sp-section`/`.sp-notice` 根类以维持外边距）。
+- 渲染核对（合成夹具，1440×900）：普通设置行 `16px 0`、间距 20px、标题字重 600、末行无分隔线；更新偏好行 `14px 0` 且说明块为 block；Mirror酱主行 `16px 18px` + 1px 边框 + 10px 圆角；560px 以下行间距 12px、390×844 无横向溢出。逐张截图 7 个设置分类的浅色、通知与更新的深色、通用与外观的 390px，截图存于被忽略的 `test-results/`。
+- 验证：`tsc -p apps/desktop --noEmit`、门禁脚本与 9 个门禁单测、修改文件 Prettier 通过；定向 Chromium spec（app-updates、component-updates、configuration-settings、connection-settings、download-proxy-settings、mirrorchyan-settings、notification-settings、log-settings、multi-instance、workspace、directory-picker、autosave-context-menu）**77/77**，第二批（notification-settings、directory-picker、configuration-settings、connection-settings、log-settings、workspace、app-updates、component-updates、mirrorchyan-settings、download-proxy-settings、multi-instance）**68/68**（端口 15547、15549）。
+- 未连接真实设备、调用模型或构建安装包；Windows/Linux 与原生 WebView 未验收。Mirror酱/通知设置的保存状态副本、`styles.css` 的全局 `.toggle` 与其余 `.sp-*` 退役留到后续阶段。
+
 ## 本次第一波表单与页面骨架原语（macOS arm64，2026-10-30）
 
 - 新增 15 个套装原语：`Button`（`primary/secondary/danger/text` + `md/sm` + `busy`）、`IconButton`（`label` 必填为 `aria-label`）、`Spinner`、`TextField` / `TextArea` / `NumberField`（`invalid` → `data-invalid`）、`SearchField`、`Switch`（`md/lg`，只挂 `[aria-checked='true']`）、`Checkbox` / `CheckField`、`Field`、`Section`、`Notice`（`data-tone`）、`PageHeading`、`EmptyState`，全部从 `kit/index.ts` 导出且只含 `.mv-*` 规则。

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
+export type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
 type Options<T> = {
   delay?: number;
   normalize?: (value: T) => T;

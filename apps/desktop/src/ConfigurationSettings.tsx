@@ -7,6 +7,7 @@ import {
   saveConfigurationDirectory,
   type ConfigurationLocations,
 } from '@maaverge/contracts';
+import DirectoryPicker from './kit/DirectoryPicker';
 import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
 import './data-settings.css';
 
@@ -164,25 +165,16 @@ function ConfigurationForm({
       )}
       <div className="sp-field">
         <label htmlFor="configuration-directory-input">配置目录（重启后生效）</label>
-        <div className="data-settings-directory-picker">
-          <input
-            id="configuration-directory-input"
-            className="text-input"
-            aria-label="配置目录"
-            value={draft.directory}
-            placeholder={locations.defaultDirectory}
-            disabled={disabled || locations.overridden}
-            readOnly
-          />
-          <button
-            className="button secondary"
-            type="button"
-            disabled={disabled || locations.overridden}
-            onClick={() => void choose()}
-          >
-            选择配置目录
-          </button>
-        </div>
+        <DirectoryPicker
+          className="data-settings-directory-picker"
+          id="configuration-directory-input"
+          label="选择配置目录"
+          ariaLabel="配置目录"
+          value={draft.directory}
+          placeholder={locations.defaultDirectory}
+          disabled={disabled || locations.overridden}
+          onPick={() => void choose()}
+        />
       </div>
       <p className="sp-help">重启后读取所选目录的配置；空目录会新建数据，原文件保留且不会搬移。</p>
       <details className="data-settings-details">

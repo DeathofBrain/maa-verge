@@ -33,7 +33,7 @@ import {
 } from '@maaverge/contracts';
 import './support-pages.css';
 import './settings-page.css';
-import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
+import { useAutoSaveDraft } from './settings-autosave';
 import ModelSettings from './ModelSettings';
 import LogSettings from './LogSettings';
 import CopilotStorageSettings from './CopilotStorageSettings';
@@ -48,6 +48,13 @@ import {
   resourceVersionLabel,
   type ResourceClient,
 } from './update-display';
+import Button from './kit/Button';
+import DirectoryPicker from './kit/DirectoryPicker';
+import PageHeading from './kit/PageHeading';
+import SaveStateIndicator from './kit/SaveStateIndicator';
+import Section from './kit/Section';
+import SettingRow from './kit/SettingRow';
+import Switch from './kit/Switch';
 import { formatDate } from './kit/format';
 import { updateChannelLabels, updateStatusLabels } from './kit/labels';
 
@@ -62,48 +69,6 @@ export interface SupportPageProps {
   onOpenPlan: (plan: Plan, taskType?: Task['type'], taskIndex?: number) => void;
   onCreateTaskPlan: (type: Task['type'], params?: Task['params']) => void;
   searchQuery?: string;
-}
-
-function PageHeading({
-  title,
-  text,
-  actions,
-}: {
-  title: string;
-  text: string;
-  actions?: ReactNode;
-}) {
-  return (
-    <header className="sp-page-heading">
-      <div>
-        <h1>{title}</h1>
-        <p>{text}</p>
-      </div>
-      {actions && <div className="sp-heading-actions">{actions}</div>}
-    </header>
-  );
-}
-
-function Section({
-  title,
-  children,
-  description,
-  className = '',
-}: {
-  title: string;
-  children: ReactNode;
-  description?: string;
-  className?: string;
-}) {
-  return (
-    <section className={`sp-section ${className}`}>
-      <div className="sp-section-title">
-        <h2>{title}</h2>
-        {description && <p>{description}</p>}
-      </div>
-      {children}
-    </section>
-  );
 }
 
 function Empty({
@@ -141,23 +106,20 @@ function Toggle({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <div className="sp-setting-row">
-      <div>
-        <strong>{label}</strong>
-        {description && <p>{description}</p>}
-      </div>
-      <button
-        type="button"
-        className={`toggle ${checked ? 'on' : ''}`}
-        role="switch"
-        aria-label={label}
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-      >
-        <i />
-      </button>
-    </div>
+    <SettingRow
+      padding="compact"
+      title={label}
+      description={description}
+      control={
+        <Switch
+          size="lg"
+          aria-label={label}
+          checked={checked}
+          disabled={disabled}
+          onChange={onChange}
+        />
+      }
+    />
   );
 }
 
@@ -295,7 +257,12 @@ export function SettingsPage({
 
   return (
     <div className="sp-page sp-settings-page settings-workspace">
-      <PageHeading title="设置" text="修改自动保存。" />
+      <PageHeading
+        className="sp-page-heading"
+        actionsClassName="sp-heading-actions"
+        title="设置"
+        text="修改自动保存。"
+      />
       <div className="sp-settings-search">
         <Search size={18} />
         <input
@@ -348,82 +315,73 @@ export function SettingsPage({
               {selected.id === 'general' && (
                 <>
                   <Section title="通用与外观" className="settings-card">
-                    <div className="sp-setting-row">
-                      <div>
-                        <strong>界面主题</strong>
-                      </div>
-                      <Select
-                        className="text-input sp-inline-select"
-                        aria-label="界面主题"
-                        value={general.draft.theme}
-                        disabled={busy}
-                        onChange={(event) =>
-                          general.setDraft(
-                            (value) => ({
-                              ...value,
-                              theme: event.target.value as Settings['theme'],
-                            }),
-                            0,
-                          )
-                        }
-                      >
-                        <option value="system">跟随系统</option>
-                        <option value="light">浅色</option>
-                        <option value="dark">深色</option>
-                      </Select>
-                    </div>
-                    <div className="sp-setting-row">
-                      <div>
-                        <strong>关闭窗口时</strong>
-                        <p>最小化到托盘时继续运行</p>
-                      </div>
-                      <Select
-                        className="text-input sp-inline-select"
-                        aria-label="关闭窗口时"
-                        value={
-                          !general.draft.rememberCloseAction
-                            ? 'ask'
-                            : general.draft.minimizeToTray
-                              ? 'tray'
-                              : 'exit'
-                        }
-                        disabled={busy}
-                        onChange={(event) =>
-                          general.setDraft(
-                            (value) => ({
-                              ...value,
-                              rememberCloseAction: event.target.value !== 'ask',
-                              ...(event.target.value !== 'ask'
-                                ? { minimizeToTray: event.target.value === 'tray' }
-                                : {}),
-                            }),
-                            0,
-                          )
-                        }
-                      >
-                        <option value="ask">每次询问</option>
-                        <option value="tray">最小化到托盘</option>
-                        <option value="exit">退出应用</option>
-                      </Select>
-                    </div>
-                    <div className="sp-setting-row">
-                      <div>
-                        <strong>界面语言</strong>
-                      </div>
-                      <span className="sp-value">简体中文</span>
-                    </div>
-                    <div className="settings-save-state">
-                      <span>{autoSaveLabel(general.status)}</span>
-                      {general.status === 'error' && (
-                        <button
-                          type="button"
-                          className="text-button"
-                          onClick={() => void general.retry()}
+                    <SettingRow
+                      title="界面主题"
+                      control={
+                        <Select
+                          className="text-input sp-inline-select"
+                          aria-label="界面主题"
+                          value={general.draft.theme}
+                          disabled={busy}
+                          onChange={(event) =>
+                            general.setDraft(
+                              (value) => ({
+                                ...value,
+                                theme: event.target.value as Settings['theme'],
+                              }),
+                              0,
+                            )
+                          }
                         >
-                          重试
-                        </button>
-                      )}
-                    </div>
+                          <option value="system">跟随系统</option>
+                          <option value="light">浅色</option>
+                          <option value="dark">深色</option>
+                        </Select>
+                      }
+                    />
+                    <SettingRow
+                      title="关闭窗口时"
+                      description="最小化到托盘时继续运行"
+                      control={
+                        <Select
+                          className="text-input sp-inline-select"
+                          aria-label="关闭窗口时"
+                          value={
+                            !general.draft.rememberCloseAction
+                              ? 'ask'
+                              : general.draft.minimizeToTray
+                                ? 'tray'
+                                : 'exit'
+                          }
+                          disabled={busy}
+                          onChange={(event) =>
+                            general.setDraft(
+                              (value) => ({
+                                ...value,
+                                rememberCloseAction: event.target.value !== 'ask',
+                                ...(event.target.value !== 'ask'
+                                  ? { minimizeToTray: event.target.value === 'tray' }
+                                  : {}),
+                              }),
+                              0,
+                            )
+                          }
+                        >
+                          <option value="ask">每次询问</option>
+                          <option value="tray">最小化到托盘</option>
+                          <option value="exit">退出应用</option>
+                        </Select>
+                      }
+                    />
+                    <SettingRow
+                      title="界面语言"
+                      control={<span className="sp-value">简体中文</span>}
+                    />
+                    <SaveStateIndicator
+                      className="settings-save-state"
+                      status={general.status}
+                      onRetry={() => void general.retry()}
+                    />
                   </Section>
                 </>
               )}
@@ -621,45 +579,26 @@ function ComponentPathForm({
     <div className="sp-component-path settings-directory">
       <label className="sp-field">
         下载与安装目录
-        <div className="settings-directory-control">
-          <input
-            className="text-input"
-            aria-label={updateChannelLabels[channel.id] + '下载目录'}
-            value={draft.path}
-            placeholder="使用默认目录"
-            readOnly
-            disabled={busy || selecting}
-          />
-          <button
-            className="button secondary"
-            type="button"
-            disabled={busy || selecting}
-            onClick={() => void choose()}
-          >
-            选择文件夹
-          </button>
-        </div>
+        <DirectoryPicker
+          className="settings-directory-control"
+          label="选择文件夹"
+          ariaLabel={updateChannelLabels[channel.id] + '下载目录'}
+          value={draft.path}
+          placeholder="使用默认目录"
+          disabled={busy}
+          selecting={selecting}
+          onPick={() => void choose()}
+        />
       </label>
       <div className="settings-save-state">
-        <span className="sp-help">{autoSaveLabel(status)}</span>
-        {status === 'error' && (
-          <button
-            className="text-button"
-            type="button"
-            disabled={busy}
-            onClick={() => void retry()}
-          >
-            重试
-          </button>
-        )}
-        <button
-          className="text-button"
-          type="button"
+        <SaveStateIndicator status={status} onRetry={() => void retry()} retryDisabled={busy} />
+        <Button
+          variant="text"
           disabled={busy || selecting}
           onClick={() => setDraft({ path: '' }, 0)}
         >
           恢复默认目录
-        </button>
+        </Button>
       </div>
       <p className="sp-help">仅用于后续下载，当前安装和回滚版本保留。</p>
       {error && (
@@ -783,19 +722,12 @@ function DownloadProxyForm({
             </button>
           </p>
         )}
-        <div className="settings-save-state">
-          <span className="sp-help">{autoSaveLabel(status)}</span>
-          {status === 'error' && (
-            <button
-              className="text-button"
-              type="button"
-              disabled={busy}
-              onClick={() => void retry()}
-            >
-              重试
-            </button>
-          )}
-        </div>
+        <SaveStateIndicator
+          className="settings-save-state"
+          status={status}
+          onRetry={() => void retry()}
+          retryDisabled={busy}
+        />
       </form>
     </Section>
   );
@@ -1059,30 +991,31 @@ function UpdateSection({
       )}
       <div className="sp-update-preference">
         {channel.id !== 'resource' && (
-          <div className="sp-setting-row">
-            <div>
-              <strong>{isApp ? '应用更新频道' : 'MaaCore 更新频道'}</strong>
-              <p>{staged ? '切换频道将取消已准备的版本。' : '预览版包含尚在验证中的新功能。'}</p>
-            </div>
-            <Select
-              className="text-input sp-inline-select"
-              aria-label={isApp ? '应用更新频道' : 'MaaCore 更新频道'}
-              value={preferences.draft.releaseChannel}
-              disabled={busy || working}
-              onChange={(event) =>
-                preferences.setDraft(
-                  (value) => ({
-                    ...value,
-                    releaseChannel: event.target.value as 'stable' | 'preview',
-                  }),
-                  0,
-                )
-              }
-            >
-              <option value="stable">正式版</option>
-              <option value="preview">预览版</option>
-            </Select>
-          </div>
+          <SettingRow
+            padding="compact"
+            title={isApp ? '应用更新频道' : 'MaaCore 更新频道'}
+            description={staged ? '切换频道将取消已准备的版本。' : '预览版包含尚在验证中的新功能。'}
+            control={
+              <Select
+                className="text-input sp-inline-select"
+                aria-label={isApp ? '应用更新频道' : 'MaaCore 更新频道'}
+                value={preferences.draft.releaseChannel}
+                disabled={busy || working}
+                onChange={(event) =>
+                  preferences.setDraft(
+                    (value) => ({
+                      ...value,
+                      releaseChannel: event.target.value as 'stable' | 'preview',
+                    }),
+                    0,
+                  )
+                }
+              >
+                <option value="stable">正式版</option>
+                <option value="preview">预览版</option>
+              </Select>
+            }
+          />
         )}
         <Toggle
           label={
@@ -1105,19 +1038,12 @@ function UpdateSection({
             preferences.setDraft((previous) => ({ ...previous, autoCheck: value }), 0)
           }
         />
-        <div className="settings-save-state">
-          <span>{autoSaveLabel(preferences.status)}</span>
-          {preferences.status === 'error' && (
-            <button
-              className="text-button"
-              type="button"
-              disabled={busy}
-              onClick={() => void preferences.retry()}
-            >
-              重试
-            </button>
-          )}
-        </div>
+        <SaveStateIndicator
+          className="settings-save-state"
+          status={preferences.status}
+          onRetry={() => void preferences.retry()}
+          retryDisabled={busy}
+        />
         {!isApp && (
           <details className="settings-advanced">
             <summary>下载与安装目录</summary>

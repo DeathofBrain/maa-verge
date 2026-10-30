@@ -118,35 +118,6 @@
   color: var(--muted, #697587);
 }
 
-.sp-setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 17px 0;
-  border-bottom: 1px solid var(--border, #dde3ec);
-}
-
-.sp-setting-row:last-child {
-  border-bottom: 0;
-}
-
-.sp-setting-row strong {
-  font-size: 13px;
-  font-weight: 550;
-}
-
-.sp-setting-row p {
-  color: var(--muted, #697587);
-  font-size: 12px;
-  line-height: 1.7;
-  margin: 4px 0 0;
-}
-
-.sp-setting-row .toggle {
-  flex: none;
-}
-
 .sp-inline-select {
   width: 180px;
   flex: none;
@@ -722,21 +693,6 @@
 
 .sp-component-path .sp-form-actions {
   flex-wrap: wrap;
-}
-
-.sp-update-preference .sp-setting-row {
-  padding: 8px 0 0;
-}
-
-.sp-update-preference .sp-setting-row > div {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.sp-update-preference .sp-setting-row p {
-  margin: 0;
 }
 
 .sp-update-progress {
@@ -1330,12 +1286,6 @@
   .sp-connect-form .button {
     align-self: flex-start;
   }
-  .sp-setting-row {
-    gap: 15px;
-  }
-  .sp-setting-row .sp-inline-select {
-    width: 135px;
-  }
   .sp-capture-fields {
     grid-template-columns: 1fr;
   }
@@ -1359,12 +1309,6 @@
   }
   .sp-update-preference {
     grid-column: 1;
-  }
-  .sp-update-preference .sp-setting-row > div {
-    display: block;
-  }
-  .sp-update-preference .sp-setting-row p {
-    margin-top: 5px;
   }
   .sp-update-title {
     gap: 8px;

@@ -1,5 +1,6 @@
 import type { Settings } from '@maaverge/contracts';
-import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
+import SaveStateIndicator from './kit/SaveStateIndicator';
+import { useAutoSaveDraft } from './settings-autosave';
 
 type Props = {
   settings: Settings;
@@ -84,19 +85,12 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
           />
         </label>
         <p className="sp-help">API 密钥管理尚未开放；保存配置不会发起模型请求。</p>
-        <div className="settings-save-state">
-          <span className="sp-help">{autoSaveLabel(status)}</span>
-          {status === 'error' && (
-            <button
-              className="text-button"
-              type="button"
-              disabled={busy}
-              onClick={() => void retry()}
-            >
-              重试
-            </button>
-          )}
-        </div>
+        <SaveStateIndicator
+          className="settings-save-state"
+          status={status}
+          onRetry={() => void retry()}
+          retryDisabled={busy}
+        />
       </form>
     </section>
   );

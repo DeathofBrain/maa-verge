@@ -19,12 +19,6 @@
   gap: 18px;
 }
 
-.log-retention-form .sp-setting-row {
-  padding-top: 0;
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
 .log-settings-diagnostics {
   display: flex;
   align-items: center;
@@ -101,7 +95,7 @@
 }
 
 @media (max-width: 600px) {
-  .log-retention-form .sp-setting-row {
+  .log-retention-row {
     align-items: flex-start;
     flex-direction: column;
   }

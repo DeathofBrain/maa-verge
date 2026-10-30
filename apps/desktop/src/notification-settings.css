@@ -50,20 +50,6 @@
   line-height: 1.6;
 }
 
-.notification-settings .notification-switch {
-  width: 40px;
-  height: 24px;
-}
-
-.notification-switch:after {
-  width: 18px;
-  height: 18px;
-}
-
-.notification-settings .notification-switch[aria-checked='true']:after {
-  transform: translateX(16px);
-}
-
 .notification-categories {
   min-width: 0;
   margin: 0;

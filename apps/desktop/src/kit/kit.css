@@ -427,3 +427,99 @@
 .mv-empty-action {
   display: inline-flex;
 }
+
+/* SettingRow ------------------------------------------------------------ */
+
+.mv-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.mv-setting-row:last-child {
+  border-bottom: 0;
+}
+
+.mv-setting-row--compact {
+  padding: 14px 0;
+}
+
+.mv-setting-row--card {
+  padding: 16px 18px;
+}
+
+.mv-setting-row--flush {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.mv-setting-row-copy {
+  min-width: 0;
+}
+
+.mv-setting-row-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.mv-setting-row-description {
+  color: var(--muted);
+  margin: 4px 0 0;
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+
+.mv-setting-row-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+/* SaveStateIndicator ---------------------------------------------------- */
+
+.mv-save-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: var(--text-md);
+  min-height: 18px;
+}
+
+.mv-save-state[data-state='error'] {
+  color: var(--danger);
+}
+
+.mv-save-state-retry {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font-size: var(--text-md);
+  text-decoration: underline;
+}
+
+/* DirectoryPicker ------------------------------------------------------- */
+
+.mv-directory {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mv-directory > .mv-input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .mv-setting-row {
+    gap: 12px;
+  }
+}
