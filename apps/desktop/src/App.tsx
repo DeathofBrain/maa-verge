@@ -69,6 +69,7 @@ import ErrorBanner from './kit/ErrorBanner';
 import Toast from './kit/Toast';
 import FilterChips from './kit/FilterChips';
 import StatusPill from './kit/StatusPill';
+import { runStatusLabels, runStatusTones } from './kit/labels';
 
 type Page = 'home' | 'tasks' | 'copilot' | 'tools' | 'agent' | 'history' | 'devices' | 'settings';
 type Message = { id: string; role: 'user' | 'assistant'; text: string; plan?: Plan };
@@ -89,12 +90,6 @@ const pageNames: Record<Page, string> = {
   history: '执行记录',
   devices: '设备',
   settings: '设置',
-};
-const statusNames: Record<Run['status'], string> = {
-  running: '执行中',
-  completed: '已完成',
-  failed: '执行失败',
-  stopped: '已停止',
 };
 const uid = () => crypto.randomUUID();
 const time = (value: string) =>
@@ -1218,9 +1213,10 @@ export default function App() {
                                 run.deviceId}
                             </td>
                             <td>
-                              <span className={`pill ${run.status}`}>
-                                {statusNames[run.status]}
-                              </span>
+                              <StatusPill
+                                tone={runStatusTones[run.status]}
+                                label={runStatusLabels[run.status]}
+                              />
                             </td>
                             <td className="numeric">{time(run.startedAt)}</td>
                             <td>{localizeExecutionMessage(run.message)}</td>
@@ -1305,7 +1301,10 @@ export default function App() {
             ) : panelTool ? (
               <section className="run-panel-tool" aria-label="工具执行状态">
                 <h2>工具执行</h2>
-                <span className={`pill ${panelTool.status}`}>{statusNames[panelTool.status]}</span>
+                <StatusPill
+                  tone={runStatusTones[panelTool.status]}
+                  label={runStatusLabels[panelTool.status]}
+                />
                 <p>{localizeExecutionMessage(panelTool.message)}</p>
                 <progress max={100} value={panelTool.progress} aria-label="工具执行进度" />
               </section>

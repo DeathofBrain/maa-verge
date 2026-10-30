@@ -12,6 +12,8 @@ import {
   type Run,
 } from '@maaverge/contracts';
 import Button from './kit/Button';
+import ProgressBar from './kit/ProgressBar';
+import StatusPill from './kit/StatusPill';
 import './multi-run.css';
 
 export default function MultiRunPanel({
@@ -101,17 +103,18 @@ export default function MultiRunPanel({
                     <h3>{device.name}</h3>
                     <small>{device.address}</small>
                   </div>
-                  <span className={`pill ${run ? 'running' : ''}`}>
-                    {run ? '执行中' : device.state === 'offline' ? '离线' : '就绪'}
-                  </span>
+                  <StatusPill
+                    tone={run ? 'running' : device.state === 'offline' ? 'offline' : 'success'}
+                    label={run ? '执行中' : device.state === 'offline' ? '离线' : '就绪'}
+                  />
                 </header>
                 {run ? (
                   <>
                     <strong>{runDisplayName(run, plans)}</strong>
                     <p>{localizeExecutionMessage(run.message)}</p>
-                    <progress
-                      aria-label={`${device.name}执行进度`}
-                      max={100}
+                    <ProgressBar
+                      className="multi-run-progress"
+                      label={`${device.name}执行进度`}
                       value={run.progress}
                     />
                     <div className="multi-run-actions">
