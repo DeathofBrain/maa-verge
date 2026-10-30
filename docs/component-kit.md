@@ -160,35 +160,36 @@ createPortal(
 
 状态含义：**已实现** = 组件文件存在且至少一个页面在用；**已建** = 文件存在但尚无采用方；**计划** = 本轮尚未创建。「替代的旧实现」列出被消灭的类族或重复定义。
 
-| 组件                                             | 替代的旧实现                                                                                                                                                                    | 状态   |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| `cx`                                             | 各处手写 `filter(Boolean).join(' ')`                                                                                                                                            | 已建   |
-| `Select`（re-export，不重写）                    | —                                                                                                                                                                               | 已建   |
-| `format`（`kit/format.ts`）                      | ≥6 份 `zh-CN` 月日时分变体、2 份带秒变体、2 份时长格式化                                                                                                                        | 已实现 |
-| `labels`（`kit/labels.ts`）                      | 5 份执行状态映射、任务/工具/设备/更新渠道状态映射                                                                                                                               | 已实现 |
-| `Button`                                         | `.button` + `.primary/.secondary/.danger`（141 处 / 29 文件）、`.text-button`（35 处）、`button.cp-link`、约 20 处 `{busy ? <LoaderCircle className="spin"/> : <Icon/>}` 惯用法 | 计划   |
-| `IconButton`                                     | `.icon-button`（60 处 / 27 文件）                                                                                                                                               | 计划   |
-| `Spinner`                                        | 约 25 处裸 `<LoaderCircle className="spin"/>`                                                                                                                                   | 计划   |
-| `TextField` / `TextArea` / `NumberField`         | `<input>` / `<textarea>` / `<Select>` 上的 `.text-input`（82 处 / 21 文件）                                                                                                     | 计划   |
-| `SearchField`                                    | 全部 8 套搜索框克隆                                                                                                                                                             | 计划   |
-| `Switch`                                         | 全部 5 套 `role="switch"` 开关，以 `SupportPages.tsx` 的 `Toggle` 为准实现                                                                                                      | 计划   |
-| `Checkbox` / `CheckField`                        | 40 处 `type="checkbox"`、约 10 种 wrapper 类族                                                                                                                                  | 计划   |
-| `Field`                                          | `label.sp-field`、`div.sp-field` + `htmlFor`、`label.param-field`、`.tool-field`、`.cp-field`、`.check-field` 六种写法                                                          | 计划   |
-| `SettingRow`                                     | `.sp-setting-row` 及其 4 层祖先前缀 padding 覆盖                                                                                                                                | 计划   |
-| `Section`                                        | 被定义两次的 `Section`、`section.sp-section`（8 文件）、`section.settings-card`（6 文件）                                                                                       | 计划   |
-| `Notice`                                         | `CaptureSettingsForm.tsx` 的本地 `Notice`、`DevicesPage.tsx` 的内联版、`.wb-running-note` ×2                                                                                    | 计划   |
-| `PageHeading`                                    | `App.tsx` 与 `SupportPages.tsx` 两份定义，以及 `DevicesPage.tsx`、`ToolsPage.tsx` 的无组件内联标记                                                                              | 计划   |
-| `EmptyState`                                     | ≥14 个空状态类族                                                                                                                                                                | 计划   |
-| `StatusPill`                                     | `.pill` + 修饰符（12 处）、`.sp-state.*`、`.monitor-device-state`、`.device-selection-state.is-*`、`.cp-state-*`、`.notification-channel-badge`、`.subtle-tag`、`.status-dot`   | 计划   |
-| `Tabs`                                           | 5 套 `role="tablist"` 与 2 处纵向 `.sp-category-nav`                                                                                                                            | 计划   |
-| `FilterChips`                                    | `.tc-filters`、`.monitor-filters`、`.cp-category-chip` 三套工具条                                                                                                               | 计划   |
-| `ProgressBar`                                    | 5 处自研 `div[role=progressbar] > i[style]` 与 4 处原生 `<progress>`                                                                                                            | 计划   |
-| `ErrorBanner`                                    | `p.error-banner[role=alert]`（5 文件）与 ≥8 个页面局部错误类                                                                                                                    | 计划   |
-| `Toast`                                          | `App.tsx` 全局版（6 秒自动消失）、`DesktopLifecycle.tsx`、`.monitor-log-notice` 三套                                                                                            | 计划   |
-| `SaveStateIndicator`                             | 5+ 套保存状态实现                                                                                                                                                               | 计划   |
-| `DirectoryPicker`                                | `SupportPages.tsx`、`CopilotStorageSettings.tsx`、`ConfigurationSettings.tsx` 三套目录选择                                                                                      | 计划   |
-| `Overlay` / `Modal` / `Drawer` / `ConfirmDialog` | 4 套抽屉、4 种弹层机制、3 处手写 Tab 陷阱                                                                                                                                       | 计划   |
-| `ListRow` / `SelectableRow`                      | 约 6 处重复的「复选框 + `button[aria-pressed].*-main` + 操作区」行骨架                                                                                                          | 计划   |
+| 组件                                     | 替代的旧实现                                                                                                                                                                    | 状态   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| `cx`                                     | 各处手写 `filter(Boolean).join(' ')`                                                                                                                                            | 已实现 |
+| `Select`（re-export，不重写）            | —                                                                                                                                                                               | 已实现 |
+| `format`（`kit/format.ts`）              | ≥6 份 `zh-CN` 月日时分变体、2 份带秒变体、2 份时长格式化                                                                                                                        | 已实现 |
+| `labels`（`kit/labels.ts`）              | 5 份执行状态映射、任务/工具/设备/更新渠道状态映射                                                                                                                               | 已实现 |
+| `Button`                                 | `.button` + `.primary/.secondary/.danger`（141 处 / 29 文件）、`.text-button`（35 处）、`button.cp-link`、约 20 处 `{busy ? <LoaderCircle className="spin"/> : <Icon/>}` 惯用法 | 已实现 |
+| `IconButton`                             | `.icon-button`（60 处 / 27 文件）                                                                                                                                               | 已实现 |
+| `Spinner`                                | 约 25 处裸 `<LoaderCircle className="spin"/>`                                                                                                                                   | 已实现 |
+| `TextField` / `TextArea` / `NumberField` | `<input>` / `<textarea>` / `<Select>` 上的 `.text-input`（82 处 / 21 文件）                                                                                                     | 已建   |
+| `SearchField`                            | 全部 8 套搜索框克隆                                                                                                                                                             | 已实现 |
+| `Switch`                                 | 全部 5 套 `role="switch"` 开关，以 `SupportPages.tsx` 的 `Toggle` 为准实现                                                                                                      | 已实现 |
+| `Checkbox` / `CheckField`                | 40 处 `type="checkbox"`、约 10 种 wrapper 类族                                                                                                                                  | 已建   |
+| `Field`                                  | `label.sp-field`、`div.sp-field` + `htmlFor`、`label.param-field`、`.tool-field`、`.cp-field`、`.check-field` 六种写法                                                          | 已实现 |
+| `SettingRow`                             | `.sp-setting-row` 及其 4 层祖先前缀 padding 覆盖                                                                                                                                | 已实现 |
+| `Section`                                | 被定义两次的 `Section`、`section.sp-section`（8 文件）、`section.settings-card`（6 文件）                                                                                       | 已实现 |
+| `Notice`                                 | `CaptureSettingsForm.tsx` 的本地 `Notice`、`DevicesPage.tsx` 的内联版、`.wb-running-note` ×2                                                                                    | 已实现 |
+| `PageHeading`                            | `App.tsx` 与 `SupportPages.tsx` 两份定义，以及 `DevicesPage.tsx`、`ToolsPage.tsx` 的无组件内联标记                                                                              | 已实现 |
+| `EmptyState`                             | ≥14 个空状态类族                                                                                                                                                                | 已建   |
+| `StatusPill`                             | `.pill` + 修饰符（12 处）、`.sp-state.*`、`.monitor-device-state`、`.device-selection-state.is-*`、`.cp-state-*`、`.notification-channel-badge`、`.subtle-tag`、`.status-dot`   | 已实现 |
+| `Tabs`                                   | 5 套 `role="tablist"` 与 2 处纵向 `.sp-category-nav`                                                                                                                            | 已建   |
+| `FilterChips`                            | `.tc-filters`、`.monitor-filters`、`.cp-category-chip` 三套工具条                                                                                                               | 已建   |
+| `ProgressBar`                            | 5 处自研 `div[role=progressbar] > i[style]` 与 4 处原生 `<progress>`                                                                                                            | 已建   |
+| `ErrorBanner`                            | `p.error-banner[role=alert]`（5 文件）与 ≥8 个页面局部错误类                                                                                                                    | 已实现 |
+| `Toast`                                  | `App.tsx` 全局版（6 秒自动消失）、`DesktopLifecycle.tsx`、`.monitor-log-notice` 三套                                                                                            | 已实现 |
+| `SaveStateIndicator`                     | 5+ 套保存状态实现                                                                                                                                                               | 已实现 |
+| `DirectoryPicker`                        | `SupportPages.tsx`、`CopilotStorageSettings.tsx`、`ConfigurationSettings.tsx` 三套目录选择                                                                                      | 已实现 |
+| `Overlay` / `Modal` / `ConfirmDialog`    | 4 套抽屉、4 种弹层机制、3 处手写 Tab 陷阱                                                                                                                                       | 已实现 |
+| `Drawer`                                 | 4 套抽屉（`SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer`、`CopilotDetailDrawer`）                                                                                         | 计划   |
+| `ListRow` / `SelectableRow`              | 约 6 处重复的「复选框 + `button[aria-pressed].*-main` + 操作区」行骨架                                                                                                          | 已建   |
 
 **本轮不抽**：`TaskParameterField`（620 行、单一使用者、13 种参数）、`DevicePreview`（视频台刻意不随主题）、`OperatorBadge` / `MaterialIcon`（已有组件且测试耦合；`.operator-badge.rarity-*` 语义独立，不并入 `StatusPill`）。`Select.tsx` 不重写：它的可访问性面被 `tests/ui/fixtures/device-picker.ts` 锁死（combobox `选择设备`、listbox `设备列表`、`[role=option][data-value]`），且它把菜单 portal 到 `closest('dialog,[role=dialog]') ?? document.body`——这是「弹层内 Select 能正常工作」的机制，套装必须保留。
 
@@ -204,9 +205,9 @@ createPortal(
 
 ### 弹层现状
 
-`Overlay` 是唯一同时做 portal、遮罩、`acquireModalEffects` 租约与焦点落点的组件；`Modal` 与 `ConfirmDialog` 是它的薄组合，`Drawer`（见下）沿用同一套。三个手写 Tab 陷阱已删除：`App.tsx` 的删除确认、`SupportPages.tsx` 的安装确认、`RunTasksDialog.tsx` 的运行确认；它们现在由 `acquireModalEffects` 提供 Tab 循环、Escape、焦点还原、背景 inert 与滚动锁。
+`Overlay` 是唯一同时做 portal、遮罩、`acquireModalEffects` 租约与焦点落点的组件；`Modal` 与 `ConfirmDialog` 是它的薄组合。`Drawer` **尚未创建**：现有 `SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer`、`CopilotDetailDrawer` 各自保留外壳。三个手写 Tab 陷阱已删除：`App.tsx` 的删除确认、`SupportPages.tsx` 的安装确认、`RunTasksDialog.tsx` 的运行确认；它们现在由 `acquireModalEffects` 提供 Tab 循环、Escape、焦点还原、背景 inert 与滚动锁。
 
-现有抽屉（`SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer`）本来就调用 `acquireModalEffects`，没有手写陷阱，因此**未**在本轮改写为 `Drawer`：它们的层/面板/标题/内容各有宿主类名，收编需要子槽类 API，留到 Stage 8 与 `.tc-drawer-*` / `.monitor-log-*` 一起做。`CopilotDeleteDialog` 已经正确使用 `acquireModalEffects`（含 `#root` 背景、`returnFocus`、`fallbackFocus`），同样留到 Stage 8。原生 `<dialog showModal>`（`DesktopLifecycle`、`LogSettings`）继续使用 `useNativeDialog(ref, { onClose })`。
+现有四个抽屉本来就调用 `acquireModalEffects`，没有手写陷阱，因此尚未改写为统一 `Drawer`：它们的层/面板/标题/内容各有宿主类名，需要 `Drawer` 提供宽度、底栏避让与可隐藏标题后再收编。`CopilotDeleteDialog` 已经正确使用 `acquireModalEffects`（含 `#root` 背景、`returnFocus`、`fallbackFocus`），同样等待弹层迁移。`kit/useNativeDialog.ts` 已存在，但 `DesktopLifecycle` 与 `LogSettings` 仍直接调用 `showModal()`，尚未接入该辅助。
 
 ## 迁移带来的可见归一
 
