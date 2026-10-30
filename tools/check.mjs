@@ -13,6 +13,7 @@ const toolTests = [
   'tools/tests/app-updater-release.test.mjs',
   'tools/tests/require-checks.test.mjs',
   'tools/tests/runtime-notices.test.mjs',
+  'tools/tests/check-kit-css.test.mjs',
 ];
 const contractTests = [
   'packages/contracts/test/validators.test.mjs',
@@ -36,6 +37,7 @@ async function applicationChecks() {
   assertWorkspaceDependencies();
   await run('node', ['tools/generate-agent-knowledge.mjs', '--check']);
   await run('node', ['--test', ...toolTests]);
+  await run('node', ['tools/check-kit-css.mjs']);
   await run('pnpm', ['contracts:check']);
   await run('pnpm', ['-r', 'check']);
   await run('node', ['--test', ...contractTests]);

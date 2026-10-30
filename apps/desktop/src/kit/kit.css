@@ -1,0 +1,5 @@
+/*
+ * Maa Verge 组件套装样式，只含 .mv-* 规则。约定由 tools/check-kit-css.mjs 强制，
+ * 说明见 docs/component-kit.md：单类选择器或一层子组合器，变体与尺寸差异走 props，
+ * 禁止祖先前缀、裸元素与 ID 选择器、!important 与 @import。
+ */
