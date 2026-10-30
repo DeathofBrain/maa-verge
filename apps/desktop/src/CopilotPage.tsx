@@ -11,10 +11,8 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  ArrowDown,
   ArrowLeft,
   ArrowRight,
-  ArrowUp,
   BookOpen,
   Check,
   ChevronRight,
@@ -25,10 +23,7 @@ import {
   FileJson,
   Flame,
   FolderOpen,
-  Info,
-  ListOrdered,
   LoaderCircle,
-  Play,
   Plus,
   RefreshCw,
   Search,
@@ -59,10 +54,10 @@ import CopilotDifficulty from './CopilotDifficulty';
 import CopilotSelectAll from './CopilotSelectAll';
 import CopilotStageFilter from './CopilotStageFilter';
 import Drawer from './kit/Drawer';
+import CopilotQueueView from './features/copilot/CopilotQueueView';
 import useWorkspace from './features/copilot/useCopilotWorkspace';
 import CopilotRating from './features/copilot/CopilotRating';
 import Compatibility from './features/copilot/CopilotCompatibility';
-import CopilotSettings from './features/copilot/CopilotSettingsView';
 import CopilotDeleteDialog, { type CopilotDeleteTarget } from './CopilotDeleteDialog';
 import {
   cachedCommunityPreview,
@@ -2396,284 +2391,40 @@ export default function CopilotPage({
               </CopilotDetailDrawer>
             )}
           </div>
-          <section className="cp-queue sp-section" aria-label="作业执行队列">
-            <div className="cp-queue-heading">
-              <h2>
-                <ListOrdered size={17} />
-                执行队列
-              </h2>
-              <div className="cp-type-bar" role="tablist" aria-label="队列类型">
-                {kinds.map((item) => (
-                  <button
-                    key={item.value}
-                    role="tab"
-                    aria-selected={kind === item.value}
-                    className={kind === item.value ? 'is-selected' : ''}
-                    disabled={importing}
-                    onClick={() => setKind(item.value)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="cp-queue-editor">
-              <header>
-                <div>
-                  <h2>
-                    {kindLabel(kind)}队列{' '}
-                    <span>
-                      {enabled.length} / {workspace?.queue.length ?? 0}
-                    </span>
-                  </h2>
-                  <p>每项独立排序，可重复添加；修改只影响下次执行。</p>
-                </div>
-                <button
-                  className="cp-link"
-                  aria-label="清除未勾选项"
-                  disabled={!workspace?.queue.some((entry) => !entry.enabled)}
-                  onClick={() =>
-                    edit((value) => ({
-                      ...value,
-                      queue: value.queue.filter((entry) => entry.enabled),
-                    }))
-                  }
-                >
-                  清除未选
-                </button>
-              </header>
-              <div className="cp-preview-selection">
-                <CopilotSelectAll
-                  label="全选执行队列"
-                  total={workspace?.queue.length ?? 0}
-                  selected={enabled.length}
-                  onChange={changeQueueSelection}
-                />
-              </div>
-              {!workspace ? (
-                <p role="status">正在读取队列…</p>
-              ) : !workspace.queue.length ? (
-                <div className="cp-queue-empty">
-                  <ListOrdered size={26} />
-                  <strong>还没有待执行的作业</strong>
-                  <p>
-                    先在左侧查看作业和干员要求，
-                    <br />
-                    再加入这里，按顺序执行。
-                  </p>
-                  <button
-                    className="cp-link"
-                    disabled={savingImport}
-                    onClick={() => showLibrary('community')}
-                  >
-                    去社区找作业
-                    <ArrowRight size={14} />
-                  </button>
-                </div>
-              ) : (
-                <ol className="cp-queue-list">
-                  {workspace.queue.map((entry, index) => {
-                    const record = queueRecords[entry.versionId];
-                    return (
-                      <li
-                        key={entry.id}
-                        className={!entry.enabled ? 'is-disabled' : ''}
-                        tabIndex={0}
-                        {...contextMenu('队列条目菜单', [
-                          {
-                            label: entry.enabled ? '取消勾选' : '勾选执行',
-                            action: () => changeQueueSelection(!entry.enabled, entry.id),
-                          },
-                          {
-                            label: '上移',
-                            action: () => move(entry.id, -1),
-                            disabled: index === 0,
-                          },
-                          {
-                            label: '下移',
-                            action: () => move(entry.id, 1),
-                            disabled: index === workspace.queue.length - 1,
-                          },
-                          {
-                            label: '重复添加',
-                            action: () => record && addRecords([record]),
-                            disabled: !record || kind === 'SSSCopilot',
-                          },
-                          { label: '移除条目', action: () => remove(entry.id), danger: true },
-                        ])}
-                      >
-                        <div className="cp-queue-row">
-                          <input
-                            type="checkbox"
-                            aria-label={`执行队列 ${index + 1}`}
-                            checked={entry.enabled}
-                            onChange={(event) =>
-                              changeQueueSelection(event.target.checked, entry.id)
-                            }
-                          />
-                          <span className="cp-sequence">{String(index + 1).padStart(2, '0')}</span>
-                          <button
-                            className="cp-queue-title"
-                            disabled={!record}
-                            onClick={() => record && openRecord(record)}
-                          >
-                            <strong>
-                              {record?.title ??
-                                (record === null ? '作业版本不可用' : '正在读取作业…')}
-                            </strong>
-                            <small>{record?.stageName || entry.versionId.slice(0, 12)}</small>
-                          </button>
-                          <div className="cp-queue-actions">
-                            <button
-                              className="icon-button"
-                              aria-label={`上移作业 ${index + 1}`}
-                              disabled={index === 0}
-                              onClick={() => move(entry.id, -1)}
-                            >
-                              <ArrowUp size={14} />
-                            </button>
-                            <button
-                              className="icon-button"
-                              aria-label={`下移作业 ${index + 1}`}
-                              disabled={index === workspace.queue.length - 1}
-                              onClick={() => move(entry.id, 1)}
-                            >
-                              <ArrowDown size={14} />
-                            </button>
-                            <button
-                              className="icon-button"
-                              aria-label={`移除作业 ${index + 1}`}
-                              onClick={() => remove(entry.id)}
-                            >
-                              <X size={15} />
-                            </button>
-                          </div>
-                        </div>
-                        {usesNavigation && (
-                          <div className="cp-entry-options">
-                            {
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  checked={entry.isRaid}
-                                  onChange={(event) =>
-                                    queueChange(entry.id, { isRaid: event.target.checked })
-                                  }
-                                />
-                                突袭
-                              </label>
-                            }
-                            {
-                              <label>
-                                导航关卡
-                                <input
-                                  className="text-input"
-                                  aria-label={`导航关卡 ${index + 1}`}
-                                  value={entry.navName}
-                                  onChange={(event) =>
-                                    queueChange(entry.id, { navName: event.target.value })
-                                  }
-                                  placeholder="沿用作业关卡"
-                                  maxLength={200}
-                                />
-                              </label>
-                            }
-                          </div>
-                        )}
-                        {record && record.compatibility.status !== 'ready' && (
-                          <p className="cp-error-text">{record.compatibility.reasons.join('；')}</p>
-                        )}
-                        {record === null && (
-                          <p className="cp-error-text">请移除或取消勾选此项后再执行。</p>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
-              )}
-              {workspace && (
-                <>
-                  <CopilotSettings
-                    kind={kind}
-                    count={enabled.length}
-                    options={workspace.options}
-                    change={options}
-                  />
-                  <div className="cp-save-state" role="status">
-                    {saveState}
-                    {saveError && (
-                      <>
-                        <span className="cp-error-text">{saveError}</span>
-                        <button className="cp-link" onClick={() => void flush().catch(() => {})}>
-                          重试保存
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="cp-launch">
-              <label className="cp-field">
-                目标设备
-                <Select
-                  className="text-input"
-                  aria-label="作业目标设备"
-                  value={selectedDevice}
-                  onChange={(event) => onSelectDevice(event.target.value)}
-                >
-                  <option value="">请选择空闲设备</option>
-                  {snapshot.devices.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} ·{' '}
-                      {item.state === 'offline'
-                        ? '离线'
-                        : item.state === 'running'
-                          ? '执行中'
-                          : '已连接'}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <div className="cp-device-status" role="status">
-                {checking && <LoaderCircle size={14} className="spin" />}
-                <span>
-                  {selectedDevice
-                    ? (status?.error ?? status?.result?.reason ?? '正在检查设备…')
-                    : '浏览和导入无需连接设备'}
-                </span>
-                {status?.result?.ownerId &&
-                  onViewRun &&
-                  snapshot.runs.some((item) => item.id === status.result?.ownerId) && (
-                    <button className="cp-link" onClick={() => onViewRun(status.result!.ownerId!)}>
-                      查看占用
-                    </button>
-                  )}
-              </div>
-              <p className="cp-start-hint">
-                <Info size={15} />
-                {startingHint}
-              </p>
-              {kind === 'Copilot' && (
-                <details className="cp-game-help">
-                  <summary>游戏内准备与说明</summary>
-                  <p className="sp-help">
-                    队列在当前区域内按关卡导航，不支持跨区域；普通与突袭由队列条目选择。单份循环、演习请在游戏内选好关卡与模式。助战限制以核心反馈为准，不使用理智药或源石。
-                  </p>
-                </details>
-              )}
-              <button
-                className="button primary cp-start"
-                disabled={!!disabledReason || starting}
-                title={disabledReason || '使用已保存的队列与选项开始执行'}
-                onClick={() => void start()}
-              >
-                {starting ? <LoaderCircle className="spin" size={16} /> : <Play size={16} />}
-                开始作业
-              </button>
-              {disabledReason && <p className="sp-help">{disabledReason}</p>}
-            </div>
-          </section>
+          <CopilotQueueView
+            kinds={kinds}
+            kind={kind}
+            importing={importing}
+            setKind={setKind}
+            enabledCount={enabled.length}
+            workspace={workspace}
+            edit={edit}
+            changeQueueSelection={changeQueueSelection}
+            savingImport={savingImport}
+            showLibrary={showLibrary}
+            queueRecords={queueRecords}
+            contextMenu={contextMenu}
+            move={move}
+            addRecords={addRecords}
+            remove={remove}
+            openRecord={openRecord}
+            usesNavigation={usesNavigation}
+            queueChange={queueChange}
+            options={options}
+            saveState={saveState}
+            saveError={saveError}
+            flush={flush}
+            selectedDevice={selectedDevice}
+            onSelectDevice={onSelectDevice}
+            snapshot={snapshot}
+            checking={checking}
+            availability={status}
+            onViewRun={onViewRun}
+            startingHint={startingHint}
+            disabledReason={disabledReason}
+            starting={starting}
+            start={start}
+          />
         </div>
         {!!legacy.length && (
           <details className="sp-section cp-legacy">
