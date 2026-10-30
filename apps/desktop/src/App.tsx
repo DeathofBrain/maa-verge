@@ -42,11 +42,9 @@ import {
   type Task,
 } from '@maaverge/contracts';
 import { DevicesPage } from './DevicesPage';
-import PlanEditor, {
-  discardPlanDraft,
-  taskFieldSearch,
-  type PlanEditorCommand,
-} from './PlanEditor';
+import PlanEditor, { type PlanEditorCommand } from './PlanEditor';
+import { discardPlanDraft } from './features/plans/plan-draft';
+import { taskFieldSearch } from './features/plans/task-fields';
 import { useContextMenu } from './ContextMenu';
 import ScheduleNotifications from './ScheduleNotifications';
 import { SettingsPage } from './SupportPages';

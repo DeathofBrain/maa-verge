@@ -2,32 +2,7 @@ import Select from './Select';
 import { useEffect, useState } from 'react';
 import type { RpcParams } from '@maaverge/contracts';
 import StageSelector from './StageSelector';
-
-export type Field = {
-  key: string;
-  label: string;
-  kind?:
-    | 'number'
-    | 'check'
-    | 'list'
-    | 'numbers'
-    | 'select'
-    | 'stage'
-    | 'drops'
-    | 'facilities'
-    | 'stars'
-    | 'recruit-confirm'
-    | 'limit'
-    | 'account'
-    | 'threshold';
-  options?: (string | [string, string])[];
-  min?: number;
-  max?: number;
-  step?: number;
-  hint?: string;
-  numeric?: boolean;
-  disabled?: boolean;
-};
+import type { Field } from './features/plans/task-fields';
 
 const facilities = [
   ['Power', '发电站'],
