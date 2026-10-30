@@ -1,8 +1,19 @@
 # 开发状态
 
-更新日期：2026-10-30。当前源码版本为 **0.1.3-alpha.1**，已公开发布 **[v0.1.3-alpha.1 预览版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha.1)**；最新正式版仍为 **0.1.2**。工程和首批功能已落地，[PLAN.md](../PLAN.md) 中的完整产品与研究路线尚未全部交付。
+更新日期：2026-10-31。当前源码版本为 **0.1.3-alpha.1**，已公开发布 **[v0.1.3-alpha.1 预览版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3-alpha.1)**；最新正式版仍为 **0.1.2**。工程和首批功能已落地，[PLAN.md](../PLAN.md) 中的完整产品与研究路线尚未全部交付。
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表统一从“任务”入口管理：列表 + 右侧详情抽屉保留逐任务设置和常驻运行条，执行监控为同页页签，开始执行不跳转；勾选任务表后由页头「运行」启动，每张表均可选择多台设备，已绑定表限绑定范围，未绑定表临时选择。执行监控统一列出在线与曾连接的离线设备，列表标题旁显示设备总数与执行中数量，已连接设备用绿色「已连接」标记，执行状态单独显示；点击设备后在下方查看当前任务表、作业或独立工具，再次点击收起；离线显示“已离线”，空闲与历史记录明确分开。任务表「查看执行」定位同一设备，设备卡日志及连接设置从右侧打开；底栏运行详情、日志、画面与多开执行向上展开，并通过底栏左侧设备选择器切换。支持设备多选停止及日志复制、导出和确认删除。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。六类独立工具与每日定时已接入，使用方法见 [工具箱与定时计划](toolbox-schedules.md)；独立作业中心已接入本地与 PRTS Plus 导入，完整原 MAA 兼容继续按功能矩阵验收。
+
+## 本次前端架构归档与套装完善（Windows x64，2026-10-31）
+
+- 读取 Clash Verge Rev、GitButler、screenpipe 的 Tauri 2 源码，按应用组合、业务领域、共享能力和原语归档；固定提交链接与取舍见[前端架构](frontend-architecture.md)。迁移 103 个既有文件，`src` 根仅保留 `main.tsx`，不保留旧路径兼容层。
+- `app` 拆出全局操作、设备运行选择和运行面板；页面声明最小 props，删除 `SupportPageProps`。计划串行写入仍由 App 生命周期挂载，未改变保存、删除防复活及请求去重。修复上下文菜单的 Escape 同时关闭底层运行面板的问题。
+- Copilot 拆出社区浏览和详情抽屉，采用 kit 搜索、Tabs、筛选及进度；首页拆出数据刷新 hook 和产线编辑器。补全原生 dialog 的开关、取消与焦点租约，Toast 内部样式归 kit，按钮支持 React 19 ref；清理确认无引用的旧页面 CSS，保留动态设备状态等实际使用规则。
+- 增加 `@/* → src/*` 导入简写，TypeScript、Vite 和测试服务共用解析约定。同目录用 `./`，跨目录用 `@/`。修正测试及文档中的迁移路径，四份行为 spec 复用既有导航辅助，保留全部场景和断言。
+- 新增前端目录、依赖方向、Tauri 入口和运行时循环门禁并接入 `check:app`，覆盖类型导入、动态导入、别名与 CSS 依赖。组件文档和项目 skill 同步，最后重写 [desktop README](../apps/desktop/README.md)，说明职责、边界、扩展和测试。
+- 验证：`pnpm run check:app`（工具、契约同步、四工作区类型和 42 项契约测试）、前端生产构建通过；全量 Edge 合成 E2E **248/248**（4 workers，4.4 分钟，独立端口/输出目录）。新增两项键盘行为回归，无外观断言。导航辅助简化定向 **28/28**，后端两处跨层纯函数引用回归 **7/7**。
+- 人工抽查作业中心列表和详情的 1440 浅色、1280 深色、390 窄窗合成截图，修正窄窗 Tabs 标签挤压；构建 CSS 确认 kit 在最前、全局令牌在后。截图与构建产物未提交。未执行真实设备、模型、组件下载、原生 WebView、macOS/Linux 或安装包验收。
+- 当前仍有 App 的计划流程、Copilot 会话容器、全量 settings 写入协调及全局旧 CSS 待进一步解耦；目录归档不代表这些工作已完成。
 
 ## 本次弹层统一与手写焦点陷阱清理（macOS arm64，2026-10-30）
 
@@ -1295,6 +1306,6 @@
 3. 接入用户自备模型 API、系统钥匙串、工具权限和费用预算，再逐步开放 Agent 的真实执行。
 4. 后续版本继续执行四宿主签名构建、草稿全量附件和公开后下载复验，保留既有发行标签与产物；补齐三平台真实升级安装验收，随后推进独立战斗研究及评测。
 5. 按 [插件系统与插件市场调研](plugin-marketplace-research.md) 推进后续扩展能力：先确定首批场景、包规范与权限边界，再做本地声明式扩展管理及审核制市场；可执行插件须先完成受限宿主原型和目标平台验证，当前不设交付日期。
-6. 组件套装已完成令牌、共享格式化与标签、表单/骨架原语、设置页集群（含删除 `.sp-setting-row` 覆盖链）、展示型原语与弹层统一（详见上文六个小节与 [component-kit.md](component-kit.md)）。剩余工作：`Tabs`/`FilterChips`/`ProgressBar`/`ListRow`/`SelectableRow` 的页面采用（组件已建，需与 `.dp-tabs`/`.tc-view-tabs`/`.monitor-filters`/`.cp-record` 等容器类一起归一）；`Drawer` 收编 `SideDrawer`/`TaskDetailDrawer`/`MonitorLogDrawer`（三者已用 `acquireModalEffects`，无手写陷阱）与 `CopilotDeleteDialog`；`CopilotPage.tsx`、`PlanEditor.tsx` 与 `App.tsx` 主体迁移；保留类与死样式清理、令牌全量回填、`styles.css` 全局 `.toggle`/`.segmented`/`.pill` 退役。当前不设交付日期。
+6. 前端已按 `app/features/shared/kit` 归档并增加依赖与循环门禁；Drawer、展示原语、原生弹层和主要页面采用情况见 [component-kit.md](component-kit.md)。继续按[前端架构](frontend-architecture.md)拆分 App 计划命令、Copilot 查询/导入/执行状态，设计跨功能 settings 写入协调；推进尚未采用的行/表单原语、旧选择器清理和令牌回填。`kit/legacy`、`shared/styles/support-pages.css` 与部分全局旧规则仍需逐步迁移。当前不设交付日期。
 
 开发者在另一台电脑从相同 Git 提交执行 bootstrap，按 [development.md](development.md) 恢复依赖；无需复制虚拟环境、下载缓存或原机器路径。

@@ -11,6 +11,33 @@ async function openCenter(page: Page) {
   await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
 }
 
+test('source and queue tabs support keyboard navigation with independent panels', async ({
+  page,
+}) => {
+  await openCenter(page);
+  const sources = library(page).getByRole('tablist', { name: '作业来源', exact: true });
+  await sources.getByRole('tab', { name: /^本地作业/ }).focus();
+  await page.keyboard.press('End');
+  await expect(sources.getByRole('tab', { name: '社区作业集', exact: true })).toBeFocused();
+  await expect(
+    library(page).getByRole('tabpanel', { name: '社区作业集', exact: true }),
+  ).toBeVisible();
+
+  const types = queue(page).getByRole('tablist', { name: '队列类型', exact: true });
+  await types.getByRole('tab', { name: '普通作业', exact: true }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(types.getByRole('tab', { name: '保全派驻', exact: true })).toBeFocused();
+  await expect(queue(page).getByRole('tabpanel', { name: '保全派驻', exact: true })).toBeVisible();
+  await expect(sources.getByRole('tab', { name: '社区作业集', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+
+  await page.keyboard.press('Home');
+  await expect(types.getByRole('tab', { name: '普通作业', exact: true })).toBeFocused();
+  await expect(queue(page).getByRole('tabpanel', { name: '普通作业', exact: true })).toBeVisible();
+});
+
 test('queue types preserve community search and the side drawer returns to its original result', async ({
   page,
 }) => {

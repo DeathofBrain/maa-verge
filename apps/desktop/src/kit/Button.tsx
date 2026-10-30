@@ -1,8 +1,8 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { cx } from './cx';
 import Spinner from './Spinner';
 
-type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> & {
+type Props = Omit<ComponentPropsWithRef<'button'>, 'type'> & {
   variant?: 'primary' | 'secondary' | 'danger' | 'text';
   size?: 'md' | 'sm';
   busy?: boolean;

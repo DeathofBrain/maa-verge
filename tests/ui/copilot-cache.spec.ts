@@ -1,16 +1,12 @@
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { navigate } from './fixtures/navigation';
 
 const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
 const detail = (page: Page) => page.getByRole('complementary', { name: '作业详情', exact: true });
 const queue = (page: Page) => page.getByRole('region', { name: '作业执行队列', exact: true });
 const commands = (page: Page) =>
   page.evaluate(() => (window as unknown as HarnessWindow).runtimeHarness.commands);
-async function navigate(page: Page, name: string) {
-  const menu = page.getByRole('button', { name: '打开导航', exact: true });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator('.sidebar').getByRole('button', { name, exact: true }).click();
-}
 async function openCenter(page: Page) {
   await page.goto('/');
   await navigate(page, '作业中心');

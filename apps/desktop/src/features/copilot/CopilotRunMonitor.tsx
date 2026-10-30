@@ -1,9 +1,9 @@
 import type { RefObject } from 'react';
 import { LoaderCircle, Square } from 'lucide-react';
 import { rpc, type CopilotKind, type RpcResult, type Snapshot } from '@maaverge/contracts';
-import Button from '../../kit/Button';
-import ProgressBar from '../../kit/ProgressBar';
-import Select from '../../kit/Select';
+import Button from '@/kit/Button';
+import ProgressBar from '@/kit/ProgressBar';
+import Select from '@/kit/Select';
 
 type Props = {
   panelRef: RefObject<HTMLElement | null>;
@@ -105,6 +105,7 @@ export default function CopilotRunMonitor({
             </div>
             {run.status === 'running' && (
               <Button
+                className="cp-run-stop"
                 icon={<Square size={15} />}
                 onClick={() => {
                   void onAction(
@@ -118,7 +119,7 @@ export default function CopilotRunMonitor({
               </Button>
             )}
           </header>
-          <ProgressBar value={run.progress} label="作业执行进度" />
+          <ProgressBar className="cp-run-progress" value={run.progress} label="作业执行进度" />
           <p className="sp-help">
             {new Date(run.startedAt).toLocaleString('zh-CN')} ·{' '}
             {run.status === 'running'

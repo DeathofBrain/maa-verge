@@ -6,11 +6,11 @@ import {
   type CopilotRecord,
   type RpcParams,
 } from '@maaverge/contracts';
-import Button from '../../kit/Button';
-import IconButton from '../../kit/IconButton';
-import Select from '../../kit/Select';
-import CopilotOperators from '../../CopilotOperators';
-import CopilotSelectAll from '../../CopilotSelectAll';
+import Button from '@/kit/Button';
+import IconButton from '@/kit/IconButton';
+import Select from '@/kit/Select';
+import CopilotOperators from './CopilotOperators';
+import SelectAll from '@/shared/ui/SelectAll';
 import Compatibility from './CopilotCompatibility';
 
 type Props = {
@@ -93,7 +93,7 @@ export default function CopilotImportPreview({
         </IconButton>
       </header>
       <div className="cp-preview-selection">
-        <CopilotSelectAll
+        <SelectAll
           label="全选可用作业"
           total={availablePreviewEntries.length}
           selected={
@@ -210,12 +210,14 @@ export default function CopilotImportPreview({
           {previewSelection.length} / {preview.entries.length} 项已选择
         </span>
         <Button
+          className="cp-preview-action"
           disabled={importing || !previewSelection.length}
           onClick={() => void importPreview(false)}
         >
           导入到作业库
         </Button>
         <Button
+          className="cp-preview-action"
           variant="primary"
           icon={<Plus size={15} />}
           disabled={

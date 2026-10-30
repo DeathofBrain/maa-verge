@@ -1,16 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 import type { RpcResult } from '../../packages/contracts/src/index';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { expectHome, navigate } from './fixtures/navigation';
 
 const menu = (page: Page) => page.locator('[data-select-menu]:visible');
 const option = (page: Page, value: string) =>
   menu(page).locator(`[role="option"][data-value=${JSON.stringify(value)}]`);
-
-async function navigate(page: Page, name: string) {
-  const navigation = page.getByRole('button', { name: '打开导航', exact: true });
-  if (await navigation.isVisible()) await navigation.click();
-  await page.locator('.sidebar').getByRole('button', { name, exact: true }).click();
-}
 
 async function openMenu(page: Page, control: Locator) {
   await control.click();
@@ -20,7 +15,7 @@ async function openMenu(page: Page, control: Locator) {
 
 async function openCopilot(page: Page) {
   await page.goto('/');
-  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
+  await expectHome(page);
   await navigate(page, '作业中心');
   return page.getByRole('combobox', { name: '查看作业设备', exact: true });
 }
@@ -68,7 +63,7 @@ test('shared select supports pointer and keyboard selection and dismissal', asyn
 
 test('closed selects support F4, Home and End, and buffered typeahead', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
+  await expectHome(page);
   const devices = await page.evaluate(async () => {
     const harness = (window as unknown as HarnessWindow).runtimeHarness;
     const berry = (await harness.call('device.connect', {
@@ -128,7 +123,7 @@ test('stage groups preserve unavailable options and Escape dismisses the menu be
   page,
 }) => {
   await page.goto('/');
-  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
+  await expectHome(page);
   await page.evaluate(() => {
     const harness = (window as unknown as HarnessWindow).runtimeHarness;
     const original = harness.call.bind(harness);

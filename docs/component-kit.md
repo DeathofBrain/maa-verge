@@ -2,46 +2,60 @@
 
 界面原语集中在 `apps/desktop/src/kit/`，页面通过它调用统一的按钮、输入、开关、列表行与弹层，而不是各自复制一份类名与样式。本文是套装约定的事实源；结构约定由 `tools/check-kit-css.mjs` 强制，验证流程见 [.skill/maa-verge-ui-verification](../.skill/maa-verge-ui-verification/SKILL.md)。
 
-设计目标与三栏编排仍由 [UI 重设计计划](ui-redesign-plan.md) 定义，组件套装是其中「样式统一」目标的实现载体。
+设计目标与三栏编排仍由 [UI 重设计计划](ui-redesign-plan.md) 定义，组件套装是其中「样式统一」目标的实现载体。应用、业务域与共享层的职责和依赖方向见 [前端架构](frontend-architecture.md)。
 
 ## 为什么需要套装
 
-套装建立前，`apps/desktop/src/` 的 49 个 tsx 与 39 个 css 全部平铺，没有组件库、CSS 框架、路径别名或 barrel 文件，同一个视觉概念被反复重写且互不一致：搜索框 8 套、`role="switch"` 开关 5 套、空状态 ≥14 个类族、抽屉 4 套（z-index 分别为 85 / 160 / 1000 / 1100）、弹层 4 种机制（其中 3 处手写 Tab 陷阱与焦点还原，绕过已有的 `modal-effects.ts`）、保存状态提示 5+ 套、徽章 5 套、`role="tablist"` 5 套；`PageHeading` / `Section` / `Empty` / `ConfirmDialog` 各被定义 2–3 次，状态文案映射 ≥8 份、日期与时长格式化 ≥6 份。
+套装建立前的历史审计基线：`apps/desktop/src/` 的 49 个 tsx 与 39 个 css 全部平铺，没有组件库、CSS 框架、路径别名或 barrel 文件，同一个视觉概念被反复重写且互不一致：搜索框 8 套、`role="switch"` 开关 5 套、空状态 ≥14 个类族、抽屉 4 套（z-index 分别为 85 / 160 / 1000 / 1100）、弹层 4 种机制（其中 3 处手写 Tab 陷阱与焦点还原，绕过当时的 `modal-effects.ts`）、保存状态提示 5+ 套、徽章 5 套、`role="tablist"` 5 套；`PageHeading` / `Section` / `Empty` / `ConfirmDialog` 各被定义 2–3 次，状态文案映射 ≥8 份、日期与时长格式化 ≥6 份。这些数字用于保留迁移依据，不代表当前文件数或剩余重复数。
 
 真正的结构性隐患是**祖先前缀覆盖**：共享的 `.sp-*` 组件被宿主页面用 2–3 类选择器重新样式化。已经造成过真实 bug 的链条是 `.sp-setting-row { padding: 17px 0 }`（`support-pages.css:121`）被 `settings-page.css` 的 `:113`、`:118`、`:250` 逐层覆盖，其中 `:250` 的三选择器还跨文件静默压过 `support-pages.css:727`，`log-settings.css:22` 再做第 4 次重置。套装用机制而不是约定阻止这类 bug 复发。
 
 ## 目录结构
 
-```
-kit/index.ts        barrel；同时 re-export kit/Select（不重写）
-kit/Select.tsx      现有下拉选择（自 src 迁入，select.css 仍留在 src）
-kit/ContextMenu.tsx 右键菜单（自 src 迁入，context-menu.css 仍留在 src）
-kit/cx.ts           类名合并（不引入 clsx 依赖）
-kit/format.ts       formatDate / formatDateTime / formatDuration / formatElapsed
-kit/labels.ts       状态、工具、运行、更新渠道等中文映射，键类型取自 @maaverge/contracts
-kit/kit.css         单一样式表，只含 .mv-* 规则
-kit/*.tsx           各组件
+```text
+apps/desktop/src/
+  main.tsx                    唯一根文件，组合挂载点与样式顺序
+  app/App.tsx                 应用组合、导航与全局流程
+  app/shell/                  外壳、窗口控制与 DesktopLifecycle
+  app/styles/styles.css       设计令牌、reset、外壳与待退役旧样式
+  features/<领域>/            页面、局部状态、组件与页面 CSS 共置
+  shared/ui/                  SideDrawer、SelectAll 等跨功能组合
+  shared/game/                干员、材料、关卡展示
+  shared/lib/settings-autosave.ts 草稿缓存与自动保存 hook
+  shared/lib/save-status.ts   无副作用的 SaveStatus / autoSaveLabel
+  shared/styles/              尚被多个功能使用的旧页面样式
+  kit/
+    index.ts                  barrel，同时 re-export Select
+    Select.tsx                既有下拉选择，保留可访问性与 portal 机制
+    ContextMenu.tsx           既有右键菜单
+    legacy/                   select.css / context-menu.css，保留非 mv-* 类
+    modal-effects.ts          模态租约、焦点与堆叠机制
+    useNativeDialog.ts        原生 dialog 的开关与取消辅助
+    cx.ts                     类名合并，不引入 clsx
+    format.ts / labels.ts     无 CSS 副作用的格式化与中文映射
+    kit.css                   mv-* 原语样式
+    *.tsx                     各组件
 ```
 
-不引入 `@/` 路径别名：相对路径最多两级，加别名要同时改 `tsconfig.json`、`vite.config.ts` 并重新验证 `tools/serve-test-ui.mjs` 能否解析，收益不足。
+按用户最新要求使用 `@/* → src/*` 简写跨模块导入，例如 `@/kit/Button`、`@/features/devices/DevicePicker`；同目录模块与共置 CSS 可以保留 `./`。别名须同时维护 `apps/desktop/tsconfig.json` 的 `paths` 与 `apps/desktop/vite.config.ts` 的 `resolve.alias`，并验证 TypeScript、Vite 构建和 `tools/serve-test-ui.mjs` 的解析一致。别名不改变 app / feature / kit / shared 的依赖边界，也不要求新增聚合全部内部实现的 barrel。
 
 **单一 `kit.css` 而非每组件一个样式表**：Vite 本来就把所有样式表合并成一张全局表，分包没有收益；分散会让套装内部的层叠顺序取决于「哪个页面先 import」，正是上述 bug 的成因。
 
 ### 导入顺序不变量
 
-`main.tsx` 把 `./kit/kit.css` 放在**第一个导入位置**，早于 `import App from './App'`：
+`main.tsx` 把 `@/kit/kit.css` 放在**第一个样式导入位置**，早于 `import App from '@/app/App'`：
 
 ```ts
 import ReactDOM from 'react-dom/client';
-import './kit/kit.css';
-import App from './App';
+import '@/kit/kit.css';
+import App from '@/app/App';
 ```
 
-Vite 按模块图深度优先遍历顺序合并 CSS，而 `App` 会传递导入全部页面样式表。实测非压缩构建产物：`kit.css` 的头注释落在第 1 行，`.app-select`（select.css）第 38 行，`.sp-setting-row` 第 386 行，`.settings-workspace .sp-setting-row` 第 3546 行，`.tc-plan-row` 第 9176 行，`styles.css` 的 `:root` 第 10919 行。也就是说 **`styles.css` 与全部页面样式都排在 `kit.css` 之后**。
+Vite 按模块图深度优先遍历顺序合并 CSS，而 `App` 会传递导入全部页面样式表。迁移早期的非压缩构建曾测得：`kit.css` 的头注释在第 1 行，`.app-select` 第 38 行，`.sp-setting-row` 第 386 行，`.settings-workspace .sp-setting-row` 第 3546 行，`.tc-plan-row` 第 9176 行，`styles.css` 的 `:root` 第 10919 行。这是历史定位记录，当前产物行号会随整理改变；要保持的是 **`kit/legacy`、业务页面和 `app/styles/styles.css` 都排在 `kit.css` 之后**。
 
-这条顺序是规则 4(a) 成立的前提：宿主页面用单类选择器覆盖套装根类时，特异度相同、源顺序在后，因此宿主取胜。若把 `kit.css` 挪到 `./styles.css` 之后，套装规则会反过来压住宿主覆盖，逃生口失效。改动 `main.tsx` 的导入顺序前必须重新构建并核对上述标记位置。
+这条顺序是规则 4(a) 成立的前提：宿主页面用单类选择器覆盖套装根类时，特异度相同、源顺序在后，因此宿主取胜。若把 `kit.css` 挪到 `@/app/styles/styles.css` 之后，套装规则会反过来压住宿主覆盖，逃生口失效。改动 `main.tsx` 的导入顺序前必须重新构建并核对上述标记位置。
 
-设计令牌定义在 `styles.css` 的 `:root`。自定义属性在计算值阶段解析，与源顺序无关，因此 `kit.css` 排在前面也能正常引用令牌。
+设计令牌定义在 `app/styles/styles.css` 的 `:root`。自定义属性在计算值阶段解析，与源顺序无关，因此 `kit.css` 排在前面也能正常引用令牌。
 
 ## 类名与状态修饰符
 
@@ -55,11 +69,11 @@ export function cx(...parts: Array<string | false | null | undefined>): string {
 ```tsx
 <button
   {...rest}
+  data-busy={busy || undefined}
   className={cx(
     'mv-button',
     `mv-button--${variant}`,
     size !== 'md' && `mv-button--${size}`,
-    busy && 'is-busy',
     className,
   )}
 />
@@ -79,7 +93,7 @@ export function cx(...parts: Array<string | false | null | undefined>): string {
 4. 宿主页面不得重样式化套装内部。宿主只能：(a) 给根传 `className` 并用单类选择器为**那个根类**加样式，靠上文导入顺序不变量取胜；或 (b) 自己包一层容器并为容器加样式。
 5. 插槽内容（`children` / `control` / `actions` / `footer`）由投放方页面负责样式，`kit.css` 一律不碰。
 
-另有一条迁移卫生规则：同一个样式表不得被多个样式表 `@import`，共享关键帧只保留一份。历史上 `drawer-motion.css` 被 4 个抽屉样式表各自 `@import`，关键帧在产物里内联 4 次；现已并入 `styles.css` 一处并删除该文件。
+另有一条迁移卫生规则：同一个样式表不得被多个样式表 `@import`，共享关键帧只保留一份。历史上 `drawer-motion.css` 被 4 个抽屉样式表各自 `@import`，关键帧在产物里内联 4 次；现已并入 `app/styles/styles.css` 一处并删除该文件。
 
 ### 门禁
 
@@ -98,7 +112,7 @@ node tools/check-kit-css.mjs
 
 ## 测试耦合与类名策略
 
-`tests/ui` 有 45 个 spec、约 2093 处 `expect()`，其中约 364 处使用类定位符、涉及 66 个不同类名（`.sidebar` 单独出现 95 次），另有 2075 处 `getByRole` / `getByLabel` 依赖中文字符串。仓库没有 `data-testid`。
+迁移初期的历史耦合审计记录：`tests/ui` 有 45 个 spec、约 2093 处 `expect()`，其中约 364 处使用类定位符、涉及 66 个不同类名（`.sidebar` 单独出现 95 次），另有 2075 处 `getByRole` / `getByLabel` 依赖中文字符串。记录时仓库没有 `data-testid`。这些数字不是当前测试统计；每次迁移仍须重新检索受影响类名与文案。
 
 迁移规则：
 
@@ -110,7 +124,7 @@ node tools/check-kit-css.mjs
 
 ## 设计令牌
 
-令牌定义在 `styles.css` 的 `:root` 与 `:root[data-theme='dark']`，取值由现有分布归并而来。新标度只约束 `kit.css`；页面 CSS 在因迁移被打开时顺路收敛，不做全量回填——仓库禁止外观断言测试，大面积像素漂移无法验证。
+令牌定义在 `app/styles/styles.css` 的 `:root` 与 `:root[data-theme='dark']`，取值由既有分布归并而来。新标度只约束 `kit.css`；页面 CSS 在因迁移被打开时顺路收敛，不做全量回填——仓库禁止外观断言测试，大面积像素漂移无法验证。
 
 | 类别       | 令牌                                                                                              | 归并来源                                                                                                |
 | ---------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -125,9 +139,9 @@ node tools/check-kit-css.mjs
 | 语义色     | `--warning` / `--warning-soft`、`--info` / `--info-soft`                                          | 为当前在深色模式下失效的硬编码色提供令牌                                                                |
 | 前景色     | `--on-accent: #fff`（深色 `#17213d`）                                                             | 强调色底上的文字；替代 `.button.primary` 的 `:root[data-theme='dark']` 祖先覆盖                         |
 
-z-index 标度顺带修掉一个潜在缺陷：`ContextMenu` portal 到 body 且 z=1000，低于 side-drawer 的 1100，抽屉内开右键菜单目前只靠 DOM 顺序侥幸生效；新标度把右键菜单提到 1300。旧值（85 / 160 / 1000 / 1100）在各自组件迁移前保持不动，标度只需内部自洽。
+z-index 标度解决了早期的层级问题：`ContextMenu` 曾 portal 到 body 且 z=1000，低于 side-drawer 的 1100，抽屉内右键菜单受堆叠顺序影响；现在右键菜单使用 1300。`Toast` 已在 `kit.css` 使用 `--z-toast`，不再依赖全局旧规则的 z=95。
 
-随令牌一并修掉的真实缺陷（各为 1–3 行 diff，在使用点修，不定义别名）：
+随令牌一并修掉的真实缺陷（以下文件行号属于迁移前的历史记录，在使用点修，不定义令牌别名）：
 
 - `toolbox.css:133`、`schedule-panel.css:19` 的 `var(--text-muted)` → `var(--muted)`；`schedule-panel.css:59` 的 `var(--text-primary)` → `var(--text)`。这三个变量从未定义，一直在静默回退。
 - `support-pages.css:648-651`（`.sp-update-state.is-error` 硬编码 `#c44747` / `#fff0ef`）→ `var(--danger)` / `var(--danger-soft)`，顺带获得深色模式。
@@ -149,55 +163,62 @@ createPortal(
       {footer && <footer class="mv-overlay-actions">{footer}</footer>}
 ```
 
-共享 props：`{ title; onClose; closeLabel?; initialFocus?; background?; returnFocus?; fallbackFocus?; 'aria-busy'?; className? }`。`title` 同时是 `role="dialog"` 的 `aria-label`；`closeLabel` 默认 `关闭${title}`，调用点必须原样传现有中文标签，它们被 `getByRole` 耦合。
+共享 props：`{ title; onClose; closeLabel?; closeDisabled?; busy?; initialFocus?; initialFocusSelector?; background?; returnFocus?; fallbackFocus?; className? }`。`title` 同时是 `role="dialog"` 的 `aria-label`，`busy` 渲染为 `aria-busy`；`closeLabel` 默认 `关闭${title}`，调用点必须原样传现有中文标签，它们被 `getByRole` 耦合。
 
 - `useLayoutEffect` 里调 `acquireModalEffects({ panel, layer, background, initialFocus: initialFocus ?? panel.querySelector('[data-autofocus]'), returnFocus, fallbackFocus, onEscape: () => close.current() })`。`Overlay` / `Drawer` 内部保留 `close` ref 间接层，避免卸载动画期间读取过期回调。
 - `background` 默认 `[.sidebar, .main-shell, .run-dock]`（现有两个抽屉的取值），但必须是 prop：`CopilotDeleteDialog` 用的是 `[#root]` 且额外传 `returnFocus` / `fallbackFocus` / `initialFocus`。测试对 `.main-shell[inert]` 的断言必须继续通过。
-- **嵌套与堆叠不需要新机制**：`modal-effects.ts` 已维护 overlay 栈、对非顶层加 inert、父层先卸载时重指 `returnTarget`、并在 `.app-context-menu, [data-select-menu]` 打开时让出 Escape。套装规则是每个弹层都必须走套装，或走 `native: true` 的原生 dialog，**禁止手写 Tab 陷阱**。
-- **原生 `<dialog>` 保持不迁移**：`DesktopLifecycle.tsx` 与 `LogSettings.tsx` 用 `showModal()`，`modal-effects.ts` 显式为 `dialog:modal` 让路并提供 `native` 选项——关窗提示必须在 React 卸载后仍存活，这是刻意设计。套装只导出 `useNativeDialog(ref, handlers)` 辅助，把这种写法变成有文档的唯一写法。
+- **嵌套与堆叠不需要新机制**：`kit/modal-effects.ts` 已维护 overlay 栈、对非顶层加 inert、父层先卸载时重指 `returnTarget`、并在 `.app-context-menu, [data-select-menu]` 打开时让出 Escape。套装规则是每个弹层都必须走套装，或走 `native: true` 的原生 dialog，**禁止手写 Tab 陷阱**。
+- **原生 `<dialog>` 保留**：`app/shell/DesktopLifecycle.tsx` 与 `features/settings/LogSettings.tsx` 已使用 `useNativeDialog(ref, options)`。hook 调用 `showModal()`，通过 `native: true` 取得效果租约，并让浏览器管理原生键盘行为。`DesktopLifecycle` 与 App 是兄弟挂载点，App 退场时退出提示仍存活；不能把它改为页面内普通 Modal。
+
+`useNativeDialog` 的 `open` 默认 `true`；原生 `cancel` 事件由 `onClose` 交还状态持有方，`closeDisabled` 阻止忙碌或退出阶段取消。回调和门禁读取最新值，同一次打开期间保持效果租约；关闭或组件卸载时关闭原生 dialog 并释放租约。`returnFocus`、`fallbackFocus` 与背景、滚动锁等效果参数沿用 `kit/modal-effects.ts`，LogSettings 使用按钮 ref 还原焦点。
 
 `Drawer` 的 `width` 取 `'md' | 'lg'`（760 对应任务表 / 作业 / 日志抽屉，820 对应设备连接抽屉）；`Modal` 加 `{ footer?; width?: 'sm' | 'md' }`；`ConfirmDialog` 加 `{ confirmLabel; cancelLabel?; danger?; busy?; onConfirm; children? }`。
 
 ## 组件清单
 
-状态含义：**已实现** = 组件文件存在且至少一个页面在用；**已建** = 文件存在但尚无采用方；**计划** = 本轮尚未创建。「替代的旧实现」列出被消灭的类族或重复定义。
+状态含义：**已实现** = 组件文件存在且至少一个页面在用；**已建** = 文件存在但尚无采用方；**计划** = 尚未创建。「替代的旧实现」中的次数与文件数保留历史审计基线，描述迁移对象，不表示所有旧写法均已消失；状态按当前消费者填写。
 
-| 组件                                     | 替代的旧实现                                                                                                                                                                    | 状态   |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| `cx`                                     | 各处手写 `filter(Boolean).join(' ')`                                                                                                                                            | 已实现 |
-| `Select`（re-export，不重写）            | —                                                                                                                                                                               | 已实现 |
-| `format`（`kit/format.ts`）              | ≥6 份 `zh-CN` 月日时分变体、2 份带秒变体、2 份时长格式化                                                                                                                        | 已实现 |
-| `labels`（`kit/labels.ts`）              | 5 份执行状态映射、任务/工具/设备/更新渠道状态映射                                                                                                                               | 已实现 |
-| `Button`                                 | `.button` + `.primary/.secondary/.danger`（141 处 / 29 文件）、`.text-button`（35 处）、`button.cp-link`、约 20 处 `{busy ? <LoaderCircle className="spin"/> : <Icon/>}` 惯用法 | 已实现 |
-| `IconButton`                             | `.icon-button`（60 处 / 27 文件）                                                                                                                                               | 已实现 |
-| `Spinner`                                | 约 25 处裸 `<LoaderCircle className="spin"/>`                                                                                                                                   | 已实现 |
-| `TextField` / `TextArea` / `NumberField` | `<input>` / `<textarea>` / `<Select>` 上的 `.text-input`（82 处 / 21 文件）                                                                                                     | 已建   |
-| `SearchField`                            | 全部 8 套搜索框克隆                                                                                                                                                             | 已实现 |
-| `Switch`                                 | 全部 5 套 `role="switch"` 开关，以 `SupportPages.tsx` 的 `Toggle` 为准实现                                                                                                      | 已实现 |
-| `Checkbox` / `CheckField`                | 40 处 `type="checkbox"`、约 10 种 wrapper 类族                                                                                                                                  | 已建   |
-| `Field`                                  | `label.sp-field`、`div.sp-field` + `htmlFor`、`label.param-field`、`.tool-field`、`.cp-field`、`.check-field` 六种写法                                                          | 已实现 |
-| `SettingRow`                             | `.sp-setting-row` 及其 4 层祖先前缀 padding 覆盖                                                                                                                                | 已实现 |
-| `Section`                                | 被定义两次的 `Section`、`section.sp-section`（8 文件）、`section.settings-card`（6 文件）                                                                                       | 已实现 |
-| `Notice`                                 | `CaptureSettingsForm.tsx` 的本地 `Notice`、`DevicesPage.tsx` 的内联版、`.wb-running-note` ×2                                                                                    | 已实现 |
-| `PageHeading`                            | `App.tsx` 与 `SupportPages.tsx` 两份定义，以及 `DevicesPage.tsx`、`ToolsPage.tsx` 的无组件内联标记                                                                              | 已实现 |
-| `EmptyState`                             | ≥14 个空状态类族                                                                                                                                                                | 已实现 |
-| `StatusPill`                             | `.pill` + 修饰符（12 处）、`.sp-state.*`、`.monitor-device-state`、`.device-selection-state.is-*`、`.cp-state-*`、`.notification-channel-badge`、`.subtle-tag`、`.status-dot`   | 已实现 |
-| `Tabs`                                   | 5 套 `role="tablist"` 与 2 处纵向 `.sp-category-nav`                                                                                                                            | 已实现 |
-| `FilterChips`                            | `.tc-filters`、`.monitor-filters`、`.cp-category-chip` 三套工具条                                                                                                               | 已实现 |
-| `ProgressBar`                            | 5 处自研 `div[role=progressbar] > i[style]` 与 4 处原生 `<progress>`                                                                                                            | 已实现 |
-| `ErrorBanner`                            | `p.error-banner[role=alert]`（5 文件）与 ≥8 个页面局部错误类                                                                                                                    | 已实现 |
-| `Toast`                                  | `App.tsx` 全局版（6 秒自动消失）、`DesktopLifecycle.tsx`、`.monitor-log-notice` 三套                                                                                            | 已实现 |
-| `SaveStateIndicator`                     | 5+ 套保存状态实现                                                                                                                                                               | 已实现 |
-| `DirectoryPicker`                        | `SupportPages.tsx`、`CopilotStorageSettings.tsx`、`ConfigurationSettings.tsx` 三套目录选择                                                                                      | 已实现 |
-| `Overlay` / `Modal` / `ConfirmDialog`    | 4 套抽屉、4 种弹层机制、3 处手写 Tab 陷阱                                                                                                                                       | 已实现 |
-| `Drawer`                                 | 4 套抽屉（`SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer`、`CopilotDetailDrawer`）                                                                                         | 已实现 |
-| `ListRow` / `SelectableRow`              | 约 6 处重复的「复选框 + `button[aria-pressed].*-main` + 操作区」行骨架                                                                                                          | 已建   |
+| 组件                                  | 替代的旧实现                                                                                                                                                                    | 状态   |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| `cx`                                  | 各处手写 `filter(Boolean).join(' ')`                                                                                                                                            | 已实现 |
+| `Select`（re-export，不重写）         | —                                                                                                                                                                               | 已实现 |
+| `format`（`kit/format.ts`）           | ≥6 份 `zh-CN` 月日时分变体、2 份带秒变体、2 份时长格式化                                                                                                                        | 已实现 |
+| `labels`（`kit/labels.ts`）           | 5 份执行状态映射、任务/工具/设备/更新渠道状态映射                                                                                                                               | 已实现 |
+| `Button`                              | `.button` + `.primary/.secondary/.danger`（141 处 / 29 文件）、`.text-button`（35 处）、`button.cp-link`、约 20 处 `{busy ? <LoaderCircle className="spin"/> : <Icon/>}` 惯用法 | 已实现 |
+| `IconButton`                          | `.icon-button`（60 处 / 27 文件）                                                                                                                                               | 已实现 |
+| `Spinner`                             | 约 25 处裸 `<LoaderCircle className="spin"/>`                                                                                                                                   | 已实现 |
+| `TextField` / `TextArea`              | 历史 `.text-input` 共 82 处 / 21 文件；当前用于产线、任务表设置及高级参数等表单                                                                                                 | 已实现 |
+| `NumberField`                         | 数值输入原语，尚未替换现有数字表单                                                                                                                                              | 已建   |
+| `SearchField`                         | 全部 8 套搜索框克隆                                                                                                                                                             | 已实现 |
+| `Switch`                              | 全部 5 套 `role="switch"` 开关，以 `SupportPages.tsx` 的 `Toggle` 为准实现                                                                                                      | 已实现 |
+| `Checkbox`                            | 历史 40 处 `type="checkbox"`、约 10 种 wrapper 类族；当前窗口关闭提示已采用                                                                                                     | 已实现 |
+| `CheckField`                          | 带说明的复选框组合，尚无页面采用                                                                                                                                                | 已建   |
+| `Field`                               | `label.sp-field`、`div.sp-field` + `htmlFor`、`label.param-field`、`.tool-field`、`.cp-field`、`.check-field` 六种写法                                                          | 已实现 |
+| `SettingRow`                          | `.sp-setting-row` 及其 4 层祖先前缀 padding 覆盖                                                                                                                                | 已实现 |
+| `Section`                             | 被定义两次的 `Section`、`section.sp-section`（8 文件）、`section.settings-card`（6 文件）                                                                                       | 已实现 |
+| `Notice`                              | `CaptureSettingsForm.tsx` 的本地 `Notice`、`DevicesPage.tsx` 的内联版、`.wb-running-note` ×2                                                                                    | 已实现 |
+| `PageHeading`                         | `App.tsx` 与 `SupportPages.tsx` 两份定义，以及 `DevicesPage.tsx`、`ToolsPage.tsx` 的无组件内联标记                                                                              | 已实现 |
+| `EmptyState`                          | ≥14 个空状态类族                                                                                                                                                                | 已实现 |
+| `StatusPill`                          | `.pill` + 修饰符（12 处）、`.sp-state.*`、`.monitor-device-state`、`.device-selection-state.is-*`、`.cp-state-*`、`.notification-channel-badge`、`.subtle-tag`、`.status-dot`   | 已实现 |
+| `Tabs`                                | 5 套 `role="tablist"` 与 2 处纵向 `.sp-category-nav`                                                                                                                            | 已实现 |
+| `FilterChips`                         | `.tc-filters`、`.monitor-filters`、`.cp-category-chip` 三套工具条                                                                                                               | 已实现 |
+| `ProgressBar`                         | 5 处自研 `div[role=progressbar] > i[style]` 与 4 处原生 `<progress>`                                                                                                            | 已实现 |
+| `ErrorBanner`                         | `p.error-banner[role=alert]`（5 文件）与 ≥8 个页面局部错误类                                                                                                                    | 已实现 |
+| `Toast`                               | `App.tsx` 全局版（6 秒自动消失）、`DesktopLifecycle.tsx`、`.monitor-log-notice` 三套                                                                                            | 已实现 |
+| `SaveStateIndicator`                  | 5+ 套保存状态实现                                                                                                                                                               | 已实现 |
+| `DirectoryPicker`                     | `SupportPages.tsx`、`CopilotStorageSettings.tsx`、`ConfigurationSettings.tsx` 三套目录选择                                                                                      | 已实现 |
+| `Overlay` / `Modal` / `ConfirmDialog` | 4 套抽屉、4 种弹层机制、3 处手写 Tab 陷阱                                                                                                                                       | 已实现 |
+| `Drawer`                              | 4 套抽屉（`SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer`、`CopilotDetailDrawer`）                                                                                         | 已实现 |
+| `useNativeDialog`                     | `DesktopLifecycle` 与 `LogSettings` 的原生 dialog 开关、取消与效果租约                                                                                                          | 已实现 |
+| `ListRow` / `SelectableRow`           | 约 6 处重复的「复选框 + `button[aria-pressed].*-main` + 操作区」行骨架                                                                                                          | 已建   |
 
-**本轮不抽**：`TaskParameterField`（620 行、单一使用者、13 种参数）、`DevicePreview`（视频台刻意不随主题）、`OperatorBadge` / `MaterialIcon`（已有组件且测试耦合；`.operator-badge.rarity-*` 语义独立，不并入 `StatusPill`）。`Select.tsx` 不重写：它的可访问性面被 `tests/ui/fixtures/device-picker.ts` 锁死（combobox `选择设备`、listbox `设备列表`、`[role=option][data-value]`），且它把菜单 portal 到 `closest('dialog,[role=dialog]') ?? document.body`——这是「弹层内 Select 能正常工作」的机制，套装必须保留。
+**保留领域组件**：`features/plans/TaskParameterField`（历史审计为 620 行、单一使用者、13 种参数）、`features/devices/DevicePreview`（视频台刻意不随主题）、`shared/game/OperatorBadge` / `MaterialIcon`（已有组件且测试耦合；`.operator-badge.rarity-*` 语义独立，不并入 `StatusPill`）。`Select.tsx` 不重写：它的可访问性面被 `tests/ui/fixtures/device-picker.ts` 锁死（combobox `选择设备`、listbox `设备列表`、`[role=option][data-value]`），且它把菜单 portal 到 `closest('dialog,[role=dialog]') ?? document.body`——这是「弹层内 Select 能正常工作」的机制，套装必须保留。
 
 ## 共享非视觉工具
 
-`kit/format.ts` 与 `kit/labels.ts` 是套装的非视觉层：键类型全部取自 `@maaverge/contracts`，schema 变更即编译失败。页面从 `./kit/format`、`./kit/labels` 深导入（两个模块不 import 任何 CSS，不会扰动 Vite 的样式表合并顺序）；`kit/index.ts` 的 barrel 仅供套装内部与后续组件使用。
+`kit/format.ts` 与 `kit/labels.ts` 是套装的非视觉层：状态映射的键类型取自 `@maaverge/contracts`，schema 变更即编译失败。页面从 `@/kit/format`、`@/kit/labels` 深导入（两个模块不 import 任何 CSS，不会扰动 Vite 的样式表合并顺序）；避免为了纯映射加载 `kit/index.ts`，其 barrel 会连带 `Select` 的样式表。
+
+`shared/lib/save-status.ts` 独立提供 `SaveStatus` 与 `autoSaveLabel`；它不加载 React、草稿缓存或 CSS。`kit/SaveStateIndicator` 使用该纯模块，自动保存状态与缓存 hook 则在 `shared/lib/settings-autosave.ts`。
 
 - `formatDate`：月日时分。刻意**不**写 `hour12: false`，与迁移前渲染逐字节一致。
 - `formatDateTime` / `formatDateTimeFull`：带秒 / 带年份，均 `hour12: false`（日志与导出文本的既有写法）。Chromium 中 zh-CN 的 `hour12` 默认即 24 小时制，已用夹具核对两种写法输出相同，因此 `ExecutionPage` 原先不带 `hour12` 的副本并入 `formatDateTime` 不改变渲染。
@@ -209,11 +230,11 @@ createPortal(
 
 `Overlay` 是唯一同时做 portal、遮罩、`acquireModalEffects` 租约与焦点落点的组件；`Modal`、`ConfirmDialog` 与 `Drawer` 是它的同族实现。`Drawer` 提供 `md` / `lg` 两档宽度、`dockOffset` 底栏避让、`header` 自定义或隐藏标题、独立遮罩标签，并透传 `ariaHidden` / `scroll` / 焦点目标；四个抽屉已全部收编。三个手写 Tab 陷阱已删除：`App.tsx` 的删除确认、`SupportPages.tsx` 的安装确认、`RunTasksDialog.tsx` 的运行确认；它们现在由 `acquireModalEffects` 提供 Tab 循环、Escape、焦点还原、背景 inert 与滚动锁。
 
-四个抽屉与 `CopilotDeleteDialog` 已收编到 `Drawer` / `Overlay`：`SideDrawer` 保留默认背景与关闭标签，`TaskDetailDrawer` 使用 `dockOffset` 与自定义标题栏，`MonitorLogDrawer` 的 `embedded` 模式仍不创建 portal 或模态租约，`CopilotDetailDrawer` 显式传入 `#root` 背景、`ariaHidden`、页面滚动锁与标题焦点，`CopilotDeleteDialog` 用 `Overlay` 保留取消键初始焦点与 `#root` 背景。`kit/useNativeDialog.ts` 已存在，但 `DesktopLifecycle` 与 `LogSettings` 仍直接调用 `showModal()`，尚未接入该辅助。
+四个抽屉与 `CopilotDeleteDialog` 已收编到 `Drawer` / `Overlay`：`shared/ui/SideDrawer` 保留默认背景与关闭标签，`features/plans/TaskDetailDrawer` 使用 `dockOffset` 与自定义标题栏，`features/execution/MonitorLogDrawer` 的 `embedded` 模式仍不创建 portal 或模态租约，`features/copilot/CopilotDetailDrawer` 显式传入 `#root` 背景、`ariaHidden`、页面滚动锁与标题焦点，同域的 `CopilotDeleteDialog` 用 `Overlay` 保留取消键初始焦点与 `#root` 背景。`DesktopLifecycle` 与 `LogSettings` 已接入 `kit/useNativeDialog.ts`；其按钮与提示也使用 kit，原生 dialog 结构继续保留。
 
 ## 迁移带来的可见归一
 
-组件套装的目标之一是收敛尺寸，所以迁移并非逐像素不变。已确认并接受的归一（逐项在渲染后核对过高度与内边距）：
+组件套装的目标之一是收敛尺寸，所以迁移并非逐像素不变。以下保留早期迁移中已确认的归一与渲染核对记录，不代替当前版本的截图验收：
 
 | 位置                          | 迁移前                                         | 迁移后                                                 | 原因                                                                               |
 | ----------------------------- | ---------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
@@ -225,9 +246,11 @@ createPortal(
 | 设备选择搜索框                | `type="search"`（role `searchbox`）            | `type="text"`（role `textbox`），同步改 3 处 spec 断言 | WebKit 原生清除按钮装饰不一致；套装自带清除按钮时再启用                            |
 | 设备选择动作按钮              | 28px、`5px 8px`、11px（页面覆盖）              | `size="sm"` 同值                                       | 覆盖改 prop                                                                        |
 
-设置页的 `.sp-setting-row` 覆盖链已在本轮删除：`support-pages.css` 的基础行、`settings-page.css` 的 `.settings-workspace` 两级 padding、`.sp-update-preference` 的三条复合规则、`log-settings.css` 的重置，共 6 组选择器，全部由 `SettingRow` 的 `padding` prop 与 kit 内部结构取代。迁移后实测：普通行 16px 0、更新偏好行 14px 0、Mirror酱主行 16px 18px（保留 `.settings-master` 单类卡片样式）、日志保留行 0；窄屏 560px 下行间距 12px。此后再出现「标签被祖先规则静默推偏」只能来自新写的宿主复合选择器，而门禁会拒绝页面样式表引用 `.mv-`。
+设置页的 `.sp-setting-row` 覆盖链已在早期迁移中删除：`support-pages.css` 的基础行、`settings-page.css` 的 `.settings-workspace` 两级 padding、`.sp-update-preference` 的三条复合规则、`log-settings.css` 的重置，共 6 组选择器，全部由 `SettingRow` 的 `padding` prop 与 kit 内部结构取代。当时实测：普通行 16px 0、更新偏好行 14px 0、Mirror酱主行 16px 18px（保留 `.settings-master` 单类卡片样式）、日志保留行 0；窄屏 560px 下行间距 12px。此后再出现「标签被祖先规则静默推偏」只能来自新写的宿主复合选择器，而门禁会拒绝页面样式表引用 `.mv-`。
 
-`SearchField` 的 `clearLabel` 同时是「是否渲染清除按钮」的开关：现有 8 套克隆中只有一部分带清除按钮，省略该 prop 可保证迁移不新增控件。`PageHeading` 的 `actionsClassName` 是唯一为测试耦合保留的插槽类入口（`.sp-heading-actions` 有 4 处断言），spec 更新后删除。
+`SearchField` 的 `clearLabel` 同时是「是否渲染清除按钮」的开关：历史 8 套克隆中只有一部分带清除按钮，省略该 prop 可保证迁移不新增控件。`type` 默认 `text`，需要保留既有 `searchbox` 语义时显式传 `type="search"`，如作业本地搜索。`PageHeading` 的 `actionsClassName` 保留测试耦合的插槽类入口（历史 `.sp-heading-actions` 有 4 处断言），对应 spec 更新后再移除。
+
+`Button` 与 `IconButton` 透传 React 19 的原生 `ref`，日志结果弹层据此返回触发按钮。Toast 的尺寸、边框、语义色、内部图标与文字换行由 `kit.css` 的 `mv-toast-*` 控制，关闭按钮使用 `size="sm"`，堆叠使用 `--z-toast`；定位和入场动画仍归 `app/styles/styles.css`。Tabs 的标签保持单行且不被 flex 压缩，窄窗下由使用方容器提供横向滚动。
 
 ## 可访问性契约
 
@@ -235,15 +258,15 @@ createPortal(
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `IconButton`                         | `label` 必填并渲染为 `aria-label`；现有 `.icon-button` 全部带 `aria-label`，测试依赖 `getByRole('button', { name: '关闭…' })`                                       |
 | `Switch`                             | `<button type="button" role="switch" aria-checked>` 内含 `<i/>`；样式只挂 `[aria-checked='true']`，彻底删掉 `.on` 类；同时支持 `aria-label` 与 `aria-labelledby`    |
-| `TextField` 系列                     | **自身不带 label**，标注是 `Field` 的职责，以保住 `getByLabel('作战次数')` 等 335 处断言                                                                            |
-| `SearchField`                        | `type="text"` 而非 `search`（WebKit 原生清除按钮装饰不一致）；迁移时逐点核对现有 `aria-label`，`getByLabel('社区搜索关键词')` 不能断                                |
+| `TextField` 系列                     | **自身不带 label**，标注是 `Field` 的职责，以保住 `getByLabel('作战次数')` 等行为定位（历史审计 335 处）                                                            |
+| `SearchField`                        | 默认 `type="text"`；可显式传 `type="search"` 保留 `searchbox`。迁移时逐点核对现有 `aria-label`，`getByLabel('社区搜索关键词')` 不能断                               |
 | `Checkbox`                           | 保留原生 `input` 以维持 `role="checkbox"` 与 `getByLabel` 行为                                                                                                      |
 | `Field`                              | `layout='side'` 用 `useId` + render-prop 接线，保证两种布局下 `getByLabel(中文)` 都能解析；`error` 渲染为 `<p role="alert">`                                        |
 | `Tabs`                               | roving tabindex + 方向键 + Home/End（ARIA APG）；`aria-label` 必填；面板仍由页面持有；`getByRole('tablist', { name: '设置分类' })`、`tab '社区搜索'` 等必须原样通过 |
 | `FilterChips`                        | `role="group"` 下的 `<button aria-pressed data-selected>`                                                                                                           |
 | `ProgressBar`                        | `label` prop 渲染为 `aria-label`                                                                                                                                    |
-| `Toast`                              | `role={error ? 'alert' : 'status'}`；`.toast` / `.error` 保持规范类名（22 处测试耦合）                                                                              |
-| `SaveStateIndicator`                 | `<span role="status" data-state>`；必须基于 `settings-autosave.ts` 的 `autoSaveLabel('saved') === ''` 设计，**不得复活「已自动保存」文案**                          |
+| `Toast`                              | `role={error ? 'alert' : 'status'}`，内部图标 `aria-hidden`，`data-tone` 控制语义色；`.toast` / `.error` 保持规范类名（历史 22 处测试耦合）                         |
+| `SaveStateIndicator`                 | `<span role="status" data-state>`；必须基于 `shared/lib/save-status.ts` 的 `autoSaveLabel('saved') === ''` 设计，**不得复活「已自动保存」文案**                     |
 | `Modal` / `Drawer` / `ConfirmDialog` | `role="dialog"` + `aria-modal="true"` + `aria-label={title}`，inert 背景、滚动锁、焦点陷阱与还原全部来自 `acquireModalEffects`                                      |
 
 ## 非视觉工具
@@ -259,6 +282,7 @@ createPortal(
 ./node_modules/.bin/tsc -p apps/desktop --noEmit
 node --test tools/tests/check-kit-css.test.mjs
 node tools/check-kit-css.mjs
+node tools/check-frontend-architecture.mjs
 bash tools/pnpm.sh run check:app
 ```
 
@@ -274,11 +298,14 @@ Chromium 夹具通过不等于原生 WebView 或安装包通过；三平台原�
 
 ## 后续范围
 
-`PlanEditor.tsx` 已拆出任务队列、参数区与表设置视图；`App.tsx` 已拆出侧栏导航、顶栏搜索、Agent、执行记录、底栏运行条与快照/计划写入 hook；`SupportPages.tsx` 的设置页已迁入 `features/settings/`。`CopilotPage.tsx` 已抽出工作区 hook、评分、兼容提示、执行选项、导入预览、队列、监控与本地库列表；社区搜索控件与详情抽屉仍由页面容器持有。
+根目录现在只保留 `main.tsx`；应用组合迁入 `app/App.tsx`，外壳与应用级状态归 `app/shell`、`app/model`。页面及 CSS 已按领域归入 `features`，跨功能 UI、游戏展示和纯辅助归入 `shared`，不保留旧根路径的兼容 re-export。页面各自声明最小 props，原有 `SupportPageProps` 已删除；目录迁移不代表所有业务状态已经解耦。
+
+`features/plans/PlanEditor` 已拆出任务队列、参数区与表设置视图；设置分类共置在 `features/settings`。`features/copilot/CopilotPage` 已拆出社区搜索 `CopilotCommunityBrowser`、详情抽屉 `CopilotDetailDrawer` 以及工作区 hook、评分、兼容提示、执行选项、导入预览、队列、监控和本地库列表，搜索及类型切换已使用 SearchField / Tabs。`features/home/GameInfoPanel` 的数据刷新与产线编辑分别由 `useHomeInfo`、`InfrastructureEditor` 持有。
 
 后续：
 
-1. 继续收敛 `CopilotPage.tsx` 的社区搜索控件与详情抽屉，`.cp-record`（27 处）、`.cp-queue-list`（14）、`.cp-save-state`（22）等通过 `className` 保留；`.cp-search` 收敛到 `SearchField`；`.cp-type-bar` 收敛到 `Tabs`。
-2. 移除已迁完的保留类与死 CSS，对存活页面 CSS 做令牌回填，并在最后一个抽屉迁到 `.mv-drawer-panel` 后把抽屉关键帧从 `styles.css` 移进 `kit.css`。
+1. 按业务场景继续拆分 App 的计划命令、Copilot 查询与执行状态；保持写入顺序、模块级缓存和挂载生命周期。数据解耦边界见 [前端架构](frontend-architecture.md)。
+2. 继续迁移现存原生表单与列表；`NumberField`、`CheckField`、`ListRow`、`SelectableRow` 仍只有原语定义，不能把存在文件视为页面采用。
+3. 移除已迁完的保留类与死 CSS，对存活页面 CSS 做令牌回填。历史 `.cp-record`（27 处）、`.cp-queue-list`（14）、`.cp-save-state`（22）定位记录仅供审计起点，删类前重新检索。抽屉已统一使用 kit，但动画仍挂在全局旧类上；解除这些类耦合后再把关键帧从 `app/styles/styles.css` 迁入 `kit.css`。
 
-已退役 `styles.css` 的 `.toggle` / `.segmented` / `.pill` 全局类：设置页开关改用 `Switch`，执行记录筛选改用 `FilterChips`，执行/更新/多开状态改用 `StatusPill`；`Select.tsx` 与 `ContextMenu.tsx` 已物理迁入 `kit/`，其遗留样式表 `select.css` / `context-menu.css` 因类名不是 `mv-*` 暂留 `src/`。
+已退役全局 `.toggle` / `.segmented` / `.pill`：设置页开关改用 `Switch`，执行记录筛选改用 `FilterChips`，执行/更新/多开状态改用 `StatusPill`。`Select.tsx` 与 `ContextMenu.tsx` 位于 `kit/`，其非 `mv-*` 遗留样式已共置在 `kit/legacy/`；`shared/styles/support-pages.css` 和 `app/styles/styles.css` 仍含待迁移的旧页面样式，目录归档不等于 CSS 隔离完成。

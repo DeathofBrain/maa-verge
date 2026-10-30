@@ -1,0 +1,37 @@
+.cp-difficulty-badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.cp-record > .cp-difficulty-badges {
+  position: absolute;
+  top: 17px;
+  right: 20px;
+  z-index: 1;
+}
+.cp-record:has(> .cp-difficulty-badges) > .cp-record-main > .cp-stage {
+  padding-right: 88px;
+}
+.cp-difficulty-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--surface-subtle);
+  white-space: nowrap;
+}
+.cp-difficulty-badge.is-raid {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+}
+@media (max-width: 1150px) {
+  .cp-record > .cp-difficulty-badges {
+    top: 13px;
+    right: 16px;
+  }
+}

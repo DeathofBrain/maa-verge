@@ -5,7 +5,7 @@ description: 为 Maa Verge 桌面界面新增或迁移组件套装原语：核�
 
 # Maa Verge 组件套装
 
-本 skill 目录的 `../..` 是仓库根目录。[docs/component-kit.md](../../docs/component-kit.md) 是组件 API、设计令牌与选择器规则的事实源，本文件只写「怎么改不出事」。验收流程（命令、夹具时序、截图矩阵、三平台差异）见 [maa-verge-ui-verification](../maa-verge-ui-verification/SKILL.md)，不要在这里重复。
+本 skill 目录的 `../..` 是仓库根目录。[docs/component-kit.md](../../docs/component-kit.md) 是组件 API、设计令牌与选择器规则的事实源，本文件只写「怎么改不出事」。源码目录与依赖方向见 [docs/frontend-architecture.md](../../docs/frontend-architecture.md)：`src` 根仅保留 `main.tsx`，页面与 CSS 按领域共置于 `features`，应用外壳归 `app`，跨功能模块归 `shared`。验收流程（命令、夹具时序、截图矩阵、三平台差异）见 [maa-verge-ui-verification](../maa-verge-ui-verification/SKILL.md)，不要在这里重复。
 
 ## 适用边界
 
@@ -32,7 +32,7 @@ grep -rn "getByRole\|getByLabel" tests/ui | grep "任务表详情"
 
 - **绝对禁止新增外观断言测试**（`toHaveClass` / `toHaveCSS` / `getComputedStyle`）。`tests/ui` 当前这类断言为 0 处，必须保持 0。视觉验收只能人工截图。
 - **中文文案不得改动**。`tests/ui` 有约 2075 处 `getByRole` / `getByLabel` 依赖中文字符串。合并 `kit/labels.ts` 的映射前，先 grep `tests/ui` 确认规范值；多份副本取值分歧时以被测试耦合的那份为准，其余标记出来交产品复核，**不得静默改文案**。
-- **不得复活「已自动保存」文案**。`settings-autosave.ts` 的 `autoSaveLabel('saved')` 刻意返回 `''`，`SaveStateIndicator` 以此为准。
+- **不得复活「已自动保存」文案**。`shared/lib/save-status.ts` 的 `autoSaveLabel('saved')` 刻意返回 `''`，`SaveStateIndicator` 以此为准；草稿 hook 位于 `shared/lib/settings-autosave.ts`。
 - React 只经 `packages/contracts` 的类型化传输。UI 文案映射**不进** contracts——该包由 schema 生成。
 - 提交用 Conventional Commits，冒号后中文。Prettier 只格式化改动的文件。
 
@@ -48,39 +48,40 @@ node tools/check-kit-css.mjs
 - `kit.css` 只允许 `.mv-*` 单类选择器，或**一层**子组合器 `>` 且两端都是 `mv-*`。后代组合器、`+`、`~`、ID、裸元素、页面选择器、`!important`、`@import` 一律禁止；伪类与伪元素必须在脚本登记的白名单内。
 - **变体与尺寸差异一律是 prop**（`size` / `variant` / `tone` / `padding`），不是宿主覆盖。宿主需要不同 padding，说明套装少了一个取值——去套装里加，而不是写 `.settings-workspace .mv-setting-row`。
 - **页面样式表不得出现 `.mv-`**（`kit/` 之外）。这条是「宿主不得重样式化套装内部」的执行者。
-- 同一个样式表不得被多个样式表 `@import`。`drawer-motion.css` 曾被 4 个抽屉样式表各自导入、关键帧在产物里内联 4 次，现已并入 `styles.css` 并删除。
+- 同一个样式表不得被多个样式表 `@import`。`drawer-motion.css` 曾被 4 个抽屉样式表各自导入、关键帧在产物里内联 4 次，现已并入 `app/styles/styles.css` 并删除。
 - 插槽内容（`children` / `control` / `actions` / `footer`）由投放方页面负责样式，`kit.css` 一律不碰。
 
 ## 导入顺序不变量
 
-`main.tsx` 把 `./kit/kit.css` 放在**第一个导入位置**，早于 `import App from './App'`。Vite 按模块图深度优先遍历顺序合并 CSS，而 `App` 会传递导入全部页面样式表；只有排在最前，宿主页面对 `.mv-*` 根类的单类覆盖才能靠源顺序取胜（特异度相同、后者胜）。
+`main.tsx` 把 `./kit/kit.css` 放在**第一个样式导入位置**，早于 `import App from './app/App'`。入口保留直接相对路径。Vite 按模块图深度优先遍历顺序合并 CSS，而 `App` 会传递导入全部页面样式表；只有排在最前，宿主页面对 `.mv-*` 根类的单类覆盖才能靠源顺序取胜（特异度相同、后者胜）。
 
-把 `kit.css` 挪到 `./styles.css` 之后会让套装规则反过来压住宿主覆盖，逃生口失效。改动 `main.tsx` 导入顺序后必须重新构建核对：
+把 `kit.css` 挪到 `@/app/styles/styles.css` 之后会让套装规则反过来压住宿主覆盖，逃生口失效。改动 `main.tsx` 导入顺序后必须重新构建核对：
 
 ```bash
 cd apps/desktop && ./node_modules/.bin/vite build --minify false --logLevel warn
 grep -n "组件套装样式\|^\.app-select {\|^\.sp-setting-row {\|--font-sans:" dist/assets/*.css
 ```
 
-期望 `kit.css` 的头注释在第 1–2 行，`select.css` / `support-pages.css` 等页面样式在前段，`styles.css` 的 `--font-sans:` 在末尾附近。`dist/` 已被忽略；核对完按需重跑一次正常构建。
+期望 `kit.css` 的头注释在第 1–2 行，`kit/legacy/select.css` / `shared/styles/support-pages.css` 等后续样式在前段，`app/styles/styles.css` 的 `--font-sans:` 在末尾附近。`dist/` 已被忽略；核对完按需重跑一次正常构建。
 
-设计令牌在 `styles.css` 的 `:root`。自定义属性在计算值阶段解析，与源顺序无关，`kit.css` 排在前面也能引用。
+设计令牌在 `app/styles/styles.css` 的 `:root`。自定义属性在计算值阶段解析，与源顺序无关，`kit.css` 排在前面也能引用。
 
 ## 编写组件
 
 - 沿用仓库现有约定：`export default function Name({ ... }: Props)` + 文件内局部 `type Props`，透传原生属性以便 `aria-*` / `data-*` / `id` / `title` 原样传递。TS strict + `noUnusedLocals` 会强制清掉迁移后遗留的 import。
+- 按用户最新要求，跨模块导入使用 `@/* → src/*` 简写，同目录模块和共置 CSS 可保留 `./`。同时维护 `apps/desktop/tsconfig.json` 的 `paths` 与 `apps/desktop/vite.config.ts` 的 `resolve.alias`，核对 TypeScript、Vite 构建和 `tools/serve-test-ui.mjs` 解析一致；别名不改变目录依赖边界。
 - `className?: string` 永远追加在最后（`cx(...)` 的最后一个参数），是宿主唯一的逃生口。
 - CSS 需要的状态用 `data-*`，AT 需要的状态用 ARIA。不要新增 `.is-x` / `.selected` / `.active` / `.on` 之类第七种写法。
 - 可访问性契约（必填 `aria-label`、`role="switch"` 只挂 `[aria-checked='true']`、`TextField` 自身不带 label、`Tabs` 的 roving tabindex 等）逐条列在 `docs/component-kit.md`，实现前先对照。
 - **不要重写 `Select.tsx`**：它的可访问性面被 `tests/ui/fixtures/device-picker.ts` 锁死，且把菜单 portal 到 `closest('dialog,[role=dialog]') ?? document.body`，这是「弹层内 Select 能正常工作」的机制。`kit/index.ts` 只 re-export。
-- 页面使用 `kit/format.ts` / `kit/labels.ts` 时从 `./kit/format`、`./kit/labels` **深导入**：这两个模块不 import 任何 CSS，深导入不会扰动 Vite 的样式表合并顺序；barrel 会连带 `Select` 的样式表。
+- 页面使用 `kit/format.ts` / `kit/labels.ts` 时从 `@/kit/format`、`@/kit/labels` **深导入**：这两个模块不 import 任何 CSS，深导入不会扰动 Vite 的样式表合并顺序；barrel 会连带 `Select` 的 `kit/legacy/select.css`。
 
 ## 弹层
 
-- 每个弹层都必须走套装的 `Overlay` / `Modal` / `Drawer` / `ConfirmDialog`，或走 `native: true` 的原生 `<dialog>`。**禁止手写 Tab 陷阱、Escape 处理与焦点还原**——`modal-effects.ts` 的 `acquireModalEffects` 已提供这三项，外加 inert 背景、滚动锁、overlay 栈、乱序释放，以及「`.app-context-menu, [data-select-menu]` 打开时让出 Escape」。
-- 保留 `close` ref 间接层（`close.current = onClose`），`SideDrawer.tsx` 与 `TaskDetailDrawer.tsx` 已验证这一写法。
+- 每个弹层都必须走套装的 `Overlay` / `Modal` / `Drawer` / `ConfirmDialog`，或走 `native: true` 的原生 `<dialog>`。**禁止手写 Tab 陷阱、Escape 处理与焦点还原**——`kit/modal-effects.ts` 的 `acquireModalEffects` 已提供这三项，外加 inert 背景、滚动锁、overlay 栈、乱序释放，以及「`.app-context-menu, [data-select-menu]` 打开时让出 Escape」。
+- 保留 `close` ref 间接层（`close.current = onClose`），`shared/ui/SideDrawer.tsx` 与 `features/plans/TaskDetailDrawer.tsx` 已验证这一写法。
 - `background` 必须是 prop：默认 `[.sidebar, .main-shell, .run-dock]`，但 `CopilotDeleteDialog` 用 `[#root]` 且额外传 `returnFocus` / `fallbackFocus` / `initialFocus`。
-- `DesktopLifecycle.tsx` 与 `LogSettings.tsx` 的原生 `<dialog>` 用 `showModal()`，**不迁移**：关窗提示必须在 React 卸载后仍存活，`modal-effects.ts` 显式为 `dialog:modal` 让路。套装只提供 `useNativeDialog(ref, handlers)` 把这种写法变成有文档的唯一写法。
+- `app/shell/DesktopLifecycle.tsx` 与 `features/settings/LogSettings.tsx` 的原生 `<dialog>` 用 `showModal()`，**不迁移**：关窗提示必须在 React 卸载后仍存活，`kit/modal-effects.ts` 显式为 `dialog:modal` 让路。套装只提供 `useNativeDialog(ref, handlers)` 把这种写法变成有文档的唯一写法。
 - 迁移弹层后除 spec 外还要**人工键盘走查**：Tab 循环、Shift+Tab、弹层内 Select 菜单打开时按 Escape、关闭后焦点还原、抽屉内开右键菜单。
 
 ## 验证顺序

@@ -1,7 +1,7 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
 
-type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'aria-label'> & {
+type Props = Omit<ComponentPropsWithRef<'button'>, 'type' | 'aria-label'> & {
   label: string;
   size?: 'md' | 'sm';
 };

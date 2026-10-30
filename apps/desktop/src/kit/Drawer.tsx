@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { acquireModalEffects, type ScrollLock } from '../modal-effects';
+import { acquireModalEffects, type ScrollLock } from './modal-effects';
 import IconButton from './IconButton';
 import { cx } from './cx';
 

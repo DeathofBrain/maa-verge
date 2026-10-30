@@ -611,6 +611,7 @@
 
 .mv-tabs-tab {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 6px;
   border: 0;
@@ -620,6 +621,7 @@
   color: var(--muted);
   font-size: var(--text-base);
   line-height: 1.5;
+  white-space: nowrap;
 }
 
 .mv-tabs-tab:hover:not(:disabled) {
@@ -706,6 +708,43 @@
   border-bottom: 1px solid color-mix(in srgb, var(--danger), transparent 80%);
   font-size: var(--text-md);
   line-height: 1.6;
+}
+
+/* Toast ----------------------------------------------------------------- */
+
+.mv-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px 12px 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: var(--text-md);
+  line-height: 1.7;
+  z-index: var(--z-toast);
+}
+
+.mv-toast-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.mv-toast[data-tone='success'] > .mv-toast-icon {
+  color: var(--success);
+}
+
+.mv-toast[data-tone='danger'] > .mv-toast-icon {
+  color: var(--danger);
+}
+
+.mv-toast-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* ListRow / SelectableRow ----------------------------------------------- */

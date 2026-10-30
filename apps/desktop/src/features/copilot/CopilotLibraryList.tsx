@@ -2,11 +2,11 @@ import type { ComponentProps, Dispatch, SetStateAction } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { BookOpen, Plus, Search, Upload } from 'lucide-react';
 import { type CopilotKind, type CopilotRecord, type CopilotWorkspace } from '@maaverge/contracts';
-import type { MenuItem } from '../../kit/ContextMenu';
-import Button from '../../kit/Button';
-import CopilotDifficulty from '../../CopilotDifficulty';
-import CopilotOperators from '../../CopilotOperators';
-import type { CopilotDeleteTarget } from '../../CopilotDeleteDialog';
+import type { MenuItem } from '@/kit/ContextMenu';
+import Button from '@/kit/Button';
+import CopilotDifficulty from './CopilotDifficulty';
+import CopilotOperators from './CopilotOperators';
+import type { CopilotDeleteTarget } from './CopilotDeleteDialog';
 
 type ContextMenuBinding = {
   onContextMenu: (event: MouseEvent<HTMLElement>) => void;

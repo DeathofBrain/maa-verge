@@ -11,6 +11,7 @@ type Props = {
   icon?: ReactNode;
   id?: string;
   placeholder?: string;
+  type?: 'text' | 'search';
   'aria-label'?: string;
   className?: string;
 };
@@ -23,6 +24,7 @@ export default function SearchField({
   icon,
   id,
   placeholder,
+  type = 'text',
   className,
   ...rest
 }: Props) {
@@ -34,7 +36,7 @@ export default function SearchField({
       <input
         {...rest}
         id={id}
-        type="text"
+        type={type}
         className="mv-search-input"
         value={value}
         placeholder={placeholder}

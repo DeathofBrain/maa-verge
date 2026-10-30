@@ -1,10 +1,10 @@
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { GripVertical, Plus } from 'lucide-react';
 import { taskEnabled, taskLabels } from '@maaverge/contracts';
-import Select from '../../kit/Select';
-import Button from '../../kit/Button';
-import SearchField from '../../kit/SearchField';
-import type { MenuItem } from '../../kit/ContextMenu';
+import Select from '@/kit/Select';
+import Button from '@/kit/Button';
+import SearchField from '@/kit/SearchField';
+import type { MenuItem } from '@/kit/ContextMenu';
 import { taskCategories } from './task-fields';
 import { taskSummary, type Step } from './plan-draft';
 

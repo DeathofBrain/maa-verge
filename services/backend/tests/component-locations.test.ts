@@ -9,7 +9,7 @@ import { Runtime } from '../src/runtime';
 import {
   resourceVersionDetail,
   resourceVersionLabel,
-} from '../../../apps/desktop/src/update-display';
+} from '../../../apps/desktop/src/shared/lib/update-display';
 import type { UpdateChannel } from '../../../packages/contracts/src/types';
 
 const instances: Runtime[] = [],

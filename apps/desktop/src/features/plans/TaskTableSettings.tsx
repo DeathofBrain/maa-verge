@@ -1,9 +1,9 @@
 import { FileText, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { Device, Plan } from '@maaverge/contracts';
-import DeviceSelectionList from '../../DeviceSelectionList';
-import Button from '../../kit/Button';
-import TextArea from '../../kit/TextArea';
-import TextField from '../../kit/TextField';
+import DeviceSelectionList from '@/features/devices/DeviceSelectionList';
+import Button from '@/kit/Button';
+import TextArea from '@/kit/TextArea';
+import TextField from '@/kit/TextField';
 import type { Draft } from './plan-draft';
 
 type Props = {

@@ -11,12 +11,12 @@ import {
   Trash2,
 } from 'lucide-react';
 import { taskLabels, type Device, type Plan, type RpcParams } from '@maaverge/contracts';
-import TaskParameterField from '../../TaskParameterField';
-import Button from '../../kit/Button';
-import EmptyState from '../../kit/EmptyState';
-import IconButton from '../../kit/IconButton';
-import SearchField from '../../kit/SearchField';
-import TextArea from '../../kit/TextArea';
+import TaskParameterField from './TaskParameterField';
+import Button from '@/kit/Button';
+import EmptyState from '@/kit/EmptyState';
+import IconButton from '@/kit/IconButton';
+import SearchField from '@/kit/SearchField';
+import TextArea from '@/kit/TextArea';
 import { fieldGroups, fields } from './task-fields';
 import { type Draft, type Step } from './plan-draft';
 

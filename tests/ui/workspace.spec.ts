@@ -65,6 +65,24 @@ async function settingsCategory(page: Page, name: string) {
     .getByRole('button', { name, exact: true })
     .click();
 }
+
+test('Escape closes an instance context menu before the surrounding run panel', async ({
+  page,
+}) => {
+  await openHome(page);
+  await dock(page).getByRole('button', { name: '多开执行', exact: true }).click();
+  const panel = page.getByRole('region', { name: '运行面板', exact: true });
+  await panel.getByRole('article', { name: '模拟器实例 本地模拟设备', exact: true }).click({
+    button: 'right',
+  });
+  const menu = page.getByRole('menu', { name: '实例执行菜单', exact: true });
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(panel).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+});
 function channel(page: Page, name: string) {
   return page
     .locator('.update-channel')

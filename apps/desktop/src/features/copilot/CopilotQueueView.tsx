@@ -17,11 +17,12 @@ import {
   type RpcResult,
   type Snapshot,
 } from '@maaverge/contracts';
-import type { MenuItem } from '../../kit/ContextMenu';
-import Button from '../../kit/Button';
-import IconButton from '../../kit/IconButton';
-import Select from '../../kit/Select';
-import CopilotSelectAll from '../../CopilotSelectAll';
+import type { MenuItem } from '@/kit/ContextMenu';
+import Button from '@/kit/Button';
+import IconButton from '@/kit/IconButton';
+import Select from '@/kit/Select';
+import Tabs from '@/kit/Tabs';
+import SelectAll from '@/shared/ui/SelectAll';
 import CopilotSettings from './CopilotSettingsView';
 
 type ContextMenuBinding = {
@@ -110,22 +111,21 @@ export default function CopilotQueueView({
           <ListOrdered size={17} />
           执行队列
         </h2>
-        <div className="cp-type-bar" role="tablist" aria-label="队列类型">
-          {kinds.map((item) => (
-            <button
-              key={item.value}
-              role="tab"
-              aria-selected={kind === item.value}
-              className={kind === item.value ? 'is-selected' : ''}
-              disabled={importing}
-              onClick={() => setKind(item.value)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          className="cp-type-bar"
+          aria-label="队列类型"
+          idPrefix="copilot-queue"
+          value={kind}
+          onChange={(value) => setKind(value as CopilotKind)}
+          items={kinds.map((item) => ({ id: item.value, label: item.label, disabled: importing }))}
+        />
       </div>
-      <div className="cp-queue-editor">
+      <div
+        className="cp-queue-editor"
+        role="tabpanel"
+        id={`copilot-queue-panel-${kind}`}
+        aria-labelledby={`copilot-queue-tab-${kind}`}
+      >
         <header>
           <div>
             <h2>
@@ -151,7 +151,7 @@ export default function CopilotQueueView({
           </Button>
         </header>
         <div className="cp-preview-selection">
-          <CopilotSelectAll
+          <SelectAll
             label="全选执行队列"
             total={workspace?.queue.length ?? 0}
             selected={enabledCount}

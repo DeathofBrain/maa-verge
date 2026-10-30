@@ -47,7 +47,7 @@ corepack pnpm test:e2e
 
 ## 任务详情抽屉
 
-[TaskDetailDrawer.tsx](../../apps/desktop/src/TaskDetailDrawer.tsx) 通过 portal 挂到 `body`，`role="dialog"`、`aria-modal="true"`。打开时会：
+[TaskDetailDrawer.tsx](../../apps/desktop/src/features/plans/TaskDetailDrawer.tsx) 通过 portal 挂到 `body`，`role="dialog"`、`aria-modal="true"`。打开时会：
 
 - 把 `.sidebar` 和 `.main-shell` 设为 `inert`；
 - 锁定 `body` 滚动与抽屉内焦点；

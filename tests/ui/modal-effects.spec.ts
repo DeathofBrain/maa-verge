@@ -22,7 +22,7 @@ test('only the top overlay handles keyboard focus while the lower layer is inert
 }) => {
   await page.getByRole('button', { name: '背景按钮' }).focus();
   await page.evaluate(async () => {
-    const modulePath = '/src/modal-effects.ts';
+    const modulePath = '/src/kit/modal-effects.ts';
     const { acquireModalEffects } = await import(modulePath);
     const escaped: string[] = [];
     const background = document.getElementById('background')!;
@@ -62,7 +62,7 @@ test('removing the lower overlay first restores the original trigger when the up
 }) => {
   await page.locator('#trigger').focus();
   await page.evaluate(async () => {
-    const modulePath = '/src/modal-effects.ts';
+    const modulePath = '/src/kit/modal-effects.ts';
     const { acquireModalEffects } = await import(modulePath);
     const background = document.getElementById('background')!;
     const layerA = document.getElementById('layer-a')!;
@@ -90,7 +90,7 @@ test('native modal dialogs keep browser keyboard behavior and return focus to th
 }) => {
   await page.locator('#trigger').focus();
   await page.evaluate(async () => {
-    const modulePath = '/src/modal-effects.ts';
+    const modulePath = '/src/kit/modal-effects.ts';
     const { acquireModalEffects } = await import(modulePath);
     const escaped: string[] = [];
     const releaseA = acquireModalEffects({
@@ -126,7 +126,7 @@ test('an unrelated native modal also takes precedence over drawer keyboard handl
   page,
 }) => {
   await page.evaluate(async () => {
-    const modulePath = '/src/modal-effects.ts';
+    const modulePath = '/src/kit/modal-effects.ts';
     const { acquireModalEffects } = await import(modulePath);
     const escaped: string[] = [];
     const releaseA = acquireModalEffects({

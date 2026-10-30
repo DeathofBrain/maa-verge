@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { expectHome, navigate } from './fixtures/navigation';
 
 const json = (title: string, extra: Record<string, unknown> = {}) =>
   JSON.stringify({
@@ -15,14 +16,9 @@ const library = (page: Page) => page.getByRole('region', { name: '作业库', ex
 const preview = (page: Page) => page.getByRole('region', { name: '导入预览', exact: true });
 const monitoredExecution = (page: Page) =>
   page.getByRole('region', { name: '所选设备执行情况', exact: true });
-async function navigate(page: Page, name: string) {
-  const menu = page.getByRole('button', { name: '打开导航', exact: true });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator('.sidebar').getByRole('button', { name, exact: true }).click();
-}
 async function openCenter(page: Page) {
   await page.goto('/');
-  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
+  await expectHome(page);
   await navigate(page, '作业中心');
   await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
   await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');

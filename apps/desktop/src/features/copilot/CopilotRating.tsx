@@ -1,3 +1,4 @@
+import Button from '@/kit/Button';
 import { useEffect, useRef, useState } from 'react';
 import { LoaderCircle, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
@@ -105,8 +106,10 @@ export default function CopilotRating({
     <section className="cp-rating" aria-label="社区作业评价">
       <div className="cp-rating-controls">
         <span>作业评价</span>
-        <button
-          className="button secondary"
+        <Button
+          variant="secondary"
+          size="sm"
+          className="cp-rating-choice"
           aria-label="点赞作业"
           aria-pressed={value?.rating === 'like'}
           disabled={loading || submitting || !value}
@@ -115,9 +118,11 @@ export default function CopilotRating({
           <ThumbsUp size={15} />
           {value?.rating === 'like' ? '已点赞' : '点赞'}
           {value && <span>{value.likes}</span>}
-        </button>
-        <button
-          className="button secondary"
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="cp-rating-choice"
           aria-label="点踩作业"
           aria-pressed={value?.rating === 'dislike'}
           disabled={loading || submitting || !value}
@@ -126,7 +131,7 @@ export default function CopilotRating({
           <ThumbsDown size={15} />
           {value?.rating === 'dislike' ? '已点踩' : '点踩'}
           {value && <span>{value.dislikes}</span>}
-        </button>
+        </Button>
         {(loading || submitting) && <LoaderCircle size={15} className="spin" />}
       </div>
       <p className="sp-help">
@@ -135,13 +140,14 @@ export default function CopilotRating({
       {(error || loadError) && (
         <div className="cp-rating-error" role="alert">
           <span>{error || loadError}</span>
-          <button
+          <Button
+            variant="text"
             className="cp-link"
             disabled={loading || submitting}
             onClick={() => setRevision((previous) => previous + 1)}
           >
             重新读取评价
-          </button>
+          </Button>
         </div>
       )}
     </section>

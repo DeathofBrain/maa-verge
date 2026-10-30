@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { expectHome, navigate } from './fixtures/navigation';
 
 type SearchRequest = {
   target?: string;
@@ -28,15 +29,9 @@ const result = (page: Page, orderBy: string, pageNumber = 1) =>
     exact: true,
   });
 
-async function navigate(page: Page, name: string) {
-  const menu = page.getByRole('button', { name: '打开导航', exact: true });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator('.sidebar').getByRole('button', { name, exact: true }).click();
-}
-
 async function openCommunity(page: Page) {
   await page.goto('/');
-  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
+  await expectHome(page);
   await page.evaluate(() => {
     const target = window as unknown as SortingHarnessWindow;
     target.sortingRequests = [];

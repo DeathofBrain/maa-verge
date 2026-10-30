@@ -1,4 +1,4 @@
-import Select from '../../kit/Select';
+import Select from '@/kit/Select';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
@@ -23,18 +23,19 @@ import {
   rpc,
   type DownloadProxySettings,
   type Settings,
+  type Snapshot,
   type UpdateChannel,
 } from '@maaverge/contracts';
-import '../../support-pages.css';
-import '../../settings-page.css';
-import { useAutoSaveDraft } from '../../settings-autosave';
-import ModelSettings from '../../ModelSettings';
-import LogSettings from '../../LogSettings';
-import Modal from '../../kit/Modal';
-import CopilotStorageSettings from '../../CopilotStorageSettings';
-import ConfigurationSettings from '../../ConfigurationSettings';
-import NotificationSettings from '../../NotificationSettings';
-import MirrorChyanSettings from '../../MirrorChyanSettings';
+import '@/shared/styles/support-pages.css';
+import './settings-page.css';
+import { useAutoSaveDraft } from '@/shared/lib/settings-autosave';
+import ModelSettings from './ModelSettings';
+import LogSettings from './LogSettings';
+import Modal from '@/kit/Modal';
+import CopilotStorageSettings from './CopilotStorageSettings';
+import ConfigurationSettings from './ConfigurationSettings';
+import NotificationSettings from './NotificationSettings';
+import MirrorChyanSettings from './MirrorChyanSettings';
 import {
   downloadSpeedLabel,
   resourceClientFor,
@@ -42,20 +43,29 @@ import {
   resourceVersionDetail,
   resourceVersionLabel,
   type ResourceClient,
-} from '../../update-display';
-import Button from '../../kit/Button';
-import DirectoryPicker from '../../kit/DirectoryPicker';
-import PageHeading from '../../kit/PageHeading';
-import SaveStateIndicator from '../../kit/SaveStateIndicator';
-import SearchField from '../../kit/SearchField';
-import EmptyState from '../../kit/EmptyState';
-import Section from '../../kit/Section';
-import SettingRow from '../../kit/SettingRow';
-import Switch from '../../kit/Switch';
-import StatusPill from '../../kit/StatusPill';
-import { formatDate } from '../../kit/format';
-import { updateChannelLabels, updateStatusLabels } from '../../kit/labels';
-import type { SupportPageProps } from '../../app/page-types';
+} from '@/shared/lib/update-display';
+import Button from '@/kit/Button';
+import DirectoryPicker from '@/kit/DirectoryPicker';
+import PageHeading from '@/kit/PageHeading';
+import SaveStateIndicator from '@/kit/SaveStateIndicator';
+import SearchField from '@/kit/SearchField';
+import EmptyState from '@/kit/EmptyState';
+import Section from '@/kit/Section';
+import SettingRow from '@/kit/SettingRow';
+import Switch from '@/kit/Switch';
+import StatusPill from '@/kit/StatusPill';
+import { formatDate } from '@/kit/format';
+import { updateChannelLabels, updateStatusLabels } from '@/kit/labels';
+import type { ActionRunner } from '@/shared/lib/actions';
+
+type SettingsPageProps = {
+  snapshot: Snapshot;
+  busy: boolean;
+  onAction: ActionRunner;
+  onPrepareUpdate: (channel: UpdateChannel) => Promise<void>;
+  preparingUpdates: ReadonlySet<UpdateChannel['id']>;
+  searchQuery?: string;
+};
 
 function Toggle({
   label,
@@ -134,7 +144,7 @@ export function SettingsPage({
   onPrepareUpdate,
   preparingUpdates,
   searchQuery,
-}: SupportPageProps) {
+}: SettingsPageProps) {
   const [category, setCategory] = useState<Category>('general');
   const [query, setQuery] = useState(searchQuery || '');
   useEffect(() => {
@@ -711,8 +721,8 @@ function UpdateSection({
   updatesBlocked: boolean;
   preparing: boolean;
   hasActiveRun: boolean;
-  onAction: SupportPageProps['onAction'];
-  onPrepare: SupportPageProps['onPrepareUpdate'];
+  onAction: SettingsPageProps['onAction'];
+  onPrepare: SettingsPageProps['onPrepareUpdate'];
   onSave: (patch: Partial<Settings>) => Promise<boolean>;
 }) {
   const [resourceClient, setResourceClient] = useState<ResourceClient>(

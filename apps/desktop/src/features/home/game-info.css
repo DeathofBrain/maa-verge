@@ -1,0 +1,221 @@
+.home-game-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+.home-game-info .home-panel-heading {
+  padding-block: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.home-game-info .home-panel-heading > small {
+  color: var(--muted);
+  font-size: 10px;
+  max-width: 45%;
+  overflow-wrap: anywhere;
+}
+.game-info-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.game-info-controls .app-select {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 10px;
+  max-width: 145px;
+  padding: 5px;
+}
+.game-info-body {
+  padding: 16px 20px 18px;
+  font-size: 11px;
+}
+.game-info-body p {
+  line-height: 1.8;
+  margin: 0 0 10px;
+}
+.game-muted,
+.game-source {
+  color: var(--muted);
+}
+.game-source {
+  display: block;
+  font-size: 10px;
+  line-height: 1.8;
+  margin-top: 10px;
+}
+.game-day {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  color: var(--muted);
+  margin-bottom: 13px;
+}
+.game-day small {
+  color: var(--dim);
+  font-size: 10px;
+}
+.game-weekly {
+  border-left: 3px solid var(--line-strong);
+  background: var(--surface-subtle);
+  padding: 11px 13px;
+  border-radius: 4px;
+}
+.game-weekly.weekly-last-day,
+.game-weekly.weekly-reset {
+  border-color: var(--accent);
+}
+.game-weekly strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.game-weekly p {
+  margin: 5px 0;
+  color: var(--muted);
+}
+.game-weekly small {
+  color: var(--dim);
+  font-size: 10px;
+  line-height: 1.8;
+}
+.game-activity-list h3 {
+  font-size: 12px;
+  font-weight: 550;
+  margin: 19px 0 12px;
+}
+.game-activity {
+  border-top: 1px solid var(--line);
+  padding: 11px 0 0;
+  margin-top: 10px;
+}
+.game-activity > div,
+.game-production > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+.game-activity strong,
+.game-production strong {
+  font-size: 11px;
+  font-weight: 550;
+}
+.game-activity p {
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 6px;
+}
+.game-activity-unknown {
+  color: var(--dim);
+  font-size: 10px;
+}
+.game-production {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.game-production > div > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.game-production > div > span.is-full {
+  color: var(--accent);
+}
+.game-production progress {
+  display: block;
+  width: 100%;
+  height: 5px;
+  margin: 10px 0 7px;
+  accent-color: var(--accent);
+}
+.game-production > small {
+  color: var(--dim);
+  font-size: 10px;
+  line-height: 1.8;
+}
+.game-estimate-editor {
+  border-top: 1px solid var(--line);
+  margin-top: 6px;
+  padding-top: 12px;
+}
+.game-estimate-editor > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+.game-estimate-editor > p {
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 10px;
+}
+.game-estimate-editor fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.game-line-form {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 11px;
+  margin-top: 12px;
+}
+.game-line-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.game-line-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 10px;
+  min-width: 0;
+}
+.game-line-input {
+  width: 100%;
+  min-width: 0;
+  font-size: 11px;
+}
+.game-line-numbers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 55px;
+  gap: 8px;
+}
+.game-line-add {
+  font-size: 10px;
+}
+.game-editor-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.game-form-error {
+  color: var(--danger) !important;
+}
+@media (max-width: 1150px) {
+  .home-game-info {
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+}
+@media (max-width: 960px) {
+  .home-game-info {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .game-info-body {
+    padding-inline: 16px;
+  }
+  .game-info-controls .app-select {
+    max-width: 120px;
+  }
+}

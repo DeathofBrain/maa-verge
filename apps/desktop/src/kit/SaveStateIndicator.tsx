@@ -1,4 +1,4 @@
-import { autoSaveLabel, type SaveStatus } from '../settings-autosave';
+import { autoSaveLabel, type SaveStatus } from '@/shared/lib/save-status';
 import { cx } from './cx';
 
 type Props = {

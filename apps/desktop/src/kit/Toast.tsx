@@ -16,10 +16,16 @@ export default function Toast({
   dismissLabel = '关闭提示',
 }: Props) {
   return (
-    <div role={error ? 'alert' : 'status'} className={cx('toast', 'mv-toast', error && 'error')}>
-      {error ? <AlertCircle size={17} /> : <Check size={17} />}
-      <span>{text}</span>
-      <IconButton label={dismissLabel} onClick={onDismiss}>
+    <div
+      role={error ? 'alert' : 'status'}
+      data-tone={error ? 'danger' : 'success'}
+      className={cx('toast', 'mv-toast', error && 'error')}
+    >
+      <span className="mv-toast-icon" aria-hidden="true">
+        {error ? <AlertCircle size={17} /> : <Check size={17} />}
+      </span>
+      <span className="mv-toast-text">{text}</span>
+      <IconButton label={dismissLabel} size="sm" onClick={onDismiss}>
         <X size={15} />
       </IconButton>
     </div>
