@@ -18,7 +18,10 @@ export async function navigate(page: Page, name: string) {
   if (await closeSettings.isVisible()) await closeSettings.click();
   await closeTaskDetail(page);
   const menu = page.getByRole('button', { name: '打开导航', exact: true });
-  if (await menu.isVisible()) await menu.click();
+  const navOpen = await page
+    .locator('.app-root')
+    .evaluate((element) => element.classList.contains('nav-open'));
+  if ((await menu.isVisible()) && !navOpen) await menu.click();
   await page
     .locator('.sidebar')
     .getByRole('button', { name, exact: name !== 'Agent 助手' })

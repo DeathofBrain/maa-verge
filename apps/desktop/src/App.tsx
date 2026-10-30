@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
   BookOpen,
   Bot,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   History,
   House,
@@ -15,9 +14,7 @@ import {
   Menu,
   Monitor,
   Search,
-  Send,
   Settings2,
-  ShieldCheck,
   Square,
   Terminal,
   Trash2,
@@ -31,7 +28,6 @@ import {
   rpc,
   subscribe,
   localizeExecutionMessage,
-  taskEnabled,
   taskLabels,
   nextPlanName,
   planDeviceIds,
@@ -62,13 +58,14 @@ import DeviceConnectionDrawer from './DeviceConnectionDrawer';
 import RunPanel from './RunPanel';
 import DevicePicker from './DevicePicker';
 import MonitorLogDrawer from './MonitorLogDrawer';
-import { isCopilotRun, runDisplayName, runSourceLabel } from './run-source';
+import { runDisplayName, runSourceLabel } from './run-source';
 import UpdateNotifications, { useComponentDownloads } from './UpdateNotifications';
 import ConfirmDialog from './kit/ConfirmDialog';
 import ErrorBanner from './kit/ErrorBanner';
 import Toast from './kit/Toast';
-import FilterChips from './kit/FilterChips';
 import StatusPill from './kit/StatusPill';
+import AgentPage from './features/app/AgentPage';
+import HistoryPage from './features/app/HistoryPage';
 import { runStatusLabels, runStatusTones } from './kit/labels';
 
 type Page = 'home' | 'tasks' | 'copilot' | 'tools' | 'agent' | 'history' | 'devices' | 'settings';
@@ -92,13 +89,6 @@ const pageNames: Record<Page, string> = {
   settings: '设置',
 };
 const uid = () => crypto.randomUUID();
-const time = (value: string) =>
-  new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 const readSelection = () => {
   try {
     return localStorage.getItem('maaverge:ui:selected-plan') || '';
@@ -961,287 +951,39 @@ export default function App() {
             )}
             {page === 'tools' && <ToolsPage {...supportProps} />}
             {page === 'agent' && (
-              <section className="agent-page">
-                <PageHeading
-                  title="Agent 助手"
-                  text="描述目标，检查计划，再交给任务表执行。"
-                  action={
-                    <StatusPill
-                      tone="info"
-                      label={
-                        <>
-                          <ShieldCheck size={13} />
-                          审阅后执行
-                        </>
-                      }
-                    />
-                  }
-                />
-                <div className="agent-notice">
-                  <Bot size={17} />
-                  <span>当前使用本地规则生成待审阅提案；云端模型与自主托管尚未接入。</span>
-                </div>
-                <div className="agent-layout">
-                  <div className="chat-panel">
-                    <div className="chat-messages" aria-live="polite">
-                      {!messages.length && (
-                        <div className="agent-welcome">
-                          <span className="agent-emblem">
-                            <Bot size={31} />
-                          </span>
-                          <h2>从一个具体目标开始</h2>
-                          <p>生成的计划可以回到日常工作台逐项调整。</p>
-                          <div className="prompt-list">
-                            {[
-                              '制定刷 6 次 1-7 的计划',
-                              '安排零消耗的日常任务',
-                              '检查我的任务配置',
-                            ].map((prompt) => (
-                              <button key={prompt} onClick={() => void sendMessage(prompt)}>
-                                {prompt}
-                                <ArrowRight size={15} />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {messages.map((message) => (
-                        <div className={`chat-message ${message.role}`} key={message.id}>
-                          <span className="chat-role">
-                            {message.role === 'user' ? '你' : 'Agent'}
-                          </span>
-                          <div>
-                            <p>{message.text}</p>
-                            {message.plan && (
-                              <div className="proposal-card">
-                                <div>
-                                  <ListChecks size={18} />
-                                  <h3>{message.plan.name}</h3>
-                                </div>
-                                <ol>
-                                  {message.plan.tasks.map((task, index) => (
-                                    <li key={index}>
-                                      <span>{index + 1}</span>
-                                      {taskLabels[task.type] || task.type}
-                                      <small>
-                                        {task.type === 'Fight'
-                                          ? `${String(task.params.stage || '当前关卡')} · ${String(task.params.times || 1)} 次`
-                                          : taskEnabled(task)
-                                            ? '已启用'
-                                            : '已关闭'}
-                                      </small>
-                                    </li>
-                                  ))}
-                                </ol>
-                                <p className="muted">理智药 0 · 源石 0；请在工作台核对有效参数。</p>
-                                <button
-                                  className="button primary"
-                                  onClick={() => {
-                                    setProposal(message.plan!);
-                                    setDetailPlanId(null);
-                                    setFocusTaskType(undefined);
-                                    setFocusTaskIndex(undefined);
-                                    setInitialParams(undefined);
-                                    setTaskView('plans');
-                                    navigate('tasks', true);
-                                  }}
-                                >
-                                  检查并保存计划
-                                  <ArrowRight size={14} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      {pending.has('agent') && (
-                        <p className="thinking">
-                          <LoaderCircle className="spin" size={15} />
-                          正在整理计划…
-                        </p>
-                      )}
-                    </div>
-                    <form
-                      className="chat-composer"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        void sendMessage(agentQuery);
-                      }}
-                    >
-                      <textarea
-                        aria-label="给 Agent 的消息"
-                        placeholder="例如：今晚刷 6 次 1-7，不使用理智药"
-                        value={agentQuery}
-                        onChange={(event) => setAgentQuery(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (
-                            event.key === 'Enter' &&
-                            !event.shiftKey &&
-                            !event.nativeEvent.isComposing
-                          ) {
-                            event.preventDefault();
-                            void sendMessage(agentQuery);
-                          }
-                        }}
-                      />
-                      <button
-                        aria-label="发送消息"
-                        className="button primary"
-                        disabled={!agentQuery.trim() || pending.has('agent')}
-                      >
-                        <Send size={17} />
-                      </button>
-                    </form>
-                  </div>
-                  <aside className="agent-context">
-                    <h3>共用同一张任务表</h3>
-                    <p>Agent 提案会进入工作台草稿。逐项设置、消耗校验和设备控制使用同一套规则。</p>
-                    <div className="context-fact">
-                      <Monitor size={16} />
-                      <span>
-                        当前设备<strong>{device?.name || '未连接'}</strong>
-                      </span>
-                    </div>
-                    <div className="context-fact">
-                      <ShieldCheck size={16} />
-                      <span>
-                        消耗设置<strong>由任务表内自动作战的用药与源石数量决定</strong>
-                      </span>
-                    </div>
-                    <button
-                      className="text-button"
-                      onClick={() => {
-                        navigate('settings');
-                        setPageSearch('模型');
-                      }}
-                    >
-                      模型设置
-                      <ArrowRight size={14} />
-                    </button>
-                  </aside>
-                </div>
-              </section>
+              <AgentPage
+                messages={messages}
+                sendMessage={sendMessage}
+                agentQuery={agentQuery}
+                setAgentQuery={setAgentQuery}
+                pending={pending}
+                setProposal={setProposal}
+                setDetailPlanId={setDetailPlanId}
+                setFocusTaskType={setFocusTaskType}
+                setFocusTaskIndex={setFocusTaskIndex}
+                setInitialParams={setInitialParams}
+                setTaskView={setTaskView}
+                navigate={navigate}
+                device={device}
+                setPageSearch={setPageSearch}
+              />
             )}
             {page === 'history' && (
-              <section className="history-page">
-                <PageHeading
-                  title="执行记录"
-                  text="查看每次运行的结果、设备与失败原因。"
-                  action={
-                    <button className="button secondary" onClick={() => setRunPanel('logs')}>
-                      <Terminal size={15} />
-                      运行事件
-                    </button>
-                  }
-                />
-                <div className="history-toolbar">
-                  <FilterChips
-                    aria-label="筛选执行记录"
-                    value={historyFilter}
-                    onChange={(value) => setHistoryFilter(value)}
-                    items={[
-                      { id: 'all', label: '全部' },
-                      { id: 'running', label: '执行中' },
-                      { id: 'completed', label: '已完成' },
-                      { id: 'failed', label: '失败' },
-                      { id: 'stopped', label: '已停止' },
-                    ]}
-                  />
-                  <label className="inline-search">
-                    <Search size={15} />
-                    <input
-                      aria-label="搜索执行记录"
-                      placeholder="搜索名称、来源、实例或结果"
-                      value={historyQuery}
-                      onChange={(event) => setHistoryQuery(event.target.value)}
-                    />
-                  </label>
-                </div>
-                {history.length ? (
-                  <div className="table-scroll">
-                    <table className="history-table">
-                      <thead>
-                        <tr>
-                          <th>任务表 / 作业</th>
-                          <th>模拟器实例</th>
-                          <th>状态</th>
-                          <th>开始时间</th>
-                          <th>执行结果</th>
-                          <th />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {history.map((run) => (
-                          <tr
-                            className={executionRun?.id === run.id ? 'selected' : ''}
-                            key={run.id}
-                            tabIndex={0}
-                            {...contextMenu('执行记录菜单', [
-                              { label: '查看执行详情', action: () => showExecution(run) },
-                              {
-                                label: isCopilotRun(run) ? '打开作业中心' : '编辑任务表',
-                                disabled:
-                                  !isCopilotRun(run) &&
-                                  !snapshot.plans.some((plan) => plan.id === run.planId),
-                                action: () => {
-                                  if (isCopilotRun(run)) {
-                                    showExecution(run);
-                                    return;
-                                  }
-                                  const plan = snapshot.plans.find(
-                                    (plan) => plan.id === run.planId,
-                                  );
-                                  if (plan) choosePlan(plan);
-                                },
-                              },
-                              {
-                                label: '停止执行',
-                                danger: true,
-                                disabled: run.status !== 'running' || pending.has(`stop-${run.id}`),
-                                action: () => {
-                                  void stopRun(run);
-                                },
-                              },
-                            ])}
-                          >
-                            <td>
-                              {runDisplayName(run, snapshot.plans)}
-                              {isCopilotRun(run) && <small className="subtle-tag">作业</small>}
-                            </td>
-                            <td>
-                              {snapshot.devices.find((item) => item.id === run.deviceId)?.name ||
-                                run.deviceId}
-                            </td>
-                            <td>
-                              <StatusPill
-                                tone={runStatusTones[run.status]}
-                                label={runStatusLabels[run.status]}
-                              />
-                            </td>
-                            <td className="numeric">{time(run.startedAt)}</td>
-                            <td>{localizeExecutionMessage(run.message)}</td>
-                            <td>
-                              <button
-                                className="icon-button"
-                                aria-label={`查看执行${run.id}`}
-                                onClick={() => showExecution(run)}
-                              >
-                                <ChevronRight size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <Empty
-                    icon={<History size={30} />}
-                    title={snapshot.runs.length ? '没有匹配的执行记录' : '还没有执行记录'}
-                    text="从任务表或作业中心开始执行，结果会保存在这里。"
-                  />
-                )}
-              </section>
+              <HistoryPage
+                snapshot={snapshot}
+                history={history}
+                historyFilter={historyFilter}
+                setHistoryFilter={setHistoryFilter}
+                historyQuery={historyQuery}
+                setHistoryQuery={setHistoryQuery}
+                contextMenu={contextMenu}
+                showExecution={showExecution}
+                pending={pending}
+                stopRun={stopRun}
+                choosePlan={choosePlan}
+                executionRun={executionRun}
+                setRunPanel={setRunPanel}
+              />
             )}
           </div>
         </main>
@@ -1514,37 +1256,6 @@ function Brand() {
         <img src="/logo.png" width="32" height="32" alt="" draggable={false} />
       </span>
       <span>Maa Verge</span>
-    </div>
-  );
-}
-function PageHeading({ title, text, action }: { title: string; text: string; action?: ReactNode }) {
-  return (
-    <div className="page-heading">
-      <div>
-        <h1>{title}</h1>
-        <p>{text}</p>
-      </div>
-      {action && <div className="heading-actions">{action}</div>}
-    </div>
-  );
-}
-function Empty({
-  icon,
-  title,
-  text,
-  action,
-}: {
-  icon: ReactNode;
-  title: string;
-  text: string;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="empty-state">
-      <span className="empty-icon">{icon}</span>
-      <h2>{title}</h2>
-      <p>{text}</p>
-      {action}
     </div>
   );
 }
