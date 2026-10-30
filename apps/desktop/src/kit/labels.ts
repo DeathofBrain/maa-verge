@@ -1,4 +1,5 @@
 import type { Device, Run, RunTask, ToolJobSummary, UpdateChannel } from '@maaverge/contracts';
+import type { StatusTone } from './StatusPill';
 
 /** 执行状态文案。此前在 App、TasksPage、ExecutionMonitor、ExecutionPage、HomeDashboard 各存一份，取值完全一致。 */
 export const runStatusLabels: Record<Run['status'], string> = {
@@ -6,6 +7,14 @@ export const runStatusLabels: Record<Run['status'], string> = {
   completed: '已完成',
   failed: '执行失败',
   stopped: '已停止',
+};
+
+/** 执行状态对应的胶囊色。 */
+export const runStatusTones: Record<Run['status'], StatusTone> = {
+  running: 'running',
+  completed: 'success',
+  failed: 'danger',
+  stopped: 'neutral',
 };
 
 /** 执行内单个任务的状态文案，比执行状态多出「未执行」与「已跳过」。 */
@@ -16,6 +25,16 @@ export const runTaskStatusLabels: Record<RunTask['status'], string> = {
   failed: '执行失败',
   stopped: '已停止',
   skipped: '已跳过',
+};
+
+/** 执行内任务状态对应的胶囊色。 */
+export const runTaskStatusTones: Record<RunTask['status'], StatusTone> = {
+  waiting: 'neutral',
+  running: 'running',
+  completed: 'success',
+  failed: 'danger',
+  stopped: 'neutral',
+  skipped: 'neutral',
 };
 
 /** 工具作业类型文案。 */

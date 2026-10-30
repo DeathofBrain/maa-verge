@@ -4,7 +4,6 @@ import {
   ArrowRight,
   BookOpen,
   Bot,
-  Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -66,6 +65,8 @@ import DevicePicker from './DevicePicker';
 import MonitorLogDrawer from './MonitorLogDrawer';
 import { isCopilotRun, runDisplayName, runSourceLabel } from './run-source';
 import UpdateNotifications, { useComponentDownloads } from './UpdateNotifications';
+import ErrorBanner from './kit/ErrorBanner';
+import Toast from './kit/Toast';
 
 type Page = 'home' | 'tasks' | 'copilot' | 'tools' | 'agent' | 'history' | 'devices' | 'settings';
 type Message = { id: string; role: 'user' | 'assistant'; text: string; plan?: Plan };
@@ -806,13 +807,13 @@ export default function App() {
         <main className="main-content" aria-label={pageNames[page]}>
           <div className="page-transition" key={page}>
             {error && (
-              <div className="error-banner" role="alert">
+              <ErrorBanner className="error-banner">
                 <Wifi size={16} />
                 <span>本地服务连接异常：{error}</span>
                 <button className="text-button" onClick={() => void refresh()}>
                   重试
                 </button>
-              </div>
+              </ErrorBanner>
             )}
             {page === 'home' && (
               <HomeDashboard
@@ -1508,18 +1509,7 @@ export default function App() {
       )}
       <ScheduleNotifications />
       <UpdateNotifications notices={downloads.notices} onDismiss={downloads.dismiss} />
-      {toast && (
-        <div
-          role={toast.error ? 'alert' : 'status'}
-          className={`toast ${toast.error ? 'error' : ''}`}
-        >
-          {toast.error ? <AlertCircle size={17} /> : <Check size={17} />}
-          <span>{toast.text}</span>
-          <button className="icon-button" aria-label="关闭提示" onClick={() => setToast(null)}>
-            <X size={15} />
-          </button>
-        </div>
-      )}
+      {toast && <Toast text={toast.text} error={toast.error} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

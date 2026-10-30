@@ -4,6 +4,14 @@
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表统一从“任务”入口管理：列表 + 右侧详情抽屉保留逐任务设置和常驻运行条，执行监控为同页页签，开始执行不跳转；勾选任务表后由页头「运行」启动，每张表均可选择多台设备，已绑定表限绑定范围，未绑定表临时选择。执行监控统一列出在线与曾连接的离线设备，列表标题旁显示设备总数与执行中数量，已连接设备用绿色「已连接」标记，执行状态单独显示；点击设备后在下方查看当前任务表、作业或独立工具，再次点击收起；离线显示“已离线”，空闲与历史记录明确分开。任务表「查看执行」定位同一设备，设备卡日志及连接设置从右侧打开；底栏运行详情、日志、画面与多开执行向上展开，并通过底栏左侧设备选择器切换。支持设备多选停止及日志复制、导出和确认删除。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。六类独立工具与每日定时已接入，使用方法见 [工具箱与定时计划](toolbox-schedules.md)；独立作业中心已接入本地与 PRTS Plus 导入，完整原 MAA 兼容继续按功能矩阵验收。
 
+## 本次展示型原语与提示收编（macOS arm64，2026-10-30）
+
+- 新增 `StatusPill`（7 种 `data-tone` + 可选圆点）、`ProgressBar`（原生 `<progress>`，保留 `value` 属性与 `role=progressbar`）、`Tabs`（roving tabindex、方向键、Home/End、`aria-controls` 由 `idPrefix` 生成）、`FilterChips`（`role=group` + `aria-pressed`）、`ErrorBanner`、`Toast`、`ListRow`、`SelectableRow` 八个组件；门禁白名单补登记 `::-webkit-progress-bar`、`::-webkit-progress-value`、`::-moz-progress-bar` 三个厂商伪元素（仅 ProgressBar 使用）。
+- 采用方：App 全局提示改用 `Toast`（`.toast` / `.error` 仍是规范类名，22 处测试耦合不变），App、执行页、执行监控与定时面板的错误条改用 `ErrorBanner`（保留 `.error-banner` 根类以维持页面布局）；主页最近执行与执行页的运行、任务、通关结论改用 `StatusPill`（`runStatusTones` / `runTaskStatusTones` 随 `labels.ts` 提供）。
+- 未采用（已建）：`Tabs`、`FilterChips`、`ProgressBar`、`ListRow`、`SelectableRow`。`Tabs` 与现有 `.dp-tabs` / `.tc-view-tabs` / `.wb-tabs` 的间距与计数徽章配方不同，直接替换会造成可见漂移，留到对应页面阶段连同 CSS 一起归一；`ProgressBar` 的 5 处自研进度条依赖 `> i` 宽度样式，替换需同步改页面进度动画；两个行骨架需要与 `.cp-record` / `.tc-plan-row` 等 27+ 处容器类一起迁移。
+- 验证：`tsc -p apps/desktop --noEmit`、门禁脚本与 9 个门禁单测、修改文件 Prettier 通过；定向 Chromium spec（workspace、execution、execution-monitor、task-center）**43/43**（端口 15550）。截图确认 App 提示（「任务表已开始执行」+ 关闭键）与执行抽屉内的「执行中」胶囊渲染正常。
+- 未连接真实设备、调用模型或构建安装包。下一步为弹层统一，把 4 套抽屉与 3 处手写 Tab 陷阱收编到 `acquireModalEffects`。
+
 ## 本次设置页集群迁移与覆盖链删除（macOS arm64，2026-10-30）
 
 - 新增 `SettingRow`（`padding: md/compact/card/flush`）、`SaveStateIndicator`（基于 `autoSaveLabel`，`saved` 为空串）与 `DirectoryPicker` 三个套装组件。

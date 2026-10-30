@@ -10,6 +10,7 @@ import {
   type Settings,
   type RpcResult,
 } from '@maaverge/contracts';
+import ErrorBanner from './kit/ErrorBanner';
 import './schedule-panel.css';
 type Schedule = RpcResult<'schedule.save'>;
 export default function SchedulePanel({
@@ -119,11 +120,7 @@ export default function SchedulePanel({
           </button>
         </div>
       </header>
-      {error && (
-        <p role="alert" className="error-banner">
-          {error}
-        </p>
-      )}
+      {error && <ErrorBanner className="error-banner">{error}</ErrorBanner>}
       {!planId && <p>请先保存任务表，再为它添加定时。</p>}
       <div className="sp-table-scroll">
         <table className="sp-table">

@@ -35,7 +35,17 @@ export const pseudoClasses = new Set([
   'where',
 ]);
 
-export const pseudoElements = new Set(['after', 'before', 'placeholder', 'selection', 'marker']);
+export const pseudoElements = new Set([
+  'after',
+  'before',
+  'placeholder',
+  'selection',
+  'marker',
+  // 原生 <progress> 的厂商槽位，只在 ProgressBar 上使用。
+  '-webkit-progress-bar',
+  '-webkit-progress-value',
+  '-moz-progress-bar',
+]);
 
 // A compound is a kit class plus attribute/pseudo suffixes; anything else in a
 // selector means a host page or a bare element is being styled from the kit.

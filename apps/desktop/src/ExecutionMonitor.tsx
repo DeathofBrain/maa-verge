@@ -28,6 +28,7 @@ import {
 import CopilotSelectAll from './CopilotSelectAll';
 import ExecutionPage from './ExecutionPage';
 import MonitorLogDrawer from './MonitorLogDrawer';
+import ErrorBanner from './kit/ErrorBanner';
 import './execution-monitor.css';
 
 type Props = {
@@ -394,11 +395,7 @@ export default function ExecutionMonitor({
             />
           </label>
         </div>
-        {operationError && (
-          <p className="error-banner" role="alert">
-            {operationError}
-          </p>
-        )}
+        {operationError && <ErrorBanner className="error-banner">{operationError}</ErrorBanner>}
         {selected.size > 0 && (
           <div className="monitor-bulk-bar" role="region" aria-label="设备批量操作">
             <span role="status">已选 {selected.size} 台设备</span>

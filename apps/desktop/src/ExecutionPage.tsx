@@ -28,7 +28,14 @@ import { isCopilotRun, runDisplayName, runSourceLabel } from './run-source';
 import MaterialIcon from './MaterialIcon';
 import OperatorBadge from './OperatorBadge';
 import { formatDateTime, formatDuration } from './kit/format';
-import { runStatusLabels, runTaskStatusLabels } from './kit/labels';
+import StatusPill from './kit/StatusPill';
+import {
+  runStatusLabels,
+  runStatusTones,
+  runTaskStatusLabels,
+  runTaskStatusTones,
+} from './kit/labels';
+import ErrorBanner from './kit/ErrorBanner';
 import './execution-page.css';
 
 type Props = {
@@ -154,16 +161,14 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
           <div className="exec-eyebrow">
             <ListChecks size={14} />
             {runSourceLabel(run)}执行
-            <span className={`pill ${run.status}`}>{runStatusLabels[run.status]}</span>
+            <StatusPill tone={runStatusTones[run.status]} label={runStatusLabels[run.status]} />
           </div>
           <h1>{runDisplayName(run, snapshot.plans)}</h1>
           <p>{localizeExecutionMessage(run.message)}</p>
         </div>
       </header>
       {loadError && (
-        <p className="error-banner" role="alert">
-          任务结果读取失败：{loadError}
-        </p>
+        <ErrorBanner className="error-banner">任务结果读取失败：{loadError}</ErrorBanner>
       )}
       <div className="exec-overview">
         <div className="exec-meta">
@@ -247,15 +252,22 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                       <h3>
                         {index + 1}. {entry.title}
                       </h3>
-                      <span
-                        className={`pill ${entry.verdict === 'success' ? 'completed' : entry.verdict === 'failure' ? 'failed' : ''}`}
-                      >
-                        {entry.verdict === 'success'
-                          ? '通关已确认'
-                          : entry.verdict === 'failure'
-                            ? '战斗失败'
-                            : '通关未确认'}
-                      </span>
+                      <StatusPill
+                        tone={
+                          entry.verdict === 'success'
+                            ? 'success'
+                            : entry.verdict === 'failure'
+                              ? 'danger'
+                              : 'neutral'
+                        }
+                        label={
+                          entry.verdict === 'success'
+                            ? '通关已确认'
+                            : entry.verdict === 'failure'
+                              ? '战斗失败'
+                              : '通关未确认'
+                        }
+                      />
                     </div>
                     <p>
                       {entry.status === 'completed'
@@ -274,7 +286,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
           <section className="exec-task-summary" aria-label="本次执行总览">
             <div>
               <h2>执行总览</h2>
-              <span className={`pill ${run.status}`}>{runStatusLabels[run.status]}</span>
+              <StatusPill tone={runStatusTones[run.status]} label={runStatusLabels[run.status]} />
             </div>
             <p>{localizeExecutionMessage(run.message)}</p>
             <div className="exec-outcome-counts">
@@ -310,9 +322,10 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                       <h3>
                         {task.index + 1}. {taskLabels[task.type] || '任务'}
                       </h3>
-                      <span className={`pill ${task.status}`}>
-                        {runTaskStatusLabels[task.status]}
-                      </span>
+                      <StatusPill
+                        tone={runTaskStatusTones[task.status]}
+                        label={runTaskStatusLabels[task.status]}
+                      />
                       {task.startedAt && (
                         <time>{formatDuration(task.startedAt, task.finishedAt, clock)}</time>
                       )}

@@ -22,7 +22,8 @@ import './home-dashboard.css';
 import GameInfoPanel from './GameInfoPanel';
 import { resourceVersionDetail, resourceVersionLabel } from './update-display';
 import { formatDate } from './kit/format';
-import { runStatusLabels, updateStatusShortLabels } from './kit/labels';
+import StatusPill from './kit/StatusPill';
+import { runStatusLabels, runStatusTones, updateStatusShortLabels } from './kit/labels';
 
 type Destination = 'tasks' | 'devices' | 'settings' | 'history' | 'copilot' | 'agent';
 type Props = {
@@ -241,7 +242,11 @@ export default function HomeDashboard({
                         <small>{localizeExecutionMessage(run.message)}</small>
                       </span>
                       <span className="home-recent-status">
-                        <span className={`pill ${run.status}`}>{runStatusLabels[run.status]}</span>
+                        <StatusPill
+                          className="home-recent-pill"
+                          tone={runStatusTones[run.status]}
+                          label={runStatusLabels[run.status]}
+                        />
                         <time>{formatDate(run.startedAt)}</time>
                       </span>
                       <ArrowRight size={14} />
