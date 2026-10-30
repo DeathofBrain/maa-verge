@@ -13,7 +13,6 @@ import {
   planAllowsDevice,
   type Plan,
   type Run,
-  type Snapshot,
   type Task,
 } from '@maaverge/contracts';
 import { DevicesPage } from './DevicesPage';
@@ -45,6 +44,8 @@ import StatusPill from './kit/StatusPill';
 import AgentPage from './features/app/AgentPage';
 import { AppSidebar, AppTopbar, Brand } from './features/app/AppNavigation';
 import RunDock from './features/app/RunDock';
+import useAppSnapshot from './features/app/useAppSnapshot';
+import usePlanWrites from './features/app/usePlanWrites';
 import { type Message, type Page, pageNames } from './features/app/navigation-model';
 import HistoryPage from './features/app/HistoryPage';
 import { runStatusLabels, runStatusTones } from './kit/labels';
@@ -61,14 +62,14 @@ const readSelection = () => {
 export default function App() {
   const contextMenu = useContextMenu();
   const [editorCommand, setEditorCommand] = useState<PlanEditorCommand>();
-  const planWrites = useRef(new Map<string, Promise<unknown>>());
-  const deletedPlans = useRef(new Set<string>());
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const { mutatePlan, deletedPlans } = usePlanWrites();
+  const historicalDeviceRef = useRef<string | undefined>(undefined);
   const [page, setPage] = useState<Page>('home');
   const [taskView, setTaskView] = useState<'plans' | 'execution'>('plans');
   const [detailPlanId, setDetailPlanId] = useState<string | 'new' | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState(readSelection);
   const [selectedDevice, setSelectedDevice] = useState('');
+  const { snapshot, refresh, error } = useAppSnapshot({ historicalDeviceRef, setSelectedDevice });
   const [focusTaskType, setFocusTaskType] = useState<Task['type']>();
   const [focusTaskIndex, setFocusTaskIndex] = useState<number>();
   const [initialParams, setInitialParams] = useState<Task['params']>();
@@ -82,9 +83,7 @@ export default function App() {
   const searchInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const pendingRef = useRef(new Set<string>());
-  const refreshSequence = useRef(0);
   const detailRevision = useRef(0);
-  const [error, setError] = useState('');
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [deleting, setDeleting] = useState<{ plans: Plan[]; batch: boolean } | null>(null);
   const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
@@ -93,7 +92,6 @@ export default function App() {
   const [historyFilter, setHistoryFilter] = useState('all');
   const [historyQuery, setHistoryQuery] = useState('');
   const [executionSelection, setExecutionSelection] = useState<Run>();
-  const historicalDeviceRef = useRef<string | undefined>(undefined);
   historicalDeviceRef.current =
     executionSelection?.status !== 'running' ? executionSelection?.deviceId : undefined;
   const [copilotRunId, setCopilotRunId] = useState<string>();
@@ -106,23 +104,6 @@ export default function App() {
     null,
   );
 
-  const refresh = useCallback(async () => {
-    const sequence = ++refreshSequence.current;
-    try {
-      const next = await rpc('app.snapshot', {});
-      if (sequence !== refreshSequence.current) return;
-      setSnapshot(next);
-      setSelectedDevice((previous) =>
-        next.devices.some((item) => item.id === previous) ||
-        historicalDeviceRef.current === previous
-          ? previous
-          : next.devices.find((item) => item.state !== 'offline')?.id || next.devices[0]?.id || '',
-      );
-      setError('');
-    } catch (cause) {
-      if (sequence === refreshSequence.current) setError(errorMessage(cause));
-    }
-  }, []);
   const downloads = useComponentDownloads(snapshot?.updates, refresh);
   useEffect(() => {
     void refresh();
@@ -263,16 +244,6 @@ export default function App() {
     (run: Run) => setExecutionSelection((previous) => (previous?.id === run.id ? run : previous)),
     [],
   );
-  const mutatePlan = async <T,>(id: string, call: () => Promise<T>): Promise<T> => {
-    const previous = planWrites.current.get(id);
-    const next = (previous || Promise.resolve()).catch(() => {}).then(call);
-    planWrites.current.set(id, next);
-    try {
-      return await next;
-    } finally {
-      if (planWrites.current.get(id) === next) planWrites.current.delete(id);
-    }
-  };
   const savePlan = async (plan: Plan) => {
     if (deletedPlans.current.has(plan.id)) return false;
     try {
