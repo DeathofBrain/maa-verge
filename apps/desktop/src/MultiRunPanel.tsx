@@ -11,6 +11,7 @@ import {
   type Plan,
   type Run,
 } from '@maaverge/contracts';
+import Button from './kit/Button';
 import './multi-run.css';
 
 export default function MultiRunPanel({
@@ -43,9 +44,7 @@ export default function MultiRunPanel({
             每个实例独立执行与停止。一张任务表可在多个绑定设备上运行，每个设备也可选择不同任务表。
           </p>
         </div>
-        <button className="button secondary" onClick={onConnect}>
-          管理模拟器实例
-        </button>
+        <Button onClick={onConnect}>管理模拟器实例</Button>
       </div>
       {!devices.length ? (
         <p>请先在设备页添加并连接模拟器实例。</p>
@@ -116,18 +115,19 @@ export default function MultiRunPanel({
                       value={run.progress}
                     />
                     <div className="multi-run-actions">
-                      <button className="button secondary" onClick={() => onInspect(run)}>
+                      <Button className="multi-run-action" onClick={() => onInspect(run)}>
                         查看此实例
-                      </button>
-                      <button
-                        className="button danger"
+                      </Button>
+                      <Button
+                        className="multi-run-action"
+                        variant="danger"
                         disabled={pending.has(`stop-${run.id}`)}
                         aria-label={`停止实例 ${device.name}`}
                         onClick={() => void onStop(run)}
                       >
                         <Square size={13} />
                         停止此实例
-                      </button>
+                      </Button>
                     </div>
                   </>
                 ) : (
@@ -155,8 +155,8 @@ export default function MultiRunPanel({
                         </option>
                       ))}
                     </Select>
-                    <button
-                      className="button primary"
+                    <Button
+                      variant="primary"
                       aria-label={`启动实例 ${device.name}`}
                       disabled={
                         !selected ||
@@ -167,12 +167,12 @@ export default function MultiRunPanel({
                     >
                       <Play size={13} />
                       {device.state === 'offline' ? '请先连接实例' : '在此实例执行'}
-                    </button>
+                    </Button>
                     {lastRun && (
                       <p>
-                        <button className="text-button" onClick={() => onInspect(lastRun)}>
+                        <Button variant="text" onClick={() => onInspect(lastRun)}>
                           查看上次执行
-                        </button>
+                        </Button>
                         ：{localizeExecutionMessage(lastRun.message)}
                       </p>
                     )}

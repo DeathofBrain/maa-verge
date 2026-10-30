@@ -8,7 +8,6 @@ import {
   Gamepad2,
   HardDrive,
   ListChecks,
-  LoaderCircle,
   Play,
   Plus,
   RefreshCw,
@@ -20,6 +19,9 @@ import { errorMessage, rpc, type RpcParams, type RpcResult } from '@maaverge/con
 import type { SupportPageProps } from './SupportPages';
 import RecognitionPanel, { type RecognitionClient } from './RecognitionPanel';
 import OperatorBadge from './OperatorBadge';
+import Button from './kit/Button';
+import IconButton from './kit/IconButton';
+import Spinner from './kit/Spinner';
 import { downloadRecognition } from './tool-exports';
 import './toolbox.css';
 
@@ -300,16 +302,16 @@ export default function ToolsPage({
             <p role={status?.error ? 'alert' : 'status'}>
               {checking ? (
                 <>
-                  <LoaderCircle className="spin" size={16} /> 正在检查设备占用…
+                  <Spinner size={16} /> 正在检查设备占用…
                 </>
               ) : (
                 (status?.error ?? status?.value?.reason ?? '等待状态检查')
               )}
             </p>
-            <button className="button secondary" onClick={() => setRevision((value) => value + 1)}>
+            <Button onClick={() => setRevision((value) => value + 1)}>
               <RefreshCw size={15} />
               重新检查
-            </button>
+            </Button>
           </>
         )}
       </section>
@@ -351,8 +353,7 @@ export default function ToolsPage({
                   </p>
                 </div>
                 {job.status === 'running' && (
-                  <button
-                    className="button secondary"
+                  <Button
                     onClick={() => {
                       void onAction(
                         'tool-stop-' + job.id,
@@ -363,7 +364,7 @@ export default function ToolsPage({
                   >
                     <Square size={14} />
                     停止
-                  </button>
+                  </Button>
                 )}
                 {job.kind === 'inventory' && Array.isArray(job.result?.targets) && (
                   <div className="sp-table-scroll">
@@ -547,23 +548,20 @@ export default function ToolsPage({
                                     </td>
                                   ))}
                                   <td>
-                                    <button
-                                      className="icon-button"
-                                      aria-label={`上移库存计划 ${index + 1}`}
+                                    <IconButton
+                                      label={`上移库存计划 ${index + 1}`}
                                       onClick={() => move(index, -1)}
                                     >
                                       <ArrowUp size={14} />
-                                    </button>
-                                    <button
-                                      className="icon-button"
-                                      aria-label={`下移库存计划 ${index + 1}`}
+                                    </IconButton>
+                                    <IconButton
+                                      label={`下移库存计划 ${index + 1}`}
                                       onClick={() => move(index, 1)}
                                     >
                                       <ArrowDown size={14} />
-                                    </button>
-                                    <button
-                                      className="icon-button"
-                                      aria-label={`删除库存计划 ${index + 1}`}
+                                    </IconButton>
+                                    <IconButton
+                                      label={`删除库存计划 ${index + 1}`}
                                       onClick={() =>
                                         patch({
                                           targets: config.targets?.filter((_, i) => i !== index),
@@ -571,7 +569,7 @@ export default function ToolsPage({
                                       }
                                     >
                                       <Trash2 size={14} />
-                                    </button>
+                                    </IconButton>
                                   </td>
                                 </tr>
                               ))}
@@ -587,8 +585,7 @@ export default function ToolsPage({
                               </option>
                             ))}
                         </datalist>
-                        <button
-                          className="button secondary"
+                        <Button
                           disabled={(config.targets?.length ?? 0) >= 29}
                           onClick={() =>
                             patch({
@@ -608,7 +605,7 @@ export default function ToolsPage({
                         >
                           <Plus size={15} />
                           添加库存目标
-                        </button>
+                        </Button>
                         <p className="sp-help">
                           每组最多 29 项。默认不消耗药剂或源石，库存为识别值及已确认掉落推算值。
                         </p>
@@ -666,9 +663,8 @@ export default function ToolsPage({
                           来源为所选设备识别及本机已激活资源。识别数据可分别导出。
                         </p>
                         {(['depot', 'operators'] as const).map((resultKind) => (
-                          <button
+                          <Button
                             key={resultKind}
-                            className="button secondary"
                             onClick={() => {
                               void onAction(
                                 'export-' + resultKind,
@@ -685,10 +681,9 @@ export default function ToolsPage({
                             }}
                           >
                             导出{resultKind === 'depot' ? '仓库' : '干员'}数据
-                          </button>
+                          </Button>
                         ))}
-                        <button
-                          className="button secondary"
+                        <Button
                           onClick={() => {
                             void onAction(
                               'tool-refresh-resources',
@@ -698,7 +693,7 @@ export default function ToolsPage({
                           }}
                         >
                           刷新活动与关卡导航
-                        </button>
+                        </Button>
                       </>
                     )}
                     {kind === 'games' && (
@@ -759,8 +754,8 @@ export default function ToolsPage({
                       </>
                     )}
                     <div className="sp-form-actions">
-                      <button
-                        className="button primary"
+                      <Button
+                        variant="primary"
                         disabled={
                           blocked ||
                           !!configError ||
@@ -779,7 +774,7 @@ export default function ToolsPage({
                             : kind === 'data'
                               ? '刷新数据'
                               : '开始小游戏'}
-                      </button>
+                      </Button>
                     </div>
                   </fieldset>
                 )}

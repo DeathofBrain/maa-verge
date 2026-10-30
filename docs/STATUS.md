@@ -4,6 +4,16 @@
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表统一从“任务”入口管理：列表 + 右侧详情抽屉保留逐任务设置和常驻运行条，执行监控为同页页签，开始执行不跳转；勾选任务表后由页头「运行」启动，每张表均可选择多台设备，已绑定表限绑定范围，未绑定表临时选择。执行监控统一列出在线与曾连接的离线设备，列表标题旁显示设备总数与执行中数量，已连接设备用绿色「已连接」标记，执行状态单独显示；点击设备后在下方查看当前任务表、作业或独立工具，再次点击收起；离线显示“已离线”，空闲与历史记录明确分开。任务表「查看执行」定位同一设备，设备卡日志及连接设置从右侧打开；底栏运行详情、日志、画面与多开执行向上展开，并通过底栏左侧设备选择器切换。支持设备多选停止及日志复制、导出和确认删除。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。六类独立工具与每日定时已接入，使用方法见 [工具箱与定时计划](toolbox-schedules.md)；独立作业中心已接入本地与 PRTS Plus 导入，完整原 MAA 兼容继续按功能矩阵验收。
 
+## 本次第一波表单与页面骨架原语（macOS arm64，2026-10-30）
+
+- 新增 15 个套装原语：`Button`（`primary/secondary/danger/text` + `md/sm` + `busy`）、`IconButton`（`label` 必填为 `aria-label`）、`Spinner`、`TextField` / `TextArea` / `NumberField`（`invalid` → `data-invalid`）、`SearchField`、`Switch`（`md/lg`，只挂 `[aria-checked='true']`）、`Checkbox` / `CheckField`、`Field`、`Section`、`Notice`（`data-tone`）、`PageHeading`、`EmptyState`，全部从 `kit/index.ts` 导出且只含 `.mv-*` 规则。
+- 新增令牌 `--on-accent`（浅色 `#fff`、深色 `#17213d`），替代 `.button.primary` 依赖 `:root[data-theme='dark']` 祖先选择器的写法；套装样式表因此不含任何祖先前缀。
+- 采用方：`DevicesPage.tsx`（页头 + 全部按钮，页头动作容器以 `actionsClassName` 保留 `.sp-heading-actions` 供 4 处测试断言）、`ToolsPage.tsx`、`GameInfoPanel.tsx`、`MultiRunPanel.tsx`、`RecognitionPanel.tsx`、`MonitorLogDrawer.tsx`、`DeviceSelectionList.tsx`（搜索框改为 `type="text"`，同步把 3 处 `searchbox` 断言改为 `textbox`）。删除 `.device-selection-actions .button`、`.monitor-log-toolbar .button`、`.monitor-log-confirm .button`、`.game-editor-actions .button`、`.dp-card-footer .text-button` 五处尺寸覆盖；`.game-line-add`、`.recognition-action`、`.multi-run-action` 三个宿主根类承接只能由布局/响应式表达的部分。
+- 可见归一（已逐项核对渲染高度与内边距）：日志抽屉工具栏与游戏提醒编辑区按钮 30/32px → 28px；其余尺寸不变（设备页、工具箱按钮 36.2px / `8px 13px` / 13px，文字按钮 26px / `4px 0` / 12px，设备选择动作按钮 28px / `5px 8px` / 11px，设备搜索框 35px）。详见[组件套装](component-kit.md) 的「迁移带来的可见归一」。
+- 验证：`tsc -p apps/desktop --noEmit`、`tools/check-kit-css.mjs` 与 9 个门禁单测、修改文件 Prettier 全部通过；定向 Chromium spec（device-management、devices、toolbox-scheduler、game-info、multi-run、recognition、execution-monitor、device-selection）**49/49**（端口 15545）。
+- 人工核对：1440×900 浅色截图设备页、工具箱、任务表设置（设备选择）、日志抽屉、主页游戏提醒、多开执行，深色截图设备页，390×844 检查主页无横向溢出；`test-results/` 下的截图未提交。
+- 未覆盖：`CaptureSettingsForm.tsx`、`TaskConnectionSettings.tsx` 的设置页用法留到设置页集群一起迁移；`EmptyState`、`Section` 在设备页/工具箱的内联替换留到展示型原语阶段。下一步为设置页集群迁移并删除 `.sp-setting-row` 覆盖链。
+
 ## 本次共享格式化与中文标签映射（macOS arm64，2026-10-30）
 
 - 新增 `apps/desktop/src/kit/format.ts` 与 `kit/labels.ts` 并从 barrel 导出：`formatDate` / `formatDateTime` / `formatDateTimeFull` / `formatDuration` / `formatElapsed`，以及执行、任务、工具作业、设备选择、更新渠道的中文状态映射；键类型取自 `@maaverge/contracts`，schema 变更即编译失败。页面从 `./kit/format`、`./kit/labels` 深导入——两个模块不 import 任何 CSS，不会扰动 Vite 的样式表合并顺序。

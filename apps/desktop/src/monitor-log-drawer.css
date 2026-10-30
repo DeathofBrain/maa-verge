@@ -189,12 +189,6 @@
   margin-left: auto;
 }
 
-.monitor-log-toolbar .button {
-  min-height: 32px;
-  padding: 6px 10px;
-  font-size: 11px;
-}
-
 .monitor-log-confirm {
   flex: none;
   display: flex;
@@ -213,12 +207,6 @@
 .monitor-log-confirm > div {
   display: flex;
   gap: 8px;
-}
-
-.monitor-log-confirm .button {
-  min-height: 32px;
-  padding: 6px 10px;
-  font-size: 11px;
 }
 
 .monitor-log-notice {

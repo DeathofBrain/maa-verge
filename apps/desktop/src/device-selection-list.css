@@ -28,38 +28,7 @@
 }
 
 .device-selection-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   margin: 0 12px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--muted);
-  background: var(--surface-subtle);
-}
-
-.device-selection-search:focus-within {
-  border-color: var(--accent);
-}
-
-.device-selection-search svg {
-  flex: none;
-}
-
-.device-selection-search input {
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-}
-
-.device-selection-search input::placeholder {
-  color: var(--muted);
 }
 
 .device-selection-tools {
@@ -191,12 +160,6 @@
 
 .device-selection-actions {
   padding: 10px 12px;
-}
-
-.device-selection-actions .button {
-  min-height: 28px;
-  padding: 5px 8px;
-  font-size: 11px;
 }
 
 .device-selection-actions > small {

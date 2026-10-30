@@ -121,6 +121,7 @@ node tools/check-kit-css.mjs
 | duration   | `--duration-1/2/3` = 0.12 / 0.18 / 0.28s                                                          | 现有 0.15–0.4s 硬编码；`--ease-out` 已存在                                                              |
 | overlay    | `--backdrop: #10182780`、`--backdrop-blur: 1px`（深色 `#0b0e1499`）                               | 统一为 4 个抽屉都在用的配方；`.modal-backdrop` 的 `#11182759` 是少数派                                  |
 | 语义色     | `--warning` / `--warning-soft`、`--info` / `--info-soft`                                          | 为当前在深色模式下失效的硬编码色提供令牌                                                                |
+| 前景色     | `--on-accent: #fff`（深色 `#17213d`）                                                             | 强调色底上的文字；替代 `.button.primary` 的 `:root[data-theme='dark']` 祖先覆盖                         |
 
 z-index 标度顺带修掉一个潜在缺陷：`ContextMenu` portal 到 body 且 z=1000，低于 side-drawer 的 1100，抽屉内开右键菜单目前只靠 DOM 顺序侥幸生效；新标度把右键菜单提到 1300。旧值（85 / 160 / 1000 / 1100）在各自组件迁移前保持不动，标度只需内部自洽。
 
@@ -201,7 +202,23 @@ createPortal(
 
 `labels.ts` 的合并规则：取值一致的副本直接合一（`runStatusLabels` 消灭了 5 份相同映射）；取值分歧且都未被测试耦合的副本**并列保留并具名区分**，等待产品复核，禁止静默合并——当前唯一一例是 `updateStatusLabels`（设置页「更新」分类的完整表述）与 `updateStatusShortLabels`（主页更新卡片的短语）。
 
-### 可访问性契约
+### 迁移带来的可见归一
+
+组件套装的目标之一是收敛尺寸，所以迁移并非逐像素不变。已确认并接受的归一（逐项在渲染后核对过高度与内边距）：
+
+| 位置                          | 迁移前                                         | 迁移后                                                 | 原因                                                                               |
+| ----------------------------- | ---------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| 日志抽屉工具栏 / 删除确认按钮 | 32px 高、`6px 10px`、11px                      | `size="sm"`：28px、`5px 8px`、11px                     | 删除 `.monitor-log-toolbar .button` 与 `.monitor-log-confirm .button` 两次尺寸覆盖 |
+| 游戏提醒编辑区按钮            | 30px 高、`6px 9px`、10px                       | `size="sm"`：28px、`5px 8px`、11px                     | 删除 `.game-editor-actions .button` 覆盖                                           |
+| 游戏提醒「我刚已收取」        | 10px                                           | 10px（`className="game-line-add"` + 单类规则）         | 10px 不属于任何文字令牌，宿主用根类保留原值                                        |
+| 工具箱识别操作按钮（窄屏）    | `padding-inline: 10px; font-size: 12px`        | 同值，改为 `.recognition-action` 单类                  | 响应式无法用 props 表达                                                            |
+| 多开执行实例按钮              | `flex: 1` 由 `.multi-run-actions .button` 提供 | 同值，改为 `.multi-run-action` 单类                    | 布局属宿主职责                                                                     |
+| 设备选择搜索框                | `type="search"`（role `searchbox`）            | `type="text"`（role `textbox`），同步改 3 处 spec 断言 | WebKit 原生清除按钮装饰不一致；套装自带清除按钮时再启用                            |
+| 设备选择动作按钮              | 28px、`5px 8px`、11px（页面覆盖）              | `size="sm"` 同值                                       | 覆盖改 prop                                                                        |
+
+`SearchField` 的 `clearLabel` 同时是「是否渲染清除按钮」的开关：现有 8 套克隆中只有一部分带清除按钮，省略该 prop 可保证迁移不新增控件。`PageHeading` 的 `actionsClassName` 是唯一为测试耦合保留的插槽类入口（`.sp-heading-actions` 有 4 处断言），spec 更新后删除。
+
+## 可访问性契约
 
 | 组件                                 | 契约                                                                                                                                                                |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

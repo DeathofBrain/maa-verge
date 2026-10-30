@@ -66,7 +66,7 @@ test('filtered binding changes preserve hidden selections and persist offline an
   );
   await openPlan(page);
   const list = bindings(page);
-  const search = list.getByRole('searchbox', { name: '搜索设备', exact: true });
+  const search = list.getByRole('textbox', { name: '搜索设备', exact: true });
   const filter = list.getByLabel('筛选设备', { exact: true });
   await search.fill('批量A');
   await list.getByRole('button', { name: '选择筛选结果', exact: true }).click();
@@ -121,7 +121,7 @@ test('binding selection enforces the contract limit while retaining selections o
   await seed(page, devices, initial);
   await openPlan(page);
   const list = bindings(page);
-  await list.getByRole('searchbox', { name: '搜索设备', exact: true }).fill('候选设备');
+  await list.getByRole('textbox', { name: '搜索设备', exact: true }).fill('候选设备');
   await list.getByRole('button', { name: '选择筛选结果', exact: true }).click();
   await expect.poll(() => savedBindings(page)).toEqual([...initial, 'cap-99']);
   const first = list.getByRole('checkbox', { name: '绑定设备候选设备 99', exact: true });
@@ -152,7 +152,7 @@ test('launch filters keep unavailable selections blocking until removed and bulk
   await workbench(page).getByRole('button', { name: '开始执行', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '运行任务表', exact: true });
   const list = dialog.getByRole('group', { name: '运行设备', exact: true });
-  const search = list.getByRole('searchbox', { name: '搜索设备', exact: true });
+  const search = list.getByRole('textbox', { name: '搜索设备', exact: true });
   await search.fill('ready-device');
   await list.getByRole('button', { name: '取消筛选结果', exact: true }).click();
   await expect(dialog.getByRole('button', { name: '在 2 台设备运行', exact: true })).toBeDisabled();

@@ -75,9 +75,6 @@
   align-items: center;
   flex-wrap: wrap;
 }
-.dp-card-footer .text-button {
-  font-size: 12px;
-}
 .dp-empty {
   text-align: center;
   padding: 28px 16px;

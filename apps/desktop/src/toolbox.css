@@ -201,7 +201,7 @@
     grid-column: 1 / -1;
     width: 100%;
   }
-  .toolbox-page .recognition-actions .button {
+  .recognition-action {
     padding-inline: 10px;
     font-size: 12px;
     white-space: nowrap;

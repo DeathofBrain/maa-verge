@@ -5,7 +5,6 @@ import {
   ChevronDown,
   Info,
   Layers,
-  LoaderCircle,
   Monitor,
   Search,
   Settings2,
@@ -24,6 +23,9 @@ import DeviceConnectionDrawer from './DeviceConnectionDrawer';
 import { MultiInstanceSettings } from './MultiInstanceSettings';
 import { deviceIsConnecting } from './device-association';
 import './support-pages.css';
+import Button from './kit/Button';
+import PageHeading from './kit/PageHeading';
+import Spinner from './kit/Spinner';
 import './devices-page.css';
 
 type Tab = 'current' | 'instances';
@@ -323,35 +325,30 @@ export function DevicesPage({
         <span className="sp-help">{profileFor(device)?.name || '使用默认连接配置'}</span>
         <div>
           {!profileFor(device) && (
-            <button
-              className="text-button"
+            <Button
+              variant="text"
               disabled={disabled || profiles.length >= 32}
               onClick={() => saveInstance(device)}
             >
               保存为多开实例
-            </button>
+            </Button>
           )}
-          <button className="text-button" onClick={() => configure(device)}>
+          <Button variant="text" onClick={() => configure(device)}>
             连接设置
-          </button>
+          </Button>
           {device.state !== 'offline' && (
-            <button
-              className="button secondary"
+            <Button
               disabled={disabled || device.state === 'running'}
               title={device.state === 'running' ? '请先停止此设备的任务' : undefined}
               onClick={() => void disconnect(device)}
             >
               断开
-            </button>
+            </Button>
           )}
           {device.state === 'offline' && !isConnecting(device) && (
-            <button
-              className="button secondary"
-              disabled={disabled}
-              onClick={() => void connect(device.address)}
-            >
+            <Button disabled={disabled} onClick={() => void connect(device.address)}>
               重新连接
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -360,30 +357,34 @@ export function DevicesPage({
 
   return (
     <div className="sp-page dp-page">
-      <header className="sp-page-heading">
-        <div>
-          <h1>设备</h1>
-          <p>连接正在运行的设备，为每个模拟器实例保存独立配置。</p>
-        </div>
-        <div className="sp-heading-actions">
-          <button className="button secondary" disabled={disabled} onClick={() => void discover()}>
-            {working && operation.kind === 'discover' ? (
-              <LoaderCircle size={16} className="spin" />
-            ) : (
-              <Search size={16} />
-            )}
-            {working && operation.kind === 'discover' ? '正在发现…' : '发现设备'}
-          </button>
-          <button className="button secondary" onClick={() => setSettingsEntry('')}>
-            <Settings2 size={16} />
-            连接设置
-          </button>
-          <button className="button primary" onClick={() => switchTab('instances')}>
-            <Layers size={16} />
-            管理多开
-          </button>
-        </div>
-      </header>
+      <PageHeading
+        className="sp-page-heading"
+        actionsClassName="sp-heading-actions"
+        title="设备"
+        text="连接正在运行的设备，为每个模拟器实例保存独立配置。"
+        actions={
+          <>
+            <Button
+              busy={working && operation.kind === 'discover'}
+              icon={<Search size={16} />}
+              disabled={disabled}
+              onClick={() => void discover()}
+            >
+              {working && operation.kind === 'discover' ? '正在发现…' : '发现设备'}
+            </Button>
+            <Button icon={<Settings2 size={16} />} onClick={() => setSettingsEntry('')}>
+              连接设置
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Layers size={16} />}
+              onClick={() => switchTab('instances')}
+            >
+              管理多开
+            </Button>
+          </>
+        }
+      />
       <div className="dp-tabs" role="tablist" aria-label="设备页面">
         {(
           [
@@ -414,7 +415,7 @@ export function DevicesPage({
           aria-busy={working}
         >
           {working ? (
-            <LoaderCircle size={17} className="spin" />
+            <Spinner size={17} />
           ) : operation.phase === 'complete' ? (
             <Check size={17} />
           ) : (
@@ -434,22 +435,18 @@ export function DevicesPage({
                   </h2>
                   <p>已建立核心连接，可选择设备执行任务。</p>
                 </div>
-                <button
-                  className="button secondary"
+                <Button
+                  busy={working && operation.kind === 'auto-connect'}
+                  icon={<Wifi size={16} />}
                   disabled={disabled}
                   onClick={() => void autoConnect()}
                 >
-                  {working && operation.kind === 'auto-connect' ? (
-                    <LoaderCircle size={16} className="spin" />
-                  ) : (
-                    <Wifi size={16} />
-                  )}
                   {working && operation.kind === 'auto-connect'
                     ? '正在连接…'
                     : hasManualProfiles
                       ? '连接已保存实例'
                       : '自动连接模拟器'}
-                </button>
+                </Button>
               </div>
               {connected.length ? (
                 <div className="dp-device-grid">{connected.map(renderDevice)}</div>
@@ -531,21 +528,19 @@ export function DevicesPage({
                         </span>
                         <div>
                           {!profile && (
-                            <button
-                              className="button secondary"
+                            <Button
                               disabled={disabled || profiles.length >= 32}
                               onClick={() => saveInstance(item)}
                             >
                               保存为多开实例
-                            </button>
+                            </Button>
                           )}
-                          <button
-                            className="button secondary"
+                          <Button
                             disabled={disabled || !!online || item.adbState !== 'device'}
                             onClick={() => void connect(item.address)}
                           >
                             {online ? '已连接' : '连接'}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     );
@@ -579,14 +574,13 @@ export function DevicesPage({
                     disabled={disabled}
                     onChange={(event) => setAddress(event.target.value)}
                   />
-                  <button
+                  <Button
                     type="submit"
-                    className="button secondary"
+                    icon={<Wifi size={15} />}
                     disabled={disabled || !address.trim()}
                   >
-                    <Wifi size={15} />
                     连接设备
-                  </button>
+                  </Button>
                 </div>
               </form>
             </section>
@@ -636,15 +630,14 @@ export function DevicesPage({
                 {isConnecting(detailDevice) ? '正在连接' : deviceLabels[detailDevice.state]}
               </span>
             </div>
-            <button
-              className="button secondary"
+            <Button
+              icon={<Unplug size={15} />}
               disabled={disabled || detailDevice.state !== 'idle'}
               title={detailDevice.state === 'running' ? '请先停止此设备的任务' : undefined}
               onClick={() => void disconnect(detailDevice)}
             >
-              <Unplug size={15} />
               断开设备
-            </button>
+            </Button>
           </div>
           <dl className="sp-description-list">
             <div>

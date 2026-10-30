@@ -9,6 +9,8 @@ import {
   type Settings,
   type RpcResult,
 } from '@maaverge/contracts';
+import Button from './kit/Button';
+import IconButton from './kit/IconButton';
 import { gameDataChanged } from './update-display';
 import './game-info.css';
 
@@ -142,9 +144,8 @@ export default function GameInfoPanel({
                 </option>
               ))}
             </Select>
-            <button
-              className="icon-button"
-              aria-label="刷新游戏提醒"
+            <IconButton
+              label="刷新游戏提醒"
               disabled={loading}
               onClick={() => {
                 requestedRefresh.current = true;
@@ -152,7 +153,7 @@ export default function GameInfoPanel({
               }}
             >
               <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            </button>
+            </IconButton>
           </div>
         </div>
         <div className="game-info-body">
@@ -390,15 +391,14 @@ function InfrastructureEditor({
           <div className="game-line-form" key={line.id}>
             <div className="game-line-title">
               <strong>产线 {index + 1}</strong>
-              <button
-                className="icon-button"
-                aria-label={`删除产线 ${index + 1}`}
+              <IconButton
+                label={`删除产线 ${index + 1}`}
                 onClick={() =>
                   setLines((previous) => previous.filter((item) => item.id !== line.id))
                 }
               >
                 <Trash2 size={14} />
-              </button>
+              </IconButton>
             </div>
             <label>
               名称
@@ -459,17 +459,18 @@ function InfrastructureEditor({
                 onChange={(event) => patch(line.id, { collected: event.target.value })}
               />
             </label>
-            <button
-              className="text-button"
+            <Button
+              className="game-line-add"
+              variant="text"
               onClick={() => patch(line.id, { collected: localInput(new Date().toISOString()) })}
             >
               我刚已收取，设为现在
-            </button>
+            </Button>
           </div>
         ))}
         <div className="game-editor-actions">
-          <button
-            className="button secondary"
+          <Button
+            size="sm"
             disabled={lines.length >= 20}
             onClick={() =>
               setLines((previous) => [
@@ -487,10 +488,10 @@ function InfrastructureEditor({
           >
             <Plus size={13} />
             添加产线
-          </button>
-          <button className="button primary" onClick={() => void submit()}>
+          </Button>
+          <Button size="sm" variant="primary" onClick={() => void submit()}>
             {pending ? '保存中…' : '保存估算配置'}
-          </button>
+          </Button>
         </div>
       </fieldset>
       {error && (

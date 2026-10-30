@@ -1,7 +1,8 @@
-import { useId, useState } from 'react';
-import { Search } from 'lucide-react';
+import { useState } from 'react';
 import type { Device } from '@maaverge/contracts';
 import Select from './Select';
+import Button from './kit/Button';
+import SearchField from './kit/SearchField';
 import { deviceSelectionStateLabels } from './kit/labels';
 import './device-selection-list.css';
 
@@ -46,7 +47,6 @@ export default function DeviceSelectionList({
   emptyMessage = '暂无设备，请先在设备页添加。',
   selectedLabel = '已选',
 }: Props) {
-  const searchId = useId();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const selected = new Set(selectedIds);
@@ -81,17 +81,13 @@ export default function DeviceSelectionList({
         </span>
         <span>共 {items.length} 台设备</span>
       </div>
-      <label className="device-selection-search" htmlFor={searchId}>
-        <Search size={15} aria-hidden="true" />
-        <input
-          id={searchId}
-          type="search"
-          aria-label="搜索设备"
-          placeholder="搜索设备名称、地址或标识"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <SearchField
+        className="device-selection-search"
+        aria-label="搜索设备"
+        placeholder="搜索设备名称、地址或标识"
+        value={query}
+        onValueChange={setQuery}
+      />
       <div className="device-selection-tools">
         <Select
           className="device-selection-filter"
@@ -152,22 +148,16 @@ export default function DeviceSelectionList({
         )}
       </div>
       <div className="device-selection-actions">
-        <button
-          className="button secondary"
-          type="button"
+        <Button
+          size="sm"
           disabled={disabled || !selectable.length || limitReached}
           onClick={selectMatches}
         >
           选择筛选结果
-        </button>
-        <button
-          className="button secondary"
-          type="button"
-          disabled={disabled || !removable.size}
-          onClick={clearMatches}
-        >
+        </Button>
+        <Button size="sm" disabled={disabled || !removable.size} onClick={clearMatches}>
           取消筛选结果
-        </button>
+        </Button>
         {maxSelected !== undefined && (
           <small role={limitReached ? 'status' : undefined}>
             {limitReached ? `已达到 ${maxSelected} 台选择上限` : `最多选择 ${maxSelected} 台设备`}

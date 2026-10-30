@@ -1,10 +1,12 @@
 import Select from './Select';
 import { useEffect, useState } from 'react';
-import { Database, Download, LoaderCircle, Play, RefreshCw, Search } from 'lucide-react';
+import { Database, Download, Play, RefreshCw, Search } from 'lucide-react';
 import { errorMessage, rpc, type RpcParams, type RpcResult } from '@maaverge/contracts';
 import type { SupportPageProps } from './SupportPages';
 import MaterialIcon from './MaterialIcon';
 import OperatorBadge from './OperatorBadge';
+import Button from './kit/Button';
+import Spinner from './kit/Spinner';
 import { downloadRecognition, recognitionExport, type ExportFormat } from './tool-exports';
 import './recognition-panel.css';
 
@@ -147,16 +149,17 @@ export default function RecognitionPanel({
               </option>
             ))}
           </Select>
-          <button
-            className="button secondary"
+          <Button
+            className="recognition-action"
             disabled={!selectedDevice || loading}
             onClick={() => setRevision((value) => value + 1)}
           >
             <RefreshCw size={15} />
             刷新识别结果
-          </button>
-          <button
-            className="button primary"
+          </Button>
+          <Button
+            className="recognition-action"
+            variant="primary"
             disabled={busy || !device || device.state !== 'idle' || loading}
             onClick={() => {
               void start();
@@ -164,15 +167,13 @@ export default function RecognitionPanel({
           >
             <Play size={15} />
             开始{label}识别
-          </button>
+          </Button>
         </div>
       </div>
       {error ? (
         <div className="recognition-empty" role="alert">
           <p>读取识别结果失败：{error}</p>
-          <button className="button secondary" onClick={() => setRevision((value) => value + 1)}>
-            重试
-          </button>
+          <Button onClick={() => setRevision((value) => value + 1)}>重试</Button>
         </div>
       ) : !selectedDevice ? (
         <div className="recognition-empty">
@@ -181,7 +182,7 @@ export default function RecognitionPanel({
         </div>
       ) : !result ? (
         <div className="recognition-empty" role="status">
-          <LoaderCircle size={22} className="spin" />
+          <Spinner size={22} />
           <p>正在读取识别结果…</p>
         </div>
       ) : (
@@ -230,13 +231,10 @@ export default function RecognitionPanel({
                     </option>
                   ))}
                 </Select>
-                <button
-                  className="button secondary"
-                  onClick={() => downloadRecognition(result, format)}
-                >
+                <Button onClick={() => downloadRecognition(result, format)}>
                   <Download size={15} />
                   导出{label}结果
-                </button>
+                </Button>
               </div>
               {kind === 'operators' && (
                 <div className="recognition-toolbar">
@@ -250,8 +248,7 @@ export default function RecognitionPanel({
                     <option value="owned">已持有</option>
                     <option value="missing">未持有</option>
                   </Select>
-                  <button
-                    className="button secondary"
+                  <Button
                     onClick={() => {
                       void onAction(
                         'copy-operators',
@@ -262,7 +259,7 @@ export default function RecognitionPanel({
                     }}
                   >
                     复制表格
-                  </button>
+                  </Button>
                 </div>
               )}
               {count ? (
@@ -331,12 +328,9 @@ export default function RecognitionPanel({
                 </div>
               )}
               {count > limit && (
-                <button
-                  className="button secondary"
-                  onClick={() => setLimit((value) => value + 60)}
-                >
+                <Button onClick={() => setLimit((value) => value + 60)}>
                   显示更多（剩余 {count - limit} 项）
-                </button>
+                </Button>
               )}
               <p className="recognition-note">
                 来源：{label}识别。

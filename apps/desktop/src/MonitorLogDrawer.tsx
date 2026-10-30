@@ -1,9 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { acquireModalEffects } from './modal-effects';
-import { Check, Copy, Download, ListChecks, LoaderCircle, Terminal, Trash2, X } from 'lucide-react';
+import { Check, Copy, Download, ListChecks, Terminal, Trash2, X } from 'lucide-react';
 import { errorMessage, localizeExecutionMessage, rpc, type Snapshot } from '@maaverge/contracts';
 import CopilotSelectAll from './CopilotSelectAll';
+import Button from './kit/Button';
+import IconButton from './kit/IconButton';
+import Spinner from './kit/Spinner';
 import { formatDateTime, formatDateTimeFull } from './kit/format';
 import './monitor-log-drawer.css';
 
@@ -246,14 +249,9 @@ export default function MonitorLogDrawer({
                 </small>
               </div>
             </div>
-            <button
-              className="icon-button"
-              data-autofocus
-              aria-label="关闭设备日志"
-              onClick={() => close.current()}
-            >
+            <IconButton label="关闭设备日志" data-autofocus onClick={() => close.current()}>
               <X size={18} />
-            </button>
+            </IconButton>
           </div>
         )}
         <div className={`monitor-log-body ${single ? 'is-single' : ''}`}>
@@ -283,15 +281,15 @@ export default function MonitorLogDrawer({
           )}
           <section className="monitor-log-content" aria-label="设备日志内容">
             <div className="monitor-log-toolbar">
-              <button
-                className="button secondary"
+              <Button
+                size="sm"
                 aria-pressed={selecting}
                 disabled={!rows.length}
                 onClick={selecting ? stopSelecting : startSelecting}
               >
                 {selecting ? <Check size={14} /> : <ListChecks size={14} />}
                 {selecting ? '完成选择' : '选择日志'}
-              </button>
+              </Button>
               {selecting && (
                 <CopilotSelectAll
                   label="全选日志"
@@ -306,30 +304,27 @@ export default function MonitorLogDrawer({
               </span>
               {selecting && (
                 <div>
-                  <button
-                    className="button secondary"
+                  <Button
+                    size="sm"
                     disabled={!selectedRows.length}
                     onClick={() => void copySelected()}
                   >
                     <Copy size={14} />
                     复制所选
-                  </button>
-                  <button
-                    className="button secondary"
-                    disabled={!selectedRows.length}
-                    onClick={exportSelected}
-                  >
+                  </Button>
+                  <Button size="sm" disabled={!selectedRows.length} onClick={exportSelected}>
                     <Download size={14} />
                     导出所选
-                  </button>
-                  <button
-                    className="button danger"
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
                     disabled={!selectedRows.length || deleting}
                     onClick={() => setConfirmDelete(true)}
                   >
                     <Trash2 size={14} />
                     删除所选
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -337,21 +332,18 @@ export default function MonitorLogDrawer({
               <div className="monitor-log-confirm" role="region" aria-label="确认删除日志">
                 <span>删除所选 {selectedRows.length} 条日志？删除后无法恢复。</span>
                 <div>
-                  <button
-                    className="button secondary"
-                    disabled={deleting}
-                    onClick={() => setConfirmDelete(false)}
-                  >
+                  <Button size="sm" disabled={deleting} onClick={() => setConfirmDelete(false)}>
                     取消
-                  </button>
-                  <button
-                    className="button danger"
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
                     disabled={deleting}
                     onClick={() => void deleteSelected()}
                   >
-                    {deleting ? <LoaderCircle size={14} className="spin" /> : <Trash2 size={14} />}
+                    {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
                     确认删除
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
