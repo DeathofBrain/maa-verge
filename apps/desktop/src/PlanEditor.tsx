@@ -1,23 +1,12 @@
-import Select from './Select';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowUp,
   CalendarClock,
   Check,
-  Copy,
-  FileText,
-  GripVertical,
   Info,
   ListChecks,
   LoaderCircle,
   Play,
-  Plus,
-  RotateCcw,
-  Search,
   Settings2,
-  ShieldCheck,
   Square,
   Trash2,
   X,
@@ -33,8 +22,7 @@ import {
   type Settings,
   type RpcParams,
 } from '@maaverge/contracts';
-import TaskParameterField from './TaskParameterField';
-import { clients, fieldGroups, fields, taskCategories } from './features/plans/task-fields';
+import { clients, taskCategories } from './features/plans/task-fields';
 import {
   cacheSavedDraft,
   createDraft,
@@ -46,16 +34,17 @@ import {
   loadDraft,
   parseDraft,
   stable,
-  taskSummary,
   type Draft,
   type Step,
   type Tab,
   type WorkbenchPlan,
 } from './features/plans/plan-draft';
 import { useContextMenu } from './ContextMenu';
+import TaskQueueView from './features/plans/TaskQueueView';
+import TaskInspectorView from './features/plans/TaskInspectorView';
+import TaskTableSettings from './features/plans/TaskTableSettings';
 import './plan-workbench.css';
 import SchedulePanel from './SchedulePanel';
-import DeviceSelectionList from './DeviceSelectionList';
 
 type Task = Plan['tasks'][number];
 export type PlanEditorCommand = {
@@ -685,476 +674,64 @@ export default function PlanEditor({
           role="tabpanel"
           aria-labelledby="wb-tab-tasks"
         >
-          <aside className="wb-queue" aria-label="任务顺序">
-            <div className="wb-queue-heading">
-              <h2>任务顺序</h2>
-              <span>{draft.steps.length} / 30</span>
-            </div>
-            <ol className="wb-step-list editor-steps">
-              {draft.steps.map((entry, index) => (
-                <li
-                  key={entry.key}
-                  {...contextMenu('任务编辑菜单', [
-                    { label: '编辑任务', action: () => selectTask(index) },
-                    {
-                      label: taskEnabled(entry.task) ? '停用任务' : '启用任务',
-                      action: () => setEnabled(index, !taskEnabled(entry.task)),
-                    },
-                    {
-                      label: '上移任务',
-                      disabled: index === 0,
-                      action: () => reorder(index, index - 1),
-                    },
-                    {
-                      label: '下移任务',
-                      disabled: index === draft.steps.length - 1,
-                      action: () => reorder(index, index + 1),
-                    },
-                    {
-                      label: '复制任务',
-                      disabled: draft.steps.length >= 30,
-                      action: () => duplicateTask(index),
-                    },
-                    { label: '删除任务', danger: true, action: () => deleteTask(index) },
-                  ])}
-                  draggable
-                  onDragStart={() => setDragKey(entry.key)}
-                  onDragEnd={() => setDragKey(null)}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    const from = draft.steps.findIndex((item) => item.key === dragKey);
-                    if (from >= 0) reorder(from, index);
-                    setDragKey(null);
-                  }}
-                  className={`${index === selected ? 'selected' : ''} ${!taskEnabled(entry.task) ? 'wb-disabled-step' : ''} ${dragKey === entry.key ? 'wb-dragging' : ''}`}
-                >
-                  <GripVertical className="wb-grip" size={14} aria-hidden="true" />
-                  <input
-                    type="checkbox"
-                    aria-label={`启用第 ${index + 1} 条任务`}
-                    checked={taskEnabled(entry.task)}
-                    onChange={(event) => setEnabled(index, event.target.checked)}
-                  />
-                  <button
-                    className="wb-step-select"
-                    aria-label={`设置第 ${index + 1} 条${taskLabels[entry.task.type] || entry.task.type}`}
-                    aria-current={index === selected ? 'step' : undefined}
-                    onClick={() => selectTask(index)}
-                    onKeyDown={(event) => {
-                      if (event.altKey && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
-                        event.preventDefault();
-                        reorder(index, index + (event.key === 'ArrowUp' ? -1 : 1));
-                      }
-                    }}
-                  >
-                    <span className="wb-step-number">{index + 1}</span>
-                    <span className="wb-step-copy">
-                      <strong>{taskLabels[entry.task.type] || entry.task.type}</strong>
-                      <small>{taskSummary(entry.task)}</small>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-            <div className="wb-add-task">
-              <div className="wb-type-search">
-                <Search size={14} />
-                <input
-                  aria-label="搜索任务类型"
-                  placeholder="搜索任务类型"
-                  value={typeSearch}
-                  onChange={(event) => setTypeSearch(event.target.value)}
-                />
-              </div>
-              <label className="wb-sr-only" htmlFor="task-type">
-                添加任务类型
-              </label>
-              <Select
-                id="task-type"
-                className="text-input"
-                value={
-                  filteredTypes.some(([type]) => type === addType)
-                    ? addType
-                    : filteredTypes[0]?.[0] || ''
-                }
-                onChange={(event) => setAddType(event.target.value as Task['type'])}
-              >
-                {filteredTypes.map(([type, label]) => (
-                  <option key={type} value={type}>
-                    {taskCategories[type]} · {label}
-                  </option>
-                ))}
-              </Select>
-              <button
-                className="button secondary"
-                disabled={draft.steps.length >= 30 || !filteredTypes.length}
-                onClick={addTask}
-              >
-                <Plus size={15} />
-                添加任务
-              </button>
-              <small>
-                {draft.steps.filter((entry) => taskEnabled(entry.task)).length} 项已启用 ·
-                拖动或使用排序按钮调整
-              </small>
-            </div>
-          </aside>
-          <section className="wb-inspector" aria-label="单项任务设置">
-            {step ? (
-              <>
-                <div className="wb-inspector-header">
-                  <div>
-                    <button className="wb-mobile-back" onClick={() => setMobileDetail(false)}>
-                      <ArrowLeft size={15} />
-                      任务列表
-                    </button>
-                    <h2>{taskLabels[step.task.type] || step.task.type}</h2>
-                    <p>第 {selected + 1} 条任务 · 独立设置</p>
-                  </div>
-                  <div className="wb-step-tools">
-                    <button
-                      className="icon-button"
-                      aria-label="上移任务"
-                      title="上移任务（Alt ↑）"
-                      disabled={selected === 0}
-                      onClick={() => reorder(selected, selected - 1)}
-                    >
-                      <ArrowUp size={16} />
-                    </button>
-                    <button
-                      className="icon-button"
-                      aria-label="下移任务"
-                      title="下移任务（Alt ↓）"
-                      disabled={selected === draft.steps.length - 1}
-                      onClick={() => reorder(selected, selected + 1)}
-                    >
-                      <ArrowDown size={16} />
-                    </button>
-                    <button
-                      className="icon-button"
-                      aria-label="复制任务"
-                      title="复制任务"
-                      disabled={draft.steps.length >= 30}
-                      onClick={() => duplicateTask(selected)}
-                    >
-                      <Copy size={16} />
-                    </button>
-                    <button
-                      className="icon-button danger-hover"
-                      aria-label="删除任务"
-                      title="删除任务"
-                      onClick={() => deleteTask(selected)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-                <div className="wb-field-search">
-                  <Search size={15} />
-                  <input
-                    aria-label="搜索当前任务设置"
-                    placeholder="查找当前任务设置"
-                    value={fieldSearch}
-                    onChange={(event) => setFieldSearch(event.target.value)}
-                  />
-                  {fieldSearch && (
-                    <button
-                      className="icon-button"
-                      aria-label="清除任务设置搜索"
-                      onClick={() => setFieldSearch('')}
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-                <fieldset className="wb-fieldset task-fields" disabled={!validJson}>
-                  {fieldGroups(step.task.type).map((group) => {
-                    const visible = group.fields.filter(
-                      (field) =>
-                        (step.task.type !== 'Infrast' ||
-                          !['filename', 'plan_index'].includes(field.key) ||
-                          Number(step.task.params.mode) === 10000) &&
-                        (!fieldSearch ||
-                          `${field.label} ${field.key} ${field.hint || ''}`
-                            .toLowerCase()
-                            .includes(fieldSearch.toLowerCase())),
-                    );
-                    return (
-                      !!visible.length && (
-                        <FieldSection
-                          key={`${step.key}-${group.title}`}
-                          title={group.title}
-                          expanded={group.expanded || !!fieldSearch}
-                          summary={`${group.fields.length} 项设置`}
-                        >
-                          <div className="wb-fields">
-                            {visible.map((field) => (
-                              <TaskParameterField
-                                key={step.key + field.key}
-                                field={field}
-                                params={step.task.params}
-                                onChange={setParams}
-                                clientType={taskClient}
-                              />
-                            ))}
-                          </div>
-                          {group.title === '消耗上限' && (
-                            <p className="wb-helper">
-                              <ShieldCheck size={14} />
-                              {consumableSummary}
-                            </p>
-                          )}
-                        </FieldSection>
-                      )
-                    );
-                  })}
-                </fieldset>
-                {fieldSearch &&
-                  !fields[step.task.type]?.some((field) =>
-                    `${field.label} ${field.key} ${field.hint || ''}`
-                      .toLowerCase()
-                      .includes(fieldSearch.toLowerCase()),
-                  ) && <p className="wb-helper">没有匹配的表单项，可清除搜索或检查高级参数。</p>}
-                {!validJson && (
-                  <p role="alert" className="wb-inline-error">
-                    请先修正高级参数中的 JSON，再使用表单。
-                  </p>
-                )}
-                {['Copilot', 'SSSCopilot', 'ParadoxCopilot'].includes(step.task.type) && (
-                  <div className="wb-task-help">
-                    <Info size={17} />
-                    <div>
-                      <p>此旧任务继续兼容。新作业请在作业中心管理，复制不会删除或修改原任务。</p>
-                      {plan !== 'new' && !unsaved && onCopyCopilot && (
-                        <button
-                          className="button secondary"
-                          disabled={dirty || saving || starting}
-                          title={dirty ? '等待自动保存完成后复制' : undefined}
-                          onClick={() => onCopyCopilot(draft.id, selected)}
-                        >
-                          复制到作业库
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {step.task.type === 'OperProgress' && (
-                  <div className="wb-task-help">
-                    <Info size={17} />
-                    <p>
-                      干员养成会执行精英化、技能升级与专精并消耗材料。在高级参数的 plans
-                      数组填写目标，执行前逐项核对。
-                    </p>
-                  </div>
-                )}
-                {!fields[step.task.type]?.length && step.task.type !== 'OperProgress' && (
-                  <div className="wb-task-help">
-                    <FileText size={17} />
-                    <p>识别使用核心默认参数。结果可在运行事件中查看；专用结果与导出仍待接入。</p>
-                  </div>
-                )}
-                {step.task.type === 'Recruit' && (
-                  <p className="wb-helper">
-                    次数为 0 时仅识别标签。当前核心无法保证加急次数上限，加急请求会被策略拒绝。
-                  </p>
-                )}
-                {step.task.type === 'StartUp' && (
-                  <FieldSection
-                    key={`${step.key}-connection`}
-                    title="执行设备"
-                    expanded
-                    summary={syncDevice?.name || '尚未选择设备'}
-                  >
-                    <p className="wb-helper">
-                      {draft.deviceIds.length
-                        ? `本表绑定 ${draft.deviceIds.length} 台设备，当前查看：${syncDevice?.name || '设备暂不可用'}`
-                        : `使用底栏所选设备：${syncDevice?.name || '尚未选择'}`}
-                      {syncDevice ? `（${syncDevice.address}）` : ''}
-                    </p>
-                    <p className="wb-helper">
-                      开始唤醒负责启动游戏与切换账号。请先在模拟器中启动实例并连接设备；ADB、触控与截图统一在设备页配置。
-                    </p>
-                    {onOpenDeviceSettings && (
-                      <button
-                        className="button secondary"
-                        type="button"
-                        onClick={() => onOpenDeviceSettings(contextDeviceId)}
-                      >
-                        管理设备连接
-                      </button>
-                    )}
-                  </FieldSection>
-                )}
-                {step.task.type === 'Mall' && (
-                  <p className="wb-helper">
-                    会客室信息板收取信用、线索交流与赠送线索，请在「基建换班 → 信用与线索」中设置。
-                  </p>
-                )}
-                {step.task.type === 'UserDataUpdate' && (
-                  <div className="wb-sync-times" aria-label="数据同步状态">
-                    <span>设备：{syncDevice?.name || '请绑定或选择设备'}</span>
-                    <span>
-                      干员上次同步：
-                      {syncDevice?.dataSync?.operatorsAt
-                        ? new Date(syncDevice.dataSync.operatorsAt).toLocaleString('zh-CN')
-                        : '暂无成功记录'}
-                    </span>
-                    <span>
-                      仓库上次同步：
-                      {syncDevice?.dataSync?.depotAt
-                        ? new Date(syncDevice.dataSync.depotAt).toLocaleString('zh-CN')
-                        : '暂无成功记录'}
-                    </span>
-                    <span>
-                      按游戏客户端时区在凌晨 4 点换日，周一换周；已成功同步的项目在本周期内跳过。
-                    </span>
-                  </div>
-                )}
-                {step.task.type === 'SingleStep' && (
-                  <p className="wb-helper">
-                    在高级参数的 details 配置动作；战斗动作使用 details.actions
-                    数组，完成后仍需观察验证。
-                  </p>
-                )}
-                <details
-                  className="wb-advanced advanced-params"
-                  open={advanced[step.key] || !validJson}
-                  onToggle={(event) => {
-                    const open = event.currentTarget.open;
-                    setAdvanced((previous) =>
-                      previous[step.key] === open ? previous : { ...previous, [step.key]: open },
-                    );
-                  }}
-                >
-                  <summary>
-                    高级参数 <span>完整 MaaCore JSON</span>
-                  </summary>
-                  <p>补充未列出的上游字段；保存时完整保留，并校验参数和消耗。</p>
-                  <label className="field-label" htmlFor="task-json">
-                    任务参数 JSON
-                  </label>
-                  <textarea
-                    id="task-json"
-                    spellCheck={false}
-                    value={step.json}
-                    onChange={(event) => setJson(event.target.value)}
-                  />
-                </details>
-                <p className="wb-inspector-footnote">修改后自动保存，用于下次执行。</p>
-              </>
-            ) : (
-              <div className="wb-empty">
-                <ListChecks size={30} />
-                <h2>添加第一条任务</h2>
-                <p>从任务目录选择要执行的能力。</p>
-              </div>
-            )}
-          </section>
+          <TaskQueueView
+            steps={draft.steps}
+            selected={selected}
+            contextMenu={contextMenu}
+            onSelect={selectTask}
+            onToggle={setEnabled}
+            onReorder={reorder}
+            onDuplicate={duplicateTask}
+            onDelete={deleteTask}
+            dragKey={dragKey}
+            onDragKey={setDragKey}
+            typeSearch={typeSearch}
+            onTypeSearch={setTypeSearch}
+            filteredTypes={filteredTypes}
+            addType={addType}
+            onAddType={(type) => setAddType(type as Task['type'])}
+            onAdd={addTask}
+          />
+          <TaskInspectorView
+            step={step}
+            draft={draft}
+            selected={selected}
+            plan={plan}
+            unsaved={unsaved}
+            dirty={dirty}
+            saving={saving}
+            starting={starting}
+            fieldSearch={fieldSearch}
+            setFieldSearch={setFieldSearch}
+            validJson={validJson}
+            advanced={advanced}
+            setAdvanced={setAdvanced}
+            setJson={setJson}
+            setParams={setParams}
+            taskClient={taskClient}
+            consumableSummary={consumableSummary}
+            syncDevice={syncDevice}
+            contextDeviceId={contextDeviceId}
+            onOpenDeviceSettings={onOpenDeviceSettings}
+            onCopyCopilot={onCopyCopilot}
+            setMobileDetail={setMobileDetail}
+            reorder={reorder}
+            duplicateTask={duplicateTask}
+            deleteTask={deleteTask}
+          />
         </div>
       )}
       {tab === 'settings' && (
-        <div
-          className="wb-table-settings"
-          id="wb-panel-settings"
-          role="tabpanel"
-          aria-labelledby="wb-tab-settings"
-        >
-          <div className="wb-settings-index">
-            <a href="#wb-basic">基本信息</a>
-            <a href="#wb-device">设备绑定</a>
-            <a href="#wb-consumption">消耗汇总</a>
-            <a href="#wb-manage">任务表管理</a>
-          </div>
-          <div className="wb-settings-form">
-            <section id="wb-basic">
-              <h2>基本信息</h2>
-              <div className="wb-fields">
-                <label className="param-field">
-                  <span className="field-label">任务表名称</span>
-                  <input
-                    className="text-input"
-                    aria-label="任务表名称"
-                    maxLength={80}
-                    placeholder="例如：晚间日常"
-                    value={draft.name}
-                    onChange={(event) => patch({ name: event.target.value })}
-                  />
-                </label>
-                <label className="param-field wide">
-                  <span className="field-label">说明</span>
-                  <textarea
-                    className="text-input wb-description"
-                    aria-label="任务表说明"
-                    maxLength={500}
-                    placeholder="记录这张表的用途"
-                    value={draft.description}
-                    onChange={(event) => patch({ description: event.target.value })}
-                  />
-                </label>
-              </div>
-            </section>
-            <section id="wb-device">
-              <h2>设备绑定</h2>
-              <DeviceSelectionList
-                ariaLabel="绑定设备"
-                items={[
-                  ...devices,
-                  ...draft.deviceIds
-                    .filter((id) => !devices.some((device) => device.id === id))
-                    .map((id) => ({ id, name: id, state: 'missing' as const })),
-                ]}
-                selectedIds={draft.deviceIds}
-                selectedLabel="已绑定"
-                checkboxLabel={(device) => `绑定设备${device.name}`}
-                maxSelected={100}
-                emptyMessage="暂无设备，请先在设备页添加。"
-                onChange={(deviceIds) => patch({ deviceIds })}
-              />
-              {draft.deviceIds.length > 0 && (
-                <div className="wb-device-actions">
-                  <button
-                    className="button secondary"
-                    type="button"
-                    onClick={() => patch({ deviceIds: [] })}
-                  >
-                    解除全部绑定
-                  </button>
-                </div>
-              )}
-              <p className="wb-helper">
-                一张任务表可绑定多台设备，一台设备也可绑定多张任务表；绑定不占用设备。运行时可选择绑定设备，未绑定时可临时选择任意设备，同一设备同时只执行一项操作。切换底栏设备不会改写绑定。
-              </p>
-              <p className="wb-helper">
-                所有绑定设备共用本表的任务、游戏客户端和账号设置；每台设备独立计算本次执行的消耗上限。需要不同配置时请复制任务表。
-              </p>
-            </section>
-            <section id="wb-consumption">
-              <h2>消耗汇总</h2>
-              <p className="wb-helper">
-                <ShieldCheck size={14} />
-                {consumableSummary}
-              </p>
-              <p className="wb-helper">
-                上限由本表已启用的自动作战任务分别设置，停用的任务不计入。请在任务编排中调整各项理智药与源石上限；默认均为
-                0。
-              </p>
-            </section>
-            <section id="wb-manage">
-              <h2>任务表管理</h2>
-              <div className="wb-management-actions">
-                <button className="button secondary" onClick={exportPlan}>
-                  <FileText size={15} />
-                  导出任务表
-                </button>
-                <button className="button secondary" disabled={!dirty} onClick={revert}>
-                  <RotateCcw size={15} />
-                  {plan === 'new' ? '恢复初始配置' : '恢复已保存配置'}
-                </button>
-              </div>
-            </section>
-          </div>
-        </div>
+        <TaskTableSettings
+          draft={draft}
+          devices={devices}
+          patch={patch}
+          consumableSummary={consumableSummary}
+          plan={plan}
+          dirty={dirty}
+          onExport={exportPlan}
+          onRevert={revert}
+        />
       )}
       {tab === 'schedule' && (
         <div id="wb-panel-schedule" role="tabpanel" aria-labelledby="wb-tab-schedule">
@@ -1179,35 +756,5 @@ export default function PlanEditor({
         </div>
       )}
     </section>
-  );
-}
-
-function FieldSection({
-  title,
-  expanded,
-  summary,
-  children,
-}: {
-  title: string;
-  expanded: boolean;
-  summary: string;
-  children: ReactNode;
-}) {
-  const [open, setOpen] = useState(expanded);
-  useEffect(() => {
-    if (expanded) setOpen(true);
-  }, [expanded]);
-  return (
-    <details
-      className="wb-field-section"
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary>
-        <span>{title}</span>
-        <small>{!open && summary}</small>
-      </summary>
-      {children}
-    </details>
   );
 }
