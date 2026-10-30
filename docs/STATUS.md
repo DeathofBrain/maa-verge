@@ -1268,7 +1268,8 @@
 - 已退役 `styles.css` 的 `.toggle` / `.segmented` / `.pill`，`Select` 与 `ContextMenu` 已迁入 `kit/`；其遗留样式表因类名不是 `mv-*` 暂留 `src/`。
 - 测试：Playwright 收集由 **249 项降至 246 项**；三条白名单用例合并进 `task-center` 与 `autosave-context-menu`，新增 `tests/ui/fixtures/navigation.ts` 统一导航与类型化快照读取。定向验证：设置/设备/监控 **33/33**、弹层相关 **56/56**、任务编辑器 **33/33**、作业中心 **35/35**、多数 App 相关 **37/37** 通过。
 - 最终验证（Windows x64 / Microsoft Edge 146，隔离合成夹具）：`tsc -p apps/desktop --noEmit`、`check-kit-css` 单元与门禁、`pnpm run check:app`、`pnpm --filter @maaverge/desktop build` 全部通过；全量 Playwright **246/246 通过**（4 workers，4.3 分钟），用例数由基线 249 减少 3 条（白名单合并），无新增 skip。
-- 本轮未执行真实设备、模型、下载或发布操作；未重新执行截图矩阵、原生 WebView、macOS/Linux 与安装包验收。`Select`/`ContextMenu` 已迁入 `kit/`，其遗留 `select.css`/`context-menu.css` 因类名不是 `mv-*` 暂留 `src/`；新增 kit 样式均写入 `kit.css`。
+- 人工截图抽查（合成夹具，非完整矩阵）：1440×900 浅色、1280×800 深色、390×844 窄窗下的主页、设置、作业中心与任务表详情抽屉；`body` 与 `.main-content` 均无横向溢出，窄窗抽屉保留 20px 边距且不遮挡底栏；未发现遮挡或对齐异常。日志抽屉、右键菜单与全部表单状态未逐一截图。
+- 本轮未执行真实设备、模型、下载或发布操作；未重新执行原生 WebView、macOS/Linux 与安装包验收。`Select`/`ContextMenu` 已迁入 `kit/`，其遗留 `select.css`/`context-menu.css` 因类名不是 `mv-*` 暂留 `src/`；新增 kit 样式均写入 `kit.css`。
 
 ## 尚未实现及边界
 
