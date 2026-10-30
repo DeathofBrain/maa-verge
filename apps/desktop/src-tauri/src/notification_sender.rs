@@ -3,50 +3,153 @@ use std::sync::OnceLock;
 use tauri::{AppHandle, Manager};
 
 const APPLICATION_NAME: &str = "Maa Verge";
-static IDENTITY: OnceLock<Result<(), String>> = OnceLock::new();
+struct Identity {
+    #[cfg(windows)]
+    identifier: String,
+    #[cfg(not(target_os = "macos"))]
+    icon: std::path::PathBuf,
+}
+static IDENTITY: OnceLock<Result<Identity, String>> = OnceLock::new();
 
+#[cfg(not(windows))]
 fn notification(identifier: &str, title: &str, body: &str) -> notify_rust::Notification {
     let mut notice = notify_rust::Notification::new();
     notice.appname(APPLICATION_NAME).summary(title).body(body);
-    #[cfg(windows)]
-    notice.app_id(identifier);
-    #[cfg(not(windows))]
     let _ = identifier;
     notice
 }
 
-fn prepare_identity(app: &AppHandle) -> Result<(), String> {
+#[cfg(not(target_os = "macos"))]
+fn cache_icon(directory: &std::path::Path, bytes: &[u8]) -> std::io::Result<std::path::PathBuf> {
+    use std::fs::{self, OpenOptions};
+    use std::hash::{DefaultHasher, Hash, Hasher};
+    use std::io::Write;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let mut hash = DefaultHasher::new();
+    bytes.hash(&mut hash);
+    // Keep immutable files outside the install/config roots: the OS can read
+    // queued notifications after an update, config switch or application exit.
+    let icon = directory.join(format!("maa-verge-{:016x}.png", hash.finish()));
+    if fs::read(&icon).is_ok_and(|cached| cached == bytes) {
+        return Ok(icon);
+    }
+    fs::create_dir_all(directory)?;
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let temporary = directory.join(format!(".icon-{}-{nonce}.tmp", std::process::id()));
+    let result = (|| {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)?;
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        drop(file);
+        match fs::rename(&temporary, &icon) {
+            Ok(()) => Ok(()),
+            // Another process may have published the same embedded asset.
+            Err(_) if fs::read(&icon).is_ok_and(|cached| cached == bytes) => Ok(()),
+            Err(error) => Err(error),
+        }
+    })();
+    let _ = fs::remove_file(temporary);
+    result?;
+    Ok(icon)
+}
+
+fn prepare_identity(app: &AppHandle) -> Result<&'static Identity, String> {
     IDENTITY
         .get_or_init(|| {
+            #[cfg(not(target_os = "macos"))]
+            let directory = app
+                .path()
+                .app_local_data_dir()
+                .map_err(|error| error.to_string())?
+                .join("notification-icons");
+            #[cfg(not(target_os = "macos"))]
+            let icon = cache_icon(&directory, include_bytes!("../icons/256x256.png"))
+                .map_err(|error| format!("无法准备 Maa Verge 通知图标：{error}"))?;
             #[cfg(windows)]
-            windows_identity::register(
-                &app.config().identifier,
-                APPLICATION_NAME,
-                &std::env::current_exe().map_err(|error| error.to_string())?,
-            )?;
+            // Windows caches attribution assets for an AUMID. Use one stable
+            // notification identity whose first registration has a real image,
+            // instead of reusing the old app identity cached with an EXE icon.
+            let identifier = format!("{}.notifications", app.config().identifier);
+            #[cfg(windows)]
+            {
+                // The attribution area is controlled by the sender identity,
+                // independently of the larger appLogoOverride content image.
+                let sender_icon = cache_icon(&directory, include_bytes!("../icons/32x32.png"))
+                    .map_err(|error| format!("无法准备 Maa Verge 发送者图标：{error}"))?;
+                windows_identity::register(&identifier, APPLICATION_NAME, &sender_icon)?;
+            }
             #[cfg(target_os = "macos")]
             notify_rust::set_application(&app.config().identifier).map_err(|error| {
                 format!("无法使用 Maa Verge 应用身份发送通知，请使用应用包启动：{error}")
             })?;
-            #[cfg(not(any(windows, target_os = "macos")))]
-            let _ = app;
-            Ok(())
+            Ok(Identity {
+                #[cfg(windows)]
+                identifier,
+                #[cfg(not(target_os = "macos"))]
+                icon,
+            })
         })
-        .clone()
+        .as_ref()
+        .map_err(Clone::clone)
 }
 
 pub fn show(app: &AppHandle, title: &str, body: &str) -> Result<(), String> {
-    prepare_identity(app)?;
+    let identity = prepare_identity(app)?;
     if app
         .try_state::<crate::DesktopLifecycle>()
         .is_some_and(|lifecycle| lifecycle.exiting())
     {
         return Err("应用正在退出，已停止发送通知".into());
     }
-    notification(&app.config().identifier, title, body)
-        .show()
-        .map(|_handle| ())
-        .map_err(|error| error.to_string())
+    #[cfg(windows)]
+    {
+        use tauri_winrt_notification::{Duration, IconCrop, Toast};
+        // notify-rust's Windows adapter ignores Notification::icon. Set the
+        // app logo explicitly, in addition to the sender's registered IconUri.
+        // Toast::icon prepends file:/// itself; escape URI delimiters while
+        // keeping the registry's IconUri as the original filesystem path.
+        let icon_uri_path = identity
+            .icon
+            .to_string_lossy()
+            .replace('%', "%25")
+            .replace('#', "%23");
+        Toast::new(&identity.identifier)
+            .title(title)
+            .text1(body)
+            .icon(
+                std::path::Path::new(&icon_uri_path),
+                IconCrop::Square,
+                APPLICATION_NAME,
+            )
+            .sound(None)
+            .duration(Duration::Short)
+            .show()
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(windows))]
+    {
+        let notice = notification(&app.config().identifier, title, body);
+        #[cfg(not(target_os = "macos"))]
+        let notice = {
+            let mut notice = notice;
+            notice.icon(&identity.icon.to_string_lossy());
+            notice
+        };
+        // macOS gets its icon from the application bundle selected above.
+        #[cfg(target_os = "macos")]
+        let _ = identity;
+        notice
+            .show()
+            .map(|_handle| ())
+            .map_err(|error| error.to_string())
+    }
 }
 
 #[cfg(windows)]
@@ -102,21 +205,21 @@ mod windows_identity {
         value.encode_wide().chain(std::iter::once(0)).collect()
     }
     impl Key {
-        fn string(&self, name: &str, value: &std::ffi::OsStr) -> Result<(), String> {
+        fn string(&self, name: &str, value: &std::ffi::OsStr, kind: u32) -> Result<(), String> {
             let name = terminated(name.as_ref());
             let value = terminated(value);
             let size = u32::try_from(value.len() * std::mem::size_of::<u16>())
                 .map_err(|_| "通知身份路径过长")?;
             // SAFETY: Owned key, valid NUL-terminated UTF-16 buffers and exact
-            // byte count; REG_SZ copies the value before returning.
+            // byte count; the registry copies the value before returning.
             result(unsafe {
-                RegSetValueExW(self.0, name.as_ptr(), 0, 1, value.as_ptr().cast(), size)
+                RegSetValueExW(self.0, name.as_ptr(), 0, kind, value.as_ptr().cast(), size)
             })
         }
     }
-    pub fn register(identifier: &str, name: &str, executable: &Path) -> Result<(), String> {
-        // This fixed app ID matches Tauri's installed shortcut. Registration in
-        // HKCU also gives development and portable builds their own sender name.
+    pub fn register(identifier: &str, name: &str, icon: &Path) -> Result<(), String> {
+        // Deriving a stable notification ID from the Tauri identifier keeps
+        // development checkouts isolated and gives portable builds a sender.
         let subkey =
             terminated(format!("Software\\Classes\\AppUserModelId\\{identifier}").as_ref());
         let mut handle = std::ptr::null_mut();
@@ -136,12 +239,17 @@ mod windows_identity {
             )
         })?;
         let key = Key(handle);
-        key.string("DisplayName", name.as_ref())?;
-        key.string("IconUri", executable.as_os_str())
+        // Match Windows App SDK's REG_EXPAND_SZ display assets. Keep literal
+        // percent signs in paths from being interpreted as environment names.
+        let icon = icon.as_os_str();
+        let expand = !icon.to_string_lossy().contains('%');
+        key.string("DisplayName", name.as_ref(), 2)?;
+        key.string("IconBackgroundColor", "00000000".as_ref(), 1)?;
+        key.string("IconUri", icon, if expand { 2 } else { 1 })
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(windows)))]
 mod tests {
     use super::*;
 
