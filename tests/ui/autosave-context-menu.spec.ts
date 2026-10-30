@@ -1,7 +1,11 @@
 import type { Page } from '@playwright/test';
 import type { Snapshot } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
-import { navigate as nav, readSnapshot as snapshot } from './fixtures/navigation';
+import {
+  closeTaskDetail as closeDetail,
+  navigate as nav,
+  readSnapshot as snapshot,
+} from './fixtures/navigation';
 
 const wb = (page: Page) => page.getByRole('region', { name: '任务表工作台', exact: true });
 const menu = (page: Page) => page.getByRole('menu');

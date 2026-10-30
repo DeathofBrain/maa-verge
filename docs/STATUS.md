@@ -1259,6 +1259,15 @@
 - Playwright 默认 Chromium 未安装（`chromium_headless_shell-1248` 缺失），按项目技能改用 `MAAVERGE_TEST_BROWSER=msedge`。全量基线 **243 通过、6 失败**（3.6 分钟，14 workers）：`app-updates.spec.ts:174`、`copilot-attribution.spec.ts:31`、`component-readiness.spec.ts:108`、`component-updates.spec.ts:173`、`copilot-center.spec.ts:56`、`copilot-operators.spec.ts:157`，失败均为等待既有界面元素或文案超时，出现在本轮未改动的界面；按既有失败记录，后续迁移不得以这些用例的通过作为验收依据。
 - 本轮未启动真实服务、未连接设备、未调用模型；截图为夹具产物，未提交。
 
+### 本次前端统一化组件套装收尾（Windows x64，2026-10-31）
+
+- 按执行手册完成基线、文档校正、页面类型解耦、Tabs/行组件/Drawer 原语、设置/设备/工具箱/执行监控采用、四个抽屉与删除确认收编、任务编辑器纯逻辑与视图拆分、设置页迁移、测试白名单合并、公共组件迁移与全局类退役。每批独立提交，提交信息为 Conventional Commits。
+- 任务编辑器：`features/plans/task-fields.ts`、`plan-draft.ts`、`TaskQueueView.tsx`、`TaskInspectorView.tsx`、`TaskTableSettings.tsx`；保存协调仍由 `PlanEditor` 单点持有。
+- 作业中心：`features/copilot/useCopilotWorkspace.ts`、`CopilotRating.tsx`、`CopilotCompatibility.tsx`、`CopilotSettingsView.tsx`；库列表、导入预览、队列与监控视图尚未拆出。
+- App：`features/app/navigation-model.ts`、`AppNavigation.tsx`、`AgentPage.tsx`、`HistoryPage.tsx`、`RunDock.tsx`；快照刷新与计划写入协调仍留在 `App.tsx`。
+- 测试：Playwright 收集由 **249 项降至 246 项**；三条白名单用例合并进 `task-center` 与 `autosave-context-menu`，新增 `tests/ui/fixtures/navigation.ts` 统一导航与类型化快照读取。定向验证：设置/设备/监控 **33/33**、弹层相关 **56/56**、任务编辑器 **33/33**、作业中心 **35/35**、多数 App 相关 **37/37** 通过。
+- 本轮未执行真实设备、模型、下载或发布操作；截图矩阵与原生 WebView 未重新验收。全量 E2E 与 `pnpm check` 的结果以本次最终运行记录为准，不把基线通过数当作本轮通过数。
+
 ## 尚未实现及边界
 
 - 用户插件、插件宿主与插件市场尚未实现，已列入后续开发目标；[首轮调研](plugin-marketplace-research.md) 包含现状核查、候选架构与分阶段验收，具体运行时和插件 API 待验证，尚未排期。本次仅整理文档，不代表插件运行或任何平台的兼容性已通过验收。
