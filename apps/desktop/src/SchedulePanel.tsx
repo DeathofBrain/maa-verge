@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from './kit/Select';
 import { useEffect, useState } from 'react';
 import { CalendarClock, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import {

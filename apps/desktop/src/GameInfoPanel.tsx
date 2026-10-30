@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from './kit/Select';
 import { useEffect, useRef, useState } from 'react';
 import { CalendarClock, Factory, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import {
@@ -11,6 +11,7 @@ import {
 } from '@maaverge/contracts';
 import Button from './kit/Button';
 import IconButton from './kit/IconButton';
+import StatusPill from './kit/StatusPill';
 import { gameDataChanged } from './update-display';
 import './game-info.css';
 
@@ -191,7 +192,7 @@ export default function GameInfoPanel({
                 <article className="game-activity" key={activity.id}>
                   <div>
                     <strong>{activity.name}</strong>
-                    <span className="pill running">进行中</span>
+                    <StatusPill tone="running" label="进行中" />
                   </div>
                   {activity.endAt && (
                     <p>

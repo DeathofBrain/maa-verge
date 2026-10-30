@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from './kit/Select';
 import { useState } from 'react';
 import { errorMessage, rpc, type Settings, type ScreenFrame } from '@maaverge/contracts';
 import { CaptureForm } from './CaptureSettingsForm';

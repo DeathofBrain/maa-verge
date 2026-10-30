@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from './kit/Select';
 import { useState } from 'react';
 import { matchingDeviceProfile, type Settings, type Snapshot } from '@maaverge/contracts';
 import { deviceForProfile } from './device-association';

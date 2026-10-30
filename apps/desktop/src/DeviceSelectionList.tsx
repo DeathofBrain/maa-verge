@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Device } from '@maaverge/contracts';
-import Select from './Select';
+import Select from './kit/Select';
 import Button from './kit/Button';
 import SearchField from './kit/SearchField';
 import { deviceSelectionStateLabels } from './kit/labels';

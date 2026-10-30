@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import './context-menu.css';
+import '../context-menu.css';
 
 export type MenuItem = { label: string; action: () => void; disabled?: boolean; danger?: boolean };
 type Menu = { x: number; y: number; items: MenuItem[]; target: HTMLElement; label: string };

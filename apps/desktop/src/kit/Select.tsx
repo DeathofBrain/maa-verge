@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
-import './select.css';
+import '../select.css';
 
 type Option = { value: string; label: string; disabled: boolean; group?: string; index: number };
 type Props = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'multiple' | 'size'>;

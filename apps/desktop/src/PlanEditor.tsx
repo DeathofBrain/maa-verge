@@ -39,7 +39,7 @@ import {
   type Tab,
   type WorkbenchPlan,
 } from './features/plans/plan-draft';
-import { useContextMenu } from './ContextMenu';
+import { useContextMenu } from './kit/ContextMenu';
 import TaskQueueView from './features/plans/TaskQueueView';
 import TaskInspectorView from './features/plans/TaskInspectorView';
 import TaskTableSettings from './features/plans/TaskTableSettings';

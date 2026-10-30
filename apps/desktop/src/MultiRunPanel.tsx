@@ -1,6 +1,6 @@
-import Select from './Select';
+import Select from './kit/Select';
 import { runDisplayName } from './run-source';
-import { useContextMenu } from './ContextMenu';
+import { useContextMenu } from './kit/ContextMenu';
 import { useState } from 'react';
 import { Monitor, Play, Square } from 'lucide-react';
 import {

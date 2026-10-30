@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from './kit/Select';
 import { useEffect, useState } from 'react';
 import type { RpcParams } from '@maaverge/contracts';
 import StageSelector from './StageSelector';

@@ -18,7 +18,7 @@ import {
   type Run,
   type Snapshot,
 } from '@maaverge/contracts';
-import { useContextMenu, useContextMenuShow } from './ContextMenu';
+import { useContextMenu, useContextMenuShow } from './kit/ContextMenu';
 import CopilotSelectAll from './CopilotSelectAll';
 import RunTasksDialog from './RunTasksDialog';
 import TaskDetailDrawer from './TaskDetailDrawer';

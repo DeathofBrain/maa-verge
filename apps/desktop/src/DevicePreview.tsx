@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from './kit/Select';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import {
   AlertCircle,

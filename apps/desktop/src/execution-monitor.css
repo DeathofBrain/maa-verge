@@ -92,7 +92,6 @@
 .monitor-filters button:hover {
   background: var(--hover);
 }
-.monitor-filters button.selected,
 .monitor-filters button[data-selected] {
   background: var(--surface);
   border-color: var(--line);
@@ -467,12 +466,6 @@
   border-radius: 3px;
   background: var(--hover);
   max-width: 520px;
-}
-.monitor-progress i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.3s;
 }
 .monitor-device-meta {
   display: flex;

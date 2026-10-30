@@ -1,5 +1,6 @@
 import type { Settings } from '@maaverge/contracts';
 import SaveStateIndicator from './kit/SaveStateIndicator';
+import StatusPill from './kit/StatusPill';
 import { useAutoSaveDraft } from './settings-autosave';
 
 type Props = {
@@ -30,7 +31,7 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
     <section className="settings-card" aria-label="模型配置">
       <div className="settings-card-heading">
         <h2>模型连接</h2>
-        <span className="pill">尚未接入</span>
+        <StatusPill label="尚未接入" />
       </div>
       <p className="sp-help">当前 Agent 使用本地规则提案，云模型与自主托管尚未开放。</p>
       <form

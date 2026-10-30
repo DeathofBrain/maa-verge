@@ -5,7 +5,7 @@ import ReactDOM from 'react-dom/client';
 import './kit/kit.css';
 import App from './App';
 import DesktopLifecycleDialog from './DesktopLifecycle';
-import { ContextMenuProvider } from './ContextMenu';
+import { ContextMenuProvider } from './kit/ContextMenu';
 import '@fontsource-variable/noto-sans-sc/wght.css';
 import './styles.css';
 

@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from './kit/Select';
 import { Info } from 'lucide-react';
 import type { Settings } from '@maaverge/contracts';
 import Notice from './kit/Notice';

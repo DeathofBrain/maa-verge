@@ -45,7 +45,7 @@ import { DevicesPage } from './DevicesPage';
 import PlanEditor, { type PlanEditorCommand } from './PlanEditor';
 import { discardPlanDraft } from './features/plans/plan-draft';
 import { taskFieldSearch } from './features/plans/task-fields';
-import { useContextMenu } from './ContextMenu';
+import { useContextMenu } from './kit/ContextMenu';
 import ScheduleNotifications from './ScheduleNotifications';
 import { SettingsPage } from './features/settings/SettingsPage';
 import CopilotPage from './CopilotPage';
@@ -67,6 +67,8 @@ import UpdateNotifications, { useComponentDownloads } from './UpdateNotification
 import ConfirmDialog from './kit/ConfirmDialog';
 import ErrorBanner from './kit/ErrorBanner';
 import Toast from './kit/Toast';
+import FilterChips from './kit/FilterChips';
+import StatusPill from './kit/StatusPill';
 
 type Page = 'home' | 'tasks' | 'copilot' | 'tools' | 'agent' | 'history' | 'devices' | 'settings';
 type Message = { id: string; role: 'user' | 'assistant'; text: string; plan?: Plan };
@@ -969,10 +971,15 @@ export default function App() {
                   title="Agent 助手"
                   text="描述目标，检查计划，再交给任务表执行。"
                   action={
-                    <span className="pill">
-                      <ShieldCheck size={13} />
-                      审阅后执行
-                    </span>
+                    <StatusPill
+                      tone="info"
+                      label={
+                        <>
+                          <ShieldCheck size={13} />
+                          审阅后执行
+                        </>
+                      }
+                    />
                   }
                 />
                 <div className="agent-notice">
@@ -1133,23 +1140,18 @@ export default function App() {
                   }
                 />
                 <div className="history-toolbar">
-                  <div className="segmented" role="group" aria-label="筛选执行记录">
-                    {[
-                      ['all', '全部'],
-                      ['running', '执行中'],
-                      ['completed', '已完成'],
-                      ['failed', '失败'],
-                      ['stopped', '已停止'],
-                    ].map(([value, label]) => (
-                      <button
-                        className={historyFilter === value ? 'active' : ''}
-                        key={value}
-                        onClick={() => setHistoryFilter(value)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                  <FilterChips
+                    aria-label="筛选执行记录"
+                    value={historyFilter}
+                    onChange={(value) => setHistoryFilter(value)}
+                    items={[
+                      { id: 'all', label: '全部' },
+                      { id: 'running', label: '执行中' },
+                      { id: 'completed', label: '已完成' },
+                      { id: 'failed', label: '失败' },
+                      { id: 'stopped', label: '已停止' },
+                    ]}
+                  />
                   <label className="inline-search">
                     <Search size={15} />
                     <input

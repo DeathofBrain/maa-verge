@@ -1,5 +1,5 @@
 import { runDisplayName } from './run-source';
-import { useContextMenu } from './ContextMenu';
+import { useContextMenu } from './kit/ContextMenu';
 import {
   Activity,
   ArrowRight,

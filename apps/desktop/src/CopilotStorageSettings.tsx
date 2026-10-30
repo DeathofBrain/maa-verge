@@ -7,6 +7,7 @@ import {
   type Settings,
 } from '@maaverge/contracts';
 import DirectoryPicker from './kit/DirectoryPicker';
+import Switch from './kit/Switch';
 import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
 import './copilot-library-actions.css';
 import './data-settings.css';
@@ -124,16 +125,13 @@ export default function CopilotStorageSettings({ settings, busy, onSave }: Props
               删除应用保存的作业文件，导入的原始文件保留。
             </p>
           </div>
-          <button
-            className="toggle"
-            type="button"
-            role="switch"
+          <Switch
             aria-labelledby="copilot-delete-json-label"
             aria-describedby="copilot-delete-json-description"
-            aria-checked={draft.deleteJsonFiles}
+            checked={draft.deleteJsonFiles}
             disabled={disabled}
-            onClick={() =>
-              setDraft((value) => ({ ...value, deleteJsonFiles: !value.deleteJsonFiles }), 0)
+            onChange={(value) =>
+              setDraft((draftValue) => ({ ...draftValue, deleteJsonFiles: value }), 0)
             }
           />
         </div>

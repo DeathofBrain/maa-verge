@@ -192,10 +192,6 @@
   order: 0;
 }
 
-.settings-workspace .sp-update-title .pill {
-  margin-left: auto;
-}
-
 .settings-workspace .sp-channel-version {
   color: var(--text);
   margin-bottom: 8px;
@@ -288,9 +284,5 @@
 
   .settings-directory-control .button {
     margin-left: auto;
-  }
-
-  .settings-workspace .sp-update-title .pill {
-    margin-left: 0;
   }
 }

@@ -330,10 +330,6 @@
   color: var(--muted, #697587);
 }
 
-.sp-settings-search .text-input {
-  max-width: 480px;
-}
-
 .sp-settings-input {
   flex: 1;
   max-width: 480px;

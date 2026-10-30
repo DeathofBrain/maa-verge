@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from './kit/Select';
 import {
   useCallback,
   useEffect,
@@ -52,7 +52,7 @@ import {
   type RpcResult,
 } from '@maaverge/contracts';
 import type { SupportPageProps } from './app/page-types';
-import { useContextMenu } from './ContextMenu';
+import { useContextMenu } from './kit/ContextMenu';
 import CopilotOperators, { useCopilotRoster } from './CopilotOperators';
 import CopilotSetOperators from './CopilotSetOperators';
 import CopilotDifficulty from './CopilotDifficulty';

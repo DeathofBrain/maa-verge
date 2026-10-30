@@ -29,7 +29,7 @@ export { default as useNativeDialog } from './useNativeDialog';
 export { default as DirectoryPicker } from './DirectoryPicker';
 export { default as Drawer } from './Drawer';
 export { default as SaveStateIndicator } from './SaveStateIndicator';
-export { default as Select } from '../Select';
+export { default as Select } from './Select';
 export { default as SelectableRow } from './SelectableRow';
 export { default as SettingRow } from './SettingRow';
 export { default as StatusPill } from './StatusPill';

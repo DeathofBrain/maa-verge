@@ -1,5 +1,5 @@
 import { runDisplayName, runSourceLabel } from './run-source';
-import { useContextMenu, useContextMenuShow, type MenuItem } from './ContextMenu';
+import { useContextMenu, useContextMenuShow, type MenuItem } from './kit/ContextMenu';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,

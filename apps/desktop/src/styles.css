@@ -321,33 +321,6 @@ textarea.text-input {
   font-variant-numeric: tabular-nums;
 }
 
-.pill {
-  display: inline-flex;
-  gap: 5px;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 3px 7px;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.pill.running {
-  color: var(--accent);
-  border-color: transparent;
-  background: var(--accent-soft);
-}
-
-.pill.completed {
-  color: var(--success);
-}
-
-.pill.failed {
-  color: var(--danger);
-}
-
 .status-dot {
   width: 6px;
   height: 6px;
@@ -359,63 +332,6 @@ textarea.text-input {
 
 .status-dot.offline {
   background: var(--dim);
-}
-
-.toggle {
-  position: relative;
-  border: 0;
-  width: 34px;
-  height: 20px;
-  flex: none;
-  border-radius: 20px;
-  background: var(--line-strong);
-  padding: 3px;
-}
-
-.toggle:after {
-  content: '';
-  display: block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px #0002;
-  transition: transform 0.16s;
-}
-
-.toggle[aria-checked='true'],
-.toggle.on {
-  background: var(--accent);
-}
-
-.toggle[aria-checked='true']:after,
-.toggle.on:after {
-  transform: translateX(14px);
-}
-
-.segmented {
-  display: inline-flex;
-  gap: 3px;
-  padding: 3px;
-  background: var(--surface-subtle);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-
-.segmented > button {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  padding: 7px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.segmented > button.active {
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: 0 1px 4px #2027340d;
 }
 
 .spin {
@@ -1655,9 +1571,6 @@ textarea.text-input {
   .dock-message {
     max-width: 270px;
   }
-  .history-toolbar .segmented > button {
-    padding-inline: 9px;
-  }
 }
 
 @media (max-width: 760px) {
@@ -1756,14 +1669,6 @@ textarea.text-input {
   .history-toolbar {
     padding: 0 20px 20px;
   }
-  .history-toolbar .segmented {
-    max-width: 100%;
-    overflow: auto;
-  }
-  .history-toolbar .segmented > button {
-    font-size: 11px;
-    padding: 7px 9px;
-  }
   .agent-notice {
     margin: 0 20px 18px;
   }
@@ -1843,9 +1748,6 @@ textarea.text-input {
   }
   .history-toolbar {
     padding-inline: 17px;
-  }
-  .history-toolbar .segmented > button {
-    padding-inline: 8px;
   }
 }
 

@@ -1,4 +1,4 @@
-import Select from '../../Select';
+import Select from '../../kit/Select';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
@@ -52,6 +52,7 @@ import EmptyState from '../../kit/EmptyState';
 import Section from '../../kit/Section';
 import SettingRow from '../../kit/SettingRow';
 import Switch from '../../kit/Switch';
+import StatusPill from '../../kit/StatusPill';
 import { formatDate } from '../../kit/format';
 import { updateChannelLabels, updateStatusLabels } from '../../kit/labels';
 import type { SupportPageProps } from '../../app/page-types';
@@ -797,9 +798,11 @@ function UpdateSection({
         <div className="sp-update-title">
           <Icon size={19} />
           <h3>{updateChannelLabels[channel.id]}</h3>
-          <span className={`pill sp-update-state ${channel.status === 'failed' ? 'is-error' : ''}`}>
-            {status}
-          </span>
+          <StatusPill
+            className={`sp-update-state ${channel.status === 'failed' ? 'is-error' : ''}`}
+            tone={channel.status === 'failed' ? 'danger' : 'neutral'}
+            label={status}
+          />
         </div>
         <div className="channel-version sp-channel-version">
           {resourceVersionLabel(channel, resourceClient)}

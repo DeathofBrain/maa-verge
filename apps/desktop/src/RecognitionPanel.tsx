@@ -1,4 +1,4 @@
-import Select from './Select';
+import Select from './kit/Select';
 import { useEffect, useState } from 'react';
 import { Database, Download, Play, RefreshCw, Search } from 'lucide-react';
 import { errorMessage, rpc, type RpcParams, type RpcResult } from '@maaverge/contracts';

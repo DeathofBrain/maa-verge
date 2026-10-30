@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
-import Select from '../../Select';
+import Select from '../../kit/Select';
 import type { CopilotKind, CopilotOptions } from '@maaverge/contracts';
 
 export default function CopilotSettings({
