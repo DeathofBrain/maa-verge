@@ -1,7 +1,7 @@
-import type { ElementType, ReactNode } from 'react';
+import type { ElementType, HTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx';
 
-type Props = {
+type Props = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
   as?: 'article' | 'li' | 'div';
   leading?: ReactNode;
   title: ReactNode;
@@ -19,10 +19,11 @@ export default function ListRow({
   meta,
   actions,
   className,
+  ...rest
 }: Props) {
   const Tag: ElementType = as;
   return (
-    <Tag className={cx('mv-list-row', className)}>
+    <Tag {...rest} className={cx('mv-list-row', className)}>
       {leading && <span className="mv-list-row-leading">{leading}</span>}
       <span className="mv-list-row-copy">
         <strong className="mv-list-row-title">{title}</strong>

@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 import Checkbox from './Checkbox';
 import { cx } from './cx';
 
-type Props = {
+type Props = Omit<HTMLAttributes<HTMLElement>, 'title' | 'onSelect'> & {
   checked?: boolean;
   onCheckedChange?: (value: boolean) => void;
   checkboxLabel?: string;
@@ -30,9 +30,11 @@ export default function SelectableRow({
   meta,
   actions,
   className,
+  ...rest
 }: Props) {
   return (
     <article
+      {...rest}
       className={cx('mv-list-row', 'mv-selectable-row', className)}
       data-selected={selected || undefined}
     >
