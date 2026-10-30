@@ -14,7 +14,7 @@ type Props = {
   onChange: (id: string) => void;
   'aria-label': string;
   orientation?: 'horizontal' | 'vertical';
-  idPrefix?: string;
+  idPrefix: string;
   className?: string;
 };
 
@@ -34,17 +34,17 @@ export default function Tabs({
     const index = enabled.findIndex((item) => item.id === id);
     if (index < 0) return;
     const horizontal = orientation === 'horizontal';
-    let next = -1;
+    let next: number;
     if (event.key === (horizontal ? 'ArrowRight' : 'ArrowDown')) next = index + 1;
     else if (event.key === (horizontal ? 'ArrowLeft' : 'ArrowUp')) next = index - 1;
     else if (event.key === 'Home') next = 0;
     else if (event.key === 'End') next = enabled.length - 1;
-    if (next < 0) return;
+    else return;
     event.preventDefault();
     const target = enabled[(next + enabled.length) % enabled.length];
     onChange(target.id);
     list.current
-      ?.querySelector<HTMLButtonElement>(`#${CSS.escape(`${idPrefix ?? 'mv'}-tab-${target.id}`)}`)
+      ?.querySelector<HTMLButtonElement>(`#${CSS.escape(`${idPrefix}-tab-${target.id}`)}`)
       ?.focus();
   };
 
@@ -62,9 +62,9 @@ export default function Tabs({
           key={item.id}
           type="button"
           role="tab"
-          id={`${idPrefix ?? 'mv'}-tab-${item.id}`}
+          id={`${idPrefix}-tab-${item.id}`}
           aria-selected={value === item.id}
-          aria-controls={`${idPrefix ?? 'mv'}-panel-${item.id}`}
+          aria-controls={`${idPrefix}-panel-${item.id}`}
           tabIndex={value === item.id ? 0 : -1}
           disabled={item.disabled}
           className="mv-tabs-tab"
