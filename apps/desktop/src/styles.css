@@ -22,6 +22,7 @@
   --accent-soft: #eef2ff;
   --danger: #be454e;
   --danger-soft: #fff0f1;
+  --on-accent: #fff;
   --success: #248260;
   --warning: #bc8a35;
   --warning-soft: #fdf3e0;
@@ -90,6 +91,7 @@
   --accent-soft: #303b5c;
   --danger: #f18a92;
   --danger-soft: #492d38;
+  --on-accent: #17213d;
   --success: #67c3a4;
   --warning: #d8a95c;
   --warning-soft: #46361d;

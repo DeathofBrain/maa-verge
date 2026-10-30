@@ -1,5 +1,429 @@
-/*
- * Maa Verge 组件套装样式，只含 .mv-* 规则。约定由 tools/check-kit-css.mjs 强制，
- * 说明见 docs/component-kit.md：单类选择器或一层子组合器，变体与尺寸差异走 props，
- * 禁止祖先前缀、裸元素与 ID 选择器、!important 与 @import。
- */
+/* 组件套装样式表。
+ * 规则：只写 .mv-* 单类（或两端均为 mv-* 的一层子组合器）；变体与尺寸走 props；
+ * 禁止 !important、@import、ID、裸元素选择器与页面前缀。
+ * 取值策略：令牌与旧值完全相等时用令牌，否则暂留字面值（Stage 9 统一回填）。
+ * tools/check-kit-css.mjs 强制执行以上约定。 */
+
+/* Button ---------------------------------------------------------------- */
+
+.mv-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+  transition:
+    background var(--duration-2) var(--ease-out),
+    border-color var(--duration-2) var(--ease-out),
+    box-shadow var(--duration-2) var(--ease-out),
+    transform var(--duration-2) var(--ease-out);
+}
+
+.mv-button:hover:not(:disabled) {
+  background: var(--hover);
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+.mv-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.mv-button--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+.mv-button--primary:hover:not(:disabled) {
+  filter: brightness(0.94);
+  background: var(--accent);
+}
+
+.mv-button--secondary {
+  background: var(--surface);
+}
+
+.mv-button--danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger), transparent 65%);
+  background: var(--danger-soft);
+}
+
+.mv-button--text {
+  gap: 6px;
+  min-height: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+.mv-button--text:hover:not(:disabled) {
+  background: none;
+  border-color: transparent;
+  transform: none;
+}
+
+.mv-button--sm {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: var(--text-sm);
+}
+
+.mv-button-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+/* IconButton ------------------------------------------------------------ */
+
+.mv-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px;
+  flex: none;
+  transition:
+    background var(--duration-2) var(--ease-out),
+    color var(--duration-2) var(--ease-out),
+    transform var(--duration-2) var(--ease-out);
+}
+
+.mv-icon-button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.mv-icon-button--sm {
+  width: 24px;
+  height: 24px;
+  padding: 2px;
+}
+
+/* 输入类 ---------------------------------------------------------------- */
+
+.mv-input,
+.mv-textarea {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 5px;
+  padding: 8px 10px;
+  min-height: 36px;
+  max-width: 100%;
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+
+.mv-input::placeholder,
+.mv-textarea::placeholder {
+  color: var(--dim);
+}
+
+.mv-textarea {
+  resize: vertical;
+}
+
+.mv-input[data-invalid],
+.mv-textarea[data-invalid] {
+  border-color: var(--danger);
+}
+
+/* SearchField ----------------------------------------------------------- */
+
+.mv-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+  color: var(--muted);
+}
+
+.mv-search:focus-within {
+  border-color: var(--accent);
+}
+
+.mv-search-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.mv-search-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.mv-search-input::placeholder {
+  color: var(--muted);
+}
+
+/* Switch ---------------------------------------------------------------- */
+
+.mv-switch {
+  position: relative;
+  border: 0;
+  width: 34px;
+  height: 20px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--line-strong);
+  padding: 3px;
+}
+
+.mv-switch-knob {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-1);
+}
+
+.mv-switch[aria-checked='true'] {
+  background: var(--accent);
+}
+
+.mv-switch[aria-checked='true'] > .mv-switch-knob {
+  transform: translateX(14px);
+}
+
+.mv-switch--lg {
+  width: 40px;
+  height: 24px;
+}
+
+.mv-switch--lg > .mv-switch-knob {
+  width: 18px;
+  height: 18px;
+}
+
+.mv-switch--lg[aria-checked='true'] > .mv-switch-knob {
+  transform: translateX(16px);
+}
+
+/* Checkbox -------------------------------------------------------------- */
+
+.mv-checkbox {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.mv-check-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.mv-check-field > .mv-checkbox {
+  margin-top: 2px;
+}
+
+.mv-check-field-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mv-check-field-label {
+  font-size: var(--text-base);
+}
+
+.mv-check-field-description {
+  color: var(--muted);
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+
+/* Field ----------------------------------------------------------------- */
+
+.mv-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mv-field--side {
+  grid-template-columns: 125px minmax(0, 1fr);
+  align-items: start;
+}
+
+.mv-field-label {
+  color: var(--muted);
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+
+.mv-field-control {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.mv-field-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+
+.mv-field-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+
+/* Section --------------------------------------------------------------- */
+
+.mv-section-heading {
+  margin-bottom: 18px;
+}
+
+.mv-section-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.mv-section-description {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: var(--text-md);
+  line-height: 1.7;
+}
+
+.mv-section--card {
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+/* Notice ---------------------------------------------------------------- */
+
+.mv-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 12px 15px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-md);
+  line-height: 1.8;
+}
+
+.mv-notice[data-tone='warning'] {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.mv-notice[data-tone='danger'] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* PageHeading ----------------------------------------------------------- */
+
+.mv-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.mv-page-heading-copy {
+  min-width: 0;
+}
+
+.mv-page-heading-title {
+  font-size: 25px;
+  line-height: 1.35;
+  letter-spacing: -0.5px;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.mv-page-heading-text {
+  font-size: var(--text-base);
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.7;
+}
+
+.mv-page-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* EmptyState ------------------------------------------------------------ */
+
+.mv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 250px;
+  padding: 38px 24px;
+  color: var(--muted);
+}
+
+.mv-empty-icon {
+  display: inline-flex;
+  margin-bottom: 17px;
+  color: var(--muted);
+}
+
+.mv-empty-title {
+  font-size: var(--text-xl);
+  margin: 0 0 10px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.mv-empty-text {
+  font-size: var(--text-md);
+  line-height: 1.9;
+  max-width: 370px;
+  margin: 0 0 18px;
+}
+
+.mv-empty-action {
+  display: inline-flex;
+}
