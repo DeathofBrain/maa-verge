@@ -48,6 +48,8 @@ import {
   resourceVersionLabel,
   type ResourceClient,
 } from './update-display';
+import { formatDate } from './kit/format';
+import { updateChannelLabels, updateStatusLabels } from './kit/labels';
 
 export interface SupportPageProps {
   snapshot: Snapshot;
@@ -61,29 +63,6 @@ export interface SupportPageProps {
   onCreateTaskPlan: (type: Task['type'], params?: Task['params']) => void;
   searchQuery?: string;
 }
-
-const updateLabels: Record<UpdateChannel['status'], string> = {
-  idle: '等待检查',
-  checking: '正在检查',
-  available: '发现新版本',
-  downloading: '正在准备',
-  staged: '已验证，待生效',
-  waiting_idle: '等待空闲生效',
-  active: '已更新',
-  failed: '更新失败',
-};
-const channelLabels: Record<UpdateChannel['id'], string> = {
-  app: 'Maa Verge 应用',
-  core: 'MaaCore 核心',
-  resource: '游戏资源',
-};
-const formatDate = (value: string) =>
-  new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 
 function PageHeading({
   title,
@@ -306,7 +285,7 @@ export function SettingsPage({
           try {
             await rpc('updates.check', { channel });
           } catch (cause) {
-            failures.push(`${channelLabels[channel]}：${errorMessage(cause)}`);
+            failures.push(`${updateChannelLabels[channel]}：${errorMessage(cause)}`);
           }
         }
         if (failures.length) throw new Error(`部分更新检查失败：${failures.join('；')}`);
@@ -645,7 +624,7 @@ function ComponentPathForm({
         <div className="settings-directory-control">
           <input
             className="text-input"
-            aria-label={channelLabels[channel.id] + '下载目录'}
+            aria-label={updateChannelLabels[channel.id] + '下载目录'}
             value={draft.path}
             placeholder="使用默认目录"
             readOnly
@@ -870,7 +849,7 @@ function UpdateSection({
         ? channel.appInstallOnStartup === false
           ? '上次安装未完成，可重试'
           : '签名已验证，待安装'
-        : updateLabels[channel.status];
+        : updateStatusLabels[channel.status];
   const checkedAt =
     channel.checkedAt && !Number.isNaN(Date.parse(channel.checkedAt))
       ? formatDate(channel.checkedAt)
@@ -925,7 +904,7 @@ function UpdateSection({
       <div className="sp-update-main">
         <div className="sp-update-title">
           <Icon size={19} />
-          <h3>{channelLabels[channel.id]}</h3>
+          <h3>{updateChannelLabels[channel.id]}</h3>
           <span className={`pill sp-update-state ${channel.status === 'failed' ? 'is-error' : ''}`}>
             {status}
           </span>
@@ -967,12 +946,15 @@ function UpdateSection({
           </details>
         )}
         {working && (
-          <div className="sp-update-progress" aria-label={`${channelLabels[channel.id]}更新进度`}>
+          <div
+            className="sp-update-progress"
+            aria-label={`${updateChannelLabels[channel.id]}更新进度`}
+          >
             <span style={{ width: `${Math.max(0, Math.min(100, channel.progress))}%` }} />
           </div>
         )}
         {downloadSpeed && (
-          <p className="sp-help numeric" aria-label={`${channelLabels[channel.id]}下载速度`}>
+          <p className="sp-help numeric" aria-label={`${updateChannelLabels[channel.id]}下载速度`}>
             下载速度：{downloadSpeed}
           </p>
         )}

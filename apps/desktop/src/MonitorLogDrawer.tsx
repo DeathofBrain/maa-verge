@@ -4,6 +4,7 @@ import { acquireModalEffects } from './modal-effects';
 import { Check, Copy, Download, ListChecks, LoaderCircle, Terminal, Trash2, X } from 'lucide-react';
 import { errorMessage, localizeExecutionMessage, rpc, type Snapshot } from '@maaverge/contracts';
 import CopilotSelectAll from './CopilotSelectAll';
+import { formatDateTime, formatDateTimeFull } from './kit/format';
 import './monitor-log-drawer.css';
 
 type Props = {
@@ -13,27 +14,8 @@ type Props = {
   embedded?: boolean;
 };
 type LogRow = { event: Snapshot['events'][number]; deviceId: string; deviceName: string };
-const stamp = (value: string) =>
-  new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-const fullStamp = (value: string) =>
-  new Date(value).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
 const line = (row: LogRow) =>
-  `[${fullStamp(row.event.createdAt)}] ${row.deviceName} ${row.event.type} ${localizeExecutionMessage(row.event.message) || row.event.type}`;
+  `[${formatDateTimeFull(row.event.createdAt)}] ${row.deviceName} ${row.event.type} ${localizeExecutionMessage(row.event.message) || row.event.type}`;
 const removedEventIds = new Set<number>();
 
 export default function MonitorLogDrawer({
@@ -429,7 +411,7 @@ export default function MonitorLogDrawer({
 function LogContent({ row }: { row: LogRow }) {
   return (
     <>
-      <time dateTime={row.event.createdAt}>{stamp(row.event.createdAt)}</time>
+      <time dateTime={row.event.createdAt}>{formatDateTime(row.event.createdAt)}</time>
       <span className="monitor-log-device-name">{row.deviceName}</span>
       <span className="monitor-log-copy">
         <code>{row.event.type}</code>

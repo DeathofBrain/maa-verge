@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { Search } from 'lucide-react';
 import type { Device } from '@maaverge/contracts';
 import Select from './Select';
+import { deviceSelectionStateLabels } from './kit/labels';
 import './device-selection-list.css';
 
 export type DeviceSelectionItem = {
@@ -33,13 +34,6 @@ const filters = [
   ['offline', '离线'],
 ] as const;
 type Filter = (typeof filters)[number][0];
-
-const stateLabels: Record<DeviceSelectionItem['state'], string> = {
-  idle: '空闲',
-  running: '执行中',
-  offline: '离线',
-  missing: '未发现',
-};
 
 export default function DeviceSelectionList({
   items,
@@ -146,7 +140,7 @@ export default function DeviceSelectionList({
                   {item.note && <small className="device-selection-note">{item.note}</small>}
                 </span>
                 <span className={`device-selection-state is-${item.state}`}>
-                  {stateLabels[item.state]}
+                  {deviceSelectionStateLabels[item.state]}
                 </span>
               </label>
             );

@@ -4,6 +4,16 @@
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表统一从“任务”入口管理：列表 + 右侧详情抽屉保留逐任务设置和常驻运行条，执行监控为同页页签，开始执行不跳转；勾选任务表后由页头「运行」启动，每张表均可选择多台设备，已绑定表限绑定范围，未绑定表临时选择。执行监控统一列出在线与曾连接的离线设备，列表标题旁显示设备总数与执行中数量，已连接设备用绿色「已连接」标记，执行状态单独显示；点击设备后在下方查看当前任务表、作业或独立工具，再次点击收起；离线显示“已离线”，空闲与历史记录明确分开。任务表「查看执行」定位同一设备，设备卡日志及连接设置从右侧打开；底栏运行详情、日志、画面与多开执行向上展开，并通过底栏左侧设备选择器切换。支持设备多选停止及日志复制、导出和确认删除。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。六类独立工具与每日定时已接入，使用方法见 [工具箱与定时计划](toolbox-schedules.md)；独立作业中心已接入本地与 PRTS Plus 导入，完整原 MAA 兼容继续按功能矩阵验收。
 
+## 本次共享格式化与中文标签映射（macOS arm64，2026-10-30）
+
+- 新增 `apps/desktop/src/kit/format.ts` 与 `kit/labels.ts` 并从 barrel 导出：`formatDate` / `formatDateTime` / `formatDateTimeFull` / `formatDuration` / `formatElapsed`，以及执行、任务、工具作业、设备选择、更新渠道的中文状态映射；键类型取自 `@maaverge/contracts`，schema 变更即编译失败。页面从 `./kit/format`、`./kit/labels` 深导入——两个模块不 import 任何 CSS，不会扰动 Vite 的样式表合并顺序。
+- 采用方删除本地副本：`HomeDashboard.tsx`（`dateTime`、`runLabels`、`updateLabels`）、`ExecutionPage.tsx`（`dateTime`、`duration`、`runNames`、`taskNames`）、`MonitorLogDrawer.tsx`（`stamp`、`fullStamp`）、`DeviceSelectionList.tsx`（`stateLabels`）、`SupportPages.tsx`（`formatDate`、`updateLabels`、`channelLabels`）。`App.tsx` / `TasksPage` / `ExecutionMonitor` / `CopilotPage` 的采用留到各自阶段。
+- 文案合并规则：取值完全一致的 5 份执行状态映射合一为 `runStatusLabels`；`updateLabels` 的两份副本取值分歧且都未被测试耦合（设置页「更新」分类的完整表述 vs 主页更新卡片的短语），并列保留为 `updateStatusLabels` / `updateStatusShortLabels`，在 [组件套装](component-kit.md) 中标记待产品复核，**未静默改文案**。
+- `formatDateTime` 相对 `ExecutionPage` 原副本新增 `hour12: false`；已在 Chromium 夹具中核对 zh-CN 两种写法输出相同（`10/30 15:04:05`），渲染不变。`formatDate` 刻意不写 `hour12` 以保持与迁移前逐字节一致。`formatDuration`（「小时」）与 `formatElapsed`（「时」）回答不同问题，两者都保留。
+- 验证：`tsc -p apps/desktop --noEmit` 通过；`tools/check-kit-css.mjs` 门禁与 9 个门禁单测通过；修改文件 Prettier 通过；定向 spec（workspace、execution、execution-monitor、device-selection、multi-run、drawer-navigation、app-updates、component-updates、directory-picker）**71/71**（端口 15541）；Chromium 全量 E2E **249/249**（端口 15543）。
+- 人工核对渲染：用合成夹具在 1440×900 浅色与深色下截图主页、执行详情与设置更新页并读取渲染文本，确认时间戳（`10/30 20:47:21`）、时长（`0 分 0 秒`）、状态（`执行中`）、渠道名与状态（`Maa Verge 应用 | 等待检查`）与迁移前一致，`scrollWidth <= clientWidth` 无横向溢出；截图存于被忽略的 `test-results/`，未提交。
+- 未连接真实设备、调用模型或构建发行安装包；Windows/Linux 宿主与原生 WebView 仍未验收，Chromium 夹具通过不等于原生验收。下一步为第一波视觉原语（Button、Switch、SearchField、Section 等）。
+
 ## 本次设计令牌与变量缺陷修复（macOS arm64，2026-10-30）
 
 - `styles.css` 的 `:root` 与深色块补齐设计令牌：spacing（4px 基准 6 级）、radius（现有 18 种取值归并为 5 级）、typography（约 20 种字号归并为 7 级）、shadow 两级、统一焦点环 `--focus-ring`、遮罩 `--backdrop` / `--backdrop-blur`、z-index 有序标度（抽屉 1000 < 模态 1100 < Select 浮层 1200 < 右键菜单 1300 < toast 1400）、duration 3 级，以及 `--warning` / `--info` 语义色与深色值。新标度只约束 `kit.css`，页面样式在因迁移被打开时顺路收敛，不做全量回填。

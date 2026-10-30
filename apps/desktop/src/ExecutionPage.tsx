@@ -27,6 +27,8 @@ import {
 import { isCopilotRun, runDisplayName, runSourceLabel } from './run-source';
 import MaterialIcon from './MaterialIcon';
 import OperatorBadge from './OperatorBadge';
+import { formatDateTime, formatDuration } from './kit/format';
+import { runStatusLabels, runTaskStatusLabels } from './kit/labels';
 import './execution-page.css';
 
 type Props = {
@@ -34,20 +36,6 @@ type Props = {
   run?: Run;
   onRunUpdate: (run: Run) => void;
   onPrepare: () => void;
-};
-const runNames: Record<Run['status'], string> = {
-  running: '执行中',
-  completed: '已完成',
-  failed: '执行失败',
-  stopped: '已停止',
-};
-const taskNames: Record<RunTask['status'], string> = {
-  waiting: '未执行',
-  running: '执行中',
-  completed: '已完成',
-  failed: '执行失败',
-  stopped: '已停止',
-  skipped: '已跳过',
 };
 const pendingDetails = new Map<string, Promise<Run>>();
 function readRunDetail(id: string): Promise<Run> {
@@ -61,24 +49,6 @@ function readRunDetail(id: string): Promise<Run> {
   void request.then(clear, clear);
   return request;
 }
-const dateTime = (value: string) =>
-  new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-const duration = (start: string, end: string | null | undefined, now: number) => {
-  const seconds = Math.max(
-    0,
-    Math.floor(((end ? Date.parse(end) : now) - Date.parse(start)) / 1000),
-  );
-  if (!Number.isFinite(seconds)) return '—';
-  return seconds >= 3600
-    ? `${Math.floor(seconds / 3600)} 小时 ${Math.floor((seconds % 3600) / 60)} 分`
-    : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
-};
 
 export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onPrepare }: Props) {
   const [detail, setDetail] = useState<Run>();
@@ -141,7 +111,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
   const tasks = run.tasks || [];
   const completed = tasks.filter((task) => task.status === 'completed').length;
   const counts = Object.fromEntries(
-    Object.keys(taskNames).map((status) => [
+    Object.keys(runTaskStatusLabels).map((status) => [
       status,
       tasks.filter((task) => task.status === status).length,
     ]),
@@ -184,7 +154,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
           <div className="exec-eyebrow">
             <ListChecks size={14} />
             {runSourceLabel(run)}执行
-            <span className={`pill ${run.status}`}>{runNames[run.status]}</span>
+            <span className={`pill ${run.status}`}>{runStatusLabels[run.status]}</span>
           </div>
           <h1>{runDisplayName(run, snapshot.plans)}</h1>
           <p>{localizeExecutionMessage(run.message)}</p>
@@ -203,12 +173,12 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
           </span>
           <span>
             <Clock3 size={14} />
-            {duration(run.startedAt, run.finishedAt, clock)}
+            {formatDuration(run.startedAt, run.finishedAt, clock)}
           </span>
-          <span title={dateTime(run.startedAt)}>
+          <span title={formatDateTime(run.startedAt)}>
             开始于 {new Date(run.startedAt).toLocaleTimeString('zh-CN', { hour12: false })}
           </span>
-          {run.finishedAt && <span>结束于 {dateTime(run.finishedAt)}</span>}
+          {run.finishedAt && <span>结束于 {formatDateTime(run.finishedAt)}</span>}
         </div>
       </div>
       <div className="exec-layout">
@@ -244,9 +214,9 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                       <strong>
                         {index + 1}. {taskLabels[task.type] || '任务'}
                       </strong>
-                      <small>{taskNames[task.status]}</small>
+                      <small>{runTaskStatusLabels[task.status]}</small>
                       {task.startedAt && (
-                        <small>{duration(task.startedAt, task.finishedAt, clock)}</small>
+                        <small>{formatDuration(task.startedAt, task.finishedAt, clock)}</small>
                       )}
                     </span>
                   </div>
@@ -288,7 +258,9 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                       </span>
                     </div>
                     <p>
-                      {entry.status === 'completed' ? '核心流程结束' : taskNames[entry.status]}
+                      {entry.status === 'completed'
+                        ? '核心流程结束'
+                        : runTaskStatusLabels[entry.status]}
                       {entry.message && ` · ${localizeExecutionMessage(entry.message)}`}
                     </p>
                   </li>
@@ -302,11 +274,11 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
           <section className="exec-task-summary" aria-label="本次执行总览">
             <div>
               <h2>执行总览</h2>
-              <span className={`pill ${run.status}`}>{runNames[run.status]}</span>
+              <span className={`pill ${run.status}`}>{runStatusLabels[run.status]}</span>
             </div>
             <p>{localizeExecutionMessage(run.message)}</p>
             <div className="exec-outcome-counts">
-              {Object.entries(taskNames).map(
+              {Object.entries(runTaskStatusLabels).map(
                 ([status, label]) =>
                   counts[status] > 0 && (
                     <span key={status} className={status}>
@@ -317,7 +289,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                   ),
               )}
             </div>
-            {run.finishedAt && <small>结束于 {dateTime(run.finishedAt)}</small>}
+            {run.finishedAt && <small>结束于 {formatDateTime(run.finishedAt)}</small>}
           </section>
           <section className="exec-panel" aria-label="全部任务结果">
             <div className="exec-panel-heading">
@@ -338,12 +310,16 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                       <h3>
                         {task.index + 1}. {taskLabels[task.type] || '任务'}
                       </h3>
-                      <span className={`pill ${task.status}`}>{taskNames[task.status]}</span>
+                      <span className={`pill ${task.status}`}>
+                        {runTaskStatusLabels[task.status]}
+                      </span>
                       {task.startedAt && (
-                        <time>{duration(task.startedAt, task.finishedAt, clock)}</time>
+                        <time>{formatDuration(task.startedAt, task.finishedAt, clock)}</time>
                       )}
                     </div>
-                    <p>{localizeExecutionMessage(task.message) || taskNames[task.status]}</p>
+                    <p>
+                      {localizeExecutionMessage(task.message) || runTaskStatusLabels[task.status]}
+                    </p>
                     {task.drops.length > 0 && (
                       <ul className="exec-task-drop-summary">
                         {task.drops.map((item, index) => (
@@ -579,7 +555,7 @@ function ResultImages({
           />
           <figcaption>
             {artifact.taskLabel} · {artifact.label}
-            <time>{dateTime(artifact.capturedAt)}</time>
+            <time>{formatDateTime(artifact.capturedAt)}</time>
           </figcaption>
         </figure>
       ) : (

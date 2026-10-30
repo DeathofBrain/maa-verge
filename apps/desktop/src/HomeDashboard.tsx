@@ -17,15 +17,12 @@ import {
   Square,
   Terminal,
 } from 'lucide-react';
-import {
-  localizeExecutionMessage,
-  type Run,
-  type Snapshot,
-  type UpdateChannel,
-} from '@maaverge/contracts';
+import { localizeExecutionMessage, type Run, type Snapshot } from '@maaverge/contracts';
 import './home-dashboard.css';
 import GameInfoPanel from './GameInfoPanel';
 import { resourceVersionDetail, resourceVersionLabel } from './update-display';
+import { formatDate } from './kit/format';
+import { runStatusLabels, updateStatusShortLabels } from './kit/labels';
 
 type Destination = 'tasks' | 'devices' | 'settings' | 'history' | 'copilot' | 'agent';
 type Props = {
@@ -37,29 +34,6 @@ type Props = {
   onNavigate: (page: Destination) => void;
   onUpdates: () => void;
 };
-const runLabels: Record<Run['status'], string> = {
-  running: '执行中',
-  completed: '已完成',
-  failed: '执行失败',
-  stopped: '已停止',
-};
-const updateLabels: Record<UpdateChannel['status'], string> = {
-  idle: '未检查',
-  checking: '检查中',
-  available: '有更新',
-  downloading: '准备中',
-  staged: '待生效',
-  waiting_idle: '等待空闲',
-  active: '已更新',
-  failed: '更新失败',
-};
-const dateTime = (value: string) =>
-  new Date(value).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 
 export default function HomeDashboard({
   snapshot,
@@ -185,7 +159,7 @@ export default function HomeDashboard({
                     </span>
                     <span>
                       <Clock3 size={13} />
-                      开始于 {dateTime(currentRun.startedAt)}
+                      开始于 {formatDate(currentRun.startedAt)}
                     </span>
                   </div>
                   <div className="home-progress-heading">
@@ -267,8 +241,8 @@ export default function HomeDashboard({
                         <small>{localizeExecutionMessage(run.message)}</small>
                       </span>
                       <span className="home-recent-status">
-                        <span className={`pill ${run.status}`}>{runLabels[run.status]}</span>
-                        <time>{dateTime(run.startedAt)}</time>
+                        <span className={`pill ${run.status}`}>{runStatusLabels[run.status]}</span>
+                        <time>{formatDate(run.startedAt)}</time>
                       </span>
                       <ArrowRight size={14} />
                     </button>
@@ -371,7 +345,7 @@ export default function HomeDashboard({
                     >
                       {channel.id === 'app' && channel.status === 'idle'
                         ? '开发预览'
-                        : updateLabels[channel.status]}
+                        : updateStatusShortLabels[channel.status]}
                     </small>
                   </button>
                 ))}

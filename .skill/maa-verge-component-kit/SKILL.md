@@ -73,6 +73,7 @@ grep -n "组件套装样式\|^\.app-select {\|^\.sp-setting-row {\|--font-sans:"
 - CSS 需要的状态用 `data-*`，AT 需要的状态用 ARIA。不要新增 `.is-x` / `.selected` / `.active` / `.on` 之类第七种写法。
 - 可访问性契约（必填 `aria-label`、`role="switch"` 只挂 `[aria-checked='true']`、`TextField` 自身不带 label、`Tabs` 的 roving tabindex 等）逐条列在 `docs/component-kit.md`，实现前先对照。
 - **不要重写 `Select.tsx`**：它的可访问性面被 `tests/ui/fixtures/device-picker.ts` 锁死，且把菜单 portal 到 `closest('dialog,[role=dialog]') ?? document.body`，这是「弹层内 Select 能正常工作」的机制。`kit/index.ts` 只 re-export。
+- 页面使用 `kit/format.ts` / `kit/labels.ts` 时从 `./kit/format`、`./kit/labels` **深导入**：这两个模块不 import 任何 CSS，深导入不会扰动 Vite 的样式表合并顺序；barrel 会连带 `Select` 的样式表。
 
 ## 弹层
 
