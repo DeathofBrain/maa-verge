@@ -1,5 +1,3 @@
-@import './drawer-motion.css';
-
 .cp-drawer-layer {
   --cp-warning: #966800;
   position: fixed;

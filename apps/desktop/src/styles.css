@@ -382,7 +382,32 @@ textarea.text-input {
   }
 }
 
+.tc-drawer-panel,
+.side-drawer-panel,
+.monitor-log-layer > .monitor-log-panel,
+.cp-drawer-panel {
+  animation: drawer-enter 160ms ease-out;
+}
+
+@keyframes drawer-enter {
+  from {
+    transform: translateX(36px);
+    opacity: 0.65;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .tc-drawer-panel,
+  .side-drawer-panel,
+  .monitor-log-layer > .monitor-log-panel,
+  .cp-drawer-panel {
+    animation: none;
+  }
+
   *,
   *:before,
   *:after {
