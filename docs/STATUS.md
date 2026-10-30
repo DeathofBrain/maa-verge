@@ -1277,6 +1277,6 @@
 3. 接入用户自备模型 API、系统钥匙串、工具权限和费用预算，再逐步开放 Agent 的真实执行。
 4. 后续版本继续执行四宿主签名构建、草稿全量附件和公开后下载复验，保留既有发行标签与产物；补齐三平台真实升级安装验收，随后推进独立战斗研究及评测。
 5. 按 [插件系统与插件市场调研](plugin-marketplace-research.md) 推进后续扩展能力：先确定首批场景、包规范与权限边界，再做本地声明式扩展管理及审核制市场；可执行插件须先完成受限宿主原型和目标平台验证，当前不设交付日期。
-6. 按 [组件套装](component-kit.md) 分阶段迁移界面原语：设计令牌与变量缺陷修复、共享格式化与中文标签映射、表单与页面骨架原语、设置页集群（含删除 `.sp-setting-row` 的祖先前缀 padding 覆盖链）、展示型原语、弹层统一到 `acquireModalEffects`。`CopilotPage.tsx`、`PlanEditor.tsx` 与 `App.tsx` 主体、保留类清理与令牌回填留待之后，当前不设交付日期。
+6. 组件套装已完成令牌、共享格式化与标签、表单/骨架原语、设置页集群（含删除 `.sp-setting-row` 覆盖链）、展示型原语与弹层统一（详见上文六个小节与 [component-kit.md](component-kit.md)）。剩余工作：`Tabs`/`FilterChips`/`ProgressBar`/`ListRow`/`SelectableRow` 的页面采用（组件已建，需与 `.dp-tabs`/`.tc-view-tabs`/`.monitor-filters`/`.cp-record` 等容器类一起归一）；`Drawer` 收编 `SideDrawer`/`TaskDetailDrawer`/`MonitorLogDrawer`（三者已用 `acquireModalEffects`，无手写陷阱）与 `CopilotDeleteDialog`；`CopilotPage.tsx`、`PlanEditor.tsx` 与 `App.tsx` 主体迁移；保留类与死样式清理、令牌全量回填、`styles.css` 全局 `.toggle`/`.segmented`/`.pill` 退役。当前不设交付日期。
 
 开发者在另一台电脑从相同 Git 提交执行 bootstrap，按 [development.md](development.md) 恢复依赖；无需复制虚拟环境、下载缓存或原机器路径。
