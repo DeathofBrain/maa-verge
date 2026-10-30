@@ -1253,6 +1253,12 @@
 - 原引导只检查原生工具，未安装 Rust；本机用户目录残留的 1.90.0 工具链缺少 `rustc.exe` 和运行 DLL，无法仅通过补 PATH 修复。两平台 bootstrap 现按 `rust-toolchain.toml` 安装并验证 Rust / Cargo、rustfmt 和 Clippy；缺少可复用工具链时，校验官方 rustup 1.28.2 安装器后安装到 checkout `.tools/cargo` 与 `.tools/rustup`，保留用户目录，不修改系统 PATH 或 Shell 配置。pnpm 包装入口同步传递本地 Rust 环境。
 - Windows x64 实际安装固定 **Rust / Cargo 1.90.0** 成功，完整 `bootstrap.ps1 -Native` 通过，MSVC / Windows SDK / CMake 探针均通过。Rust 安装及损坏恢复回归 **13/13**，与缓存恢复合计 **25/25**；`pnpm check:app` 通过（契约 **35 项**、四工作区类型检查、Ruff / mypy 三平台、Python **276 项**）。重复运行 Rust 安装脚本直接复用已安装工具链。macOS/Linux 安装仍待对应宿主验证。
 
+### 本次前端统一化基线复验（Windows x64，2026-10-30）
+
+- 基线提交 `abf335c`，分支 `dev`，开始时工作区干净。`tsc -p apps/desktop --noEmit`、`node --test tools/tests/check-kit-css.test.mjs`（9/9）与 `node tools/check-kit-css.mjs` 通过；`pnpm run check:app` 退出 0；`pnpm --filter @maaverge/desktop build` 通过（16.55s）。Playwright 收集 **249 个用例、45 个 spec**，收集数量不代表通过。
+- Playwright 默认 Chromium 未安装（`chromium_headless_shell-1248` 缺失），按项目技能改用 `MAAVERGE_TEST_BROWSER=msedge`。全量基线 **243 通过、6 失败**（3.6 分钟，14 workers）：`app-updates.spec.ts:174`、`copilot-attribution.spec.ts:31`、`component-readiness.spec.ts:108`、`component-updates.spec.ts:173`、`copilot-center.spec.ts:56`、`copilot-operators.spec.ts:157`，失败均为等待既有界面元素或文案超时，出现在本轮未改动的界面；按既有失败记录，后续迁移不得以这些用例的通过作为验收依据。
+- 本轮未启动真实服务、未连接设备、未调用模型；截图为夹具产物，未提交。
+
 ## 尚未实现及边界
 
 - 用户插件、插件宿主与插件市场尚未实现，已列入后续开发目标；[首轮调研](plugin-marketplace-research.md) 包含现状核查、候选架构与分阶段验收，具体运行时和插件 API 待验证，尚未排期。本次仅整理文档，不代表插件运行或任何平台的兼容性已通过验收。
