@@ -175,11 +175,7 @@ export default function NotificationSettings({ settings, busy, onSave }: Props) 
             </button>
           </div>
           <span className="settings-save-status" aria-live="polite">
-            {saveStatus === 'saved'
-              ? '已自动保存'
-              : saveStatus === 'error'
-                ? '保存失败'
-                : '正在保存…'}
+            {saveStatus === 'saved' ? '' : saveStatus === 'error' ? '保存失败' : '正在保存…'}
             {saveStatus === 'error' && (
               <button
                 className="settings-retry"

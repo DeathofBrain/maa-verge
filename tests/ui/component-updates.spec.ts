@@ -523,16 +523,18 @@ test('component roots save independently and installed resource versions use eac
   });
   await core.locator('summary').filter({ hasText: '下载与安装目录' }).click();
   await core.getByRole('button', { name: '选择文件夹', exact: true }).click();
-  await expect(core.locator('.sp-component-path .settings-save-state')).toContainText('已自动保存');
-  const paths = await page.evaluate(
-    async () =>
-      ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
-        .settings.componentPaths,
-  );
-  expect(paths).toEqual({
-    core: 'E:\\Custom Components\\Core',
-    resource: 'D:\\Game Data\\MaaResource',
-  });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async () =>
+          ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
+            .settings.componentPaths,
+      ),
+    )
+    .toEqual({
+      core: 'E:\\Custom Components\\Core',
+      resource: 'D:\\Game Data\\MaaResource',
+    });
   await expect(resource.locator('.channel-version')).toHaveText('合成活动 · 新篇章');
   await expect(resource.getByLabel('资源版本客户端', { exact: true })).toHaveValue('Official');
   await expect(

@@ -1,6 +1,6 @@
 import { devicePicker } from './fixtures/device-picker';
 import type { Page } from '@playwright/test';
-import type { Plan } from '../../packages/contracts/src/types';
+import type { Plan, Snapshot } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 
 const wb = (page: Page) => page.getByRole('region', { name: '任务表工作台', exact: true });
@@ -641,7 +641,15 @@ test('model preferences automatically save when changing settings categories', a
     .getByRole('button', { name: '模型与 Agent', exact: true })
     .click();
   await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-model');
-  await expect(page.locator('.sp-model-form .settings-save-state')).toContainText('已自动保存');
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async () =>
+          ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
+            .settings.model.model,
+      ),
+    )
+    .toBe('synthetic-model');
   await page.reload();
   await settingsCategory(page, '模型与 Agent');
   await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-model');

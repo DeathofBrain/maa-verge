@@ -120,16 +120,15 @@ test('log retention saves automatically and survives reload', async ({ page }) =
   await page.getByRole('button', { name: '数据与诊断', exact: true }).click();
   await expect(retention).toHaveValue('14');
   await retention.selectOption('0');
-  await expect(page.locator('.log-retention-form .sp-form-actions > .sp-help')).toHaveText(
-    '已自动保存',
-  );
-  expect(
-    await page.evaluate(
-      async () =>
-        ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
-          .settings.logRetentionDays,
-    ),
-  ).toBe(0);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async () =>
+          ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
+            .settings.logRetentionDays,
+      ),
+    )
+    .toBe(0);
   await page.reload();
   await page.getByRole('button', { name: '设置', exact: true }).click();
   await page.getByRole('button', { name: '数据与诊断', exact: true }).click();

@@ -500,6 +500,19 @@ export function SettingsPage({
               )}
               {selected.id === 'updates' && (
                 <>
+                  <div className="settings-group-heading">
+                    <h2>下载设置</h2>
+                  </div>
+                  <DownloadProxyForm
+                    settings={snapshot.settings}
+                    busy={busy}
+                    onSave={saveSettings}
+                  />
+                  <MirrorChyanSettings
+                    settings={snapshot.settings}
+                    busy={busy || updating}
+                    onSave={saveSettings}
+                  />
                   <div className="sp-content-heading">
                     <div>
                       <h2>更新</h2>
@@ -528,19 +541,6 @@ export function SettingsPage({
                       onSave={saveSettings}
                     />
                   ))}
-                  <div className="settings-group-heading">
-                    <h2>下载设置</h2>
-                  </div>
-                  <DownloadProxyForm
-                    settings={snapshot.settings}
-                    busy={busy}
-                    onSave={saveSettings}
-                  />
-                  <MirrorChyanSettings
-                    settings={snapshot.settings}
-                    busy={busy || updating}
-                    onSave={saveSettings}
-                  />
                 </>
               )}
               {selected.id === 'data' && (

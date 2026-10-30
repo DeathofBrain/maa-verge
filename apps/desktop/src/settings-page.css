@@ -115,6 +115,10 @@
   padding: 16px 0;
 }
 
+.settings-workspace .sp-setting-row.settings-master {
+  padding: 16px 18px;
+}
+
 .settings-workspace .sp-setting-row > div {
   min-width: 0;
 }

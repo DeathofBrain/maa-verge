@@ -27,10 +27,8 @@ export default function MirrorChyanSettings({
     <section className="sp-section settings-card" aria-label="Mirror酱设置">
       <div className="sp-section-title">
         <h2>Mirror酱</h2>
+        <p>Mirror酱高速下载需要购买有效 CDK。Maa Verge 免费开源，官方免费更新来源继续可用。</p>
       </div>
-      <p className="sp-help">
-        Mirror酱高速下载需要购买有效 CDK。Maa Verge 免费开源，官方免费更新来源继续可用。
-      </p>
       <form
         className="settings-form"
         aria-label="Mirror酱配置"
@@ -81,11 +79,7 @@ export default function MirrorChyanSettings({
             Mirror酱官网与 CDK
           </a>
           <span className="settings-save-status" aria-live="polite">
-            {saveStatus === 'saved'
-              ? '已自动保存'
-              : saveStatus === 'error'
-                ? '保存失败'
-                : '正在保存…'}
+            {saveStatus === 'saved' ? '' : saveStatus === 'error' ? '保存失败' : '正在保存…'}
             {saveStatus === 'error' && (
               <button
                 className="settings-retry"

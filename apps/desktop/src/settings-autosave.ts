@@ -202,7 +202,7 @@ export function useAutoSaveDraft<T extends object>(
 
 export const autoSaveLabel = (status: SaveStatus) =>
   status === 'saved'
-    ? '已自动保存'
+    ? ''
     : status === 'error'
       ? '保存失败，修改已保留'
       : status === 'pending'
