@@ -1,17 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  Layers,
-  ListChecks,
-  LoaderCircle,
-  Monitor,
-  Square,
-  Terminal,
-  Trash2,
-  Wifi,
-} from 'lucide-react';
+import { AlertCircle, LoaderCircle, Trash2, Wifi } from 'lucide-react';
 import {
   errorMessage,
   desktopPlatform,
@@ -47,7 +35,6 @@ import TasksPage from './TasksPage';
 import RunTasksDialog from './RunTasksDialog';
 import DeviceConnectionDrawer from './DeviceConnectionDrawer';
 import RunPanel from './RunPanel';
-import DevicePicker from './DevicePicker';
 import MonitorLogDrawer from './MonitorLogDrawer';
 import { runDisplayName, runSourceLabel } from './run-source';
 import UpdateNotifications, { useComponentDownloads } from './UpdateNotifications';
@@ -57,6 +44,7 @@ import Toast from './kit/Toast';
 import StatusPill from './kit/StatusPill';
 import AgentPage from './features/app/AgentPage';
 import { AppSidebar, AppTopbar, Brand } from './features/app/AppNavigation';
+import RunDock from './features/app/RunDock';
 import { type Message, type Page, pageNames } from './features/app/navigation-model';
 import HistoryPage from './features/app/HistoryPage';
 import { runStatusLabels, runStatusTones } from './kit/labels';
@@ -957,109 +945,30 @@ export default function App() {
           )}
         </RunPanel>
       )}
-      <footer className={`run-dock ${dockExecution ? 'is-running' : ''}`} aria-label="执行状态栏">
-        <DevicePicker devices={snapshot.devices} value={selectedDevice} onChange={selectDevice} />
-        <button
-          className="dock-status"
-          aria-controls="run-panel"
-          aria-expanded={runPanel === 'progress'}
-          onClick={() => toggleRunPanel('progress')}
-        >
-          {dockExecution ? (
-            <LoaderCircle size={17} className="spin" />
-          ) : (
-            <span
-              className={`status-dot ${!device || device.state === 'offline' ? 'offline' : ''}`}
-            />
-          )}
-          <strong>
-            {dockExecution ? '执行中' : device && device.state !== 'offline' ? '就绪' : '等待连接'}
-          </strong>
-          {(dockExecution || page !== 'home') && (
-            <>
-              <span className="dock-divider" />
-              <span className="dock-message">
-                {dockExecution
-                  ? localizeExecutionMessage(dockExecution.message)
-                  : selectedPlan?.name || pageNames[page]}
-                <small>
-                  {dockExecution
-                    ? `任务进度 ${dockExecution.progress}%`
-                    : device?.name || '请连接模拟器或设备'}
-                </small>
-              </span>
-            </>
-          )}
-        </button>
-        <div className="dock-actions">
-          <button
-            aria-label="多开执行"
-            className={runPanel === 'instances' ? 'selected' : ''}
-            onClick={() => toggleRunPanel('instances')}
-          >
-            <Layers size={16} />
-            <span>多开执行{activeRuns.length > 1 ? ` · ${activeRuns.length}` : ''}</span>
-          </button>
-          {dockExecution && device?.state !== 'offline' && (
-            <button
-              className="button danger dock-stop"
-              disabled={pending.has(`stop-${dockExecution.id}`)}
-              onClick={() => {
-                if (dockRun) void stopRun(dockRun);
-                else if (dockTool)
-                  void action(
-                    `stop-${dockTool.id}`,
-                    () => rpc('tool.stop', { id: dockTool.id }),
-                    '已停止工具执行',
-                  );
-              }}
-            >
-              <Square size={12} />
-              停止执行
-            </button>
-          )}
-          <button
-            aria-label="运行详情"
-            aria-controls="run-panel"
-            aria-expanded={runPanel === 'progress'}
-            className={runPanel === 'progress' ? 'selected' : ''}
-            onClick={() => toggleRunPanel('progress')}
-          >
-            <ListChecks size={16} />
-            <span>运行详情</span>
-          </button>
-          <button
-            aria-label="日志"
-            aria-controls="run-panel"
-            aria-expanded={runPanel === 'logs'}
-            className={runPanel === 'logs' ? 'selected' : ''}
-            onClick={() => toggleRunPanel('logs')}
-          >
-            <Terminal size={16} />
-            <span>日志</span>
-          </button>
-          <button
-            aria-label="画面"
-            aria-controls="run-panel"
-            aria-expanded={runPanel === 'preview'}
-            className={runPanel === 'preview' ? 'selected' : ''}
-            onClick={() => toggleRunPanel('preview')}
-          >
-            <Monitor size={16} />
-            <span>画面</span>
-          </button>
-          <button
-            className="icon-button"
-            aria-label={runPanel ? '收起运行面板' : '展开运行面板'}
-            onClick={() => {
-              if (runPanel) setRunPanel(null);
-              else toggleRunPanel('progress');
-            }}
-          >
-            {runPanel ? <ChevronDown size={17} /> : <ChevronUp size={17} />}
-          </button>
-        </div>
-      </footer>
+      <RunDock
+        devices={snapshot.devices}
+        selectedDevice={selectedDevice}
+        onSelectDevice={selectDevice}
+        device={device}
+        dockExecution={dockExecution}
+        selectedPlan={selectedPlan}
+        pageLabel={pageNames[page]}
+        isHome={page === 'home'}
+        runPanel={runPanel}
+        onTogglePanel={toggleRunPanel}
+        onClosePanel={() => setRunPanel(null)}
+        activeRunsCount={activeRuns.length}
+        stopDisabled={dockExecution ? pending.has(`stop-${dockExecution.id}`) : false}
+        onStopDock={() => {
+          if (dockRun) void stopRun(dockRun);
+          else if (dockTool)
+            void action(
+              `stop-${dockTool.id}`,
+              () => rpc('tool.stop', { id: dockTool.id }),
+              '已停止工具执行',
+            );
+        }}
+      />
       {startSelection && (
         <RunTasksDialog
           snapshot={snapshot}
