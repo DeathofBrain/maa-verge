@@ -17,6 +17,8 @@ export type RuntimeHarness = {
   configuration: ConfigurationLocations;
   configurationWrites: number;
   failConfiguration: boolean;
+  directorySelection: string | null;
+  directoryPickerDefaults: (string | null)[];
   notificationPermission: 'granted' | 'denied' | 'prompt';
   failNotifications: boolean;
   frames: string[];
@@ -112,6 +114,8 @@ export async function installRuntimeBridge(
         },
         configurationWrites: 0,
         failConfiguration: false,
+        directorySelection: null,
+        directoryPickerDefaults: [],
         notificationPermission: 'granted',
         failNotifications: false,
         frames: [],
@@ -173,6 +177,13 @@ export async function installRuntimeBridge(
         },
         unregisterCallback: (id: number) => callbacks.delete(id),
         invoke: async (command: string, args: Record<string, unknown> = {}) => {
+          if (command === 'pick_directory') {
+            harness.commands.push(command);
+            harness.directoryPickerDefaults.push(
+              typeof args.defaultPath === 'string' ? args.defaultPath : null,
+            );
+            return harness.directorySelection;
+          }
           if (command === 'get_configuration_locations')
             return structuredClone(harness.configuration);
           if (command === 'save_configuration_directory') {

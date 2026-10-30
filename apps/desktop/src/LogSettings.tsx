@@ -10,8 +10,9 @@ import {
 import { acquireModalEffects } from './modal-effects';
 import { Download, LoaderCircle, Trash2, X } from 'lucide-react';
 import { errorMessage, rpc, type RpcResult, type Settings } from '@maaverge/contracts';
-import { useSettingsDraft } from './settings-draft';
+import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
 import './log-settings.css';
+import './data-settings.css';
 
 type Props = {
   settings: Settings;
@@ -98,11 +99,19 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
   const operationRef = useRef<Operation | null>(null);
   const exportButton = useRef<HTMLButtonElement>(null);
   const cleanButton = useRef<HTMLButtonElement>(null);
-  const [draft, setDraft, resetDraft] = useSettingsDraft('log-retention', {
-    days: settings.logRetentionDays ?? 7,
-  });
-  const dirty = draft.days !== (settings.logRetentionDays ?? 7);
-  const disabled = busy || operation !== null;
+  const { draft, setDraft, flush, status, retry } = useAutoSaveDraft(
+    'log-retention',
+    { days: settings.logRetentionDays ?? 7 },
+    async (next) => {
+      if (!begin('save')) return false;
+      try {
+        return await onSave({ logRetentionDays: next.days }, '');
+      } finally {
+        finish();
+      }
+    },
+  );
+  const disabled = busy || operation !== null || status === 'saving';
 
   useEffect(() => {
     let active = true;
@@ -154,25 +163,93 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
       finish();
     }
   };
-  const save = async () => {
-    if (!begin('save')) return;
-    try {
-      await onSave({ logRetentionDays: draft.days }, '日志清理设置已保存');
-    } finally {
-      finish();
-    }
-  };
 
   return (
-    <div className="log-settings">
-      <dl className="sp-description-list">
-        <div>
-          <dt>日志导出目录</dt>
-          <dd className="sp-mono log-settings-path">
-            {info?.directory || (infoError ? '读取失败' : '正在读取…')}
-          </dd>
+    <section className="settings-card log-settings" aria-label="日志与诊断">
+      <div className="data-settings-heading">
+        <h3>日志与诊断</h3>
+      </div>
+      <form
+        className="log-retention-form settings-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void flush();
+        }}
+      >
+        <div className="sp-setting-row">
+          <div>
+            <label htmlFor="log-retention-days">
+              <strong>自动清理日志</strong>
+            </label>
+            <p>每天清理过期日志，保留本次会话文件。</p>
+          </div>
+          <Select
+            id="log-retention-days"
+            className="text-input sp-inline-select"
+            value={draft.days}
+            disabled={disabled}
+            onChange={(event) =>
+              setDraft(
+                { days: Number(event.target.value) as NonNullable<Settings['logRetentionDays']> },
+                0,
+              )
+            }
+          >
+            <option value="0">关闭</option>
+            <option value="7">保留 7 天</option>
+            <option value="14">保留 14 天</option>
+            <option value="30">保留 30 天</option>
+          </Select>
         </div>
-      </dl>
+        <div className="sp-form-actions settings-actions">
+          <span className="sp-help">{autoSaveLabel(status)}</span>
+          {status === 'error' && (
+            <button className="button secondary" type="button" disabled={disabled} onClick={retry}>
+              重试保存日志设置
+            </button>
+          )}
+        </div>
+      </form>
+      <div className="log-settings-diagnostics">
+        <div>
+          <strong>问题排查</strong>
+          <p className="sp-help">导出本地服务、核心与事件日志，完成后显示保存位置。</p>
+        </div>
+        <div className="sp-form-actions log-settings-actions">
+          <button
+            ref={exportButton}
+            className="button secondary"
+            disabled={disabled}
+            onClick={() => void exportLogs()}
+          >
+            {operation === 'export' ? (
+              <LoaderCircle size={15} className="spin" />
+            ) : (
+              <Download size={15} />
+            )}
+            {operation === 'export' ? '正在导出…' : '导出日志'}
+          </button>
+          <button
+            ref={cleanButton}
+            className="button secondary log-clean-button"
+            disabled={disabled}
+            onClick={() => setDialog({ kind: 'confirm' })}
+          >
+            {operation === 'clean' ? (
+              <LoaderCircle size={15} className="spin" />
+            ) : (
+              <Trash2 size={15} />
+            )}
+            {operation === 'clean' ? '正在清理…' : '清理日志'}
+          </button>
+        </div>
+      </div>
+      <details className="data-settings-details log-settings-directory">
+        <summary>日志导出目录</summary>
+        <p className="sp-mono log-settings-path">
+          {info?.directory || (infoError ? '读取失败' : '正在读取…')}
+        </p>
+      </details>
       {infoError && (
         <p className="sp-help" role="alert">
           {infoError}
@@ -185,81 +262,6 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
           </button>
         </p>
       )}
-      <div className="sp-form-actions log-settings-actions">
-        <button
-          ref={exportButton}
-          className="button secondary"
-          disabled={disabled}
-          onClick={() => void exportLogs()}
-        >
-          {operation === 'export' ? (
-            <LoaderCircle size={15} className="spin" />
-          ) : (
-            <Download size={15} />
-          )}
-          {operation === 'export' ? '正在导出…' : '导出日志'}
-        </button>
-        <button
-          ref={cleanButton}
-          className="button secondary"
-          disabled={disabled}
-          onClick={() => setDialog({ kind: 'confirm' })}
-        >
-          {operation === 'clean' ? (
-            <LoaderCircle size={15} className="spin" />
-          ) : (
-            <Trash2 size={15} />
-          )}
-          {operation === 'clean' ? '正在清理…' : '清理日志'}
-        </button>
-      </div>
-      <p className="sp-help">导出本地服务、核心工作进程和事件日志，完成后显示保存位置。</p>
-      <form
-        className="log-retention-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save();
-        }}
-      >
-        <div className="sp-setting-row">
-          <div>
-            <label htmlFor="log-retention-days">
-              <strong>自动清理日志</strong>
-            </label>
-            <p>启动时及之后每天清理过期日志，保留本次会话使用的日志。</p>
-          </div>
-          <Select
-            id="log-retention-days"
-            className="text-input sp-inline-select"
-            value={draft.days}
-            disabled={disabled}
-            onChange={(event) =>
-              setDraft({
-                days: Number(event.target.value) as NonNullable<Settings['logRetentionDays']>,
-              })
-            }
-          >
-            <option value="0">关闭</option>
-            <option value="7">保留 7 天</option>
-            <option value="14">保留 14 天</option>
-            <option value="30">保留 30 天</option>
-          </Select>
-        </div>
-        <div className="sp-form-actions">
-          <span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={disabled || !dirty}
-            onClick={resetDraft}
-          >
-            放弃修改
-          </button>
-          <button type="submit" className="button primary" disabled={disabled || !dirty}>
-            {operation === 'save' && <LoaderCircle size={15} className="spin" />}保存设置
-          </button>
-        </div>
-      </form>
       {dialog?.kind === 'confirm' && (
         <LogDialog
           title="清理日志"
@@ -328,6 +330,6 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
           </div>
         </LogDialog>
       )}
-    </div>
+    </section>
   );
 }

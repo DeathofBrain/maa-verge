@@ -102,30 +102,27 @@ test('log export reports the returned directory and complete path in a persisten
   await expect(page.getByRole('button', { name: '导出日志', exact: true })).toBeFocused();
 });
 
-test('log retention remains a draft until saved and survives reload', async ({ page }) => {
+test('log retention saves automatically and survives reload', async ({ page }) => {
   await openLogSettings(page);
-  const form = page.locator('.log-retention-form');
   const retention = page.getByLabel('自动清理日志', { exact: true });
   await expect(retention).toHaveValue('7');
   await retention.selectOption('14');
-  expect(
-    await page.evaluate(
-      async () =>
-        ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
-          .settings.logRetentionDays,
-    ),
-  ).toBe(7);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async () =>
+          ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
+            .settings.logRetentionDays,
+      ),
+    )
+    .toBe(14);
   await page.getByRole('button', { name: '通用与外观', exact: true }).click();
   await page.getByRole('button', { name: '数据与诊断', exact: true }).click();
   await expect(retention).toHaveValue('14');
-  await form.getByRole('button', { name: '放弃修改', exact: true }).click();
-  await expect(retention).toHaveValue('7');
   await retention.selectOption('0');
-  await form.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect(page.locator('.log-retention-form .sp-form-actions > .sp-help')).toHaveText(
-    '已保存',
+    '已自动保存',
   );
-  await expect(form.getByRole('button', { name: '保存设置', exact: true })).toBeDisabled();
   expect(
     await page.evaluate(
       async () =>

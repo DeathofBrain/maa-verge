@@ -10,6 +10,13 @@ async function configurationPage(page: Page) {
   return page.getByRole('form', { name: '配置目录设置' });
 }
 
+async function selectConfigurationDirectory(page: Page, directory: string | null) {
+  await page.evaluate((directory) => {
+    (window as HarnessWindow).runtimeHarness.directorySelection = directory;
+  }, directory);
+  await page.getByRole('button', { name: '选择配置目录', exact: true }).click();
+}
+
 test('configuration directory saves for restart and can be restored without switching live data', async ({
   page,
 }) => {
@@ -21,8 +28,11 @@ test('configuration directory saves for restart and can be restored without swit
   expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.commands)).toContain(
     'open_configuration_directory',
   );
-  await form.getByLabel('配置目录', { exact: true }).fill('/fixture/second-config');
-  await form.getByRole('button', { name: '保存配置目录', exact: true }).click();
+  await selectConfigurationDirectory(page, null);
+  expect(
+    await page.evaluate(() => (window as HarnessWindow).runtimeHarness.configurationWrites),
+  ).toBe(0);
+  await selectConfigurationDirectory(page, '/fixture/second-config');
   await expect(form.getByRole('status')).toContainText('完全退出 Maa Verge 后重新打开');
   expect(
     await page.evaluate(() => (window as HarnessWindow).runtimeHarness.configuration),
@@ -35,35 +45,23 @@ test('configuration directory saves for restart and can be restored without swit
   await configurationPage(page);
   await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('/fixture/second-config');
   await form.getByRole('button', { name: '恢复默认配置目录' }).click();
+  await expect
+    .poll(() => page.evaluate(() => (window as HarnessWindow).runtimeHarness.configuration))
+    .toMatchObject({
+      directory: '/fixture/app/config',
+      configuredDirectory: null,
+      restartRequired: false,
+    });
   await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('');
-  expect(
-    await page.evaluate(() => (window as HarnessWindow).runtimeHarness.configuration),
-  ).toMatchObject({
-    directory: '/fixture/app/config',
-    configuredDirectory: null,
-    restartRequired: false,
-  });
 });
 
-test('configuration drafts survive navigation and a failed save retains the draft for retry', async ({
-  page,
-}) => {
+test('failed automatic directory saves retain the selection and allow retry', async ({ page }) => {
   await page.goto('/');
   const form = await configurationPage(page);
-  await form.getByLabel('配置目录', { exact: true }).fill('/fixture/draft');
-  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
-  await configurationPage(page);
-  await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('/fixture/draft');
-  await form.getByRole('button', { name: '放弃修改' }).click();
-  await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('');
-  expect(
-    await page.evaluate(() => (window as HarnessWindow).runtimeHarness.configurationWrites),
-  ).toBe(0);
-  await form.getByLabel('配置目录', { exact: true }).fill('/fixture/retry');
   await page.evaluate(() => {
     (window as HarnessWindow).runtimeHarness.failConfiguration = true;
   });
-  await form.getByRole('button', { name: '保存配置目录', exact: true }).click();
+  await selectConfigurationDirectory(page, '/fixture/retry');
   await expect(form.getByRole('alert')).toContainText('合成配置目录不可写');
   await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('/fixture/retry');
   expect(
@@ -74,13 +72,14 @@ test('configuration drafts survive navigation and a failed save retains the draf
   await page.evaluate(() => {
     (window as HarnessWindow).runtimeHarness.failConfiguration = false;
   });
-  await form.getByRole('button', { name: '保存配置目录', exact: true }).click();
-  await expect(form.getByRole('button', { name: '保存配置目录', exact: true })).toBeDisabled();
-  expect(
-    await page.evaluate(
-      () => (window as HarnessWindow).runtimeHarness.configuration.configuredDirectory,
-    ),
-  ).toBe('/fixture/retry');
+  await form.getByRole('button', { name: '重试保存配置目录', exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as HarnessWindow).runtimeHarness.configuration.configuredDirectory,
+      ),
+    )
+    .toBe('/fixture/retry');
 });
 
 test('an explicit startup override disables directory changes while allowing the current folder to open', async ({
@@ -94,7 +93,7 @@ test('an explicit startup override disables directory changes while allowing the
   });
   const form = await configurationPage(page);
   await expect(form.getByLabel('配置目录', { exact: true })).toBeDisabled();
-  await expect(form.getByRole('button', { name: '保存配置目录', exact: true })).toBeDisabled();
+  await expect(form.getByRole('button', { name: '选择配置目录', exact: true })).toBeDisabled();
   await expect(form.getByRole('button', { name: '恢复默认配置目录' })).toBeDisabled();
   await expect(form.getByRole('status')).toContainText('MAAVERGE_DATA_DIR');
   await form.getByRole('button', { name: '打开当前配置目录' }).click();

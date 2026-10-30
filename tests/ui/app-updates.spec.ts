@@ -414,7 +414,6 @@ test('switching a staged preview core to stable cancels the old candidate and no
   await expect(
     coreSection(page).getByRole('button', { name: '应用更新', exact: true }),
   ).toBeEnabled();
-  await expect(coreSection(page)).toContainText('切换频道会取消已准备的版本，下次检查使用新频道');
   await expect(coreSection(page)).toContainText('v6.21.0-beta.1');
   await page.getByLabel('MaaCore 更新频道', { exact: true }).selectOption('stable');
   await expect(
@@ -442,7 +441,6 @@ test('changing the app channel invalidates its staged installation confirmation'
   await expect(
     appSection(page).getByRole('button', { name: '安装并重启', exact: true }),
   ).toBeEnabled();
-  await expect(appSection(page)).toContainText('切换频道会取消已准备的版本并重新检查');
   await appSection(page).getByRole('button', { name: '安装并重启', exact: true }).click();
   const confirmation = page.getByRole('dialog', { name: '安装应用更新', exact: true });
   await expect(confirmation).toBeVisible();

@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
-import { errorMessage, rpc, type RpcResult, type Settings } from '@maaverge/contracts';
-import { useSettingsDraft } from './settings-draft';
+import {
+  errorMessage,
+  pickDirectory,
+  rpc,
+  type RpcResult,
+  type Settings,
+} from '@maaverge/contracts';
+import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
 import './copilot-library-actions.css';
+import './data-settings.css';
 
 type Props = {
   settings: Settings;
@@ -11,14 +18,28 @@ type Props = {
 
 export default function CopilotStorageSettings({ settings, busy, onSave }: Props) {
   const saved = settings.copilotStorage ?? { directory: '', deleteJsonFiles: false };
-  const [draft, setDraft, reset] = useSettingsDraft('copilot-storage', saved);
   const [info, setInfo] = useState<RpcResult<'copilot.storage.info'>>();
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const dirty =
-    draft.directory !== saved.directory || draft.deleteJsonFiles !== saved.deleteJsonFiles;
-  const disabled = busy || saving;
+  const [selecting, setSelecting] = useState(false);
+  const { draft, setDraft, flush, status, retry } = useAutoSaveDraft(
+    'copilot-storage',
+    saved,
+    async (next) => {
+      try {
+        const completed = await onSave({ copilotStorage: next }, '');
+        if (!completed) return false;
+        const snapshot = await rpc('app.snapshot', {});
+        setRevision((value) => value + 1);
+        return snapshot.settings.copilotStorage ?? { directory: '', deleteJsonFiles: false };
+      } catch (cause) {
+        setError(errorMessage(cause));
+        return false;
+      }
+    },
+    { normalize: (value) => ({ ...value, directory: value.directory.trim() }) },
+  );
+  const disabled = busy || status === 'saving' || selecting;
 
   useEffect(() => {
     let active = true;
@@ -36,53 +57,61 @@ export default function CopilotStorageSettings({ settings, busy, onSave }: Props
     };
   }, [saved.directory, revision]);
 
-  const save = async () => {
+  const choose = async () => {
     if (disabled) return;
-    setSaving(true);
+    setSelecting(true);
+    setError('');
     try {
-      if (await onSave({ copilotStorage: draft }, '作业存储与删除设置已保存')) {
-        const snapshot = await rpc('app.snapshot', {});
-        setDraft(snapshot.settings.copilotStorage ?? { directory: '', deleteJsonFiles: false });
-        setRevision((value) => value + 1);
-      }
+      const directory = await pickDirectory({ defaultPath: draft.directory || info?.directory });
+      if (directory !== null) setDraft((value) => ({ ...value, directory }), 0);
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
-      setSaving(false);
+      setSelecting(false);
     }
   };
 
   return (
-    <section aria-label="作业存储与删除">
-      <h3>作业存储与删除</h3>
+    <section className="settings-card data-copilot-storage" aria-label="作业存储与删除">
+      <div className="data-settings-heading">
+        <h3>作业存储与删除</h3>
+      </div>
       <form
-        className="sp-model-form"
+        className="settings-form data-settings-form"
         onSubmit={(event) => {
           event.preventDefault();
-          void save();
+          void flush();
         }}
       >
-        <label className="sp-field">
-          作业 JSON 存放目录
-          <input
-            className="text-input"
-            aria-label="作业 JSON 存放目录"
-            value={draft.directory}
-            placeholder={info?.directory ?? '留空使用程序目录下的 cache/copilot'}
-            disabled={disabled}
-            onChange={(event) => setDraft((value) => ({ ...value, directory: event.target.value }))}
-          />
-        </label>
-        <p className="sp-help">
-          默认存放在程序目录下的
-          cache/copilot。自定义目录请填写完整的绝对路径；留空恢复默认。更改目录用于后续导入，已有文件保留在原位置。
-        </p>
-        <dl className="sp-description-list">
-          <div>
-            <dt>当前存放目录</dt>
-            <dd>{info?.directory ?? (error ? '读取失败' : '正在读取…')}</dd>
+        <div className="sp-field">
+          <label htmlFor="copilot-storage-directory-input">作业 JSON 存放目录</label>
+          <div className="data-settings-directory-picker">
+            <input
+              id="copilot-storage-directory-input"
+              className="text-input"
+              aria-label="作业 JSON 存放目录"
+              value={draft.directory}
+              placeholder={info?.directory ?? '留空使用程序目录下的 cache/copilot'}
+              disabled={disabled}
+              readOnly
+            />
+            <button
+              className="button secondary"
+              type="button"
+              disabled={disabled}
+              onClick={() => void choose()}
+            >
+              选择作业目录
+            </button>
           </div>
-        </dl>
+        </div>
+        <p className="sp-help">所选目录仅用于后续导入，已有文件不会搬移。</p>
+        <div className="data-settings-location">
+          <div className="data-settings-location-copy">
+            <span>当前存放目录</span>
+            <code>{info?.directory ?? (error ? '读取失败' : '正在读取…')}</code>
+          </div>
+        </div>
         {error && (
           <p className="sp-help" role="alert">
             {error}
@@ -96,42 +125,40 @@ export default function CopilotStorageSettings({ settings, busy, onSave }: Props
             </button>
           </p>
         )}
-        <label className="cp-delete-check">
-          <input
-            type="checkbox"
-            checked={draft.deleteJsonFiles}
+        <div className="data-settings-switch-row">
+          <div>
+            <strong id="copilot-delete-json-label">删除作业时同时删除 JSON 文件</strong>
+            <p className="sp-help" id="copilot-delete-json-description">
+              删除应用保存的作业文件，导入的原始文件保留。
+            </p>
+          </div>
+          <button
+            className="toggle"
+            type="button"
+            role="switch"
+            aria-labelledby="copilot-delete-json-label"
+            aria-describedby="copilot-delete-json-description"
+            aria-checked={draft.deleteJsonFiles}
             disabled={disabled}
-            onChange={(event) =>
-              setDraft((value) => ({ ...value, deleteJsonFiles: event.target.checked }))
+            onClick={() =>
+              setDraft((value) => ({ ...value, deleteJsonFiles: !value.deleteJsonFiles }), 0)
             }
           />
-          删除作业时同时删除 JSON 文件
-        </label>
-        <p className="sp-help">
-          默认保留 JSON。启用后，删除单份、所选、分类内或全部作业时，同时删除应用保存的对应
-          JSON；你导入的原始文件保留。
-        </p>
-        <div className="sp-form-actions">
-          <span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span>
+        </div>
+        <div className="sp-form-actions settings-actions">
+          <span className="sp-help">{autoSaveLabel(status)}</span>
+          {status === 'error' && (
+            <button className="button secondary" type="button" disabled={disabled} onClick={retry}>
+              重试保存作业设置
+            </button>
+          )}
           <button
             type="button"
             className="button secondary"
             disabled={disabled || !draft.directory}
-            onClick={() => setDraft((value) => ({ ...value, directory: '' }))}
+            onClick={() => setDraft((value) => ({ ...value, directory: '' }), 0)}
           >
             恢复默认目录
-          </button>
-          <button
-            type="button"
-            className="button secondary"
-            aria-label="放弃作业设置修改"
-            disabled={disabled || !dirty}
-            onClick={reset}
-          >
-            放弃修改
-          </button>
-          <button type="submit" className="button primary" disabled={disabled || !dirty}>
-            保存作业设置
           </button>
         </div>
       </form>

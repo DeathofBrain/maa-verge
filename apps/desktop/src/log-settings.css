@@ -1,25 +1,61 @@
 .log-settings {
-  margin-top: 18px;
+  min-width: 0;
 }
 
-.log-settings-path,.log-settings-locations dd {
+.log-settings-path,
+.log-settings-locations dd {
   overflow-wrap: anywhere;
   user-select: text;
 }
 
 .log-settings-actions {
   justify-content: flex-start;
+  flex-wrap: wrap;
+  padding-top: 0;
 }
 
 .log-retention-form {
+  display: grid;
+  gap: 18px;
+}
+
+.log-retention-form .sp-setting-row {
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.log-settings-diagnostics {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
   border-top: 1px solid var(--line);
-  margin-top: 22px;
-  padding-top: 8px;
+}
+
+.log-settings-diagnostics strong {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.log-settings-diagnostics .sp-help {
+  margin: 5px 0 0;
+}
+
+.log-clean-button {
+  color: var(--danger);
+}
+
+.log-settings-directory {
+  margin-top: 18px;
 }
 
 .log-settings-dialog {
   color: var(--text);
-  width: min(560px,calc(100vw - 32px));
+  width: min(560px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
   overflow: auto;
   margin: auto;
@@ -34,7 +70,7 @@
   font-size: 13px;
 }
 
-.log-settings-locations>div+div {
+.log-settings-locations > div + div {
   margin-top: 14px;
 }
 
@@ -45,7 +81,7 @@
 
 .log-settings-locations dd {
   margin: 0;
-  font-family: ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   line-height: 1.7;
 }
 

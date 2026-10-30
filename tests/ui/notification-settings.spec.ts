@@ -18,65 +18,60 @@ async function savedNotifications(page: Page) {
   );
 }
 
-test('notification category and master preferences are saved explicitly and survive reloads', async ({
+test('notification category and master preferences save automatically and survive reloads', async ({
   page,
 }) => {
   const region = await openNotifications(page);
-  const save = region.getByRole('button', { name: '保存通知设置', exact: true });
-  await region.getByRole('checkbox', { name: '执行结果通知', exact: false }).uncheck();
-  expect(await savedNotifications(page)).toBeUndefined();
-  await save.click();
-  await expect(save).toBeDisabled();
-  expect(await savedNotifications(page)).toEqual({
-    enabled: true,
-    runResults: false,
-    deviceErrors: true,
-    updates: true,
-    schedules: true,
-  });
-  await region.getByRole('checkbox', { name: '启用系统通知', exact: false }).uncheck();
-  await expect(region.getByRole('checkbox', { name: '定时系统通知', exact: false })).toBeDisabled();
+  await region.getByRole('switch', { name: '执行结果通知', exact: false }).uncheck();
+  await expect
+    .poll(() => savedNotifications(page))
+    .toEqual({
+      enabled: true,
+      runResults: false,
+      deviceErrors: true,
+      updates: true,
+      schedules: true,
+    });
+  await region.getByRole('switch', { name: '启用系统通知', exact: false }).uncheck();
+  await expect(region.getByRole('switch', { name: '定时系统通知', exact: false })).toBeDisabled();
   await expect(region.getByRole('button', { name: '发送测试通知', exact: true })).toBeDisabled();
-  await save.click();
-  await expect(save).toBeDisabled();
-  expect((await savedNotifications(page))?.enabled).toBe(false);
+  await expect.poll(async () => (await savedNotifications(page))?.enabled).toBe(false);
   await page.reload();
   await page.getByRole('button', { name: '设置', exact: true }).click();
   await page.getByRole('button', { name: '通知与远控', exact: true }).click();
   await expect(
-    region.getByRole('checkbox', { name: '启用系统通知', exact: false }),
+    region.getByRole('switch', { name: '启用系统通知', exact: false }),
   ).not.toBeChecked();
   await expect(
-    region.getByRole('checkbox', { name: '执行结果通知', exact: false }),
+    region.getByRole('switch', { name: '执行结果通知', exact: false }),
   ).not.toBeChecked();
   await expect(region.getByRole('button', { name: '发送测试通知', exact: true })).toBeDisabled();
 });
 
 test('failed notification saves retain drafts and allow retry', async ({ page }) => {
   const region = await openNotifications(page);
-  await region.getByRole('checkbox', { name: '更新结果通知', exact: false }).uncheck();
   await page.evaluate(() => {
     (window as HarnessWindow).runtimeHarness.failSettings = true;
   });
-  const save = region.getByRole('button', { name: '保存通知设置', exact: true });
-  await save.click();
+  await region.getByRole('switch', { name: '更新结果通知', exact: false }).uncheck();
   await expect(page.locator('.toast.error')).toContainText('合成设置保存失败');
   await expect(
-    region.getByRole('checkbox', { name: '更新结果通知', exact: false }),
+    region.getByRole('switch', { name: '更新结果通知', exact: false }),
   ).not.toBeChecked();
-  await expect(save).toBeEnabled();
+  await expect(region.getByRole('button', { name: '重试', exact: true })).toBeEnabled();
+  await expect(region.getByRole('button', { name: '发送测试通知', exact: true })).toBeDisabled();
   expect(await savedNotifications(page)).toBeUndefined();
   await page.getByRole('button', { name: '通用与外观', exact: true }).click();
   await page.getByRole('button', { name: '通知与远控', exact: true }).click();
   await expect(
-    region.getByRole('checkbox', { name: '更新结果通知', exact: false }),
+    region.getByRole('switch', { name: '更新结果通知', exact: false }),
   ).not.toBeChecked();
   await page.evaluate(() => {
     (window as HarnessWindow).runtimeHarness.failSettings = false;
   });
-  await save.click();
-  await expect(save).toBeDisabled();
-  expect((await savedNotifications(page))?.updates).toBe(false);
+  await region.getByRole('button', { name: '重试', exact: true }).click();
+  await expect.poll(async () => (await savedNotifications(page))?.updates).toBe(false);
+  await expect(region.getByRole('button', { name: '发送测试通知', exact: true })).toBeEnabled();
 });
 
 test('permission checks and test notices use fixed host commands and report send failures', async ({
@@ -85,7 +80,7 @@ test('permission checks and test notices use fixed host commands and report send
   const region = await openNotifications(page);
   const send = region.getByRole('button', { name: '发送测试通知', exact: true });
   await expect(send).toBeEnabled();
-  await region.getByRole('button', { name: '检查并启用通知通道', exact: true }).click();
+  await region.getByRole('button', { name: '检查通知权限', exact: true }).click();
   await send.click();
   await expect(region.getByRole('status')).toContainText('测试通知已提交给系统');
   const commands = await page.evaluate(() =>
@@ -111,7 +106,7 @@ test('denied permission and unavailable desktop hosts disable test sending', asy
   await page.evaluate(() => {
     (window as HarnessWindow).runtimeHarness.notificationPermission = 'denied';
   });
-  await region.getByRole('button', { name: '检查并启用通知通道', exact: true }).click();
+  await region.getByRole('button', { name: '检查通知权限', exact: true }).click();
   await expect(region).toContainText('通知通道未授权');
   await expect(region.getByRole('button', { name: '发送测试通知', exact: true })).toBeDisabled();
   expect(
@@ -127,8 +122,6 @@ test('denied permission and unavailable desktop hosts disable test sending', asy
   });
   await page.getByRole('button', { name: '通知与远控', exact: true }).click();
   await expect(region).toContainText('仅桌面应用可用');
-  await expect(
-    region.getByRole('button', { name: '检查并启用通知通道', exact: true }),
-  ).toBeDisabled();
+  await expect(region.getByRole('button', { name: '检查通知权限', exact: true })).toBeDisabled();
   await expect(region.getByRole('button', { name: '发送测试通知', exact: true })).toBeDisabled();
 });

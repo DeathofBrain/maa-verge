@@ -2,6 +2,7 @@ mod app_updater;
 mod configuration;
 mod desktop_notifications;
 mod desktop_scheduler;
+mod directory_picker;
 mod external_links;
 mod notification_sender;
 mod runtime;
@@ -215,6 +216,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_opener::Builder::new()
                 .open_js_links_on_click(false)
@@ -226,6 +228,7 @@ pub fn run() {
             configuration::get_configuration_locations,
             configuration::save_configuration_directory,
             configuration::open_configuration_directory,
+            directory_picker::pick_directory,
             desktop_notifications::desktop_notification_status,
             desktop_notifications::desktop_test_notification,
             resolve_window_close,

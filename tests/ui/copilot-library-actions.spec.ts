@@ -190,14 +190,14 @@ test('the All category deletion clears the entire library across pages and activ
   ]);
 });
 
-test('JSON deletion and storage settings remain drafts until saved and survive reload', async ({
+test('JSON deletion and storage selections save automatically and survive reload', async ({
   page,
 }) => {
   await page.goto('/');
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
   await page.getByRole('button', { name: '数据与诊断', exact: true }).click();
   const directory = page.getByRole('textbox', { name: '作业 JSON 存放目录', exact: true });
-  const deleteFiles = page.getByRole('checkbox', {
+  const deleteFiles = page.getByRole('switch', {
     name: '删除作业时同时删除 JSON 文件',
     exact: true,
   });
@@ -207,30 +207,44 @@ test('JSON deletion and storage settings remain drafts until saved and survive r
   await expect(directory).toHaveAttribute('placeholder', initial.directory);
   await expect(deleteFiles).not.toBeChecked();
   const custom = 'C:\\Synthetic Copilot\\JSON';
-  await directory.fill(custom);
+  await page.evaluate((directory) => {
+    (window as HarnessWindow).runtimeHarness.directorySelection = directory;
+  }, custom);
+  await page.getByRole('button', { name: '选择作业目录', exact: true }).click();
+  await expect
+    .poll(
+      async () => (await call<Snapshot>(page, 'app.snapshot')).settings.copilotStorage?.directory,
+    )
+    .toBe(custom);
   await deleteFiles.check();
-  expect(
-    (await call<Snapshot>(page, 'app.snapshot')).settings.copilotStorage?.deleteJsonFiles ?? false,
-  ).toBe(false);
-  await page.getByRole('button', { name: '保存作业设置', exact: true }).click();
-  await expect(page.getByRole('button', { name: '保存作业设置', exact: true })).toBeDisabled();
-  expect((await call<Snapshot>(page, 'app.snapshot')).settings.copilotStorage).toEqual({
-    directory: custom,
-    deleteJsonFiles: true,
-  });
+  await expect
+    .poll(async () => (await call<Snapshot>(page, 'app.snapshot')).settings.copilotStorage)
+    .toEqual({
+      directory: custom,
+      deleteJsonFiles: true,
+    });
   await page.reload();
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
   await page.getByRole('button', { name: '数据与诊断', exact: true }).click();
   await expect(directory).toHaveValue(custom);
   await expect(deleteFiles).toBeChecked();
-  await directory.fill('');
+  await page
+    .getByRole('region', { name: '作业存储与删除' })
+    .getByRole('button', { name: '恢复默认目录', exact: true })
+    .click();
+  await expect(directory).toHaveValue('');
+  await expect(deleteFiles).toBeEnabled();
   await deleteFiles.uncheck();
-  await page.getByRole('button', { name: '保存作业设置', exact: true }).click();
-  await expect(page.getByRole('button', { name: '保存作业设置', exact: true })).toBeDisabled();
-  expect(await call(page, 'copilot.storage.info')).toEqual(initial);
+  await expect
+    .poll(
+      async () =>
+        (await call<Snapshot>(page, 'app.snapshot')).settings.copilotStorage?.deleteJsonFiles,
+    )
+    .toBe(false);
+  await expect.poll(() => call(page, 'copilot.storage.info')).toEqual(initial);
 });
 
-test('saving a normalized JSON directory accepts the returned settings and clears the dirty draft', async ({
+test('automatically saving a selected JSON directory accepts the normalized saved path', async ({
   page,
 }) => {
   await page.goto('/');
@@ -250,10 +264,12 @@ test('saving a normalized JSON directory accepts the returned settings and clear
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
   await page.getByRole('button', { name: '数据与诊断', exact: true }).click();
   const directory = page.getByRole('textbox', { name: '作业 JSON 存放目录', exact: true });
-  await directory.fill('  C:\\Synthetic Copilot\\temporary\\..\\JSON\\  ');
-  await page.getByRole('button', { name: '保存作业设置', exact: true }).click();
+  await page.evaluate(() => {
+    (window as HarnessWindow).runtimeHarness.directorySelection =
+      'C:\\Synthetic Copilot\\temporary\\..\\JSON\\';
+  });
+  await page.getByRole('button', { name: '选择作业目录', exact: true }).click();
   await expect(directory).toHaveValue(normalized);
-  await expect(page.getByRole('button', { name: '保存作业设置', exact: true })).toBeDisabled();
   expect((await call<Snapshot>(page, 'app.snapshot')).settings.copilotStorage?.directory).toBe(
     normalized,
   );
@@ -261,7 +277,6 @@ test('saving a normalized JSON directory accepts the returned settings and clear
   await page.locator('.sidebar').getByRole('button', { name: '设置', exact: true }).click();
   await page.getByRole('button', { name: '数据与诊断', exact: true }).click();
   await expect(directory).toHaveValue(normalized);
-  await expect(page.getByRole('button', { name: '保存作业设置', exact: true })).toBeDisabled();
 });
 
 test('keyboard context menu deletion returns focus to the original category or work when cancelled', async ({

@@ -8,6 +8,7 @@ export {
 } from './device-profiles';
 export { rpc, subscribe } from './transport';
 export { openExternalUrl } from './external-links';
+export { pickDirectory, type DirectoryPickerOptions } from './directory-picker';
 export {
   getConfigurationLocations,
   saveConfigurationDirectory,

@@ -3,10 +3,12 @@ import {
   errorMessage,
   getConfigurationLocations,
   openConfigurationDirectory,
+  pickDirectory,
   saveConfigurationDirectory,
   type ConfigurationLocations,
 } from '@maaverge/contracts';
-import { useSettingsDraft } from './settings-draft';
+import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
+import './data-settings.css';
 
 export default function ConfigurationSettings({ busy }: { busy: boolean }) {
   const [locations, setLocations] = useState<ConfigurationLocations>();
@@ -44,8 +46,11 @@ export default function ConfigurationSettings({ busy }: { busy: boolean }) {
     };
   }, []);
   return (
-    <div className="sp-component-path">
-      <h3>配置文件</h3>
+    <section className="settings-card data-configuration" aria-label="配置文件">
+      <div className="data-settings-heading">
+        <h3>配置文件</h3>
+        <p className="sp-help">管理应用设置与执行记录的保存位置。</p>
+      </div>
       {loading && <p className="sp-help">正在读取配置目录…</p>}
       {error && (
         <p className="sp-help" role="alert">
@@ -63,7 +68,7 @@ export default function ConfigurationSettings({ busy }: { busy: boolean }) {
       {locations && (
         <ConfigurationForm locations={locations} busy={busy || loading} onSaved={setLocations} />
       )}
-    </div>
+    </section>
   );
 }
 
@@ -76,33 +81,32 @@ function ConfigurationForm({
   busy: boolean;
   onSaved: (value: ConfigurationLocations) => void;
 }) {
-  const [draft, setDraft, reset] = useSettingsDraft('configuration-directory', {
-    directory: locations.configuredDirectory || '',
-  });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const disabled = busy || pending;
-  const dirty = draft.directory !== (locations.configuredDirectory || '');
-  const save = async (directory: string) => {
-    setPending(true);
-    setError('');
-    setMessage('');
-    try {
-      const result = await saveConfigurationDirectory(directory);
-      onSaved(result);
-      setDraft({ directory: result.configuredDirectory || '' });
-      setMessage(
-        result.restartRequired
-          ? '配置目录已保存。请完全退出 Maa Verge 后重新打开，新目录才会生效。'
-          : '配置目录设置已保存。',
-      );
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setPending(false);
-    }
-  };
+  const { draft, setDraft, flush, status, retry } = useAutoSaveDraft(
+    'configuration-directory',
+    { directory: locations.configuredDirectory || '' },
+    async (next) => {
+      setError('');
+      setMessage('');
+      try {
+        const result = await saveConfigurationDirectory(next.directory);
+        onSaved(result);
+        setMessage(
+          result.restartRequired
+            ? '配置目录已保存。请完全退出 Maa Verge 后重新打开，新目录才会生效。'
+            : '配置目录设置已保存。',
+        );
+        return { directory: result.configuredDirectory || '' };
+      } catch (cause) {
+        setError(errorMessage(cause));
+        return false;
+      }
+    },
+    { normalize: (value) => ({ directory: value.directory.trim() }) },
+  );
+  const disabled = busy || pending || status === 'saving';
   const open = async () => {
     setPending(true);
     setError('');
@@ -114,59 +118,89 @@ function ConfigurationForm({
       setPending(false);
     }
   };
+  const choose = async () => {
+    if (disabled || locations.overridden) return;
+    setPending(true);
+    setError('');
+    try {
+      const directory = await pickDirectory({
+        defaultPath: draft.directory || locations.defaultDirectory,
+      });
+      if (directory !== null) setDraft({ directory }, 0);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setPending(false);
+    }
+  };
   return (
     <form
+      className="settings-form data-settings-form"
       aria-label="配置目录设置"
       onSubmit={(event) => {
         event.preventDefault();
-        void save(draft.directory);
+        void flush();
       }}
     >
-      <dl className="sp-description-list">
-        <div>
-          <dt>当前配置目录</dt>
-          <dd>{locations.directory}</dd>
+      <div className="data-settings-location">
+        <div className="data-settings-location-copy">
+          <span>当前配置目录</span>
+          <code>{locations.directory}</code>
         </div>
-        <div>
-          <dt>配置与业务数据库</dt>
-          <dd>{locations.database}</dd>
+        <button
+          className="button secondary"
+          type="button"
+          disabled={disabled}
+          onClick={() => void open()}
+        >
+          打开当前配置目录
+        </button>
+      </div>
+      {locations.restartRequired && (
+        <div className="data-settings-pending">
+          <strong>重启后使用</strong>
+          <code>{locations.nextDirectory}</code>
         </div>
-        <div>
-          <dt>配置目录设置文件</dt>
-          <dd>{locations.selectorFile}</dd>
+      )}
+      <div className="sp-field">
+        <label htmlFor="configuration-directory-input">配置目录（重启后生效）</label>
+        <div className="data-settings-directory-picker">
+          <input
+            id="configuration-directory-input"
+            className="text-input"
+            aria-label="配置目录"
+            value={draft.directory}
+            placeholder={locations.defaultDirectory}
+            disabled={disabled || locations.overridden}
+            readOnly
+          />
+          <button
+            className="button secondary"
+            type="button"
+            disabled={disabled || locations.overridden}
+            onClick={() => void choose()}
+          >
+            选择配置目录
+          </button>
         </div>
-        {locations.restartRequired && (
+      </div>
+      <p className="sp-help">重启后读取所选目录的配置；空目录会新建数据，原文件保留且不会搬移。</p>
+      <details className="data-settings-details">
+        <summary>存储详情与备份</summary>
+        <dl className="sp-description-list">
           <div>
-            <dt>重启后使用</dt>
-            <dd>{locations.nextDirectory}</dd>
+            <dt>配置与业务数据库</dt>
+            <dd>{locations.database}</dd>
           </div>
-        )}
-      </dl>
-      <button
-        className="button secondary"
-        type="button"
-        disabled={disabled}
-        onClick={() => void open()}
-      >
-        打开当前配置目录
-      </button>
-      <label className="sp-field">
-        配置目录（重启后生效）
-        <input
-          className="text-input"
-          aria-label="配置目录"
-          value={draft.directory}
-          placeholder={locations.defaultDirectory}
-          disabled={disabled || locations.overridden}
-          onChange={(event) => setDraft({ directory: event.target.value })}
-        />
-      </label>
-      <p className="sp-help">
-        留空使用默认目录。切换后读取目标目录已有配置；空目录会创建新的配置和记录。原目录保留，文件不会自动搬移。
-      </p>
-      <p className="sp-help">
-        备份配置前请完全退出应用，保留整个配置目录。MaaCore、游戏资源和自定义作业目录分别管理。
-      </p>
+          <div>
+            <dt>配置目录设置文件</dt>
+            <dd>{locations.selectorFile}</dd>
+          </div>
+        </dl>
+        <p className="sp-help">
+          备份前请完全退出应用并保留整个配置目录。核心、资源和自定义作业目录需分别备份。
+        </p>
+      </details>
       {locations.overridden && (
         <p className="sp-help" role="status">
           当前目录由
@@ -176,29 +210,22 @@ function ConfigurationForm({
       )}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-      <div className="sp-form-actions">
+      <div className="sp-form-actions settings-actions">
+        <span className="sp-help">{autoSaveLabel(status)}</span>
+        {status === 'error' && (
+          <button className="button secondary" type="button" disabled={disabled} onClick={retry}>
+            重试保存配置目录
+          </button>
+        )}
         <button
           className="button secondary"
           type="button"
-          disabled={disabled || locations.overridden || !locations.configuredDirectory}
-          onClick={() => void save('')}
+          disabled={
+            disabled || locations.overridden || (!locations.configuredDirectory && !draft.directory)
+          }
+          onClick={() => setDraft({ directory: '' }, 0)}
         >
           恢复默认配置目录
-        </button>
-        <button
-          className="button secondary"
-          type="button"
-          disabled={disabled || !dirty}
-          onClick={reset}
-        >
-          放弃修改
-        </button>
-        <button
-          className="button primary"
-          type="submit"
-          disabled={disabled || locations.overridden || !dirty}
-        >
-          保存配置目录
         </button>
       </div>
     </form>

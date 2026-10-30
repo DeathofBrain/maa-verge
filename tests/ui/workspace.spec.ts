@@ -626,9 +626,7 @@ test('recruitment calculation is independent and never creates a task table', as
   await expect(dock(page)).not.toContainText('执行中');
 });
 
-test('model drafts survive settings category changes without saving prematurely', async ({
-  page,
-}) => {
+test('model preferences automatically save when changing settings categories', async ({ page }) => {
   await openWorkspace(page);
   await settingsCategory(page, '模型与 Agent');
   await page.getByLabel('模型名称', { exact: true }).fill('synthetic-model');
@@ -641,9 +639,7 @@ test('model drafts survive settings category changes without saving prematurely'
     .getByRole('button', { name: '模型与 Agent', exact: true })
     .click();
   await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-model');
-  await expect(page.getByText('有未保存的修改', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '保存模型配置', exact: true }).click();
-  await expect(page.locator('.sp-model-form .sp-form-actions > .sp-help')).toHaveText('已保存');
+  await expect(page.locator('.sp-model-form .settings-save-state')).toContainText('已自动保存');
   await page.reload();
   await settingsCategory(page, '模型与 Agent');
   await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-model');

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import {
   errorMessage,
+  pickDirectory,
   rpc,
   type DownloadProxySettings,
   type Plan,
@@ -31,7 +32,9 @@ import {
   type UpdateChannel,
 } from '@maaverge/contracts';
 import './support-pages.css';
-import { useSettingsDraft } from './settings-draft';
+import './settings-page.css';
+import { autoSaveLabel, useAutoSaveDraft } from './settings-autosave';
+import ModelSettings from './ModelSettings';
 import LogSettings from './LogSettings';
 import CopilotStorageSettings from './CopilotStorageSettings';
 import ConfigurationSettings from './ConfigurationSettings';
@@ -121,21 +124,6 @@ function Section({
       </div>
       {children}
     </section>
-  );
-}
-
-function Notice({
-  children,
-  icon = <Info size={17} />,
-}: {
-  children: ReactNode;
-  icon?: ReactNode;
-}) {
-  return (
-    <div className="sp-notice">
-      {icon}
-      <div>{children}</div>
-    </div>
   );
 }
 
@@ -231,6 +219,7 @@ const categories = [
   { id: 'about', label: '关于', icon: Info, keywords: '版本 AGPL 许可证 开源 系统 模式' },
 ] as const;
 type Category = (typeof categories)[number]['id'];
+let settingsSaveQueue = Promise.resolve();
 
 export function SettingsPage({
   snapshot,
@@ -245,16 +234,66 @@ export function SettingsPage({
   useEffect(() => {
     if (searchQuery !== undefined) setQuery(searchQuery);
   }, [searchQuery]);
-  const matches = categories.filter((item) =>
-    `${item.label} ${item.keywords}`.toLowerCase().includes(query.trim().toLowerCase()),
-  );
+  const categoryOrder = [
+    'general',
+    'notifications',
+    'updates',
+    'data',
+    'services',
+    'model',
+    'about',
+  ];
+  const matches = categories
+    .filter((item) =>
+      `${item.label} ${item.keywords}`.toLowerCase().includes(query.trim().toLowerCase()),
+    )
+    .sort((left, right) => categoryOrder.indexOf(left.id) - categoryOrder.indexOf(right.id));
   const selected = matches.find((item) => item.id === category) || matches[0];
-  const saveSettings = (patch: Partial<Settings>, message = '偏好设置已保存') =>
-    onAction(
-      'settings',
-      () => rpc('settings.save', { settings: { ...snapshot.settings, ...patch } }),
-      message,
+  const saveSettings = (patch: Partial<Settings>, _message?: string): Promise<boolean> => {
+    const changedPaths =
+      patch.componentPaths &&
+      Object.fromEntries(
+        Object.entries(patch.componentPaths).filter(
+          ([key, value]) =>
+            value !== (snapshot.settings.componentPaths?.[key as 'core' | 'resource'] || ''),
+        ),
+      );
+    const result = settingsSaveQueue.then(() =>
+      onAction('settings', async () => {
+        const current = await rpc('app.snapshot', {});
+        return rpc('settings.save', {
+          settings: {
+            ...current.settings,
+            ...patch,
+            ...(changedPaths
+              ? {
+                  componentPaths: {
+                    core: '',
+                    resource: '',
+                    ...current.settings.componentPaths,
+                    ...changedPaths,
+                  },
+                }
+              : {}),
+          },
+        });
+      }),
     );
+    settingsSaveQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  };
+  const general = useAutoSaveDraft(
+    'general',
+    {
+      theme: snapshot.settings.theme,
+      rememberCloseAction: snapshot.settings.rememberCloseAction,
+      minimizeToTray: snapshot.settings.minimizeToTray,
+    },
+    saveSettings,
+  );
   const updating =
     preparingUpdates.size > 0 ||
     snapshot.updates.some((channel) => ['checking', 'downloading'].includes(channel.status));
@@ -276,18 +315,23 @@ export function SettingsPage({
     );
 
   return (
-    <div className="sp-page sp-settings-page">
-      <PageHeading title="设置" text="查找应用偏好，管理模型与组件更新。" />
+    <div className="sp-page sp-settings-page settings-workspace">
+      <PageHeading title="设置" text="修改自动保存。" />
       <div className="sp-settings-search">
         <Search size={18} />
         <input
           className="text-input"
           type="search"
           aria-label="搜索设置"
-          placeholder="搜索主题、模型、资源更新…"
+          placeholder="搜索主题、通知、更新或存储目录…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
+        {query && (
+          <button className="icon-button" aria-label="清空设置搜索" onClick={() => setQuery('')}>
+            <X size={16} />
+          </button>
+        )}
         {query && <span>{matches.length} 个分类匹配</span>}
       </div>
       {query && selected && (
@@ -313,7 +357,7 @@ export function SettingsPage({
             </button>
           ))}
         </nav>
-        <div className="sp-settings-content">
+        <div className="sp-settings-content settings-category-content">
           {!selected ? (
             <Empty
               title="没有匹配的设置"
@@ -324,19 +368,24 @@ export function SettingsPage({
             <>
               {selected.id === 'general' && (
                 <>
-                  <Section title="通用与外观" description="适用范围：应用">
+                  <Section title="通用与外观" className="settings-card">
                     <div className="sp-setting-row">
                       <div>
                         <strong>界面主题</strong>
-                        <p>浅色、深色，或跟随系统外观。</p>
                       </div>
                       <Select
                         className="text-input sp-inline-select"
                         aria-label="界面主题"
-                        value={snapshot.settings.theme}
+                        value={general.draft.theme}
                         disabled={busy}
                         onChange={(event) =>
-                          void saveSettings({ theme: event.target.value as Settings['theme'] })
+                          general.setDraft(
+                            (value) => ({
+                              ...value,
+                              theme: event.target.value as Settings['theme'],
+                            }),
+                            0,
+                          )
                         }
                       >
                         <option value="system">跟随系统</option>
@@ -347,26 +396,30 @@ export function SettingsPage({
                     <div className="sp-setting-row">
                       <div>
                         <strong>关闭窗口时</strong>
-                        <p>最小化到托盘可继续运行；退出会停止本地执行。</p>
+                        <p>最小化到托盘时继续运行</p>
                       </div>
                       <Select
                         className="text-input sp-inline-select"
                         aria-label="关闭窗口时"
                         value={
-                          !snapshot.settings.rememberCloseAction
+                          !general.draft.rememberCloseAction
                             ? 'ask'
-                            : snapshot.settings.minimizeToTray
+                            : general.draft.minimizeToTray
                               ? 'tray'
                               : 'exit'
                         }
                         disabled={busy}
                         onChange={(event) =>
-                          void saveSettings({
-                            rememberCloseAction: event.target.value !== 'ask',
-                            ...(event.target.value !== 'ask'
-                              ? { minimizeToTray: event.target.value === 'tray' }
-                              : {}),
-                          })
+                          general.setDraft(
+                            (value) => ({
+                              ...value,
+                              rememberCloseAction: event.target.value !== 'ask',
+                              ...(event.target.value !== 'ask'
+                                ? { minimizeToTray: event.target.value === 'tray' }
+                                : {}),
+                            }),
+                            0,
+                          )
                         }
                       >
                         <option value="ask">每次询问</option>
@@ -377,22 +430,33 @@ export function SettingsPage({
                     <div className="sp-setting-row">
                       <div>
                         <strong>界面语言</strong>
-                        <p>当前产品界面使用简体中文。</p>
                       </div>
                       <span className="sp-value">简体中文</span>
+                    </div>
+                    <div className="settings-save-state">
+                      <span>{autoSaveLabel(general.status)}</span>
+                      {general.status === 'error' && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => void general.retry()}
+                        >
+                          重试
+                        </button>
+                      )}
                     </div>
                   </Section>
                 </>
               )}
               {selected.id === 'model' && (
-                <ModelForm
+                <ModelSettings
                   settings={snapshot.settings}
                   busy={busy}
                   onSave={(model) => saveSettings({ model }, '模型配置已保存')}
                 />
               )}
               {selected.id === 'notifications' && (
-                <Section title="通知与远控">
+                <Section title="通知与远控" className="settings-card">
                   <NotificationSettings
                     settings={snapshot.settings}
                     busy={busy}
@@ -401,7 +465,7 @@ export function SettingsPage({
                 </Section>
               )}
               {selected.id === 'services' && (
-                <Section title="外部服务">
+                <Section title="外部服务" className="settings-card">
                   <dl className="sp-description-list">
                     <div>
                       <dt>社区作业服务</dt>
@@ -409,15 +473,14 @@ export function SettingsPage({
                         <a href="https://prts.plus/" target="_blank" rel="noopener noreferrer">
                           PRTS Plus
                         </a>
-                        ；搜索、解析编号与导入时联网，发送查询条件或作业编号。本地作业浏览无需访问社区。
+                        <p className="sp-help">
+                          搜索与导入时发送关键词或作业编号，本地浏览无需联网。
+                        </p>
                       </dd>
                     </div>
                     <div>
                       <dt>作业内容归属</dt>
-                      <dd>
-                        作业、说明与视频归各自权利人所有；上传者可能并非原作者。转载遵循具体作者声明，不自动适用本项目
-                        AGPL 许可。
-                      </dd>
+                      <dd>作业与视频归原作者所有，转载请遵循作者声明。</dd>
                     </div>
                     <div>
                       <dt>MirrorChyan 加速</dt>
@@ -433,9 +496,6 @@ export function SettingsPage({
                       <dd>默认关闭；按任务参数显式配置</dd>
                     </div>
                   </dl>
-                  <p className="sp-help">
-                    Maa Verge 是独立客户端。核心与资源更新可使用官方来源，无需配置付费加速服务。
-                  </p>
                 </Section>
               )}
               {selected.id === 'updates' && (
@@ -443,7 +503,7 @@ export function SettingsPage({
                   <div className="sp-content-heading">
                     <div>
                       <h2>更新</h2>
-                      <p>应用确认后重启安装；核心与资源空闲生效。</p>
+                      <p>应用重启安装，核心与资源在空闲时生效。</p>
                     </div>
                     <button
                       className="button secondary"
@@ -454,16 +514,6 @@ export function SettingsPage({
                       检查全部更新
                     </button>
                   </div>
-                  <MirrorChyanSettings
-                    settings={snapshot.settings}
-                    busy={busy || updating}
-                    onSave={saveSettings}
-                  />
-                  <DownloadProxyForm
-                    settings={snapshot.settings}
-                    busy={busy}
-                    onSave={saveSettings}
-                  />
                   {snapshot.updates.map((channel) => (
                     <UpdateSection
                       key={channel.id}
@@ -478,32 +528,27 @@ export function SettingsPage({
                       onSave={saveSettings}
                     />
                   ))}
-                  <Notice>
-                    下载完成、验证通过与已生效是不同状态。任务执行期间继续使用原版本，失败时保留旧组合。
-                  </Notice>
+                  <div className="settings-group-heading">
+                    <h2>下载设置</h2>
+                  </div>
+                  <DownloadProxyForm
+                    settings={snapshot.settings}
+                    busy={busy}
+                    onSave={saveSettings}
+                  />
+                  <MirrorChyanSettings
+                    settings={snapshot.settings}
+                    busy={busy || updating}
+                    onSave={saveSettings}
+                  />
                 </>
               )}
               {selected.id === 'data' && (
-                <Section title="数据与诊断">
+                <>
+                  <div className="settings-group-heading">
+                    <h2>数据与诊断</h2>
+                  </div>
                   <ConfigurationSettings busy={busy} />
-                  <dl className="sp-description-list">
-                    <div>
-                      <dt>数据归属</dt>
-                      <dd>保存在本机</dd>
-                    </div>
-                    <div>
-                      <dt>任务表</dt>
-                      <dd>{snapshot.plans.length} 张</dd>
-                    </div>
-                    <div>
-                      <dt>执行记录</dt>
-                      <dd>{snapshot.runs.length} 条</dd>
-                    </div>
-                    <div>
-                      <dt>当前事件</dt>
-                      <dd>{snapshot.events.length} 条</dd>
-                    </div>
-                  </dl>
                   <CopilotStorageSettings
                     settings={snapshot.settings}
                     busy={busy}
@@ -515,10 +560,10 @@ export function SettingsPage({
                     onAction={onAction}
                     onSave={saveSettings}
                   />
-                </Section>
+                </>
               )}
               {selected.id === 'about' && (
-                <Section title="关于 Maa Verge">
+                <Section title="关于 Maa Verge" className="settings-card">
                   <p className="sp-about-intro">以任务为中心的本地桌面助手。</p>
                   <dl className="sp-description-list">
                     <div>
@@ -529,8 +574,8 @@ export function SettingsPage({
                       </dd>
                     </div>
                     <div>
-                      <dt>运行模式</dt>
-                      <dd>本地原生运行时</dd>
+                      <dt>数据存储</dt>
+                      <dd>保存在本机</dd>
                     </div>
                     <div>
                       <dt>开源许可证</dt>
@@ -541,7 +586,7 @@ export function SettingsPage({
                       <dd>简体中文</dd>
                     </div>
                   </dl>
-                  <Notice>完整原 MAA 兼容仍在推进中。各项能力以实际接入与验证状态为准。</Notice>
+                  <p className="sp-help">完整原 MAA 兼容仍在推进中。</p>
                 </Section>
               )}
             </>
@@ -549,88 +594,6 @@ export function SettingsPage({
         </div>
       </div>
     </div>
-  );
-}
-
-// Only unsaved form drafts live in the session; saved settings remain runtime-owned.
-function ModelForm({
-  settings,
-  busy,
-  onSave,
-}: {
-  settings: Settings;
-  busy: boolean;
-  onSave: (model: Settings['model']) => Promise<boolean>;
-}) {
-  const [draft, setDraft, resetDraft] = useSettingsDraft('model', settings.model);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(settings.model);
-  return (
-    <Section title="模型与 Agent" description="保存模型提供商信息；不会在保存时发起模型请求。">
-      <Notice>当前 Agent 提供可审阅的规则提案，真实云模型与自主托管尚未接入。</Notice>
-      <form
-        className="sp-model-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void onSave(draft);
-        }}
-      >
-        <label className="sp-field">
-          模型提供商
-          <input
-            className="text-input"
-            aria-label="模型提供商"
-            placeholder="例如：openai-compatible"
-            value={draft.provider}
-            disabled={busy}
-            onChange={(event) =>
-              setDraft((previous) => ({ ...previous, provider: event.target.value }))
-            }
-          />
-        </label>
-        <label className="sp-field">
-          API 地址
-          <input
-            className="text-input"
-            type="url"
-            aria-label="模型 API 地址"
-            placeholder="https://example.com/v1"
-            value={draft.baseUrl}
-            disabled={busy}
-            onChange={(event) =>
-              setDraft((previous) => ({ ...previous, baseUrl: event.target.value }))
-            }
-          />
-        </label>
-        <label className="sp-field">
-          模型名称
-          <input
-            className="text-input"
-            aria-label="模型名称"
-            value={draft.model}
-            disabled={busy}
-            placeholder="填写提供商支持的模型名称"
-            onChange={(event) =>
-              setDraft((previous) => ({ ...previous, model: event.target.value }))
-            }
-          />
-        </label>
-        <p className="sp-help">密钥管理将在系统钥匙串接入后提供，此处不存放 API 密钥。</p>
-        <div className="sp-form-actions">
-          <span className="sp-help">{dirty ? '有未保存的修改' : '已保存'}</span>
-          <button
-            className="button secondary"
-            type="button"
-            disabled={busy || !dirty}
-            onClick={resetDraft}
-          >
-            放弃修改
-          </button>
-          <button className="button primary" type="submit" disabled={busy}>
-            保存模型配置
-          </button>
-        </div>
-      </form>
-    </Section>
   );
 }
 
@@ -647,60 +610,85 @@ function ComponentPathForm({
 }) {
   const key = channel.id === 'core' ? 'core' : 'resource';
   const saved = settings.componentPaths?.[key] || channel.installDirectory || '';
-  const [draft, setDraft, reset] = useSettingsDraft(`component-path-${key}`, { path: saved });
-  const dirty = draft.path !== saved;
-  const save = (value: string) =>
-    onSave({
-      componentPaths: {
-        core: settings.componentPaths?.core || '',
-        resource: settings.componentPaths?.resource || '',
-        [key]: value,
-      },
-    });
+  const [selecting, setSelecting] = useState(false);
+  const [error, setError] = useState('');
+  const { draft, setDraft, status, retry } = useAutoSaveDraft(
+    'component-path-' + key,
+    { path: saved },
+    async (value) =>
+      onSave({
+        componentPaths: {
+          core: settings.componentPaths?.core || '',
+          resource: settings.componentPaths?.resource || '',
+          [key]: value.path,
+        },
+      }),
+  );
+  const choose = async () => {
+    setSelecting(true);
+    setError('');
+    try {
+      const directory = await pickDirectory({
+        defaultPath: draft.path || channel.installDirectory,
+      });
+      if (directory !== null) setDraft({ path: directory }, 0);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setSelecting(false);
+    }
+  };
   return (
-    <form
-      className="sp-component-path"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void save(draft.path);
-      }}
-    >
+    <div className="sp-component-path settings-directory">
       <label className="sp-field">
         下载与安装目录
-        <input
-          className="text-input"
-          aria-label={`${channelLabels[channel.id]}下载目录`}
-          value={draft.path}
-          placeholder="输入完整的绝对路径"
-          required
-          disabled={busy}
-          onChange={(event) => setDraft({ path: event.target.value })}
-        />
+        <div className="settings-directory-control">
+          <input
+            className="text-input"
+            aria-label={channelLabels[channel.id] + '下载目录'}
+            value={draft.path}
+            placeholder="使用默认目录"
+            readOnly
+            disabled={busy || selecting}
+          />
+          <button
+            className="button secondary"
+            type="button"
+            disabled={busy || selecting}
+            onClick={() => void choose()}
+          >
+            选择文件夹
+          </button>
+        </div>
       </label>
-      <div className="sp-form-actions">
-        <span className="sp-help">{dirty ? '有未保存的修改' : '用于后续下载与安装'}</span>
+      <div className="settings-save-state">
+        <span className="sp-help">{autoSaveLabel(status)}</span>
+        {status === 'error' && (
+          <button
+            className="text-button"
+            type="button"
+            disabled={busy}
+            onClick={() => void retry()}
+          >
+            重试
+          </button>
+        )}
         <button
-          className="button secondary"
+          className="text-button"
           type="button"
-          disabled={busy}
-          onClick={() => void save('')}
+          disabled={busy || selecting}
+          onClick={() => setDraft({ path: '' }, 0)}
         >
           恢复默认目录
         </button>
-        {dirty && (
-          <button className="button secondary" type="button" disabled={busy} onClick={reset}>
-            放弃修改
-          </button>
-        )}
-        <button className="button primary" type="submit" disabled={busy || !dirty}>
-          保存目录
-        </button>
       </div>
-      <p className="sp-help">
-        安装版默认保存在程序同级的 {key === 'core' ? 'MaaCore' : 'MaaResource'}{' '}
-        目录。更改后保留当前安装与回滚版本，新下载使用此目录。
-      </p>
-    </form>
+      <p className="sp-help">仅用于后续下载，当前安装和回滚版本保留。</p>
+      {error && (
+        <p className="sp-help" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -714,51 +702,36 @@ function DownloadProxyForm({
   onSave: (patch: Partial<Settings>) => Promise<boolean>;
 }) {
   const saved: DownloadProxySettings = settings.downloadProxy ?? { mode: 'auto', url: '' };
-  const [draft, setDraft, reset] = useSettingsDraft<DownloadProxySettings>('download-proxy', saved);
-  const [saving, setSaving] = useState(false);
   const [readbackFailed, setReadbackFailed] = useState(false);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
-  const disabled = busy || saving;
-  const readSaved = async () => {
-    try {
-      const snapshot = await rpc('app.snapshot', {});
-      setDraft(snapshot.settings.downloadProxy ?? { mode: 'auto', url: '' });
-      setReadbackFailed(false);
-    } catch {
-      setReadbackFailed(true);
-    }
-  };
-  const retryRead = async () => {
-    if (disabled) return;
-    setSaving(true);
-    try {
-      await readSaved();
-    } finally {
-      setSaving(false);
-    }
-  };
-  const save = async () => {
-    if (disabled) return;
-    const next = { ...draft, url: draft.mode === 'manual' ? draft.url.trim() : '' };
-    setSaving(true);
-    setReadbackFailed(false);
-    try {
-      if (await onSave({ downloadProxy: next })) await readSaved();
-    } finally {
-      setSaving(false);
-    }
-  };
+  const { draft, setDraft, flush, status, retry, synchronize } =
+    useAutoSaveDraft<DownloadProxySettings>(
+      'download-proxy',
+      saved,
+      async (value) => {
+        const completed = await onSave({ downloadProxy: value });
+        if (!completed) return false;
+        try {
+          const current = await rpc('app.snapshot', {});
+          setReadbackFailed(false);
+          return current.settings.downloadProxy ?? { mode: 'auto', url: '' };
+        } catch {
+          setReadbackFailed(true);
+          return true;
+        }
+      },
+      {
+        normalize: (value) => ({ ...value, url: value.mode === 'manual' ? value.url.trim() : '' }),
+        isValid: (value) => value.mode !== 'manual' || value.url.trim().length > 0,
+      },
+    );
   return (
-    <Section
-      title="下载代理"
-      description="Maa Verge 应用、MaaCore 与 MaaResource 的更新检查和下载共用此设置。"
-    >
+    <Section title="下载代理" className="settings-card" description="应用、核心与资源共用此设置。">
       <form
-        className="sp-model-form"
+        className="settings-form"
         aria-label="下载代理设置"
         onSubmit={(event) => {
           event.preventDefault();
-          void save();
+          void flush();
         }}
       >
         <label className="sp-field">
@@ -767,12 +740,15 @@ function DownloadProxyForm({
             className="text-input"
             aria-label="下载代理模式"
             value={draft.mode}
-            disabled={disabled}
+            disabled={busy || readbackFailed}
             onChange={(event) =>
-              setDraft((previous) => ({
-                mode: event.target.value as DownloadProxySettings['mode'],
-                url: event.target.value === 'manual' ? previous.url : '',
-              }))
+              setDraft(
+                (previous) => ({
+                  mode: event.target.value as DownloadProxySettings['mode'],
+                  url: event.target.value === 'manual' ? previous.url : '',
+                }),
+                0,
+              )
             }
           >
             <option value="auto">自动（系统代理与环境变量）</option>
@@ -792,8 +768,8 @@ function DownloadProxyForm({
               placeholder="例如 127.0.0.1:7890"
               autoComplete="off"
               spellCheck={false}
-              required
-              disabled={disabled}
+              disabled={busy || readbackFailed}
+              onBlur={() => void flush()}
               onChange={(event) =>
                 setDraft((previous) => ({ ...previous, url: event.target.value }))
               }
@@ -802,39 +778,44 @@ function DownloadProxyForm({
         )}
         <p className="sp-help">
           {draft.mode === 'auto'
-            ? '优先使用环境变量与系统代理；代理不可用时尝试直连。'
+            ? '代理不可用时尝试直连。'
             : draft.mode === 'manual'
-              ? '可填写 IP:端口或完整 HTTP/HTTPS 代理地址。地址无效或连接失败时显示错误，保留已下载内容。'
-              : '绕过环境变量与系统代理，直接连接下载来源。'}
+              ? '支持 IP:端口或 HTTP/HTTPS 地址。'
+              : '绕过环境变量与系统代理。'}
         </p>
         {readbackFailed && (
           <p className="sp-help" role="alert">
-            下载代理已保存，但读取当前设置失败。请重新读取后继续编辑。
+            下载代理已保存，但读取当前设置失败。
             <button
-              className="text-button"
               type="button"
-              disabled={disabled}
-              onClick={() => void retryRead()}
+              className="text-button"
+              disabled={busy}
+              onClick={() =>
+                void rpc('app.snapshot', {}).then(
+                  (current) => {
+                    synchronize(current.settings.downloadProxy ?? { mode: 'auto', url: '' });
+                    setReadbackFailed(false);
+                  },
+                  () => setReadbackFailed(true),
+                )
+              }
             >
               重新读取下载代理
             </button>
           </p>
         )}
-        <div className="sp-form-actions">
-          <span className="sp-help">
-            {readbackFailed ? '设置已保存，等待重新读取' : dirty ? '有未保存的修改' : '已保存'}
-          </span>
-          <button
-            className="button secondary"
-            type="button"
-            disabled={disabled || !dirty}
-            onClick={reset}
-          >
-            放弃修改
-          </button>
-          <button className="button primary" type="submit" disabled={disabled || !dirty}>
-            保存下载代理
-          </button>
+        <div className="settings-save-state">
+          <span className="sp-help">{autoSaveLabel(status)}</span>
+          {status === 'error' && (
+            <button
+              className="text-button"
+              type="button"
+              disabled={busy}
+              onClick={() => void retry()}
+            >
+              重试
+            </button>
+          )}
         </div>
       </form>
     </Section>
@@ -894,6 +875,32 @@ function UpdateSection({
     channel.checkedAt && !Number.isNaN(Date.parse(channel.checkedAt))
       ? formatDate(channel.checkedAt)
       : '尚未检查';
+  const preferences = useAutoSaveDraft(
+    `update-${channel.id}`,
+    {
+      releaseChannel: isApp
+        ? (settings.appUpdateChannel ?? 'preview')
+        : (settings.coreUpdateChannel ?? 'stable'),
+      autoCheck: isApp
+        ? (settings.autoUpdateApp ?? true)
+        : channel.id === 'core'
+          ? settings.autoUpdateCore
+          : settings.autoUpdateResource,
+    },
+    async (value) =>
+      onSave({
+        ...(channel.id !== 'resource'
+          ? isApp
+            ? { appUpdateChannel: value.releaseChannel }
+            : { coreUpdateChannel: value.releaseChannel }
+          : {}),
+        ...(isApp
+          ? { autoUpdateApp: value.autoCheck }
+          : channel.id === 'core'
+            ? { autoUpdateCore: value.autoCheck }
+            : { autoUpdateResource: value.autoCheck }),
+      }),
+  );
   useEffect(() => {
     if (!staged || !canInstall) setConfirmInstall(false);
   }, [staged, canInstall]);
@@ -914,7 +921,7 @@ function UpdateSection({
     }
   };
   return (
-    <section className="sp-update-channel update-channel">
+    <section className="sp-update-channel update-channel settings-card">
       <div className="sp-update-main">
         <div className="sp-update-title">
           <Icon size={19} />
@@ -939,13 +946,6 @@ function UpdateSection({
         {channel.id === 'resource' && (
           <p className="sp-help">{resourceVersionDetail(channel, resourceClient)}</p>
         )}
-        <p className="sp-help">
-          {isApp
-            ? '桌面应用与本地服务；下载并校验签名后，可立即重启安装，或下次启动时自动安装。'
-            : channel.id === 'core'
-              ? '来源：官方 MaaCore 发布'
-              : '关卡、活动与公招数据；版本独立于核心'}
-        </p>
         <p className="sp-help sp-update-checked">上次检查：{checkedAt}</p>
         {channel.message && (
           <p className="sp-channel-message">
@@ -1080,28 +1080,20 @@ function UpdateSection({
           <div className="sp-setting-row">
             <div>
               <strong>{isApp ? '应用更新频道' : 'MaaCore 更新频道'}</strong>
-              <p>
-                {staged
-                  ? isApp
-                    ? '切换频道会取消已准备的版本并重新检查。'
-                    : '切换频道会取消已准备的版本，下次检查使用新频道。'
-                  : '正式版提供稳定更新；预览版包含最新预览版与正式版。'}
-              </p>
+              <p>{staged ? '切换频道将取消已准备的版本。' : '预览版包含尚在验证中的新功能。'}</p>
             </div>
             <Select
               className="text-input sp-inline-select"
               aria-label={isApp ? '应用更新频道' : 'MaaCore 更新频道'}
-              value={
-                isApp
-                  ? (settings.appUpdateChannel ?? 'preview')
-                  : (settings.coreUpdateChannel ?? 'stable')
-              }
+              value={preferences.draft.releaseChannel}
               disabled={busy || working}
               onChange={(event) =>
-                void onSave(
-                  isApp
-                    ? { appUpdateChannel: event.target.value as Settings['appUpdateChannel'] }
-                    : { coreUpdateChannel: event.target.value as Settings['coreUpdateChannel'] },
+                preferences.setDraft(
+                  (value) => ({
+                    ...value,
+                    releaseChannel: event.target.value as 'stable' | 'preview',
+                  }),
+                  0,
                 )
               }
             >
@@ -1120,36 +1112,40 @@ function UpdateSection({
           }
           description={
             isApp
-              ? '此开关仅控制新版本检查；已安排的更新仍会在下次启动时安装。'
+              ? '已安排的更新仍会在下次启动时安装'
               : channel.id === 'core'
-                ? '启动时与每 24 小时检查'
-                : '每 6 小时独立检查资源更新'
+                ? '启动时及每 24 小时检查'
+                : '每 6 小时检查，与核心版本无关'
           }
-          checked={
-            isApp
-              ? (settings.autoUpdateApp ?? true)
-              : channel.id === 'core'
-                ? settings.autoUpdateCore
-                : settings.autoUpdateResource
-          }
+          checked={preferences.draft.autoCheck}
           disabled={busy}
           onChange={(value) =>
-            void onSave(
-              isApp
-                ? { autoUpdateApp: value }
-                : channel.id === 'core'
-                  ? { autoUpdateCore: value }
-                  : { autoUpdateResource: value },
-            )
+            preferences.setDraft((previous) => ({ ...previous, autoCheck: value }), 0)
           }
         />
+        <div className="settings-save-state">
+          <span>{autoSaveLabel(preferences.status)}</span>
+          {preferences.status === 'error' && (
+            <button
+              className="text-button"
+              type="button"
+              disabled={busy}
+              onClick={() => void preferences.retry()}
+            >
+              重试
+            </button>
+          )}
+        </div>
         {!isApp && (
-          <ComponentPathForm
-            channel={channel}
-            settings={settings}
-            busy={busy || updatesBlocked}
-            onSave={onSave}
-          />
+          <details className="settings-advanced">
+            <summary>下载与安装目录</summary>
+            <ComponentPathForm
+              channel={channel}
+              settings={settings}
+              busy={busy || updatesBlocked}
+              onSave={onSave}
+            />
+          </details>
         )}
       </div>
       {confirmInstall && (
