@@ -56,6 +56,7 @@ import Drawer from './kit/Drawer';
 import CopilotQueueView from './features/copilot/CopilotQueueView';
 import CopilotImportPreview from './features/copilot/CopilotImportPreview';
 import CopilotRunMonitor from './features/copilot/CopilotRunMonitor';
+import CopilotLibraryList from './features/copilot/CopilotLibraryList';
 import useWorkspace from './features/copilot/useCopilotWorkspace';
 import CopilotRating from './features/copilot/CopilotRating';
 import Compatibility from './features/copilot/CopilotCompatibility';
@@ -1492,188 +1493,40 @@ export default function CopilotPage({
                       删除所选
                     </button>
                   </div>
-                  {!libraryReady && finishedLibrary !== libraryKey ? (
-                    <p className="cp-loading" role="status">
-                      正在读取作业库…
-                    </p>
-                  ) : filtered.length ? (
-                    <div className="cp-record-list">
-                      {filtered.map((record) => (
-                        <article
-                          key={record.id}
-                          data-copilot-id={record.id}
-                          className={`cp-record is-selectable${selectedLibraryIds.includes(record.id) ? ' is-marked' : ''}`}
-                          tabIndex={0}
-                          {...contextMenu('作业菜单', [
-                            { label: '查看作业详情', action: () => openRecord(record) },
-                            {
-                              label: '加入执行队列',
-                              action: () => addRecords([record]),
-                              disabled:
-                                !workspace ||
-                                record.kind !== kind ||
-                                (kind === 'SSSCopilot' && !!workspace.queue.length),
-                            },
-                            ...categories.map((category) => ({
-                              label: `归类到 ${category.name}`,
-                              action: () => {
-                                void assignCategory(record, category.id);
-                              },
-                              disabled: categoryBusy || record.categoryId === category.id,
-                            })),
-                            {
-                              label: '设为未分类',
-                              action: () => {
-                                void assignCategory(record, '');
-                              },
-                              disabled: categoryBusy || !record.categoryId,
-                            },
-                            {
-                              label: '导出原始 JSON',
-                              action: () => {
-                                void exportRecord(record);
-                              },
-                            },
-                            {
-                              label: '从作业库移除',
-                              danger: true,
-                              action: () => {
-                                requestDelete({
-                                  type: 'records',
-                                  ids: [record.id],
-                                  title: record.title,
-                                });
-                              },
-                              disabled: categoryBusy || importing || savingImport,
-                            },
-                          ])}
-                        >
-                          <label className="cp-record-select">
-                            <input
-                              type="checkbox"
-                              aria-label={`选择作业 ${record.title}`}
-                              checked={selectedLibraryIds.includes(record.id)}
-                              disabled={loading || deleting}
-                              onChange={(event) => {
-                                const checked = event.target.checked;
-                                setSelectedLibraryIds((ids) =>
-                                  checked
-                                    ? [...ids, record.id]
-                                    : ids.filter((id) => id !== record.id),
-                                );
-                              }}
-                            />
-                          </label>
-                          <CopilotDifficulty difficulty={record.difficulty} />
-                          <button className="cp-record-main" onClick={() => openRecord(record)}>
-                            <span className="cp-stage">{`${kindLabel(record.kind)}${record.stageName ? ` · ${record.stageName}` : ''}`}</span>
-                            <strong>{record.title}</strong>
-                            <small>
-                              作者：{record.author || record.uploader || '未标注'} ·{' '}
-                              {record.source.kind === 'community'
-                                ? 'PRTS Plus'
-                                : record.source.kind === 'legacy'
-                                  ? '旧任务表'
-                                  : '本地 JSON'}
-                              {record.source.setId && ` · 作业集 #${record.source.setId}`}
-                              {record.categoryId && (
-                                <span className="cp-record-category-badge">
-                                  {categories.find((item) => item.id === record.categoryId)?.name ??
-                                    '已分类'}
-                                </span>
-                              )}
-                            </small>
-                          </button>
-                          <CopilotOperators
-                            operators={record.operators}
-                            resourceKey={resourceKey}
-                            roster={roster}
-                            rosterHint={rosterHint}
-                            compact
-                          />
-                          <button
-                            className="button secondary cp-record-add"
-                            aria-label={`加入队列 ${record.title}`}
-                            title={
-                              record.kind !== kind
-                                ? `先切换到${kindLabel(record.kind)}队列`
-                                : '加入队列，可重复添加'
-                            }
-                            disabled={
-                              !workspace ||
-                              (record.kind === kind &&
-                                kind === 'SSSCopilot' &&
-                                !!workspace.queue.length)
-                            }
-                            onClick={() =>
-                              record.kind === kind ? addRecords([record]) : setKind(record.kind)
-                            }
-                          >
-                            <Plus size={15} />
-                            {record.kind === kind ? '加入队列' : '切换队列'}
-                          </button>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="cp-empty">
-                      <BookOpen size={29} />
-                      <h3>
-                        {query
-                          ? '没有匹配的作业'
-                          : categoryFilter
-                            ? '此分类还没有作业'
-                            : '还没有本地作业'}
-                      </h3>
-                      <p>
-                        {query
-                          ? '当前页没有匹配结果，可翻页或清除搜索。'
-                          : categoryFilter
-                            ? '在作业详情或右键菜单中归类，也可以导入社区作业集。'
-                            : '导入本地 JSON，或搜索社区作业。浏览和导入无需连接设备。'}
-                      </p>
-                      {!query && (
-                        <div className="cp-empty-actions">
-                          <button
-                            className="button primary"
-                            onClick={() => showLibrary('community')}
-                          >
-                            <Search size={15} />
-                            去社区找作业
-                          </button>
-                          <button
-                            className="button secondary"
-                            disabled={savingImport}
-                            onClick={openImport}
-                          >
-                            <Upload size={15} />
-                            导入本地作业
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="cp-pagination">
-                    <button
-                      className="button secondary"
-                      aria-label="本地作业上一页"
-                      disabled={localPage <= 1 || loading}
-                      onClick={() => setLocalPage((value) => value - 1)}
-                    >
-                      上一页
-                    </button>
-                    <span>
-                      第 {localPage} 页 · 共 {localPaging.total} 份
-                    </span>
-                    <button
-                      className="button secondary"
-                      aria-label="本地作业下一页"
-                      disabled={!localPaging.hasNext || loading}
-                      onClick={() => setLocalPage((value) => value + 1)}
-                    >
-                      下一页
-                    </button>
-                  </div>
+                  <CopilotLibraryList
+                    libraryReady={libraryReady}
+                    finishedLibrary={finishedLibrary}
+                    libraryKey={libraryKey}
+                    filtered={filtered}
+                    selectedLibraryIds={selectedLibraryIds}
+                    setSelectedLibraryIds={setSelectedLibraryIds}
+                    contextMenu={contextMenu}
+                    categories={categories}
+                    workspace={workspace}
+                    kind={kind}
+                    addRecords={addRecords}
+                    assignCategory={assignCategory}
+                    exportRecord={exportRecord}
+                    requestDelete={requestDelete}
+                    categoryBusy={categoryBusy}
+                    importing={importing}
+                    savingImport={savingImport}
+                    loading={loading}
+                    deleting={deleting}
+                    kindLabel={kindLabel}
+                    resourceKey={resourceKey}
+                    roster={roster}
+                    rosterHint={rosterHint}
+                    openRecord={openRecord}
+                    setKind={setKind}
+                    query={query}
+                    categoryFilter={categoryFilter}
+                    showLibrary={showLibrary}
+                    openImport={openImport}
+                    localPage={localPage}
+                    localPaging={localPaging}
+                    setLocalPage={setLocalPage}
+                  />{' '}
                 </>
               ) : (
                 <>
