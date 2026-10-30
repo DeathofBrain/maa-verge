@@ -274,11 +274,11 @@ Chromium 夹具通过不等于原生 WebView 或安装包通过；三平台原�
 
 ## 后续范围
 
-`PlanEditor.tsx` 已拆出任务队列、参数区与表设置视图；`App.tsx` 已拆出侧栏导航、顶栏搜索、Agent、执行记录与底栏运行条；`SupportPages.tsx` 的设置页已迁入 `features/settings/`。`CopilotPage.tsx` 已抽出工作区 hook、评分、兼容提示与执行选项，但库列表、导入预览、队列和监控视图仍在页面内。
+`PlanEditor.tsx` 已拆出任务队列、参数区与表设置视图；`App.tsx` 已拆出侧栏导航、顶栏搜索、Agent、执行记录、底栏运行条与快照/计划写入 hook；`SupportPages.tsx` 的设置页已迁入 `features/settings/`。`CopilotPage.tsx` 已抽出工作区 hook、评分、兼容提示、执行选项、导入预览、队列、监控与本地库列表；社区搜索控件与详情抽屉仍由页面容器持有。
 
 后续：
 
-1. 继续拆 `CopilotPage.tsx` 的库列表、导入预览、队列与监控视图，`.cp-record`（27 处）、`.cp-queue-list`（14）、`.cp-save-state`（22）等通过 `className` 保留；`.cp-search` 收敛到 `SearchField`；`.cp-type-bar` 收敛到 `Tabs`。
-2. 把 App 的快照刷新与计划写入协调抽成 hook（保留 `refreshSequence`、`planWrites`、`deletedPlans` 语义），移除已迁完的保留类与死 CSS，对存活页面 CSS 做令牌回填，并在最后一个抽屉迁到 `.mv-drawer-panel` 后把抽屉关键帧从 `styles.css` 移进 `kit.css`。
+1. 继续收敛 `CopilotPage.tsx` 的社区搜索控件与详情抽屉，`.cp-record`（27 处）、`.cp-queue-list`（14）、`.cp-save-state`（22）等通过 `className` 保留；`.cp-search` 收敛到 `SearchField`；`.cp-type-bar` 收敛到 `Tabs`。
+2. 移除已迁完的保留类与死 CSS，对存活页面 CSS 做令牌回填，并在最后一个抽屉迁到 `.mv-drawer-panel` 后把抽屉关键帧从 `styles.css` 移进 `kit.css`。
 
 已退役 `styles.css` 的 `.toggle` / `.segmented` / `.pill` 全局类：设置页开关改用 `Switch`，执行记录筛选改用 `FilterChips`，执行/更新/多开状态改用 `StatusPill`；`Select.tsx` 与 `ContextMenu.tsx` 已物理迁入 `kit/`，其遗留样式表 `select.css` / `context-menu.css` 因类名不是 `mv-*` 暂留 `src/`。

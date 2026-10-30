@@ -1263,8 +1263,8 @@
 
 - 按执行手册完成基线、文档校正、页面类型解耦、Tabs/行组件/Drawer 原语、设置/设备/工具箱/执行监控采用、四个抽屉与删除确认收编、任务编辑器纯逻辑与视图拆分、设置页迁移、测试白名单合并、公共组件迁移与全局类退役。每批独立提交，提交信息为 Conventional Commits。
 - 任务编辑器：`features/plans/task-fields.ts`、`plan-draft.ts`、`TaskQueueView.tsx`、`TaskInspectorView.tsx`、`TaskTableSettings.tsx`；保存协调仍由 `PlanEditor` 单点持有。
-- 作业中心：`features/copilot/useCopilotWorkspace.ts`、`CopilotRating.tsx`、`CopilotCompatibility.tsx`、`CopilotSettingsView.tsx`、`CopilotImportPreview.tsx`、`CopilotQueueView.tsx`、`CopilotRunMonitor.tsx`；本地/社区库列表与控制区仍留在 `CopilotPage.tsx`。
-- App：`features/app/navigation-model.ts`、`AppNavigation.tsx`、`AgentPage.tsx`、`HistoryPage.tsx`、`RunDock.tsx`；快照刷新、`refreshSequence`、`planWrites` 与 `deletedPlans` 协调仍留在 `App.tsx`。
+- 作业中心：`features/copilot/useCopilotWorkspace.ts`、`CopilotRating.tsx`、`CopilotCompatibility.tsx`、`CopilotSettingsView.tsx`、`CopilotImportPreview.tsx`、`CopilotQueueView.tsx`、`CopilotRunMonitor.tsx`、`CopilotLibraryList.tsx`；社区搜索控件与详情抽屉仍由 `CopilotPage.tsx` 容器持有。
+- App：`features/app/navigation-model.ts`、`AppNavigation.tsx`、`AgentPage.tsx`、`HistoryPage.tsx`、`RunDock.tsx`、`useAppSnapshot.ts`、`usePlanWrites.ts`；`refreshSequence`、`planWrites` 与 `deletedPlans` 语义随 hook 保留。
 - 已退役 `styles.css` 的 `.toggle` / `.segmented` / `.pill`，`Select` 与 `ContextMenu` 已迁入 `kit/`；其遗留样式表因类名不是 `mv-*` 暂留 `src/`。
 - 测试：Playwright 收集由 **249 项降至 246 项**；三条白名单用例合并进 `task-center` 与 `autosave-context-menu`，新增 `tests/ui/fixtures/navigation.ts` 统一导航与类型化快照读取。定向验证：设置/设备/监控 **33/33**、弹层相关 **56/56**、任务编辑器 **33/33**、作业中心 **35/35**、多数 App 相关 **37/37** 通过。
 - 最终验证（Windows x64 / Microsoft Edge 146，隔离合成夹具）：`tsc -p apps/desktop --noEmit`、`check-kit-css` 单元与门禁、`pnpm run check:app`、`pnpm --filter @maaverge/desktop build` 全部通过；全量 Playwright **246/246 通过**（4 workers，4.3 分钟），用例数由基线 249 减少 3 条（白名单合并），无新增 skip。
