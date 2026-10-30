@@ -7,13 +7,16 @@ import {
   FileText,
   Info,
   ListChecks,
-  Search,
   ShieldCheck,
   Trash2,
-  X,
 } from 'lucide-react';
 import { taskLabels, type Device, type Plan, type RpcParams } from '@maaverge/contracts';
 import TaskParameterField from '../../TaskParameterField';
+import Button from '../../kit/Button';
+import EmptyState from '../../kit/EmptyState';
+import IconButton from '../../kit/IconButton';
+import SearchField from '../../kit/SearchField';
+import TextArea from '../../kit/TextArea';
 import { fieldGroups, fields } from './task-fields';
 import { type Draft, type Step } from './plan-draft';
 
@@ -86,61 +89,51 @@ export default function TaskInspectorView({
               <p>第 {selected + 1} 条任务 · 独立设置</p>
             </div>
             <div className="wb-step-tools">
-              <button
+              <IconButton
                 className="icon-button"
-                aria-label="上移任务"
+                label="上移任务"
                 title="上移任务（Alt ↑）"
                 disabled={selected === 0}
                 onClick={() => reorder(selected, selected - 1)}
               >
                 <ArrowUp size={16} />
-              </button>
-              <button
+              </IconButton>
+              <IconButton
                 className="icon-button"
-                aria-label="下移任务"
+                label="下移任务"
                 title="下移任务（Alt ↓）"
                 disabled={selected === draft.steps.length - 1}
                 onClick={() => reorder(selected, selected + 1)}
               >
                 <ArrowDown size={16} />
-              </button>
-              <button
+              </IconButton>
+              <IconButton
                 className="icon-button"
-                aria-label="复制任务"
+                label="复制任务"
                 title="复制任务"
                 disabled={draft.steps.length >= 30}
                 onClick={() => duplicateTask(selected)}
               >
                 <Copy size={16} />
-              </button>
-              <button
+              </IconButton>
+              <IconButton
                 className="icon-button danger-hover"
-                aria-label="删除任务"
+                label="删除任务"
                 title="删除任务"
                 onClick={() => deleteTask(selected)}
               >
                 <Trash2 size={16} />
-              </button>
+              </IconButton>
             </div>
           </div>
-          <div className="wb-field-search">
-            <Search size={15} />
-            <input
-              aria-label="搜索当前任务设置"
-              placeholder="查找当前任务设置"
-              value={fieldSearch}
-              onChange={(event) => setFieldSearch(event.target.value)}
-            />
-            {fieldSearch && (
-              <button
-                className="icon-button"
-                aria-label="清除任务设置搜索"
-                onClick={() => setFieldSearch('')}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
+          <SearchField
+            className="wb-field-search"
+            aria-label="搜索当前任务设置"
+            placeholder="查找当前任务设置"
+            value={fieldSearch}
+            onValueChange={setFieldSearch}
+            clearLabel="清除任务设置搜索"
+          />
           <fieldset className="wb-fieldset task-fields" disabled={!validJson}>
             {fieldGroups(step.task.type).map((group) => {
               const visible = group.fields.filter(
@@ -200,14 +193,14 @@ export default function TaskInspectorView({
               <div>
                 <p>此旧任务继续兼容。新作业请在作业中心管理，复制不会删除或修改原任务。</p>
                 {plan !== 'new' && !unsaved && onCopyCopilot && (
-                  <button
-                    className="button secondary"
+                  <Button
+                    className="button"
                     disabled={dirty || saving || starting}
                     title={dirty ? '等待自动保存完成后复制' : undefined}
                     onClick={() => onCopyCopilot(draft.id, selected)}
                   >
                     复制到作业库
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -249,13 +242,9 @@ export default function TaskInspectorView({
                 开始唤醒负责启动游戏与切换账号。请先在模拟器中启动实例并连接设备；ADB、触控与截图统一在设备页配置。
               </p>
               {onOpenDeviceSettings && (
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => onOpenDeviceSettings(contextDeviceId)}
-                >
+                <Button className="button" onClick={() => onOpenDeviceSettings(contextDeviceId)}>
                   管理设备连接
-                </button>
+                </Button>
               )}
             </FieldSection>
           )}
@@ -306,7 +295,7 @@ export default function TaskInspectorView({
             <label className="field-label" htmlFor="task-json">
               任务参数 JSON
             </label>
-            <textarea
+            <TextArea
               id="task-json"
               spellCheck={false}
               value={step.json}
@@ -316,11 +305,12 @@ export default function TaskInspectorView({
           <p className="wb-inspector-footnote">修改后自动保存，用于下次执行。</p>
         </>
       ) : (
-        <div className="wb-empty">
-          <ListChecks size={30} />
-          <h2>添加第一条任务</h2>
-          <p>从任务目录选择要执行的能力。</p>
-        </div>
+        <EmptyState
+          className="wb-empty"
+          icon={<ListChecks size={30} />}
+          title="添加第一条任务"
+          text="从任务目录选择要执行的能力。"
+        />
       )}
     </section>
   );

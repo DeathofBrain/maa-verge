@@ -1,6 +1,9 @@
 import { FileText, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { Device, Plan } from '@maaverge/contracts';
 import DeviceSelectionList from '../../DeviceSelectionList';
+import Button from '../../kit/Button';
+import TextArea from '../../kit/TextArea';
+import TextField from '../../kit/TextField';
 import type { Draft } from './plan-draft';
 
 type Props = {
@@ -43,7 +46,7 @@ export default function TaskTableSettings({
           <div className="wb-fields">
             <label className="param-field">
               <span className="field-label">任务表名称</span>
-              <input
+              <TextField
                 className="text-input"
                 aria-label="任务表名称"
                 maxLength={80}
@@ -54,7 +57,7 @@ export default function TaskTableSettings({
             </label>
             <label className="param-field wide">
               <span className="field-label">说明</span>
-              <textarea
+              <TextArea
                 className="text-input wb-description"
                 aria-label="任务表说明"
                 maxLength={500}
@@ -84,13 +87,9 @@ export default function TaskTableSettings({
           />
           {draft.deviceIds.length > 0 && (
             <div className="wb-device-actions">
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() => patch({ deviceIds: [] })}
-              >
+              <Button className="button" onClick={() => patch({ deviceIds: [] })}>
                 解除全部绑定
-              </button>
+              </Button>
             </div>
           )}
           <p className="wb-helper">
@@ -114,14 +113,17 @@ export default function TaskTableSettings({
         <section id="wb-manage">
           <h2>任务表管理</h2>
           <div className="wb-management-actions">
-            <button className="button secondary" onClick={onExport}>
-              <FileText size={15} />
+            <Button className="button" icon={<FileText size={15} />} onClick={onExport}>
               导出任务表
-            </button>
-            <button className="button secondary" disabled={!dirty} onClick={onRevert}>
-              <RotateCcw size={15} />
+            </Button>
+            <Button
+              className="button"
+              icon={<RotateCcw size={15} />}
+              disabled={!dirty}
+              onClick={onRevert}
+            >
               {plan === 'new' ? '恢复初始配置' : '恢复已保存配置'}
-            </button>
+            </Button>
           </div>
         </section>
       </div>

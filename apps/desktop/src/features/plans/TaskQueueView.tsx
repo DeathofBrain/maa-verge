@@ -1,7 +1,9 @@
 import type { KeyboardEvent, MouseEvent } from 'react';
-import { GripVertical, Plus, Search } from 'lucide-react';
+import { GripVertical, Plus } from 'lucide-react';
 import { taskEnabled, taskLabels } from '@maaverge/contracts';
 import Select from '../../Select';
+import Button from '../../kit/Button';
+import SearchField from '../../kit/SearchField';
 import type { MenuItem } from '../../ContextMenu';
 import { taskCategories } from './task-fields';
 import { taskSummary, type Step } from './plan-draft';
@@ -122,15 +124,13 @@ export default function TaskQueueView({
         ))}
       </ol>
       <div className="wb-add-task">
-        <div className="wb-type-search">
-          <Search size={14} />
-          <input
-            aria-label="搜索任务类型"
-            placeholder="搜索任务类型"
-            value={typeSearch}
-            onChange={(event) => onTypeSearch(event.target.value)}
-          />
-        </div>
+        <SearchField
+          className="wb-type-search"
+          aria-label="搜索任务类型"
+          placeholder="搜索任务类型"
+          value={typeSearch}
+          onValueChange={onTypeSearch}
+        />
         <label className="wb-sr-only" htmlFor="task-type">
           添加任务类型
         </label>
@@ -148,14 +148,14 @@ export default function TaskQueueView({
             </option>
           ))}
         </Select>
-        <button
-          className="button secondary"
+        <Button
+          className="button"
+          icon={<Plus size={15} />}
           disabled={steps.length >= 30 || !filteredTypes.length}
           onClick={onAdd}
         >
-          <Plus size={15} />
           添加任务
-        </button>
+        </Button>
         <small>
           {steps.filter((entry) => taskEnabled(entry.task)).length} 项已启用 ·
           拖动或使用排序按钮调整
