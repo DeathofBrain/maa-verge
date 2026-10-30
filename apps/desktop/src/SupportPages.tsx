@@ -1,6 +1,5 @@
 import Select from './Select';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -36,6 +35,7 @@ import './settings-page.css';
 import { useAutoSaveDraft } from './settings-autosave';
 import ModelSettings from './ModelSettings';
 import LogSettings from './LogSettings';
+import Modal from './kit/Modal';
 import CopilotStorageSettings from './CopilotStorageSettings';
 import ConfigurationSettings from './ConfigurationSettings';
 import NotificationSettings from './NotificationSettings';
@@ -1085,71 +1085,31 @@ function AppInstallConfirmation({
   onDefer: () => Promise<void>;
   onInstall: () => Promise<void>;
 }) {
-  const ref = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    return () => previous?.focus();
-  }, []);
-  return createPortal(
-    <div
-      className="modal-backdrop sp-app-install-modal"
-      onClick={() => {
-        if (!busy) onClose();
-      }}
-    >
-      <section
-        ref={ref}
-        className="modal confirm-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label="安装应用更新"
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape' && !busy) {
-            event.stopPropagation();
-            onClose();
-          }
-          if (event.key !== 'Tab') return;
-          const nodes = [
-            ...(ref.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') || []),
-          ];
-          if (event.shiftKey && document.activeElement === nodes[0]) {
-            event.preventDefault();
-            nodes.at(-1)?.focus();
-          } else if (!event.shiftKey && document.activeElement === nodes.at(-1)) {
-            event.preventDefault();
-            nodes[0]?.focus();
-          }
-        }}
-      >
-        <div className="modal-title">
-          <h2>安装应用更新</h2>
-          <button
-            className="icon-button"
-            aria-label="关闭安装确认"
-            disabled={busy}
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <p>
-          版本 {version}{' '}
-          已下载并通过签名验证，更新包已保存。是否立刻更新？请先保存未保存的更改；立即更新会退出应用、安装更新并重新启动。选择“下次启动时更新”后可继续使用，下次启动时将自动安装。
-        </p>
-        {hasActiveRun && <p role="status">立即更新将停止当前执行，未执行的计划会保留。</p>}
-        <div className="modal-actions">
-          <button className="button secondary" disabled={busy} onClick={() => void onDefer()}>
+  return (
+    <Modal
+      title="安装应用更新"
+      closeLabel="关闭安装确认"
+      onClose={onClose}
+      className="modal confirm-dialog"
+      busy={busy}
+      closeDisabled={busy}
+      footer={
+        <>
+          <Button disabled={busy} onClick={() => void onDefer()}>
             下次启动时更新
-          </button>
-          <button className="button primary" disabled={busy} onClick={() => void onInstall()}>
-            {busy && <LoaderCircle className="spin" size={15} />}立即更新并重启
-          </button>
-        </div>
-      </section>
-    </div>,
-    document.body,
+          </Button>
+          <Button variant="primary" busy={busy} disabled={busy} onClick={() => void onInstall()}>
+            立即更新并重启
+          </Button>
+        </>
+      }
+    >
+      <p>
+        版本 {version}{' '}
+        已下载并通过签名验证，更新包已保存。是否立刻更新？请先保存未保存的更改；立即更新会退出应用、安装更新并重新启动。选择“下次启动时更新”后可继续使用，下次启动时将自动安装。
+      </p>
+      {hasActiveRun && <p role="status">立即更新将停止当前执行，未执行的计划会保留。</p>}
+    </Modal>
   );
 }
 

@@ -202,7 +202,13 @@ createPortal(
 
 `labels.ts` 的合并规则：取值一致的副本直接合一（`runStatusLabels` 消灭了 5 份相同映射）；取值分歧且都未被测试耦合的副本**并列保留并具名区分**，等待产品复核，禁止静默合并——当前唯一一例是 `updateStatusLabels`（设置页「更新」分类的完整表述）与 `updateStatusShortLabels`（主页更新卡片的短语）。
 
-### 迁移带来的可见归一
+### 弹层现状
+
+`Overlay` 是唯一同时做 portal、遮罩、`acquireModalEffects` 租约与焦点落点的组件；`Modal` 与 `ConfirmDialog` 是它的薄组合，`Drawer`（见下）沿用同一套。三个手写 Tab 陷阱已删除：`App.tsx` 的删除确认、`SupportPages.tsx` 的安装确认、`RunTasksDialog.tsx` 的运行确认；它们现在由 `acquireModalEffects` 提供 Tab 循环、Escape、焦点还原、背景 inert 与滚动锁。
+
+现有抽屉（`SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer`）本来就调用 `acquireModalEffects`，没有手写陷阱，因此**未**在本轮改写为 `Drawer`：它们的层/面板/标题/内容各有宿主类名，收编需要子槽类 API，留到 Stage 8 与 `.tc-drawer-*` / `.monitor-log-*` 一起做。`CopilotDeleteDialog` 已经正确使用 `acquireModalEffects`（含 `#root` 背景、`returnFocus`、`fallbackFocus`），同样留到 Stage 8。原生 `<dialog showModal>`（`DesktopLifecycle`、`LogSettings`）继续使用 `useNativeDialog(ref, { onClose })`。
+
+## 迁移带来的可见归一
 
 组件套装的目标之一是收敛尺寸，所以迁移并非逐像素不变。已确认并接受的归一（逐项在渲染后核对过高度与内边距）：
 

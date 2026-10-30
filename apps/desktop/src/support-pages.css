@@ -644,10 +644,6 @@
   font-size: 12px;
 }
 
-.sp-app-install-modal {
-  z-index: 100;
-}
-
 .sp-release-notes summary {
   color: var(--accent, #4965d4);
   cursor: pointer;

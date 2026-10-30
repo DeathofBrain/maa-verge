@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { LoaderCircle, Play, TriangleAlert, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { LoaderCircle, Play, TriangleAlert } from 'lucide-react';
 import {
   planAllowsDevice,
   planDeviceIds,
@@ -9,6 +9,7 @@ import {
 } from '@maaverge/contracts';
 import './task-center.css';
 import DeviceSelectionList from './DeviceSelectionList';
+import Modal from './kit/Modal';
 
 type Props = {
   snapshot: Snapshot;
@@ -46,10 +47,6 @@ export default function RunTasksDialog({
   onStart,
   onClose,
 }: Props) {
-  const dialog = useRef<HTMLElement>(null);
-  const close = useRef(onClose);
-  close.current = onClose;
-  const busy = useRef(false);
   const requestIds = useRef(new Map<string, string>());
   const multi = plans.length > 1;
   const single = plans[0];
@@ -87,25 +84,6 @@ export default function RunTasksDialog({
   }
   const blocked =
     selectedPlans.some((plan) => !targets[plan.id]?.length) || [...issues.values()].some(Boolean);
-  busy.current = submitting;
-  useEffect(() => {
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    dialog.current
-      ?.querySelector<HTMLElement>(
-        'input:not(:disabled), select:not(:disabled), button:not(:disabled)',
-      )
-      ?.focus({ preventScroll: true });
-    const keydown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || busy.current) return;
-      event.preventDefault();
-      close.current();
-    };
-    document.addEventListener('keydown', keydown);
-    return () => {
-      document.removeEventListener('keydown', keydown);
-      if (previous?.isConnected) previous.focus({ preventScroll: true });
-    };
-  }, []);
   const togglePlan = (planId: string) =>
     setIncluded((previous) => {
       const next = new Set(previous);
@@ -222,135 +200,99 @@ export default function RunTasksDialog({
       ? `在 ${requests.length} 台设备运行`
       : '选择设备后运行';
   return (
-    <div
-      className="modal-backdrop"
-      onClick={() => {
-        if (!submitting) onClose();
-      }}
+    <Modal
+      title={dialogLabel}
+      closeLabel={multi ? '关闭运行所选任务表' : '关闭运行任务表'}
+      className="modal tc-launch"
+      busy={submitting}
+      closeDisabled={submitting}
+      onClose={onClose}
     >
-      <section
-        ref={dialog}
-        className="modal tc-launch"
-        role="dialog"
-        aria-modal="true"
-        aria-label={dialogLabel}
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key !== 'Tab') return;
-          const nodes = [
-            ...(dialog.current?.querySelectorAll<HTMLElement>(
-              'button:not(:disabled),select:not(:disabled),input:not(:disabled)',
-            ) ?? []),
-          ].filter((node) => node.getClientRects().length > 0);
-          if (!nodes.length) return;
-          if (event.shiftKey && document.activeElement === nodes[0]) {
-            event.preventDefault();
-            nodes.at(-1)?.focus();
-          } else if (!event.shiftKey && document.activeElement === nodes.at(-1)) {
-            event.preventDefault();
-            nodes[0].focus();
-          }
-        }}
-      >
-        <div className="modal-title">
-          <h2>{dialogLabel}</h2>
-          <button
-            className="icon-button"
-            aria-label={multi ? '关闭运行所选任务表' : '关闭运行任务表'}
-            disabled={submitting}
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <div className="tc-launch-body">
-          {multi ? (
-            <fieldset className="tc-launch-plans">
-              <legend>
-                已选任务表
-                <span>
-                  {selectedPlans.length} 张 · {requests.length} 项执行
-                </span>
-              </legend>
-              {plans.map((plan) => {
-                const active = included.has(plan.id);
-                return (
-                  <div className={`tc-launch-plan ${active ? '' : 'is-excluded'}`} key={plan.id}>
-                    <input
-                      type="checkbox"
-                      aria-label={`选择运行任务表${plan.name}`}
-                      disabled={submitting}
-                      checked={active}
-                      onChange={() => togglePlan(plan.id)}
-                    />
-                    <div className="tc-launch-plan-main">
-                      <strong>{plan.name}</strong>
-                      <small>
-                        {plan.tasks.filter((task) => task.enabled !== false).length} 项启用
-                        {planDeviceIds(plan).length
-                          ? ` · 绑定 ${planDeviceIds(plan).length} 台设备`
-                          : ' · 未绑定设备'}
-                      </small>
-                      <fieldset className="tc-launch-devices">
-                        <legend>运行设备</legend>
-                        {deviceRows(plan)}
-                      </fieldset>
-                      {active && !targets[plan.id]?.length && <small>请选择至少一台运行设备</small>}
-                    </div>
+      <div className="tc-launch-body">
+        {multi ? (
+          <fieldset className="tc-launch-plans">
+            <legend>
+              已选任务表
+              <span>
+                {selectedPlans.length} 张 · {requests.length} 项执行
+              </span>
+            </legend>
+            {plans.map((plan) => {
+              const active = included.has(plan.id);
+              return (
+                <div className={`tc-launch-plan ${active ? '' : 'is-excluded'}`} key={plan.id}>
+                  <input
+                    type="checkbox"
+                    aria-label={`选择运行任务表${plan.name}`}
+                    disabled={submitting}
+                    checked={active}
+                    onChange={() => togglePlan(plan.id)}
+                  />
+                  <div className="tc-launch-plan-main">
+                    <strong>{plan.name}</strong>
+                    <small>
+                      {plan.tasks.filter((task) => task.enabled !== false).length} 项启用
+                      {planDeviceIds(plan).length
+                        ? ` · 绑定 ${planDeviceIds(plan).length} 台设备`
+                        : ' · 未绑定设备'}
+                    </small>
+                    <fieldset className="tc-launch-devices">
+                      <legend>运行设备</legend>
+                      {deviceRows(plan)}
+                    </fieldset>
+                    {active && !targets[plan.id]?.length && <small>请选择至少一台运行设备</small>}
                   </div>
-                );
-              })}
-            </fieldset>
-          ) : (
-            single && (
-              <>
-                <div className="tc-launch-plan-fixed">
-                  <span>任务表</span>
-                  <strong>{single.name}</strong>
-                  <small>
-                    {single.tasks.filter((task) => task.enabled !== false).length} 项启用
-                    {planDeviceIds(single).length
-                      ? ` · 绑定 ${planDeviceIds(single).length} 台设备`
-                      : ' · 未绑定设备'}
-                  </small>
                 </div>
-                <fieldset className="tc-launch-devices">
-                  <legend>选择设备</legend>
-                  {!snapshot.devices.length && !planDeviceIds(single).length && (
-                    <p className="tc-launch-empty">
-                      还没有设备，请先在设备页添加并连接模拟器实例。
-                    </p>
-                  )}
-                  {deviceRows(single)}
-                </fieldset>
-              </>
-            )
-          )}
-          {notice && (
-            <p className="tc-launch-notice" role="status">
-              <TriangleAlert size={14} />
-              {notice}
-            </p>
-          )}
-          <p className="tc-launch-hint">
-            每张任务表可选择多台设备独立执行；已绑定的任务表只能选择绑定设备，未绑定可临时选择任意设备。同一设备不能同时运行多张任务表。执行开始后可在「执行监控」查看进度。
+              );
+            })}
+          </fieldset>
+        ) : (
+          single && (
+            <>
+              <div className="tc-launch-plan-fixed">
+                <span>任务表</span>
+                <strong>{single.name}</strong>
+                <small>
+                  {single.tasks.filter((task) => task.enabled !== false).length} 项启用
+                  {planDeviceIds(single).length
+                    ? ` · 绑定 ${planDeviceIds(single).length} 台设备`
+                    : ' · 未绑定设备'}
+                </small>
+              </div>
+              <fieldset className="tc-launch-devices">
+                <legend>选择设备</legend>
+                {!snapshot.devices.length && !planDeviceIds(single).length && (
+                  <p className="tc-launch-empty">还没有设备，请先在设备页添加并连接模拟器实例。</p>
+                )}
+                {deviceRows(single)}
+              </fieldset>
+            </>
+          )
+        )}
+        {notice && (
+          <p className="tc-launch-notice" role="status">
+            <TriangleAlert size={14} />
+            {notice}
           </p>
-        </div>
-        <div className="modal-actions">
-          <button className="button secondary" disabled={submitting} onClick={onClose}>
-            取消
-          </button>
-          <button
-            className="button primary"
-            disabled={submitting || blocked || !requests.length}
-            onClick={() => void submit()}
-          >
-            {submitting ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
-            {submitting ? '正在运行…' : submitLabel}
-          </button>
-        </div>
-      </section>
-    </div>
+        )}
+        <p className="tc-launch-hint">
+          每张任务表可选择多台设备独立执行；已绑定的任务表只能选择绑定设备，未绑定可临时选择任意设备。同一设备不能同时运行多张任务表。执行开始后可在「执行监控」查看进度。
+        </p>
+      </div>
+      <div className="modal-actions">
+        <button className="button secondary" disabled={submitting} onClick={onClose}>
+          取消
+        </button>
+        <button
+          className="button primary"
+          disabled={submitting || blocked || !requests.length}
+          onClick={() => void submit()}
+        >
+          {submitting ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
+          {submitting ? '正在运行…' : submitLabel}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

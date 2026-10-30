@@ -4,6 +4,16 @@
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表统一从“任务”入口管理：列表 + 右侧详情抽屉保留逐任务设置和常驻运行条，执行监控为同页页签，开始执行不跳转；勾选任务表后由页头「运行」启动，每张表均可选择多台设备，已绑定表限绑定范围，未绑定表临时选择。执行监控统一列出在线与曾连接的离线设备，列表标题旁显示设备总数与执行中数量，已连接设备用绿色「已连接」标记，执行状态单独显示；点击设备后在下方查看当前任务表、作业或独立工具，再次点击收起；离线显示“已离线”，空闲与历史记录明确分开。任务表「查看执行」定位同一设备，设备卡日志及连接设置从右侧打开；底栏运行详情、日志、画面与多开执行向上展开，并通过底栏左侧设备选择器切换。支持设备多选停止及日志复制、导出和确认删除。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。六类独立工具与每日定时已接入，使用方法见 [工具箱与定时计划](toolbox-schedules.md)；独立作业中心已接入本地与 PRTS Plus 导入，完整原 MAA 兼容继续按功能矩阵验收。
 
+## 本次弹层统一与手写焦点陷阱清理（macOS arm64，2026-10-30）
+
+- 新增 `Overlay`（portal + 遮罩 + `acquireModalEffects` 租约 + 标题/正文/页脚骨架）、`Modal`（`width: sm/md`）、`ConfirmDialog`（`confirmLabel`/`cancelLabel`/`danger`/`busy`/`confirmIcon`，`busy` 时禁用关闭并吞掉 Escape 与遮罩点击）与 `useNativeDialog`（原生 `<dialog showModal>` 的焦点/Escape 辅助）。
+- 删除三处手写 Tab 陷阱与各自的焦点代码：`App.tsx` 的删除任务表确认、`SupportPages.tsx` 的安装应用更新确认、`RunTasksDialog.tsx` 的运行任务表确认。三者改用套装弹层后由 `acquireModalEffects` 统一提供 Tab 循环、Escape、焦点还原、背景 inert 与滚动锁；`App.tsx` 因此不再需要 `X` 图标与手写 `useEffect` 焦点逻辑。
+- 迁移中修掉一个真实缺陷：安装确认的旧遮罩类 `.sp-app-install-modal` 带 `z-index: 100`，放进新的定位层后会盖住面板并吞掉所有点击；删掉该规则后恢复。
+- 未改写为套装 `Drawer`：`SideDrawer`、`TaskDetailDrawer`、`MonitorLogDrawer` 本来就调用 `acquireModalEffects`，没有手写陷阱；收编需要子槽类 API，留到 Stage 8 与 `.tc-drawer-*`、`.monitor-log-*` 一起做。`CopilotDeleteDialog`（已正确使用 `acquireModalEffects`）与两个原生 `<dialog>` 同样保留。
+- 验证：`tsc -p apps/desktop --noEmit`、门禁脚本与 9 个门禁单测、修改文件 Prettier 通过；定向 Chromium spec（modal-effects、drawer-navigation、task-center、task-batch-actions、plan-deletion、multi-run、app-updates、component-updates、copilot-library-actions、desktop-lifecycle）**61/61**（端口 15554），修复遮罩层级后 app-updates 单项复跑 **10/10**；Chromium 全量 E2E **249/249**（端口 15557）。
+- 人工键盘走查（合成夹具）：打开删除确认后初始焦点在弹层内；Tab 8 次与 Shift+Tab 3 次后焦点仍在弹层内；`.main-shell[inert]` 生效；Escape 关闭后焦点回到「删除任务表」触发键；截图确认弹层居中、页脚按钮与焦点环正常。
+- 未连接真实设备、调用模型或构建安装包；Windows/Linux 与原生 WebView 未验收。
+
 ## 本次展示型原语与提示收编（macOS arm64，2026-10-30）
 
 - 新增 `StatusPill`（7 种 `data-tone` + 可选圆点）、`ProgressBar`（原生 `<progress>`，保留 `value` 属性与 `role=progressbar`）、`Tabs`（roving tabindex、方向键、Home/End、`aria-controls` 由 `idPrefix` 生成）、`FilterChips`（`role=group` + `aria-pressed`）、`ErrorBanner`、`Toast`、`ListRow`、`SelectableRow` 八个组件；门禁白名单补登记 `::-webkit-progress-bar`、`::-webkit-progress-value`、`::-moz-progress-bar` 三个厂商伪元素（仅 ProgressBar 使用）。

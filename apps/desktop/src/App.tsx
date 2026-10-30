@@ -23,7 +23,6 @@ import {
   Trash2,
   Wifi,
   Wrench,
-  X,
 } from 'lucide-react';
 import {
   errorMessage,
@@ -65,6 +64,7 @@ import DevicePicker from './DevicePicker';
 import MonitorLogDrawer from './MonitorLogDrawer';
 import { isCopilotRun, runDisplayName, runSourceLabel } from './run-source';
 import UpdateNotifications, { useComponentDownloads } from './UpdateNotifications';
+import ConfirmDialog from './kit/ConfirmDialog';
 import ErrorBanner from './kit/ErrorBanner';
 import Toast from './kit/Toast';
 
@@ -1457,6 +1457,23 @@ export default function App() {
       {deleting && (
         <ConfirmDialog
           title={deleting.batch ? '删除所选任务表' : '删除任务表'}
+          closeLabel="关闭确认"
+          className="modal confirm-dialog"
+          busy={pending.has('delete-plan')}
+          cancelDisabled={pending.has('delete-plan')}
+          confirmLabel={
+            pending.has('delete-plan')
+              ? '正在删除…'
+              : deleting.batch
+                ? `删除 ${deleting.plans.length} 张任务表`
+                : '删除任务表'
+          }
+          confirmIcon={<Trash2 size={15} />}
+          danger
+          confirmDisabled={activeRuns.some((run) =>
+            deleting.plans.some((plan) => plan.id === run.planId),
+          )}
+          onConfirm={() => void deletePlans(deleting.plans, deleting.batch)}
           onClose={() => {
             if (!pendingRef.current.has('delete-plan')) setDeleting(null);
           }}
@@ -1481,30 +1498,6 @@ export default function App() {
               请先停止{deleting.batch ? '所选任务表' : '此任务表'}的执行，再删除任务表。
             </p>
           )}
-          <div className="modal-actions">
-            <button
-              className="button secondary"
-              disabled={pending.has('delete-plan')}
-              onClick={() => setDeleting(null)}
-            >
-              取消
-            </button>
-            <button
-              className="button danger"
-              disabled={
-                pending.has('delete-plan') ||
-                activeRuns.some((run) => deleting.plans.some((plan) => plan.id === run.planId))
-              }
-              onClick={() => void deletePlans(deleting.plans, deleting.batch)}
-            >
-              <Trash2 size={15} />
-              {pending.has('delete-plan')
-                ? '正在删除…'
-                : deleting.batch
-                  ? `删除 ${deleting.plans.length} 张任务表`
-                  : '删除任务表'}
-            </button>
-          </div>
         </ConfirmDialog>
       )}
       <ScheduleNotifications />
@@ -1551,56 +1544,6 @@ function Empty({
       <h2>{title}</h2>
       <p>{text}</p>
       {action}
-    </div>
-  );
-}
-function ConfirmDialog({
-  title,
-  children,
-  onClose,
-}: {
-  title: string;
-  children: ReactNode;
-  onClose: () => void;
-}) {
-  const ref = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    return () => previous?.focus();
-  }, []);
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <section
-        ref={ref}
-        className="modal confirm-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key !== 'Tab') return;
-          const nodes = [
-            ...(ref.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') || []),
-          ];
-          if (!nodes.length) return;
-          if (event.shiftKey && document.activeElement === nodes[0]) {
-            event.preventDefault();
-            nodes.at(-1)?.focus();
-          } else if (!event.shiftKey && document.activeElement === nodes.at(-1)) {
-            event.preventDefault();
-            nodes[0].focus();
-          }
-        }}
-      >
-        <div className="modal-title">
-          <h2>{title}</h2>
-          <button className="icon-button" aria-label="关闭确认" onClick={onClose}>
-            <X size={18} />
-          </button>
-        </div>
-        {children}
-      </section>
     </div>
   );
 }
