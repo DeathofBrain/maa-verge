@@ -1,25 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
-  ArrowRight,
-  BookOpen,
-  Bot,
   ChevronDown,
   ChevronUp,
-  History,
-  House,
   Layers,
   ListChecks,
   LoaderCircle,
-  Menu,
   Monitor,
-  Search,
-  Settings2,
   Square,
   Terminal,
   Trash2,
   Wifi,
-  Wrench,
 } from 'lucide-react';
 import {
   errorMessage,
@@ -65,29 +56,11 @@ import ErrorBanner from './kit/ErrorBanner';
 import Toast from './kit/Toast';
 import StatusPill from './kit/StatusPill';
 import AgentPage from './features/app/AgentPage';
+import { AppSidebar, AppTopbar, Brand } from './features/app/AppNavigation';
+import { type Message, type Page, pageNames } from './features/app/navigation-model';
 import HistoryPage from './features/app/HistoryPage';
 import { runStatusLabels, runStatusTones } from './kit/labels';
 
-type Page = 'home' | 'tasks' | 'copilot' | 'tools' | 'agent' | 'history' | 'devices' | 'settings';
-type Message = { id: string; role: 'user' | 'assistant'; text: string; plan?: Plan };
-const navigation = [
-  { id: 'home', label: '主页', icon: House },
-  { id: 'tasks', label: '任务', icon: ListChecks },
-  { id: 'copilot', label: '作业中心', icon: BookOpen },
-  { id: 'tools', label: '工具箱', icon: Wrench },
-  { id: 'agent', label: 'Agent 助手', icon: Bot },
-  { id: 'history', label: '执行记录', icon: History },
-] as const;
-const pageNames: Record<Page, string> = {
-  home: '主页',
-  tasks: '任务',
-  copilot: '作业中心',
-  tools: '工具箱',
-  agent: 'Agent 助手',
-  history: '执行记录',
-  devices: '设备',
-  settings: '设置',
-};
 const uid = () => crypto.randomUUID();
 const readSelection = () => {
   try {
@@ -668,129 +641,29 @@ export default function App() {
       className={`app-root ${sidebarOpen ? 'nav-open' : ''}`}
       data-desktop-platform={platform || undefined}
     >
-      {sidebarOpen && (
-        <button className="nav-scrim" aria-label="关闭导航" onClick={() => setSidebarOpen(false)} />
-      )}
-      <aside className="sidebar">
-        <Brand />
-        <nav aria-label="主导航" className="primary-nav">
-          {navigation.map(({ id, label, icon: Icon }) => (
-            <button
-              className={`nav-item ${page === id ? 'active' : ''}`}
-              aria-current={page === id ? 'page' : undefined}
-              key={id}
-              onClick={() => {
-                if (id === 'tasks') {
-                  setTaskView('plans');
-                  setExecutionSelection(undefined);
-                }
-                navigate(id);
-              }}
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-              {id === 'agent' && <span className="subtle-tag">预览</span>}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <button
-            className={`nav-item ${page === 'devices' ? 'active' : ''}`}
-            aria-current={page === 'devices' ? 'page' : undefined}
-            onClick={() => navigate('devices')}
-          >
-            <Monitor size={19} />
-            <span>设备</span>
-            <span
-              className={`status-dot ${!device || device.state === 'offline' ? 'offline' : ''}`}
-            />
-          </button>
-          <button
-            className={`nav-item ${page === 'settings' ? 'active' : ''}`}
-            aria-current={page === 'settings' ? 'page' : undefined}
-            onClick={() => navigate('settings')}
-          >
-            <Settings2 size={19} />
-            <span>设置</span>
-            {snapshot.updates.some((item) => item.status === 'available') && (
-              <span className="update-dot" />
-            )}
-          </button>
-          <div className="sidebar-footer">
-            <span>
-              Maa Verge{' '}
-              {snapshot.updates.find((channel) => channel.id === 'app')?.currentVersion ||
-                '未知版本'}
-            </span>
-          </div>
-        </div>
-      </aside>
+      <AppSidebar
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        page={page}
+        navigate={navigate}
+        onTasks={setTaskView}
+        onClearExecution={setExecutionSelection}
+        device={device}
+        appVersion={
+          snapshot.updates.find((channel) => channel.id === 'app')?.currentVersion || '未知版本'
+        }
+        hasUpdate={snapshot.updates.some((item) => item.status === 'available')}
+      />
       <div className="main-shell">
-        <header className="topbar" data-tauri-drag-region="deep">
-          <div className="workspace-context">
-            <button
-              className="icon-button mobile-menu"
-              aria-label="打开导航"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu size={20} />
-            </button>
-            <div className="global-search" data-tauri-drag-region="false">
-              <Search size={15} />
-              <input
-                ref={searchInput}
-                aria-label="搜索任务与设置"
-                placeholder="搜索任务与设置"
-                value={search}
-                onFocus={() => setSearchOpen(true)}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setSearchOpen(true);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && searchResults[0]) {
-                    searchResults[0].open();
-                    setSearchOpen(false);
-                  }
-                }}
-              />
-              {searchOpen && search.trim() && (
-                <>
-                  <button
-                    className="search-dismiss"
-                    aria-label="关闭搜索结果"
-                    onClick={() => setSearchOpen(false)}
-                  />
-                  <div className="search-results" role="region" aria-label="搜索结果">
-                    {searchResults.length ? (
-                      searchResults.map((item) => (
-                        <button
-                          key={item.key}
-                          onClick={() => {
-                            item.open();
-                            setSearchOpen(false);
-                          }}
-                        >
-                          <Search size={14} />
-                          <span>
-                            {item.title}
-                            <small>{item.location}</small>
-                          </span>
-                          <ArrowRight size={14} />
-                        </button>
-                      ))
-                    ) : (
-                      <p>没有找到匹配项，试试“更新”或任务名称。</p>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="topbar-actions">
-            <WindowControls />
-          </div>
-        </header>
+        <AppTopbar
+          searchInput={searchInput}
+          search={search}
+          setSearch={setSearch}
+          searchOpen={searchOpen}
+          setSearchOpen={setSearchOpen}
+          searchResults={searchResults}
+          onOpenNav={() => setSidebarOpen(true)}
+        />
         <main className="main-content" aria-label={pageNames[page]}>
           <div className="page-transition" key={page}>
             {error && (
@@ -1246,16 +1119,6 @@ export default function App() {
       <ScheduleNotifications />
       <UpdateNotifications notices={downloads.notices} onDismiss={downloads.dismiss} />
       {toast && <Toast text={toast.text} error={toast.error} onDismiss={() => setToast(null)} />}
-    </div>
-  );
-}
-function Brand() {
-  return (
-    <div className="brand" data-tauri-drag-region="deep">
-      <span className="brand-mark" aria-hidden="true">
-        <img src="/logo.png" width="32" height="32" alt="" draggable={false} />
-      </span>
-      <span>Maa Verge</span>
     </div>
   );
 }
