@@ -106,7 +106,7 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 
 Windows 切换后会精确清理旧配置目录对应的唤醒任务，清理失败保留记录供下次重试。等待清理期间，旧唤醒任务携带的旧目录参数会跟随已保存的新选择，避免重新打开切走的配置；其他显式启动根不受影响。
 
-`MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各次测试的独立数据目录。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
+`MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各次测试的独立数据目录。macOS 安装版组件默认位于 `~/Library/Application Support/Maa Verge/{MaaCore,MaaResource}`；`MAAVERGE_COMPONENT_HOME` 仅覆盖组件用户目录，包内 smoke 将其设为临时目录，避免创建真实用户组件或组件租约。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
 
 同一 checkout 同时启动界面测试与桌面时，应分别设置不同的 `MAAVERGE_DEV_PORT`。Vite 的预构建缓存按实际端口存放在 `apps/desktop/node_modules/.vite/port-<port>`，避免多个实例覆盖彼此的 Tauri 模块。若旧窗口出现 `Importing a module script failed` 等组件加载错误，点击「重新加载界面」；更新脚本后应先完全退出旧开发窗口与命令，再重新运行 `pnpm dev`。普通服务连接失败仍使用「重新连接」。
 

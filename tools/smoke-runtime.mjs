@@ -70,6 +70,7 @@ async function main() {
   const environment = {
     ...cleanRuntimeEnvironment(),
     MAAVERGE_MODE: 'native',
+    MAAVERGE_COMPONENT_HOME: path.join(temporary, 'component-home'),
     MAAVERGE_DEVICE_LOCK_DIR: path.join(temporary, 'locks'),
   };
   for (const key of Object.keys(environment))

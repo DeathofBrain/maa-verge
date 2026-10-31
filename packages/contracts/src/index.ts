@@ -9,6 +9,7 @@ export {
 export { rpc, subscribe } from './transport';
 export { openExternalUrl } from './external-links';
 export { pickDirectory, type DirectoryPickerOptions } from './directory-picker';
+export { getDesktopUninstallInfo, uninstallDesktopApplication } from './desktop-uninstall';
 export {
   getConfigurationLocations,
   saveConfigurationDirectory,

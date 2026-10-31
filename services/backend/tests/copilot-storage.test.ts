@@ -300,6 +300,7 @@ test('runtime settings resolve the application default, preserve omitted prefere
   const applicationDirectory = path.join(root, 'application');
   const runtime = new Runtime(path.join(root, 'data'), {
     applicationDirectory,
+    componentEnvironment: { homeDirectory: path.join(root, 'home') },
     calendar: { fetcher: null },
   });
   runtimes.push(runtime);

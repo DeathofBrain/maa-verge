@@ -3,6 +3,29 @@
   "$id": "https://maaverge.local/contracts/runtime.schema.json",
   "$comment": "Authoritative runtime contract. Edit this source, then run pnpm contracts:generate. Defaults are applied by the application models, not validators.",
   "$defs": {
+    "DesktopUninstallInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "reason",
+        "application",
+        "componentDirectories",
+        "configurationDirectory"
+      ],
+      "properties": {
+        "available": { "type": "boolean" },
+        "reason": { "type": "string", "maxLength": 4096 },
+        "application": { "type": "string", "maxLength": 4096 },
+        "componentDirectories": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "string", "maxLength": 4096 }
+        },
+        "configurationDirectory": { "type": "string", "maxLength": 4096 }
+      }
+    },
     "Budgets": {
       "additionalProperties": false,
       "properties": {

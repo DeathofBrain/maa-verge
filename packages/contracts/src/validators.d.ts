@@ -1,5 +1,5 @@
 /* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */
-import type { Plan, Settings, Snapshot } from './types';
+import type { Plan, Settings, Snapshot, DesktopUninstallInfo } from './types';
 import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame, HostUpdateParams } from './rpc-types';
 import type { WorkerProtocol } from './worker-types';
 export interface ValidationError {
@@ -14,6 +14,7 @@ export interface Validator<T> {
   errors: ValidationError[] | null;
 }
 export const validateSnapshot: Validator<Snapshot>;
+export const validateDesktopUninstallInfo: Validator<DesktopUninstallInfo>;
 export const validateHostUpdateParams: Validator<HostUpdateParams>;
 export const validateCopilotListParams: Validator<RpcContract['params']['copilot.list']>;
 export const validateCopilotCategorySaveParams: Validator<RpcContract['params']['copilot.category.save']>;

@@ -378,6 +378,7 @@ pub struct Runtime {
     updating: AtomicBool,
     transport_failed: AtomicBool,
     shutdown_result: Mutex<Option<Result<(), String>>>,
+    shutdown_clean: AtomicBool,
 }
 
 fn program(app: &AppHandle) -> Result<(PathBuf, Vec<String>), String> {
@@ -546,6 +547,7 @@ impl Runtime {
             updating: AtomicBool::new(false),
             transport_failed: AtomicBool::new(false),
             shutdown_result: Mutex::new(None),
+            shutdown_clean: AtomicBool::new(false),
         };
         runtime.request("app.snapshot".into(), json!({})).await?;
         Ok(runtime)
@@ -670,6 +672,16 @@ impl Runtime {
         }
     }
 
+    #[cfg(any(target_os = "macos", test))]
+    pub async fn shutdown_for_uninstall(&self) -> Result<(), String> {
+        self.shutdown_for_update().await?;
+        if self.shutdown_clean.load(Ordering::Acquire) {
+            Ok(())
+        } else {
+            Err("未能确认后台服务正常退出，已取消卸载；请重新打开应用后重试".into())
+        }
+    }
+
     pub async fn shutdown_for_update(&self) -> Result<(), String> {
         let mut process = self.child.lock().await;
         if let Some(result) = self
@@ -695,10 +707,12 @@ impl Runtime {
                 child.wait().await
             };
             let mut outcome = Ok(());
-            if !matches!(
-                tokio::time::timeout(Duration::from_secs(5), graceful).await,
-                Ok(Ok(_))
-            ) {
+            let graceful = tokio::time::timeout(Duration::from_secs(5), graceful).await;
+            self.shutdown_clean.store(
+                matches!(&graceful, Ok(Ok(status)) if status.success()),
+                Ordering::Release,
+            );
+            if !matches!(graceful, Ok(Ok(_))) {
                 #[cfg(windows)]
                 if let Ok(owned) = &mut owned {
                     // Cleanup must still kill the root if enumeration fails.
@@ -829,6 +843,7 @@ mod tests {
             updating: AtomicBool::new(false),
             transport_failed: AtomicBool::new(false),
             shutdown_result: Mutex::new(None),
+            shutdown_clean: AtomicBool::new(false),
         }
     }
 
@@ -838,6 +853,10 @@ mod tests {
         match std::env::var("MAAVERGE_TEST_SHUTDOWN_FIXTURE").as_deref() {
             Ok("eof") => {
                 std::io::copy(&mut std::io::stdin().lock(), &mut std::io::sink()).unwrap();
+            }
+            Ok("failed") => {
+                std::io::copy(&mut std::io::stdin().lock(), &mut std::io::sink()).unwrap();
+                std::process::exit(1);
             }
             Ok("hang") => std::thread::sleep(Duration::from_secs(30)),
             #[cfg(windows)]
@@ -1023,6 +1042,7 @@ mod tests {
                 .unwrap_err()
                 .contains("重启"));
             runtime.shutdown_for_update().await.unwrap();
+            assert!(runtime.shutdown_for_uninstall().await.is_err());
         });
     }
 
@@ -1168,6 +1188,7 @@ mod tests {
                     updating: AtomicBool::new(false),
                     transport_failed: AtomicBool::new(false),
                     shutdown_result: Mutex::new(None),
+                    shutdown_clean: AtomicBool::new(false),
                 };
                 tokio::time::timeout(Duration::from_secs(5), async {
                     while !pid_file.is_file() {
@@ -1213,6 +1234,17 @@ mod tests {
             };
             assert!(written.await.is_err());
             assert!(runtime.child.lock().await.is_none());
+        });
+    }
+
+    #[test]
+    fn uninstall_requires_a_successful_graceful_service_exit() {
+        tauri::async_runtime::block_on(async {
+            for (mode, clean) in [("eof", true), ("failed", false)] {
+                let runtime = shutdown_runtime(mode);
+                assert_eq!(runtime.shutdown_for_uninstall().await.is_ok(), clean);
+                assert_eq!(runtime.shutdown_for_uninstall().await.is_ok(), clean);
+            }
         });
     }
 

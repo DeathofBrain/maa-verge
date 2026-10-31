@@ -6,11 +6,13 @@ Maa Verge 的 TypeScript 服务从官方稳定 Release 下载对应架构的完�
 
 ## 下载与安装目录
 
-“设置 → 更新”分别提供 MaaCore 与游戏资源的下载/安装根目录。安装版默认使用主程序同级的 `MaaCore/`、`MaaResource/`，由 Tauri 传入主程序目录，不能使用包内 `runtime/` 侧进程位置推导。macOS 以 `.app` 整体为程序，Linux AppImage 以 AppImage 文件为程序。源码开发使用各 checkout 独立数据根中的 `native/components/core/`、`native/components/resource/`，避免不同开发工作树共用下载。
+“设置 → 更新”分别提供 MaaCore 与游戏资源的下载/安装根目录。macOS 安装版默认使用 `~/Library/Application Support/Maa Verge/MaaCore/`、`~/Library/Application Support/Maa Verge/MaaResource/`，运行期下载不写入签名 `.app`。Windows/Linux 安装版继续使用主程序同级的 `MaaCore/`、`MaaResource/`，由 Tauri 传入主程序目录，不能使用包内 `runtime/` 侧进程位置推导；Linux AppImage 以 AppImage 文件为程序。源码开发使用各 checkout 独立数据根中的 `native/components/core/`、`native/components/resource/`，避免不同开发工作树共用下载。
 
-每个根目录只创建不可变的 `generations/` 版本目录，不再创建 `downloads/`。下载压缩包以绑定数据根和不可变来源的稳定文件名放在组件根目录，完整归档用完即删，中断保留可恢复分片供后续重试；归档最外层的发布包或仓库目录会移除。核心库直接位于 `MaaCore/generations/core-<id>/`，资源位于 `MaaResource/generations/resource-<id>/resource/`；版本内部这一层 `resource/` 是上游 `AsstLoadResource` 接口自动追加的固定目录，保留以兼容核心加载、外服资源及关卡读取。
+macOS 启动时仅将仍与旧程序同级默认位置相同的下载设置改为新默认；用户自定义目录保留，已安装、待生效与回滚版本继续引用原有不可变路径，不自动搬动文件。恢复默认和后续下载采用新位置。`MAAVERGE_COMPONENT_HOME` 可覆盖派生组件位置所用的用户目录，实际路径仍为该目录下的 `Library/Application Support/Maa Verge/`；它不改变配置数据根或共享设备锁。包内服务和更新子进程共同持有独立的共享 SQLite 组件租约，卸载须取得独占租约；稳定锁文件位于 `Library/Application Support/.maaverge-components-lock.sqlite3`，不随组件删除。
 
-核心与独立资源分别跨新旧安装根保留最多三个版本，优先保护活动、上一组回滚、待生效以及仍被 worker 使用的快照。设备忙碌或仍有引用时可暂时超过上限，下一次空闲更新维护再清理；不会为满足数量上限删除使用中的文件。仅清理自身命名和归属明确的 generation，链接目录（包括祖先路径的链接或系统别名）、不明文件及清理失败的目录保守保留。失败的新候选会移除。旧版遗留的 `downloads/` 不再使用，空目录在维护时移除，剩余内容在卸载默认组件目录时一并删除。
+组件使用不可变的 `generations/` 版本目录，不再创建 `downloads/`。macOS 安装版在所选组件根内按业务数据根划分 `data-<hash>/generations/`，避免多个配置数据根共享外层目录时互相复用或清理版本；其他平台和源码开发仍直接使用 `generations/`。下载压缩包以绑定数据根和不可变来源的稳定文件名放在组件根目录，完整归档用完即删，中断保留可恢复分片供后续重试；归档最外层的发布包或仓库目录会移除。核心库位于对应 `generations/core-<id>/`，资源位于对应 `generations/resource-<id>/resource/`；版本内部这一层 `resource/` 是上游 `AsstLoadResource` 接口自动追加的固定目录，保留以兼容核心加载、外服资源及关卡读取。
+
+核心与独立资源分别跨新旧安装根保留最多三个版本，macOS 安装版在各数据根自己的命名空间内计数；优先保护活动、上一组回滚、待生效以及仍被 worker 使用的快照。设备忙碌或仍有引用时可暂时超过上限，下一次空闲更新维护再清理；不会为满足数量上限删除使用中的文件。仅清理自身命名和归属明确的 generation，链接目录（包括祖先路径的链接或系统别名）、不明文件及清理失败的目录保守保留。macOS 旧版未隔离的直接 `generations/` 和其他数据根的命名空间保留，不推断归属。失败的新候选会移除。旧版遗留的 `downloads/` 不再使用，空目录在维护时移除，剩余内容在卸载默认组件目录时一并删除。
 
 保存目录要求完整绝对路径，并检测实际写入能力；安装在系统只读目录时可选择用户可写目录，错误会保留当前设置和活动版本。恢复默认只改变后续下载位置。变更目录不移动或覆盖现有活动、候选、上一组回滚文件，运行中的 worker 继续使用其固定路径；后续维护也会统计旧目录中的自有版本。
 
@@ -20,7 +22,9 @@ v0.1.0 旧核心没有可信的展开文件摘要，压缩包 SHA-256 和对现�
 
 资源下载完成后再次核对基础资源，失败时也同步磁盘与组件状态；若下载或解压期间核心基础目录丢失，会提示先修复核心，避免继续显示活动组合可用。修复损坏核心后仍保留最近有效回滚组合，不以已经清空的活动记录覆盖它；仍被 worker 引用的目录继续受保护。
 
-Windows EXE（NSIS）完整卸载会删除程序同级默认的 `MaaCore/`、`MaaResource/` 和 `runtime/bundled-components/`，包括旧布局；应用内升级保留这些目录。自定义目录和用户数据根（数据库、计划、记录及数据锁）保留；重新安装后按磁盘文件重新判断组件状态。v0.1.3-alpha1 起不再提供 MSI，旧 MSI 用户须先备份再卸载旧版，手动迁移至 EXE 或完整 ZIP。ZIP 不注册卸载器；macOS/Linux 的卸载仍由各自分发方式处理，本轮没有新增或验收自动清理。
+Windows EXE（NSIS）完整卸载会删除程序同级默认的 `MaaCore/`、`MaaResource/` 和 `runtime/bundled-components/`，包括旧布局；应用内升级保留这些目录。自定义目录和用户数据根（数据库、计划、记录及数据锁）保留；重新安装后按磁盘文件重新判断组件状态。v0.1.3-alpha1 起不再提供 MSI，旧 MSI 用户须先备份再卸载旧版，手动迁移至 EXE 或完整 ZIP。ZIP 不注册卸载器。
+
+macOS 安装版通过「设置 → 关于 → 卸载 Maa Verge」确认卸载：服务必须正常退出，清理进程取得独占组件租约并检查没有其他服务或核心进程使用组件，再将两个新默认组件文件夹和当前 `.app` 移到废纸篓。配置、任务、执行记录、自定义组件/作业目录、设备锁及旧默认位置中的历史文件保留；保留数据嵌套在待卸载目录、路径含符号链接、其他实例占用或服务强制退出时拒绝继续。部分移动失败会列出已移入废纸篓的项目，应用重新打开以恢复服务。macOS 不提供普通应用的 Finder 删除回调，直接把 `.app` 拖进废纸篓不会清理外部组件；开发环境和 Windows/Linux 不提供此入口，Linux 移除方式不变。
 
 契约新增可选 `Settings.componentPaths`（`core`、`resource`；保存空字符串恢复对应默认目录）与 `UpdateChannel.installDirectory`。服务初始化补全旧设置，旧客户端保存其他设置时保留目录。`UpdateChannel.resourceActivities` 按客户端提供已安装资源的活动名与 `last_updated`；官服和 B 服共享基础 `resource/version.json`，资源页合并显示为「国服（官服 / B服）」，其他客户端读取各自 `global/<client>/resource/version.json`，缺失时明确显示“活动信息未提供”。主页和更新页以活动名显示游戏资源版本，保留提交号、基础资源版本和更新时间用于核对。这是资源包标记，不替代官方活动日历的开放时间。
 

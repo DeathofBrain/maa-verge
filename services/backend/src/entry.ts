@@ -4,8 +4,30 @@ import { dataRoot, defaultCopilotDirectory, legacyDataRoot } from '@backend/infr
 import { runUpdateJobStdio } from '@backend/modules/updates/updates';
 import { parseWireJson, stringifyWireJson } from '@backend/shared/wire-json';
 import { processRequest } from '@backend/transport/json-rpc';
+import {
+  acquireMacosComponentLease,
+  runMacosUninstallCli,
+} from '@backend/infrastructure/macos-components';
 
 export async function main() {
+  if (process.argv.includes('--uninstall-macos')) {
+    await runMacosUninstallCli(process.argv.slice(2));
+    return;
+  }
+  // Installed services and their update jobs share component roots even when
+  // their business data roots differ. Keep this lease until all cleanup ends.
+  const components =
+    process.platform === 'darwin' && Bun.isStandaloneExecutable
+      ? acquireMacosComponentLease('shared')
+      : undefined;
+  try {
+    await runService();
+  } finally {
+    components?.close();
+  }
+}
+
+async function runService() {
   if (process.argv.includes('--update-job')) {
     await runUpdateJobStdio();
     return;

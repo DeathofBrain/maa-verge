@@ -64,6 +64,8 @@ v0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资
 
 DMG 本身仍是可完整安装的映像，可按原方式拖拽安装；`.dmg.sig` 用于自动更新信任校验。仅支持 `.app.tar.gz` 的旧 macOS 客户端须手动安装一次新版 DMG，之后才能使用新的应用内更新。新客户端拒绝旧归档及其安装缓存；历史发行版没有签名 DMG 时明确提示手动安装或等待新版本。2026-10-31 核查的 v0.1.2 与 v0.1.3-alpha.1 清单均没有 `-dmg` 目标，不能作为新客户端的 macOS 应用内更新候选。
 
+macOS 的 MaaCore 与 MaaResource 默认保存在 `~/Library/Application Support/Maa Verge/` 下各自文件夹，不随 `.app` 替换。卸载请使用「设置 → 关于 → 卸载 Maa Verge」，确认后将当前应用与这两个默认组件文件夹移到废纸篓，保留配置及自定义目录；Finder 直接删除 `.app` 不会触发组件清理。旧默认路径兼容与清理边界见[组件目录](maacore-runtime.md#下载与安装目录)。此入口仅适用于 macOS 安装版。
+
 当前源码及后续发行版最低支持 **macOS 15（Sequoia）**，覆盖 Apple Silicon 和 Intel。已有发行版的历史系统要求见各版本说明。
 
 macOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付费账号或新增 GitHub Secrets。Tauri 配置显式设置 `bundle.macOS.signingIdentity: "-"`，在生成 DMG 及更新签名前封装整个 `.app`；Bun 服务和 C++ worker 保留各自的签名与权限。只签主程序或子进程、没有 `.app` 的资源封装，会导致系统报告应用「已损坏」。

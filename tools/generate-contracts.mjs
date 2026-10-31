@@ -22,6 +22,14 @@ const typeOptions = {
   style: { singleQuote: true, semi: true, tabWidth: 2 },
 };
 const types = await compile(schema, 'Snapshot', typeOptions);
+const desktopUninstallTypes = await compile(
+  schema.$defs.DesktopUninstallInfo,
+  'DesktopUninstallInfo',
+  {
+    ...typeOptions,
+    bannerComment: '',
+  },
+);
 const rpcTypes = await compileFromFile(rpcSource, { ...typeOptions, unreachableDefinitions: true });
 const workerTypes = await compile(workerSchema, 'WorkerProtocol', typeOptions);
 
@@ -104,6 +112,7 @@ const validators = {
   validateWorkerCommand: `${workerSchema.$id}#/$defs/WorkerCommand`,
   validateWorkerEvent: `${workerSchema.$id}#/$defs/WorkerEvent`,
   validateWorkerValidation: `${workerSchema.$id}#/$defs/WorkerValidation`,
+  validateDesktopUninstallInfo: `${schema.$id}#/$defs/DesktopUninstallInfo`,
 };
 const standalone = standaloneCode(ajv, validators);
 const require = createRequire(import.meta.url);
@@ -138,7 +147,7 @@ const bundled = await build({
   banner: { js: bannerComment },
 });
 const declaration = `${bannerComment}
-import type { Plan, Settings, Snapshot } from './types';
+import type { Plan, Settings, Snapshot, DesktopUninstallInfo } from './types';
 import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame, HostUpdateParams } from './rpc-types';
 import type { WorkerProtocol } from './worker-types';
 export interface ValidationError {
@@ -153,6 +162,7 @@ export interface Validator<T> {
   errors: ValidationError[] | null;
 }
 export const validateSnapshot: Validator<Snapshot>;
+export const validateDesktopUninstallInfo: Validator<DesktopUninstallInfo>;
 export const validateHostUpdateParams: Validator<HostUpdateParams>;
 export const validateCopilotListParams: Validator<RpcContract['params']['copilot.list']>;
 export const validateCopilotCategorySaveParams: Validator<RpcContract['params']['copilot.category.save']>;
@@ -220,7 +230,7 @@ export const validateWorkerValidation: Validator<WorkerProtocol['validation']>;
 `;
 const files = new Map([
   ['packages/contracts/schema.json', JSON.stringify(schema, null, 2) + '\n'],
-  ['packages/contracts/src/types.ts', types],
+  ['packages/contracts/src/types.ts', `${types}\n${desktopUninstallTypes}`],
   ['packages/contracts/src/rpc-types.ts', rpcTypes],
   ['packages/contracts/src/worker-types.ts', workerTypes],
   ['packages/contracts/src/validators.js', bundled.outputFiles[0].text],

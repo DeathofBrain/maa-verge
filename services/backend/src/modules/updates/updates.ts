@@ -101,6 +101,7 @@ type Hook = () => Promise<void> | void;
 type ReconcileScope = 'all' | 'active' | 'core' | 'resource';
 export interface UpdateOptions {
   directories?: ComponentPaths;
+  generationNamespace?: string;
   source?: UpdateSource;
   validator?: Validator;
   beforeActivate?: Hook;
@@ -733,6 +734,7 @@ function defaultJobCommand(): string[] {
 
 export class UpdateService {
   private readonly defaults: ComponentPaths;
+  private readonly generationNamespace?: string;
   private readonly source: UpdateSource;
   private readonly validator: Validator;
   private readonly beforeActivate: Hook;
@@ -770,6 +772,9 @@ export class UpdateService {
         ? mirrorSettingsRevision
         : 0;
     this.defaults = options.directories ?? { core: root, resource: root };
+    if (options.generationNamespace && !/^data-[a-f0-9]{32}$/.test(options.generationNamespace))
+      throw new Error('组件版本命名空间无效');
+    this.generationNamespace = options.generationNamespace;
     this.source =
       options.source ??
       new OfficialSource(
@@ -837,8 +842,8 @@ export class UpdateService {
   private rememberRoots(): string[] {
     const roots = new Set<string>([
       this.root,
-      ...Object.values(this.defaults),
-      ...Object.values(this.directories()),
+      ...Object.values(this.defaults).map((root) => this.namespacedRoot(root)),
+      ...(['core', 'resource'] as const).map((channel) => this.generationRoot(channel)),
       ...this.store.get('meta', 'component_roots', []),
     ]);
     for (const snapshot of this.snapshots()) {
@@ -852,9 +857,24 @@ export class UpdateService {
     this.store.put('meta', 'component_roots', values);
     return values;
   }
+  private namespacedRoot(directory: string): string {
+    return this.generationNamespace ? path.join(directory, this.generationNamespace) : directory;
+  }
+  private generationRoot(channel: 'core' | 'resource'): string {
+    return this.namespacedRoot(this.directories()[channel]);
+  }
+  private ownsGenerationRoot(directory: string): boolean {
+    return (
+      !this.generationNamespace ||
+      path.resolve(directory) === path.resolve(this.root) ||
+      path.basename(path.resolve(directory)) === this.generationNamespace
+    );
+  }
   private async pruneVersions(): Promise<void> {
     if (this.closing || this.busy()) return;
-    const roots = this.rememberRoots();
+    // Legacy shared generations and other data roots have independent saved
+    // references. Their manifests alone cannot authorize this Store to prune.
+    const roots = this.rememberRoots().filter((root) => this.ownsGenerationRoot(root));
     await pruneGenerations(roots, [
       ...this.snapshots().map((snapshot) => snapshot.path),
       ...this.protectedPaths(),
@@ -1015,7 +1035,7 @@ export class UpdateService {
     return tracked;
   }
   private async localSnapshots(channel: 'core' | 'resource'): Promise<LocalComponentSnapshot[]> {
-    const roots = this.rememberRoots();
+    const roots = this.rememberRoots().filter((root) => this.ownsGenerationRoot(root));
     const snapshots = (
       await Promise.all(roots.map((root) => readLocalComponentSnapshots(root, channel)))
     ).flat();
@@ -1096,11 +1116,11 @@ export class UpdateService {
     const inPlace =
       local &&
       path.resolve(path.dirname(path.dirname(local.path))) ===
-        path.resolve(this.directories()[channel]);
+        path.resolve(this.generationRoot(channel));
     const generation = inPlace
       ? local.path
       : path.join(
-          this.directories()[channel],
+          this.generationRoot(channel),
           'generations',
           `${channel}-${randomUUID().replaceAll('-', '')}`,
         );
@@ -1565,7 +1585,7 @@ export class UpdateService {
     if (mirrorSettingsRevision !== this.mirrorSettingsRevision) return this.prepareCurrent(channel);
     const directory = this.directories()[channel as 'core' | 'resource'];
     const generation = path.join(
-      directory,
+      this.generationRoot(channel as 'core' | 'resource'),
       'generations',
       `${channel}-${randomUUID().replaceAll('-', '')}`,
     );

@@ -6,6 +6,7 @@ mod directory_picker;
 mod external_links;
 mod notification_sender;
 mod runtime;
+mod uninstall;
 
 use runtime::Runtime;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -229,6 +230,8 @@ pub fn run() {
             configuration::save_configuration_directory,
             configuration::open_configuration_directory,
             directory_picker::pick_directory,
+            uninstall::get_desktop_uninstall_info,
+            uninstall::uninstall_desktop_application,
             desktop_notifications::desktop_notification_status,
             desktop_notifications::desktop_test_notification,
             resolve_window_close,

@@ -34,6 +34,7 @@ async function main() {
       {
         env: {
           ...devEnvironment(),
+          MAAVERGE_COMPONENT_HOME: path.join(temporary, 'component-home'),
           MAAVERGE_TEST_RUNTIME: executable,
           MAAVERGE_TEST_DATA: temporary,
         },

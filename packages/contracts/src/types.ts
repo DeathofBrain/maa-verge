@@ -436,3 +436,15 @@ export interface ToolJobSummary {
   startedAt: string;
   finishedAt: string | null;
 }
+
+export interface DesktopUninstallInfo {
+  available: boolean;
+  reason: string;
+  application: string;
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  componentDirectories: string[];
+  configurationDirectory: string;
+}

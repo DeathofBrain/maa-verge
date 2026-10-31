@@ -3,11 +3,28 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 
 export type ComponentPaths = { core: string; resource: string };
-export function defaultComponentPaths(root: string, applicationDirectory?: string): ComponentPaths {
-  return applicationDirectory
+export type ComponentPathEnvironment = {
+  platform?: NodeJS.Platform;
+  homeDirectory?: string;
+};
+export function defaultComponentPaths(
+  root: string,
+  applicationDirectory?: string,
+  environment: ComponentPathEnvironment = {},
+): ComponentPaths {
+  const directory =
+    applicationDirectory && (environment.platform ?? process.platform) === 'darwin'
+      ? path.join(
+          environment.homeDirectory ?? (process.env.MAAVERGE_COMPONENT_HOME || homedir()),
+          'Library',
+          'Application Support',
+          'Maa Verge',
+        )
+      : applicationDirectory;
+  return directory
     ? {
-        core: path.resolve(applicationDirectory, 'MaaCore'),
-        resource: path.resolve(applicationDirectory, 'MaaResource'),
+        core: path.resolve(directory, 'MaaCore'),
+        resource: path.resolve(directory, 'MaaResource'),
       }
     : {
         core: path.resolve(root, 'components', 'core'),

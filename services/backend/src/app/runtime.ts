@@ -29,6 +29,7 @@ import {
   defaultComponentPaths,
   defaultCopilotDirectory,
   deviceLockPath,
+  type ComponentPathEnvironment,
 } from '@backend/infrastructure/config';
 import { CoreWorker } from '@backend/infrastructure/native/worker';
 import { captureAdbPath, connectionCapture } from '@backend/modules/devices/capture';
@@ -123,6 +124,7 @@ export interface RuntimeOptions {
   now?: () => Date;
   importFrom?: string;
   applicationDirectory?: string;
+  componentEnvironment?: ComponentPathEnvironment;
   logExportDirectory?: string;
   notify?: (message: any) => void;
   tickSeconds?: number;
@@ -227,17 +229,44 @@ export class Runtime {
       this.store.put('settings', 'main', parseSettings());
       this.store.put('meta', 'initialized', true);
     }
-    const defaults = defaultComponentPaths(root, options.applicationDirectory);
+    const defaults = defaultComponentPaths(
+      root,
+      options.applicationDirectory,
+      options.componentEnvironment,
+    );
     const storedSettings = this.store.get('settings', 'main', {});
     // Removed downloader preferences may contain a custom executable path. Ignore
     // them only when migrating persisted settings; new RPC requests remain strict.
     const removedDownloadPreference = Object.hasOwn(storedSettings, 'componentDownload');
     if (removedDownloadPreference) delete storedSettings.componentDownload;
     const settings = parseSettings(storedSettings);
-    if (!settings.componentPaths || removedDownloadPreference)
+    const componentPaths = { ...(settings.componentPaths ?? defaults) };
+    const previousRoots: string[] = [];
+    if (
+      options.applicationDirectory &&
+      (options.componentEnvironment?.platform ?? process.platform) === 'darwin'
+    ) {
+      for (const [channel, name] of [
+        ['core', 'MaaCore'],
+        ['resource', 'MaaResource'],
+      ] as const) {
+        const previous = path.resolve(options.applicationDirectory, name);
+        if (componentPaths[channel] && path.resolve(componentPaths[channel]) === previous) {
+          previousRoots.push(previous);
+          componentPaths[channel] = defaults[channel];
+        }
+      }
+    }
+    // Keep existing immutable generations and their maintenance roots in place;
+    // only subsequent downloads use the new macOS default directories.
+    if (previousRoots.length)
+      this.store.put('meta', 'component_roots', [
+        ...new Set([...this.store.get('meta', 'component_roots', []), ...previousRoots]),
+      ]);
+    if (!settings.componentPaths || removedDownloadPreference || previousRoots.length)
       this.store.put('settings', 'main', {
         ...settings,
-        componentPaths: settings.componentPaths ?? defaults,
+        componentPaths,
       });
     for (const device of this.store.all('device')) {
       device.state = 'offline';
@@ -297,6 +326,11 @@ export class Runtime {
         source: options.source,
         validator: options.validator,
         directories: defaults,
+        generationNamespace:
+          options.applicationDirectory &&
+          (options.componentEnvironment?.platform ?? process.platform) === 'darwin'
+            ? `data-${createHash('sha256').update(realpathSync(root)).digest('hex').slice(0, 32)}`
+            : undefined,
         beforeActivate: () => this.beforeSwitch(),
         afterActivate: () => this.afterSwitch(),
         finishActivate: (error?: string) => this.finishSwitch(error),

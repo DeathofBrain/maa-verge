@@ -173,6 +173,7 @@ try {
     ...cleanRuntimeEnvironment(),
     MAAVERGE_MODE: 'native',
     MAAVERGE_DATA_DIR: data,
+    MAAVERGE_COMPONENT_HOME: path.join(temporary, 'component-home'),
     MAAVERGE_DEVICE_LOCK_DIR: path.join(temporary, 'locks'),
     MAAVERGE_LOG_DIR: path.join(temporary, 'logs'),
     CFFIXED_USER_HOME: profile,

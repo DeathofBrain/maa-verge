@@ -4,7 +4,7 @@
   "sources": [
     {
       "file": "docs/app-updates.md",
-      "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+      "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
     },
     {
       "file": "docs/connection-settings.md",
@@ -28,7 +28,7 @@
     },
     {
       "file": "docs/maacore-runtime.md",
-      "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+      "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
     },
     {
       "file": "docs/multi-instance.md",
@@ -48,7 +48,7 @@
     },
     {
       "file": "packages/contracts/schemas/runtime.schema.json",
-      "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+      "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
     },
     {
       "file": "packages/contracts/src/tasks.ts",
@@ -80,7 +80,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L37-L50",
-        "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
       }
     },
     {
@@ -93,21 +93,48 @@
         "macOS 签名与首次放行",
         "app-updates"
       ],
-      "text": "应用与核心更新 > macOS 签名与首次放行\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## macOS 签名与首次放行\n\n后续签名发行只提供完整 DMG，不再生成 `.app.tar.gz` 更新归档。新客户端使用与 Mirror酱相同的完整 DMG：验证整个 DMG 的 minisign 签名后，只读挂载，复制固定的 `Maa Verge.app`，再复核应用标识、版本、可执行文件架构和系统签名；卸载映像后才原子替换已有应用。新版启动且旧更新进程已退出后，按绑定安装位置和目标版本的收据清理旧应用包；进程仍存活时延后清理。准备或校验失败会保留旧应用与候选包，安装位置不可写或文件系统不支持原子交换时停止安装。配置默认在 `.app` 同级；自定义数据根位于待替换的 `.app` 内时拒绝自动更新，须先迁出数据。\n\nDMG 本身仍是可完整安装的映像，可按原方式拖拽安装；`.dmg.sig` 用于自动更新信任校验。仅支持 `.app.tar.gz` 的旧 macOS 客户端须手动安装一次新版 DMG，之后才能使用新的应用内更新。新客户端拒绝旧归档及其安装缓存；历史发行版没有签名 DMG 时明确提示手动安装或等待新版本。2026-10-31 核查的 v0.1.2 与 v0.1.3-alpha.1 清单均没有 `-dmg` 目标，不能作为新客户端的 macOS 应用内更新候选。\n\n当前源码及后续发行版最低支持 **macOS 15（Sequoia）**，覆盖 Apple Silicon 和 Intel。已有发行版的历史系统要求见各版本说明。\n\nmacOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付费账号或新增 GitHub Secrets。Tauri 配置显式设置 `bundle.macOS.signingIdentity: \"-\"`，在生成 DMG 及更新签名前封装整个 `.app`；Bun 服务和 C++ worker 保留各自的签名与权限。只签主程序或子进程、没有 `.app` 的资源封装，会导致系统报告应用「已损坏」。\n\n本地签名可以验证应用包完整性，但没有 Apple 认可的发布者身份与公证。首次安装时，先把应用从 DMG 拖到可写的安装目录，尝试打开，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」。应用需要用户明确放行；CI 不修改全局 Gatekeeper 设置，也不承诺未公证下载可以直接打开。\n\n已发布的 **v0.1.1 macOS 包确有资源封装缺失**，不是单纯的未知开发者提示。2026-10-24 核对 Apple Silicon DMG 的官方 SHA-256 与映像校验均通过，而 `codesign --verify --deep --strict` 返回 `code has no resources but signature indicates they must be present`。修复已随 [v0.1.2 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2) 发布，两种 macOS 架构均通过最终 DMG 安装、窗口与包内服务启动、退出清理及更新归档一致性检查；既有发行资产保持不变。\n\n已经下载 v0.1.1 的用户，建议退出旧版并手动安装 v0.1.2 对应架构的 DMG。若仍要临时使用 v0.1.1，先从项目 Release 校验 `SHA256SUMS.txt`，退出应用并复制到安装目录，再在终端只补签这一个应用并验证签名；以下路径须替换为实际位置。该命令不使用 `--deep` 重签，保留三个子进程的权限：\n\n```sh\ncodesign --force --sign - \"/Applications/Maa Verge.app\"\ncodesign --verify --deep --strict \"/Applications/Maa Verge.app\"\n```\n\n随后按系统提示放行。如果系统仍阻止此已核验的应用，可仅移除该应用的下载隔离标记，再打开；不关闭系统安全检查：\n\n```sh\nxattr -dr com.apple.quarantine \"/Applications/Maa Verge.app\"\n```\n\nv0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和包内子进程签名；该发行版有三个子进程，当前源码移除 aria2 后保留 Bun 服务和 C++ worker。普通 CI 与发行 CI 的两种 macOS 架构还会运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。\n\n发行 CI 额外传入 `--require-updater`，要求完整 DMG 具有绑定包内容与版本的有效更新签名，并核对 DMG 内应用与原应用的主程序、资源封装和子进程字节一致；不再要求或解开专用更新归档。任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。",
+      "text": "应用与核心更新 > macOS 签名与首次放行\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## macOS 签名与首次放行\n\n后续签名发行只提供完整 DMG，不再生成 `.app.tar.gz` 更新归档。新客户端使用与 Mirror酱相同的完整 DMG：验证整个 DMG 的 minisign 签名后，只读挂载，复制固定的 `Maa Verge.app`，再复核应用标识、版本、可执行文件架构和系统签名；卸载映像后才原子替换已有应用。新版启动且旧更新进程已退出后，按绑定安装位置和目标版本的收据清理旧应用包；进程仍存活时延后清理。准备或校验失败会保留旧应用与候选包，安装位置不可写或文件系统不支持原子交换时停止安装。配置默认在 `.app` 同级；自定义数据根位于待替换的 `.app` 内时拒绝自动更新，须先迁出数据。\n\nDMG 本身仍是可完整安装的映像，可按原方式拖拽安装；`.dmg.sig` 用于自动更新信任校验。仅支持 `.app.tar.gz` 的旧 macOS 客户端须手动安装一次新版 DMG，之后才能使用新的应用内更新。新客户端拒绝旧归档及其安装缓存；历史发行版没有签名 DMG 时明确提示手动安装或等待新版本。2026-10-31 核查的 v0.1.2 与 v0.1.3-alpha.1 清单均没有 `-dmg` 目标，不能作为新客户端的 macOS 应用内更新候选。\n\nmacOS 的 MaaCore 与 MaaResource 默认保存在 `~/Library/Application Support/Maa Verge/` 下各自文件夹，不随 `.app` 替换。卸载请使用「设置 → 关于 → 卸载 Maa Verge」，确认后将当前应用与这两个默认组件文件夹移到废纸篓，保留配置及自定义目录；Finder 直接删除 `.app` 不会触发组件清理。旧默认路径兼容与清理边界见[组件目录](maacore-runtime.md#下载与安装目录)。此入口仅适用于 macOS 安装版。\n\n当前源码及后续发行版最低支持 **macOS 15（Sequoia）**，覆盖 Apple Silicon 和 Intel。已有发行版的历史系统要求见各版本说明。\n\nmacOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付费账号或新增 GitHub Secrets。Tauri 配置显式设置 `bundle.macOS.signingIdentity: \"-\"`，在生成 DMG 及更新签名前封装整个 `.app`；Bun 服务和 C++ worker 保留各自的签名与权限。只签主程序或子进程、没有 `.app` 的资源封装，会导致系统报告应用「已损坏」。\n\n本地签名可以验证应用包完整性，但没有 Apple 认可的发布者身份与公证。首次安装时，先把应用从 DMG 拖到可写的安装目录，尝试打开，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」。应用需要用户明确放行；CI 不修改全局 Gatekeeper 设置，也不承诺未公证下载可以直接打开。\n\n已发布的 **v0.1.1 macOS 包确有资源封装缺失**，不是单纯的未知开发者提示。2026-10-24 核对 Apple Silicon DMG 的官方 SHA-256 与映像校验均通过，而 `codesign --verify --deep --strict` 返回 `code has no resources but signature indicates they must be present`。修复已随 [v0.1.2 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2) 发布，两种 macOS 架构均通过最终 DMG 安装、窗口与包内服务启动、退出清理及更新归档一致性检查；既有发行资产保持不变。\n\n已经下载 v0.1.1 的用户，建议退出旧版并手动安装 v0.1.2 对应架构的 DMG。若仍要临时使用 v0.1.1，先从项目 Release 校验 `SHA256SUMS.txt`，退出应用并复制到安装目录，再在终端只补签这一个应用并验证签名；以下路径须替换为实际位置。该命令不使用 `--deep` 重签，保留三个子进程的权限：\n\n```sh\ncodesign --force --sign - \"/Applications/Maa Verge.app\"\ncodesign --verify --deep --strict \"/Applications/Maa Verge.app\"\n```\n\n随后按系统提示放行。如果系统仍阻止此已核验的应用，可仅移除该应用的下载隔离标记，再打开；不关闭系统安全检查：\n\n```sh\nxattr -dr com.apple.quarantine \"/Applications/Maa Verge.app\"\n```\n\nv0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和包内子进程签名；该发行版有三个子进程，当前源码移除 aria2 后保留 Bun 服务和 C++ worker。普通 CI 与发行 CI 的两种 macOS 架构还会运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "应用与核心更新",
           "macOS 签名与首次放行"
         ],
-        "content": "## macOS 签名与首次放行\n\n后续签名发行只提供完整 DMG，不再生成 `.app.tar.gz` 更新归档。新客户端使用与 Mirror酱相同的完整 DMG：验证整个 DMG 的 minisign 签名后，只读挂载，复制固定的 `Maa Verge.app`，再复核应用标识、版本、可执行文件架构和系统签名；卸载映像后才原子替换已有应用。新版启动且旧更新进程已退出后，按绑定安装位置和目标版本的收据清理旧应用包；进程仍存活时延后清理。准备或校验失败会保留旧应用与候选包，安装位置不可写或文件系统不支持原子交换时停止安装。配置默认在 `.app` 同级；自定义数据根位于待替换的 `.app` 内时拒绝自动更新，须先迁出数据。\n\nDMG 本身仍是可完整安装的映像，可按原方式拖拽安装；`.dmg.sig` 用于自动更新信任校验。仅支持 `.app.tar.gz` 的旧 macOS 客户端须手动安装一次新版 DMG，之后才能使用新的应用内更新。新客户端拒绝旧归档及其安装缓存；历史发行版没有签名 DMG 时明确提示手动安装或等待新版本。2026-10-31 核查的 v0.1.2 与 v0.1.3-alpha.1 清单均没有 `-dmg` 目标，不能作为新客户端的 macOS 应用内更新候选。\n\n当前源码及后续发行版最低支持 **macOS 15（Sequoia）**，覆盖 Apple Silicon 和 Intel。已有发行版的历史系统要求见各版本说明。\n\nmacOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付费账号或新增 GitHub Secrets。Tauri 配置显式设置 `bundle.macOS.signingIdentity: \"-\"`，在生成 DMG 及更新签名前封装整个 `.app`；Bun 服务和 C++ worker 保留各自的签名与权限。只签主程序或子进程、没有 `.app` 的资源封装，会导致系统报告应用「已损坏」。\n\n本地签名可以验证应用包完整性，但没有 Apple 认可的发布者身份与公证。首次安装时，先把应用从 DMG 拖到可写的安装目录，尝试打开，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」。应用需要用户明确放行；CI 不修改全局 Gatekeeper 设置，也不承诺未公证下载可以直接打开。\n\n已发布的 **v0.1.1 macOS 包确有资源封装缺失**，不是单纯的未知开发者提示。2026-10-24 核对 Apple Silicon DMG 的官方 SHA-256 与映像校验均通过，而 `codesign --verify --deep --strict` 返回 `code has no resources but signature indicates they must be present`。修复已随 [v0.1.2 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2) 发布，两种 macOS 架构均通过最终 DMG 安装、窗口与包内服务启动、退出清理及更新归档一致性检查；既有发行资产保持不变。\n\n已经下载 v0.1.1 的用户，建议退出旧版并手动安装 v0.1.2 对应架构的 DMG。若仍要临时使用 v0.1.1，先从项目 Release 校验 `SHA256SUMS.txt`，退出应用并复制到安装目录，再在终端只补签这一个应用并验证签名；以下路径须替换为实际位置。该命令不使用 `--deep` 重签，保留三个子进程的权限：\n\n```sh\ncodesign --force --sign - \"/Applications/Maa Verge.app\"\ncodesign --verify --deep --strict \"/Applications/Maa Verge.app\"\n```\n\n随后按系统提示放行。如果系统仍阻止此已核验的应用，可仅移除该应用的下载隔离标记，再打开；不关闭系统安全检查：\n\n```sh\nxattr -dr com.apple.quarantine \"/Applications/Maa Verge.app\"\n```\n\nv0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和包内子进程签名；该发行版有三个子进程，当前源码移除 aria2 后保留 Bun 服务和 C++ worker。普通 CI 与发行 CI 的两种 macOS 架构还会运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。\n\n发行 CI 额外传入 `--require-updater`，要求完整 DMG 具有绑定包内容与版本的有效更新签名，并核对 DMG 内应用与原应用的主程序、资源封装和子进程字节一致；不再要求或解开专用更新归档。任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。",
+        "content": "## macOS 签名与首次放行\n\n后续签名发行只提供完整 DMG，不再生成 `.app.tar.gz` 更新归档。新客户端使用与 Mirror酱相同的完整 DMG：验证整个 DMG 的 minisign 签名后，只读挂载，复制固定的 `Maa Verge.app`，再复核应用标识、版本、可执行文件架构和系统签名；卸载映像后才原子替换已有应用。新版启动且旧更新进程已退出后，按绑定安装位置和目标版本的收据清理旧应用包；进程仍存活时延后清理。准备或校验失败会保留旧应用与候选包，安装位置不可写或文件系统不支持原子交换时停止安装。配置默认在 `.app` 同级；自定义数据根位于待替换的 `.app` 内时拒绝自动更新，须先迁出数据。\n\nDMG 本身仍是可完整安装的映像，可按原方式拖拽安装；`.dmg.sig` 用于自动更新信任校验。仅支持 `.app.tar.gz` 的旧 macOS 客户端须手动安装一次新版 DMG，之后才能使用新的应用内更新。新客户端拒绝旧归档及其安装缓存；历史发行版没有签名 DMG 时明确提示手动安装或等待新版本。2026-10-31 核查的 v0.1.2 与 v0.1.3-alpha.1 清单均没有 `-dmg` 目标，不能作为新客户端的 macOS 应用内更新候选。\n\nmacOS 的 MaaCore 与 MaaResource 默认保存在 `~/Library/Application Support/Maa Verge/` 下各自文件夹，不随 `.app` 替换。卸载请使用「设置 → 关于 → 卸载 Maa Verge」，确认后将当前应用与这两个默认组件文件夹移到废纸篓，保留配置及自定义目录；Finder 直接删除 `.app` 不会触发组件清理。旧默认路径兼容与清理边界见[组件目录](maacore-runtime.md#下载与安装目录)。此入口仅适用于 macOS 安装版。\n\n当前源码及后续发行版最低支持 **macOS 15（Sequoia）**，覆盖 Apple Silicon 和 Intel。已有发行版的历史系统要求见各版本说明。\n\nmacOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付费账号或新增 GitHub Secrets。Tauri 配置显式设置 `bundle.macOS.signingIdentity: \"-\"`，在生成 DMG 及更新签名前封装整个 `.app`；Bun 服务和 C++ worker 保留各自的签名与权限。只签主程序或子进程、没有 `.app` 的资源封装，会导致系统报告应用「已损坏」。\n\n本地签名可以验证应用包完整性，但没有 Apple 认可的发布者身份与公证。首次安装时，先把应用从 DMG 拖到可写的安装目录，尝试打开，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」。应用需要用户明确放行；CI 不修改全局 Gatekeeper 设置，也不承诺未公证下载可以直接打开。\n\n已发布的 **v0.1.1 macOS 包确有资源封装缺失**，不是单纯的未知开发者提示。2026-10-24 核对 Apple Silicon DMG 的官方 SHA-256 与映像校验均通过，而 `codesign --verify --deep --strict` 返回 `code has no resources but signature indicates they must be present`。修复已随 [v0.1.2 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2) 发布，两种 macOS 架构均通过最终 DMG 安装、窗口与包内服务启动、退出清理及更新归档一致性检查；既有发行资产保持不变。\n\n已经下载 v0.1.1 的用户，建议退出旧版并手动安装 v0.1.2 对应架构的 DMG。若仍要临时使用 v0.1.1，先从项目 Release 校验 `SHA256SUMS.txt`，退出应用并复制到安装目录，再在终端只补签这一个应用并验证签名；以下路径须替换为实际位置。该命令不使用 `--deep` 重签，保留三个子进程的权限：\n\n```sh\ncodesign --force --sign - \"/Applications/Maa Verge.app\"\ncodesign --verify --deep --strict \"/Applications/Maa Verge.app\"\n```\n\n随后按系统提示放行。如果系统仍阻止此已核验的应用，可仅移除该应用的下载隔离标记，再打开；不关闭系统安全检查：\n\n```sh\nxattr -dr com.apple.quarantine \"/Applications/Maa Verge.app\"\n```\n\nv0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和包内子进程签名；该发行版有三个子进程，当前源码移除 aria2 后保留 Bun 服务和 C++ worker。普通 CI 与发行 CI 的两种 macOS 架构还会运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L61-L91",
-        "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
+      }
+    },
+    {
+      "key": "product:document:docs/app-updates.md:a5e46a44abc8a8bf:0:1",
+      "kind": "document",
+      "id": "docs/app-updates.md:a5e46a44abc8a8bf:0:1",
+      "name": "macOS 签名与首次放行",
+      "aliases": [
+        "应用与核心更新",
+        "macOS 签名与首次放行",
+        "app-updates"
+      ],
+      "text": "应用与核心更新 > macOS 签名与首次放行\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n发行 CI 额外传入 `--require-updater`，要求完整 DMG 具有绑定包内容与版本的有效更新签名，并核对 DMG 内应用与原应用的主程序、资源封装和子进程字节一致；不再要求或解开专用更新归档。任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。",
+      "data": {
+        "category": "documentation",
+        "headingPath": [
+          "应用与核心更新",
+          "macOS 签名与首次放行"
+        ],
+        "content": "发行 CI 额外传入 `--require-updater`，要求完整 DMG 具有绑定包内容与版本的有效更新签名，并核对 DMG 内应用与原应用的主程序、资源封装和子进程字节一致；不再要求或解开专用更新归档。任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。",
+        "verification": "documented-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "docs/app-updates.md",
+        "pointer": "L92-L93",
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
       }
     },
     {
@@ -134,7 +161,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L5-L32",
-        "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
       }
     },
     {
@@ -161,7 +188,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L33-L36",
-        "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
       }
     },
     {
@@ -187,8 +214,8 @@
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L100-L103",
-        "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+        "pointer": "L102-L105",
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
       }
     },
     {
@@ -213,7 +240,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L1-L4",
-        "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
       }
     },
     {
@@ -242,7 +269,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L51-L60",
-        "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
       }
     },
     {
@@ -268,8 +295,8 @@
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L92-L99",
-        "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+        "pointer": "L94-L101",
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
       }
     },
     {
@@ -295,8 +322,8 @@
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
-        "pointer": "L104-L121",
-        "sha256": "9d08801951adb4ea7b2242a5a0db6a690fe5bc6abb642b043cd56628c0d8cbb9"
+        "pointer": "L106-L123",
+        "sha256": "b466eb68e0ecad272b6e99db5aeb16bf38240851c64f660afc9a01ef82bf6c27"
       }
     },
     {
@@ -796,8 +823,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L99-L108",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L103-L112",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -823,8 +850,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L55-L70",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L59-L74",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -850,8 +877,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L71-L74",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L75-L78",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -864,21 +891,48 @@
         "下载与安装目录",
         "maacore-runtime"
       ],
-      "text": "MaaCore 运行文件的选择性安装 > 下载与安装目录\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 下载与安装目录\n\n“设置 → 更新”分别提供 MaaCore 与游戏资源的下载/安装根目录。安装版默认使用主程序同级的 `MaaCore/`、`MaaResource/`，由 Tauri 传入主程序目录，不能使用包内 `runtime/` 侧进程位置推导。macOS 以 `.app` 整体为程序，Linux AppImage 以 AppImage 文件为程序。源码开发使用各 checkout 独立数据根中的 `native/components/core/`、`native/components/resource/`，避免不同开发工作树共用下载。\n\n每个根目录只创建不可变的 `generations/` 版本目录，不再创建 `downloads/`。下载压缩包以绑定数据根和不可变来源的稳定文件名放在组件根目录，完整归档用完即删，中断保留可恢复分片供后续重试；归档最外层的发布包或仓库目录会移除。核心库直接位于 `MaaCore/generations/core-<id>/`，资源位于 `MaaResource/generations/resource-<id>/resource/`；版本内部这一层 `resource/` 是上游 `AsstLoadResource` 接口自动追加的固定目录，保留以兼容核心加载、外服资源及关卡读取。\n\n核心与独立资源分别跨新旧安装根保留最多三个版本，优先保护活动、上一组回滚、待生效以及仍被 worker 使用的快照。设备忙碌或仍有引用时可暂时超过上限，下一次空闲更新维护再清理；不会为满足数量上限删除使用中的文件。仅清理自身命名和归属明确的 generation，链接目录（包括祖先路径的链接或系统别名）、不明文件及清理失败的目录保守保留。失败的新候选会移除。旧版遗留的 `downloads/` 不再使用，空目录在维护时移除，剩余内容在卸载默认组件目录时一并删除。\n\n保存目录要求完整绝对路径，并检测实际写入能力；安装在系统只读目录时可选择用户可写目录，错误会保留当前设置和活动版本。恢复默认只改变后续下载位置。变更目录不移动或覆盖现有活动、候选、上一组回滚文件，运行中的 worker 继续使用其固定路径；后续维护也会统计旧目录中的自有版本。\n\n启动时轻量核对已安装核心库、有效资源版本文件及文件清单；检查新版时完整验证当前活动的核心与资源，不重复读取候选和回滚版本的全部内容，也不在版本查询前执行旧版本清理。准备、激活和回滚前仍完整验证所有引用快照。新候选在隔离验证后记录文件清单，以及由相对路径、大小和各文件 SHA-256 汇总的摘要，排除安装清单本身；可识别文件缺失、截断、零字节与同尺寸内容改写，拒绝文件或中间目录链接。摘要扫描最多并行读取八个文件，保持流式异步读取与原有路径排序、摘要格式；发生失败时等待已打开文件全部关闭后再返回，不同步读取整个模型或阻塞执行轮询。目录为空、必需文件或内容损坏时，清除失效活动/候选/回滚记录，允许重新安装同一版本；独立资源损坏时先恢复仍有效的核心基础资源。\n\nv0.1.0 旧核心没有可信的展开文件摘要，压缩包 SHA-256 和对现存文件重新枚举都不能证明原安装完整。检查时会提供同版本重新下载安装，以新 generation 建立完整性记录；可用旧组合保留到新候选验证、空闲切换完成，失败不原位补写旧目录。旧版独立资源已有 `contentHash` 时直接复核该资源摘要。内容摘要证明文件与安装时一致，不代替原生加载或全部游戏行为验证。\n\n资源下载完成后再次核对基础资源，失败时也同步磁盘与组件状态；若下载或解压期间核心基础目录丢失，会提示先修复核心，避免继续显示活动组合可用。修复损坏核心后仍保留最近有效回滚组合，不以已经清空的活动记录覆盖它；仍被 worker 引用的目录继续受保护。\n\nWindows EXE（NSIS）完整卸载会删除程序同级默认的 `MaaCore/`、`MaaResource/` 和 `runtime/bundled-components/`，包括旧布局；应用内升级保留这些目录。自定义目录和用户数据根（数据库、计划、记录及数据锁）保留；重新安装后按磁盘文件重新判断组件状态。v0.1.3-alpha1 起不再提供 MSI，旧 MSI 用户须先备份再卸载旧版，手动迁移至 EXE 或完整 ZIP。ZIP 不注册卸载器；macOS/Linux 的卸载仍由各自分发方式处理，本轮没有新增或验收自动清理。\n\n契约新增可选 `Settings.componentPaths`（`core`、`resource`；保存空字符串恢复对应默认目录）与 `UpdateChannel.installDirectory`。服务初始化补全旧设置，旧客户端保存其他设置时保留目录。`UpdateChannel.resourceActivities` 按客户端提供已安装资源的活动名与 `last_updated`；官服和 B 服共享基础 `resource/version.json`，资源页合并显示为「国服（官服 / B服）」，其他客户端读取各自 `global/<client>/resource/version.json`，缺失时明确显示“活动信息未提供”。主页和更新页以活动名显示游戏资源版本，保留提交号、基础资源版本和更新时间用于核对。这是资源包标记，不替代官方活动日历的开放时间。",
+      "text": "MaaCore 运行文件的选择性安装 > 下载与安装目录\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 下载与安装目录\n\n“设置 → 更新”分别提供 MaaCore 与游戏资源的下载/安装根目录。macOS 安装版默认使用 `~/Library/Application Support/Maa Verge/MaaCore/`、`~/Library/Application Support/Maa Verge/MaaResource/`，运行期下载不写入签名 `.app`。Windows/Linux 安装版继续使用主程序同级的 `MaaCore/`、`MaaResource/`，由 Tauri 传入主程序目录，不能使用包内 `runtime/` 侧进程位置推导；Linux AppImage 以 AppImage 文件为程序。源码开发使用各 checkout 独立数据根中的 `native/components/core/`、`native/components/resource/`，避免不同开发工作树共用下载。\n\nmacOS 启动时仅将仍与旧程序同级默认位置相同的下载设置改为新默认；用户自定义目录保留，已安装、待生效与回滚版本继续引用原有不可变路径，不自动搬动文件。恢复默认和后续下载采用新位置。`MAAVERGE_COMPONENT_HOME` 可覆盖派生组件位置所用的用户目录，实际路径仍为该目录下的 `Library/Application Support/Maa Verge/`；它不改变配置数据根或共享设备锁。包内服务和更新子进程共同持有独立的共享 SQLite 组件租约，卸载须取得独占租约；稳定锁文件位于 `Library/Application Support/.maaverge-components-lock.sqlite3`，不随组件删除。\n\n组件使用不可变的 `generations/` 版本目录，不再创建 `downloads/`。macOS 安装版在所选组件根内按业务数据根划分 `data-<hash>/generations/`，避免多个配置数据根共享外层目录时互相复用或清理版本；其他平台和源码开发仍直接使用 `generations/`。下载压缩包以绑定数据根和不可变来源的稳定文件名放在组件根目录，完整归档用完即删，中断保留可恢复分片供后续重试；归档最外层的发布包或仓库目录会移除。核心库位于对应 `generations/core-<id>/`，资源位于对应 `generations/resource-<id>/resource/`；版本内部这一层 `resource/` 是上游 `AsstLoadResource` 接口自动追加的固定目录，保留以兼容核心加载、外服资源及关卡读取。\n\n核心与独立资源分别跨新旧安装根保留最多三个版本，macOS 安装版在各数据根自己的命名空间内计数；优先保护活动、上一组回滚、待生效以及仍被 worker 使用的快照。设备忙碌或仍有引用时可暂时超过上限，下一次空闲更新维护再清理；不会为满足数量上限删除使用中的文件。仅清理自身命名和归属明确的 generation，链接目录（包括祖先路径的链接或系统别名）、不明文件及清理失败的目录保守保留。macOS 旧版未隔离的直接 `generations/` 和其他数据根的命名空间保留，不推断归属。失败的新候选会移除。旧版遗留的 `downloads/` 不再使用，空目录在维护时移除，剩余内容在卸载默认组件目录时一并删除。\n\n保存目录要求完整绝对路径，并检测实际写入能力；安装在系统只读目录时可选择用户可写目录，错误会保留当前设置和活动版本。恢复默认只改变后续下载位置。变更目录不移动或覆盖现有活动、候选、上一组回滚文件，运行中的 worker 继续使用其固定路径；后续维护也会统计旧目录中的自有版本。\n\n启动时轻量核对已安装核心库、有效资源版本文件及文件清单；检查新版时完整验证当前活动的核心与资源，不重复读取候选和回滚版本的全部内容，也不在版本查询前执行旧版本清理。准备、激活和回滚前仍完整验证所有引用快照。新候选在隔离验证后记录文件清单，以及由相对路径、大小和各文件 SHA-256 汇总的摘要，排除安装清单本身；可识别文件缺失、截断、零字节与同尺寸内容改写，拒绝文件或中间目录链接。摘要扫描最多并行读取八个文件，保持流式异步读取与原有路径排序、摘要格式；发生失败时等待已打开文件全部关闭后再返回，不同步读取整个模型或阻塞执行轮询。目录为空、必需文件或内容损坏时，清除失效活动/候选/回滚记录，允许重新安装同一版本；独立资源损坏时先恢复仍有效的核心基础资源。\n\nv0.1.0 旧核心没有可信的展开文件摘要，压缩包 SHA-256 和对现存文件重新枚举都不能证明原安装完整。检查时会提供同版本重新下载安装，以新 generation 建立完整性记录；可用旧组合保留到新候选验证、空闲切换完成，失败不原位补写旧目录。旧版独立资源已有 `contentHash` 时直接复核该资源摘要。内容摘要证明文件与安装时一致，不代替原生加载或全部游戏行为验证。\n\n资源下载完成后再次核对基础资源，失败时也同步磁盘与组件状态；若下载或解压期间核心基础目录丢失，会提示先修复核心，避免继续显示活动组合可用。修复损坏核心后仍保留最近有效回滚组合，不以已经清空的活动记录覆盖它；仍被 worker 引用的目录继续受保护。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "MaaCore 运行文件的选择性安装",
           "下载与安装目录"
         ],
-        "content": "## 下载与安装目录\n\n“设置 → 更新”分别提供 MaaCore 与游戏资源的下载/安装根目录。安装版默认使用主程序同级的 `MaaCore/`、`MaaResource/`，由 Tauri 传入主程序目录，不能使用包内 `runtime/` 侧进程位置推导。macOS 以 `.app` 整体为程序，Linux AppImage 以 AppImage 文件为程序。源码开发使用各 checkout 独立数据根中的 `native/components/core/`、`native/components/resource/`，避免不同开发工作树共用下载。\n\n每个根目录只创建不可变的 `generations/` 版本目录，不再创建 `downloads/`。下载压缩包以绑定数据根和不可变来源的稳定文件名放在组件根目录，完整归档用完即删，中断保留可恢复分片供后续重试；归档最外层的发布包或仓库目录会移除。核心库直接位于 `MaaCore/generations/core-<id>/`，资源位于 `MaaResource/generations/resource-<id>/resource/`；版本内部这一层 `resource/` 是上游 `AsstLoadResource` 接口自动追加的固定目录，保留以兼容核心加载、外服资源及关卡读取。\n\n核心与独立资源分别跨新旧安装根保留最多三个版本，优先保护活动、上一组回滚、待生效以及仍被 worker 使用的快照。设备忙碌或仍有引用时可暂时超过上限，下一次空闲更新维护再清理；不会为满足数量上限删除使用中的文件。仅清理自身命名和归属明确的 generation，链接目录（包括祖先路径的链接或系统别名）、不明文件及清理失败的目录保守保留。失败的新候选会移除。旧版遗留的 `downloads/` 不再使用，空目录在维护时移除，剩余内容在卸载默认组件目录时一并删除。\n\n保存目录要求完整绝对路径，并检测实际写入能力；安装在系统只读目录时可选择用户可写目录，错误会保留当前设置和活动版本。恢复默认只改变后续下载位置。变更目录不移动或覆盖现有活动、候选、上一组回滚文件，运行中的 worker 继续使用其固定路径；后续维护也会统计旧目录中的自有版本。\n\n启动时轻量核对已安装核心库、有效资源版本文件及文件清单；检查新版时完整验证当前活动的核心与资源，不重复读取候选和回滚版本的全部内容，也不在版本查询前执行旧版本清理。准备、激活和回滚前仍完整验证所有引用快照。新候选在隔离验证后记录文件清单，以及由相对路径、大小和各文件 SHA-256 汇总的摘要，排除安装清单本身；可识别文件缺失、截断、零字节与同尺寸内容改写，拒绝文件或中间目录链接。摘要扫描最多并行读取八个文件，保持流式异步读取与原有路径排序、摘要格式；发生失败时等待已打开文件全部关闭后再返回，不同步读取整个模型或阻塞执行轮询。目录为空、必需文件或内容损坏时，清除失效活动/候选/回滚记录，允许重新安装同一版本；独立资源损坏时先恢复仍有效的核心基础资源。\n\nv0.1.0 旧核心没有可信的展开文件摘要，压缩包 SHA-256 和对现存文件重新枚举都不能证明原安装完整。检查时会提供同版本重新下载安装，以新 generation 建立完整性记录；可用旧组合保留到新候选验证、空闲切换完成，失败不原位补写旧目录。旧版独立资源已有 `contentHash` 时直接复核该资源摘要。内容摘要证明文件与安装时一致，不代替原生加载或全部游戏行为验证。\n\n资源下载完成后再次核对基础资源，失败时也同步磁盘与组件状态；若下载或解压期间核心基础目录丢失，会提示先修复核心，避免继续显示活动组合可用。修复损坏核心后仍保留最近有效回滚组合，不以已经清空的活动记录覆盖它；仍被 worker 引用的目录继续受保护。\n\nWindows EXE（NSIS）完整卸载会删除程序同级默认的 `MaaCore/`、`MaaResource/` 和 `runtime/bundled-components/`，包括旧布局；应用内升级保留这些目录。自定义目录和用户数据根（数据库、计划、记录及数据锁）保留；重新安装后按磁盘文件重新判断组件状态。v0.1.3-alpha1 起不再提供 MSI，旧 MSI 用户须先备份再卸载旧版，手动迁移至 EXE 或完整 ZIP。ZIP 不注册卸载器；macOS/Linux 的卸载仍由各自分发方式处理，本轮没有新增或验收自动清理。\n\n契约新增可选 `Settings.componentPaths`（`core`、`resource`；保存空字符串恢复对应默认目录）与 `UpdateChannel.installDirectory`。服务初始化补全旧设置，旧客户端保存其他设置时保留目录。`UpdateChannel.resourceActivities` 按客户端提供已安装资源的活动名与 `last_updated`；官服和 B 服共享基础 `resource/version.json`，资源页合并显示为「国服（官服 / B服）」，其他客户端读取各自 `global/<client>/resource/version.json`，缺失时明确显示“活动信息未提供”。主页和更新页以活动名显示游戏资源版本，保留提交号、基础资源版本和更新时间用于核对。这是资源包标记，不替代官方活动日历的开放时间。",
+        "content": "## 下载与安装目录\n\n“设置 → 更新”分别提供 MaaCore 与游戏资源的下载/安装根目录。macOS 安装版默认使用 `~/Library/Application Support/Maa Verge/MaaCore/`、`~/Library/Application Support/Maa Verge/MaaResource/`，运行期下载不写入签名 `.app`。Windows/Linux 安装版继续使用主程序同级的 `MaaCore/`、`MaaResource/`，由 Tauri 传入主程序目录，不能使用包内 `runtime/` 侧进程位置推导；Linux AppImage 以 AppImage 文件为程序。源码开发使用各 checkout 独立数据根中的 `native/components/core/`、`native/components/resource/`，避免不同开发工作树共用下载。\n\nmacOS 启动时仅将仍与旧程序同级默认位置相同的下载设置改为新默认；用户自定义目录保留，已安装、待生效与回滚版本继续引用原有不可变路径，不自动搬动文件。恢复默认和后续下载采用新位置。`MAAVERGE_COMPONENT_HOME` 可覆盖派生组件位置所用的用户目录，实际路径仍为该目录下的 `Library/Application Support/Maa Verge/`；它不改变配置数据根或共享设备锁。包内服务和更新子进程共同持有独立的共享 SQLite 组件租约，卸载须取得独占租约；稳定锁文件位于 `Library/Application Support/.maaverge-components-lock.sqlite3`，不随组件删除。\n\n组件使用不可变的 `generations/` 版本目录，不再创建 `downloads/`。macOS 安装版在所选组件根内按业务数据根划分 `data-<hash>/generations/`，避免多个配置数据根共享外层目录时互相复用或清理版本；其他平台和源码开发仍直接使用 `generations/`。下载压缩包以绑定数据根和不可变来源的稳定文件名放在组件根目录，完整归档用完即删，中断保留可恢复分片供后续重试；归档最外层的发布包或仓库目录会移除。核心库位于对应 `generations/core-<id>/`，资源位于对应 `generations/resource-<id>/resource/`；版本内部这一层 `resource/` 是上游 `AsstLoadResource` 接口自动追加的固定目录，保留以兼容核心加载、外服资源及关卡读取。\n\n核心与独立资源分别跨新旧安装根保留最多三个版本，macOS 安装版在各数据根自己的命名空间内计数；优先保护活动、上一组回滚、待生效以及仍被 worker 使用的快照。设备忙碌或仍有引用时可暂时超过上限，下一次空闲更新维护再清理；不会为满足数量上限删除使用中的文件。仅清理自身命名和归属明确的 generation，链接目录（包括祖先路径的链接或系统别名）、不明文件及清理失败的目录保守保留。macOS 旧版未隔离的直接 `generations/` 和其他数据根的命名空间保留，不推断归属。失败的新候选会移除。旧版遗留的 `downloads/` 不再使用，空目录在维护时移除，剩余内容在卸载默认组件目录时一并删除。\n\n保存目录要求完整绝对路径，并检测实际写入能力；安装在系统只读目录时可选择用户可写目录，错误会保留当前设置和活动版本。恢复默认只改变后续下载位置。变更目录不移动或覆盖现有活动、候选、上一组回滚文件，运行中的 worker 继续使用其固定路径；后续维护也会统计旧目录中的自有版本。\n\n启动时轻量核对已安装核心库、有效资源版本文件及文件清单；检查新版时完整验证当前活动的核心与资源，不重复读取候选和回滚版本的全部内容，也不在版本查询前执行旧版本清理。准备、激活和回滚前仍完整验证所有引用快照。新候选在隔离验证后记录文件清单，以及由相对路径、大小和各文件 SHA-256 汇总的摘要，排除安装清单本身；可识别文件缺失、截断、零字节与同尺寸内容改写，拒绝文件或中间目录链接。摘要扫描最多并行读取八个文件，保持流式异步读取与原有路径排序、摘要格式；发生失败时等待已打开文件全部关闭后再返回，不同步读取整个模型或阻塞执行轮询。目录为空、必需文件或内容损坏时，清除失效活动/候选/回滚记录，允许重新安装同一版本；独立资源损坏时先恢复仍有效的核心基础资源。\n\nv0.1.0 旧核心没有可信的展开文件摘要，压缩包 SHA-256 和对现存文件重新枚举都不能证明原安装完整。检查时会提供同版本重新下载安装，以新 generation 建立完整性记录；可用旧组合保留到新候选验证、空闲切换完成，失败不原位补写旧目录。旧版独立资源已有 `contentHash` 时直接复核该资源摘要。内容摘要证明文件与安装时一致，不代替原生加载或全部游戏行为验证。\n\n资源下载完成后再次核对基础资源，失败时也同步磁盘与组件状态；若下载或解压期间核心基础目录丢失，会提示先修复核心，避免继续显示活动组合可用。修复损坏核心后仍保留最近有效回滚组合，不以已经清空的活动记录覆盖它；仍被 worker 引用的目录继续受保护。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L7-L26",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L7-L24",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+      }
+    },
+    {
+      "key": "product:document:docs/maacore-runtime.md:4cacf5d770e5eaca:0:1",
+      "kind": "document",
+      "id": "docs/maacore-runtime.md:4cacf5d770e5eaca:0:1",
+      "name": "下载与安装目录",
+      "aliases": [
+        "MaaCore 运行文件的选择性安装",
+        "下载与安装目录",
+        "maacore-runtime"
+      ],
+      "text": "MaaCore 运行文件的选择性安装 > 下载与安装目录\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\nWindows EXE（NSIS）完整卸载会删除程序同级默认的 `MaaCore/`、`MaaResource/` 和 `runtime/bundled-components/`，包括旧布局；应用内升级保留这些目录。自定义目录和用户数据根（数据库、计划、记录及数据锁）保留；重新安装后按磁盘文件重新判断组件状态。v0.1.3-alpha1 起不再提供 MSI，旧 MSI 用户须先备份再卸载旧版，手动迁移至 EXE 或完整 ZIP。ZIP 不注册卸载器。\n\nmacOS 安装版通过「设置 → 关于 → 卸载 Maa Verge」确认卸载：服务必须正常退出，清理进程取得独占组件租约并检查没有其他服务或核心进程使用组件，再将两个新默认组件文件夹和当前 `.app` 移到废纸篓。配置、任务、执行记录、自定义组件/作业目录、设备锁及旧默认位置中的历史文件保留；保留数据嵌套在待卸载目录、路径含符号链接、其他实例占用或服务强制退出时拒绝继续。部分移动失败会列出已移入废纸篓的项目，应用重新打开以恢复服务。macOS 不提供普通应用的 Finder 删除回调，直接把 `.app` 拖进废纸篓不会清理外部组件；开发环境和 Windows/Linux 不提供此入口，Linux 移除方式不变。\n\n契约新增可选 `Settings.componentPaths`（`core`、`resource`；保存空字符串恢复对应默认目录）与 `UpdateChannel.installDirectory`。服务初始化补全旧设置，旧客户端保存其他设置时保留目录。`UpdateChannel.resourceActivities` 按客户端提供已安装资源的活动名与 `last_updated`；官服和 B 服共享基础 `resource/version.json`，资源页合并显示为「国服（官服 / B服）」，其他客户端读取各自 `global/<client>/resource/version.json`，缺失时明确显示“活动信息未提供”。主页和更新页以活动名显示游戏资源版本，保留提交号、基础资源版本和更新时间用于核对。这是资源包标记，不替代官方活动日历的开放时间。",
+      "data": {
+        "category": "documentation",
+        "headingPath": [
+          "MaaCore 运行文件的选择性安装",
+          "下载与安装目录"
+        ],
+        "content": "Windows EXE（NSIS）完整卸载会删除程序同级默认的 `MaaCore/`、`MaaResource/` 和 `runtime/bundled-components/`，包括旧布局；应用内升级保留这些目录。自定义目录和用户数据根（数据库、计划、记录及数据锁）保留；重新安装后按磁盘文件重新判断组件状态。v0.1.3-alpha1 起不再提供 MSI，旧 MSI 用户须先备份再卸载旧版，手动迁移至 EXE 或完整 ZIP。ZIP 不注册卸载器。\n\nmacOS 安装版通过「设置 → 关于 → 卸载 Maa Verge」确认卸载：服务必须正常退出，清理进程取得独占组件租约并检查没有其他服务或核心进程使用组件，再将两个新默认组件文件夹和当前 `.app` 移到废纸篓。配置、任务、执行记录、自定义组件/作业目录、设备锁及旧默认位置中的历史文件保留；保留数据嵌套在待卸载目录、路径含符号链接、其他实例占用或服务强制退出时拒绝继续。部分移动失败会列出已移入废纸篓的项目，应用重新打开以恢复服务。macOS 不提供普通应用的 Finder 删除回调，直接把 `.app` 拖进废纸篓不会清理外部组件；开发环境和 Windows/Linux 不提供此入口，Linux 移除方式不变。\n\n契约新增可选 `Settings.componentPaths`（`core`、`resource`；保存空字符串恢复对应默认目录）与 `UpdateChannel.installDirectory`。服务初始化补全旧设置，旧客户端保存其他设置时保留目录。`UpdateChannel.resourceActivities` 按客户端提供已安装资源的活动名与 `last_updated`；官服和 B 服共享基础 `resource/version.json`，资源页合并显示为「国服（官服 / B服）」，其他客户端读取各自 `global/<client>/resource/version.json`，缺失时明确显示“活动信息未提供”。主页和更新页以活动名显示游戏资源版本，保留提交号、基础资源版本和更新时间用于核对。这是资源包标记，不替代官方活动日历的开放时间。",
+        "verification": "documented-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "docs/maacore-runtime.md",
+        "pointer": "L25-L30",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -904,8 +958,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L27-L36",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L31-L40",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -931,8 +985,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L93-L98",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L97-L102",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -960,8 +1014,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L75-L92",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L79-L96",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -987,8 +1041,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L117-L122",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L121-L126",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -1014,8 +1068,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L37-L54",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L41-L58",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -1041,8 +1095,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L109-L116",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L113-L120",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -1067,7 +1121,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L1-L6",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -1093,8 +1147,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L123-L132",
-        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
+        "pointer": "L127-L136",
+        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
       }
     },
     {
@@ -17224,7 +17278,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17280,7 +17334,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Budgets",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17346,7 +17400,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CaptureSettings",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17388,7 +17442,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ComponentPaths",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17482,7 +17536,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ConnectionSettings",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17559,7 +17613,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CopilotRunEntry",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17601,7 +17655,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/CopilotStorage",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17705,7 +17759,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Device",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17778,7 +17832,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/DeviceConnectionProfile",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17824,7 +17878,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/DownloadProxySettings",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17882,7 +17936,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Event",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -17933,7 +17987,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/InfrastructureEstimateProfile",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18000,7 +18054,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/InfrastructureLine",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18043,7 +18097,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/MirrorChyanSettings",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18093,7 +18147,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ModelSettings",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18149,7 +18203,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/NotificationSettings",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18291,7 +18345,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Plan",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18349,7 +18403,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ResourceActivityVersion",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18496,7 +18550,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Run",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18558,7 +18612,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunArtifact",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18615,7 +18669,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunDrop",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18688,7 +18742,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunInfrastructure",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18800,7 +18854,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/RunTask",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -18853,7 +18907,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/SchedulerSettings",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -19064,7 +19118,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Settings",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -19135,7 +19189,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/Task",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -19233,7 +19287,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/ToolJobSummary",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -19392,7 +19446,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/UpdateChannel",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -19439,7 +19493,7 @@
       "source": {
         "file": "packages/contracts/schemas/runtime.schema.json",
         "pointer": "#/$defs/UserDataSync",
-        "sha256": "42337a27ae33e9f53e3368aa664f7ed387c0364877da415d8f57fc841348a81a"
+        "sha256": "a8ffc12ed7e3e738c84a0cb9db49a8e4bd59ea6198c74da60b3adc6466e1e801"
       }
     },
     {
@@ -20469,5 +20523,5 @@
       }
     }
   ],
-  "digest": "c4dd75e00dbea8ae78191e001eb9a5e3382c2f5e58a9d4be0b3cf75f7fb50097"
+  "digest": "116383d9f4f6b2391268765f8eff9b663c2d7fd8cc4fe6bae5462472ef9de0ac"
 }

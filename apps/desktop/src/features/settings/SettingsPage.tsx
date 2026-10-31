@@ -36,6 +36,7 @@ import LogSettings from './LogSettings';
 import Modal from '@/kit/Modal';
 import CopilotStorageSettings from './CopilotStorageSettings';
 import ConfigurationSettings from './ConfigurationSettings';
+import UninstallSettings from './UninstallSettings';
 import NotificationSettings from './NotificationSettings';
 import MirrorChyanSettings from './MirrorChyanSettings';
 import {
@@ -469,31 +470,34 @@ export function SettingsPage({
                 </>
               )}
               {selected.id === 'about' && (
-                <Section title="关于 Maa Verge" className="settings-card">
-                  <p className="sp-about-intro">以任务为中心的本地桌面助手。</p>
-                  <dl className="sp-description-list">
-                    <div>
-                      <dt>应用版本</dt>
-                      <dd>
-                        {snapshot.updates.find((channel) => channel.id === 'app')?.currentVersion ||
-                          '未知版本'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>数据存储</dt>
-                      <dd>保存在本机</dd>
-                    </div>
-                    <div>
-                      <dt>开源许可证</dt>
-                      <dd>AGPL-3.0-only</dd>
-                    </div>
-                    <div>
-                      <dt>界面语言</dt>
-                      <dd>简体中文</dd>
-                    </div>
-                  </dl>
-                  <p className="sp-help">完整原 MAA 兼容仍在推进中。</p>
-                </Section>
+                <>
+                  <Section title="关于 Maa Verge" className="settings-card">
+                    <p className="sp-about-intro">以任务为中心的本地桌面助手。</p>
+                    <dl className="sp-description-list">
+                      <div>
+                        <dt>应用版本</dt>
+                        <dd>
+                          {snapshot.updates.find((channel) => channel.id === 'app')
+                            ?.currentVersion || '未知版本'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>数据存储</dt>
+                        <dd>保存在本机</dd>
+                      </div>
+                      <div>
+                        <dt>开源许可证</dt>
+                        <dd>AGPL-3.0-only</dd>
+                      </div>
+                      <div>
+                        <dt>界面语言</dt>
+                        <dd>简体中文</dd>
+                      </div>
+                    </dl>
+                    <p className="sp-help">完整原 MAA 兼容仍在推进中。</p>
+                  </Section>
+                  <UninstallSettings busy={busy} />
+                </>
               )}
             </>
           )}

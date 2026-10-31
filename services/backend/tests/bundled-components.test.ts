@@ -722,6 +722,7 @@ test('Runtime adopts optional application payloads offline even when automatic u
   const f = await fixture();
   const runtime = new Runtime(path.join(f.root, 'runtime-data/native'), {
     applicationDirectory: path.join(f.root, 'application'),
+    componentEnvironment: { homeDirectory: path.join(f.root, 'home') },
     validator() {},
   });
   try {
@@ -745,6 +746,7 @@ test('background preparation serves snapshots and editing while native work wait
   const notifications: any[] = [];
   const runtime = new Runtime(path.join(f.root, 'background-data/native'), {
     applicationDirectory: path.join(f.root, 'application'),
+    componentEnvironment: { homeDirectory: path.join(f.root, 'home') },
     validator() {},
     calendar: { fetcher: null },
     notify: (value) => notifications.push(value),
@@ -829,6 +831,7 @@ test('failed background preparation releases the native gate and permits manual 
   let checks = 0;
   const runtime = new Runtime(path.join(f.root, 'failed-background/native'), {
     applicationDirectory: path.join(f.root, 'application'),
+    componentEnvironment: { homeDirectory: path.join(f.root, 'home') },
     validator() {},
     calendar: { fetcher: null },
     source: {
