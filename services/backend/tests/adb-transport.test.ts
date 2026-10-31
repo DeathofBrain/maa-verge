@@ -37,6 +37,7 @@ test('probes listening TCP endpoints and standard emulator aliases without runni
   const { port } = await listener();
   expect(await probeAdbEndpoint(`127.0.0.1:${port}`)).toBe(true);
   expect(await probeAdbEndpoint(`emulator-${port - 1}`)).toBe(true);
+  expect(await probeAdbEndpoint(`EmUlAtOr-${port - 1}`)).toBe(true);
 });
 
 test('a closed loopback endpoint is not ready', async () => {
@@ -97,7 +98,7 @@ test('a probe that never connects times out and closes its socket', async () => 
   expect(socket.destroyed).toBe(true);
 });
 
-test.each(['localhost:5555', '[::1]:5555', 'emulator-5554'])(
+test.each(['localhost:5555', '[::1]:5555', 'emulator-5554', 'EmUlAtOr-5554'])(
   'registers a standard alias and confirms the actual ADB state: %s',
   async (address) => {
     const calls: { executable: string; args: string[]; timeout: number }[] = [];
@@ -112,7 +113,7 @@ test.each(['localhost:5555', '[::1]:5555', 'emulator-5554'])(
     expect(calls).toEqual([
       {
         executable: 'synthetic-adb',
-        args: ['connect', address === 'emulator-5554' ? '127.0.0.1:5555' : address],
+        args: ['connect', /^emulator-5554$/i.test(address) ? '127.0.0.1:5555' : address],
         timeout: 3000,
       },
       { executable: 'synthetic-adb', args: ['devices', '-l'], timeout: 3000 },

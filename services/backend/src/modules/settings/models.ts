@@ -1,5 +1,6 @@
 import type { Plan, Settings, Task, Snapshot } from '@contracts/types';
 import { validatePlan, validateSettings, validateSnapshot } from '@contracts/validators.js';
+import { normalizeDeviceAddress } from '@contracts/device-profiles';
 import { RpcError } from '@backend/shared/errors';
 import { validateDeviceProfiles } from '@backend/modules/devices/device-profiles';
 import { validateInfrastructureProfiles } from '@backend/modules/home/home-info';
@@ -133,7 +134,13 @@ export function parseSettings(input: any = {}): Settings {
     ...(Object.hasOwn(input, 'connection')
       ? {
           connection: record(input.connection)
-            ? { ...defaultConnection(), ...input.connection }
+            ? {
+                ...defaultConnection(),
+                ...input.connection,
+                ...(typeof input.connection.address === 'string'
+                  ? { address: normalizeDeviceAddress(input.connection.address) }
+                  : {}),
+              }
             : input.connection,
         }
       : {}),
@@ -147,7 +154,7 @@ export function parseSettings(input: any = {}): Settings {
                       name: typeof profile.name === 'string' ? profile.name.trim() : profile.name,
                       address:
                         typeof profile.address === 'string'
-                          ? profile.address.trim()
+                          ? normalizeDeviceAddress(profile.address.trim())
                           : profile.address,
                       connection: record(profile.connection)
                         ? {
@@ -155,7 +162,7 @@ export function parseSettings(input: any = {}): Settings {
                             ...profile.connection,
                             address:
                               typeof profile.address === 'string'
-                                ? profile.address.trim()
+                                ? normalizeDeviceAddress(profile.address.trim())
                                 : profile.address,
                           }
                         : profile.connection,

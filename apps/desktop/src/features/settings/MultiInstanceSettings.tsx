@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   errorMessage,
   deviceProfileListError,
+  normalizeDeviceAddress,
   type Device,
   type DeviceConnectionProfile,
   type Event,
@@ -347,10 +348,10 @@ function InstanceProfileEditor({
       ...draft,
       autoDetected: false,
       name: draft.name.trim(),
-      address: draft.connection.address.trim(),
+      address: normalizeDeviceAddress(draft.connection.address.trim()),
       connection: {
         ...draft.connection,
-        address: draft.connection.address.trim(),
+        address: normalizeDeviceAddress(draft.connection.address.trim()),
         adbPath: draft.connection.adbPath.trim(),
       },
       capture: { ...draft.capture, emulatorPath: draft.capture.emulatorPath.trim() },

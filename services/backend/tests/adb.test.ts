@@ -44,13 +44,29 @@ test('ADB server aliases share the same lock namespace without contacting a serv
     expect(() => adbServerIdentity({ ADB_SERVER_SOCKET: socket })).toThrow();
 });
 test('emulator aliases share the actual ADB port', () => {
-  for (const address of ['emulator-5554', 'localhost:05555', '127.0.0.1:5555', '[::1]:5555'])
+  for (const address of [
+    'emulator-5554',
+    'EMULATOR-5554',
+    'localhost:05555',
+    '127.0.0.1:5555',
+    '[::1]:5555',
+  ])
     expect(deviceLockAddress(address)).toBe('127.0.0.1:5555');
   expect(deviceLockAddress('physical-serial')).toBe('physical-serial');
   expect(isLocalEmulator('remote.test:5555')).toBe(false);
   expect(isLocalEmulator('127.0.0.1:0')).toBe(false);
   for (const address of ['-x', 'a;b', 'a b', 'a\nb', 'a'.repeat(129), null])
     expect(() => validateAddress(address)).toThrow();
+});
+test('ADB validation and discovery normalize emulator prefixes without altering USB serials', () => {
+  expect(validateAddress('Emulator-5554')).toBe('emulator-5554');
+  expect(isLocalEmulator('EMULATOR-5554')).toBe(true);
+  expect(validateAddress('UsbSerialABC')).toBe('UsbSerialABC');
+  expect(deviceLockAddress('UsbSerialABC')).not.toBe(deviceLockAddress('usbserialabc'));
+  expect(parseAdbDevices('EMULATOR-5554 device\nUsbSerialABC device\n')).toEqual([
+    { address: 'emulator-5554', name: 'emulator-5554', adbState: 'device' },
+    { address: 'UsbSerialABC', name: 'UsbSerialABC', adbState: 'device' },
+  ]);
 });
 test('fixed default ports and configured BlueStacks ports are bounded and deduplicated', async () => {
   const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-adb-'));

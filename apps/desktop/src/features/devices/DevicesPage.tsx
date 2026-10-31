@@ -16,6 +16,7 @@ import {
   errorMessage,
   deviceAddressIdentity,
   matchingDeviceProfile,
+  normalizeDeviceAddress,
   rpc,
   type Device,
   type Snapshot,
@@ -280,7 +281,7 @@ export function DevicesPage({
     if (!value.trim()) return;
     let ready = false;
     const ok = await runDeviceOperation('connect', '正在连接设备…', async () => {
-      const device = await rpc('device.connect', { address: value.trim() });
+      const device = await rpc('device.connect', { address: normalizeDeviceAddress(value.trim()) });
       ready = await waitForReady([device], 'connect');
     });
     if (ok && ready) setAddress('');
@@ -586,7 +587,11 @@ export function DevicesPage({
                     placeholder="127.0.0.1:5555 或 USB 序列号"
                     value={address}
                     disabled={disabled}
-                    onChange={(event) => setAddress(event.target.value)}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => setAddress(normalizeDeviceAddress(event.target.value))}
                   />
                   <Button
                     type="submit"

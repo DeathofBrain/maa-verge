@@ -1,5 +1,6 @@
 export * from './types';
 export {
+  normalizeDeviceAddress,
   deviceAddressIdentity,
   deviceProfileIdentity,
   matchingDeviceProfile,

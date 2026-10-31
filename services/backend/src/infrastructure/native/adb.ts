@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { connectionError } from './connection-errors';
-import { deviceAddressIdentity } from '@contracts/device-profiles';
+import { deviceAddressIdentity, normalizeDeviceAddress } from '@contracts/device-profiles';
 import {
   emptyEmulatorInventory,
   runningWindowsAdbCandidates,
@@ -38,9 +38,10 @@ export function validateAddress(address: unknown): string {
   if (typeof address !== 'string' || !/^[A-Za-z0-9_.:\[\]-]{1,128}$/.test(address))
     throw new Error('ADB 设备地址无效');
   if (address.startsWith('-')) throw new Error('ADB 设备地址不得以选项开头');
-  return address;
+  return normalizeDeviceAddress(address);
 }
 export function isLocalEmulator(address: string): boolean {
+  address = normalizeDeviceAddress(address);
   if (/^emulator-\d{1,5}$/.test(address)) return true;
   const match = /^(?:127\.0\.0\.1|localhost|\[::1\]):(\d{1,5})$/.exec(address);
   return Boolean(match && Number(match[1]) > 0 && Number(match[1]) <= 65535);

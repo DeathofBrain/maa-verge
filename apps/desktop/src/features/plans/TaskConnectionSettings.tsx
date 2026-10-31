@@ -4,7 +4,13 @@ import TextField from '@/kit/TextField';
 import ExternalLink from '@/kit/ExternalLink';
 import Select from '@/kit/Select';
 import { useState } from 'react';
-import { errorMessage, rpc, type Settings, type ScreenFrame } from '@maaverge/contracts';
+import {
+  errorMessage,
+  normalizeDeviceAddress,
+  rpc,
+  type Settings,
+  type ScreenFrame,
+} from '@maaverge/contracts';
 import { CaptureForm } from '@/features/settings/CaptureSettingsForm';
 import { useSettingsDraft } from '@/shared/lib/settings-draft';
 import '@/shared/styles/support-pages.css';
@@ -95,7 +101,11 @@ function ConnectionSettingsBody({
     setDraft((previous) => ({ ...previous, ...value }));
   const save = async () => {
     if (!onSaveSettings) return false;
-    const connection = { ...draft, adbPath: draft.adbPath.trim(), address: draft.address.trim() };
+    const connection = {
+      ...draft,
+      adbPath: draft.adbPath.trim(),
+      address: normalizeDeviceAddress(draft.address.trim()),
+    };
     const ok = await onSaveSettings({ ...settings, connection });
     if (ok) setDraft(connection);
     return ok;
@@ -164,7 +174,9 @@ function ConnectionSettingsBody({
             onClick={() =>
               void operate(async () => {
                 if (!(await save())) return;
-                const device = await rpc('device.connect', { address: draft.address.trim() });
+                const device = await rpc('device.connect', {
+                  address: normalizeDeviceAddress(draft.address.trim()),
+                });
                 setResult(`已提交连接：${device.address}，连接完成后可进行截图测试。`);
               })
             }
@@ -188,7 +200,7 @@ function ConnectionSettingsBody({
                 const image = await rpc('device.frame', { deviceId: device.id });
                 setFrame(image);
                 setResult(
-                  `截图成功（${device.address}）：${image.width} × ${image.height}，耗时 ${image.latencyMs} ms（${device.captureMethod || '等待核心确认截图方式'}）`,
+                  `截图成功（${device.address}）：${image.width} × ${image.height}，耗时 ${image.latencyMs} ms（${device.captureMethod || '核心未提供具体截图方式'}）`,
                 );
               })
             }
@@ -281,7 +293,11 @@ export function ConnectionFields({
           required={addressRequired}
           disabled={disabled}
           placeholder="127.0.0.1:16384 或 emulator-5554"
-          onChange={(event) => patch({ address: event.target.value })}
+          autoCapitalize="none"
+          autoCorrect="off"
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => patch({ address: normalizeDeviceAddress(event.target.value) })}
         />
         <span className="sp-help">此地址用于手动连接；已保存实例也会按该地址自动连接。</span>
       </label>

@@ -5,6 +5,7 @@ import {
   deviceProfileListError,
   matchingDeviceProfile,
   mumuDefaultAdbAddress,
+  normalizeDeviceAddress,
 } from '@contracts/device-profiles';
 import { defaultConnection, type DeviceConnectionProfile } from '@backend/modules/settings/models';
 
@@ -32,6 +33,23 @@ test('plain ADB port identities remain separate until emulator metadata proves a
   expect(deviceProfileListError([profile(0, '[::1]:5555'), profile(1, 'emulator-5554')])).toContain(
     '重复',
   );
+});
+
+test('emulator prefix normalization shares aliases while preserving physical device serials', () => {
+  const emulator = profile(0, 'EMULATOR-5554');
+  expect(normalizeDeviceAddress(emulator.address)).toBe('emulator-5554');
+  expect(deviceAddressIdentity(emulator.address)).toBe('127.0.0.1:5555');
+  expect(matchingDeviceProfile({ deviceProfiles: [emulator] }, 'emulator-5554')?.id).toBe(
+    emulator.id,
+  );
+  expect(deviceProfileListError([emulator, profile(1, 'localhost:5555')])).toContain('重复');
+  for (const serial of ['UsbSerialABC', 'EMULATOR-custom', 'EMULATOR-123456']) {
+    expect(normalizeDeviceAddress(serial)).toBe(serial);
+    expect(deviceAddressIdentity(serial)).toBe(serial);
+  }
+  expect(
+    deviceProfileListError([profile(0, 'UsbSerialABC'), profile(1, 'usbserialabc')]),
+  ).toBeUndefined();
 });
 
 test('MuMu defaults remain hints and do not associate a profile with unverified endpoints', () => {

@@ -9,6 +9,7 @@ import {
   nativeConnectionError,
 } from '@backend/infrastructure/native/connection-errors';
 import { observeAdbDevices } from '@backend/infrastructure/native/connection-health';
+import { ensureAvdTransport } from '@backend/infrastructure/native/avd-transport';
 import {
   connectAdbTransport,
   localAdbServer,
@@ -137,6 +138,7 @@ export interface RuntimeOptions {
   observeDeviceConnections?: typeof observeAdbDevices;
   probeDeviceEndpoint?: typeof probeAdbEndpoint;
   connectDeviceTransport?: typeof connectAdbTransport;
+  ensureAvdTransport?: typeof ensureAvdTransport;
   workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker>;
 }
 export class Runtime {
@@ -1836,6 +1838,27 @@ export class Runtime {
         ...(automatic ? { lockTimeoutMs: 0 } : {}),
       };
       worker = await this.startWorker(config, attempt?.controller?.signal);
+      if (
+        connection.config === 'AVD' &&
+        connection.touchMode === 'MaaFwAdb' &&
+        /^emulator-\d{1,5}$/.test(address)
+      ) {
+        // High-port AVDs may only be registered with the emulator manager's
+        // private server. Register the explicit serial with our existing server
+        // after acquiring the shared device lease, before MaaCore get-state.
+        const prepare =
+          this.options.ensureAvdTransport ??
+          (this.options.workerFactory || this.options.adbExecutable
+            ? undefined
+            : ensureAvdTransport);
+        await prepare?.(address, attempt?.controller?.signal);
+        if (
+          !this.running ||
+          this.appUpdating ||
+          ((this.appUpdatePreparing || this.switching) && !internal)
+        )
+          throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
+      }
       if (automatic) this.validateAutomatic(address, attempt);
       await worker.connect();
       if (!this.running || this.appUpdating)

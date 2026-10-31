@@ -6,7 +6,7 @@ type Endpoint = { address: string; host: string; port: number };
 
 function tcpEndpoint(address: string): Endpoint | undefined {
   try {
-    validateAddress(address);
+    address = validateAddress(address);
     const emulator = /^emulator-(\d{1,5})$/.exec(address);
     if (emulator) address = `127.0.0.1:${Number(emulator[1]) + 1}`;
     const match = /^(?:\[([^\]]+)\]|([^:]+)):(\d{1,5})$/.exec(address);
