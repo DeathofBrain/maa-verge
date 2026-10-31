@@ -20,15 +20,16 @@ pnpm install --frozen-lockfile --store-dir /workspace/.cache/ci/pnpm
 
 case "$mode" in
   app)
-    node tools/check.mjs --app
-    pnpm -r build
-    pnpm test:e2e --workers=2
+    node tools/check.mjs --app ${MAAVERGE_CI_PLAN:+--ci}
+    # check --app already typechecks all workspaces, including the desktop.
+    pnpm --filter @maaverge/desktop exec vite build
+    node tools/ci/test-ui.mjs
     ;;
   native)
-    node tools/check.mjs --native
+    node tools/check.mjs --native ${MAAVERGE_CI_PLAN:+--ci}
     ;;
   release)
-    # Extract AppImage payloads without requiring FUSE in the build container.
+    # Build only AppImage; extract its payload without requiring FUSE in the container.
     APPIMAGE_EXTRACT_AND_RUN=1 pnpm build
     ;;
 esac

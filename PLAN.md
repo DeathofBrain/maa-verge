@@ -304,8 +304,8 @@ doctor 的设备连接和云模型网络检查为显式选项，不在普通检�
 - 安装包和桌面 smoke 启动前由 `tools/test-support/seed-native.mjs` 在新建隔离目录预置设置，关闭自动连接和自动更新；产品入口不添加种子或测试开关，仍验证空设备、Agent 提案、保存与重启持久化和缺失设备拒绝。
 - 固定场景覆盖任务进度、失败、掉线、worker 崩溃、首次安装、核心更新、独立资源更新、空闲切换和回滚。
 - 视觉与坐标测试使用合成或脱敏图片；真实账号数据保持本地。
-- PR 检查包含 TypeScript 类型与服务测试、Node 驱动的 C++ 合成 CTest、Rust fmt/clippy/测试、schema 一致性和 IPC 夹具端到端测试。
-- Windows x64、Linux x64、macOS arm64/x64 在 Checks 中各自执行 Bun 独立运行探针与原生检查，不生成安装包；签名安装包只在发布流程构建。跨编译成功不替代宿主执行；未签名工件不替代实际安装验收。
+- `dev` / PR 检查按改动范围选择：保留 TypeScript、schema 与知识同步检查；UI 执行核心 smoke 加受影响 spec，跨层改动执行全量；纯前端与文档跳过 native，后端保留平台敏感服务测试，Rust 与打包夹具按依赖路径触发。
+- `main` 推送和手动 Checks 执行完整检查：Windows x64、Linux x64、macOS arm64/x64 各自执行 Bun 独立运行探针、服务全量、Node 驱动的 C++ 合成 CTest、Rust clippy/测试与本平台打包夹具，Rust fmt 在 application 执行一次。成功的 `full-validation` 才能用于发行；Checks 不生成安装包，签名安装包只在发布流程构建。跨编译成功不替代宿主执行；未签名工件不替代实际安装验收。
 - 真实核心的加载及资源契约测试单独执行，普通 CI 不依赖模拟器、真实账号或付费模型。
 - 发布流水线执行签名、公证和发布元数据生成，凭据使用 CI secret，产物可追溯至提交和锁文件。
 

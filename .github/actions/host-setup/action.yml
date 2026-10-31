@@ -1,5 +1,9 @@
 name: Prepare native host
 description: Install Node, pnpm, Rust, workspace dependencies and the pinned Bun runtime
+inputs:
+  rust:
+    description: Prepare Rust only when native Rust checks or release builds need it
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -9,9 +13,11 @@ runs:
         node-version-file: .node-version
         cache: pnpm
     - uses: dtolnay/rust-toolchain@1.90.0
+      if: inputs.rust == 'true'
       with:
         components: rustfmt, clippy
     - uses: Swatinem/rust-cache@v2
+      if: inputs.rust == 'true'
       with:
         workspaces: apps/desktop/src-tauri
     - run: pnpm install --frozen-lockfile

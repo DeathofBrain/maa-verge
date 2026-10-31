@@ -1,5 +1,6 @@
 import { run, fail } from './project.mjs';
 import { assertWorkspaceDependencies } from './environment.mjs';
+import { readCiPlan } from './ci/plan.mjs';
 
 const toolTests = [
   'tools/tests/environment.test.mjs',
@@ -16,6 +17,9 @@ const toolTests = [
   'tools/tests/check-kit-css.test.mjs',
   'tools/tests/check-frontend-architecture.test.mjs',
   'tools/tests/check-backend-architecture.test.mjs',
+  'tools/tests/ci-plan.test.mjs',
+  'tools/tests/ui-suite.test.mjs',
+  'tools/tests/runtime-suite.test.mjs',
 ];
 const contractTests = [
   'packages/contracts/test/validators.test.mjs',
@@ -35,7 +39,7 @@ const platformTests = {
   win32: ['tools/tests/windows-installer.test.mjs', 'tools/tests/windows-components.test.mjs'],
 };
 
-async function applicationChecks() {
+async function applicationChecks(plan) {
   assertWorkspaceDependencies();
   await run('node', ['tools/generate-agent-knowledge.mjs', '--check']);
   await run('node', ['--test', ...toolTests]);
@@ -45,26 +49,37 @@ async function applicationChecks() {
   await run('pnpm', ['contracts:check']);
   await run('pnpm', ['-r', 'check']);
   await run('node', ['--test', ...contractTests]);
+  if (plan?.rust)
+    await run('cargo', ['fmt', '--manifest-path', 'apps/desktop/src-tauri/Cargo.toml', '--check']);
 }
 
-async function nativeChecks() {
+async function nativeChecks(plan) {
   assertWorkspaceDependencies();
+  if (plan && !plan.native) throw new Error('The CI plan does not select native checks');
   await run('node', ['tools/probe-bun.mjs']);
-  await run('pnpm', ['run', 'doctor', '--native']);
-  await run('node', ['--test', 'tools/tests/build-core-worker.test.mjs']);
+  // CI builds the actual worker next; the extra doctor compiler probe is for local diagnosis.
+  if (!plan) await run('pnpm', ['run', 'doctor', '--native']);
+  if (!plan || plan.workerTools)
+    await run('node', ['--test', 'tools/tests/build-core-worker.test.mjs']);
   await run('node', ['tools/build-core-worker.mjs']);
-  await run('node', ['tools/test-runtime.mjs']);
-  await run('node', ['tools/check-native.mjs']);
+  await run('node', [
+    'tools/test-runtime.mjs',
+    ...(plan && !plan.full && process.platform !== 'linux' ? ['--platform'] : []),
+  ]);
+  if (!plan || plan.rust)
+    await run('node', ['tools/check-native.mjs', ...(plan ? ['--required', '--skip-fmt'] : [])]);
   const tests = platformTests[process.platform];
-  if (tests) await run('node', ['--test', ...tests]);
+  if (tests && (!plan || plan.packaging)) await run('node', ['--test', ...tests]);
 }
 
 async function main() {
   const flags = process.argv.slice(2);
-  if (flags.some((flag) => flag !== '--app' && flag !== '--native'))
-    throw new Error('Usage: node tools/check.mjs [--app] [--native]');
-  const selected = flags.length ? flags : ['--app', '--native'];
-  if (selected.includes('--app')) await applicationChecks();
-  if (selected.includes('--native')) await nativeChecks();
+  if (flags.some((flag) => !['--app', '--native', '--ci'].includes(flag)))
+    throw new Error('Usage: node tools/check.mjs [--app] [--native] [--ci]');
+  const plan = flags.includes('--ci') ? readCiPlan() : undefined;
+  const selected = flags.filter((flag) => flag !== '--ci');
+  if (!selected.length) selected.push('--app', '--native');
+  if (selected.includes('--app')) await applicationChecks(plan);
+  if (selected.includes('--native')) await nativeChecks(plan);
 }
 main().catch(fail);

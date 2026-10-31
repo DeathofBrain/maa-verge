@@ -171,13 +171,25 @@ smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下�
 
 许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`。
 
-Checks 在每次提交和 PR 上运行五个独立任务，不生成任何安装包：`application` 在 Linux 镜像中执行工程、契约、TypeScript 与 Chromium 夹具端到端检查；Windows x64、Linux x64、macOS arm64/x64 四个 `native` 任务各自执行 Bun 探针、C++ CTest、TypeScript 运行时测试、Rust fmt/clippy/test 和本平台打包夹具。macOS 最低支持 15，Checks 和发行使用 `macos-15` arm64 与 `macos-15-intel` x64；Tauri 与 C++ worker 部署目标均为 15.0。平台夹具只在本宿主执行，Windows 会显式安装 NSIS；任一宿主失败不会取消其他平台。发布工作流复用标签提交上成功的 Checks，只在四个宿主构建签名产物。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。开发检查在没有 cargo 时明确跳过 Rust 部分，CI 禁止跳过；CMake/C++ 检查不会因此跳过。
+Checks 由 `changes` 任务按改动路径生成计划：推送 `main` 或手动 `workflow_dispatch` 执行完整检查；`dev` 推送和 PR 执行增量检查。依赖、公共 CI 输入、未分类路径或无法确定比较基线时回到完整检查。`application` 始终执行工程脚本、知识与契约同步、四工作区类型和契约回归；随后直接运行 Vite 生产构建，不再重复工作区类型检查。纯文档变更不运行 Playwright；已识别功能域运行 15 条行为冒烟和受影响 spec，共享界面或未分类 UI 改动运行全量。选择规则分别位于 `tools/ci/plan.mjs`、`tools/ci/ui-suite.mjs`，已有 spec 被整体选中时不会重复执行其中的冒烟用例。
+
+涉及后端、原生、契约或构建工具时，计划启用 Windows x64、Linux x64、macOS arm64/x64 四个 `native`。每个宿主保留 Bun 编译/执行探针、实际 C++ worker 构建及四组合成 CTest。Linux 始终运行完整 TypeScript 运行时测试；增量计划的其他宿主使用 `tools/test-runtime.mjs --platform`，只排除 `tools/ci/runtime-suite.mjs` 明确审核的纯领域测试，新测试默认跨平台执行。完整计划在四宿主都运行全部运行时测试。SQLite 租约与恢复、请求去重、文件替换与链接、子进程环境、代理、通知、唤醒、更新和原生集成继续保留在平台组。
+
+CI 不再执行 `doctor --native` 的额外 C++ 编译探针；worker 构建脚本回归和平台打包夹具按路径启用。Rust 格式检查在需要 Rust 的计划中只由 `application` 执行一次，Clippy 和 Rust 测试仍在所选原生宿主执行；仅后端业务改动可跳过 Rust 工具安装及检查。Windows 仅在需要打包夹具时准备 NSIS，缺少工具直接失败。macOS 最低支持 15，Checks 和发行使用 `macos-15` arm64 与 `macos-15-intel` x64；Tauri 与 C++ worker 部署目标均为 15.0。任一宿主失败不会取消其他平台，Checks 不生成安装包。
+
+完整计划另运行 `full-validation`，要求 `application` 和四宿主 `native` 全部成功。发行只复用同一标签提交、同次运行中该标记成功的完整 Checks；增量检查成功不能用于发行。缺少完整检查时，先执行 `gh workflow run ci.yml --ref <tag>`，成功后补跑 Release。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。
+
+本地 `pnpm check`、`pnpm check:app`、`pnpm check:native` 和 `pnpm test:runtime` 默认保持完整检查；只有显式 `--ci` 才读取 `MAAVERGE_CI_PLAN`。本地原生检查仍执行 doctor、worker 脚本回归和本平台打包夹具；没有 Cargo 时明确跳过 Rust，CI 计划要求的 Rust 检查缺少工具则失败，CMake/C++ 检查不会因此跳过。CI 选择器与发行门禁可单独验证：
+
+```bash
+node --test tools/tests/ci-plan.test.mjs tools/tests/ui-suite.test.mjs tools/tests/runtime-suite.test.mjs tools/tests/require-checks.test.mjs
+```
 
 Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runtime/maaverge-runtime` 中的 Linux x64 两个可执行文件。测试驱动在宿主 Node 中准备隔离数据，容器使用原始 Ubuntu 22.04 镜像并确认没有 Python、Node 或 Bun；后端会话断网，覆盖真实 native 服务、持久化、缺失设备拒绝和 EOF 重启。发布流程在 Linux 签名构建后自动执行。这是后端容器测试，桌面和安装器仍需单独验收。
 
 Windows 完整构建后可运行 `pnpm test:desktop-webview`，需要本机已有 WebView2。工具通过独立环回 CDP 端口操作真实 release 窗口，使用专属 native 空设备数据和 WebView profile，预先禁用自动连接和下载，检查初始化异常、Agent 提案、设置持久化及正常关窗；测试前须先退出其他 Maa Verge 实例。日志与截图保留在忽略目录 `build/webview-smoke`，临时数据和 profile 退出后清理。该项由宿主 Node/Playwright 驱动，不代表卸载开发工具后的干净系统安装验收。
 
-macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和下载 MaaCore 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；推送 `v*` 标签或手动补跑的 `release.yml` 会复用该提交成功的 Checks，在四宿主构建签名产物并只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、17 项附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
+macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和下载 MaaCore 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；推送 `v*` 标签或手动补跑的 `release.yml` 会复用该提交 `full-validation` 成功的完整 Checks，在四宿主构建签名产物并只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、11 项附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
 
 ## 格式化规范与 VS Code
 
