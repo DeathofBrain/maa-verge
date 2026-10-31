@@ -149,6 +149,7 @@ test('stage groups preserve unavailable options and Escape dismisses the menu be
   const drawer = page.getByRole('dialog', { name: '任务表详情', exact: true });
   // The first save replaces the new-table editor with its persisted instance.
   await expect(drawer.locator('.wb-save-state')).toHaveText('已保存');
+  await drawer.getByRole('button', { name: '设置第 2 条自动作战', exact: true }).click();
   const control = drawer.getByRole('combobox', { name: '作战关卡', exact: true });
   await expect(control.locator('option[value="TEST-CLOSED"]')).toHaveCount(1);
   await openMenu(page, control);

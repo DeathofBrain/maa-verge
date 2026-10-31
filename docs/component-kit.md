@@ -216,6 +216,8 @@ createPortal(
 
 **保留领域组件**：`features/plans/TaskParameterField`（历史审计为 620 行、单一使用者、13 种参数）、`features/devices/DevicePreview`（视频台刻意不随主题）、`shared/game/OperatorBadge` / `MaterialIcon`（已有组件且测试耦合；`.operator-badge.rarity-*` 语义独立，不并入 `StatusPill`）。`Select.tsx` 不重写：它的可访问性面被 `tests/ui/fixtures/device-picker.ts` 锁死（combobox `选择设备`、listbox `设备列表`、`[role=option][data-value]`），且它把菜单 portal 到 `closest('dialog,[role=dialog]') ?? document.body`——这是「弹层内 Select 能正常工作」的机制，套装必须保留。
 
+`Select` 的显示文字与箭头共用 flex 布局：文字允许收缩并显示省略号，15px 箭头不收缩，两者固定间隔 7px。根容器的默认水平内边距为 10px；紧凑控件可沿用已有根类内边距，但不再为箭头额外保留右侧 padding。箭头占据正常布局空间，避免页面 padding 覆盖造成文字重叠；菜单、原生表单语义、键盘交互及 portal 机制不变。
+
 ## 共享非视觉工具
 
 `kit/format.ts` 与 `kit/labels.ts` 是套装的非视觉层：状态映射的键类型取自 `@maaverge/contracts`，schema 变更即编译失败。页面从 `@/kit/format`、`@/kit/labels` 深导入（两个模块不 import 任何 CSS，不会扰动 Vite 的样式表合并顺序）；避免为了纯映射加载 `kit/index.ts`，其 barrel 会连带 `Select` 的样式表。

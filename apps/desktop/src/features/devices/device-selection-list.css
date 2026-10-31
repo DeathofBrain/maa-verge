@@ -38,7 +38,7 @@
 
 .device-selection-filter {
   min-width: 100px;
-  padding: 5px 28px 5px 9px;
+  padding: 5px 9px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--surface);

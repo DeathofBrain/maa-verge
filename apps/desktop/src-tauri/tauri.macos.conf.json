@@ -5,8 +5,8 @@
       {
         "label": "main",
         "title": "Maa Verge",
-        "width": 1360,
-        "height": 900,
+        "width": 900,
+        "height": 640,
         "minWidth": 900,
         "minHeight": 640,
         "center": true,

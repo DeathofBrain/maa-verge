@@ -2,10 +2,11 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  gap: 7px;
   min-width: 0;
   max-width: 100%;
   min-height: 36px;
-  padding: 8px 32px 8px 10px;
+  padding: 8px 10px;
   border: 1px solid var(--line-strong);
   border-radius: 5px;
   background: var(--surface);
@@ -20,9 +21,6 @@
     background 0.16s var(--ease-out);
 }
 
-.app-select.app-select {
-  padding-inline-end: 32px;
-}
 .app-select:hover:not(:has(> :disabled)) {
   border-color: var(--accent);
 }
@@ -52,6 +50,7 @@
   cursor: not-allowed;
 }
 .app-select-value {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -59,8 +58,7 @@
   pointer-events: none;
 }
 .app-select-chevron {
-  position: absolute;
-  right: 10px;
+  flex: none;
   color: var(--muted);
   pointer-events: none;
   transition: transform 0.16s var(--ease-out);

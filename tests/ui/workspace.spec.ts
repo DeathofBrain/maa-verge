@@ -55,6 +55,17 @@ async function savePlan(page: Page) {
   await page.keyboard.press('Control+s');
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
 }
+async function showTaskList(page: Page) {
+  const back = wb(page).getByRole('button', { name: '任务列表', exact: true });
+  if (await back.isVisible()) await back.click();
+}
+async function selectTask(page: Page, index: number, label: string) {
+  await tab(page, '任务编排');
+  await showTaskList(page);
+  await wb(page)
+    .getByRole('button', { name: `设置第 ${index} 条${label}`, exact: true })
+    .click();
+}
 async function tab(page: Page, name: string) {
   await wb(page).getByRole('tab', { name, exact: true }).click();
 }
@@ -138,6 +149,7 @@ test('home shows runtime information and task tables have their own navigation e
 test('home reports a run started after automatically saving editor changes', async ({ page }) => {
   await openHome(page);
   await openSavedPlan(page, '固源岩补给');
+  await selectTask(page, 1, '自动作战');
   await wb(page).getByLabel('作战次数').fill('9');
   await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
   await expect(dock(page)).toContainText('执行中');
@@ -163,6 +175,7 @@ test('home reports a run started after automatically saving editor changes', asy
     '模拟执行已停止',
   );
   await openSavedPlan(page, '固源岩补给');
+  await selectTask(page, 1, '自动作战');
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('9');
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
   await tab(page, '任务表设置');
@@ -315,18 +328,19 @@ test('task tables preserve duplicate tasks, order, switches and advanced paramet
   await expect(wb(page).getByRole('checkbox', { name: '指定材料', exact: true })).toBeChecked();
   await wb(page).getByLabel('作战次数').fill('5');
   await wb(page).getByRole('button', { name: '上移任务', exact: true }).click();
+  await showTaskList(page);
   await wb(page).getByLabel('启用第 2 条任务').uncheck();
   await savePlan(page);
   await reloadWorkspace(page, '多步骤配置');
   await expect(wb(page).getByLabel('启用第 2 条任务')).not.toBeChecked();
-  await wb(page).getByRole('button', { name: '设置第 9 条自动作战', exact: true }).click();
+  await selectTask(page, 9, '自动作战');
   await expect(wb(page).getByLabel('作战关卡')).toHaveValue('2-4');
   await expect(wb(page).getByLabel('作战次数')).toHaveValue('5');
   await wb(page).locator('.advanced-params summary').click();
   const parameters = JSON.parse(await wb(page).getByLabel('任务参数 JSON').inputValue());
   expect(parameters.drops).toEqual({ '30012': 3 });
   expect(parameters.custom_future).toEqual({ preserve: true });
-  await wb(page).getByRole('button', { name: '设置第 2 条自动作战', exact: true }).click();
+  await selectTask(page, 2, '自动作战');
   await expect(wb(page).getByLabel('作战关卡')).toHaveValue('');
 });
 
@@ -334,7 +348,7 @@ test('advanced JSON preserves invalid drafts and updates list fields and switche
   page,
 }) => {
   await openWorkspace(page);
-  await wb(page).getByRole('button', { name: '设置第 2 条公开招募' }).click();
+  await selectTask(page, 2, '公开招募');
   await wb(page).locator('.advanced-params summary').click();
   await wb(page).getByLabel('任务参数 JSON').fill('{"confirm":[5],"times":0}');
   await expect(
@@ -349,8 +363,10 @@ test('advanced JSON preserves invalid drafts and updates list fields and switche
   await expect(wb(page).getByRole('alert').first()).toContainText('有效 JSON');
   await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"confirm":');
   await wb(page).getByLabel('任务参数 JSON').fill('{"enable":false,"confirm":[4,5],"times":0}');
+  await showTaskList(page);
   await expect(wb(page).getByLabel('启用第 2 条任务')).not.toBeChecked();
   await wb(page).getByLabel('启用第 2 条任务').check();
+  await selectTask(page, 2, '公开招募');
   expect(JSON.parse(await wb(page).getByLabel('任务参数 JSON').inputValue()).enable).toBe(true);
   await expect(
     wb(page).getByRole('checkbox', { name: '自动确认 4 星', exact: true }),
@@ -400,16 +416,19 @@ test('Fight consumption limits save directly and all-disabled execution is rejec
 }) => {
   await openWorkspace(page);
   await createPlan(page, '作战消耗');
+  await selectTask(page, 2, '自动作战');
   await wb(page).getByLabel('理智药上限', { exact: true }).fill('1');
   await expect(wb(page).getByText('本表自动作战累计上限：理智药 1 · 源石 0')).toBeVisible();
   await savePlan(page);
   await reloadWorkspace(page, '作战消耗');
-  await tab(page, '任务编排');
+  await selectTask(page, 2, '自动作战');
   await expect(wb(page).getByLabel('理智药上限', { exact: true })).toHaveValue('1');
+  await showTaskList(page);
   for (const checkbox of await wb(page)
     .getByRole('checkbox', { name: /^启用第 \d+ 条任务$/ })
     .all())
     await checkbox.uncheck();
+  await selectTask(page, 2, '自动作战');
   await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
   await savePlan(page);
   await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
@@ -446,6 +465,7 @@ test('new task entries exclude copilot while legacy task settings remain editabl
     VideoRecognition: '视频文件路径',
   };
   for (const type of options) {
+    await showTaskList(page);
     await wb(page).getByLabel('添加任务类型').selectOption(type);
     await wb(page).getByRole('button', { name: '添加任务', exact: true }).click();
     if (paths[type])
@@ -479,9 +499,7 @@ test('new task entries exclude copilot while legacy task settings remain editabl
     [27, '保全派驻', 'SSSCopilot'],
     [28, '悖论模拟', 'ParadoxCopilot'],
   ] as const) {
-    await wb(page)
-      .getByRole('button', { name: `设置第 ${index} 条${label}`, exact: true })
-      .click();
+    await selectTask(page, index, label);
     await expect(wb(page).getByLabel(paths[type], { exact: true })).toHaveValue(
       `/synthetic/${type}.json`,
     );
@@ -495,15 +513,18 @@ test('unsaved task drafts survive navigation and page reloads without corrupting
   await openWorkspace(page);
   await closeDetail(page);
   await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
+  await selectTask(page, 1, '自动作战');
   await wb(page).getByLabel('作战次数').fill('9');
   await wb(page).locator('.advanced-params summary').click();
   await wb(page).getByLabel('任务参数 JSON').fill('{"stage":');
   await navigate(page, '工具箱');
   await navigate(page, '主页');
   await openSavedPlan(page, '固源岩补给');
+  await selectTask(page, 1, '自动作战');
   await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"stage":');
   await expect(wb(page).locator('.wb-save-state')).toHaveText('保存失败');
   await reloadWorkspace(page, '固源岩补给');
+  await selectTask(page, 1, '自动作战');
   await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"stage":');
   await expect(wb(page).getByLabel('作战次数')).toBeDisabled();
   await tab(page, '任务表设置');
@@ -534,10 +555,12 @@ test('global search locates updates, saved tables and individual task settings',
     .getByRole('button', { name: /固源岩补给/ })
     .click();
   await expect(wb(page).getByRole('heading', { name: '固源岩补给', exact: true })).toBeVisible();
+  await selectTask(page, 1, '自动作战');
   await wb(page).getByLabel('搜索当前任务设置', { exact: true }).fill('作战次数');
   await expect(wb(page).getByLabel('作战次数')).toBeVisible();
   await expect(wb(page).getByLabel('理智药上限', { exact: true })).toHaveCount(0);
   await wb(page).getByRole('button', { name: '清除任务设置搜索', exact: true }).click();
+  await showTaskList(page);
   await wb(page).getByLabel('搜索任务类型', { exact: true }).fill('仓库');
   await expect(wb(page).getByLabel('添加任务类型').locator('option')).toHaveCount(1);
   await wb(page).getByRole('button', { name: '添加任务', exact: true }).click();
