@@ -467,7 +467,8 @@ mod native {
             )
             .unwrap();
             fs::write(bundle.join("Contents/Info.plist"), r#"<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>io.maaverge.desktop</string><key>CFBundleExecutable</key><string>maaverge</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleShortVersionString</key><string>0.2.0-beta.2</string><key>CFBundleVersion</key><string>0.2.0-beta.2</string></dict></plist>"#).unwrap();
-            fs::write(bundle.join("Contents/payload"), "new").unwrap();
+            fs::create_dir_all(bundle.join("Contents/Resources")).unwrap();
+            fs::write(bundle.join("Contents/Resources/payload"), "new").unwrap();
             command(
                 Command::new("/usr/bin/codesign")
                     .args(["--force", "--sign", "-"])
@@ -526,7 +527,11 @@ mod native {
             assert!(install(&executable, &alias, "0.2.0-beta.2", target, &bytes)
                 .unwrap_err()
                 .contains("配置目录位于"));
-            fs::write(bundle.join("Contents/payload"), "tampered after signing").unwrap();
+            fs::write(
+                bundle.join("Contents/Resources/payload"),
+                "tampered after signing",
+            )
+            .unwrap();
             let corrupt = create("corrupt.dmg");
             assert!(install(&executable, &data, "0.2.0-beta.2", target, &corrupt).is_err());
             assert_eq!(
@@ -535,7 +540,7 @@ mod native {
             );
             install(&executable, &data, "0.2.0-beta.2", target, &bytes).unwrap();
             assert_eq!(
-                fs::read_to_string(installed.join("Contents/payload")).unwrap(),
+                fs::read_to_string(installed.join("Contents/Resources/payload")).unwrap(),
                 "new"
             );
             assert_eq!(

@@ -2,14 +2,85 @@ import { makeTemporaryDirectory } from '../test-support/temporary-directory.mjs'
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { existsSync, writeFileSync } from 'node:fs';
+import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { verifyMacosBundle } from '../verify-macos-bundle.mjs';
+import { verifyMacosBundle, verifyMacosDmg } from '../verify-macos-bundle.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
+
+for (const scenario of [
+  { name: 'partial attach failure is detached before cleanup', attachFails: true },
+  {
+    name: 'partial attach failure preserves a volume that remains mounted',
+    attachFails: true,
+    inventory: 'present',
+  },
+  {
+    name: 'detach failure cleans up only after the volume is confirmed absent',
+    inventory: 'absent',
+  },
+  { name: 'detach failure preserves scratch when the inventory is unreadable', inventory: 'error' },
+  {
+    name: 'detach failure preserves scratch when the inventory is malformed',
+    inventory: 'malformed',
+  },
+]) {
+  test(`DMG verification ${scenario.name}`, async () => {
+    let mount;
+    let verified = false;
+    const calls = [];
+    const preserved = scenario.inventory && scenario.inventory !== 'absent';
+    const result = (stdout = '') => ({ status: 0, stdout, stderr: '' });
+    const failed = () => ({ status: 1, stdout: '', stderr: 'synthetic failure' });
+    try {
+      const pending = verifyMacosDmg('synthetic.dmg', {
+        runCommand(executable, args) {
+          calls.push(`${path.basename(executable)}:${args[0]}`);
+          if (args[0] === 'verify') return result();
+          if (args[0] === 'attach') {
+            mount = args[args.indexOf('-mountpoint') + 1];
+            if (preserved) writeFileSync(path.join(mount, 'mounted-payload'), 'keep this file');
+            return scenario.attachFails ? failed() : result();
+          }
+          if (args[0] === 'detach') return scenario.inventory ? failed() : result();
+          if (args[0] === 'info')
+            return scenario.inventory === 'error' ? failed() : result('synthetic plist');
+          assert.equal(executable, '/usr/bin/plutil');
+          return result(
+            JSON.stringify(
+              scenario.inventory === 'malformed'
+                ? { images: [{}] }
+                : {
+                    images:
+                      scenario.inventory === 'present'
+                        ? [{ 'system-entities': [{ 'mount-point': mount }] }]
+                        : [],
+                  },
+            ),
+          );
+        },
+        verifyBundle: async () => {
+          verified = true;
+        },
+      });
+      if (preserved) await assert.rejects(pending, /已保留隔离挂载目录/);
+      else if (scenario.attachFails) await assert.rejects(pending, /synthetic failure/);
+      else await pending;
+      assert.equal(verified, !scenario.attachFails);
+      assert.ok(calls.includes('hdiutil:detach'), 'every attempted attach must be detached');
+      assert.equal(existsSync(path.dirname(mount)), Boolean(preserved));
+      if (preserved)
+        assert.equal(await readFile(path.join(mount, 'mounted-payload'), 'utf8'), 'keep this file');
+    } finally {
+      // This fixture never mounts an image; only its synthetic directory is removed.
+      if (mount) await rm(path.dirname(mount), { recursive: true, force: true });
+    }
+  });
+}
 
 test(
   'real codesign rejects unsealed and modified apps while preserving side-process permissions',
@@ -71,6 +142,20 @@ test(
       await assert.rejects(verifyMacosBundle(app), /CodeResources/);
       sign(app, 'Entitlements.plist');
       await verifyMacosBundle(app);
+      const image = path.join(directory, 'verified.dmg');
+      const imageSource = path.join(directory, 'dmg-source');
+      await cp(app, path.join(imageSource, 'Maa Verge.app'), { recursive: true });
+      const created = spawnSync(
+        '/usr/bin/hdiutil',
+        ['create', '-format', 'UDZO', '-srcfolder', imageSource, image],
+        { encoding: 'utf8', timeout: 60_000 },
+      );
+      assert.equal(
+        created.status,
+        0,
+        `${created.error?.message ?? ''}${created.stdout}${created.stderr}`,
+      );
+      await verifyMacosDmg(image);
       for (const [file, hash] of files)
         assert.equal(
           await digest(file),
