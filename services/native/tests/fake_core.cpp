@@ -32,7 +32,9 @@ void trace(const char* text) {
     std::ofstream output(std::filesystem::path(value), std::ios::app);
 #else
   if (const char* value = std::getenv("MAAVERGE_SYNTHETIC_TRACE")) {
-    std::ofstream output(std::filesystem::path(std::u8string(value, value + std::char_traits<char>::length(value))), std::ios::app);
+    std::ofstream output(
+        std::filesystem::path(std::u8string(value, value + std::char_traits<char>::length(value))),
+        std::ios::app);
 #endif
     output << text << '\n';
   }
@@ -45,6 +47,7 @@ struct Instance {
   std::vector<std::thread> threads;
   std::string type;
   std::string config;
+  int screencap_count = 0;
   void send(int message, const nlohmann::json& payload) {
     // The copied buffer becomes invalid immediately after this native callback.
     auto text = payload.dump();
@@ -71,10 +74,12 @@ EXPORT bool AsstLoadResource(const char* resource) {
   ++resource_load_count;
   if (scenario() == "overlay-failure" && resource_load_count == 2) return false;
   if (scenario() != "resource-failure") return true;
-  const auto path = std::filesystem::path(std::u8string(user_directory.begin(), user_directory.end())) / "debug";
+  const auto path =
+      std::filesystem::path(std::u8string(user_directory.begin(), user_directory.end())) / "debug";
   std::filesystem::create_directories(path);
   std::ofstream output(path / "asst.log");
-  for (int index = 0; index < 100; ++index) output << "[ERR] synthetic missing resource " << index << '\n';
+  for (int index = 0; index < 100; ++index)
+    output << "[ERR] synthetic missing resource " << index << '\n';
   return false;
 }
 EXPORT void* AsstCreate() { return nullptr; }
@@ -117,11 +122,14 @@ EXPORT int AsstAsyncConnect(void* handle, const char*, const char*, const char* 
   instance->threads.emplace_back([instance] {
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
     if (connection_extras.contains(instance->config) && scenario() != "capture-no-evidence") {
-      const std::string method = scenario() == "capture-fallback" ? "RawWithGzip" :
-                                 instance->config == "MuMuEmulator12" ? "MumuExtras" : "LDExtras";
-      instance->send(2, {{"what", "FastestWayToScreencap"}, {"details", {{"method", method}, {"cost", 2}}}});
+      const std::string method = scenario() == "capture-fallback"       ? "RawWithGzip"
+                                 : instance->config == "MuMuEmulator12" ? "MumuExtras"
+                                                                        : "LDExtras";
+      instance->send(
+          2, {{"what", "FastestWayToScreencap"}, {"details", {{"method", method}, {"cost", 2}}}});
     }
-    instance->send(4, {{"async_call_id", 7}, {"what", "Connect"},
+    instance->send(4, {{"async_call_id", 7},
+                       {"what", "Connect"},
                        {"details", {{"ret", scenario() != "capture-connect-failure"}}}});
   });
   return 7;
@@ -132,38 +140,64 @@ EXPORT int AsstAsyncScreencap(void* handle, bool block) {
   trace("screencap");
   if (block) trace("screencap-blocking");
   auto* instance = static_cast<Instance*>(handle);
-  auto complete = [instance] {
+  const int id = 17 + instance->screencap_count++;
+  auto complete = [instance, id] {
     if (scenario() == "capture-late-fallback") {
-      instance->send(2, {{"what", "FastestWayToScreencap"}, {"details", {{"method", "Encode"}, {"cost", 3}}}});
+      instance->send(
+          2, {{"what", "FastestWayToScreencap"}, {"details", {{"method", "Encode"}, {"cost", 3}}}});
     }
-    instance->send(4, {{"async_call_id", scenario() == "screencap-wrong-id" ? 18 : 17},
+    nlohmann::json details = {{"ret", scenario() != "screencap-failure"}, {"cost", 4}};
+    if (scenario() == "screencap-cost-zero") details["cost"] = 0;
+    if (scenario() == "screencap-cost-fraction") details["cost"] = 1.25;
+    if (scenario() == "screencap-cost-negative") details["cost"] = -1;
+    if (scenario() == "screencap-cost-string") details["cost"] = "4";
+    if (scenario() == "screencap-cost-null") details["cost"] = nullptr;
+    if (scenario() == "screencap-cost-boolean") details["cost"] = true;
+    if (scenario() == "screencap-cost-object") details["cost"] = nlohmann::json::object();
+    if (scenario() == "screencap-cost-array") details["cost"] = nlohmann::json::array();
+    if (scenario() == "screencap-cost-missing" ||
+        (scenario() == "screencap-cost-once" && id != 17)) {
+      details.erase("cost");
+    }
+    if (scenario() == "screencap-cost-correlation") {
+      instance->send(4, {{"async_call_id", id + 100},
+                         {"what", "Screencap"},
+                         {"details", {{"ret", true}, {"cost", 999}}}});
+    }
+    instance->send(4, {{"async_call_id", scenario() == "screencap-wrong-id" ? id + 1 : id},
                        {"what", scenario() == "screencap-wrong-what" ? "Click" : "Screencap"},
-                       {"details", {{"ret", scenario() != "screencap-failure"}}}});
+                       {"details", std::move(details)}});
   };
-  if (block && scenario() != "screencap-callback-delay") complete();
-  else instance->threads.emplace_back([complete] {
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  if (block && scenario() != "screencap-callback-delay")
     complete();
-  });
-  return 17;
+  else
+    instance->threads.emplace_back([complete] {
+      std::this_thread::sleep_for(std::chrono::milliseconds(30));
+      complete();
+    });
+  return id;
 }
 #endif
 #ifndef OMIT_PREVIEW
 EXPORT std::uint64_t AsstGetImage(void*, void* buffer, std::uint64_t buffer_size) {
   trace("get-image");
+  if (scenario() == "screencap-image-delay")
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
   if (scenario() == "image-null-size") return std::numeric_limits<std::uint64_t>::max();
   if (scenario() == "image-oversize") return buffer_size + 1;
   if (scenario() == "image-empty") return 0;
   std::vector<unsigned char> image = {
-    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82,
-    0, 0, 0, 2, 0, 0, 0, 2, 8, 2, 0, 0, 0, 253, 212, 154, 115,
-    0, 0, 0, 18, 73, 68, 65, 84, 120, 156, 99, 8, 104, 218, 18,
-    208, 180, 133, 1, 66, 1, 0, 41, 38, 6, 25, 155, 100, 95, 64,
-    0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+      137, 80, 78,  71,  13,  10, 26, 10,  0,   0,  0,   13,  73,  72,  68,  82, 0,  0,   0,
+      2,   0,  0,   0,   2,   8,  2,  0,   0,   0,  253, 212, 154, 115, 0,   0,  0,  18,  73,
+      68,  65, 84,  120, 156, 99, 8,  104, 218, 18, 208, 180, 133, 1,   66,  1,  0,  41,  38,
+      6,   25, 155, 100, 95,  64, 0,  0,   0,   0,  73,  69,  78,  68,  174, 66, 96, 130,
   };
   if (scenario() == "image-invalid-png") image[0] = 0;
   if (scenario() == "image-invalid-ihdr") image[15] = 0;
-  if (scenario() == "image-wide") { image[18] = 32; image[19] = 1; }
+  if (scenario() == "image-wide") {
+    image[18] = 32;
+    image[19] = 1;
+  }
   if (scenario() == "image-too-many-pixels") {
     image[18] = image[22] = 32;
     image[19] = image[23] = 0;
@@ -176,7 +210,8 @@ EXPORT std::uint64_t AsstGetImage(void*, void* buffer, std::uint64_t buffer_size
 }
 
 EXPORT int AsstAsyncClick(void* handle, std::int32_t x, std::int32_t y, std::uint8_t block) {
-  trace(("click:" + std::to_string(x) + ":" + std::to_string(y) + ":" + (block ? "block" : "async")).c_str());
+  trace(("click:" + std::to_string(x) + ":" + std::to_string(y) + ":" + (block ? "block" : "async"))
+            .c_str());
   if (scenario() == "click-reject") return 0;
   if (scenario() == "click-hang") std::this_thread::sleep_for(std::chrono::seconds(10));
   auto* instance = static_cast<Instance*>(handle);
@@ -188,11 +223,13 @@ EXPORT int AsstAsyncClick(void* handle, std::int32_t x, std::int32_t y, std::uin
                        {"what", scenario() == "click-wrong-what" ? "Screencap" : "Click"},
                        {"details", {{"ret", std::move(ret)}}}});
   };
-  if (block && scenario() != "click-callback-delay") complete();
-  else instance->threads.emplace_back([complete] {
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  if (block && scenario() != "click-callback-delay")
     complete();
-  });
+  else
+    instance->threads.emplace_back([complete] {
+      std::this_thread::sleep_for(std::chrono::milliseconds(30));
+      complete();
+    });
   return 27;
 }
 #endif
@@ -209,18 +246,28 @@ EXPORT bool AsstStart(void* handle) {
   instance->threads.emplace_back([instance] {
     if (scenario() == "execution-results") {
       if (instance->type == "Fight") {
-        instance->send(20003, {{"taskid", 11}, {"taskchain", "Fight"}, {"what", "StageDrops"},
-          {"details", {{"stage", {{"stageCode", "1-7"}}},
-            {"drops", {{{"itemId", "30012"}, {"itemName", "synthetic-rock"}, {"quantity", 1}}}},
-            {"stats", {{{"itemId", "30012"}, {"itemName", "synthetic-rock"}, {"quantity", 2}}}}}}});
+        instance->send(
+            20003,
+            {{"taskid", 11},
+             {"taskchain", "Fight"},
+             {"what", "StageDrops"},
+             {"details",
+              {{"stage", {{"stageCode", "1-7"}}},
+               {"drops", {{{"itemId", "30012"}, {"itemName", "synthetic-rock"}, {"quantity", 1}}}},
+               {"stats",
+                {{{"itemId", "30012"}, {"itemName", "synthetic-rock"}, {"quantity", 2}}}}}}});
       } else if (instance->type == "Infrast") {
-        instance->send(20003, {{"taskid", 11}, {"taskchain", "Infrast"}, {"what", "ProductOfFacility"},
-          {"details", {{"facility", "Mfg"}, {"index", 0}, {"product", "Gold"}}}});
+        instance->send(20003,
+                       {{"taskid", 11},
+                        {"taskchain", "Infrast"},
+                        {"what", "ProductOfFacility"},
+                        {"details", {{"facility", "Mfg"}, {"index", 0}, {"product", "Gold"}}}});
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(scenario() == "task-hold" ? 800 : 150));
     if (instance->stopped) return;
-    if (scenario() == "malformed-callback") instance->callback(9001, "{not json", instance->context);
+    if (scenario() == "malformed-callback")
+      instance->callback(9001, "{not json", instance->context);
     instance->send(10002, {{"taskid", 11}, {"taskchain", instance->type}});
     instance->send(3, {{"taskid", 11}});
     instance->running = false;

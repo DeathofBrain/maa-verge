@@ -594,6 +594,10 @@ test('screen preview contracts bound image payloads and restrict input to intege
   };
   assert.equal(validateWorkerFrame(image), true);
   assert.equal(validateScreenFrame(frame), true);
+  for (const coreLatencyMs of [0, 1.25]) {
+    assert.equal(validateWorkerFrame({ ...image, coreLatencyMs }), true);
+    assert.equal(validateScreenFrame({ ...frame, coreLatencyMs }), true);
+  }
   for (const fields of [
     { width: 0 },
     { height: 8193 },
@@ -601,6 +605,10 @@ test('screen preview contracts bound image payloads and restrict input to intege
     { data: 'A'.repeat(4183385) },
     { mimeType: 'image/jpeg' },
     { canControl: 1 },
+    { coreLatencyMs: -1 },
+    { coreLatencyMs: '4' },
+    { coreLatencyMs: null },
+    { coreLatencyMs: true },
   ]) {
     assert.equal(validateWorkerFrame({ ...image, ...fields }), false);
     assert.equal(validateScreenFrame({ ...frame, ...fields }), false);

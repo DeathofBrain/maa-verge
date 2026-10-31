@@ -220,7 +220,7 @@ export const validateItemResourceResult: Validator<RpcContract['results']['resou
 export const validateOperatorResourceParams: Validator<RpcContract['params']['resources.operator']>;
 export const validateOperatorResourceResult: Validator<RpcContract['results']['resources.operator']>;
 export const validateScreenFrame: Validator<ScreenFrame>;
-export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl'>>;
+export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl' | 'coreLatencyMs'>>;
 export const validateWorkerConfiguration: Validator<WorkerProtocol['configuration']>;
 export const validateWorkerLeaseConfiguration: Validator<WorkerProtocol['leaseConfiguration']>;
 export const validateWorkerValidationConfiguration: Validator<WorkerProtocol['validationConfiguration']>;

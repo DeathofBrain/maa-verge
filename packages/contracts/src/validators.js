@@ -24739,7 +24739,7 @@ function validate195(data, { instancePath = "", parentData, parentDataProperty, 
   return errors === 0;
 }
 var validateScreenFrame = validate196;
-var schema160 = { "description": "Transient MaaCore preview PNG. Its width/height are the click coordinate space; image bytes never enter snapshots or persistence.", "type": "object", "additionalProperties": false, "required": ["deviceId", "frameId", "capturedAt", "width", "height", "mimeType", "data", "canControl", "latencyMs"], "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "frameId": { "type": "string", "minLength": 1, "maxLength": 200 }, "capturedAt": { "type": "string", "minLength": 1, "maxLength": 40 }, "width": { "type": "integer", "minimum": 1, "maximum": 8192 }, "height": { "type": "integer", "minimum": 1, "maximum": 8192 }, "mimeType": { "const": "image/png" }, "data": { "type": "string", "minLength": 1, "maxLength": 4183384 }, "canControl": { "type": "boolean" }, "latencyMs": { "type": "number", "minimum": 0 } } };
+var schema160 = { "description": "Transient MaaCore preview PNG. Its width/height are the click coordinate space; image bytes never enter snapshots or persistence.", "type": "object", "additionalProperties": false, "required": ["deviceId", "frameId", "capturedAt", "width", "height", "mimeType", "data", "canControl", "latencyMs"], "properties": { "deviceId": { "type": "string", "minLength": 1, "maxLength": 200 }, "frameId": { "type": "string", "minLength": 1, "maxLength": 200 }, "capturedAt": { "type": "string", "minLength": 1, "maxLength": 40 }, "width": { "type": "integer", "minimum": 1, "maximum": 8192 }, "height": { "type": "integer", "minimum": 1, "maximum": 8192 }, "mimeType": { "const": "image/png" }, "data": { "type": "string", "minLength": 1, "maxLength": 4183384 }, "canControl": { "type": "boolean" }, "latencyMs": { "description": "Application-service duration of the native frame request, including image retrieval and transport.", "type": "number", "minimum": 0 }, "coreLatencyMs": { "description": "MaaCore's successful current AsstAsyncScreencap callback details.cost in milliseconds. Excludes image retrieval, PNG encoding and delivery to the frontend; omitted when MaaCore does not provide a measurement or the frame uses a running task's cached image.", "type": "number", "minimum": 0 } } };
 function validate196(data, { instancePath = "", parentData, parentDataProperty, rootData = data } = {}) {
   let vErrors = null;
   let errors = 0;
@@ -25068,12 +25068,34 @@ function validate196(data, { instancePath = "", parentData, parentDataProperty, 
         errors++;
       }
     }
+    if (data.coreLatencyMs !== void 0) {
+      let data9 = data.coreLatencyMs;
+      if (typeof data9 == "number" && isFinite(data9)) {
+        if (data9 < 0 || isNaN(data9)) {
+          const err32 = { instancePath: instancePath + "/coreLatencyMs", schemaPath: "#/properties/coreLatencyMs/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
+          if (vErrors === null) {
+            vErrors = [err32];
+          } else {
+            vErrors.push(err32);
+          }
+          errors++;
+        }
+      } else {
+        const err33 = { instancePath: instancePath + "/coreLatencyMs", schemaPath: "#/properties/coreLatencyMs/type", keyword: "type", params: { type: "number" }, message: "must be number" };
+        if (vErrors === null) {
+          vErrors = [err33];
+        } else {
+          vErrors.push(err33);
+        }
+        errors++;
+      }
+    }
   } else {
-    const err32 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err34 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err32];
+      vErrors = [err34];
     } else {
-      vErrors.push(err32);
+      vErrors.push(err34);
     }
     errors++;
   }
@@ -25131,7 +25153,7 @@ function validate200(data, { instancePath = "", parentData, parentDataProperty, 
       errors++;
     }
     for (const key0 in data) {
-      if (!(key0 === "width" || key0 === "height" || key0 === "mimeType" || key0 === "data" || key0 === "canControl")) {
+      if (!(key0 === "width" || key0 === "height" || key0 === "mimeType" || key0 === "data" || key0 === "canControl" || key0 === "coreLatencyMs")) {
         const err5 = { instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" };
         if (vErrors === null) {
           vErrors = [err5];
@@ -25258,12 +25280,34 @@ function validate200(data, { instancePath = "", parentData, parentDataProperty, 
         errors++;
       }
     }
+    if (data.coreLatencyMs !== void 0) {
+      let data5 = data.coreLatencyMs;
+      if (typeof data5 == "number" && isFinite(data5)) {
+        if (data5 < 0 || isNaN(data5)) {
+          const err17 = { instancePath: instancePath + "/coreLatencyMs", schemaPath: "#/properties/coreLatencyMs/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
+          if (vErrors === null) {
+            vErrors = [err17];
+          } else {
+            vErrors.push(err17);
+          }
+          errors++;
+        }
+      } else {
+        const err18 = { instancePath: instancePath + "/coreLatencyMs", schemaPath: "#/properties/coreLatencyMs/type", keyword: "type", params: { type: "number" }, message: "must be number" };
+        if (vErrors === null) {
+          vErrors = [err18];
+        } else {
+          vErrors.push(err18);
+        }
+        errors++;
+      }
+    }
   } else {
-    const err17 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+    const err19 = { instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" };
     if (vErrors === null) {
-      vErrors = [err17];
+      vErrors = [err19];
     } else {
-      vErrors.push(err17);
+      vErrors.push(err19);
     }
     errors++;
   }

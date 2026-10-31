@@ -62,10 +62,16 @@ AsstDestroy 和动态库卸载完成。EOF 先停止、销毁再退出；回调 
 
 `frame` 在空闲时调用 `AsstAsyncScreencap(..., true)` 并等待成功的异步回调，再通过
 `AsstGetImage` 读取 PNG；运行任务时只读取核心最近缓存，不额外启动截图。异步调用
-未结束时拒绝取帧。结果为 `{width,height,mimeType:"image/png",data,canControl}`，其中
+未结束时拒绝取帧。结果为 `{width,height,mimeType:"image/png",data,canControl,coreLatencyMs?}`，其中
 `data` 为 base64；PNG 字节数与 IHDR 尺寸均受限，以便整个 NDJSON 消息保持在 4 MiB
 内。运行中 `canControl:false`；缓存画面可能早于这次请求，不能把读取频率视为核心
 实际采集频率。预览图像只在内存与本地协议中流转，worker 不为此写入截图文件。
+
+`coreLatencyMs` 仅取自本次 `AsstAsyncScreencap` 成功回调中 `details.cost` 的非负有限
+数值，表示 MaaCore 完成截图的内部耗时；不含之后的 `AsstGetImage` / PNG 编码、
+base64、进程间传输和前端解码显示。以异步 ID 和 `what:"Screencap"` 关联本次回调，
+不采用连接测速或其他截图的耗时。回调未提供合法 `cost` 或正在读取任务缓存画面时
+省略字段，不用总请求耗时代替，也不沿用旧值。
 
 `click` 要求已连接、核心及异步调用空闲、已有有效预览尺寸，且 `(x,y)` 为 PNG 范围
 内的非负整数。`AsstGetImage` 与 `AsstAsyncClick` 使用相同 MaaCore 缩放代理，直接

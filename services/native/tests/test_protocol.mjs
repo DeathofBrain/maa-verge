@@ -419,6 +419,42 @@ check('worker', 'preview and click confirm native callbacks in preview pixels', 
   has(trace, 'click:1:1:block');
   assert.ok(trace.indexOf('screencap-blocking') < trace.indexOf('get-image'));
 });
+check(
+  'worker',
+  'preview timing comes only from the matching native screencap callback',
+  async (f) => {
+    for (const [scenario, expected] of [
+      ['', 4],
+      ['screencap-callback-delay', 4],
+      ['screencap-image-delay', 4],
+      ['screencap-cost-correlation', 4],
+      ['screencap-cost-zero', 0],
+      ['screencap-cost-fraction', 1.25],
+    ]) {
+      const session = await f.connected(scenario, f.capture());
+      assert.equal((await f.preview(session)).coreLatencyMs, expected);
+      assert.equal((await session.close()).code, 0);
+    }
+  },
+);
+check('worker', 'preview omits missing or invalid core timing without a replacement', async (f) => {
+  for (const scenario of [
+    'screencap-cost-missing',
+    'screencap-cost-negative',
+    'screencap-cost-string',
+    'screencap-cost-null',
+    'screencap-cost-boolean',
+    'screencap-cost-object',
+    'screencap-cost-array',
+  ]) {
+    const session = await f.connected(scenario);
+    assert.ok(!('coreLatencyMs' in (await f.preview(session))));
+    assert.equal((await session.close()).code, 0);
+  }
+  const session = await f.connected('screencap-cost-once');
+  assert.equal((await f.preview(session, 'first')).coreLatencyMs, 4);
+  assert.ok(!('coreLatencyMs' in (await f.preview(session, 'second'))));
+});
 check('worker', 'preview and click require connection and frame', async (f) => {
   let session = f.session();
   await session.wait((value) => value.type === 'ready');
@@ -458,7 +494,9 @@ check('worker', 'running preview only reads cached image and blocks click', asyn
   await f.preview(session);
   task(session);
   assert.deepEqual((await session.response('task')).result, { taskId: 11 });
-  assert.equal((await f.preview(session, 'running-preview')).canControl, false);
+  const runningFrame = await f.preview(session, 'running-preview');
+  assert.equal(runningFrame.canControl, false);
+  assert.ok(!('coreLatencyMs' in runningFrame));
   session.send({ id: 'click', operation: 'click', x: 0, y: 0 });
   has((await session.response('click')).error, 'not idle');
   const trace = f.trace();

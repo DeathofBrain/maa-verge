@@ -1617,6 +1617,12 @@
           "type": "boolean"
         },
         "latencyMs": {
+          "description": "Application-service duration of the native frame request, including image retrieval and transport.",
+          "type": "number",
+          "minimum": 0
+        },
+        "coreLatencyMs": {
+          "description": "MaaCore's successful current AsstAsyncScreencap callback details.cost in milliseconds. Excludes image retrieval, PNG encoding and delivery to the frontend; omitted when MaaCore does not provide a measurement or the frame uses a running task's cached image.",
           "type": "number",
           "minimum": 0
         }

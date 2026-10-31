@@ -201,7 +201,7 @@ function ConnectionSettingsBody({
                 const image = await rpc('device.frame', { deviceId: device.id });
                 setFrame(image);
                 setResult(
-                  `截图成功（${device.address}）：${image.width} × ${image.height}，耗时 ${image.latencyMs} ms（${device.captureMethod || '核心未提供具体截图方式'}）`,
+                  `截图成功（${device.address}）：${image.width} × ${image.height}，${image.coreLatencyMs !== undefined ? `核心截图耗时 ${image.coreLatencyMs} ms` : '核心未提供截图耗时'}（${device.captureMethod || '核心未提供具体截图方式'}）`,
                 );
               })
             }

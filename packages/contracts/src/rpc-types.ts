@@ -1501,7 +1501,14 @@ export interface ScreenFrame {
   mimeType: 'image/png';
   data: string;
   canControl: boolean;
+  /**
+   * Application-service duration of the native frame request, including image retrieval and transport.
+   */
   latencyMs: number;
+  /**
+   * MaaCore's successful current AsstAsyncScreencap callback details.cost in milliseconds. Excludes image retrieval, PNG encoding and delivery to the frontend; omitted when MaaCore does not provide a measurement or the frame uses a running task's cached image.
+   */
+  coreLatencyMs?: number;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

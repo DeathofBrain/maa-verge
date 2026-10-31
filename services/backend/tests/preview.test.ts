@@ -126,6 +126,36 @@ describe('transient screen frames', () => {
     ).rejects.toMatchObject({ code: -32011 });
   });
 
+  test('core capture duration passes through independently of the service round trip', async () => {
+    const { runtime, worker, device } = await nativeRuntime();
+    setSystemTime(new Date('2026-11-01T00:00:00.000Z'));
+    for (const coreLatencyMs of [0, 7]) {
+      const started = Date.now();
+      worker.frameResult = async () => {
+        setSystemTime(started + 245);
+        return { ...image(), coreLatencyMs };
+      };
+      const frame = await getFrame(runtime, device.id);
+      expect(frame.coreLatencyMs).toBe(coreLatencyMs);
+      expect(frame.latencyMs).toBe(245);
+    }
+  });
+
+  test('a frame without a native capture cost keeps that timing absent', async () => {
+    const { runtime, worker, device } = await nativeRuntime();
+    worker.frameResult = async () => ({ ...image(), coreLatencyMs: 7 });
+    expect((await getFrame(runtime, device.id)).coreLatencyMs).toBe(7);
+    setSystemTime(new Date('2026-11-01T00:00:00.000Z'));
+    const started = Date.now();
+    worker.frameResult = async () => {
+      setSystemTime(started + 120);
+      return image();
+    };
+    const frame = await getFrame(runtime, device.id);
+    expect(frame.latencyMs).toBe(120);
+    expect(frame).not.toHaveProperty('coreLatencyMs');
+  });
+
   test('frame and tap parameters reject unknown fields and invalid coordinates', async () => {
     const { runtime, device } = await nativeRuntime(),
       frame = await getFrame(runtime, device.id);

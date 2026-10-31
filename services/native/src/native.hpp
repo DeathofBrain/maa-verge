@@ -36,6 +36,7 @@ class Protocol final {
   Protocol(const Protocol&) = delete;
   Protocol& operator=(const Protocol&) = delete;
   void send(Json value);
+
  private:
   std::FILE* stream_ = nullptr;
   std::mutex mutex_;
@@ -49,6 +50,7 @@ class Deadline final {
   ~Deadline();
   Deadline(const Deadline&) = delete;
   Deadline& operator=(const Deadline&) = delete;
+
  private:
   std::mutex mutex_;
   std::condition_variable condition_;
@@ -62,6 +64,7 @@ class DeviceLease final {
   ~DeviceLease();
   DeviceLease(const DeviceLease&) = delete;
   DeviceLease& operator=(const DeviceLease&) = delete;
+
  private:
 #ifdef _WIN32
   void* handle_ = nullptr;
@@ -92,6 +95,7 @@ struct Api final {
   bool (*start)(void*) = nullptr;
   bool (*stop)(void*) = nullptr;
   bool (*running)(void*) = nullptr;
+
  private:
   void* library_ = nullptr;
 #ifdef _WIN32
@@ -111,11 +115,12 @@ class Core final {
   Core& operator=(const Core&) = delete;
   void begin_events();
   Json command(const Json& value);
+
  private:
   static void callback(int message, const char* details, void* context) noexcept;
   void pump();
   void drain_events();
-  void await_async_result(int id, const char* what);
+  Json await_async_result(int id, const char* what);
   Json frame();
   void close() noexcept;
   void capture_failed(const std::string& error);
