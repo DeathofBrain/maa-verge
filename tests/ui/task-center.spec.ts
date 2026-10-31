@@ -7,16 +7,12 @@ const center = (page: Page) => page.getByRole('region', { name: '任务中心', 
 const list = (page: Page) => page.getByRole('region', { name: '任务表列表', exact: true });
 const drawer = (page: Page) => page.getByRole('dialog', { name: '任务表详情', exact: true });
 const wb = (page: Page) => page.getByRole('region', { name: '任务表工作台', exact: true });
-test('one task entry combines the table list, detail drawer and execution tab', async ({
+test('the detail drawer saves changes and returns to the table list or execution tab', async ({
   page,
 }) => {
   await page.goto('/');
-  const sidebar = page.locator('.sidebar');
-  await expect(sidebar.getByRole('button', { name: '任务', exact: true })).toHaveCount(1);
-  await expect(sidebar.getByRole('button', { name: /专项任务|任务表执行|任务表$/ })).toHaveCount(0);
-  await sidebar.getByRole('button', { name: '任务', exact: true }).click();
+  await nav(page, '任务');
   await expect(center(page)).toBeVisible();
-  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('任务');
   const tabs = page.getByRole('tablist', { name: '任务视图', exact: true });
   await expect(tabs.getByRole('tab', { name: '任务表', exact: true })).toHaveAttribute(
     'aria-selected',

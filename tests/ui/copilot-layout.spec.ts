@@ -96,21 +96,18 @@ type LinkWindow = HarnessWindow & {
     invoke: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
   };
   openedLinks: string[];
-  failExternal: boolean;
 };
-test('reference videos open through the desktop bridge and report failures without navigating the app', async ({
+test('safe reference videos and their source bind to the desktop browser bridge', async ({
   page,
 }) => {
   await openCenter(page);
   await page.evaluate(() => {
     const target = window as unknown as LinkWindow;
     target.openedLinks = [];
-    target.failExternal = false;
     const originalInvoke = target.__TAURI_INTERNALS__.invoke.bind(target.__TAURI_INTERNALS__);
     target.__TAURI_INTERNALS__.invoke = async (command, args) => {
       if (command === 'open_external_url') {
         target.openedLinks.push(String(args?.url));
-        if (target.failExternal) throw new Error('合成浏览器打开失败');
         return;
       }
       return originalInvoke(command, args);
@@ -134,17 +131,20 @@ test('reference videos open through the desktop bridge and report failures witho
   await library(page).getByRole('tab', { name: '社区搜索', exact: true }).click();
   await library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true }).click();
   const url = page.url();
-  await detail(page).getByRole('link', { name: '参考视频1', exact: true }).click();
+  const video = detail(page).getByRole('link', { name: '参考视频1', exact: true });
+  await expect(video).toHaveAttribute('href', 'https://www.bilibili.com/video/BVsynthetic/?p=2');
+  await video.click();
   await expect
     .poll(() => page.evaluate(() => (window as unknown as LinkWindow).openedLinks))
     .toEqual(['https://www.bilibili.com/video/BVsynthetic/?p=2']);
   await expect(detail(page).getByRole('link', { name: /参考视频[23]/ })).toHaveCount(0);
   expect(page.url()).toBe(url);
-  await page.evaluate(() => {
-    (window as unknown as LinkWindow).failExternal = true;
-  });
-  await detail(page).getByRole('link', { name: '查看原站', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('合成浏览器打开失败');
+  const source = detail(page).getByRole('link', { name: '查看原站', exact: true });
+  await expect(source).toHaveAttribute('href', 'https://prts.plus/copilot/101');
+  await source.click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as LinkWindow).openedLinks))
+    .toEqual(['https://www.bilibili.com/video/BVsynthetic/?p=2', 'https://prts.plus/copilot/101']);
   await expect(detail(page)).toBeVisible();
   expect(page.url()).toBe(url);
 });

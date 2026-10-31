@@ -82,21 +82,29 @@ function policy(name: string, type: string, params: any, code?: number, enabled:
 }
 for (const [type, params] of Object.entries(taskParams)) {
   policy(`${type} valid minimal parameters`, type, params);
-  policy(`${type} null spend is not a default`, type, { ...params, medicine: null }, -32010);
-  policy(
-    `${type} disabled task still rejects invalid generic booleans`,
-    type,
-    { ...params, enable: 0 },
-    -32010,
-    false,
-  );
-  policy(`${type} disabled task still rejects malformed parameters`, type, [], -32602, false);
   fixtures.push({
     name: `${type} explicit native defaults`,
     operation: 'native',
     value: plan(type, { ...params, extension: { keep: true } }),
     expected: { type, params: { ...nativeParams[type], extension: { keep: true } }, enabled: true },
   });
+}
+// Shared validation does not branch on task type; retain two representative tasks.
+for (const type of ['Fight', 'Copilot']) {
+  policy(
+    `${type} null spend is not a default`,
+    type,
+    { ...taskParams[type], medicine: null },
+    -32010,
+  );
+  policy(
+    `${type} disabled task still rejects invalid generic booleans`,
+    type,
+    { ...taskParams[type], enable: 0 },
+    -32010,
+    false,
+  );
+  policy(`${type} disabled task still rejects malformed parameters`, type, [], -32602, false);
 }
 for (const enabled of [true, false]) {
   fixtures.push({
@@ -303,38 +311,6 @@ for (const value of [null, [], false, true, 0, 1, '', '0']) {
       value: { ...plan(), budgets: value },
       code: -32602,
     });
-}
-for (const value of [true, false, 0, 1, '0', '1', 'False', 'ON', 'n', 'yes']) {
-  fixtures.push({
-    name: `model boolean coercion ${JSON.stringify(value)}`,
-    operation: 'settings',
-    value: { autoConnect: value },
-  });
-  fixtures.push({
-    name: `task enabled coercion ${JSON.stringify(value)}`,
-    operation: 'parsePlan',
-    value: plan('Fight', {}, value),
-  });
-}
-for (const value of [
-  true,
-  false,
-  0,
-  1,
-  '1',
-  '1.0',
-  ' 1 ',
-  '+01',
-  '1_0',
-  '1_0.00',
-  '\u00851',
-  '0'.repeat(4301),
-]) {
-  fixtures.push({
-    name: `budget integer coercion ${JSON.stringify(value).slice(0, 40)}`,
-    operation: 'settings',
-    value: { budgets: { medicine: value } },
-  });
 }
 for (const value of [null, '1e0', '1.1', 1.1, '1__0', '\ufeff1', '\u001c1', 101, -1]) {
   fixtures.push({

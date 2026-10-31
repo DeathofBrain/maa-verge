@@ -105,6 +105,11 @@ test(
   { tag: '@smoke' },
   async ({ page }) => {
     await openHome(page);
+    const sidebar = page.locator('.sidebar');
+    await expect(sidebar.getByRole('button', { name: '任务', exact: true })).toHaveCount(1);
+    await expect(sidebar.getByRole('button', { name: /专项任务|任务表执行|任务表$/ })).toHaveCount(
+      0,
+    );
     await expect(home(page).getByRole('heading', { name: '主页', exact: true })).toBeVisible();
     await expect(wb(page)).toHaveCount(0);
     await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('主页');
