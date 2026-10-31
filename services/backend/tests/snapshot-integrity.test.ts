@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promis
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { snapshotIntegrity } from '../src/infrastructure/filesystem/snapshot-integrity';
+import { snapshotIntegrity } from '@backend/infrastructure/filesystem/snapshot-integrity';
 
 const roots: string[] = [];
 async function temp() {

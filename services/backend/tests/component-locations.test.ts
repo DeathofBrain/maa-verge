@@ -3,14 +3,14 @@ import { mkdtempSync } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { defaultComponentPaths } from '../src/infrastructure/config';
-import { parseSettings } from '../src/modules/settings/models';
-import { Runtime } from '../src/app/runtime';
+import { defaultComponentPaths } from '@backend/infrastructure/config';
+import { parseSettings } from '@backend/modules/settings/models';
+import { Runtime } from '@backend/app/runtime';
 import {
   resourceVersionDetail,
   resourceVersionLabel,
 } from '../../../apps/desktop/src/shared/lib/update-display';
-import type { UpdateChannel } from '../../../packages/contracts/src/types';
+import type { UpdateChannel } from '@contracts/types';
 
 const instances: Runtime[] = [],
   roots: string[] = [];

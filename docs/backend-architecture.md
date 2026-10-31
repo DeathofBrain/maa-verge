@@ -36,6 +36,8 @@ src/
 
 `modules/settings/models.ts` 包含兼容输入的规范化与业务校验，依赖设备配置、产线及路径校验，因此没有被误放进纯 shared。`app/agent-tools.ts` 是复用整个应用能力的宿主适配器，也没有放进会反向依赖 Runtime 的业务底层。
 
+跨目录导入采用 `@backend/*`，协议源码采用 `@contracts/*`，同目录采用 `./`；定义集中在后端 `tsconfig.json`，源码与后端测试共用。别名直接指向具体模块，架构门禁按解析后的目标检查依赖方向。固定 Bun 负责开发、测试和编译解析；复用后端纯函数的浏览器测试在测试专用 Vite 入口配置同名别名，避免与前端 `@/` 混淆。具体示例见 backend README 的导入约定。
+
 ## 必须保持的生命周期
 
 - 单个 Runtime 创建单个 Store；打开业务数据前先获得专用 SQLite 数据根租约。保留锁文件、rowid、持久请求去重，以及 serialize/fsync/完整性校验/rename 的备份流程。

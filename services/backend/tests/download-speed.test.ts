@@ -3,7 +3,10 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { downloadArchive, type DownloadMetadata } from '../src/infrastructure/network/download.ts';
+import {
+  downloadArchive,
+  type DownloadMetadata,
+} from '@backend/infrastructure/network/download.ts';
 
 const roots: string[] = [];
 type Sample = { percent: number; speed: number | undefined };

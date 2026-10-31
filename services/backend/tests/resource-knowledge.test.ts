@@ -6,8 +6,8 @@ import path from 'node:path';
 import {
   buildResourceKnowledge,
   resourceKnowledgeParserVersion,
-} from '../src/modules/knowledge/resource-knowledge';
-import type { ResourceKnowledgePack } from '../src/modules/knowledge/knowledge-types';
+} from '@backend/modules/knowledge/resource-knowledge';
+import type { ResourceKnowledgePack } from '@backend/modules/knowledge/knowledge-types';
 
 const roots: string[] = [];
 const temporary = () => {

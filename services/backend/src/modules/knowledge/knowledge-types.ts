@@ -1,4 +1,4 @@
-import type { ClientType } from '../resources/item-resources';
+import type { ClientType } from '@backend/modules/resources/item-resources';
 
 export type KnowledgeKind =
   'operator' | 'item' | 'stage' | 'recruitment' | 'infrastructure' | 'document' | 'capability';

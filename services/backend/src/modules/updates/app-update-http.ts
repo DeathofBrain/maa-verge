@@ -2,16 +2,16 @@
 import { createHash } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
-import type { DownloadProxySettings } from '../../../../../packages/contracts/src/types';
-import type { HostUpdateParams } from '../../../../../packages/contracts/src/rpc-types';
-import { validateHostUpdateParams } from '../../../../../packages/contracts/src/validators.js';
+import type { DownloadProxySettings } from '@contracts/types';
+import type { HostUpdateParams } from '@contracts/rpc-types';
+import { validateHostUpdateParams } from '@contracts/validators.js';
 import {
   createComponentFetch,
   downloadArchive,
   restrictDownloadFetch,
   type DownloadOptions,
-} from '../../infrastructure/network/download';
-import { RpcError } from '../../shared/errors';
+} from '@backend/infrastructure/network/download';
+import { RpcError } from '@backend/shared/errors';
 import { OfficialSource } from './updates';
 import {
   MirrorChyanClient,

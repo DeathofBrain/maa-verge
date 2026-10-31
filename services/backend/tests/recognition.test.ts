@@ -2,15 +2,15 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { defaultCapture, defaultConnection } from '../src/modules/settings/models';
-import { parseRecognition, recognitionKey } from '../src/modules/recognition/recognition';
+import { Runtime } from '@backend/app/runtime';
+import { defaultCapture, defaultConnection } from '@backend/modules/settings/models';
+import { parseRecognition, recognitionKey } from '@backend/modules/recognition/recognition';
 import {
   validateItemResourceParams,
   validateItemResourceResult,
   validateRecognitionParams,
   validateRecognitionResult,
-} from '../../../packages/contracts/src/validators.js';
+} from '@contracts/validators.js';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

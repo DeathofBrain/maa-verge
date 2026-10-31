@@ -11,14 +11,14 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { buildKnowledgeFiles } from '../src/modules/knowledge/knowledge-build';
-import { validResourceKnowledgePack } from '../src/modules/knowledge/resource-knowledge';
+import { Runtime } from '@backend/app/runtime';
+import { buildKnowledgeFiles } from '@backend/modules/knowledge/knowledge-build';
+import { validResourceKnowledgePack } from '@backend/modules/knowledge/resource-knowledge';
 import {
   validateKnowledgeRecord,
   validateKnowledgeSearchResult,
   validateKnowledgeStatus,
-} from '../../../packages/contracts/src/validators.js';
+} from '@contracts/validators.js';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

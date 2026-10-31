@@ -3,13 +3,13 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { adbCandidates, resolveAdbPath } from '../src/infrastructure/native/adb';
+import { adbCandidates, resolveAdbPath } from '@backend/infrastructure/native/adb';
 import {
   mumuManagerInstances,
   queryWindowsEmulatorAdb,
   queryWindowsEmulatorInventory,
   windowsProcessAdbCandidates,
-} from '../src/infrastructure/native/windows-emulators';
+} from '@backend/infrastructure/native/windows-emulators';
 
 const roots: string[] = [];
 afterEach(async () => {

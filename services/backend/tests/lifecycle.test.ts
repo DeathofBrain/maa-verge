@@ -12,9 +12,9 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { Store } from '../src/infrastructure/storage/storage';
-import { parseSettings } from '../src/modules/settings/models';
-import { snapshotIntegrity } from '../src/infrastructure/filesystem/snapshot-integrity';
+import { Store } from '@backend/infrastructure/storage/storage';
+import { parseSettings } from '@backend/modules/settings/models';
+import { snapshotIntegrity } from '@backend/infrastructure/filesystem/snapshot-integrity';
 
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const entry = path.join(repo, 'services/backend/src/entry.ts');

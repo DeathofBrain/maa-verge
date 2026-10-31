@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { OfficialSource, platformAsset } from '../src/modules/updates/updates';
-import { compareReleaseVersions, releaseVersion } from '../src/shared/release-version';
+import { OfficialSource, platformAsset } from '@backend/modules/updates/updates';
+import { compareReleaseVersions, releaseVersion } from '@backend/shared/release-version';
 
 function release(version: string, prerelease = false) {
   const name = `MAA-${version}-${platformAsset()}`;

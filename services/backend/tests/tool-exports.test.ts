@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { recognitionExport } from '../../../apps/desktop/src/features/tools/tool-exports';
-import type { RpcContract } from '../../../packages/contracts/src/rpc-types';
+import type { RpcContract } from '@contracts/rpc-types';
 
 const result: RpcContract['results']['recognition.get'] = {
   deviceId: 'fixture',

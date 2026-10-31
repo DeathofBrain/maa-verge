@@ -5,7 +5,7 @@ import {
   APP_VERSION,
   checkAppRelease,
   compareAppVersions,
-} from '../src/modules/updates/app-release.ts';
+} from '@backend/modules/updates/app-release.ts';
 
 const repository = 'https://github.com/DeathofBrain/maa-verge';
 const names = (version = '0.1.0') => [

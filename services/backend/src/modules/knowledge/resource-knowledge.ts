@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
-import { ResourceReader, type ClientType, type Combo } from '../resources/item-resources';
+import {
+  ResourceReader,
+  type ClientType,
+  type Combo,
+} from '@backend/modules/resources/item-resources';
 import type {
   KnowledgeKind,
   KnowledgeRecord,
@@ -9,10 +13,7 @@ import type {
   KnowledgeValue,
   ResourceKnowledgePack,
 } from './knowledge-types';
-import {
-  validateKnowledgeRecord,
-  validateKnowledgeSource,
-} from '../../../../../packages/contracts/src/validators.js';
+import { validateKnowledgeRecord, validateKnowledgeSource } from '@contracts/validators.js';
 
 export const resourceKnowledgeParserVersion = 1;
 const maximumBytes = 4 * 1024 * 1024;

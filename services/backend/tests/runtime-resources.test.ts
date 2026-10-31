@@ -2,12 +2,9 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { recognitionKey } from '../src/modules/recognition/recognition';
-import {
-  validateItemResourceResult,
-  validateRecognitionResult,
-} from '../../../packages/contracts/src/validators.js';
+import { Runtime } from '@backend/app/runtime';
+import { recognitionKey } from '@backend/modules/recognition/recognition';
+import { validateItemResourceResult, validateRecognitionResult } from '@contracts/validators.js';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

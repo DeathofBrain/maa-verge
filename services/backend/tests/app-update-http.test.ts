@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { DownloadProxySettings } from '../../../packages/contracts/src/types';
-import { AppUpdateHttp, type AppUpdateHttpOptions } from '../src/modules/updates/app-update-http';
+import type { DownloadProxySettings } from '@contracts/types';
+import { AppUpdateHttp, type AppUpdateHttpOptions } from '@backend/modules/updates/app-update-http';
 
 const roots: string[] = [];
 const payload = Buffer.from('signed application transport fixture\n'.repeat(2048));

@@ -5,16 +5,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { Runtime } from '../src/app/runtime';
-import { Store } from '../src/infrastructure/storage/storage';
-import { parsePlan, parseSettings } from '../src/modules/settings/models';
-import { validatePlan, nativeTask } from '../src/modules/plans/task-policy';
-import { processRequest } from '../src/transport/json-rpc';
-import { syncDue, userDataSteps } from '../src/modules/recognition/user-data-sync';
-import {
-  taskConsumableLimits,
-  validatePlan as validateSharedPlan,
-} from '../../../packages/contracts/src/task-policy';
+import { Runtime } from '@backend/app/runtime';
+import { Store } from '@backend/infrastructure/storage/storage';
+import { parsePlan, parseSettings } from '@backend/modules/settings/models';
+import { validatePlan, nativeTask } from '@backend/modules/plans/task-policy';
+import { processRequest } from '@backend/transport/json-rpc';
+import { syncDue, userDataSteps } from '@backend/modules/recognition/user-data-sync';
+import { taskConsumableLimits, validatePlan as validateSharedPlan } from '@contracts/task-policy';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

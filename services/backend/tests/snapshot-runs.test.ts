@@ -2,8 +2,8 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { Run } from '../../../packages/contracts/src/types';
-import { Runtime } from '../src/app/runtime';
+import type { Run } from '@contracts/types';
+import { Runtime } from '@backend/app/runtime';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

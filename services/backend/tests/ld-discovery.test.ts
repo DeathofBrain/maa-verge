@@ -3,7 +3,7 @@ import {
   ldPlayerConsoleInstances,
   mumuManagerInstances,
   queryWindowsEmulatorInventory,
-} from '../src/infrastructure/native/windows-emulators';
+} from '@backend/infrastructure/native/windows-emulators';
 
 const process = (root: string, pid: number) => ({
   Name: 'dnplayer.exe',

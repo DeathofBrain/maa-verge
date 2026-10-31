@@ -2,9 +2,9 @@ import { afterEach, expect, spyOn, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { defaultConnection, parseSettings } from '../src/modules/settings/models';
-import { emptyEmulatorInventory } from '../src/infrastructure/native/windows-emulators';
+import { Runtime } from '@backend/app/runtime';
+import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
+import { emptyEmulatorInventory } from '@backend/infrastructure/native/windows-emulators';
 
 const runtimes: Runtime[] = [];
 const roots: string[] = [];

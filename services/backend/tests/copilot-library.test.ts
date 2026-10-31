@@ -15,13 +15,9 @@ import {
   CopilotLibrary,
   defaultCopilotOptions,
   parseCopilotCode,
-} from '../src/modules/copilot/copilot';
-import { Store } from '../src/infrastructure/storage/storage';
-import type {
-  CopilotDifficulty,
-  CopilotKind,
-  CopilotWorkspace,
-} from '../../../packages/contracts/src/rpc-types';
+} from '@backend/modules/copilot/copilot';
+import { Store } from '@backend/infrastructure/storage/storage';
+import type { CopilotDifficulty, CopilotKind, CopilotWorkspace } from '@contracts/rpc-types';
 
 const roots: string[] = [],
   stores: Store[] = [];

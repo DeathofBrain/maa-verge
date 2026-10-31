@@ -2,15 +2,15 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { CoreWorker } from '../src/infrastructure/native/worker';
+import { Runtime } from '@backend/app/runtime';
+import { CoreWorker } from '@backend/infrastructure/native/worker';
 import {
   defaultConnection,
   parseSettings,
   type DeviceConnectionProfile,
-} from '../src/modules/settings/models';
-import { validateWorkerConfiguration } from '../../../packages/contracts/src/validators.js';
-import { mumuDefaultAdbAddress } from '../../../packages/contracts/src/device-profiles';
+} from '@backend/modules/settings/models';
+import { validateWorkerConfiguration } from '@contracts/validators.js';
+import { mumuDefaultAdbAddress } from '@contracts/device-profiles';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

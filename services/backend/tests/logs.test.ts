@@ -17,10 +17,10 @@ import {
   Logs,
   logExportDirectory,
   redactLog,
-} from '../src/infrastructure/logging/logs';
-import { Runtime } from '../src/app/runtime';
-import { processRequest } from '../src/transport/json-rpc';
-import { parseSettings } from '../src/modules/settings/models';
+} from '@backend/infrastructure/logging/logs';
+import { Runtime } from '@backend/app/runtime';
+import { processRequest } from '@backend/transport/json-rpc';
+import { parseSettings } from '@backend/modules/settings/models';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

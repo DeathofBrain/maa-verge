@@ -2,10 +2,10 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { CopilotLibrary } from '../src/modules/copilot/copilot';
-import { Runtime } from '../src/app/runtime';
-import { Store } from '../src/infrastructure/storage/storage';
-import { validateCopilotStagesResult } from '../../../packages/contracts/src/validators.js';
+import { CopilotLibrary } from '@backend/modules/copilot/copilot';
+import { Runtime } from '@backend/app/runtime';
+import { Store } from '@backend/infrastructure/storage/storage';
+import { validateCopilotStagesResult } from '@contracts/validators.js';
 
 const roots: string[] = [];
 const stores: Store[] = [];

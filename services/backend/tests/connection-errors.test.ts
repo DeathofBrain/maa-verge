@@ -3,7 +3,7 @@ import {
   connectionError,
   nativeConnectionError,
   nativeStartupError,
-} from '../src/infrastructure/native/connection-errors';
+} from '@backend/infrastructure/native/connection-errors';
 
 test('known ADB diagnostics explain the cause and next step without guessing the emulator state', () => {
   const cases = [

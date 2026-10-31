@@ -1,13 +1,13 @@
 /** Configure only verified running instances whose bundled screenshot SDK exists. */
 import { statSync } from 'node:fs';
 import path from 'node:path';
-import type { Settings } from '../settings/models';
-import { defaultCapture } from '../settings/models';
-import { emulatorInstanceForAddress } from '../../infrastructure/native/adb';
+import type { Settings } from '@backend/modules/settings/models';
+import { defaultCapture } from '@backend/modules/settings/models';
+import { emulatorInstanceForAddress } from '@backend/infrastructure/native/adb';
 import type {
   EmulatorInventory,
   EmulatorInstance,
-} from '../../infrastructure/native/windows-emulators';
+} from '@backend/infrastructure/native/windows-emulators';
 
 export function automaticCaptureEnabled(capture: Settings['capture']): boolean {
   return capture?.autoDetect ?? (!capture || capture.method === 'adb');

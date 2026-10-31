@@ -1,19 +1,19 @@
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
-import { Store, now } from '../infrastructure/storage/storage';
-import { RpcError } from '../shared/errors';
+import { Store, now } from '@backend/infrastructure/storage/storage';
+import { RpcError } from '@backend/shared/errors';
 import {
   connectionError,
   errorDetail,
   nativeConnectionError,
-} from '../infrastructure/native/connection-errors';
-import { observeAdbDevices } from '../infrastructure/native/connection-health';
+} from '@backend/infrastructure/native/connection-errors';
+import { observeAdbDevices } from '@backend/infrastructure/native/connection-health';
 import {
   connectAdbTransport,
   localAdbServer,
   probeAdbEndpoint,
-} from '../infrastructure/native/adb-transport';
+} from '@backend/infrastructure/native/adb-transport';
 import {
   defaultConnection,
   parsePlan,
@@ -21,20 +21,20 @@ import {
   parseSnapshot,
   type Plan,
   type Settings,
-} from '../modules/settings/models';
-import { automaticCapture } from '../modules/devices/auto-capture';
-import { nativeTask, validatePlan } from '../modules/plans/task-policy';
-import { propose } from '../modules/agent/agent';
+} from '@backend/modules/settings/models';
+import { automaticCapture } from '@backend/modules/devices/auto-capture';
+import { nativeTask, validatePlan } from '@backend/modules/plans/task-policy';
+import { propose } from '@backend/modules/agent/agent';
 import {
   defaultComponentPaths,
   defaultCopilotDirectory,
   deviceLockPath,
-} from '../infrastructure/config';
-import { CoreWorker } from '../infrastructure/native/worker';
-import { captureAdbPath, connectionCapture } from '../modules/devices/capture';
-import { Preview } from '../modules/devices/preview';
-import { UpdateService } from '../modules/updates/updates';
-import { AppUpdateHttp } from '../modules/updates/app-update-http';
+} from '@backend/infrastructure/config';
+import { CoreWorker } from '@backend/infrastructure/native/worker';
+import { captureAdbPath, connectionCapture } from '@backend/modules/devices/capture';
+import { Preview } from '@backend/modules/devices/preview';
+import { UpdateService } from '@backend/modules/updates/updates';
+import { AppUpdateHttp } from '@backend/modules/updates/app-update-http';
 import {
   configuredAdbPath,
   resolveAdbPath,
@@ -46,45 +46,45 @@ import {
   emulatorInstanceForAddress,
   isLocalEmulator,
   validateAddress,
-} from '../infrastructure/native/adb';
+} from '@backend/infrastructure/native/adb';
 import {
   emptyEmulatorInventory,
   runningWindowsEmulatorInventory,
   type EmulatorInventory,
-} from '../infrastructure/native/windows-emulators';
-import { syncDue, userDataSteps, type SyncStep } from '../modules/recognition/user-data-sync';
-import { findDeviceProfile } from '../modules/devices/device-profiles';
-import { stageCatalog } from '../modules/resources/stages';
-import { homeInfo } from '../modules/home/home-info';
-import { ActivityCalendar, type ActivityCalendarOptions } from '../modules/home/activity-calendar';
-import { localizeExecutionMessage } from '../../../../packages/contracts/src/execution';
-import { taskLabels } from '../../../../packages/contracts/src/tasks';
-import { planAllowsDevice } from '../../../../packages/contracts/src/plan-devices';
-import type { RunTask } from '../../../../packages/contracts/src/types';
+} from '@backend/infrastructure/native/windows-emulators';
+import { syncDue, userDataSteps, type SyncStep } from '@backend/modules/recognition/user-data-sync';
+import { findDeviceProfile } from '@backend/modules/devices/device-profiles';
+import { stageCatalog } from '@backend/modules/resources/stages';
+import { homeInfo } from '@backend/modules/home/home-info';
+import {
+  ActivityCalendar,
+  type ActivityCalendarOptions,
+} from '@backend/modules/home/activity-calendar';
+import { localizeExecutionMessage } from '@contracts/execution';
+import { taskLabels } from '@contracts/tasks';
+import { planAllowsDevice } from '@contracts/plan-devices';
+import type { RunTask } from '@contracts/types';
 import {
   recordDrops,
   recordInfrastructure,
   RunArtifacts,
-} from '../modules/execution/execution-evidence';
-import type { RpcContract } from '../../../../packages/contracts/src/rpc-types';
+} from '@backend/modules/execution/execution-evidence';
+import type { RpcContract } from '@contracts/rpc-types';
 import {
   clearDeviceRecognition,
   parseRecognition,
   recognitionKey,
   recognitionSnapshot,
-} from '../modules/recognition/recognition';
-import { itemResourceNames } from '../modules/resources/item-resources';
-import { Logs } from '../infrastructure/logging/logs';
-import { Toolbox, toolJob, toolCatalog } from '../modules/tools/toolbox';
-import { Scheduler } from '../modules/schedules/scheduler';
-import { CopilotLibrary, copilotWorkspaceIdentity } from '../modules/copilot/copilot';
-import { AccountKnowledge } from '../modules/knowledge/account-knowledge';
-import { Knowledge } from '../modules/knowledge/knowledge';
+} from '@backend/modules/recognition/recognition';
+import { itemResourceNames } from '@backend/modules/resources/item-resources';
+import { Logs } from '@backend/infrastructure/logging/logs';
+import { Toolbox, toolJob, toolCatalog } from '@backend/modules/tools/toolbox';
+import { Scheduler } from '@backend/modules/schedules/scheduler';
+import { CopilotLibrary, copilotWorkspaceIdentity } from '@backend/modules/copilot/copilot';
+import { AccountKnowledge } from '@backend/modules/knowledge/account-knowledge';
+import { Knowledge } from '@backend/modules/knowledge/knowledge';
 import { createRpcDispatcher, type UpdateOperation } from './rpc-dispatch';
-import {
-  validateCopilotStartParams,
-  validateDeviceDeleteParams,
-} from '../../../../packages/contracts/src/validators.js';
+import { validateCopilotStartParams, validateDeviceDeleteParams } from '@contracts/validators.js';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 type Worker = Pick<

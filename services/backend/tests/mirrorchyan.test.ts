@@ -9,14 +9,14 @@ import {
   mirrorChyanFull,
   mirrorChyanSource,
   type MirrorChyanIdentity,
-} from '../src/modules/updates/mirrorchyan';
+} from '@backend/modules/updates/mirrorchyan';
 import {
   OfficialSource,
   runUpdateJob,
   UpdateService,
   type UpdateStore,
-} from '../src/modules/updates/updates';
-import { parseSettings } from '../src/modules/settings/models';
+} from '@backend/modules/updates/updates';
+import { parseSettings } from '@backend/modules/settings/models';
 import { zipBytes } from './archive-fixture';
 
 const secret = 'synthetic+cdk&private=value';

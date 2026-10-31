@@ -1,16 +1,13 @@
 import { createHash } from 'node:crypto';
-import type {
-  RpcContract,
-  AccountSnapshotSummary,
-} from '../../../../../packages/contracts/src/rpc-types';
+import type { RpcContract, AccountSnapshotSummary } from '@contracts/rpc-types';
 import {
   validateAccountKnowledgeSnapshot,
   validateAccountSnapshotSummary,
   validateRecognitionResult,
-} from '../../../../../packages/contracts/src/validators.js';
-import type { ClientType } from '../resources/item-resources';
-import { recognitionKey, recognitionSnapshot } from '../recognition/recognition';
-import type { Store } from '../../infrastructure/storage/storage';
+} from '@contracts/validators.js';
+import type { ClientType } from '@backend/modules/resources/item-resources';
+import { recognitionKey, recognitionSnapshot } from '@backend/modules/recognition/recognition';
+import type { Store } from '@backend/infrastructure/storage/storage';
 
 type Snapshot = Exclude<RpcContract['results']['account.snapshot.get'], null>;
 type Recognition = RpcContract['results']['recognition.get'];

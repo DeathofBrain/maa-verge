@@ -2,9 +2,9 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { homeInfo } from '../src/modules/home/home-info';
-import { defaultCapture, defaultConnection, parseSettings } from '../src/modules/settings/models';
-import { Runtime } from '../src/app/runtime';
+import { homeInfo } from '@backend/modules/home/home-info';
+import { defaultCapture, defaultConnection, parseSettings } from '@backend/modules/settings/models';
+import { Runtime } from '@backend/app/runtime';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

@@ -1,9 +1,12 @@
 import path from 'node:path';
 import { open, readdir, stat } from 'node:fs/promises';
-import { stagePresets } from '../../../../../packages/contracts/src/stages';
-import type { RpcContract } from '../../../../../packages/contracts/src/rpc-types';
-import { gameDate } from '../recognition/user-data-sync';
-import { calendarPeriod as period, type CalendarSnapshot } from '../home/activity-calendar';
+import { stagePresets } from '@contracts/stages';
+import type { RpcContract } from '@contracts/rpc-types';
+import { gameDate } from '@backend/modules/recognition/user-data-sync';
+import {
+  calendarPeriod as period,
+  type CalendarSnapshot,
+} from '@backend/modules/home/activity-calendar';
 
 type Catalog = RpcContract['results']['stages.list'];
 type ClientType = Catalog['clientType'];

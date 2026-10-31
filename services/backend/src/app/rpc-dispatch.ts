@@ -1,4 +1,4 @@
-import type { RpcContract } from '../../../../packages/contracts/src/rpc-types';
+import type { RpcContract } from '@contracts/rpc-types';
 import {
   validateKnowledgeClientParams,
   validateKnowledgeSearchParams,
@@ -27,19 +27,19 @@ import {
   validateItemResourceParams,
   validateOperatorResourceParams,
   validateRunArtifactParams,
-} from '../../../../packages/contracts/src/validators.js';
-import { RpcError } from '../shared/errors';
-import type { AppUpdateHttp } from '../modules/updates/app-update-http';
-import type { Knowledge } from '../modules/knowledge/knowledge';
-import type { AccountKnowledge } from '../modules/knowledge/account-knowledge';
-import type { CopilotLibrary } from '../modules/copilot/copilot';
-import type { Toolbox, toolJob, toolCatalog } from '../modules/tools/toolbox';
-import type { Scheduler } from '../modules/schedules/scheduler';
-import type { Logs } from '../infrastructure/logging/logs';
-import type { Preview } from '../modules/devices/preview';
-import type { Plan, Settings } from '../modules/settings/models';
-import { itemResource, type Combo } from '../modules/resources/item-resources';
-import { operatorResource } from '../modules/resources/operator-resources';
+} from '@contracts/validators.js';
+import { RpcError } from '@backend/shared/errors';
+import type { AppUpdateHttp } from '@backend/modules/updates/app-update-http';
+import type { Knowledge } from '@backend/modules/knowledge/knowledge';
+import type { AccountKnowledge } from '@backend/modules/knowledge/account-knowledge';
+import type { CopilotLibrary } from '@backend/modules/copilot/copilot';
+import type { Toolbox, toolJob, toolCatalog } from '@backend/modules/tools/toolbox';
+import type { Scheduler } from '@backend/modules/schedules/scheduler';
+import type { Logs } from '@backend/infrastructure/logging/logs';
+import type { Preview } from '@backend/modules/devices/preview';
+import type { Plan, Settings } from '@backend/modules/settings/models';
+import { itemResource, type Combo } from '@backend/modules/resources/item-resources';
+import { operatorResource } from '@backend/modules/resources/operator-resources';
 
 type Params = RpcContract['params'];
 type Client = NonNullable<Params['stages.list']['clientType']>;

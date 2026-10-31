@@ -1,10 +1,10 @@
-import type { DeviceConnectionProfile } from '../../../../../packages/contracts/src/types';
-import { deviceProfileListError } from '../../../../../packages/contracts/src/device-profiles';
+import type { DeviceConnectionProfile } from '@contracts/types';
+import { deviceProfileListError } from '@contracts/device-profiles';
 export {
   deviceProfileIdentity as profileIdentity,
   matchingDeviceProfile as findDeviceProfile,
-} from '../../../../../packages/contracts/src/device-profiles';
-import { RpcError } from '../../shared/errors';
+} from '@contracts/device-profiles';
+import { RpcError } from '@backend/shared/errors';
 
 export function validateDeviceProfiles(profiles: DeviceConnectionProfile[] = []): void {
   const error = deviceProfileListError(profiles);

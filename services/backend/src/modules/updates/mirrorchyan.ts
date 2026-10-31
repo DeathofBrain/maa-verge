@@ -1,5 +1,5 @@
 /** Keep credential-bearing HTTP details out of persistent update metadata. */
-import type { Settings } from '../../../../../packages/contracts/src/types';
+import type { Settings } from '@contracts/types';
 import {
   downloadArchive,
   DownloadSourceError,
@@ -8,7 +8,7 @@ import {
   type DownloadMetadata,
   type DownloadOptions,
   type DownloadProgress,
-} from '../../infrastructure/network/download';
+} from '@backend/infrastructure/network/download';
 
 const API = 'https://mirrorchyan.com/api/resources/';
 const MAX_METADATA = 256 * 1024;

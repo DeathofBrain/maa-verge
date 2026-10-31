@@ -7,10 +7,10 @@ import {
   officialCalendarUrls,
   validCalendarDocument,
   type ActivityCalendarOptions,
-} from '../src/modules/home/activity-calendar';
-import { stageCatalog, supportsStageNavigation } from '../src/modules/resources/stages';
-import { Runtime } from '../src/app/runtime';
-import { validateStageListResult } from '../../../packages/contracts/src/validators.js';
+} from '@backend/modules/home/activity-calendar';
+import { stageCatalog, supportsStageNavigation } from '@backend/modules/resources/stages';
+import { Runtime } from '@backend/app/runtime';
+import { validateStageListResult } from '@contracts/validators.js';
 
 const roots: string[] = [],
   services: ActivityCalendar[] = [],

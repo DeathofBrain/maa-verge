@@ -4,9 +4,9 @@ import { createInterface } from 'node:readline';
 import { StringDecoder } from 'node:string_decoder';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { childEnvironment, nativeEnvironment } from '../config';
+import { childEnvironment, nativeEnvironment } from '@backend/infrastructure/config';
 import { nativeWorkerPath } from './native-path';
-import { stringifyWireJson } from '../../shared/wire-json';
+import { stringifyWireJson } from '@backend/shared/wire-json';
 import { nativeStartupError } from './connection-errors';
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));

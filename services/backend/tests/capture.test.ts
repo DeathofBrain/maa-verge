@@ -2,12 +2,12 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { captureAdbPath, connectionCapture, ldPlayerPid } from '../src/modules/devices/capture';
-import { deviceLockAddress } from '../src/infrastructure/native/adb';
-import { defaultConnection, parseSettings } from '../src/modules/settings/models';
-import { Runtime } from '../src/app/runtime';
-import { validateWorkerConfiguration } from '../../../packages/contracts/src/validators.js';
-import { configuredAdbPath } from '../src/infrastructure/native/adb';
+import { captureAdbPath, connectionCapture, ldPlayerPid } from '@backend/modules/devices/capture';
+import { deviceLockAddress } from '@backend/infrastructure/native/adb';
+import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
+import { Runtime } from '@backend/app/runtime';
+import { validateWorkerConfiguration } from '@contracts/validators.js';
+import { configuredAdbPath } from '@backend/infrastructure/native/adb';
 
 const roots: string[] = [];
 const temporary = () => {

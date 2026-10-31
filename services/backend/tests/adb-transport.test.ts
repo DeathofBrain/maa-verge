@@ -4,7 +4,7 @@ import {
   connectAdbTransport,
   localAdbServer,
   probeAdbEndpoint,
-} from '../src/infrastructure/native/adb-transport';
+} from '@backend/infrastructure/native/adb-transport';
 
 const servers: net.Server[] = [];
 const sockets = new Set<net.Socket>();

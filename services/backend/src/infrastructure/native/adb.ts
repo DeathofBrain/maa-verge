@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import { connectionError } from './connection-errors';
-import { deviceAddressIdentity } from '../../../../../packages/contracts/src/device-profiles';
+import { deviceAddressIdentity } from '@contracts/device-profiles';
 import {
   emptyEmulatorInventory,
   runningWindowsAdbCandidates,

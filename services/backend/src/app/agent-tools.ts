@@ -1,6 +1,6 @@
-import type { MaaToolHost } from '../../../../packages/agent/tools/types';
-import { RpcError } from '../shared/errors';
-import { parsePlan } from '../modules/settings/models';
+import type { MaaToolHost } from '@maaverge/agent/tools';
+import { RpcError } from '@backend/shared/errors';
+import { parsePlan } from '@backend/modules/settings/models';
 import type { Runtime } from './runtime';
 
 type MaaToolRuntime = Pick<

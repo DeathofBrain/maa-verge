@@ -1,7 +1,7 @@
 /** Host-only integration fixture. Loads the synthetic C API library, never a device. */
 import { createHash } from 'node:crypto';
 import { cp, readFile } from 'node:fs/promises';
-import { UpdateService, runUpdateJobStdio } from '../../src/modules/updates/updates.ts';
+import { UpdateService, runUpdateJobStdio } from '@backend/modules/updates/updates.ts';
 
 if (process.argv.includes('--update-job')) {
   await runUpdateJobStdio();

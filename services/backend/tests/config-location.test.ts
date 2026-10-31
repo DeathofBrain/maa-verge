@@ -3,8 +3,8 @@ import { Database } from 'bun:sqlite';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { dataRoot, deviceLockPath, legacyDataRoot } from '../src/infrastructure/config';
-import { Store } from '../src/infrastructure/storage/storage';
+import { dataRoot, deviceLockPath, legacyDataRoot } from '@backend/infrastructure/config';
+import { Store } from '@backend/infrastructure/storage/storage';
 
 const roots: string[] = [],
   stores: Store[] = [],

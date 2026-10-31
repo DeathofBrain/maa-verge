@@ -2,9 +2,9 @@ import { afterEach, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { parseSettings } from '../src/modules/settings/models';
-import { CoreWorker } from '../src/infrastructure/native/worker';
+import { Runtime } from '@backend/app/runtime';
+import { parseSettings } from '@backend/modules/settings/models';
+import { CoreWorker } from '@backend/infrastructure/native/worker';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

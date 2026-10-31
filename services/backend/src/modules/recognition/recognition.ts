@@ -1,6 +1,6 @@
-import type { RpcContract } from '../../../../../packages/contracts/src/rpc-types';
-import { validateRecognitionResult } from '../../../../../packages/contracts/src/validators.js';
-import type { Store } from '../../infrastructure/storage/storage';
+import type { RpcContract } from '@contracts/rpc-types';
+import { validateRecognitionResult } from '@contracts/validators.js';
+import type { Store } from '@backend/infrastructure/storage/storage';
 
 export type RecognitionSnapshot = RpcContract['results']['recognition.get'];
 type RecognitionPayload = Pick<RecognitionSnapshot, 'items' | 'operators'>;

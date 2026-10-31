@@ -2,10 +2,10 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { CoreWorker } from '../src/infrastructure/native/worker';
+import { Runtime } from '@backend/app/runtime';
+import { CoreWorker } from '@backend/infrastructure/native/worker';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
-import { localizeExecutionMessage } from '../../../packages/contracts/src/execution';
+import { localizeExecutionMessage } from '@contracts/execution';
 
 const runtimes: Runtime[] = [],
   roots: string[] = [];

@@ -2,7 +2,7 @@
 import { execFile } from 'node:child_process';
 import { isIP } from 'node:net';
 import path from 'node:path';
-import { childEnvironment } from '../config';
+import { childEnvironment } from '@backend/infrastructure/config';
 
 type SystemPlatform = 'win32' | 'darwin';
 type Environment = Record<string, string | undefined>;

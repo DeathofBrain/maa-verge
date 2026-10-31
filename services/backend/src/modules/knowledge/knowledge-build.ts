@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { buildResourceKnowledge, validResourceKnowledgePack } from './resource-knowledge';
 import { productKnowledge, productKnowledgeDigest } from './product-knowledge';
-import type { ClientType, Combo } from '../resources/item-resources';
+import type { ClientType, Combo } from '@backend/modules/resources/item-resources';
 
 const within = (parent: string, child: string) => {
   const relative = path.relative(parent, child);

@@ -2,8 +2,8 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { processRequest } from '../src/transport/json-rpc';
+import { Runtime } from '@backend/app/runtime';
+import { processRequest } from '@backend/transport/json-rpc';
 
 const runtimes: Runtime[] = [];
 function runtime(adbExecutable: () => string, installed = true) {

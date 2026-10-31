@@ -1,13 +1,13 @@
-import type { Plan, Settings, Task } from '../settings/models';
-import { RpcError } from '../../shared/errors';
-import { casefold } from '../../shared/casefold';
+import type { Plan, Settings, Task } from '@backend/modules/settings/models';
+import { RpcError } from '@backend/shared/errors';
+import { casefold } from '@backend/shared/casefold';
 import {
   isWireFloat,
   parseWireJson,
   stringifyWireJson,
   wireNumberToken,
-} from '../../shared/wire-json';
-import { taskConsumableLimits } from '../../../../../packages/contracts/src/task-policy';
+} from '@backend/shared/wire-json';
+import { taskConsumableLimits } from '@contracts/task-policy';
 const CLIENTS = new Set(['', 'Official', 'Bilibili', 'txwy', 'YoStarEN', 'YoStarJP', 'YoStarKR']);
 const FACILITIES = new Set([
   'Mfg',

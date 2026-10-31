@@ -1,9 +1,9 @@
-import type { RpcContract } from '../../../../../packages/contracts/src/rpc-types';
-import type { ClientType, Combo } from '../resources/item-resources';
+import type { RpcContract } from '@contracts/rpc-types';
+import type { ClientType, Combo } from '@backend/modules/resources/item-resources';
 import type { KnowledgeKind, KnowledgeRecord, ResourceKnowledgePack } from './knowledge-types';
 import { buildResourceKnowledge, validResourceKnowledgePack } from './resource-knowledge';
 import { productKnowledge, productKnowledgeDigest } from './product-knowledge';
-import type { Store } from '../../infrastructure/storage/storage';
+import type { Store } from '@backend/infrastructure/storage/storage';
 
 const kinds: KnowledgeKind[] = [
   'operator',

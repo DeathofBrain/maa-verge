@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { createDefaultDailyTasks, nextPlanName } from '../../../packages/contracts/src/tasks';
-import { parsePlan, parseSettings } from '../src/modules/settings/models';
-import { validatePlan } from '../src/modules/plans/task-policy';
+import { createDefaultDailyTasks, nextPlanName } from '@contracts/tasks';
+import { parsePlan, parseSettings } from '@backend/modules/settings/models';
+import { validatePlan } from '@backend/modules/plans/task-policy';
 
 test('the upstream daily template passes runtime policy with zero consumable budgets and independent parameters', () => {
   const first = parsePlan({

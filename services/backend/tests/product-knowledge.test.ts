@@ -13,18 +13,14 @@ import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  taskDefaults,
-  taskLabels,
-  defaultDailyTaskTypes,
-} from '../../../packages/contracts/src/tasks';
+import { taskDefaults, taskLabels, defaultDailyTaskTypes } from '@contracts/tasks';
 import {
   productKnowledge,
   productKnowledgeDigest,
   productKnowledgeSources,
   productKnowledgeVersion,
-} from '../src/modules/knowledge/product-knowledge';
-import generated from '../src/modules/knowledge/product-knowledge.generated.json';
+} from '@backend/modules/knowledge/product-knowledge';
+import generated from '@backend/modules/knowledge/product-knowledge.generated.json';
 
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const rpcFile = 'packages/contracts/schemas/rpc.schema.json';

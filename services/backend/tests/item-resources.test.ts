@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
-import { itemResource, itemResourceNames } from '../src/modules/resources/item-resources';
+import { itemResource, itemResourceNames } from '@backend/modules/resources/item-resources';
 
 const roots: string[] = [];
 const temporary = () => {

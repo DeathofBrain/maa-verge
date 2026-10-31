@@ -4,8 +4,8 @@ import {
   adbDeviceServerIdentity,
   observeAdbDevices,
   type AdbDeviceObserver,
-} from '../src/infrastructure/native/connection-health';
-import type { AdbDevice } from '../src/infrastructure/native/adb';
+} from '@backend/infrastructure/native/connection-health';
+import type { AdbDevice } from '@backend/infrastructure/native/adb';
 
 const servers: net.Server[] = [],
   sockets = new Set<net.Socket>(),

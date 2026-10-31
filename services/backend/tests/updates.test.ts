@@ -11,9 +11,9 @@ import {
   UpdateService,
   type UpdateSource,
   type UpdateStore,
-} from '../src/modules/updates/updates.ts';
+} from '@backend/modules/updates/updates.ts';
 import { zipBytes } from './archive-fixture.ts';
-import { resourceActivityVersions } from '../src/modules/updates/resource-version';
+import { resourceActivityVersions } from '@backend/modules/updates/resource-version';
 
 class MemoryStore implements UpdateStore {
   rows = new Map<string, any>();

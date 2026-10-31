@@ -12,7 +12,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { parseWireJson, stringifyWireJson } from '../../shared/wire-json';
+import { parseWireJson, stringifyWireJson } from '@backend/shared/wire-json';
 
 export const now = () => new Date().toISOString();
 

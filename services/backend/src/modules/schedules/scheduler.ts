@@ -1,13 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { RpcContract } from '../../../../../packages/contracts/src/rpc-types';
-import { planAllowsDevice } from '../../../../../packages/contracts/src/plan-devices';
+import type { RpcContract } from '@contracts/rpc-types';
+import { planAllowsDevice } from '@contracts/plan-devices';
 import {
   validateScheduleOverrideParams,
   validateScheduleSaveParams,
-} from '../../../../../packages/contracts/src/validators.js';
-import { RpcError } from '../../shared/errors';
-import { parseSettings } from '../settings/models';
-import type { Store } from '../../infrastructure/storage/storage';
+} from '@contracts/validators.js';
+import { RpcError } from '@backend/shared/errors';
+import { parseSettings } from '@backend/modules/settings/models';
+import type { Store } from '@backend/infrastructure/storage/storage';
 
 type Schedule = RpcContract['results']['schedule.save'];
 export const defaultScheduler = () => ({

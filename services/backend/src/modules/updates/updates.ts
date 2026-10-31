@@ -20,18 +20,18 @@ import {
   extractArchive,
   extractCoreArchive,
   normalizeRuntimeRoot,
-} from '../../infrastructure/filesystem/archives.ts';
-import { RpcError } from '../../shared/errors.ts';
-import { nativeWorkerPath } from '../../infrastructure/native/native-path.ts';
+} from '@backend/infrastructure/filesystem/archives.ts';
+import { RpcError } from '@backend/shared/errors.ts';
+import { nativeWorkerPath } from '@backend/infrastructure/native/native-path.ts';
 import {
   childEnvironment,
   nativeEnvironment,
   normalizeComponentPath,
   type ComponentPaths,
-} from '../../infrastructure/config.ts';
+} from '@backend/infrastructure/config.ts';
 import { resourceActivityVersions } from './resource-version.ts';
-import { pruneGenerations } from '../../infrastructure/filesystem/generation-retention.ts';
-import { snapshotIntegrity } from '../../infrastructure/filesystem/snapshot-integrity.ts';
+import { pruneGenerations } from '@backend/infrastructure/filesystem/generation-retention.ts';
+import { snapshotIntegrity } from '@backend/infrastructure/filesystem/snapshot-integrity.ts';
 import {
   copyBundledPayload,
   copyComponentPayload,
@@ -48,11 +48,11 @@ import {
   DownloadSourceError,
   retryComponentDirect,
   type DownloadProgress,
-} from '../../infrastructure/network/download.ts';
-import { compareReleaseVersions, releaseVersion } from '../../shared/release-version';
+} from '@backend/infrastructure/network/download.ts';
+import { compareReleaseVersions, releaseVersion } from '@backend/shared/release-version';
 import application from '../../../../../package.json';
-import type { DownloadProxySettings } from '../../../../../packages/contracts/src/types';
-import { ProxyConfigurationError } from '../../infrastructure/network/network-proxy';
+import type { DownloadProxySettings } from '@contracts/types';
+import { ProxyConfigurationError } from '@backend/infrastructure/network/network-proxy';
 import {
   MirrorChyanClient,
   MirrorChyanError,
@@ -66,7 +66,7 @@ import {
 } from './mirrorchyan';
 
 const GITHUB = 'https://api.github.com/repos/MaaAssistantArknights';
-export { MAX_DOWNLOAD_BYTES } from '../../infrastructure/network/download.ts';
+export { MAX_DOWNLOAD_BYTES } from '@backend/infrastructure/network/download.ts';
 export type UpdateChannel = 'app' | 'core' | 'resource';
 export type UpdateMetadata = Record<string, any> & { version: string };
 export interface UpdateStore {

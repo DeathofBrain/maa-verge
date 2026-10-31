@@ -2,12 +2,12 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { automaticCapture } from '../src/modules/devices/auto-capture';
-import { connectionCapture } from '../src/modules/devices/capture';
-import { Runtime } from '../src/app/runtime';
-import { defaultConnection, parseSettings } from '../src/modules/settings/models';
-import { validateWorkerConfiguration } from '../../../packages/contracts/src/validators.js';
-import type { EmulatorInventory } from '../src/infrastructure/native/windows-emulators';
+import { automaticCapture } from '@backend/modules/devices/auto-capture';
+import { connectionCapture } from '@backend/modules/devices/capture';
+import { Runtime } from '@backend/app/runtime';
+import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
+import { validateWorkerConfiguration } from '@contracts/validators.js';
+import type { EmulatorInventory } from '@backend/infrastructure/native/windows-emulators';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

@@ -1,17 +1,14 @@
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { RpcContract } from '../../../../../packages/contracts/src/rpc-types';
-import {
-  validateToolConfig,
-  validateToolStartParams,
-} from '../../../../../packages/contracts/src/validators.js';
-import { ResourceReader } from '../resources/item-resources';
-import { recognitionKey, recognitionSnapshot } from '../recognition/recognition';
-import { recordDrops } from '../execution/execution-evidence';
-import { validatePlan } from '../plans/task-policy';
-import { parseSettings } from '../settings/models';
-import { RpcError } from '../../shared/errors';
-import { now, type Store } from '../../infrastructure/storage/storage';
+import type { RpcContract } from '@contracts/rpc-types';
+import { validateToolConfig, validateToolStartParams } from '@contracts/validators.js';
+import { ResourceReader } from '@backend/modules/resources/item-resources';
+import { recognitionKey, recognitionSnapshot } from '@backend/modules/recognition/recognition';
+import { recordDrops } from '@backend/modules/execution/execution-evidence';
+import { validatePlan } from '@backend/modules/plans/task-policy';
+import { parseSettings } from '@backend/modules/settings/models';
+import { RpcError } from '@backend/shared/errors';
+import { now, type Store } from '@backend/infrastructure/storage/storage';
 
 type Start = RpcContract['params']['tool.start'];
 export type ToolConfig = RpcContract['results']['tool.config.get'];

@@ -2,10 +2,10 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { parsePlan, parseSettings } from '../src/modules/settings/models';
-import { planAllowsDevice, planDeviceIds } from '../../../packages/contracts/src/plan-devices';
-import { validatePlan } from '../../../packages/contracts/src/task-policy';
+import { Runtime } from '@backend/app/runtime';
+import { parsePlan, parseSettings } from '@backend/modules/settings/models';
+import { planAllowsDevice, planDeviceIds } from '@contracts/plan-devices';
+import { validatePlan } from '@contracts/task-policy';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

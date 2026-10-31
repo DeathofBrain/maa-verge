@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { RpcContract } from '../../../../../packages/contracts/src/rpc-types';
+import type { RpcContract } from '@contracts/rpc-types';
 import { ResourceReader, validPng, type ClientType, type Combo } from './item-resources';
 
 type OperatorResource = RpcContract['results']['resources.operator'];

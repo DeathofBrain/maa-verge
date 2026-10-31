@@ -15,7 +15,7 @@ import {
   isLocalEmulator,
   parseAdbDevices,
   validateAddress,
-} from '../src/infrastructure/native/adb.ts';
+} from '@backend/infrastructure/native/adb.ts';
 
 const roots: string[] = [];
 afterEach(async () => {

@@ -3,18 +3,18 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { processRequest } from '../src/transport/json-rpc';
-import { parsePlan, parseSettings } from '../src/modules/settings/models';
-import { nativeTask, validatePlan } from '../src/modules/plans/task-policy';
-import { Runtime } from '../src/app/runtime';
-import { Store } from '../src/infrastructure/storage/storage';
-import { CoreWorker } from '../src/infrastructure/native/worker';
+import { processRequest } from '@backend/transport/json-rpc';
+import { parsePlan, parseSettings } from '@backend/modules/settings/models';
+import { nativeTask, validatePlan } from '@backend/modules/plans/task-policy';
+import { Runtime } from '@backend/app/runtime';
+import { Store } from '@backend/infrastructure/storage/storage';
+import { CoreWorker } from '@backend/infrastructure/native/worker';
 import {
   isWireFloat,
   parseWireJson,
   stringifyWireJson,
   wireNumberToken,
-} from '../src/shared/wire-json';
+} from '@backend/shared/wire-json';
 
 type Fixture = { name: string; raw: string; operation?: 'settings' | 'parsePlan'; code?: number };
 const fixtures: Fixture[] = [];

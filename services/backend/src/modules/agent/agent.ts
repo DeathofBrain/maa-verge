@@ -1,6 +1,6 @@
 import { AgentInputError, proposeDeterministic } from '@maaverge/agent';
-import { parsePlan, type Plan } from '../settings/models';
-import { RpcError } from '../../shared/errors';
+import { parsePlan, type Plan } from '@backend/modules/settings/models';
+import { RpcError } from '@backend/shared/errors';
 
 /** Deterministic proposal harness. Tools execute only through the reviewed RPC plan. */
 export function propose(message: unknown, validate: (plan: Plan) => void) {

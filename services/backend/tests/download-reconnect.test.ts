@@ -5,7 +5,7 @@ import { createServer, request, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Socket } from 'node:net';
-import { createComponentFetch, downloadArchive } from '../src/infrastructure/network/download.ts';
+import { createComponentFetch, downloadArchive } from '@backend/infrastructure/network/download.ts';
 
 const roots: string[] = [],
   servers: Server[] = [];

@@ -1,19 +1,15 @@
-import type { Plan, Settings, Task, Snapshot } from '../../../../../packages/contracts/src/types';
-import {
-  validatePlan,
-  validateSettings,
-  validateSnapshot,
-} from '../../../../../packages/contracts/src/validators.js';
-import { RpcError } from '../../shared/errors';
-import { validateDeviceProfiles } from '../devices/device-profiles';
-import { validateInfrastructureProfiles } from '../home/home-info';
-import { normalizeComponentPath } from '../../infrastructure/config';
+import type { Plan, Settings, Task, Snapshot } from '@contracts/types';
+import { validatePlan, validateSettings, validateSnapshot } from '@contracts/validators.js';
+import { RpcError } from '@backend/shared/errors';
+import { validateDeviceProfiles } from '@backend/modules/devices/device-profiles';
+import { validateInfrastructureProfiles } from '@backend/modules/home/home-info';
+import { normalizeComponentPath } from '@backend/infrastructure/config';
 import {
   normalizeManualProxy,
   ProxyConfigurationError,
-} from '../../infrastructure/network/network-proxy';
+} from '@backend/infrastructure/network/network-proxy';
 export type { Plan, Settings, Task, Snapshot };
-export type { DeviceConnectionProfile } from '../../../../../packages/contracts/src/types';
+export type { DeviceConnectionProfile } from '@contracts/types';
 export const defaultBudgets = () => ({ originium: 0, medicine: 0, expedited: 0 });
 export const defaultMirrorChyan = () => ({ enabled: true, cdk: '' });
 export const defaultNotifications = () => ({

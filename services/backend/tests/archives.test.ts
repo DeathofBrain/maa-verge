@@ -6,7 +6,7 @@ import {
   extractArchive,
   extractCoreArchive,
   normalizeRuntimeRoot,
-} from '../src/infrastructure/filesystem/archives.ts';
+} from '@backend/infrastructure/filesystem/archives.ts';
 import safetyCases from '../../../tests/fixtures/archive-safety.json';
 import { writeArchive, type FixtureMember } from './archive-fixture.ts';
 

@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { propose } from '../src/modules/agent/agent';
-import { RpcError } from '../src/shared/errors';
-import { parseSettings } from '../src/modules/settings/models';
-import { validatePlan } from '../src/modules/plans/task-policy';
+import { propose } from '@backend/modules/agent/agent';
+import { RpcError } from '@backend/shared/errors';
+import { parseSettings } from '@backend/modules/settings/models';
+import { validatePlan } from '@backend/modules/plans/task-policy';
 
 type Expected = 'daily' | { stage: string; times: number } | { error: number };
 type Fixture = { name: string; message: unknown; expected: Expected };

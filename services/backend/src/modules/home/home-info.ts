@@ -1,7 +1,7 @@
-import type { Settings } from '../../../../../packages/contracts/src/types';
-import type { RpcContract } from '../../../../../packages/contracts/src/rpc-types';
-import { RpcError } from '../../shared/errors';
-import { gameDate } from '../recognition/user-data-sync';
+import type { Settings } from '@contracts/types';
+import type { RpcContract } from '@contracts/rpc-types';
+import { RpcError } from '@backend/shared/errors';
+import { gameDate } from '@backend/modules/recognition/user-data-sync';
 
 type Client = RpcContract['results']['home.info']['clientType'];
 const clients = ['Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'];

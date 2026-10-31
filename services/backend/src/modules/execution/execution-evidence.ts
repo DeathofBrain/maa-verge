@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import type { RunTask, RunDrop, RunArtifact } from '../../../../../packages/contracts/src/types';
-import type { ScreenFrame } from '../../../../../packages/contracts/src/rpc-types';
-import { RpcError } from '../../shared/errors';
+import type { RunTask, RunDrop, RunArtifact } from '@contracts/types';
+import type { ScreenFrame } from '@contracts/rpc-types';
+import { RpcError } from '@backend/shared/errors';
 
 const facilities: Record<string, string> = {
   Mfg: '制造站',

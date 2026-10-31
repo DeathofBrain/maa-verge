@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
-import { propose } from '../src/modules/agent/agent';
-import { RpcError } from '../src/shared/errors';
-import { parseSettings } from '../src/modules/settings/models';
-import { nativeTask, validatePlan } from '../src/modules/plans/task-policy';
-import { taskConsumableLimits } from '../../../packages/contracts/src/task-policy';
+import { propose } from '@backend/modules/agent/agent';
+import { RpcError } from '@backend/shared/errors';
+import { parseSettings } from '@backend/modules/settings/models';
+import { nativeTask, validatePlan } from '@backend/modules/plans/task-policy';
+import { taskConsumableLimits } from '@contracts/task-policy';
 
 test('backend prepares the domain plan before policy checks and keeps zero default consumption', () => {
   const settings = parseSettings();

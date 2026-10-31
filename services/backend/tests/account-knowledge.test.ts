@@ -2,14 +2,14 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { AccountKnowledge } from '../src/modules/knowledge/account-knowledge';
-import { Store } from '../src/infrastructure/storage/storage';
-import { Runtime } from '../src/app/runtime';
-import { recognitionKey } from '../src/modules/recognition/recognition';
+import { AccountKnowledge } from '@backend/modules/knowledge/account-knowledge';
+import { Store } from '@backend/infrastructure/storage/storage';
+import { Runtime } from '@backend/app/runtime';
+import { recognitionKey } from '@backend/modules/recognition/recognition';
 import {
   validateAccountKnowledgeSnapshot,
   validateAccountSnapshotListResult,
-} from '../../../packages/contracts/src/validators.js';
+} from '@contracts/validators.js';
 
 const roots: string[] = [],
   stores: Store[] = [],

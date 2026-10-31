@@ -41,7 +41,30 @@ services/backend/
   tsconfig.json                 服务与测试的 TypeScript 检查
 ```
 
-同一业务的实现和辅助函数共置。小模块无需再分 controller/service/repository 三层，也不通过导出全部内部实现的 `index.ts` 访问。当前保留显式相对导入；公共协议使用 contracts 的权威类型与生成校验器。
+同一业务的实现和辅助函数共置。小模块无需再分 controller/service/repository 三层，也不通过导出全部内部实现的 `index.ts` 访问。公共协议使用 contracts 的权威类型与生成校验器。
+
+## 导入约定
+
+源码和后端测试共用本目录 `tsconfig.json` 中的路径别名：
+
+| 写法                                       | 指向                       | 用途                               |
+| ------------------------------------------ | -------------------------- | ---------------------------------- |
+| `@backend/*`                               | `services/backend/src/*`   | 跨目录引用后端模块                 |
+| `@contracts/*`                             | `packages/contracts/src/*` | 协议类型、生成校验器及共享协议规则 |
+| `./文件名`                                 | 当前目录                   | 共置实现、辅助函数及 JSON          |
+| `@maaverge/agent`、`@maaverge/agent/tools` | 工作区包公开入口           | Agent 能力与宿主类型               |
+
+例如：
+
+```ts
+import type { Store } from '@backend/infrastructure/storage/storage';
+import type { RpcContract } from '@contracts/rpc-types';
+import { validateRecognitionResult } from '@contracts/validators.js';
+```
+
+固定 Bun 在开发运行、测试和编译时读取这些别名，无需运行时重写器。别名只缩短路径，仍直接指向具体模块；不改变依赖方向。根 `package.json` 等构建元数据、仓库公共测试夹具和文件系统路径保留显式相对路径，不配置指向整个仓库的万能别名。
+
+前端的 `@/` 继续属于桌面源码。UI 测试会复用少量后端纯函数，因此 `tools/serve-test-ui.mjs` 单独配置 `@backend` 和 `@contracts`；正式桌面 Vite 配置不依赖后端。
 
 ## 依赖边界
 

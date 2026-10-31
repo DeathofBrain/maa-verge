@@ -1,6 +1,6 @@
 import { openSync, readSync, closeSync, fstatSync } from 'node:fs';
 import path from 'node:path';
-import type { ResourceActivityVersion } from '../../../../../packages/contracts/src/types';
+import type { ResourceActivityVersion } from '@contracts/types';
 
 const clients = ['Official', 'Bilibili', 'YoStarEN', 'YoStarJP', 'YoStarKR', 'txwy'] as const;
 const cache = new Map<string, ResourceActivityVersion[]>();

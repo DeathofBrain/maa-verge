@@ -3,10 +3,10 @@ import * as fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { CopilotLibrary, defaultCopilotOptions } from '../src/modules/copilot/copilot';
-import { Store } from '../src/infrastructure/storage/storage';
-import { Runtime } from '../src/app/runtime';
-import { parseSettings } from '../src/modules/settings/models';
+import { CopilotLibrary, defaultCopilotOptions } from '@backend/modules/copilot/copilot';
+import { Store } from '@backend/infrastructure/storage/storage';
+import { Runtime } from '@backend/app/runtime';
+import { parseSettings } from '@backend/modules/settings/models';
 
 const roots: string[] = [];
 const stores: Store[] = [];

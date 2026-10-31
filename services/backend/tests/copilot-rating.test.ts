@@ -2,8 +2,8 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { copilotWorkspaceIdentity } from '../src/modules/copilot/copilot';
+import { Runtime } from '@backend/app/runtime';
+import { copilotWorkspaceIdentity } from '@backend/modules/copilot/copilot';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

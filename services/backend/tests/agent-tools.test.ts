@@ -2,10 +2,10 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createMaaToolHost } from '../src/app/agent-tools';
-import { Runtime } from '../src/app/runtime';
-import { parseSettings } from '../src/modules/settings/models';
-import type { Plan } from '../../../packages/contracts/src/types';
+import { createMaaToolHost } from '@backend/app/agent-tools';
+import { Runtime } from '@backend/app/runtime';
+import { parseSettings } from '@backend/modules/settings/models';
+import type { Plan } from '@contracts/types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 
 const roots: string[] = [],

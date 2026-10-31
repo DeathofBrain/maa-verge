@@ -2,12 +2,12 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { operatorResource } from '../src/modules/resources/operator-resources';
-import { Runtime } from '../src/app/runtime';
+import { operatorResource } from '@backend/modules/resources/operator-resources';
+import { Runtime } from '@backend/app/runtime';
 import {
   validateOperatorResourceParams,
   validateOperatorResourceResult,
-} from '../../../packages/contracts/src/validators.js';
+} from '@contracts/validators.js';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

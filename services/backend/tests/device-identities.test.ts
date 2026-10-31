@@ -5,8 +5,8 @@ import {
   deviceProfileListError,
   matchingDeviceProfile,
   mumuDefaultAdbAddress,
-} from '../../../packages/contracts/src/device-profiles';
-import { defaultConnection, type DeviceConnectionProfile } from '../src/modules/settings/models';
+} from '@contracts/device-profiles';
+import { defaultConnection, type DeviceConnectionProfile } from '@backend/modules/settings/models';
 
 function profile(
   index: number,

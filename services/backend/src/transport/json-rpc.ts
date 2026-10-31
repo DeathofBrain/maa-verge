@@ -1,5 +1,5 @@
-import { RpcError, systemErrorMessage } from '../shared/errors';
-import { isWireFloat } from '../shared/wire-json';
+import { RpcError, systemErrorMessage } from '@backend/shared/errors';
+import { isWireFloat } from '@backend/shared/wire-json';
 
 interface RequestHandler {
   handle(method: string, params?: unknown): Promise<unknown>;

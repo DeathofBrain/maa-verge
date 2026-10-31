@@ -2,13 +2,10 @@
 import { execFile } from 'node:child_process';
 import { realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
-import type { Settings } from '../settings/models';
-import { defaultCapture } from '../settings/models';
-import { isLocalEmulator } from '../../infrastructure/native/adb';
-import {
-  deviceAddressIdentity,
-  mumuDefaultAdbAddress,
-} from '../../../../../packages/contracts/src/device-profiles';
+import type { Settings } from '@backend/modules/settings/models';
+import { defaultCapture } from '@backend/modules/settings/models';
+import { isLocalEmulator } from '@backend/infrastructure/native/adb';
+import { deviceAddressIdentity, mumuDefaultAdbAddress } from '@contracts/device-profiles';
 
 export type Capture = NonNullable<Settings['capture']>;
 const file = (name: string) => {

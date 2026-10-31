@@ -2,10 +2,10 @@ import { afterEach, describe, expect, setSystemTime, spyOn, test } from 'bun:tes
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { ScreenFrame } from '../../../packages/contracts/src/rpc-types';
+import type { ScreenFrame } from '@contracts/rpc-types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
-import { Runtime } from '../src/app/runtime';
-import { CoreWorker } from '../src/infrastructure/native/worker';
+import { Runtime } from '@backend/app/runtime';
+import { CoreWorker } from '@backend/infrastructure/native/worker';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [],

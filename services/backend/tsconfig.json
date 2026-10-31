@@ -3,6 +3,10 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "paths": {
+      "@backend/*": ["./src/*"],
+      "@contracts/*": ["../../packages/contracts/src/*"]
+    },
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,

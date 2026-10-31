@@ -9,7 +9,7 @@ import {
   downloadArchive as downloadComponentArchive,
   MAX_DOWNLOAD_BYTES,
   type DownloadMetadata,
-} from '../src/infrastructure/network/download.ts';
+} from '@backend/infrastructure/network/download.ts';
 
 const roots: string[] = [],
   servers: Server[] = [];

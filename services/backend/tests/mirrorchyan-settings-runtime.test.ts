@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
+import { Runtime } from '@backend/app/runtime';
 
 test('MirrorChyan credentials survive legacy settings saves and restart, but stay out of diagnostics', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'maaverge-mirror-settings-'));

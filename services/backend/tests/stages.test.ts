@@ -2,9 +2,9 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { stageCatalog } from '../src/modules/resources/stages';
-import { Runtime } from '../src/app/runtime';
-import { validateStageListResult } from '../../../packages/contracts/src/validators.js';
+import { stageCatalog } from '@backend/modules/resources/stages';
+import { Runtime } from '@backend/app/runtime';
+import { validateStageListResult } from '@contracts/validators.js';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

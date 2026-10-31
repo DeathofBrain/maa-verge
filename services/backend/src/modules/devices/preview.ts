@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import type { RpcContract, ScreenFrame } from '../../../../../packages/contracts/src/rpc-types';
+import type { RpcContract, ScreenFrame } from '@contracts/rpc-types';
 import {
   validateDeviceClickParams,
   validateDeviceFrameParams,
   validateWorkerFrame,
-} from '../../../../../packages/contracts/src/validators.js';
-import { RpcError } from '../../shared/errors';
+} from '@contracts/validators.js';
+import { RpcError } from '@backend/shared/errors';
 
 type ClickParams = RpcContract['params']['device.click'];
 type Accepted = { accepted: true };

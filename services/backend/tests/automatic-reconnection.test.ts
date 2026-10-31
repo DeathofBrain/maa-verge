@@ -2,14 +2,14 @@ import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { Device } from '../../../packages/contracts/src/types';
-import type { AdbDevice } from '../src/infrastructure/native/adb';
-import { defaultConnection, parseSettings } from '../src/modules/settings/models';
-import { Runtime } from '../src/app/runtime';
+import type { Device } from '@contracts/types';
+import type { AdbDevice } from '@backend/infrastructure/native/adb';
+import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
+import { Runtime } from '@backend/app/runtime';
 import {
   emptyEmulatorInventory,
   type EmulatorInventory,
-} from '../src/infrastructure/native/windows-emulators';
+} from '@backend/infrastructure/native/windows-emulators';
 
 type Options = NonNullable<ConstructorParameters<typeof Runtime>[1]>;
 type Observer = {

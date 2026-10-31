@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, rename, rm } from 'node:fs/promises';
-import type { RpcContract } from '../../../../../packages/contracts/src/rpc-types';
+import type { RpcContract } from '@contracts/rpc-types';
 
 // The same fixed primary and fallback used by MAA v6.20.0 MaaUrls/MaaApiService.
 export const officialCalendarUrls = [

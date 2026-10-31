@@ -2,11 +2,11 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Runtime } from '../src/app/runtime';
-import { recognitionKey } from '../src/modules/recognition/recognition';
-import { defaultScheduler } from '../src/modules/schedules/scheduler';
-import { parseRecognition } from '../src/modules/recognition/recognition';
-import { toolCatalog } from '../src/modules/tools/toolbox';
+import { Runtime } from '@backend/app/runtime';
+import { recognitionKey } from '@backend/modules/recognition/recognition';
+import { defaultScheduler } from '@backend/modules/schedules/scheduler';
+import { parseRecognition } from '@backend/modules/recognition/recognition';
+import { toolCatalog } from '@backend/modules/tools/toolbox';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];

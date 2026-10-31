@@ -1,9 +1,9 @@
 import path from 'node:path';
-import { Runtime } from './app/runtime';
-import { dataRoot, defaultCopilotDirectory, legacyDataRoot } from './infrastructure/config';
-import { runUpdateJobStdio } from './modules/updates/updates';
-import { parseWireJson, stringifyWireJson } from './shared/wire-json';
-import { processRequest } from './transport/json-rpc';
+import { Runtime } from '@backend/app/runtime';
+import { dataRoot, defaultCopilotDirectory, legacyDataRoot } from '@backend/infrastructure/config';
+import { runUpdateJobStdio } from '@backend/modules/updates/updates';
+import { parseWireJson, stringifyWireJson } from '@backend/shared/wire-json';
+import { processRequest } from '@backend/transport/json-rpc';
 
 export async function main() {
   if (process.argv.includes('--update-job')) {

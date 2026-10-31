@@ -2,8 +2,8 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { childEnvironment, nativeEnvironment } from '../src/infrastructure/config';
-import { validateNative } from '../src/modules/updates/updates';
+import { childEnvironment, nativeEnvironment } from '@backend/infrastructure/config';
+import { validateNative } from '@backend/modules/updates/updates';
 
 test('isolated core validation receives the generation library path and clean runtime options', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'maaverge-validator-env-'));

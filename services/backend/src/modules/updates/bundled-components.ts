@@ -2,11 +2,11 @@
 import { constants } from 'node:fs';
 import { copyFile, lstat, mkdir, readFile, readdir, realpath, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { releaseVersion } from '../../shared/release-version';
+import { releaseVersion } from '@backend/shared/release-version';
 import {
   snapshotIntegrity,
   type SnapshotIntegrity,
-} from '../../infrastructure/filesystem/snapshot-integrity';
+} from '@backend/infrastructure/filesystem/snapshot-integrity';
 import { validResourceTimestamp } from './mirrorchyan';
 
 export interface BundledCore {

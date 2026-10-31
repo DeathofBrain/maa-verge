@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { processRequest } from '../src/transport/json-rpc';
+import { processRequest } from '@backend/transport/json-rpc';
 
 test('RPC translates confirmed system failures while keeping their original diagnostic', async () => {
   for (const [code, expected] of [

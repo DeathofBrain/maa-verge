@@ -16,7 +16,7 @@ import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Parser, type ReadEntry } from 'tar';
 import yauzl, { type Entry, type ZipFile } from 'yauzl';
-import { casefold } from '../../shared/casefold.ts';
+import { casefold } from '@backend/shared/casefold.ts';
 
 export const MAX_EXPANDED_BYTES = 8 * 1024 ** 3;
 export const MAX_LINK_BYTES = 4096;

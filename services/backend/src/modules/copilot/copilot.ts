@@ -27,15 +27,15 @@ import type {
   CopilotSearchResult,
   CopilotSource,
   CopilotWorkspace,
-} from '../../../../../packages/contracts/src/rpc-types';
-import type { CopilotRunEntry, Task } from '../../../../../packages/contracts/src/types';
-import { Store, now } from '../../infrastructure/storage/storage';
-import { RpcError } from '../../shared/errors';
-import { compareReleaseVersions, releaseVersion } from '../../shared/release-version';
-import { supportsStageNavigation } from '../resources/stages';
-import * as validators from '../../../../../packages/contracts/src/validators.js';
-import type { RpcContract } from '../../../../../packages/contracts/src/rpc-types';
-import { defaultCopilotDirectory } from '../../infrastructure/config';
+} from '@contracts/rpc-types';
+import type { CopilotRunEntry, Task } from '@contracts/types';
+import { Store, now } from '@backend/infrastructure/storage/storage';
+import { RpcError } from '@backend/shared/errors';
+import { compareReleaseVersions, releaseVersion } from '@backend/shared/release-version';
+import { supportsStageNavigation } from '@backend/modules/resources/stages';
+import * as validators from '@contracts/validators.js';
+import type { RpcContract } from '@contracts/rpc-types';
+import { defaultCopilotDirectory } from '@backend/infrastructure/config';
 
 const MAX_CONTENT = 700_000,
   MAX_RESPONSE = 3_000_000,

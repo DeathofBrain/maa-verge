@@ -8,7 +8,7 @@ import {
   ProxyConfigurationError,
   resolveDownloadProxy,
 } from './network-proxy.ts';
-import type { DownloadProxySettings } from '../../../../../packages/contracts/src/types.ts';
+import type { DownloadProxySettings } from '@contracts/types.ts';
 
 const retryRoute = Symbol('retry-download-route');
 type ComponentFetch = typeof fetch & { [retryRoute]?: () => boolean };

@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { parsePlan, parseSettings } from '../src/modules/settings/models';
-import { nativeTask, validatePlan } from '../src/modules/plans/task-policy';
+import { parsePlan, parseSettings } from '@backend/modules/settings/models';
+import { nativeTask, validatePlan } from '@backend/modules/plans/task-policy';
 
 type Fixture = {
   name: string;

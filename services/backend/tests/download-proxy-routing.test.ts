@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Duplex } from 'node:stream';
 import { pathToFileURL } from 'node:url';
-import type { DownloadOptions } from '../src/infrastructure/network/download.ts';
+import type { DownloadOptions } from '@backend/infrastructure/network/download.ts';
 
 // Public, test-only loopback identity. Trust is confined to each child process.
 const key = `-----BEGIN PRIVATE KEY-----
