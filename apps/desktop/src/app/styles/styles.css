@@ -264,6 +264,7 @@ svg {
 }
 
 .app-root {
+  --sidebar-width: var(--sidebar-preferred-width, 224px);
   height: 100dvh;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
@@ -272,13 +273,56 @@ svg {
 }
 
 .sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
   background: var(--sidebar);
   border-right: 1px solid var(--line);
   grid-row: 1;
   z-index: 45;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  inset: 0 -4px 0 auto;
+  width: 9px;
+  z-index: 1;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.sidebar-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 3px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity var(--duration-1);
+}
+
+.sidebar-resize-handle:hover::after,
+.sidebar-resize-handle:focus-visible::after,
+[data-sidebar-resizing] .sidebar-resize-handle::after {
+  opacity: 1;
+}
+
+.sidebar-resize-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+[data-sidebar-resizing],
+[data-sidebar-resizing] * {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .brand {
@@ -291,6 +335,7 @@ svg {
   font-size: 20px;
   font-weight: 750;
   letter-spacing: -0.7px;
+  white-space: nowrap;
 }
 
 .brand-mark {
@@ -360,6 +405,7 @@ svg {
 }
 
 .nav-item > svg {
+  flex: none;
   transition:
     transform 0.22s var(--ease-out),
     color 0.2s var(--ease-out);
@@ -382,6 +428,10 @@ svg {
 
 .nav-item > span:nth-child(2) {
   flex: 1;
+}
+
+.nav-label {
+  white-space: nowrap;
 }
 
 .subtle-tag {
@@ -415,6 +465,8 @@ svg {
   padding: 17px 5px 16px;
   font-size: 10px;
   color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .main-shell {
@@ -1250,9 +1302,6 @@ svg {
 }
 
 @media (min-width: 1700px) {
-  :root {
-    --sidebar-width: 240px;
-  }
   .topbar {
     padding-inline: 32px;
   }
@@ -1284,9 +1333,6 @@ svg {
 }
 
 @media (max-width: 1000px) {
-  :root {
-    --sidebar-width: 200px;
-  }
   .brand {
     padding-inline: 18px;
     font-size: 18px;
@@ -1323,7 +1369,11 @@ svg {
     --dock-height: 57px;
   }
   .app-root {
+    --sidebar-width: 0px;
     grid-template-columns: minmax(0, 1fr);
+  }
+  .sidebar-resize-handle {
+    display: none;
   }
   .sidebar {
     position: fixed;
@@ -1410,6 +1460,49 @@ svg {
   .toast {
     left: 50%;
     width: max-content;
+  }
+}
+
+@media (min-width: 761px) {
+  .sidebar {
+    /* Center icons in the 72px minimum rail, excluding its 1px border. */
+    --sidebar-icon-center: 35.5px;
+    --sidebar-nav-inset: 10px;
+  }
+
+  .sidebar > .brand {
+    padding-inline: calc(var(--sidebar-icon-center) - 16px) 12px;
+  }
+
+  .sidebar .primary-nav,
+  .sidebar .sidebar-bottom {
+    padding-inline: var(--sidebar-nav-inset);
+  }
+
+  .sidebar .nav-item {
+    padding-inline: calc(var(--sidebar-icon-center) - var(--sidebar-nav-inset) - 9.5px) 12px;
+  }
+
+  .sidebar .nav-item:hover > svg,
+  .sidebar .nav-item:active {
+    transform: none;
+  }
+
+  .sidebar[data-compact] .brand-name,
+  .sidebar[data-compact] .nav-label,
+  .sidebar[data-compact] .subtle-tag {
+    display: none;
+  }
+
+  .sidebar[data-compact] .status-dot,
+  .sidebar[data-compact] .update-dot {
+    position: absolute;
+    top: 8px;
+    left: calc(var(--sidebar-icon-center) - var(--sidebar-nav-inset) + 11.5px);
+  }
+
+  .sidebar[data-compact] .sidebar-footer > span {
+    visibility: hidden;
   }
 }
 

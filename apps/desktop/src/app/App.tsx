@@ -1,5 +1,5 @@
 import Button from '@/kit/Button';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { AlertCircle, LoaderCircle, Trash2, Wifi } from 'lucide-react';
 import {
   errorMessage,
@@ -44,6 +44,7 @@ import { type Page, pageNames } from './model/navigation-model';
 import HistoryPage from '@/features/history/HistoryPage';
 import AppRunPanel from './shell/AppRunPanel';
 import { deviceActivity, type RunPanelTab } from './model/device-activity';
+import useSidebarResize from './model/useSidebarResize';
 
 const uid = () => crypto.randomUUID();
 const readSelection = () => {
@@ -55,6 +56,7 @@ const readSelection = () => {
 };
 
 export default function App() {
+  const sidebar = useSidebarResize();
   const contextMenu = useContextMenu();
   const [editorCommand, setEditorCommand] = useState<PlanEditorCommand>();
   const { mutatePlan, deletedPlans } = usePlanWrites();
@@ -508,10 +510,14 @@ export default function App() {
     <div
       className={`app-root ${sidebarOpen ? 'nav-open' : ''}`}
       data-desktop-platform={platform || undefined}
+      data-sidebar-resizing={sidebar.resizing || undefined}
+      style={{ '--sidebar-preferred-width': `${sidebar.width}px` } as CSSProperties}
     >
       <AppSidebar
         open={sidebarOpen}
         onOpenChange={setSidebarOpen}
+        compact={sidebar.compact}
+        resizeHandleProps={sidebar.handleProps}
         page={page}
         navigate={navigate}
         onTasks={setTaskView}

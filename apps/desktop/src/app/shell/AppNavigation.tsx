@@ -1,6 +1,6 @@
 import IconButton from '@/kit/IconButton';
 import SearchField from '@/kit/SearchField';
-import type { RefObject } from 'react';
+import type { HTMLAttributes, RefObject } from 'react';
 import { ArrowRight, Menu, Monitor, Search, Settings2 } from 'lucide-react';
 import type { Device } from '@maaverge/contracts';
 import WindowControls from './WindowControls';
@@ -11,6 +11,8 @@ type SearchResult = { key: string; title: string; location: string; open: () => 
 type SidebarProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  compact: boolean;
+  resizeHandleProps: HTMLAttributes<HTMLDivElement>;
   page: Page;
   navigate: (page: Page) => void;
   onTasks: (view: 'plans') => void;
@@ -23,6 +25,8 @@ type SidebarProps = {
 export function AppSidebar({
   open,
   onOpenChange,
+  compact,
+  resizeHandleProps,
   page,
   navigate,
   onTasks,
@@ -36,13 +40,15 @@ export function AppSidebar({
       {open && (
         <button className="nav-scrim" aria-label="关闭导航" onClick={() => onOpenChange(false)} />
       )}
-      <aside className="sidebar">
+      <aside id="app-sidebar" className="sidebar" data-compact={compact || undefined}>
         <Brand />
         <nav aria-label="主导航" className="primary-nav">
           {navigation.map(({ id, label, icon: Icon }) => (
             <button
               className={`nav-item ${page === id ? 'active' : ''}`}
               aria-current={page === id ? 'page' : undefined}
+              aria-label={label}
+              title={label}
               key={id}
               onClick={() => {
                 if (id === 'tasks') {
@@ -52,8 +58,8 @@ export function AppSidebar({
                 navigate(id);
               }}
             >
-              <Icon size={19} />
-              <span>{label}</span>
+              <Icon size={19} aria-hidden="true" />
+              <span className="nav-label">{label}</span>
               {id === 'agent' && <span className="subtle-tag">预览</span>}
             </button>
           ))}
@@ -62,27 +68,37 @@ export function AppSidebar({
           <button
             className={`nav-item ${page === 'devices' ? 'active' : ''}`}
             aria-current={page === 'devices' ? 'page' : undefined}
+            aria-label="设备"
+            title="设备"
             onClick={() => navigate('devices')}
           >
-            <Monitor size={19} />
-            <span>设备</span>
+            <Monitor size={19} aria-hidden="true" />
+            <span className="nav-label">设备</span>
             <span
               className={`status-dot ${!device || device.state === 'offline' ? 'offline' : ''}`}
+              aria-hidden="true"
             />
           </button>
           <button
             className={`nav-item ${page === 'settings' ? 'active' : ''}`}
             aria-current={page === 'settings' ? 'page' : undefined}
+            aria-label="设置"
+            title="设置"
             onClick={() => navigate('settings')}
           >
-            <Settings2 size={19} />
-            <span>设置</span>
-            {hasUpdate && <span className="update-dot" />}
+            <Settings2 size={19} aria-hidden="true" />
+            <span className="nav-label">设置</span>
+            {hasUpdate && <span className="update-dot" aria-hidden="true" />}
           </button>
           <div className="sidebar-footer">
             <span>Maa Verge {appVersion}</span>
           </div>
         </div>
+        <div
+          {...resizeHandleProps}
+          className="sidebar-resize-handle"
+          data-tauri-drag-region="false"
+        />
       </aside>
     </>
   );
@@ -176,11 +192,11 @@ export function AppTopbar({
 
 export function Brand() {
   return (
-    <div className="brand" data-tauri-drag-region="deep">
+    <div className="brand" aria-label="Maa Verge" data-tauri-drag-region="deep">
       <span className="brand-mark" aria-hidden="true">
         <img src="/logo.png" width="32" height="32" alt="" draggable={false} />
       </span>
-      <span>Maa Verge</span>
+      <span className="brand-name">Maa Verge</span>
     </div>
   );
 }
