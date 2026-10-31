@@ -28,7 +28,7 @@
     },
     {
       "file": "docs/maacore-runtime.md",
-      "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+      "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
     },
     {
       "file": "docs/multi-instance.md",
@@ -797,7 +797,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L99-L108",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -824,7 +824,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L55-L70",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -851,7 +851,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L71-L74",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -878,7 +878,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L7-L26",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -905,7 +905,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L27-L36",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -932,7 +932,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L93-L98",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -961,7 +961,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L75-L92",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -988,7 +988,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L117-L122",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -1001,21 +1001,21 @@
         "后台下载与断点续传",
         "maacore-runtime"
       ],
-      "text": "MaaCore 运行文件的选择性安装 > 后台下载与断点续传\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。当前开发源码在「设置 → 更新 → Mirror酱」提供三通道共用 CDK：用户端高速分发为付费服务，未填写 CDK、服务不可用或平台无适配包时保留官方免费来源。核心对应 `MAA`，资源对应 `MaaResource`，完整包、资源时间及回退规则见 [Mirror酱说明](mirrorchyan.md)。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
+      "text": "MaaCore 运行文件的选择性安装 > 后台下载与断点续传\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。当前开发源码在「设置 → 更新 → Mirror酱」提供三通道共用 CDK：用户端高速分发为付费服务，未填写 CDK、服务不可用或平台无适配包时保留官方免费来源。核心对应 `MAA`，资源对应 `MaaResource`。macOS 核心实际请求对应架构的镜像，从上游完整 ZIP 内的 DMG 只读提取 `MAA.app` 内的核心、依赖和基础资源，经过原生加载验证后进入不可变候选，不启动或安装 MAA GUI；Linux 核心继续使用官方运行时源。保存 Mirror酱配置会使未开始下载的旧候选重新选源，不打断正在传输或已经准备的更新。完整包、资源时间及回退规则见 [Mirror酱说明](mirrorchyan.md)。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "MaaCore 运行文件的选择性安装",
           "后台下载与断点续传"
         ],
-        "content": "## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。当前开发源码在「设置 → 更新 → Mirror酱」提供三通道共用 CDK：用户端高速分发为付费服务，未填写 CDK、服务不可用或平台无适配包时保留官方免费来源。核心对应 `MAA`，资源对应 `MaaResource`，完整包、资源时间及回退规则见 [Mirror酱说明](mirrorchyan.md)。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
+        "content": "## 后台下载与断点续传\n\n下载由 TypeScript 应用服务持有，切换设置分类或侧栏页面不会取消。窗口右上角持续显示 MaaCore / 游戏资源的进度、解压校验和结果；下载不占用其他页面的操作状态。准备完成仍需点击「应用更新」或等待自动更新流程在空闲边界生效，不能把下载完成当作安装成功。\n\n更新页与右上角通知同时显示应用、MaaCore 和游戏资源的当前下载速度，按 B/s、KB/s、MB/s 或 GB/s 自动换算。服务每约 250 毫秒按本次连接新增字节采样，续传已缓存的部分不计入速度；总大小未知或百分比未变化时仍可刷新，传输停滞时显示 0 B/s。重连等待、下载结束、解压及校验阶段不显示速度。契约通过可选 `UpdateChannel.downloadSpeedBytesPerSecond` 传递非负字节/秒速率，旧响应省略该字段仍兼容。\n\n当前开发源码统一使用 TypeScript 服务内置的 HTTP 下载器，已移除下载器选择、自定义 aria2 路径和 aria2 的准备、打包依赖。下载流式写入临时文件，验证成功后原子改名；无需额外安装下载工具。已发布的 v0.1.2 仍使用其原有下载器设置，本节描述后续源码行为。\n\nMaa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的 HTTP 请求、代理选择、失败转直连和安全断点续传。应用发行元数据、所选版本的 `latest.json` 与更新包通过桌面宿主专用 RPC 委托 Bun 传输；Rust 继续负责应用仓库、平台、登记大小、版本与 minisign 校验，以及已签名包的持久化和退出安装。版本频道和安装职责仍分别管理，详见 [应用更新](app-updates.md)。\n\nHTTP 下载支持 HTTP/HTTPS 代理；自动模式遵循 `NO_PROXY`（含 `*`），手动模式固定使用所填代理。证书、HTTPS 重定向、大小和摘要校验保持启用。当前开发源码在「设置 → 更新 → Mirror酱」提供三通道共用 CDK：用户端高速分发为付费服务，未填写 CDK、服务不可用或平台无适配包时保留官方免费来源。核心对应 `MAA`，资源对应 `MaaResource`。macOS 核心实际请求对应架构的镜像，从上游完整 ZIP 内的 DMG 只读提取 `MAA.app` 内的核心、依赖和基础资源，经过原生加载验证后进入不可变候选，不启动或安装 MAA GUI；Linux 核心继续使用官方运行时源。保存 Mirror酱配置会使未开始下载的旧候选重新选源，不打断正在传输或已经准备的更新。完整包、资源时间及回退规则见 [Mirror酱说明](mirrorchyan.md)。\n\n下载器在对应组件根目录保存可恢复的数据。缓存身份包含数据根、通道、固定来源 URL、版本、文件名、大小和摘要，重试同一包或重启服务可继续使用，其他版本或数据根不会混用。使用 HTTP Range / If-Range，并核对服务端版本标记及 Content-Range；不能确认分片属于同一内容或来源不支持续传时重新下载。旧 aria2 分片不能作为 HTTP 连续数据复用，遇到时重新下载。\n\n下载没有两分钟总时限；连接或数据长时间停滞才会失败。临时网络错误、连接空闲超时及可恢复 HTTP 错误默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。取消、手动代理地址或认证错误、证书错误和完整性失败不按临时网络故障反复重试。中断或正常退出保留可用分片，重新打开后在失败通道点击「重试下载」。下载完成后检查大小、完整 SHA-256（上游提供时核对官方摘要）、2 GiB 上限，再执行归档安全校验及 C++ 核心/资源加载验证；完整性失败的分片会丢弃，已启用版本保持原样。未完成缓存的自动清理与磁盘配额仍待实现。\n\n实现对照上游 MAA v6.20.1（固定提交 `d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f`）的 [ResourceUpdater](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Models/ResourceUpdater.cs#L41) 与 [HttpService](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/Services/Web/HttpService.cs#L250)，参考内置 HTTP、流式临时文件和进度反馈；重连间隔参考其[更新包最多三次、间隔一秒和两秒的重试](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/d94dd007aca3b519395fb1f0aee26c7bd5ba5d5f/src/MaaWpfGui/ViewModels/Dialogs/VersionUpdateDialogViewModel.cs#L1811)。上游资源 ZIP 直接使用同一 HTTP 服务。Maa Verge 保留既有的来源固定、断点续传、完整性校验和不可变候选版本，不将资源合并写入活动目录。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L37-L54",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -1042,7 +1042,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L109-L116",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -1067,7 +1067,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L1-L6",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -1094,7 +1094,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L123-L132",
-        "sha256": "b9c5afb479177b097f045c0621e931f7e82c7f28f9cdf91ca9b0ee2c53b4ff8c"
+        "sha256": "30cf542175c80bd001e1520f0de0a8eec583ca5c3e936d8104a47fcc97e81667"
       }
     },
     {
@@ -20469,5 +20469,5 @@
       }
     }
   ],
-  "digest": "4227f3e166d16a5f4e9301a8fc2578d787913790d2d838a2d15c011d8df7936e"
+  "digest": "c4dd75e00dbea8ae78191e001eb9a5e3382c2f5e58a9d4be0b3cf75f7fb50097"
 }

@@ -30,6 +30,7 @@ import {
   type ComponentPaths,
 } from '@backend/infrastructure/config.ts';
 import { resourceActivityVersions } from './resource-version.ts';
+import { extractMacosMirrorCore } from './macos-core';
 import { pruneGenerations } from '@backend/infrastructure/filesystem/generation-retention.ts';
 import {
   snapshotIntegrity,
@@ -119,6 +120,7 @@ export interface UpdateJobConfig {
   workerPath?: string;
   resourceTimestamp?: string;
   mirrorChyanFull?: boolean;
+  macosMirrorCore?: boolean;
 }
 export interface UpdateJobResult {
   ownedFiles?: string[];
@@ -127,6 +129,11 @@ export interface UpdateJobResult {
   resourceVersion?: Record<string, unknown>;
 }
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+class MacosControlUnitError extends Error {
+  constructor() {
+    super('Mirror酱 macOS 核心包缺少当前 MaaFwAdb 模式所需的控制单元');
+  }
+}
 const downloadSource = (metadata: UpdateMetadata): 'MirrorChyan' | 'GitHub' =>
   metadata.source === 'MirrorChyan' ? 'MirrorChyan' : 'GitHub';
 
@@ -304,9 +311,9 @@ export class OfficialSource implements UpdateSource {
     if (client.enabled && ['core', 'resource'].includes(channel)) {
       try {
         const platform = channel === 'core' ? this.mirrorPlatform() : undefined;
-        // The registered MAA macOS package is a GUI installer; the Linux
-        // combination has no package. Keep the official native runtime source.
-        if (channel === 'core' && platform?.os !== 'windows') {
+        // macOS distribution wraps the upstream DMG in a ZIP. Its runtime is
+        // extracted in the isolated job instead of treating it as a flat ZIP.
+        if (channel === 'core' && !['windows', 'darwin'].includes(platform?.os ?? '')) {
           notice = 'Mirror酱当前平台未提供可验证的核心运行时包';
         } else {
           const release = await client.latest(
@@ -360,8 +367,9 @@ export class OfficialSource implements UpdateSource {
   ) {
     const metadata = await this.checkOfficial(channel, releaseChannel);
     metadata.mirrorChyanMessage =
-      (reason instanceof MirrorChyanError ? reason.message : 'Mirror酱准备失败') +
-      '，已改用官方更新源';
+      (reason instanceof MirrorChyanError || reason instanceof MacosControlUnitError
+        ? reason.message
+        : 'Mirror酱准备失败') + '，已改用官方更新源';
     return metadata;
   }
   private async checkOfficial(
@@ -645,9 +653,16 @@ export async function runUpdateJob(
   )
     throw new Error('更新作业配置无效');
   if (config.channel === 'core') {
-    await extractCoreArchive(config.archive, config.target, {
-      rejectIncremental: config.mirrorChyanFull,
-    });
+    if (config.macosMirrorCore) {
+      if (!config.mirrorChyanFull) throw new Error('macOS 镜像核心必须使用完整快照');
+      await extractMacosMirrorCore(config.archive, config.target, {
+        expectedVersion: config.version,
+      });
+    } else {
+      await extractCoreArchive(config.archive, config.target, {
+        rejectIncremental: config.mirrorChyanFull,
+      });
+    }
     await normalizeRuntimeRoot(config.target);
     await validator(config.target, config.target, config.version);
     return {};
@@ -731,6 +746,7 @@ export class UpdateService {
   private closing = false;
   private bundledBootstrapped = false;
   private pending = 0;
+  private mirrorSettingsRevision = 0;
   get pendingOperations(): number {
     return this.pending;
   }
@@ -748,6 +764,11 @@ export class UpdateService {
     private readonly busy: () => boolean,
     options: UpdateOptions = {},
   ) {
+    const mirrorSettingsRevision = this.store.get('meta', 'mirror_settings_revision', 0);
+    this.mirrorSettingsRevision =
+      Number.isSafeInteger(mirrorSettingsRevision) && mirrorSettingsRevision >= 0
+        ? mirrorSettingsRevision
+        : 0;
     this.defaults = options.directories ?? { core: root, resource: root };
     this.source =
       options.source ??
@@ -1280,8 +1301,32 @@ export class UpdateService {
       snapshot = combo[channel];
     return (
       !!snapshot &&
-      !hasIntegrity(snapshot, channel === 'core' || snapshot.path === combo.core?.path)
+      (!hasIntegrity(snapshot, channel === 'core' || snapshot.path === combo.core?.path) ||
+        (channel === 'core' && this.missingMacosControlUnit(snapshot)))
     );
+  }
+  private missingMacosControlUnit(snapshot: any): boolean {
+    if (snapshot?.mirrorChyan?.os !== 'darwin') {
+      // Local inventory intentionally omits transport metadata. Inspect the
+      // runtime itself so a previously rejected candidate cannot be re-adopted.
+      try {
+        if (!lstatSync(path.join(snapshot.path, 'libMaaCore.dylib')).isFile()) return false;
+      } catch {
+        return false;
+      }
+    }
+    const settings = this.store.get('settings', 'main', {});
+    const connections = [
+      settings.connection,
+      ...(settings.deviceProfiles ?? []).map((profile: any) => profile.connection),
+    ];
+    if (!connections.some((connection) => connection?.touchMode === 'MaaFwAdb')) return false;
+    try {
+      const info = lstatSync(path.join(snapshot.path, 'libMaaAdbControlUnit.dylib'));
+      return !info.isFile() || info.isSymbolicLink() || !info.size;
+    } catch {
+      return true;
+    }
   }
   coreChannelChanged(): void {
     // Keep files immutable; only remove candidate references. Retention will
@@ -1296,6 +1341,25 @@ export class UpdateService {
       message: '核心更新通道已切换，旧候选已取消，请重新检查',
     });
   }
+  mirrorSettingsChanged(): void {
+    this.mirrorSettingsRevision++;
+    // A failed old transfer may be retried after restarting the service. Keep
+    // only a credential-free revision, never a CDK-derived fingerprint.
+    this.store.put('meta', 'mirror_settings_revision', this.mirrorSettingsRevision);
+    for (const channel of ['core', 'resource']) {
+      const current = this.channel(channel);
+      if (['downloading', 'staged', 'waiting_idle'].includes(current.status)) continue;
+      this.store.delete('update_metadata', channel);
+      if (current.status === 'checking') continue;
+      this.change(channel, {
+        status: 'idle',
+        latestVersion: null,
+        progress: 0,
+        downloadSource: undefined,
+        message: 'Mirror酱设置已更新，下次准备时重新选择下载来源',
+      });
+    }
+  }
   check(channel: string): Promise<any> {
     return this.serial(() => this.checkCurrent(channel));
   }
@@ -1307,10 +1371,11 @@ export class UpdateService {
       return this.change(channel, { status: 'idle', message: '请在桌面应用中检查签名更新' });
     this.change(channel, {
       status: 'checking',
-      message: '正在检查官方版本',
+      message: '正在检查更新',
       progress: 0,
       downloadSource: undefined,
     });
+    const mirrorSettingsRevision = this.mirrorSettingsRevision;
     try {
       const releaseChannel = this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable';
       let metadata = await this.source.check(channel, releaseChannel);
@@ -1323,12 +1388,15 @@ export class UpdateService {
         metadata = await this.source.fallback(channel, releaseChannel);
         metadata.mirrorChyanMessage = 'Mirror酱资源版本早于已安装版本，已改用官方更新源';
       }
+      if (mirrorSettingsRevision !== this.mirrorSettingsRevision && !this.closing)
+        return this.checkCurrent(channel);
       if (
         channel === 'core' &&
         releaseChannel !== (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')
       )
         throw new Error('核心更新通道已改变，请重新检查');
       if (channel === 'core') metadata.releaseChannel = releaseChannel;
+      metadata.mirrorSettingsRevision = mirrorSettingsRevision;
       this.store.put('update_metadata', channel, metadata);
       const repair = this.needsRepair(channel);
       const age =
@@ -1354,7 +1422,10 @@ export class UpdateService {
         status: available ? 'available' : 'idle',
         message:
           (repair && metadata.version === current.currentVersion
-            ? '旧版组件缺少完整性记录，可重新下载安装修复'
+            ? channel === 'core' &&
+              this.missingMacosControlUnit(this.store.get('active', 'combo', {}).core)
+              ? '当前 MaaFwAdb 模式缺少核心依赖，可重新下载完整运行时修复'
+              : '旧版组件缺少完整性记录，可重新下载安装修复'
             : available
               ? '发现可用更新'
               : age !== undefined && age < 0
@@ -1362,6 +1433,8 @@ export class UpdateService {
                 : '当前已是最新版本') + notice,
       });
     } catch (error) {
+      if (mirrorSettingsRevision !== this.mirrorSettingsRevision && !this.closing)
+        return this.checkCurrent(channel);
       this.store.delete('update_metadata', channel);
       this.change(channel, {
         checkedAt: new Date().toISOString(),
@@ -1385,6 +1458,7 @@ export class UpdateService {
       if (
         snapshot.path === combo[channel]?.path ||
         snapshot.version !== metadata.version ||
+        (channel === 'core' && this.missingMacosControlUnit(snapshot)) ||
         (channel === 'resource' && (!core || snapshot.coreVersion !== core.version))
       )
         continue;
@@ -1450,6 +1524,7 @@ export class UpdateService {
     let metadata: UpdateMetadata = this.store.get('update_metadata', channel);
     if (
       !metadata ||
+      metadata.mirrorSettingsRevision !== this.mirrorSettingsRevision ||
       (channel === 'core' &&
         metadata.releaseChannel !==
           (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable'))
@@ -1484,8 +1559,10 @@ export class UpdateService {
       !this.needsRepair(channel)
     )
       return current;
+    const mirrorSettingsRevision = this.mirrorSettingsRevision;
     const reused = await this.reuseLocalSnapshot(channel as 'core' | 'resource', metadata);
     if (reused) return reused;
+    if (mirrorSettingsRevision !== this.mirrorSettingsRevision) return this.prepareCurrent(channel);
     const directory = this.directories()[channel as 'core' | 'resource'];
     const generation = path.join(
       directory,
@@ -1578,8 +1655,14 @@ export class UpdateService {
             coreVersion: core?.version,
             resourceTimestamp: metadata.resourceTimestamp,
             mirrorChyanFull: metadata.source === 'MirrorChyan',
+            macosMirrorCore:
+              channel === 'core' &&
+              metadata.source === 'MirrorChyan' &&
+              metadata.mirrorChyan?.os === 'darwin',
           };
           Object.assign(metadata, await this.jobRunner(config));
+          if (channel === 'core' && this.missingMacosControlUnit({ ...metadata, path: generation }))
+            throw new MacosControlUnitError();
         } catch (error) {
           if (
             attempt !== 0 ||
@@ -1591,6 +1674,7 @@ export class UpdateService {
           const releaseChannel =
             this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable';
           metadata = await this.source.fallback(channel, releaseChannel, error);
+          metadata.mirrorSettingsRevision = mirrorSettingsRevision;
           if (channel === 'core') {
             metadata.releaseChannel = releaseChannel;
             if (
@@ -1778,6 +1862,18 @@ export class UpdateService {
           ? '更新文件缺失或完整性校验未通过，请重新下载更新'
           : '更新候选已失效，请重新检查并下载更新',
       );
+    }
+    if (channel === 'core' && this.missingMacosControlUnit(staged)) {
+      this.store.delete('staged', channel);
+      this.store.delete('update_metadata', channel);
+      const error = new MacosControlUnitError();
+      this.change(channel, {
+        status: 'failed',
+        progress: 0,
+        latestVersion: null,
+        message: error.message + '，请重新检查并准备官方完整运行时',
+      });
+      throw new RpcError(-32020, error.message);
     }
     if (
       channel === 'core' &&

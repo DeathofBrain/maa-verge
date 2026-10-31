@@ -261,6 +261,104 @@ test('interrupted mirror downloads persist stable resume identities without sign
   expect(sidecar).not.toContain(secret);
 });
 
+test.each(['arm64', 'amd64'])(
+  'macOS %s checks and downloads the registered full MAA mirror package independently of resources',
+  async (arch) => {
+    const root = await temp();
+    const payload = zipBytes([{ name: 'MAA-v6.20.1-macos-universal.dmg', content: 'disk image' }]);
+    const requested: URL[] = [];
+    const source = new OfficialSource(
+      (async (input) => {
+        const url = new URL(String(input));
+        requested.push(url);
+        if (url.pathname === '/api/resources/MAA/latest') {
+          expect(url.searchParams.get('os')).toBe('darwin');
+          expect(url.searchParams.get('arch')).toBe(arch);
+          expect(url.searchParams.get('cdk')).toBe(secret);
+          expect(url.searchParams.get('channel')).toBe('alpha');
+          return latest('v6.20.1', payload, { os: 'darwin', arch, channel: 'alpha' });
+        }
+        if (url.pathname === '/api/resources/MaaResource/latest') {
+          expect(url.searchParams.has('os')).toBe(false);
+          expect(url.searchParams.has('arch')).toBe(false);
+          return latest(timestamp, payload);
+        }
+        if (url.href === signed)
+          return new Response(Uint8Array.from(payload), {
+            headers: { 'content-length': String(payload.length) },
+          });
+        throw new Error('Unexpected fixture route');
+      }) as typeof fetch,
+      () => ({ mode: 'direct', url: '' }),
+      settings,
+      () => ({ os: 'darwin', arch }),
+    );
+    try {
+      const core = await source.check('core', 'preview');
+      expect(core.source).toBe('MirrorChyan');
+      expect(core.mirrorChyan).toMatchObject({ rid: 'MAA', os: 'darwin', arch });
+      expect(core.mirrorChyanMessage).toBeUndefined();
+      const destination = path.join(root, 'core.zip');
+      expect(await source.download(core, destination, () => {})).toBe(digest(payload));
+      expect((await readFile(destination)).equals(payload)).toBe(true);
+      expect((await source.check('resource')).source).toBe('MirrorChyan');
+      expect(requested.every((url) => url.hostname === 'mirrorchyan.com')).toBe(true);
+    } finally {
+      source.close();
+    }
+  },
+);
+
+test.each(['resolved', 'rejected'])(
+  'changing Mirror settings discards an in-flight old check that %s',
+  async (result) => {
+    const root = await temp();
+    const store = new MemoryStore();
+    let started!: () => void;
+    const checking = new Promise<void>((resolve) => (started = resolve));
+    let resolveOld!: (value: any) => void;
+    let rejectOld!: (reason: Error) => void;
+    const oldCheck = new Promise<any>((resolve, reject) => {
+      resolveOld = resolve;
+      rejectOld = reject;
+    });
+    let checks = 0;
+    const updates = new UpdateService(
+      root,
+      store,
+      () => {},
+      () => false,
+      {
+        source: {
+          check: () => {
+            if (++checks === 1) {
+              started();
+              return oldCheck;
+            }
+            return { version: 'v6.20.2', source: 'MirrorChyan' };
+          },
+          download: async () => {
+            throw new Error('must not download');
+          },
+        },
+        validator: async () => {},
+      },
+    );
+    try {
+      const pending = updates.check('core');
+      await checking;
+      updates.mirrorSettingsChanged();
+      if (result === 'resolved') resolveOld({ version: 'v6.20.1', source: 'GitHub' });
+      else rejectOld(new Error('old request failed'));
+      expect((await pending).latestVersion).toBe('v6.20.2');
+      expect(checks).toBe(2);
+      expect(store.get('update_metadata', 'core').source).toBe('MirrorChyan');
+    } finally {
+      await updates.close();
+    }
+  },
+);
+
 function sourceFixture(
   resourceMode: 'valid' | 'timestamp mismatch' | 'incremental' | 'download failure' = 'valid',
 ) {

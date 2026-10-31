@@ -875,6 +875,11 @@ export class Runtime {
         this.store.put('settings', 'main', settings);
         if (settings.coreUpdateChannel !== previous.coreUpdateChannel)
           this.updates.coreChannelChanged();
+        if (
+          settings.mirrorChyan?.enabled !== previous.mirrorChyan?.enabled ||
+          settings.mirrorChyan?.cdk !== previous.mirrorChyan?.cdk
+        )
+          this.updates.mirrorSettingsChanged();
       },
     );
     if (settings.autoConnect && !previous.autoConnect) {
