@@ -31,6 +31,10 @@ async function main() {
   const core = ['Release/', '']
     .map((prefix) => path.join(root, 'build/native/fixtures/normal', prefix, coreName))
     .find(existsSync);
+  if (options.requireNative && (!worker || !core))
+    throw new Error(
+      'Native runtime fixtures are required. Build the C++ worker and synthetic core first.',
+    );
   const discovered = discoverRuntimeTests(root);
   const tests = selectRuntimeTests(discovered, options);
   if (!tests.length) throw new Error('No runtime test files were selected.');

@@ -204,58 +204,68 @@ test('app and core update channels persist independently with startup checks', a
   await expect(page.getByLabel('MaaCore 更新频道', { exact: true })).toHaveValue('preview');
 });
 
-test('app download survives navigation and installation requires explicit confirmation', async ({
-  page,
-}) => {
-  await page.goto('/');
-  await expect(home(page)).toBeVisible();
-  await controlAppUpdate(page);
-  await settingsCategory(page, '更新');
-  const app = appSection(page);
-  await app.getByRole('button', { name: '检查更新', exact: true }).click();
-  await expect
-    .poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.checks))
-    .toBe(1);
-  await expect(app).toContainText('上次检查：');
-  await expect(app).not.toContainText('尚未检查');
-  await app.locator('summary').click();
-  await expect(app.locator('.sp-release-notes pre')).toContainText('<img src=x onerror=alert(1)>');
-  await expect(app.locator('.sp-release-notes img, .sp-release-notes a')).toHaveCount(0);
-  await app.getByRole('button', { name: '下载更新', exact: true }).click();
-  await expect
-    .poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.prepared))
-    .toBe(1);
-  await expect(app.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveText(
-    '下载速度：1.5 MB/s',
-  );
-  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
-  const notice = page.getByRole('status', { name: 'Maa Verge 应用下载通知', exact: true });
-  await expect(notice.getByRole('progressbar')).toHaveAttribute('value', '37');
-  await expect(notice.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveText('1.5 MB/s');
-  await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.finish());
-  await expect(notice).toContainText('签名已验证，等待确认重启');
-  await expect(notice.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveCount(0);
-  expect(await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.installed)).toBe(0);
-  await settingsCategory(page, '更新');
-  await expect(app.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveCount(0);
-  await app.getByRole('button', { name: '安装并重启', exact: true }).click();
-  const confirmation = page.getByRole('dialog', { name: '安装应用更新', exact: true });
-  await expect(confirmation).toContainText('请先保存未保存的更改');
-  await expect(confirmation).toContainText('更新包已保存');
-  await expect(confirmation).toContainText('下次启动时将自动安装');
-  await confirmation.getByRole('button', { name: '下次启动时更新', exact: true }).click();
-  await expect(confirmation).toHaveCount(0);
-  expect(await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.installed)).toBe(0);
-  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
-  await expect(notice).toContainText('下次启动时自动安装');
-  await settingsCategory(page, '更新');
-  await app.getByRole('button', { name: '安装并重启', exact: true }).click();
-  await confirmation.getByRole('button', { name: '立即更新并重启', exact: true }).click();
-  await expect
-    .poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.installed))
-    .toBe(1);
-  await expect(confirmation).toHaveCount(0);
-});
+test(
+  'app download survives navigation and installation requires explicit confirmation',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await page.goto('/');
+    await expect(home(page)).toBeVisible();
+    await controlAppUpdate(page);
+    await settingsCategory(page, '更新');
+    const app = appSection(page);
+    await app.getByRole('button', { name: '检查更新', exact: true }).click();
+    await expect
+      .poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.checks))
+      .toBe(1);
+    await expect(app).toContainText('上次检查：');
+    await expect(app).not.toContainText('尚未检查');
+    await app.locator('summary').click();
+    await expect(app.locator('.sp-release-notes pre')).toContainText(
+      '<img src=x onerror=alert(1)>',
+    );
+    await expect(app.locator('.sp-release-notes img, .sp-release-notes a')).toHaveCount(0);
+    await app.getByRole('button', { name: '下载更新', exact: true }).click();
+    await expect
+      .poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.prepared))
+      .toBe(1);
+    await expect(app.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveText(
+      '下载速度：1.5 MB/s',
+    );
+    await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+    const notice = page.getByRole('status', { name: 'Maa Verge 应用下载通知', exact: true });
+    await expect(notice.getByRole('progressbar')).toHaveAttribute('value', '37');
+    await expect(notice.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveText(
+      '1.5 MB/s',
+    );
+    await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.finish());
+    await expect(notice).toContainText('签名已验证，等待确认重启');
+    await expect(notice.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.installed)).toBe(
+      0,
+    );
+    await settingsCategory(page, '更新');
+    await expect(app.getByLabel('Maa Verge 应用下载速度', { exact: true })).toHaveCount(0);
+    await app.getByRole('button', { name: '安装并重启', exact: true }).click();
+    const confirmation = page.getByRole('dialog', { name: '安装应用更新', exact: true });
+    await expect(confirmation).toContainText('请先保存未保存的更改');
+    await expect(confirmation).toContainText('更新包已保存');
+    await expect(confirmation).toContainText('下次启动时将自动安装');
+    await confirmation.getByRole('button', { name: '下次启动时更新', exact: true }).click();
+    await expect(confirmation).toHaveCount(0);
+    expect(await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.installed)).toBe(
+      0,
+    );
+    await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+    await expect(notice).toContainText('下次启动时自动安装');
+    await settingsCategory(page, '更新');
+    await app.getByRole('button', { name: '安装并重启', exact: true }).click();
+    await confirmation.getByRole('button', { name: '立即更新并重启', exact: true }).click();
+    await expect
+      .poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.installed))
+      .toBe(1);
+    await expect(confirmation).toHaveCount(0);
+  },
+);
 
 test('an interrupted installation can be rescheduled without downloading or installing again', async ({
   page,

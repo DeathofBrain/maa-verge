@@ -17,43 +17,47 @@ async function selectConfigurationDirectory(page: Page, directory: string | null
   await page.getByRole('button', { name: '选择配置目录', exact: true }).click();
 }
 
-test('configuration directory saves for restart and can be restored without switching live data', async ({
-  page,
-}) => {
-  await page.goto('/');
-  const form = await configurationPage(page);
-  await expect(form).toContainText('/fixture/app/config/native/maaverge.sqlite3');
-  await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('');
-  await form.getByRole('button', { name: '打开当前配置目录' }).click();
-  await expect
-    .poll(() => page.evaluate(() => (window as HarnessWindow).runtimeHarness.commands))
-    .toContain('open_configuration_directory');
-  await selectConfigurationDirectory(page, null);
-  expect(
-    await page.evaluate(() => (window as HarnessWindow).runtimeHarness.configurationWrites),
-  ).toBe(0);
-  await selectConfigurationDirectory(page, '/fixture/second-config');
-  await expect(form.getByRole('status')).toContainText('完全退出 Maa Verge 后重新打开');
-  expect(
-    await page.evaluate(() => (window as HarnessWindow).runtimeHarness.configuration),
-  ).toMatchObject({
-    directory: '/fixture/app/config',
-    configuredDirectory: '/fixture/second-config',
-    restartRequired: true,
-  });
-  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
-  await configurationPage(page);
-  await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('/fixture/second-config');
-  await form.getByRole('button', { name: '恢复默认配置目录' }).click();
-  await expect
-    .poll(() => page.evaluate(() => (window as HarnessWindow).runtimeHarness.configuration))
-    .toMatchObject({
+test(
+  'configuration directory saves for restart and can be restored without switching live data',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await page.goto('/');
+    const form = await configurationPage(page);
+    await expect(form).toContainText('/fixture/app/config/native/maaverge.sqlite3');
+    await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('');
+    await form.getByRole('button', { name: '打开当前配置目录' }).click();
+    await expect
+      .poll(() => page.evaluate(() => (window as HarnessWindow).runtimeHarness.commands))
+      .toContain('open_configuration_directory');
+    await selectConfigurationDirectory(page, null);
+    expect(
+      await page.evaluate(() => (window as HarnessWindow).runtimeHarness.configurationWrites),
+    ).toBe(0);
+    await selectConfigurationDirectory(page, '/fixture/second-config');
+    await expect(form.getByRole('status')).toContainText('完全退出 Maa Verge 后重新打开');
+    expect(
+      await page.evaluate(() => (window as HarnessWindow).runtimeHarness.configuration),
+    ).toMatchObject({
       directory: '/fixture/app/config',
-      configuredDirectory: null,
-      restartRequired: false,
+      configuredDirectory: '/fixture/second-config',
+      restartRequired: true,
     });
-  await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('');
-});
+    await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+    await configurationPage(page);
+    await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue(
+      '/fixture/second-config',
+    );
+    await form.getByRole('button', { name: '恢复默认配置目录' }).click();
+    await expect
+      .poll(() => page.evaluate(() => (window as HarnessWindow).runtimeHarness.configuration))
+      .toMatchObject({
+        directory: '/fixture/app/config',
+        configuredDirectory: null,
+        restartRequired: false,
+      });
+    await expect(form.getByLabel('配置目录', { exact: true })).toHaveValue('');
+  },
+);
 
 test('failed automatic directory saves retain the selection and allow retry', async ({ page }) => {
   await page.goto('/');

@@ -298,55 +298,59 @@ test('a slow initial connection request preserves a device selected while it was
   await expect(devicePicker(page)).toHaveAttribute('data-value', secondId);
 });
 
-test('an asynchronous connection that stays offline reports pending readiness without claiming success', async ({
-  page,
-}) => {
-  await openDevices(page);
-  await page.evaluate(() => {
-    (window as HarnessWindow).deviceHarness.connection = 'delayed';
-  });
-  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
-  await expect(result(page)).toHaveText('正在等待设备连接就绪（0/1）…');
-  await page.clock.setFixedTime(new Date(Date.now() + 40_000));
-  await expect(result(page)).toHaveText('连接结果：0 台已就绪，1 台尚未就绪。');
-  await expect(page.locator('.connection-diagnostics')).toContainText('连接尚未就绪');
-  await expect(page.locator('.sp-device-detail')).toContainText('已断开');
-  await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeEnabled();
-});
+test(
+  'an asynchronous connection that stays offline reports pending readiness without claiming success',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openDevices(page);
+    await page.evaluate(() => {
+      (window as HarnessWindow).deviceHarness.connection = 'delayed';
+    });
+    await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+    await expect(result(page)).toHaveText('正在等待设备连接就绪（0/1）…');
+    await page.clock.setFixedTime(new Date(Date.now() + 40_000));
+    await expect(result(page)).toHaveText('连接结果：0 台已就绪，1 台尚未就绪。');
+    await expect(page.locator('.connection-diagnostics')).toContainText('连接尚未就绪');
+    await expect(page.locator('.sp-device-detail')).toContainText('已断开');
+    await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeEnabled();
+  },
+);
 
-test('an explicit asynchronous connection failure finishes promptly and permits retry', async ({
-  page,
-}) => {
-  await openDevices(page);
-  await page.evaluate(() => {
-    (window as HarnessWindow).deviceHarness.connection = 'delayed';
-  });
-  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
-  await expect(result(page)).toHaveText('正在等待设备连接就绪（0/1）…');
-  await page.evaluate(() => {
-    (window as HarnessWindow).deviceHarness.connectionErrors['mock-device-1'] =
-      '合成核心连接失败：ADB 地址不可达';
-  });
-  await expect(result(page)).toHaveText(
-    '连接结果：0 台已就绪，1 台连接失败。合成核心连接失败：ADB 地址不可达',
-    { timeout: 5000 },
-  );
-  await expect(result(page)).toHaveAttribute('role', 'alert');
-  await expect(page.locator('.connection-diagnostics')).toContainText(
-    '合成核心连接失败：ADB 地址不可达',
-  );
-  await expect(page.locator('.connection-diagnostics')).not.toContainText('尚未就绪');
-  await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeEnabled();
-  await page.evaluate(() => {
-    const harness = (window as HarnessWindow).deviceHarness;
-    harness.connection = 'normal';
-    harness.waiting = false;
-    harness.connectionErrors = {};
-  });
-  await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
-  await expect(result(page)).toHaveText('连接完成：1 台设备已就绪。');
-  await expect(page.locator('.connection-diagnostics')).not.toContainText('合成核心连接失败');
-});
+test(
+  'an explicit asynchronous connection failure finishes promptly and permits retry',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openDevices(page);
+    await page.evaluate(() => {
+      (window as HarnessWindow).deviceHarness.connection = 'delayed';
+    });
+    await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+    await expect(result(page)).toHaveText('正在等待设备连接就绪（0/1）…');
+    await page.evaluate(() => {
+      (window as HarnessWindow).deviceHarness.connectionErrors['mock-device-1'] =
+        '合成核心连接失败：ADB 地址不可达';
+    });
+    await expect(result(page)).toHaveText(
+      '连接结果：0 台已就绪，1 台连接失败。合成核心连接失败：ADB 地址不可达',
+      { timeout: 5000 },
+    );
+    await expect(result(page)).toHaveAttribute('role', 'alert');
+    await expect(page.locator('.connection-diagnostics')).toContainText(
+      '合成核心连接失败：ADB 地址不可达',
+    );
+    await expect(page.locator('.connection-diagnostics')).not.toContainText('尚未就绪');
+    await expect(page.getByRole('button', { name: '自动连接模拟器', exact: true })).toBeEnabled();
+    await page.evaluate(() => {
+      const harness = (window as HarnessWindow).deviceHarness;
+      harness.connection = 'normal';
+      harness.waiting = false;
+      harness.connectionErrors = {};
+    });
+    await page.getByRole('button', { name: '自动连接模拟器', exact: true }).click();
+    await expect(result(page)).toHaveText('连接完成：1 台设备已就绪。');
+    await expect(page.locator('.connection-diagnostics')).not.toContainText('合成核心连接失败');
+  },
+);
 
 test('one failed instance leaves other pending instances waiting until their own result arrives', async ({
   page,

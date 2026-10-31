@@ -1,20 +1,68 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { changedFiles, createCiPlan, planForEvent, readCiPlan } from '../ci/plan.mjs';
+import { changedFiles, createCiPlan, nativeHosts, planForEvent, readCiPlan } from '../ci/plan.mjs';
 
-test('documentation skips UI and native while unknown paths and shared inputs fail closed', () => {
-  const docs = createCiPlan([
-    'docs/STATUS.md',
-    'AGENTS.md',
-    '.skill/example/SKILL.md',
-    'services/backend/README.md',
-    'services/native/README.md',
-    'tools/test-support/README.md',
-    'tools/bootstrap-notes.md',
-    'services/backend/src/modules/knowledge/product-knowledge.generated.json',
-  ]);
-  assert.equal(docs.ui, 'none');
-  assert.equal(docs.native, false);
+test('documentation stays static and ordinary frontend or domain changes use the Linux baseline', () => {
+  assert.deepEqual(
+    createCiPlan([
+      'docs/STATUS.md',
+      'AGENTS.md',
+      '.skill/example/SKILL.md',
+      'services/native/README.md',
+      'services/backend/src/modules/knowledge/product-knowledge.generated.json',
+    ]),
+    { version: 2, full: false, code: false, native: false },
+  );
+  for (const file of [
+    'apps/desktop/src/features/copilot/CopilotPage.tsx',
+    'apps/desktop/src/kit/Button.tsx',
+    'tests/ui/workspace.spec.ts',
+    'services/backend/src/modules/plans/task-policy.ts',
+    'services/backend/tests/policy-parity.test.ts',
+    'packages/agent/src/deterministic.ts',
+  ])
+    assert.deepEqual(
+      createCiPlan([file]),
+      { version: 2, full: false, code: true, native: false },
+      file,
+    );
+});
+
+test('OS boundaries select three systems while complete plans add Intel macOS and the release marker', () => {
+  for (const file of [
+    'services/native/CMakeLists.txt',
+    'apps/desktop/src-tauri/src/runtime.rs',
+    'packages/contracts/schemas/runtime.schema.json',
+    'tools/windows-distribution.mjs',
+    'services/backend/src/app/runtime.ts',
+    'services/backend/src/infrastructure/storage/storage.ts',
+    'services/backend/src/modules/updates/updates.ts',
+    'services/backend/src/modules/schedules/scheduler.ts',
+    'services/backend/tests/mirrorchyan.test.ts',
+    'services/backend/tests/lifecycle.test.ts',
+    'services/backend/tests/macos-components.test.ts',
+  ]) {
+    const plan = createCiPlan([file]);
+    assert.deepEqual(plan, { version: 2, full: false, code: true, native: true }, file);
+    assert.deepEqual(nativeHosts(plan), [
+      { os: 'windows-2022', architecture: 'x64' },
+      { os: 'macos-15', architecture: 'arm64' },
+    ]);
+  }
+  for (const [files, full, count] of [
+    [['docs/STATUS.md'], false, 2],
+    [['apps/desktop/src/kit/Button.tsx'], false, 2],
+    [['services/native/src/main.cpp'], false, 4],
+    [['docs/STATUS.md'], true, 6],
+  ]) {
+    const plan = createCiPlan(files, { full });
+    assert.equal(2 + (plan.native ? nativeHosts(plan).length : 0) + Number(plan.full), count);
+    if (full)
+      assert.deepEqual(nativeHosts(plan).at(-1), { os: 'macos-15-intel', architecture: 'x64' });
+  }
+});
+
+test('unknown paths, dependencies, shared CI inputs and a missing diff retain complete checks', () => {
   for (const file of [
     'unclassified/new.ts',
     'pnpm-lock.yaml',
@@ -22,57 +70,12 @@ test('documentation skips UI and native while unknown paths and shared inputs fa
     'tools/ci/run.sh',
     '.github/workflows/ci.yml',
   ])
-    assert.equal(createCiPlan([file]).full, true, file);
+    assert.deepEqual(
+      createCiPlan([file]),
+      { version: 2, full: true, code: true, native: true },
+      file,
+    );
   assert.equal(createCiPlan([]).full, true);
-});
-
-test('frontend changes keep smoke and affected UI without native; shared UI runs full UI', () => {
-  const feature = createCiPlan(['apps/desktop/src/features/copilot/CopilotPage.tsx']);
-  assert.equal(feature.ui, 'selected');
-  assert.equal(feature.native, false);
-  assert.ok(feature.uiFiles.includes('tests/ui/copilot-center.spec.ts'));
-  const shared = createCiPlan(['apps/desktop/src/kit/Button.tsx']);
-  assert.equal(shared.ui, 'full');
-  assert.equal(shared.native, false);
-});
-
-test('backend changes retain platform runtime without unrelated Rust and packaging work', () => {
-  const plan = createCiPlan([
-    'services/backend/src/modules/plans/plans.ts',
-    'services/native/README.md',
-    'tools/test-support/README.md',
-  ]);
-  assert.equal(plan.native, true);
-  assert.equal(plan.rust, false);
-  assert.equal(plan.packaging, false);
-  assert.equal(plan.workerTools, false);
-  assert.notEqual(plan.ui, 'none');
-});
-
-test('native build and installer changes select their own fixture gates', () => {
-  const cpp = createCiPlan(['services/native/CMakeLists.txt']);
-  assert.equal(cpp.native, true);
-  assert.equal(cpp.rust, true);
-  assert.equal(cpp.workerTools, true);
-  assert.equal(cpp.packaging, false);
-  const installer = createCiPlan(['tools/windows-distribution.mjs']);
-  assert.equal(installer.native, true);
-  assert.equal(installer.packaging, true);
-  const macos = createCiPlan(['apps/desktop/src-tauri/RuntimeEntitlements.plist']);
-  assert.equal(macos.packaging, true);
-  assert.equal(macos.rust, true);
-  for (const file of [
-    'tools/test-support/windows-components.ts',
-    'tools/test-support/dependency-tar.mjs',
-    'services/backend/src/infrastructure/filesystem/archives.ts',
-    'services/backend/src/infrastructure/filesystem/snapshot-integrity.ts',
-    'services/backend/src/modules/updates/updates.ts',
-  ])
-    assert.equal(createCiPlan([file]).packaging, true, file);
-  const full = createCiPlan(['docs/STATUS.md'], { full: true });
-  assert.equal(full.full, true);
-  assert.equal(full.ui, 'full');
-  assert.equal(full.native && full.rust && full.packaging && full.workerTools, true);
 });
 
 test('main and manual runs remain complete while dev and PR use the reviewed diff', () => {
@@ -84,31 +87,35 @@ test('main and manual runs remain complete while dev and PR use the reviewed dif
   const git = () => 'docs/STATUS.md\0';
   for (const [name, ref] of [
     ['push', 'refs/heads/main'],
-    ['workflow_dispatch', 'refs/tags/v0.1.3-alpha.1'],
+    ['workflow_dispatch', 'refs/tags/v0.1.3'],
   ])
     assert.equal(planForEvent(name, event, ref, git).plan.full, true);
   for (const [name, ref] of [
     ['push', 'refs/heads/dev'],
     ['pull_request', 'refs/pull/1/merge'],
-  ]) {
-    const { plan } = planForEvent(name, event, ref, git);
-    assert.equal(plan.full, false);
-    assert.equal(plan.native, false);
-    assert.equal(plan.ui, 'none');
-  }
+  ])
+    assert.deepEqual(planForEvent(name, event, ref, git).plan, {
+      version: 2,
+      full: false,
+      code: false,
+      native: false,
+    });
   assert.equal(planForEvent('push', {}, 'refs/heads/dev', git).plan.full, true);
 });
 
-test('CI plan parsing rejects missing, malformed and inconsistent skip instructions', () => {
+test('CI plan parsing rejects old, missing, malformed and inconsistent skip instructions', () => {
   const plan = createCiPlan(['docs/STATUS.md']);
   assert.deepEqual(readCiPlan(JSON.stringify(plan)), plan);
   for (const value of [
     '',
     '{}',
     '{',
+    'null',
+    JSON.stringify({ ...plan, version: 1 }),
     JSON.stringify({ ...plan, full: true }),
+    JSON.stringify({ ...plan, native: true }),
     JSON.stringify({ ...plan, rust: true }),
-    JSON.stringify({ ...plan, uiFiles: ['../../outside.spec.ts'] }),
+    JSON.stringify({ ...plan, uiFiles: [] }),
   ])
     assert.throws(() => readCiPlan(value));
 });

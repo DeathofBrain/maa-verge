@@ -100,51 +100,55 @@ function channel(page: Page, name: string) {
     .filter({ has: page.getByRole('heading', { name, exact: true }) });
 }
 
-test('home shows runtime information and task tables have their own navigation entry', async ({
-  page,
-}) => {
-  await openHome(page);
-  await expect(home(page).getByRole('heading', { name: '主页', exact: true })).toBeVisible();
-  await expect(wb(page)).toHaveCount(0);
-  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('主页');
-  await expect(metric(page, '今日执行统计')).toHaveText('0');
-  await expect(metric(page, '今日完成统计')).toHaveText('0');
-  await expect(metric(page, '设备统计')).toHaveText('1');
-  await expect(metric(page, '运行统计')).toHaveText('0');
-  await expect(home(page).getByLabel('任务表统计', { exact: true })).toHaveCount(0);
-  await expect(home(page).getByRole('region', { name: '我的任务表', exact: true })).toHaveCount(0);
-  await expect(home(page).getByRole('article', { name: /^任务表/ })).toHaveCount(0);
-  await expect(
-    home(page).getByRole('button', {
-      name: /新建任务表|新增日常任务表|运行已保存任务表|编辑任务表|开始/,
-    }),
-  ).toHaveCount(0);
-  await expect(
-    page.locator('.sidebar').getByRole('button', { name: /^查看任务表详情/ }),
-  ).toHaveCount(0);
-  await expect(page.getByRole('region', { name: '任务表列表', exact: true })).toHaveCount(0);
-  await openSavedPlan(page, '固源岩补给');
-  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('任务');
-  await expect(
-    page
-      .getByRole('region', { name: '任务表列表', exact: true })
-      .getByRole('button', { name: '查看任务表详情每日长草计划', exact: true }),
-  ).toBeVisible();
-  await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
-  await navigate(page, '主页');
-  await expect(home(page)).toBeVisible();
-  await expect(page.getByRole('region', { name: '任务表列表', exact: true })).toHaveCount(0);
-  expect(await page.evaluate(() => localStorage.getItem('maaverge:ui:selected-plan'))).toBe(
-    'farm-1-7',
-  );
-  await page.reload();
-  await expect(home(page)).toBeVisible();
-  await expect(wb(page)).toHaveCount(0);
-  await expect(page.getByRole('region', { name: '任务表列表', exact: true })).toHaveCount(0);
-  expect(await page.evaluate(() => localStorage.getItem('maaverge:ui:selected-plan'))).toBe(
-    'farm-1-7',
-  );
-});
+test(
+  'home shows runtime information and task tables have their own navigation entry',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openHome(page);
+    await expect(home(page).getByRole('heading', { name: '主页', exact: true })).toBeVisible();
+    await expect(wb(page)).toHaveCount(0);
+    await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('主页');
+    await expect(metric(page, '今日执行统计')).toHaveText('0');
+    await expect(metric(page, '今日完成统计')).toHaveText('0');
+    await expect(metric(page, '设备统计')).toHaveText('1');
+    await expect(metric(page, '运行统计')).toHaveText('0');
+    await expect(home(page).getByLabel('任务表统计', { exact: true })).toHaveCount(0);
+    await expect(home(page).getByRole('region', { name: '我的任务表', exact: true })).toHaveCount(
+      0,
+    );
+    await expect(home(page).getByRole('article', { name: /^任务表/ })).toHaveCount(0);
+    await expect(
+      home(page).getByRole('button', {
+        name: /新建任务表|新增日常任务表|运行已保存任务表|编辑任务表|开始/,
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('.sidebar').getByRole('button', { name: /^查看任务表详情/ }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('region', { name: '任务表列表', exact: true })).toHaveCount(0);
+    await openSavedPlan(page, '固源岩补给');
+    await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('任务');
+    await expect(
+      page
+        .getByRole('region', { name: '任务表列表', exact: true })
+        .getByRole('button', { name: '查看任务表详情每日长草计划', exact: true }),
+    ).toBeVisible();
+    await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
+    await navigate(page, '主页');
+    await expect(home(page)).toBeVisible();
+    await expect(page.getByRole('region', { name: '任务表列表', exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem('maaverge:ui:selected-plan'))).toBe(
+      'farm-1-7',
+    );
+    await page.reload();
+    await expect(home(page)).toBeVisible();
+    await expect(wb(page)).toHaveCount(0);
+    await expect(page.getByRole('region', { name: '任务表列表', exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem('maaverge:ui:selected-plan'))).toBe(
+      'farm-1-7',
+    );
+  },
+);
 
 test('home reports a run started after automatically saving editor changes', async ({ page }) => {
   await openHome(page);
@@ -232,50 +236,58 @@ test('home remains useful without task tables and new tables can be added throug
 });
 
 // Preserve the original persistence, policy, task coverage and update scenarios.
-test('Agent proposes a reviewable plan without starting a run', async ({ page }) => {
-  await openWorkspace(page);
-  await navigate(page, 'Agent 助手');
-  await page.getByRole('button', { name: '制定刷 6 次 1-7 的计划' }).click();
-  await expect(page.getByText('这是本地规则生成的演示计划', { exact: false })).toBeVisible();
-  await page.getByRole('button', { name: '检查并保存计划' }).click();
-  await expect(wb(page).getByLabel('作战关卡')).toHaveValue('1-7');
-  await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('待确认保存');
-  await savePlan(page);
-  await navigate(page, '执行记录');
-  await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
-  await navigate(page, '主页');
-  await openSavedPlan(page, 'Agent 刷图计划 · 1-7');
-  await expect(wb(page).getByRole('heading', { name: 'Agent 刷图计划 · 1-7' })).toBeVisible();
-});
+test(
+  'Agent proposes a reviewable plan without starting a run',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openWorkspace(page);
+    await navigate(page, 'Agent 助手');
+    await page.getByRole('button', { name: '制定刷 6 次 1-7 的计划' }).click();
+    await expect(page.getByText('这是本地规则生成的演示计划', { exact: false })).toBeVisible();
+    await page.getByRole('button', { name: '检查并保存计划' }).click();
+    await expect(wb(page).getByLabel('作战关卡')).toHaveValue('1-7');
+    await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
+    await expect(wb(page).locator('.wb-save-state')).toHaveText('待确认保存');
+    await savePlan(page);
+    await navigate(page, '执行记录');
+    await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
+    await navigate(page, '主页');
+    await openSavedPlan(page, 'Agent 刷图计划 · 1-7');
+    await expect(wb(page).getByRole('heading', { name: 'Agent 刷图计划 · 1-7' })).toBeVisible();
+  },
+);
 
-test('the persistent run dock reports progress and stop preserves the plan and history', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await openWorkspace(page);
-  await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
-  await expect(dock(page)).toContainText('执行中');
-  await navigate(page, '工具箱');
-  await expect(dock(page)).toContainText('任务进度');
-  await dock(page).getByRole('button', { name: '运行详情', exact: true }).click();
-  const panel = page.getByRole('region', { name: '运行面板', exact: true });
-  const details = panel.getByRole('region', { name: '任务表执行页面', exact: true });
-  await expect(details).toContainText('本页显示开始执行时的任务。修改设置用于下次执行。');
-  await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('工具箱');
-  await expect(page.locator('.main-shell')).not.toHaveAttribute('inert');
-  await expect(devicePicker(page)).toBeEnabled();
-  await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
-  await expect(dock(page).getByRole('button', { name: '停止执行', exact: true })).toBeHidden();
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await panel.getByRole('button', { name: '收起运行详情', exact: true }).click();
-  await expect(panel).toHaveCount(0);
-  await navigate(page, '执行记录');
-  await expect(page.getByRole('cell', { name: '已停止', exact: true })).toBeVisible();
-  await expect(page.getByRole('cell', { name: '模拟执行已停止', exact: true })).toBeVisible();
-  await reloadWorkspace(page, '每日长草计划');
-  await expect(wb(page).getByRole('heading', { name: '每日长草计划', exact: true })).toBeVisible();
-});
+test(
+  'the persistent run dock reports progress and stop preserves the plan and history',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openWorkspace(page);
+    await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
+    await expect(dock(page)).toContainText('执行中');
+    await navigate(page, '工具箱');
+    await expect(dock(page)).toContainText('任务进度');
+    await dock(page).getByRole('button', { name: '运行详情', exact: true }).click();
+    const panel = page.getByRole('region', { name: '运行面板', exact: true });
+    const details = panel.getByRole('region', { name: '任务表执行页面', exact: true });
+    await expect(details).toContainText('本页显示开始执行时的任务。修改设置用于下次执行。');
+    await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('工具箱');
+    await expect(page.locator('.main-shell')).not.toHaveAttribute('inert');
+    await expect(devicePicker(page)).toBeEnabled();
+    await dock(page).getByRole('button', { name: '停止执行', exact: true }).click();
+    await expect(dock(page).getByRole('button', { name: '停止执行', exact: true })).toBeHidden();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await panel.getByRole('button', { name: '收起运行详情', exact: true }).click();
+    await expect(panel).toHaveCount(0);
+    await navigate(page, '执行记录');
+    await expect(page.getByRole('cell', { name: '已停止', exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: '模拟执行已停止', exact: true })).toBeVisible();
+    await reloadWorkspace(page, '每日长草计划');
+    await expect(
+      wb(page).getByRole('heading', { name: '每日长草计划', exact: true }),
+    ).toBeVisible();
+  },
+);
 
 test('mobile navigation closes after selecting pages and can create task tables', async ({
   page,
@@ -411,29 +423,31 @@ test('automatic connection is deterministic with the test runtime and its prefer
   await expect(page.getByRole('heading', { name: '还没有执行记录' })).toBeVisible();
 });
 
-test('Fight consumption limits save directly and all-disabled execution is rejected', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await createPlan(page, '作战消耗');
-  await selectTask(page, 2, '自动作战');
-  await wb(page).getByLabel('理智药上限', { exact: true }).fill('1');
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 1 · 源石 0')).toBeVisible();
-  await savePlan(page);
-  await reloadWorkspace(page, '作战消耗');
-  await selectTask(page, 2, '自动作战');
-  await expect(wb(page).getByLabel('理智药上限', { exact: true })).toHaveValue('1');
-  await showTaskList(page);
-  for (const checkbox of await wb(page)
-    .getByRole('checkbox', { name: /^启用第 \d+ 条任务$/ })
-    .all())
-    await checkbox.uncheck();
-  await selectTask(page, 2, '自动作战');
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
-  await savePlan(page);
-  await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
-  await expect(page.locator('.toast.error')).toContainText('至少需要启用一条任务');
-});
+test(
+  'Fight consumption limits save directly and all-disabled execution is rejected',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openWorkspace(page);
+    await createPlan(page, '作战消耗');
+    await selectTask(page, 2, '自动作战');
+    await wb(page).getByLabel('理智药上限', { exact: true }).fill('1');
+    await expect(wb(page).getByText('本表自动作战累计上限：理智药 1 · 源石 0')).toBeVisible();
+    await savePlan(page);
+    await reloadWorkspace(page, '作战消耗');
+    await selectTask(page, 2, '自动作战');
+    await expect(wb(page).getByLabel('理智药上限', { exact: true })).toHaveValue('1');
+    await showTaskList(page);
+    for (const checkbox of await wb(page)
+      .getByRole('checkbox', { name: /^启用第 \d+ 条任务$/ })
+      .all())
+      await checkbox.uncheck();
+    await selectTask(page, 2, '自动作战');
+    await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
+    await savePlan(page);
+    await wb(page).getByRole('button', { name: '开始执行', exact: true }).click();
+    await expect(page.locator('.toast.error')).toContainText('至少需要启用一条任务');
+  },
+);
 
 test('new task entries exclude copilot while legacy task settings remain editable', async ({
   page,
@@ -507,31 +521,33 @@ test('new task entries exclude copilot while legacy task settings remain editabl
   }
 });
 
-test('unsaved task drafts survive navigation and page reloads without corrupting saved data', async ({
-  page,
-}) => {
-  await openWorkspace(page);
-  await closeDetail(page);
-  await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
-  await selectTask(page, 1, '自动作战');
-  await wb(page).getByLabel('作战次数').fill('9');
-  await wb(page).locator('.advanced-params summary').click();
-  await wb(page).getByLabel('任务参数 JSON').fill('{"stage":');
-  await navigate(page, '工具箱');
-  await navigate(page, '主页');
-  await openSavedPlan(page, '固源岩补给');
-  await selectTask(page, 1, '自动作战');
-  await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"stage":');
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('保存失败');
-  await reloadWorkspace(page, '固源岩补给');
-  await selectTask(page, 1, '自动作战');
-  await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"stage":');
-  await expect(wb(page).getByLabel('作战次数')).toBeDisabled();
-  await tab(page, '任务表设置');
-  await wb(page).getByRole('button', { name: '恢复已保存配置', exact: true }).click();
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
-  await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
-});
+test(
+  'unsaved task drafts survive navigation and page reloads without corrupting saved data',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openWorkspace(page);
+    await closeDetail(page);
+    await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
+    await selectTask(page, 1, '自动作战');
+    await wb(page).getByLabel('作战次数').fill('9');
+    await wb(page).locator('.advanced-params summary').click();
+    await wb(page).getByLabel('任务参数 JSON').fill('{"stage":');
+    await navigate(page, '工具箱');
+    await navigate(page, '主页');
+    await openSavedPlan(page, '固源岩补给');
+    await selectTask(page, 1, '自动作战');
+    await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"stage":');
+    await expect(wb(page).locator('.wb-save-state')).toHaveText('保存失败');
+    await reloadWorkspace(page, '固源岩补给');
+    await selectTask(page, 1, '自动作战');
+    await expect(wb(page).getByLabel('任务参数 JSON')).toHaveValue('{"stage":');
+    await expect(wb(page).getByLabel('作战次数')).toBeDisabled();
+    await tab(page, '任务表设置');
+    await wb(page).getByRole('button', { name: '恢复已保存配置', exact: true }).click();
+    await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
+    await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');
+  },
+);
 
 test('global search locates updates, saved tables and individual task settings', async ({
   page,

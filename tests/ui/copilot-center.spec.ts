@@ -49,91 +49,97 @@ async function call<T>(
   ) as Promise<T>;
 }
 
-test('local preview, duplicate queue entries and ordered edits persist without creating task tables', async ({
-  page,
-}) => {
-  await openCenter(page);
-  const before = await call<{ plans: unknown[] }>(page, 'app.snapshot');
-  await importJson(page, json('合成 1-7 作业'));
-  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
-  await queue(page).locator('.cp-settings > summary').click();
-  await queue(page).getByLabel('作业循环次数', { exact: true }).fill('3');
-  await library(page).getByRole('button', { name: '加入队列 合成 1-7 作业', exact: true }).click();
-  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(2);
-  await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toHaveValue('1');
-  await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toBeDisabled();
-  await queue(page).getByLabel('导航关卡 2', { exact: true }).fill('1-7');
-  await queue(page).getByRole('button', { name: '上移作业 2', exact: true }).click();
-  await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toHaveValue('1-7');
-  await queue(page).getByLabel('执行队列 2', { exact: true }).uncheck();
-  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
-  const saved = await call<{
-    queue: { id: string; versionId: string; enabled: boolean; navName: string }[];
-    options: { loopTimes: number };
-  }>(page, 'copilot.workspace.get', { kind: 'Copilot' });
-  expect(saved.queue).toHaveLength(2);
-  expect(saved.queue[0].id).not.toBe(saved.queue[1].id);
-  expect(saved.queue[0].versionId).toBe(saved.queue[1].versionId);
-  expect(saved.queue[0].navName).toBe('1-7');
-  expect(saved.queue[1].enabled).toBe(false);
-  expect((await call<{ plans: unknown[] }>(page, 'app.snapshot')).plans).toEqual(before.plans);
-  await page.reload();
-  await navigate(page, '作业中心');
-  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(2);
-  await expect(queue(page).getByLabel('执行队列 2', { exact: true })).not.toBeChecked();
-  await queue(page).getByRole('button', { name: '清除未勾选项', exact: true }).click();
-  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
-  await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toBeVisible();
-});
+test(
+  'local preview, duplicate queue entries and ordered edits persist without creating task tables',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openCenter(page);
+    const before = await call<{ plans: unknown[] }>(page, 'app.snapshot');
+    await importJson(page, json('合成 1-7 作业'));
+    await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
+    await queue(page).locator('.cp-settings > summary').click();
+    await queue(page).getByLabel('作业循环次数', { exact: true }).fill('3');
+    await library(page)
+      .getByRole('button', { name: '加入队列 合成 1-7 作业', exact: true })
+      .click();
+    await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(2);
+    await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toHaveValue('1');
+    await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toBeDisabled();
+    await queue(page).getByLabel('导航关卡 2', { exact: true }).fill('1-7');
+    await queue(page).getByRole('button', { name: '上移作业 2', exact: true }).click();
+    await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toHaveValue('1-7');
+    await queue(page).getByLabel('执行队列 2', { exact: true }).uncheck();
+    await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
+    const saved = await call<{
+      queue: { id: string; versionId: string; enabled: boolean; navName: string }[];
+      options: { loopTimes: number };
+    }>(page, 'copilot.workspace.get', { kind: 'Copilot' });
+    expect(saved.queue).toHaveLength(2);
+    expect(saved.queue[0].id).not.toBe(saved.queue[1].id);
+    expect(saved.queue[0].versionId).toBe(saved.queue[1].versionId);
+    expect(saved.queue[0].navName).toBe('1-7');
+    expect(saved.queue[1].enabled).toBe(false);
+    expect((await call<{ plans: unknown[] }>(page, 'app.snapshot')).plans).toEqual(before.plans);
+    await page.reload();
+    await navigate(page, '作业中心');
+    await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(2);
+    await expect(queue(page).getByLabel('执行队列 2', { exact: true })).not.toBeChecked();
+    await queue(page).getByRole('button', { name: '清除未勾选项', exact: true }).click();
+    await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
+    await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toBeVisible();
+  },
+);
 
-test('independent execution stays in the center, fixes its queue snapshot and supports source navigation and stop', async ({
-  page,
-}) => {
-  await openCenter(page);
-  await importJson(page, json('独立作业快照'));
-  await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: '开始作业', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
-  const run = page.getByRole('region', { name: '作业运行状态', exact: true });
-  await expect(run).toContainText('通关未确认');
-  await expect(run.getByRole('button', { name: '停止作业', exact: true })).toBeVisible();
-  await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
-  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(0);
-  await expect(run.locator('.cp-run-entries')).toContainText('独立作业快照');
-  const snapshot = await call<{
-    plans: unknown[];
-    runs: { id: string; source: string; planId: null; copilotEntries: unknown[] }[];
-  }>(page, 'app.snapshot');
-  const active = snapshot.runs[0];
-  expect(active.source).toBe('copilot');
-  expect(active.planId).toBeNull();
-  expect(snapshot.plans).toHaveLength(2);
-  await navigate(page, '主页');
-  const current = page.getByRole('region', { name: '当前执行', exact: true });
-  await expect(current).toContainText('独立作业快照');
-  await current.getByRole('button', { name: '查看运行详情', exact: true }).click();
-  const monitor = page.getByRole('region', { name: '任务表执行监控', exact: true });
-  await expect(page.getByRole('tab', { name: '执行监控', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await expect(
-    monitoredExecution(page).getByRole('heading', { name: '独立作业快照', exact: true }),
-  ).toBeVisible();
-  await expect(
-    monitor.getByRole('button', { name: '停止设备任务本地模拟设备', exact: true }),
-  ).toBeVisible();
-  await expect(monitor.getByRole('article')).toContainText('作业 · 独立作业快照');
-  await expect(
-    monitor.getByRole('button', { name: '查看设备执行本地模拟设备', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true');
-  await navigate(page, '作业中心');
-  await run.getByRole('button', { name: '停止作业', exact: true }).click();
-  await expect(run).toContainText('已停止');
-  expect(
-    (await call<{ queue: unknown[] }>(page, 'copilot.workspace.get', { kind: 'Copilot' })).queue,
-  ).toHaveLength(0);
-});
+test(
+  'independent execution stays in the center, fixes its queue snapshot and supports source navigation and stop',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openCenter(page);
+    await importJson(page, json('独立作业快照'));
+    await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: '开始作业', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
+    const run = page.getByRole('region', { name: '作业运行状态', exact: true });
+    await expect(run).toContainText('通关未确认');
+    await expect(run.getByRole('button', { name: '停止作业', exact: true })).toBeVisible();
+    await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
+    await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(0);
+    await expect(run.locator('.cp-run-entries')).toContainText('独立作业快照');
+    const snapshot = await call<{
+      plans: unknown[];
+      runs: { id: string; source: string; planId: null; copilotEntries: unknown[] }[];
+    }>(page, 'app.snapshot');
+    const active = snapshot.runs[0];
+    expect(active.source).toBe('copilot');
+    expect(active.planId).toBeNull();
+    expect(snapshot.plans).toHaveLength(2);
+    await navigate(page, '主页');
+    const current = page.getByRole('region', { name: '当前执行', exact: true });
+    await expect(current).toContainText('独立作业快照');
+    await current.getByRole('button', { name: '查看运行详情', exact: true }).click();
+    const monitor = page.getByRole('region', { name: '任务表执行监控', exact: true });
+    await expect(page.getByRole('tab', { name: '执行监控', exact: true })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(
+      monitoredExecution(page).getByRole('heading', { name: '独立作业快照', exact: true }),
+    ).toBeVisible();
+    await expect(
+      monitor.getByRole('button', { name: '停止设备任务本地模拟设备', exact: true }),
+    ).toBeVisible();
+    await expect(monitor.getByRole('article')).toContainText('作业 · 独立作业快照');
+    await expect(
+      monitor.getByRole('button', { name: '查看设备执行本地模拟设备', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await navigate(page, '作业中心');
+    await run.getByRole('button', { name: '停止作业', exact: true }).click();
+    await expect(run).toContainText('已停止');
+    expect(
+      (await call<{ queue: unknown[] }>(page, 'copilot.workspace.get', { kind: 'Copilot' })).queue,
+    ).toHaveLength(0);
+  },
+);
 
 test('busy device blocks the center while browsing and local import remain available', async ({
   page,

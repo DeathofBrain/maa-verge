@@ -18,15 +18,17 @@ fi
 node tools/setup-bun.mjs --check
 pnpm install --frozen-lockfile --store-dir /workspace/.cache/ci/pnpm
 
+if [ "$mode" != release ] && [ -z "${MAAVERGE_CI_PLAN:-}" ]; then
+  MAAVERGE_CI_PLAN=$(node --input-type=module -e 'import { createCiPlan } from "./tools/ci/plan.mjs"; console.log(JSON.stringify(createCiPlan([])))')
+  export MAAVERGE_CI_PLAN
+fi
+
 case "$mode" in
   app)
-    node tools/check.mjs --app ${MAAVERGE_CI_PLAN:+--ci}
-    # check --app already typechecks all workspaces, including the desktop.
-    pnpm --filter @maaverge/desktop exec vite build
-    node tools/ci/test-ui.mjs
+    node tools/check.mjs --app --ci
     ;;
   native)
-    node tools/check.mjs --native ${MAAVERGE_CI_PLAN:+--ci}
+    node tools/check.mjs --native --ci
     ;;
   release)
     # Build only AppImage; extract its payload without requiring FUSE in the container.

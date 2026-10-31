@@ -1,6 +1,6 @@
 # Linux CI 构建镜像
 
-`tools/ci/Dockerfile` 提供 Ubuntu 22.04 / Linux x64 构建环境，与最低 Linux 发行基线保持一致。它用于 GitHub Actions 的 application 检查、Checks 的 Linux 原生检查和发行工作流的 Linux 签名构建。Windows、macOS arm64/x64 继续在对应宿主构建，Docker 不替代这些平台的 SDK、签名和安装验收。
+`tools/ci/Dockerfile` 提供 Ubuntu 22.04 / Linux x64 构建环境，与最低 Linux 发行基线保持一致。它用于 GitHub Actions 合并后的 application 基线与 Linux 平台专项，以及发行工作流的 Linux 签名构建。Windows、macOS arm64/x64 继续在对应宿主构建，Docker 不替代这些平台的 SDK、签名和安装验收。
 
 ## 环境与版本
 
@@ -21,15 +21,19 @@
 
 `tools/ci/Dockerfile.dockerignore` 使用允许列表，只发送版本文件、pnpm 锁文件和必要安装脚本，禁止把本地 `.tools`、依赖、`.env`、`config`、数据库或构建产物带入镜像上下文。镜像内的 Bun 副本在运行时复制到 checkout `.tools/bun` 并再次检查版本，不依赖全局 Bun。
 
-各 job 在宿主执行 `docker run`，把 checkout 挂载到 `/workspace`，按宿主 UID/GID 写出文件，缓存放在 checkout 的 `.cache/ci`，不产生 root 所有的构建工件。镜像的默认用户是 `ci`（UID 1001）。项目依赖始终执行 `pnpm install --frozen-lockfile`，Cargo 使用现有 `--locked` 命令。宿主把 `changes` 生成的 `MAAVERGE_CI_PLAN` 传入容器，由 `tools/ci/run.sh` 选择检查：
+各 job 在宿主执行 `docker run`，把 checkout 挂载到 `/workspace`，按宿主 UID/GID 写出文件，缓存放在 checkout 的 `.cache/ci`，不产生 root 所有的构建工件。镜像的默认用户是 `ci`（UID 1001）。项目依赖始终执行 `pnpm install --frozen-lockfile`，Cargo 使用现有 `--locked` 命令。依赖下载缓存与 Cargo target 分开，后者按工具链及锁文件恢复、按提交 SHA 保存，让后续运行能够复用更新后的编译结果。
 
-- `app`：工程脚本、知识与契约同步、四工作区类型及契约回归，接着直接运行 Vite 生产构建；Playwright 按计划不运行、运行 15 条行为冒烟加受影响 spec，或运行全量。需要 Rust 的计划在这里运行一次 rustfmt，不在四宿主重复格式检查。
-- `native`：保留 Bun 编译/执行探针、实际 C++ worker 构建和合成 CTest、完整 Linux 运行时测试；Rust Clippy/测试、worker 构建脚本回归和 Linux 打包夹具由计划分别选择。CI 跳过 doctor 的额外 C++ 编译探针，不生成安装包。
-- `release`：构建 Linux 签名包，不重复执行已由标签提交完整 Checks 覆盖的检查。
+宿主把 `changes` 生成的版本 2 `MAAVERGE_CI_PLAN` 传入容器，计划只包含 `full`、`code`、`native` 三个布尔字段。`tools/ci/run.sh` 保留三种入口：
 
-推送 `main` 或手动运行 Checks 使用完整计划；`dev` 推送和 PR 按路径增量选择，公共 CI 输入、依赖、未知路径或比较基线缺失时回到完整计划。纯文档改动仍执行 application，但跳过浏览器和 native。只涉及后端业务时可跳过 Rust 检查；Windows/macOS 的宿主 action 也跳过 Rust 安装，镜像内预装工具不影响选择。非 Linux 的增量运行时通过 `--platform` 排除明确审核的纯领域测试，新测试默认仍跨平台；完整计划在四宿主都跑全量。路径计划、UI 选择和运行时分组分别以 `tools/ci/plan.mjs`、`tools/ci/ui-suite.mjs`、`tools/ci/runtime-suite.mjs` 为准。
+- `app`：调用 `node tools/check.mjs --app --ci`。始终执行工程脚本、知识与契约同步、四工作区类型及契约回归；`code` 为真时构建 C++ worker、执行四组合成 CTest 和完整 Linux 运行时，再直接 Vite 生产构建并执行 15 条 `@smoke` 行为回归，full 切换为全量 UI。`native` 为真时，在同一任务追加 Bun 独立运行探针、单次 rustfmt、Rust Clippy / 测试及 Linux 打包夹具。application 与原 Linux native 共用本次依赖和 worker 构建，不再各自准备镜像和重复跑服务全量。
+- `native`：保留宿主专项入口，调用 `node tools/check.mjs --native --ci`，执行 Bun 探针、C++ worker / CTest、运行时平台专项、Rust Clippy / 测试和本平台打包夹具。Linux 的 `--platform` 仍运行完整服务测试，Windows/macOS 使用正向清单；实际 Checks 的 Linux 专项已并入 `app`。CI 跳过 doctor 的额外 C++ 编译探针，不生成安装包。
+- `release`：构建 Linux 签名包，不重复执行已由标签提交 full Checks 覆盖的检查。
 
-完整计划的 `full-validation` 只在 application 和四宿主 native 全部成功后通过。发行门禁同时校验标签提交的完整 SHA、Checks 结果和该标记，不接受增量 Checks；缺少完整检查时先运行 `gh workflow run ci.yml --ref <tag>`。
+推送 `main` 或手动运行 Checks 使用 full；`dev` 推送和 PR 使用 quick。公共 CI 输入、依赖、未知路径、空差异或比较基线缺失时回到 full。文档改动只执行静态同步；普通代码在 Linux 跑一份固定基线，原生边界改动才增加 Windows x64 与 macOS arm64 专项，full 再增加 macOS Intel。对应两个、四个或六个实际任务。路径计划以 `tools/ci/plan.mjs` 为准，运行时宿主正向清单以 `tools/ci/runtime-suite.mjs` 为准；不再维护 UI 领域/AST 映射或运行时纯领域排除表。
+
+非 Linux 平台清单为共同 19 个文件，加两个 Windows 或五个 macOS 文件，集中检查数据、文件系统、子进程、更新和原生传输等宿主边界。已有 Windows/macOS 路径失败证据的 Mirror酱关键更新回归保留在共同清单。Linux 全量只执行一份，full 也不在四宿主重复全部领域测试。CI 的运行时入口使用 `--require-native`，worker 或合成核心缺失直接失败，不能静默跳过原生集成。
+
+full 的 `full-validation` 只在 Linux application 和三个附加宿主专项全部成功后通过。发行门禁继续校验标签提交的完整 SHA、最新 attempt 和唯一成功标记，不接受 quick；缺少完整检查时先运行 `gh workflow run ci.yml --ref <tag>`。
 
 浏览器测试固定两个 worker，避免在较多 CPU 的 Docker 宿主上同时启动过多浏览器进程。本地验证结果及环境限制记录在 [开发状态](STATUS.md)。
 
@@ -55,6 +59,6 @@ docker build --platform linux/amd64 -f tools/ci/Dockerfile -t maa-verge-ci:local
 docker run --rm --init --ipc=host --mount "type=bind,source=${PWD},target=/workspace" --env CI=true maa-verge-ci:local bash tools/ci/run.sh app
 ```
 
-以上命令未传 `MAAVERGE_CI_PLAN`，按完整本地检查执行，app 运行全量 Playwright。将最后的 `app` 改成 `native` 会运行 Bun 探针、doctor、worker 脚本回归、C++/完整运行时/Rust 和 Linux 打包夹具；`release` 供已传入签名密钥的发行任务使用，只构建 Linux 签名安装包。复现增量计划时，显式传入 `tools/ci/plan.mjs` 生成的 `MAAVERGE_CI_PLAN`，不要手写跳过开关。产物仍位于 checkout 的 `apps/desktop/src-tauri/target/release/bundle/` 和 `dist/runtime/maaverge-runtime/`。Windows 上的 Linux 构建产物不能代替 Windows 安装包。
+以上命令未传 `MAAVERGE_CI_PLAN`，`run.sh` 会生成完整版本 2 计划并走 CI 入口，app 运行合并后的完整基线、Linux 平台专项和全量 Playwright。将最后的 `app` 改成 `native` 可单独复现 Linux 宿主专项，仍不运行 doctor 的重复编译探针；宿主机的 `pnpm check` / `pnpm check:native` 默认完整本地行为保持兼容。`release` 供已传入签名密钥的发行任务使用，只构建 Linux 签名安装包。复现 quick 时，显式传入 `tools/ci/plan.mjs` 生成的 `MAAVERGE_CI_PLAN`，不要手写跳过开关。产物仍位于 checkout 的 `apps/desktop/src-tauri/target/release/bundle/` 和 `dist/runtime/maaverge-runtime/`。Windows 上的 Linux 构建产物不能代替 Windows 安装包。
 
 更改镜像时至少实际构建镜像、执行 app 检查，并验证 release 签名打包及原始 Ubuntu 的后端 smoke。记录本地 Docker 验证与 GitHub runner 执行的各自结果；不能将其当作 Linux 桌面、真实设备或交互安装验收。

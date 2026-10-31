@@ -1,23 +1,20 @@
 import { run, fail } from '../project.mjs';
-import { resolveUiTargets } from './ui-suite.mjs';
+import { readCiPlan } from './plan.mjs';
 
 async function main() {
   const plan =
-    process.env.MAAVERGE_CI_PLAN === undefined
-      ? { ui: 'full' }
-      : JSON.parse(process.env.MAAVERGE_CI_PLAN);
-  const targets = resolveUiTargets(plan);
-  if (plan.ui === 'none') {
-    console.log('UI fixtures are not affected; skipping Playwright.');
+    process.env.MAAVERGE_CI_PLAN === undefined ? { full: true, code: true } : readCiPlan();
+  if (!plan.code) {
+    console.log('Documentation-only checks do not run Playwright.');
     return;
   }
-  console.log(`UI fixtures: ${plan.ui}${targets.length ? ` (${targets.length} targets)` : ''}`);
+  console.log(`UI fixtures: ${plan.full ? 'full' : '@smoke'}`);
   await run('pnpm', [
     'exec',
     'playwright',
     'test',
     '--workers=2',
-    ...targets,
+    ...(plan.full ? [] : ['--grep', '@smoke']),
     ...process.argv.slice(2),
   ]);
 }

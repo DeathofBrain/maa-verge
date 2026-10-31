@@ -1,30 +1,43 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 
-// These suites assert portable domain behavior. Files/Store used only to prepare
-// ordinary fixtures do not make a suite platform-specific. Keep process/env,
-// links, atomic publication, SQLite ownership/recovery and native integration in
-// the platform group. New tests stay in that group until explicitly reviewed.
-export const portableRuntimeTests = Object.freeze([
-  'packages/agent/tests/deterministic.test.ts',
-  'packages/agent/tests/langchain.test.ts',
-  'packages/agent/tests/maa-tools.test.ts',
-  'packages/agent/tests/proposal-policy.test.ts',
-  'services/backend/tests/agent-module.test.ts',
-  'services/backend/tests/agent-parity.test.ts',
-  'services/backend/tests/connection-errors.test.ts',
-  'services/backend/tests/copilot-sort.test.ts',
-  'services/backend/tests/copilot-stages.test.ts',
-  'services/backend/tests/default-plan.test.ts',
-  'services/backend/tests/home-info.test.ts',
-  'services/backend/tests/policy-parity.test.ts',
-  'services/backend/tests/rpc-transport.test.ts',
-  'services/backend/tests/stages.test.ts',
-  'services/backend/tests/system-errors.test.ts',
-  'services/backend/tests/tool-exports.test.ts',
-]);
-
-const portable = new Set(portableRuntimeTests);
+// Linux runs every discovered suite. Other hosts exercise the OS boundaries;
+// add new platform-specific regressions here instead of duplicating domain tests.
+const backendTests = (...names) => names.map((name) => `services/backend/tests/${name}.test.ts`);
+const common = backendTests(
+  'runtime',
+  'lifecycle',
+  'config-location',
+  'archives',
+  'snapshot-integrity',
+  'generation-retention',
+  'updates',
+  'update-activation',
+  'bundled-components',
+  'copilot-storage',
+  'native-environment',
+  'emulator-leases',
+  'multi-instance',
+  'download',
+  'download-reconnect',
+  'download-proxy-routing',
+  'network-proxy',
+  'app-update-http',
+  'mirrorchyan',
+);
+export const platformRuntimeTests = Object.freeze({
+  win32: Object.freeze([...common, ...backendTests('windows-adb', 'ld-discovery')]),
+  darwin: Object.freeze([
+    ...common,
+    ...backendTests(
+      'component-locations',
+      'component-namespaces',
+      'macos-components',
+      'macos-core',
+      'macos-mirror-capabilities',
+    ),
+  ]),
+});
 export const runtimeTestDirectories = ['packages/agent/tests', 'services/backend/tests'];
 
 export function discoverRuntimeTests(root) {
@@ -44,21 +57,28 @@ export function discoverRuntimeTests(root) {
   return files.sort();
 }
 
-export function partitionRuntimeTests(files) {
-  const groups = { portable: [], platform: [] };
-  for (const file of files) groups[portable.has(file) ? 'portable' : 'platform'].push(file);
-  return groups;
-}
-
 export function parseRuntimeArguments(args) {
-  if (args.length === 0) return { platformOnly: false };
-  if (args.length === 1 && args[0] === '--platform') return { platformOnly: true };
-  throw new Error('Usage: node tools/test-runtime.mjs [--platform]');
+  if (
+    new Set(args).size !== args.length ||
+    args.some((arg) => !['--platform', '--require-native'].includes(arg))
+  )
+    throw new Error('Usage: node tools/test-runtime.mjs [--platform] [--require-native]');
+  return {
+    platformOnly: args.includes('--platform'),
+    requireNative: args.includes('--require-native'),
+  };
 }
 
 export function selectRuntimeTests(
   files,
   { platformOnly = false, platform = process.platform } = {},
 ) {
-  return platformOnly && platform !== 'linux' ? partitionRuntimeTests(files).platform : [...files];
+  if (!platformOnly || platform === 'linux') return [...files];
+  const selected = platformRuntimeTests[platform];
+  if (!selected) throw new Error(`No runtime suite is defined for platform ${platform}`);
+  const discovered = new Set(files);
+  for (const file of selected)
+    if (!discovered.has(file))
+      throw new Error(`Required platform runtime suite is missing: ${file}`);
+  return [...selected].sort();
 }

@@ -171,20 +171,22 @@ smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下�
 
 许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`。
 
-Checks 由 `changes` 任务按改动路径生成计划：推送 `main` 或手动 `workflow_dispatch` 执行完整检查；`dev` 推送和 PR 执行增量检查。依赖、公共 CI 输入、未分类路径或无法确定比较基线时回到完整检查。`application` 始终执行工程脚本、知识与契约同步、四工作区类型和契约回归；随后直接运行 Vite 生产构建，不再重复工作区类型检查。纯文档变更不运行 Playwright；已识别功能域运行 15 条行为冒烟和受影响 spec，共享界面或未分类 UI 改动运行全量。选择规则分别位于 `tools/ci/plan.mjs`、`tools/ci/ui-suite.mjs`，已有 spec 被整体选中时不会重复执行其中的冒烟用例。
+Checks 在同一 `ci.yml` 中使用 quick / full 两档。`changes` 按真实 Git 差异生成版本 2 的 `full`、`code`、`native` 计划：`dev` 推送和 PR 使用 quick，`main` 合并后的推送与手动 `workflow_dispatch` 使用 full。公共 CI 输入、依赖、未分类路径、空差异或无法确定比较基线时保守执行 full；PR 比较 merge base，改名检查两端路径。
 
-涉及后端、原生、契约或构建工具时，计划启用 Windows x64、Linux x64、macOS arm64/x64 四个 `native`。每个宿主保留 Bun 编译/执行探针、实际 C++ worker 构建及四组合成 CTest。Linux 始终运行完整 TypeScript 运行时测试；增量计划的其他宿主使用 `tools/test-runtime.mjs --platform`，只排除 `tools/ci/runtime-suite.mjs` 明确审核的纯领域测试，新测试默认跨平台执行。完整计划在四宿主都运行全部运行时测试。SQLite 租约与恢复、请求去重、文件替换与链接、子进程环境、代理、通知、唤醒、更新和原生集成继续保留在平台组。
+Linux `application` 合并应用检查与原 Linux native 任务，一次准备镜像和依赖。它始终执行工程脚本、知识与契约同步、四工作区类型和契约回归。代码变更接着直接运行 Vite 生产构建、构建 C++ worker 并执行四组合成 CTest、运行一份全量 TypeScript 运行时测试，以及 15 条带 Playwright 原生 `@smoke` 标签的行为回归；纯 UI 变更也使用这份固定基线。full 将浏览器检查切换为全量。纯文档变更仅执行静态同步检查，不构建或运行浏览器、worker 和服务测试。不再维护 UI 领域到 spec 的映射或按标题解析 AST 选择测试。
 
-CI 不再执行 `doctor --native` 的额外 C++ 编译探针；worker 构建脚本回归和平台打包夹具按路径启用。Rust 格式检查在需要 Rust 的计划中只由 `application` 执行一次，Clippy 和 Rust 测试仍在所选原生宿主执行；仅后端业务改动可跳过 Rust 工具安装及检查。Windows 仅在需要打包夹具时准备 NSIS，缺少工具直接失败。macOS 最低支持 15，Checks 和发行使用 `macos-15` arm64 与 `macos-15-intel` x64；Tauri 与 C++ worker 部署目标均为 15.0。任一宿主失败不会取消其他平台，Checks 不生成安装包。
+Rust/C++、契约、SQLite 与文件系统、子进程与环境、网络代理、更新、打包及公共工具链等原生边界改动，在 quick 中启用 Windows x64 和 macOS arm64 的 `native` 专项；普通后端领域逻辑不启用宿主矩阵。Linux 专项直接接在 `application` 基线后，full 再增加 macOS Intel。`changes` 加 `application` 的普通检查共两个任务，原生边界 quick 共四个，full 加 `full-validation` 共六个。各宿主保留 Bun 编译/执行探针、C++ worker / CTest、Rust Clippy / 测试和本平台打包夹具；Rust fmt 仅由 `application` 执行一次，CI 不重复执行 doctor 的 C++ 编译探针。Windows 专项显式准备 NSIS，缺少工具直接失败。
 
-完整计划另运行 `full-validation`，要求 `application` 和四宿主 `native` 全部成功。发行只复用同一标签提交、同次运行中该标记成功的完整 Checks；增量检查成功不能用于发行。缺少完整检查时，先执行 `gh workflow run ci.yml --ref <tag>`，成功后补跑 Release。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。
+服务全量测试只在 Linux 基线执行一次。Windows/macOS 专项按 `tools/ci/runtime-suite.mjs` 的正向清单运行共同的 19 个文件，再分别加入两个 Windows 或五个 macOS 文件；清单覆盖 SQLite 租约与恢复、请求去重、文件替换与链接、子进程、更新及原生传输等边界，并因已有 Windows/macOS 路径失败证据保留 Mirror酱关键更新回归。不再用纯领域排除表将其余全部测试重复到各宿主。新增业务测试自动进入 Linux 全量；涉及平台边界时应同步审核专项清单。full 也沿用这套分工，不在四宿主重跑所有领域测试。macOS 最低支持 15，Checks 和发行使用 `macos-15` arm64 与 `macos-15-intel` x64；Tauri 与 C++ worker 部署目标均为 15.0。任一宿主失败不会取消其他平台，Checks 不生成安装包。
+
+完整计划的 `full-validation` 要求 Linux `application` 和三个附加宿主专项全部成功。发行门禁保持同 SHA、最新 attempt 中唯一且成功的 `full-validation`，quick 成功不能用于发行。发布前标签提交若没有可复用的 full，先执行 `gh workflow run ci.yml --ref <tag>`，成功后补跑 Release。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。依赖下载缓存与 Cargo 构建缓存分离；Cargo 以工具链和锁文件作恢复前缀、提交 SHA 作保存键，避免一直恢复不可更新的同一旧快照。
 
 Node/Bun 测试夹具与验证工具通过 `tools/test-support/temporary-directory.mjs` 的 `makeTemporaryDirectory` / `makeTemporaryDirectorySync` 创建临时目录，参数沿用 `mkdtemp` 的完整路径前缀。入口创建后立即以原生 `realpath` 解析真实路径，同步使用 `realpathSync.native()`，统一处理 macOS 的 `/var` 别名和 Windows 短路径；后续数据根、子进程参数和清理边界都使用返回的路径。比较系统临时根时使用同样的原生解析方式。原生夹具保持同样的路径规范化约定，产品继续拒绝快照内的符号链接。
 
-本地 `pnpm check`、`pnpm check:app`、`pnpm check:native` 和 `pnpm test:runtime` 默认保持完整检查；只有显式 `--ci` 才读取 `MAAVERGE_CI_PLAN`。本地原生检查仍执行 doctor、worker 脚本回归和本平台打包夹具；没有 Cargo 时明确跳过 Rust，CI 计划要求的 Rust 检查缺少工具则失败，CMake/C++ 检查不会因此跳过。CI 选择器与发行门禁可单独验证：
+本地 `pnpm check`、`pnpm check:app`、`pnpm check:native` 和 `pnpm test:runtime` 默认保持完整检查；只有显式 `--ci` 才读取并校验 `MAAVERGE_CI_PLAN`，非法计划直接失败。本地原生检查仍执行 doctor、worker 脚本回归、全量运行时和本平台打包夹具；没有 Cargo 时明确跳过 Rust，CI 计划要求的 Rust 检查缺少工具则失败，CMake/C++ 检查不会因此跳过。CI 路径计划、宿主清单与发行门禁可单独验证：
 
 ```bash
-node --test tools/tests/ci-plan.test.mjs tools/tests/ui-suite.test.mjs tools/tests/runtime-suite.test.mjs tools/tests/require-checks.test.mjs
+node --test tools/tests/ci-plan.test.mjs tools/tests/runtime-suite.test.mjs tools/tests/require-checks.test.mjs
 ```
 
 Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runtime/maaverge-runtime` 中的 Linux x64 两个可执行文件。测试驱动在宿主 Node 中准备隔离数据，容器使用原始 Ubuntu 22.04 镜像并确认没有 Python、Node 或 Bun；后端会话断网，覆盖真实 native 服务、持久化、缺失设备拒绝和 EOF 重启。发布流程在 Linux 签名构建后自动执行。这是后端容器测试，桌面和安装器仍需单独验收。

@@ -110,6 +110,8 @@ flowchart TD
 
 ### 2.3 Agent 三种模式
 
+面向用户的 Agent 功能计划在 v1.0.0 推出，敬请期待；当前的模块与离线提案底座不代表这项产品能力已经开放。
+
 [Agent 独立模块与 LangChain 接入](docs/agent-module.md)已提供独立包、模型注入、结构化草稿、零消耗门禁及离线核验入口。当前产品仍使用本地规则提案，真实供应商、凭据、费用预算、知识工具与持久编排按阶段接入。
 
 [MaaCore Agent tools](docs/agent-tools.md) 已在 `packages/agent/tools` 提供 16 个工具及可选 LangChain 桥接，覆盖任务草稿、已保存任务表、六类独立工具、识别分页、画面/点击与已有作业工作区。宿主绑定设备和客户端、逐操作授权，最终执行复核不可变快照；产品模型和审批入口仍待接入。
@@ -304,8 +306,8 @@ doctor 的设备连接和云模型网络检查为显式选项，不在普通检�
 - 安装包和桌面 smoke 启动前由 `tools/test-support/seed-native.mjs` 在新建隔离目录预置设置，关闭自动连接和自动更新；产品入口不添加种子或测试开关，仍验证空设备、Agent 提案、保存与重启持久化和缺失设备拒绝。
 - 固定场景覆盖任务进度、失败、掉线、worker 崩溃、首次安装、核心更新、独立资源更新、空闲切换和回滚。
 - 视觉与坐标测试使用合成或脱敏图片；真实账号数据保持本地。
-- `dev` / PR 检查按改动范围选择：保留 TypeScript、schema 与知识同步检查；UI 执行核心 smoke 加受影响 spec，跨层改动执行全量；纯前端与文档跳过 native，后端保留平台敏感服务测试，Rust 与打包夹具按依赖路径触发。
-- `main` 推送和手动 Checks 执行完整检查：Windows x64、Linux x64、macOS arm64/x64 各自执行 Bun 独立运行探针、服务全量、Node 驱动的 C++ 合成 CTest、Rust clippy/测试与本平台打包夹具，Rust fmt 在 application 执行一次。成功的 `full-validation` 才能用于发行；Checks 不生成安装包，签名安装包只在发布流程构建。跨编译成功不替代宿主执行；未签名工件不替代实际安装验收。
+- Checks 使用同一工作流的 quick / full 两档，`changes` 只输出版本 2 的 `full`、`code`、`native` 计划。`dev` / PR 日常代码检查统一在 Linux `application` 完成类型、schema、知识同步、Vite 构建、C++ worker / 四组合成 CTest、全量 TypeScript 运行时和 15 条 `@smoke` 行为回归；纯文档仅保留静态同步检查。原生边界改动再启用 Windows x64 与 macOS arm64 专项，日常分别为两个或四个任务。
+- `main` 合并后推送和手动 Checks 执行 full，发布前须在标签同一提交完成 full：Linux 运行全量 UI，平台专项增加 macOS Intel，总计六个任务。Linux 全量运行时只跑一份，其他宿主通过正向清单检查 SQLite、文件系统、子进程、更新和原生传输等平台边界，并保留 Mirror酱关键更新路径回归；各平台保留 Bun 独立运行探针、C++ CTest、Rust clippy / 测试及本平台打包夹具，Rust fmt 只在 application 执行一次。成功的 `full-validation` 才能用于发行；Checks 不生成安装包，签名安装包只在发布流程构建。跨编译成功不替代宿主执行；未签名工件不替代实际安装验收。
 - 真实核心的加载及资源契约测试单独执行，普通 CI 不依赖模拟器、真实账号或付费模型。
 - 发布流水线执行签名、公证和发布元数据生成，凭据使用 CI secret，产物可追溯至提交和锁文件。
 

@@ -2,17 +2,13 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { selectUiSpecs } from './ui-suite.mjs';
+import { platformRuntimeTests } from './runtime-suite.mjs';
 
 const fullPlan = {
-  version: 1,
+  version: 2,
   full: true,
+  code: true,
   native: true,
-  rust: true,
-  packaging: true,
-  workerTools: true,
-  ui: 'full',
-  uiFiles: [],
 };
 
 const infrastructure =
@@ -23,8 +19,9 @@ const frontend =
   /^(?:apps\/desktop\/(?:src\/|public\/|index\.html$|vite\.config\.[^/]+$|tsconfig[^/]*\.json$)|tests\/ui\/|playwright\.config\.[^/]+$)/u;
 const native =
   /^(?:services\/(?:backend|native)\/|packages\/(?:agent|contracts)\/|apps\/desktop\/src-tauri\/|tools\/|\.github\/workflows\/release\.yml$)/u;
-const packaging =
-  /^(?:tools\/(?:test-support\/|(?:tests\/)?(?:build|package-runtime|app-updater-release|release-assets|runtime-notices|windows[^/]*|linux[^/]*|macos[^/]*|prepare-windows-components|smoke-[^/]*|verify-macos-bundle)(?:\.test)?\.(?:mjs|json)$)|services\/backend\/(?:src\/(?:infrastructure\/(?:filesystem|network|native)\/|modules\/updates\/)|tests\/archive-fixture\.ts$)|apps\/desktop\/src-tauri\/(?:Cargo\.(?:toml|lock)$|tauri[^/]*\.json$|.*[Ee]ntitlements\.plist$|icons\/|windows\/)|\.github\/workflows\/release\.yml$)/u;
+const platformBoundary =
+  /^(?:services\/native\/|packages\/contracts\/|apps\/desktop\/src-tauri\/|tools\/|\.github\/workflows\/release\.yml$|services\/backend\/(?:src\/(?:entry\.ts$|app\/|transport\/|infrastructure\/|modules\/(?:updates|schedules|devices|execution)\/)|tests\/archive-fixture\.ts$))/u;
+const platformTests = new Set(Object.values(platformRuntimeTests).flat());
 
 /** Unknown paths and shared CI inputs deliberately retain the complete matrix. */
 export function createCiPlan(files, { full = false } = {}) {
@@ -40,28 +37,14 @@ export function createCiPlan(files, { full = false } = {}) {
         (!documentation.test(file) && !frontend.test(file) && !native.test(file)),
     )
   )
-    return { ...fullPlan, uiFiles: [] };
+    return { ...fullPlan };
 
   const codePaths = paths.filter((file) => !documentation.test(file));
-  const selected = selectUiSpecs(codePaths);
-  const hasNative = codePaths.some((file) => native.test(file));
-  const rust = codePaths.some((file) =>
-    /^(?:apps\/desktop\/src-tauri\/|services\/native\/|packages\/contracts\/|tools\/)/u.test(file),
-  );
-  const hasCode = codePaths.length > 0;
   return {
-    version: 1,
+    version: 2,
     full: false,
-    native: hasNative,
-    rust: hasNative && rust,
-    packaging: codePaths.some((file) => packaging.test(file)),
-    workerTools: codePaths.some((file) =>
-      /^(?:tools\/(?:tests\/)?(?:build-core-worker|setup-rust|bootstrap)[^/]*|services\/native\/(?:CMakeLists\.txt|CMakePresets\.json|cmake\/))/u.test(
-        file,
-      ),
-    ),
-    ui: !hasCode ? 'none' : selected.full ? 'full' : 'selected',
-    uiFiles: selected.full ? [] : selected.files,
+    code: codePaths.length > 0,
+    native: codePaths.some((file) => platformBoundary.test(file) || platformTests.has(file)),
   };
 }
 
@@ -69,21 +52,22 @@ export function readCiPlan(value = process.env.MAAVERGE_CI_PLAN) {
   if (!value) throw new Error('MAAVERGE_CI_PLAN is required for CI checks');
   const plan = JSON.parse(value);
   if (
-    plan?.version !== 1 ||
-    ['full', 'native', 'rust', 'packaging', 'workerTools'].some(
-      (key) => typeof plan[key] !== 'boolean',
-    ) ||
-    !['none', 'selected', 'full'].includes(plan.ui) ||
-    !Array.isArray(plan.uiFiles) ||
-    plan.uiFiles.some(
-      (file) => typeof file !== 'string' || !/^tests\/ui\/[a-z0-9-]+\.spec\.ts$/u.test(file),
-    ) ||
-    ((plan.rust || plan.packaging || plan.workerTools) && !plan.native) ||
-    (plan.full &&
-      (!plan.native || !plan.rust || !plan.packaging || !plan.workerTools || plan.ui !== 'full'))
+    plan?.version !== 2 ||
+    Object.keys(plan).some((key) => !['version', 'full', 'code', 'native'].includes(key)) ||
+    ['full', 'code', 'native'].some((key) => typeof plan[key] !== 'boolean') ||
+    (plan.native && !plan.code) ||
+    (plan.full && (!plan.native || !plan.code))
   )
     throw new Error('Invalid CI plan; refusing to skip checks');
   return plan;
+}
+
+export function nativeHosts({ full }) {
+  return [
+    { os: 'windows-2022', architecture: 'x64' },
+    { os: 'macos-15', architecture: 'arm64' },
+    ...(full ? [{ os: 'macos-15-intel', architecture: 'x64' }] : []),
+  ];
 }
 
 /** Compare both sides of renames; a missing/invalid base falls back to full checks. */
@@ -122,7 +106,7 @@ function main() {
   if (process.env.GITHUB_OUTPUT)
     appendFileSync(
       process.env.GITHUB_OUTPUT,
-      `plan=${JSON.stringify(plan)}\nfull=${plan.full}\nnative=${plan.native}\nrust=${plan.rust}\npackaging=${plan.packaging}\n`,
+      `plan=${JSON.stringify(plan)}\nfull=${plan.full}\nnative=${plan.native}\nhosts=${JSON.stringify(nativeHosts(plan))}\n`,
     );
 }
 

@@ -18,33 +18,35 @@ async function saved(page: Page) {
   await expect(wb(page).locator('.wb-save-state')).toHaveText('已保存');
 }
 
-test('valid parameters and metadata automatically persist without manual saving', async ({
-  page,
-}) => {
-  await openFarm(page);
-  await wb(page).getByLabel('作战次数', { exact: true }).fill('17');
-  await saved(page);
-  expect((await snapshot(page)).plans.find((p) => p.id === 'farm-1-7')?.tasks[0].params.times).toBe(
-    17,
-  );
-  await wb(page).getByRole('tab', { name: '任务表设置', exact: true }).click();
-  await wb(page).getByLabel('任务表名称', { exact: true }).fill('自动保存的表');
-  await wb(page).getByLabel('任务表说明', { exact: true }).fill('自动保存说明');
-  await wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }).check();
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
-  await expect(wb(page).getByLabel('任务表理智药上限', { exact: true })).toHaveCount(0);
-  await saved(page);
-  await page.reload();
-  await nav(page, '任务');
-  await page.getByRole('button', { name: '查看任务表详情自动保存的表', exact: true }).click();
-  await wb(page).getByRole('tab', { name: '任务表设置', exact: true }).click();
-  await expect(wb(page).getByLabel('任务表名称', { exact: true })).toHaveValue('自动保存的表');
-  await expect(wb(page).getByLabel('任务表说明', { exact: true })).toHaveValue('自动保存说明');
-  await expect(
-    wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }),
-  ).toBeChecked();
-  await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
-});
+test(
+  'valid parameters and metadata automatically persist without manual saving',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openFarm(page);
+    await wb(page).getByLabel('作战次数', { exact: true }).fill('17');
+    await saved(page);
+    expect(
+      (await snapshot(page)).plans.find((p) => p.id === 'farm-1-7')?.tasks[0].params.times,
+    ).toBe(17);
+    await wb(page).getByRole('tab', { name: '任务表设置', exact: true }).click();
+    await wb(page).getByLabel('任务表名称', { exact: true }).fill('自动保存的表');
+    await wb(page).getByLabel('任务表说明', { exact: true }).fill('自动保存说明');
+    await wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }).check();
+    await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
+    await expect(wb(page).getByLabel('任务表理智药上限', { exact: true })).toHaveCount(0);
+    await saved(page);
+    await page.reload();
+    await nav(page, '任务');
+    await page.getByRole('button', { name: '查看任务表详情自动保存的表', exact: true }).click();
+    await wb(page).getByRole('tab', { name: '任务表设置', exact: true }).click();
+    await expect(wb(page).getByLabel('任务表名称', { exact: true })).toHaveValue('自动保存的表');
+    await expect(wb(page).getByLabel('任务表说明', { exact: true })).toHaveValue('自动保存说明');
+    await expect(
+      wb(page).getByRole('checkbox', { name: '绑定设备本地模拟设备', exact: true }),
+    ).toBeChecked();
+    await expect(wb(page).getByText('本表自动作战累计上限：理智药 0 · 源石 0')).toBeVisible();
+  },
+);
 
 test('leaving before the debounce saves the outgoing table without redirecting navigation', async ({
   page,
@@ -95,36 +97,40 @@ test('edits remain available during a slow save and the final write wins', async
   );
 });
 
-test('failed and invalid saves retain drafts and can be corrected or retried', async ({ page }) => {
-  await openFarm(page);
-  await wb(page).locator('.advanced-params summary').click();
-  await wb(page).getByLabel('任务参数 JSON').fill('{"times":');
-  await expect(wb(page).locator('.wb-save-state')).toHaveText('保存失败');
-  expect((await snapshot(page)).plans.find((p) => p.id === 'farm-1-7')?.tasks[0].params.times).toBe(
-    6,
-  );
-  await page.evaluate(() => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    const call = api.call;
-    let fail = true;
-    api.call = async (method, params) => {
-      if (method === 'plan.save' && fail) {
-        fail = false;
-        throw new Error('合成保存故障');
-      }
-      return call(method, params);
-    };
-  });
-  await wb(page)
-    .getByLabel('任务参数 JSON')
-    .fill('{"stage":"1-7","times":29,"medicine":0,"stone":0}');
-  await expect(wb(page).getByRole('alert')).toContainText('自动保存失败');
-  await wb(page).getByRole('button', { name: '重试保存', exact: true }).click();
-  await saved(page);
-  expect((await snapshot(page)).plans.find((p) => p.id === 'farm-1-7')?.tasks[0].params.times).toBe(
-    29,
-  );
-});
+test(
+  'failed and invalid saves retain drafts and can be corrected or retried',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await openFarm(page);
+    await wb(page).locator('.advanced-params summary').click();
+    await wb(page).getByLabel('任务参数 JSON').fill('{"times":');
+    await expect(wb(page).locator('.wb-save-state')).toHaveText('保存失败');
+    expect(
+      (await snapshot(page)).plans.find((p) => p.id === 'farm-1-7')?.tasks[0].params.times,
+    ).toBe(6);
+    await page.evaluate(() => {
+      const api = (window as HarnessWindow).runtimeHarness;
+      const call = api.call;
+      let fail = true;
+      api.call = async (method, params) => {
+        if (method === 'plan.save' && fail) {
+          fail = false;
+          throw new Error('合成保存故障');
+        }
+        return call(method, params);
+      };
+    });
+    await wb(page)
+      .getByLabel('任务参数 JSON')
+      .fill('{"stage":"1-7","times":29,"medicine":0,"stone":0}');
+    await expect(wb(page).getByRole('alert')).toContainText('自动保存失败');
+    await wb(page).getByRole('button', { name: '重试保存', exact: true }).click();
+    await saved(page);
+    expect(
+      (await snapshot(page)).plans.find((p) => p.id === 'farm-1-7')?.tasks[0].params.times,
+    ).toBe(29);
+  },
+);
 
 test('deletion waits for an earlier save and never revives the deleted table', async ({ page }) => {
   await openFarm(page);

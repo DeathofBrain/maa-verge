@@ -22,8 +22,7 @@ jobs:
       plan: ${{ steps.plan.outputs.plan }}
       full: ${{ steps.plan.outputs.full }}
       native: ${{ steps.plan.outputs.native }}
-      rust: ${{ steps.plan.outputs.rust }}
-      packaging: ${{ steps.plan.outputs.packaging }}
+      hosts: ${{ steps.plan.outputs.hosts }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,10 +46,21 @@ jobs:
       - uses: ./.github/actions/linux-ci-image
       - uses: actions/cache@v4
         with:
-          path: .cache/ci
-          key: linux-application-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: linux-application-
-      - name: Check application and browser fixtures in the Linux image
+          path: |
+            .cache/ci/pnpm
+            .cache/ci/npm
+            .cache/ci/cargo/registry
+            .cache/ci/cargo/git
+          key: linux-dependencies-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: linux-dependencies-
+      - uses: actions/cache@v4
+        if: needs.changes.outputs.native == 'true'
+        with:
+          path: apps/desktop/src-tauri/target
+          key: linux-cargo-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}-checks-${{ github.sha }}
+          restore-keys: |
+            linux-cargo-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}-
+      - name: Check the application, Linux runtime and browser fixtures
         run: |
           docker run --rm --init --ipc=host --user "$(id -u):$(id -g)" \
             --mount "type=bind,source=$PWD,target=/workspace" \
@@ -62,6 +72,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            build/native/Testing/Temporary/
           if-no-files-found: ignore
 
   native:
@@ -74,34 +85,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-2022
-            architecture: x64
-          - os: ubuntu-22.04
-            architecture: x64
-          - os: macos-15
-            architecture: arm64
-          - os: macos-15-intel
-            architecture: x64
+        include: ${{ fromJSON(needs.changes.outputs.hosts) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/linux-ci-image
-        if: runner.os == 'Linux'
       - uses: ./.github/actions/host-setup
-        if: runner.os != 'Linux'
-        with:
-          rust: ${{ needs.changes.outputs.rust }}
-      - uses: actions/cache@v4
-        if: runner.os == 'Linux'
-        with:
-          path: |
-            .cache/ci
-            apps/desktop/src-tauri/target
-          key: linux-native-${{ hashFiles('tools/ci/Dockerfile', 'tools/ci/install.sh', 'pnpm-lock.yaml', 'apps/desktop/src-tauri/Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: linux-native-
       - name: Ensure the NSIS compiler is available
-        if: runner.os == 'Windows' && needs.changes.outputs.packaging == 'true'
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $nsis = Join-Path ${env:ProgramFiles(x86)} 'NSIS\makensis.exe'
@@ -111,16 +101,9 @@ jobs:
           if (-not (Test-Path $nsis)) { throw "NSIS compiler was not installed at $nsis" }
           "MAAVERGE_NSIS_COMPILER=$nsis" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Check native toolchain and host packaging fixtures
-        if: runner.os != 'Linux'
         env:
           MAAVERGE_INSTALLER_TOOLS_REQUIRED: '1'
         run: node tools/check.mjs --native --ci
-      - name: Check native toolchain in the Linux CI image
-        if: runner.os == 'Linux'
-        run: |
-          docker run --rm --init --user "$(id -u):$(id -g)" \
-            --mount "type=bind,source=$PWD,target=/workspace" \
-            --env CI=true --env MAAVERGE_CI_PLAN maa-verge-ci:local bash tools/ci/run.sh native
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
