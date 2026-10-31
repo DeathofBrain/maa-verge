@@ -1,4 +1,4 @@
-import { run, desktop, fail } from './project.mjs';
+import { run, desktop, devEnvironment, fail } from './project.mjs';
 import { assertWorkspaceDependencies } from './environment.mjs';
 import { ensureBun } from './setup-bun.mjs';
 import {
@@ -25,7 +25,13 @@ async function main() {
   await run(
     'pnpm',
     ['exec', 'tauri', 'build', ...updaterBuildArguments(), ...windowsArguments, '--', '--locked'],
-    { cwd: desktop },
+    {
+      cwd: desktop,
+      // Tauri otherwise skips the DMG background and Finder icon layout in CI.
+      ...(process.platform === 'darwin'
+        ? { env: { ...devEnvironment(), TAURI_BUNDLER_DMG_IGNORE_CI: 'true' } }
+        : {}),
+    },
   );
   if (process.platform === 'win32') {
     await packageWindowsPortable();

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <title>Maa Verge macOS 安装指南</title>
+  <desc>
+    将 Maa Verge 拖入
+    Applications。首次打开如被系统拦截，在系统设置的隐私与安全性中选择仍要打开。Maa Verge
+    为开源软件，不包含任何恶意代码。
+  </desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0f4ff" />
+      <stop offset="0.5" stop-color="#f8faff" />
+      <stop offset="1" stop-color="#f5f7fa" />
+    </linearGradient>
+    <linearGradient id="arrow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#aab9f0" />
+      <stop offset="1" stop-color="#4965d4" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#paper)" />
+  <g font-family="'Noto Sans SC Variable', 'PingFang SC', sans-serif" fill="#202734">
+    <text x="40" y="46" font-size="19" font-weight="650" letter-spacing="-0.4">Maa Verge</text>
+    <path d="M158 31v18" stroke="#c8d1df" />
+    <text x="174" y="45" font-size="12" fill="#697587">安装指南</text>
+    <text x="760" y="45" text-anchor="end" font-size="12" fill="#697587">macOS</text>
+
+    <text x="400" y="114" text-anchor="middle" font-size="34" font-weight="700" letter-spacing="1">
+      拖入即安装
+    </text>
+    <text x="400" y="146" text-anchor="middle" font-size="14" fill="#697587">
+      将 Maa Verge 拖到右侧 Applications 文件夹
+    </text>
+
+    <!-- Finder supplies both real, draggable icons and their filenames here. -->
+    <rect
+      x="40"
+      y="177"
+      width="720"
+      height="170"
+      rx="22"
+      fill="#ffffff"
+      fill-opacity="0.68"
+      stroke="#e3e9f4"
+    />
+    <path
+      d="M350 245h96m-18-18 18 18-18 18"
+      fill="none"
+      stroke="url(#arrow)"
+      stroke-width="3"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <rect x="40" y="371" width="720" height="145" rx="16" fill="#ffffff" stroke="#dde3ec" />
+    <g
+      transform="translate(62 392)"
+      fill="none"
+      stroke="#4965d4"
+      stroke-width="1.7"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <rect x="2" y="8" width="14" height="11" rx="3" />
+      <path d="M5 8V5a4 4 0 0 1 8 0v3m-4 5v2" />
+    </g>
+    <text x="92" y="408" font-size="16" font-weight="600">首次打开，需要在系统设置中放行</text>
+    <text x="62" y="437" font-size="13" fill="#697587">
+      安装后先打开一次；若被 macOS 拦截，请按以下路径允许打开。
+    </text>
+
+    <text x="62" y="482" font-size="15" font-weight="500">系统设置</text>
+    <path
+      d="m142 470 5 5-5 5m151-10 5 5-5 5"
+      fill="none"
+      stroke="#8a94a5"
+      stroke-width="1.7"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <text x="165" y="482" font-size="15" font-weight="500">隐私与安全性</text>
+    <rect x="316" y="459" width="115" height="33" rx="8" fill="#eef2ff" />
+    <text x="373.5" y="481" text-anchor="middle" font-size="15" font-weight="600" fill="#4965d4">
+      仍要打开
+    </text>
+    <text x="738" y="481" text-anchor="end" font-size="12" fill="#697587">按提示确认打开</text>
+
+    <g
+      transform="translate(62 542)"
+      fill="none"
+      stroke="#248260"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="m9 0 7 3v6c0 5-7 8-7 8S2 14 2 9V3Z" />
+      <path d="m6 8 2 2 4-4" />
+    </g>
+    <text x="90" y="556" font-size="13" fill="#404d60">
+      Maa Verge 为开源软件，不包含任何恶意代码。
+    </text>
+    <text x="62" y="580" font-size="11" fill="#697587">
+      源代码公开可查 · github.com/DeathofBrain/maa-verge
+    </text>
+    <text x="738" y="580" text-anchor="end" font-size="11" fill="#697587">AGPL-3.0-only</text>
+  </g>
+</svg>
