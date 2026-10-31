@@ -121,6 +121,10 @@ export interface RpcCapabilities {
   saveSettings(input: unknown): Promise<Settings>;
   propose(message: string): unknown;
   update(operation: UpdateOperation, channel: Params['updates.check']['channel']): Promise<unknown>;
+  maaFwAdb: {
+    status(): RpcContract['results']['updates.maafwAdb.status'];
+    prepare(): Promise<RpcContract['results']['updates.maafwAdb.prepare']>;
+  };
 }
 
 /** Global admission gates run in Runtime before any method is dispatched. */
@@ -382,6 +386,12 @@ export function createRpcDispatcher(capabilities: RpcCapabilities) {
       case 'updates.rollback':
         if (!('channel' in params)) throw new RpcError(-32602, '缺少更新通道');
         return capabilities.update(method.slice(8) as UpdateOperation, params.channel);
+      case 'updates.maafwAdb.status':
+      case 'updates.maafwAdb.prepare':
+        if (!validateEmptyParams(params)) throw new RpcError(-32602, 'MaaFwAdb 请求参数无效');
+        return method === 'updates.maafwAdb.status'
+          ? capabilities.maaFwAdb.status()
+          : capabilities.maaFwAdb.prepare();
       default:
         throw new RpcError(-32601, '未知方法', { method });
     }

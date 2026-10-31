@@ -177,6 +177,8 @@ createPortal(
 
 `Drawer` 的 `width` 取 `'md' | 'lg'`（760 对应任务表 / 作业 / 日志抽屉，820 对应设备连接抽屉）；`Modal` 加 `{ footer?; width?: 'sm' | 'md' }`；`ConfirmDialog` 加 `{ confirmLabel; cancelLabel?; danger?; busy?; onConfirm; children? }`。
 
+默认连接与独立实例的 MaaFwAdb 缺库确认共用 `MaaFwAdbTouchMode`，复用 `Select` 与 `ConfirmDialog`，保留「触控模式」、选项文案及 `wb-parameter-control` / `sp-field` 定位。确认下载期间使用既有 busy、关闭/取消禁用与焦点还原 props；取消保留原草稿，成功后仍由原表单显式保存。未修改 kit API 或样式。
+
 ## 组件清单
 
 状态含义：**已实现** = 组件文件存在且至少一个页面在用；**已建** = 文件存在但尚无采用方；**计划** = 尚未创建。「替代的旧实现」中的次数与文件数保留历史审计基线，描述迁移对象，不表示所有旧写法均已消失；状态按当前消费者填写。

@@ -35,6 +35,8 @@
         "run.detail",
         "run.artifact",
         "updates.check",
+        "updates.maafwAdb.status",
+        "updates.maafwAdb.prepare",
         "updates.prepare",
         "updates.activate",
         "updates.rollback",
@@ -194,6 +196,12 @@
         },
         "updates.check": {
           "$ref": "#/$defs/ChannelParams"
+        },
+        "updates.maafwAdb.status": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "updates.maafwAdb.prepare": {
+          "$ref": "#/$defs/EmptyParams"
         },
         "updates.prepare": {
           "$ref": "#/$defs/ChannelParams"
@@ -401,6 +409,8 @@
         "run.detail",
         "run.artifact",
         "updates.check",
+        "updates.maafwAdb.status",
+        "updates.maafwAdb.prepare",
         "updates.prepare",
         "updates.activate",
         "updates.rollback",
@@ -633,6 +643,12 @@
           "$ref": "#/$defs/RunArtifactImage"
         },
         "updates.check": {
+          "$ref": "./runtime.schema.json#/$defs/UpdateChannel"
+        },
+        "updates.maafwAdb.status": {
+          "$ref": "#/$defs/MaaFwAdbStatus"
+        },
+        "updates.maafwAdb.prepare": {
           "$ref": "./runtime.schema.json#/$defs/UpdateChannel"
         },
         "updates.prepare": {
@@ -1609,6 +1625,15 @@
     "EmptyParams": {
       "type": "object",
       "additionalProperties": false
+    },
+    "MaaFwAdbStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "coreInstalled"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "coreInstalled": { "type": "boolean" }
+      }
     },
     "DeviceDeleteParams": {
       "type": "object",

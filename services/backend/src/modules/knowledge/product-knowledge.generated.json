@@ -8,7 +8,7 @@
     },
     {
       "file": "docs/connection-settings.md",
-      "sha256": "8c91179306a513bbe0b0bc09d7a8ebc58d5a70b33fa910f0e3816570630c8f47"
+      "sha256": "585180c6128289a430978328d5cdb14c1b18a546903c0b64b9955872d13ec872"
     },
     {
       "file": "docs/game-reminders.md",
@@ -44,7 +44,7 @@
     },
     {
       "file": "packages/contracts/schemas/rpc.schema.json",
-      "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+      "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
     },
     {
       "file": "packages/contracts/schemas/runtime.schema.json",
@@ -349,8 +349,35 @@
       "relations": [],
       "source": {
         "file": "docs/connection-settings.md",
-        "pointer": "L23-L36",
-        "sha256": "8c91179306a513bbe0b0bc09d7a8ebc58d5a70b33fa910f0e3816570630c8f47"
+        "pointer": "L31-L44",
+        "sha256": "585180c6128289a430978328d5cdb14c1b18a546903c0b64b9955872d13ec872"
+      }
+    },
+    {
+      "key": "product:document:docs/connection-settings.md:1d540b2eb53fe01b:0:0",
+      "kind": "document",
+      "id": "docs/connection-settings.md:1d540b2eb53fe01b:0:0",
+      "name": "MaaFwAdb 运行时",
+      "aliases": [
+        "设备连接与游戏启动设置",
+        "MaaFwAdb 运行时",
+        "connection-settings"
+      ],
+      "text": "设备连接与游戏启动设置 > MaaFwAdb 运行时\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## MaaFwAdb 运行时\n\n在默认连接配置或独立实例中选择 **MaaFwAdb（实验性）** 时，先检查当前核心是否携带对应平台的 `MaaAdbControlUnit` 控制库。库已存在时直接选择；缺失时弹出「下载 MaaFwAdb 运行时」，明确告知 **本次下载使用官方源，不使用 Mirror酱**，由用户选择「下载并启用」或「取消」。取消保留原触控模式，也不会下载或保存配置；检查或下载失败会显示错误，下载可重试。尚未安装或启用核心时，先提示到「设置 → 更新」完成 MaaCore 安装。\n\n确认后从当前核心通道的官方源准备完整运行时，可同版修复但不降级。下载、摘要与原生校验通过后，在所有设备空闲时激活新版本；已有组件更新作业或待生效候选会明确提示，避免覆盖。下载成功只更新触控模式草稿，仍需保存连接/实例配置，并在运行时生效后断开重连。此过程复用完整核心包，不向活动目录单独复制控制库。\n\n选择 `AVD` 连接配置并使用 MaaFwAdb，可请求核心的 AVD 增强截图。控制库存在不代表当前模拟器提供所需接口，也不代表真实增强截图已验收；最终仍以实际连接和核心反馈为准。",
+      "data": {
+        "category": "documentation",
+        "headingPath": [
+          "设备连接与游戏启动设置",
+          "MaaFwAdb 运行时"
+        ],
+        "content": "## MaaFwAdb 运行时\n\n在默认连接配置或独立实例中选择 **MaaFwAdb（实验性）** 时，先检查当前核心是否携带对应平台的 `MaaAdbControlUnit` 控制库。库已存在时直接选择；缺失时弹出「下载 MaaFwAdb 运行时」，明确告知 **本次下载使用官方源，不使用 Mirror酱**，由用户选择「下载并启用」或「取消」。取消保留原触控模式，也不会下载或保存配置；检查或下载失败会显示错误，下载可重试。尚未安装或启用核心时，先提示到「设置 → 更新」完成 MaaCore 安装。\n\n确认后从当前核心通道的官方源准备完整运行时，可同版修复但不降级。下载、摘要与原生校验通过后，在所有设备空闲时激活新版本；已有组件更新作业或待生效候选会明确提示，避免覆盖。下载成功只更新触控模式草稿，仍需保存连接/实例配置，并在运行时生效后断开重连。此过程复用完整核心包，不向活动目录单独复制控制库。\n\n选择 `AVD` 连接配置并使用 MaaFwAdb，可请求核心的 AVD 增强截图。控制库存在不代表当前模拟器提供所需接口，也不代表真实增强截图已验收；最终仍以实际连接和核心反馈为准。",
+        "verification": "documented-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "docs/connection-settings.md",
+        "pointer": "L15-L22",
+        "sha256": "585180c6128289a430978328d5cdb14c1b18a546903c0b64b9955872d13ec872"
       }
     },
     {
@@ -376,8 +403,8 @@
       "relations": [],
       "source": {
         "file": "docs/connection-settings.md",
-        "pointer": "L15-L22",
-        "sha256": "8c91179306a513bbe0b0bc09d7a8ebc58d5a70b33fa910f0e3816570630c8f47"
+        "pointer": "L23-L30",
+        "sha256": "585180c6128289a430978328d5cdb14c1b18a546903c0b64b9955872d13ec872"
       }
     },
     {
@@ -402,7 +429,7 @@
       "source": {
         "file": "docs/connection-settings.md",
         "pointer": "L1-L14",
-        "sha256": "8c91179306a513bbe0b0bc09d7a8ebc58d5a70b33fa910f0e3816570630c8f47"
+        "sha256": "585180c6128289a430978328d5cdb14c1b18a546903c0b64b9955872d13ec872"
       }
     },
     {
@@ -1573,7 +1600,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -1662,7 +1689,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -1742,7 +1769,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/agent.message",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2065,7 +2092,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/app.snapshot",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2127,7 +2154,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.assign",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2189,7 +2216,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2260,7 +2287,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2331,7 +2358,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2393,7 +2420,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2455,7 +2482,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.export",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2571,7 +2598,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2687,7 +2714,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.import",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2803,7 +2830,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -2937,7 +2964,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.preview",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3017,7 +3044,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3097,7 +3124,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.set",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3204,7 +3231,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.search",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3275,7 +3302,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.stages",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3400,7 +3427,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.start",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3462,7 +3489,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.storage.info",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3560,7 +3587,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3658,7 +3685,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3747,7 +3774,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.auto_connect",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3809,7 +3836,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.availability",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3871,7 +3898,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.click",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -3942,7 +3969,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.connect",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4004,7 +4031,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4066,7 +4093,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.disconnect",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4137,7 +4164,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.discover",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4208,7 +4235,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.frame",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4324,7 +4351,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/home.info",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4422,7 +4449,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.search",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4511,7 +4538,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.status",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4573,7 +4600,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.clean",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4635,7 +4662,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4697,7 +4724,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.export",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4759,7 +4786,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.info",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4821,7 +4848,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4901,7 +4928,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -4999,7 +5026,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/recognition.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5079,7 +5106,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.item",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5159,7 +5186,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.operator",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5230,7 +5257,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.artifact",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5346,7 +5373,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.detail",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5453,7 +5480,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.start",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5569,7 +5596,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.stop",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5631,7 +5658,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.cancel",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5693,7 +5720,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5746,7 +5773,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.host",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5826,7 +5853,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5897,7 +5924,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.override",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -5968,7 +5995,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6147,7 +6174,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/settings.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6254,7 +6281,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/stages.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6325,7 +6352,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.catalog",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6414,7 +6441,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6503,7 +6530,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6592,7 +6619,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6690,7 +6717,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.start",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6779,7 +6806,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.stop",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6859,7 +6886,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.activate",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -6939,7 +6966,158 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.check",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
+      }
+    },
+    {
+      "key": "product:rpc:updates.maafwAdb.prepare",
+      "kind": "capability",
+      "id": "rpc:updates.maafwAdb.prepare",
+      "name": "updates.maafwAdb.prepare",
+      "aliases": [
+        "updates",
+        "接口",
+        "参数",
+        "返回结果"
+      ],
+      "text": "updates.maafwAdb.prepare\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n参数：{\"$ref\":\"#/$defs/EmptyParams\"}\n返回结果：{\"$ref\":\"./runtime.schema.json#/$defs/UpdateChannel\"}",
+      "data": {
+        "category": "rpc",
+        "method": "updates.maafwAdb.prepare",
+        "params": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/params/properties/updates.maafwAdb.prepare"
+        },
+        "results": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/results/properties/updates.maafwAdb.prepare"
+        },
+        "reachableSchemas": [
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/EmptyParams"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/params/properties/updates.maafwAdb.prepare"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/results/properties/updates.maafwAdb.prepare"
+          },
+          {
+            "file": "packages/contracts/schemas/runtime.schema.json",
+            "pointer": "#/$defs/ResourceActivityVersion"
+          },
+          {
+            "file": "packages/contracts/schemas/runtime.schema.json",
+            "pointer": "#/$defs/UpdateChannel"
+          }
+        ],
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/EmptyParams"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/updates.maafwAdb.prepare"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/updates.maafwAdb.prepare"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/ResourceActivityVersion"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/UpdateChannel"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/updates.maafwAdb.prepare",
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
+      }
+    },
+    {
+      "key": "product:rpc:updates.maafwAdb.status",
+      "kind": "capability",
+      "id": "rpc:updates.maafwAdb.status",
+      "name": "updates.maafwAdb.status",
+      "aliases": [
+        "updates",
+        "接口",
+        "参数",
+        "返回结果"
+      ],
+      "text": "updates.maafwAdb.status\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n参数：{\"$ref\":\"#/$defs/EmptyParams\"}\n返回结果：{\"$ref\":\"#/$defs/MaaFwAdbStatus\"}",
+      "data": {
+        "category": "rpc",
+        "method": "updates.maafwAdb.status",
+        "params": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/params/properties/updates.maafwAdb.status"
+        },
+        "results": {
+          "file": "packages/contracts/schemas/rpc.schema.json",
+          "pointer": "#/properties/results/properties/updates.maafwAdb.status"
+        },
+        "reachableSchemas": [
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/EmptyParams"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/$defs/MaaFwAdbStatus"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/params/properties/updates.maafwAdb.status"
+          },
+          {
+            "file": "packages/contracts/schemas/rpc.schema.json",
+            "pointer": "#/properties/results/properties/updates.maafwAdb.status"
+          }
+        ],
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/EmptyParams"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/MaaFwAdbStatus"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/updates.maafwAdb.status"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/updates.maafwAdb.status"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/updates.maafwAdb.status",
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7019,7 +7197,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.prepare",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7099,7 +7277,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.rollback",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7371,7 +7549,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountKnowledgeSnapshot",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7433,7 +7611,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotListParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7556,7 +7734,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotListResult",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7613,7 +7791,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7773,7 +7951,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/AccountSnapshotSummary",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7860,7 +8038,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CalendarStatus",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7899,7 +8077,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ChannelParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7932,7 +8110,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ClientType",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -7986,7 +8164,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCategory",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8042,7 +8220,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCategoryAssignParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8082,7 +8260,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCategoryDeleteParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8125,7 +8303,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCategorySaveParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8173,7 +8351,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotCompatibility",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8263,7 +8441,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotDeleteParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8295,7 +8473,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotDifficulty",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8337,7 +8515,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotExportParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8376,7 +8554,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotIdentityParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8422,7 +8600,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotImportParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8452,7 +8630,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotKind",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8509,7 +8687,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotListParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8559,7 +8737,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotOperator",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8648,7 +8826,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotOptions",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8704,7 +8882,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotPreview",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8766,7 +8944,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotPreviewEntry",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8818,7 +8996,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotPreviewParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8873,7 +9051,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotQueueEntry",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8929,7 +9107,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRating",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -8970,7 +9148,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRatingParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9021,7 +9199,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRatingSetParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9052,7 +9230,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRatingValue",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9201,7 +9379,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotRecord",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9299,7 +9477,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSearchItem",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9358,7 +9536,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSearchParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9419,7 +9597,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSearchResult",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9478,7 +9656,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotSource",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9535,7 +9713,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotStagesResult",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9588,7 +9766,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotStartParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9651,7 +9829,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotWorkspace",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9692,7 +9870,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotWorkspaceParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9733,7 +9911,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/CopilotWorkspaceSaveParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9802,7 +9980,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceAvailability",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9863,7 +10041,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceClickParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9906,7 +10084,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceDeleteParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9943,7 +10121,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DeviceFrameParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -9986,7 +10164,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/DiscoveredDevice",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10013,7 +10191,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/EmptyParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10140,7 +10318,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/HomeInfo",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10175,7 +10353,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/IdParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10258,7 +10436,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/InfrastructureEstimate",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10305,7 +10483,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ItemResourceParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10373,7 +10551,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ItemResourceResult",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10412,7 +10590,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeClientParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10446,7 +10624,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeKind",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10581,7 +10759,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeRecord",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10648,7 +10826,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeSearchParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10730,7 +10908,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeSearchResult",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10793,7 +10971,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeSource",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10950,7 +11128,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/KnowledgeStatus",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -10992,7 +11170,46 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/LogDeleteParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/$defs/MaaFwAdbStatus",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/$defs/MaaFwAdbStatus",
+      "name": "接口定义 MaaFwAdbStatus",
+      "aliases": [
+        "MaaFwAdbStatus",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "MaaFwAdbStatus\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"available\",\"coreInstalled\"],\"properties\":{\"available\":{\"type\":\"boolean\"},\"coreInstalled\":{\"type\":\"boolean\"}}}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "available",
+            "coreInstalled"
+          ],
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "coreInstalled": {
+              "type": "boolean"
+            }
+          }
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/$defs/MaaFwAdbStatus",
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11044,7 +11261,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/OperatorResourceParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11123,7 +11340,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/OperatorResourceResult",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11176,7 +11393,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognitionParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11281,7 +11498,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognitionResult",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11335,7 +11552,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognizedItem",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11408,7 +11625,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RecognizedOperator",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11449,7 +11666,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RunArtifactImage",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11491,7 +11708,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/RunArtifactParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11581,7 +11798,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/Schedule",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11644,7 +11861,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScheduleList",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11689,7 +11906,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScheduleOverrideParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11730,7 +11947,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScheduleSaveParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11811,7 +12028,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ScreenFrame",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11896,7 +12113,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageActivity",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -11937,7 +12154,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageListParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12046,7 +12263,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageListResult",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12108,7 +12325,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/StageOption",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12219,7 +12436,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolCatalog",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12357,7 +12574,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolConfig",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12421,7 +12638,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolConfigParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12476,7 +12693,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolIdentity",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12575,7 +12792,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolJob",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12608,7 +12825,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolKind",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12677,7 +12894,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/$defs/ToolStartParams",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12709,7 +12926,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12741,7 +12958,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/account.snapshot.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12781,7 +12998,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/agent.message",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12813,7 +13030,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/app.snapshot",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12845,7 +13062,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.assign",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12877,7 +13094,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12909,7 +13126,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12941,7 +13158,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.category.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -12973,7 +13190,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13005,7 +13222,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.export",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13037,7 +13254,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13069,7 +13286,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.import",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13101,7 +13318,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13133,7 +13350,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.preview",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13165,7 +13382,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13197,7 +13414,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.rating.set",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13229,7 +13446,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.search",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13261,7 +13478,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.stages",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13293,7 +13510,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.start",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13325,7 +13542,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.storage.info",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13357,7 +13574,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13389,7 +13606,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/copilot.workspace.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13421,7 +13638,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.auto_connect",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13458,7 +13675,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.availability",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13490,7 +13707,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.click",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13528,7 +13745,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.connect",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13560,7 +13777,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13592,7 +13809,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.disconnect",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13624,7 +13841,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.discover",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13656,7 +13873,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/device.frame",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13703,7 +13920,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/home.info",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13735,7 +13952,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.search",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13767,7 +13984,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/knowledge.status",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13799,7 +14016,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.clean",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13831,7 +14048,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13863,7 +14080,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.export",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13895,7 +14112,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/logs.info",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13927,7 +14144,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -13968,7 +14185,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/plan.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14000,7 +14217,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/recognition.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14032,7 +14249,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.item",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14064,7 +14281,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/resources.operator",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14096,7 +14313,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.artifact",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14128,7 +14345,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.detail",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14173,7 +14390,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.start",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14205,7 +14422,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/run.stop",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14237,7 +14454,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.cancel",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14269,7 +14486,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14327,7 +14544,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.host",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14359,7 +14576,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14391,7 +14608,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.override",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14423,7 +14640,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/schedule.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14464,7 +14681,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/settings.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14496,7 +14713,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/stages.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14535,7 +14752,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.catalog",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14567,7 +14784,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14599,7 +14816,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.config.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14631,7 +14848,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14663,7 +14880,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.start",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14695,7 +14912,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/tool.stop",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14727,7 +14944,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.activate",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14759,7 +14976,71 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.check",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/params/properties/updates.maafwAdb.prepare",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/updates.maafwAdb.prepare",
+      "name": "接口定义 updates.maafwAdb.prepare",
+      "aliases": [
+        "updates.maafwAdb.prepare",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "updates.maafwAdb.prepare\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/EmptyParams\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/EmptyParams"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/updates.maafwAdb.prepare",
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/params/properties/updates.maafwAdb.status",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/params/properties/updates.maafwAdb.status",
+      "name": "接口定义 updates.maafwAdb.status",
+      "aliases": [
+        "updates.maafwAdb.status",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "updates.maafwAdb.status\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/EmptyParams\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/EmptyParams"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/EmptyParams"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/params/properties/updates.maafwAdb.status",
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14791,7 +15072,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.prepare",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14823,7 +15104,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/params/properties/updates.rollback",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14862,7 +15143,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/account.snapshot.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14894,7 +15175,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/account.snapshot.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14946,7 +15227,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/agent.message",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -14978,7 +15259,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/app.snapshot",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15015,7 +15296,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.category.assign",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15055,7 +15336,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.category.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15100,7 +15381,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.category.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15132,7 +15413,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.category.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15172,7 +15453,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15233,7 +15514,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.export",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15265,7 +15546,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15334,7 +15615,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.import",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15395,7 +15676,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15427,7 +15708,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.preview",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15459,7 +15740,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.rating.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15491,7 +15772,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.rating.set",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15523,7 +15804,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.search",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15555,7 +15836,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.stages",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15587,7 +15868,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.start",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15623,7 +15904,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.storage.info",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15655,7 +15936,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.workspace.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15687,7 +15968,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/copilot.workspace.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15750,7 +16031,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.auto_connect",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15782,7 +16063,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.availability",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15817,7 +16098,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.click",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15849,7 +16130,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.connect",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15890,7 +16171,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15925,7 +16206,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.disconnect",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15960,7 +16241,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.discover",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -15992,7 +16273,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/device.frame",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16024,7 +16305,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/home.info",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16056,7 +16337,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/knowledge.search",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16088,7 +16369,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/knowledge.status",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16141,7 +16422,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.clean",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16177,7 +16458,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16228,7 +16509,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.export",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16273,7 +16554,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/logs.info",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16308,7 +16589,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/plan.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16340,7 +16621,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/plan.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16372,7 +16653,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/recognition.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16404,7 +16685,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/resources.item",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16436,7 +16717,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/resources.operator",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16468,7 +16749,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.artifact",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16500,7 +16781,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.detail",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16532,7 +16813,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.start",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16564,7 +16845,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/run.stop",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16599,7 +16880,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.cancel",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16634,7 +16915,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.delete",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16669,7 +16950,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.host",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16701,7 +16982,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16733,7 +17014,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.override",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16765,7 +17046,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/schedule.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16797,7 +17078,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/settings.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16829,7 +17110,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/stages.list",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16861,7 +17142,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.catalog",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16893,7 +17174,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.config.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16925,7 +17206,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.config.save",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16957,7 +17238,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.get",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -16989,7 +17270,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.start",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -17021,7 +17302,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/tool.stop",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -17053,7 +17334,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.activate",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -17085,7 +17366,71 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.check",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/results/properties/updates.maafwAdb.prepare",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/updates.maafwAdb.prepare",
+      "name": "接口定义 updates.maafwAdb.prepare",
+      "aliases": [
+        "updates.maafwAdb.prepare",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "updates.maafwAdb.prepare\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"./runtime.schema.json#/$defs/UpdateChannel\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "./runtime.schema.json#/$defs/UpdateChannel"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/runtime.schema.json#/$defs/UpdateChannel"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/results/properties/updates.maafwAdb.prepare",
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/rpc.schema.json#/properties/results/properties/updates.maafwAdb.status",
+      "kind": "document",
+      "id": "packages/contracts/schemas/rpc.schema.json#/properties/results/properties/updates.maafwAdb.status",
+      "name": "接口定义 updates.maafwAdb.status",
+      "aliases": [
+        "updates.maafwAdb.status",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "updates.maafwAdb.status\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"$ref\":\"#/$defs/MaaFwAdbStatus\"}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "$ref": "#/$defs/MaaFwAdbStatus"
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [
+        {
+          "predicate": "references",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/rpc.schema.json#/$defs/MaaFwAdbStatus"
+        }
+      ],
+      "source": {
+        "file": "packages/contracts/schemas/rpc.schema.json",
+        "pointer": "#/properties/results/properties/updates.maafwAdb.status",
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -17117,7 +17462,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.prepare",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -17149,7 +17494,7 @@
       "source": {
         "file": "packages/contracts/schemas/rpc.schema.json",
         "pointer": "#/properties/results/properties/updates.rollback",
-        "sha256": "dff3fa5151cf33abb9a12e4ec03ee3cb10209a7d4a09b45bc6f206cadd5b3473"
+        "sha256": "4d1cdf969f27e8779d1f02e0c3786bac6ac1009c20e58cbcbc2c78d10050b2e2"
       }
     },
     {
@@ -20523,5 +20868,5 @@
       }
     }
   ],
-  "digest": "d13018cc15fc490e3611d52750ac7823284180cfaf8c8d480d8f352621909d83"
+  "digest": "361b6769ec2cac96b076bd665c4e6ccf2bd5032b905f14b542903fca1adfc5f9"
 }

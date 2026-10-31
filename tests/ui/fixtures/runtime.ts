@@ -29,6 +29,7 @@ const workspace =
   'browser';
 const key = 'maaverge:test-runtime:v1:' + workspace;
 const recognitionKey = 'maaverge:test-recognition:v1:' + workspace;
+const maafwAdbKey = key + ':maafw-adb';
 type Recognition = {
   deviceId: string;
   kind: 'depot' | 'operators';
@@ -59,6 +60,7 @@ const listeners = new Set<(event: Event) => void>();
 const executionTasks = new Map<string, Plan['tasks']>();
 const requestRuns = new Map<string, string>();
 const updateGenerations: Record<UpdateChannel['id'], number> = { app: 0, core: 0, resource: 0 };
+let maafwAdbAvailable = localStorage.getItem(maafwAdbKey) === 'available';
 const previewFrames = new Map<
   string,
   { deviceId: string; captured: number; canControl: boolean }
@@ -1053,6 +1055,27 @@ export async function fixtureRpc(
       if (device) device.state = 'idle';
       emit('run.stopped', run.message, { run: clone(run) });
       return clone(run);
+    }
+    case 'updates.maafwAdb.status':
+      return {
+        available: maafwAdbAvailable,
+        coreInstalled: Boolean(channelFor('core').currentVersion),
+      };
+    case 'updates.maafwAdb.prepare': {
+      const channel = channelFor('core');
+      channel.status = 'downloading';
+      channel.progress = 0;
+      channel.message = '合成官方 MaaFwAdb 运行时准备中，不访问下载源';
+      emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
+      await delay(120);
+      channel.latestVersion = channel.currentVersion;
+      channel.status = 'active';
+      channel.progress = 100;
+      channel.message = '合成完整运行时已在空闲时生效';
+      maafwAdbAvailable = true;
+      localStorage.setItem(maafwAdbKey, 'available');
+      emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
+      return clone(channel);
     }
     case 'updates.check': {
       const channel = channelFor(params.channel);

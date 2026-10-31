@@ -212,6 +212,8 @@ export interface RpcContract {
     'run.detail': IdParams;
     'run.artifact': RunArtifactParams;
     'updates.check': ChannelParams;
+    'updates.maafwAdb.status': EmptyParams;
+    'updates.maafwAdb.prepare': EmptyParams;
     'updates.prepare': ChannelParams;
     'updates.activate': ChannelParams;
     'updates.rollback': ChannelParams;
@@ -320,6 +322,8 @@ export interface RpcContract {
     'run.detail': Run;
     'run.artifact': RunArtifactImage;
     'updates.check': UpdateChannel;
+    'updates.maafwAdb.status': MaaFwAdbStatus;
+    'updates.maafwAdb.prepare': UpdateChannel;
     'updates.prepare': UpdateChannel;
     'updates.activate': UpdateChannel;
     'updates.rollback': UpdateChannel;
@@ -1506,6 +1510,14 @@ export interface ScreenFrame {
 export interface RunArtifactImage {
   mimeType: 'image/png';
   data: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "MaaFwAdbStatus".
+ */
+export interface MaaFwAdbStatus {
+  available: boolean;
+  coreInstalled: boolean;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

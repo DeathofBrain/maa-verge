@@ -34,7 +34,7 @@ fn emit_notification(message: &Value, emit: &Emit) {
 fn request_timeout(method: &str, params: &Value) -> Duration {
     if matches!(
         method,
-        "updates.prepare" | "updates.activate" | "updates.rollback"
+        "updates.prepare" | "updates.maafwAdb.prepare" | "updates.activate" | "updates.rollback"
     ) || method == "host.updates" && params["operation"] == "download"
     {
         Duration::from_secs(1800)
@@ -767,14 +767,35 @@ mod tests {
         for method in ["app.snapshot", "updates.prepare", "settings.save"] {
             assert!(frontend_method(method).is_ok(), "{method}");
         }
-        assert_eq!(
-            request_timeout("host.updates", &json!({ "operation": "download" })),
-            Duration::from_secs(1800)
-        );
-        assert_eq!(
-            request_timeout("host.updates", &json!({ "operation": "cancel" })),
-            Duration::from_secs(120)
-        );
+    }
+
+    #[test]
+    fn component_downloads_and_activation_have_extended_request_timeouts() {
+        for (method, params) in [
+            ("updates.prepare", json!({})),
+            ("updates.maafwAdb.prepare", json!({})),
+            ("updates.activate", json!({})),
+            ("updates.rollback", json!({})),
+            ("host.updates", json!({ "operation": "download" })),
+        ] {
+            assert_eq!(
+                request_timeout(method, &params),
+                Duration::from_secs(1800),
+                "{method} {params}"
+            );
+        }
+        for (method, params) in [
+            ("updates.maafwAdb.status", json!({})),
+            ("app.snapshot", json!({})),
+            ("settings.save", json!({})),
+            ("host.updates", json!({ "operation": "cancel" })),
+        ] {
+            assert_eq!(
+                request_timeout(method, &params),
+                Duration::from_secs(120),
+                "{method} {params}"
+            );
+        }
     }
 
     #[test]

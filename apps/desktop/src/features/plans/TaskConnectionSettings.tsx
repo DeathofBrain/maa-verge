@@ -12,6 +12,7 @@ import {
   type ScreenFrame,
 } from '@maaverge/contracts';
 import { CaptureForm } from '@/features/settings/CaptureSettingsForm';
+import MaaFwAdbTouchMode from '@/features/devices/MaaFwAdbTouchMode';
 import { useSettingsDraft } from '@/shared/lib/settings-draft';
 import '@/shared/styles/support-pages.css';
 
@@ -301,24 +302,11 @@ export function ConnectionFields({
         />
         <span className="sp-help">此地址用于手动连接；已保存实例也会按该地址自动连接。</span>
       </label>
-      <label className="sp-field">
-        触控模式
-        <Select
-          className="wb-parameter-control"
-          aria-label="触控模式"
-          value={draft.touchMode}
-          disabled={disabled}
-          onChange={(event) => patch({ touchMode: event.target.value as typeof draft.touchMode })}
-        >
-          <option value="minitouch">Minitouch</option>
-          <option value="maatouch">MaaTouch（默认）</option>
-          <option value="adb">ADB Input（兼容模式）</option>
-          <option value="MaaFwAdb">MaaFwAdb（实验性）</option>
-        </Select>
-        <span className="sp-help">
-          ADB Input 滑动较慢；MaaFwAdb 不支持额外刹车滑动，配合 AVD 连接配置可使用 AVD 增强截图。
-        </span>
-      </label>
+      <MaaFwAdbTouchMode
+        connection={draft}
+        disabled={disabled}
+        onChange={(touchMode) => patch({ touchMode })}
+      />
       {(draft.config === 'Androws' || draft.config === 'WSA') && (
         <label className="sp-field">
           连接时的客户端

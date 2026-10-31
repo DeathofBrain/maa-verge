@@ -450,6 +450,14 @@ export class Runtime {
         return result;
       },
       update: (operation, channel) => this.updateChannel(operation, channel),
+      maaFwAdb: {
+        status: () => this.updates.maaFwAdbStatus(),
+        prepare: async () => {
+          const state = await this.updates.prepareMaaFwAdb();
+          if (state.status === 'active') this.nextChecks.resource = Date.now();
+          return state;
+        },
+      },
     });
   }
   private executionSnapshot(id: string): any {
@@ -762,7 +770,9 @@ export class Runtime {
         'copilot.start',
         'tool.start',
       ].includes(method) ||
-        (method.startsWith('updates.') && params.channel !== 'app'))
+        (method.startsWith('updates.') &&
+          method !== 'updates.maafwAdb.status' &&
+          params.channel !== 'app'))
     )
       throw new RpcError(-32021, '正在后台准备随附组件，请稍后再连接或执行');
     if (

@@ -137,6 +137,28 @@ class MacosControlUnitError extends Error {
 }
 const downloadSource = (metadata: UpdateMetadata): 'MirrorChyan' | 'GitHub' =>
   metadata.source === 'MirrorChyan' ? 'MirrorChyan' : 'GitHub';
+const maaFwAdbLibrary =
+  process.platform === 'win32'
+    ? 'MaaAdbControlUnit.dll'
+    : process.platform === 'darwin'
+      ? 'libMaaAdbControlUnit.dylib'
+      : 'libMaaAdbControlUnit.so';
+function hasMaaFwAdb(snapshot: any): boolean {
+  if (typeof snapshot?.path !== 'string') return false;
+  try {
+    const root = lstatSync(snapshot.path);
+    const library = lstatSync(path.join(snapshot.path, maaFwAdbLibrary));
+    return (
+      root.isDirectory() &&
+      !root.isSymbolicLink() &&
+      library.isFile() &&
+      !library.isSymbolicLink() &&
+      library.size > 0
+    );
+  } catch {
+    return false;
+  }
+}
 
 // Database versions are only hints: uninstall/reinstall and manual file removal
 // can leave them behind. Older generations lack an inventory, so retain support
@@ -1316,6 +1338,59 @@ export class UpdateService {
     this.emit('update.changed', value.message, { channel, update: value });
     return value;
   }
+  maaFwAdbStatus(): { available: boolean; coreInstalled: boolean } {
+    const core = this.store.get('active', 'combo', {}).core;
+    const coreInstalled = installedSnapshot(core, true, false);
+    return { available: coreInstalled && hasMaaFwAdb(core), coreInstalled };
+  }
+  private maaFwAdbReady(): any {
+    // A capability check must not rewrite an unrelated update or candidate.
+    return {
+      ...this.channel('core'),
+      status: 'active',
+      message: '当前核心已具备 MaaFwAdb 控制单元',
+    };
+  }
+  prepareMaaFwAdb(): Promise<any> {
+    if (this.maaFwAdbStatus().available) return Promise.resolve(this.maaFwAdbReady());
+    if (
+      this.pending ||
+      this.channels().some((channel) =>
+        ['checking', 'downloading', 'staged', 'waiting_idle'].includes(channel.status),
+      )
+    )
+      return Promise.reject(
+        new RpcError(-32011, '已有组件更新正在处理，请完成当前更新后再准备 MaaFwAdb'),
+      );
+    return this.serial(async () => {
+      if (this.maaFwAdbStatus().available) return this.maaFwAdbReady();
+      if (!this.maaFwAdbStatus().coreInstalled)
+        throw new RpcError(-32020, '请先安装并启用 MaaCore，再准备 MaaFwAdb');
+      if (!this.source.fallback) throw new RpcError(-32020, '当前更新源不支持官方完整运行时');
+      this.change('core', {
+        status: 'checking',
+        progress: 0,
+        message: '正在检查 MaaFwAdb 官方完整运行时',
+      });
+      try {
+        const releaseChannel = this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable';
+        const metadata = await this.source.fallback('core', releaseChannel);
+        if (this.closing) throw new Error('更新服务正在关闭');
+        if (metadata.source !== 'GitHub') throw new Error('MaaFwAdb 必须使用官方完整运行时');
+        delete metadata.mirrorChyanMessage;
+        metadata.requiresMaaFwAdb = true;
+        metadata.releaseChannel = releaseChannel;
+        metadata.mirrorSettingsRevision = this.mirrorSettingsRevision;
+        this.store.put('update_metadata', 'core', metadata);
+        await this.prepareCurrent('core', metadata);
+        return await this.activateCurrent('core');
+      } catch (error) {
+        if (this.channel('core').status === 'checking')
+          this.change('core', { status: 'failed', progress: 0, message: message(error) });
+        throw error;
+      }
+    });
+  }
   private needsRepair(channel: string): boolean {
     const combo = this.store.get('active', 'combo', {}),
       snapshot = combo[channel];
@@ -1478,6 +1553,7 @@ export class UpdateService {
       if (
         snapshot.path === combo[channel]?.path ||
         snapshot.version !== metadata.version ||
+        (metadata.requiresMaaFwAdb && !hasMaaFwAdb(snapshot)) ||
         (channel === 'core' && this.missingMacosControlUnit(snapshot)) ||
         (channel === 'resource' && (!core || snapshot.coreVersion !== core.version))
       )
@@ -1515,6 +1591,7 @@ export class UpdateService {
         ...snapshot,
         ...integrity,
         ...(channel === 'core' ? { releaseChannel: metadata.releaseChannel } : {}),
+        ...(metadata.requiresMaaFwAdb ? { requiresMaaFwAdb: true } : {}),
         validatedAt: new Date().toISOString(),
       };
       // Reuse the immutable payload and persist only its normal candidate reference.
@@ -1535,16 +1612,23 @@ export class UpdateService {
       });
     }
   }
-  private async prepareCurrent(channel: string): Promise<any> {
+  private async prepareCurrent(channel: string, requestedMetadata?: UpdateMetadata): Promise<any> {
     this.channel(channel);
     if (channel === 'app') throw new RpcError(-32020, '应用更新需使用桌面发行通道');
     await this.reconcileCurrent(channel as 'core' | 'resource');
     let current = this.channel(channel);
     if (['staged', 'waiting_idle', 'downloading'].includes(current.status)) return current;
-    let metadata: UpdateMetadata = this.store.get('update_metadata', channel);
+    let metadata: UpdateMetadata = requestedMetadata ?? this.store.get('update_metadata', channel);
+    if (
+      metadata?.requiresMaaFwAdb &&
+      metadata.releaseChannel !==
+        (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable')
+    )
+      throw new RpcError(-32020, '核心更新通道已改变，请重新确认 MaaFwAdb 准备');
     if (
       !metadata ||
-      metadata.mirrorSettingsRevision !== this.mirrorSettingsRevision ||
+      (!metadata.requiresMaaFwAdb &&
+        metadata.mirrorSettingsRevision !== this.mirrorSettingsRevision) ||
       (channel === 'core' &&
         metadata.releaseChannel !==
           (this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable'))
@@ -1576,13 +1660,15 @@ export class UpdateService {
       throw new RpcError(-32020, '更新源资源早于已安装版本，拒绝通过旧资源修复');
     if (
       (metadata.version === current.currentVersion || (age !== undefined && age <= 0)) &&
-      !this.needsRepair(channel)
+      !this.needsRepair(channel) &&
+      !(metadata.requiresMaaFwAdb && !this.maaFwAdbStatus().available)
     )
       return current;
     const mirrorSettingsRevision = this.mirrorSettingsRevision;
     const reused = await this.reuseLocalSnapshot(channel as 'core' | 'resource', metadata);
     if (reused) return reused;
-    if (mirrorSettingsRevision !== this.mirrorSettingsRevision) return this.prepareCurrent(channel);
+    if (!metadata.requiresMaaFwAdb && mirrorSettingsRevision !== this.mirrorSettingsRevision)
+      return this.prepareCurrent(channel);
     const directory = this.directories()[channel as 'core' | 'resource'];
     const generation = path.join(
       this.generationRoot(channel as 'core' | 'resource'),
@@ -1681,6 +1767,8 @@ export class UpdateService {
               metadata.mirrorChyan?.os === 'darwin',
           };
           Object.assign(metadata, await this.jobRunner(config));
+          if (metadata.requiresMaaFwAdb && !hasMaaFwAdb({ path: generation }))
+            throw new Error('官方完整运行时缺少可用的 MaaFwAdb 控制单元');
           if (channel === 'core' && this.missingMacosControlUnit({ ...metadata, path: generation }))
             throw new MacosControlUnitError();
         } catch (error) {
@@ -1883,10 +1971,15 @@ export class UpdateService {
           : '更新候选已失效，请重新检查并下载更新',
       );
     }
-    if (channel === 'core' && this.missingMacosControlUnit(staged)) {
+    if (
+      channel === 'core' &&
+      (this.missingMacosControlUnit(staged) || (staged.requiresMaaFwAdb && !hasMaaFwAdb(staged)))
+    ) {
       this.store.delete('staged', channel);
       this.store.delete('update_metadata', channel);
-      const error = new MacosControlUnitError();
+      const error = staged.requiresMaaFwAdb
+        ? new Error('官方完整运行时缺少可用的 MaaFwAdb 控制单元')
+        : new MacosControlUnitError();
       this.change(channel, {
         status: 'failed',
         progress: 0,
