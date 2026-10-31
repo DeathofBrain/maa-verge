@@ -1005,12 +1005,6 @@ function UpdateSection({
             preferences.setDraft((previous) => ({ ...previous, autoCheck: value }), 0)
           }
         />
-        <SaveStateIndicator
-          className="settings-save-state"
-          status={preferences.status}
-          onRetry={() => void preferences.retry()}
-          retryDisabled={busy}
-        />
         {!isApp && (
           <details className="settings-advanced">
             <summary>下载与安装目录</summary>
