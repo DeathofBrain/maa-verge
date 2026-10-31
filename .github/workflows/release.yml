@@ -159,6 +159,36 @@ jobs:
       - name: Verify the packaged Linux backend in a clean container
         if: runner.os == 'Linux'
         run: node tools/smoke-clean-linux.mjs
+      - name: Cache the locked GNU GPL text from its fixed official Git mirror
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
+          import path from 'node:path';
+          const { licenses: { gpl3 } } = JSON.parse(await readFile('tools/windows-components.lock.json', 'utf8'));
+          const cache = '.tools/windows-components/cache/GNU-GPL-3.0.txt';
+          const matchesLock = (bytes) => bytes.length === gpl3.size && createHash('sha256').update(bytes).digest('hex') === gpl3.sha256;
+          try {
+            const info = await lstat(cache);
+            if (!info.isFile() || info.isSymbolicLink() || !matchesLock(await readFile(cache)))
+              throw new Error('Cached GNU GPL text does not match the tagged component lock.');
+            console.log('The cached GNU GPL text matches the tagged component lock.');
+            process.exit(0);
+          } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+          }
+          // GNU coreutils official Git mirror; accept only the original GNU URL's locked bytes.
+          const source = 'https://raw.githubusercontent.com/coreutils/coreutils/5b9d747261590ffde5f47fcf8cef06ee5bb5df63/COPYING';
+          const response = await fetch(source, { signal: AbortSignal.timeout(30000) });
+          if (!response.ok) throw new Error(`GNU GPL mirror returned HTTP ${response.status}.`);
+          const bytes = Buffer.from(await response.arrayBuffer());
+          if (!matchesLock(bytes)) throw new Error('GNU GPL mirror bytes do not match the tagged component lock.');
+          await mkdir(path.dirname(cache), { recursive: true });
+          await writeFile(cache, bytes, { flag: 'wx' });
+          console.log(`Cached ${source}: ${bytes.length} bytes, SHA-256 ${gpl3.sha256}.`);
+          NODE
       - name: Build Windows EXE/ZIP or macOS DMG and installer signatures
         if: runner.os != 'Linux'
         env:
