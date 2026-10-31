@@ -1,51 +1,31 @@
 import Checkbox from '@/kit/Checkbox';
 import Button from '@/kit/Button';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LoaderCircle, Play, TriangleAlert } from 'lucide-react';
-import {
-  planAllowsDevice,
-  planDeviceIds,
-  type Device,
-  type Plan,
-  type Snapshot,
-} from '@maaverge/contracts';
+import { planDeviceIds, type Plan, type Snapshot } from '@maaverge/contracts';
 import './task-center.css';
 import DeviceSelectionList from '@/features/devices/DeviceSelectionList';
 import Modal from '@/kit/Modal';
+import { availablePlanDevices, planDeviceIssue } from './plan-run-availability';
 
 type Props = {
   snapshot: Snapshot;
   plans: Plan[];
   selectedDeviceId: string;
   pending: Set<string>;
+  returnFocus?: HTMLElement | null;
   onStart: (plan: Plan, deviceId?: string, requestId?: string) => Promise<boolean>;
   onClose: () => void;
 };
 
 const pairKey = (planId: string, deviceId: string) => JSON.stringify([planId, deviceId]);
 
-function planReady(plan: Plan) {
-  return plan.tasks.some((task) => task.enabled !== false && task.params.enable !== false);
-}
-
-function deviceIssue(snapshot: Snapshot, plan: Plan, device: Device | undefined) {
-  if (!planReady(plan)) return '没有已启用的任务';
-  if (!device) return planDeviceIds(plan).length ? '绑定设备不可用' : '设备不可用';
-  if (!planAllowsDevice(plan, device.id)) return '未绑定到本任务表';
-  if (device.state === 'offline') return '离线，请先连接';
-  if (snapshot.runs.some((run) => run.deviceId === device.id && run.status === 'running'))
-    return '正在执行其他任务';
-  if (snapshot.toolJobs?.some((job) => job.deviceId === device.id && job.status === 'running'))
-    return '正在执行工具';
-  if (device.state !== 'idle') return '设备忙，等待空闲';
-  return '';
-}
-
 export default function RunTasksDialog({
   snapshot,
   plans,
   selectedDeviceId,
   pending,
+  returnFocus,
   onStart,
   onClose,
 }: Props) {
@@ -57,14 +37,43 @@ export default function RunTasksDialog({
   const [notice, setNotice] = useState('');
   const [completed, setCompleted] = useState<Set<string>>(() => new Set());
   const [targets, setTargets] = useState<Record<string, string[]>>(() =>
-    initialTargets(snapshot, plans, selectedDeviceId),
+    initialTargets(snapshot, plans, selectedDeviceId, pending),
   );
   const [included, setIncluded] = useState<Set<string>>(
     () => new Set(plans.map((plan) => plan.id)),
   );
+  const activePairs = new Set(
+    snapshot.runs
+      .filter((run) => run.source !== 'copilot' && run.status === 'running' && !!run.planId)
+      .map((run) => pairKey(run.planId!, run.deviceId)),
+  );
+  const selectedTargets = Object.fromEntries(
+    Object.entries(targets).map(([planId, ids]) => [
+      planId,
+      ids.filter((deviceId) => !activePairs.has(pairKey(planId, deviceId))),
+    ]),
+  );
+  useEffect(() => {
+    const active = new Set(
+      snapshot.runs
+        .filter((run) => run.source !== 'copilot' && run.status === 'running' && !!run.planId)
+        .map((run) => pairKey(run.planId!, run.deviceId)),
+    );
+    setTargets((previous) => {
+      let changed = false;
+      const next = Object.fromEntries(
+        Object.entries(previous).map(([planId, ids]) => {
+          const available = ids.filter((deviceId) => !active.has(pairKey(planId, deviceId)));
+          changed ||= available.length !== ids.length;
+          return [planId, available];
+        }),
+      );
+      return changed ? next : previous;
+    });
+  }, [snapshot.runs]);
   const selectedPlans = multi ? plans.filter((plan) => included.has(plan.id)) : plans;
   const requests = selectedPlans.flatMap((plan) =>
-    (targets[plan.id] ?? []).map((deviceId) => ({ plan, deviceId })),
+    (selectedTargets[plan.id] ?? []).map((deviceId) => ({ plan, deviceId })),
   );
   const targetCounts = new Map<string, number>();
   for (const { deviceId } of requests)
@@ -77,15 +86,18 @@ export default function RunTasksDialog({
         ? '同一设备只能运行一张任务表'
         : completed.has(pairKey(plan.id, deviceId))
           ? '本次已启动'
-          : deviceIssue(
-              snapshot,
-              plan,
-              snapshot.devices.find((device) => device.id === deviceId),
-            ),
+          : pending.has(`start-plan-${deviceId}`)
+            ? '正在开始…'
+            : planDeviceIssue(
+                snapshot,
+                plan,
+                snapshot.devices.find((device) => device.id === deviceId),
+              ),
     );
   }
   const blocked =
-    selectedPlans.some((plan) => !targets[plan.id]?.length) || [...issues.values()].some(Boolean);
+    selectedPlans.some((plan) => !selectedTargets[plan.id]?.length) ||
+    [...issues.values()].some(Boolean);
   const togglePlan = (planId: string) =>
     setIncluded((previous) => {
       const next = new Set(previous);
@@ -147,7 +159,7 @@ export default function RunTasksDialog({
     setSubmitting(false);
   };
   const deviceRows = (plan: Plan) => {
-    const selected = targets[plan.id] ?? [];
+    const selected = selectedTargets[plan.id] ?? [];
     const ids = [
       ...new Set([
         ...snapshot.devices.map((device) => device.id),
@@ -159,9 +171,12 @@ export default function RunTasksDialog({
       const device = snapshot.devices.find((item) => item.id === deviceId);
       const key = pairKey(plan.id, deviceId);
       const checked = selected.includes(deviceId);
+      const running = activePairs.has(key);
       const reason =
+        (running ? '本表执行中' : '') ||
         issues.get(key) ||
-        (completed.has(key) ? '本次已启动' : deviceIssue(snapshot, plan, device));
+        (completed.has(key) ? '本次已启动' : planDeviceIssue(snapshot, plan, device)) ||
+        (pending.has(`start-plan-${deviceId}`) ? '正在开始…' : '');
       const active = snapshot.runs.some(
         (run) => run.deviceId === deviceId && run.status === 'running',
       );
@@ -174,10 +189,11 @@ export default function RunTasksDialog({
           .filter(Boolean)
           .join(' · '),
         note:
+          (running ? '本表执行中' : '') ||
           errors[key] ||
           reason ||
           (pending.has(`start-plan-${deviceId}`) ? '正在开始…' : '空闲就绪'),
-        disabled: !!reason && !checked,
+        disabled: running || (!!reason && !checked),
       };
     });
     return (
@@ -206,116 +222,129 @@ export default function RunTasksDialog({
       title={dialogLabel}
       closeLabel={multi ? '关闭运行所选任务表' : '关闭运行任务表'}
       className="modal tc-launch"
+      bodyClassName="tc-launch-body"
       busy={submitting}
       closeDisabled={submitting}
       onClose={onClose}
+      returnFocus={returnFocus}
+      footer={
+        <>
+          <Button disabled={submitting} onClick={onClose}>
+            取消
+          </Button>
+          <Button
+            variant="primary"
+            disabled={submitting || blocked || !requests.length}
+            onClick={() => void submit()}
+          >
+            {submitting ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
+            {submitting ? '正在运行…' : submitLabel}
+          </Button>
+        </>
+      }
     >
-      <div className="tc-launch-body">
-        {multi ? (
-          <fieldset className="tc-launch-plans">
-            <legend>
-              已选任务表
-              <span>
-                {selectedPlans.length} 张 · {requests.length} 项执行
-              </span>
-            </legend>
-            {plans.map((plan) => {
-              const active = included.has(plan.id);
-              return (
-                <div className={`tc-launch-plan ${active ? '' : 'is-excluded'}`} key={plan.id}>
-                  <Checkbox
-                    aria-label={`选择运行任务表${plan.name}`}
-                    disabled={submitting}
-                    checked={active}
-                    onChange={() => togglePlan(plan.id)}
-                  />
-                  <div className="tc-launch-plan-main">
-                    <strong>{plan.name}</strong>
-                    <small>
-                      {plan.tasks.filter((task) => task.enabled !== false).length} 项启用
-                      {planDeviceIds(plan).length
-                        ? ` · 绑定 ${planDeviceIds(plan).length} 台设备`
-                        : ' · 未绑定设备'}
-                    </small>
-                    <fieldset className="tc-launch-devices">
-                      <legend>运行设备</legend>
-                      {deviceRows(plan)}
-                    </fieldset>
-                    {active && !targets[plan.id]?.length && <small>请选择至少一台运行设备</small>}
-                  </div>
+      {multi ? (
+        <fieldset className="tc-launch-plans">
+          <legend>
+            已选任务表
+            <span>
+              {selectedPlans.length} 张 · {requests.length} 项执行
+            </span>
+          </legend>
+          {plans.map((plan) => {
+            const active = included.has(plan.id);
+            return (
+              <div className={`tc-launch-plan ${active ? '' : 'is-excluded'}`} key={plan.id}>
+                <Checkbox
+                  aria-label={`选择运行任务表${plan.name}`}
+                  disabled={submitting}
+                  checked={active}
+                  onChange={() => togglePlan(plan.id)}
+                />
+                <div className="tc-launch-plan-main">
+                  <strong>{plan.name}</strong>
+                  <small>
+                    {plan.tasks.filter((task) => task.enabled !== false).length} 项启用
+                    {planDeviceIds(plan).length
+                      ? ` · 绑定 ${planDeviceIds(plan).length} 台设备`
+                      : ' · 未绑定设备'}
+                  </small>
+                  <fieldset className="tc-launch-devices">
+                    <legend>运行设备</legend>
+                    {deviceRows(plan)}
+                  </fieldset>
+                  {active && !selectedTargets[plan.id]?.length && (
+                    <small>请选择至少一台运行设备</small>
+                  )}
                 </div>
-              );
-            })}
-          </fieldset>
-        ) : (
-          single && (
-            <>
-              <div className="tc-launch-plan-fixed">
-                <span>任务表</span>
-                <strong>{single.name}</strong>
-                <small>
-                  {single.tasks.filter((task) => task.enabled !== false).length} 项启用
-                  {planDeviceIds(single).length
-                    ? ` · 绑定 ${planDeviceIds(single).length} 台设备`
-                    : ' · 未绑定设备'}
-                </small>
               </div>
-              <fieldset className="tc-launch-devices">
-                <legend>选择设备</legend>
-                {!snapshot.devices.length && !planDeviceIds(single).length && (
-                  <p className="tc-launch-empty">还没有设备，请先在设备页添加并连接模拟器实例。</p>
-                )}
-                {deviceRows(single)}
-              </fieldset>
-            </>
-          )
-        )}
-        {notice && (
-          <p className="tc-launch-notice" role="status">
-            <TriangleAlert size={14} />
-            {notice}
-          </p>
-        )}
-        <p className="tc-launch-hint">
-          每张任务表可选择多台设备独立执行；已绑定的任务表只能选择绑定设备，未绑定可临时选择任意设备。同一设备不能同时运行多张任务表。执行开始后可在「执行监控」查看进度。
+            );
+          })}
+        </fieldset>
+      ) : (
+        single && (
+          <>
+            <div className="tc-launch-plan-fixed">
+              <span>任务表</span>
+              <strong>{single.name}</strong>
+              <small>
+                {single.tasks.filter((task) => task.enabled !== false).length} 项启用
+                {planDeviceIds(single).length
+                  ? ` · 绑定 ${planDeviceIds(single).length} 台设备`
+                  : ' · 未绑定设备'}
+              </small>
+            </div>
+            <fieldset className="tc-launch-devices">
+              <legend>选择设备</legend>
+              {!snapshot.devices.length && !planDeviceIds(single).length && (
+                <p className="tc-launch-empty">还没有设备，请先在设备页添加并连接模拟器实例。</p>
+              )}
+              {deviceRows(single)}
+            </fieldset>
+          </>
+        )
+      )}
+      {notice && (
+        <p className="tc-launch-notice" role="status">
+          <TriangleAlert size={14} />
+          {notice}
         </p>
-      </div>
-      <div className="modal-actions">
-        <Button disabled={submitting} onClick={onClose}>
-          取消
-        </Button>
-        <Button
-          variant="primary"
-          disabled={submitting || blocked || !requests.length}
-          onClick={() => void submit()}
-        >
-          {submitting ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
-          {submitting ? '正在运行…' : submitLabel}
-        </Button>
-      </div>
+      )}
+      <p className="tc-launch-hint">
+        每张任务表可选择多台设备独立执行；已绑定的任务表只能选择绑定设备，未绑定可临时选择任意设备。同一设备不能同时运行多张任务表。执行开始后可在「执行监控」查看进度。
+      </p>
     </Modal>
   );
 }
 
-function initialTargets(snapshot: Snapshot, plans: Plan[], selectedDeviceId: string) {
+function initialTargets(
+  snapshot: Snapshot,
+  plans: Plan[],
+  selectedDeviceId: string,
+  pending: ReadonlySet<string>,
+) {
   const used = new Set(plans.flatMap(planDeviceIds));
   const targets: Record<string, string[]> = {};
   for (const plan of plans) {
     const bound = planDeviceIds(plan);
     if (bound.length) {
-      targets[plan.id] = [...bound];
+      const extending = snapshot.runs.some(
+        (run) => run.source !== 'copilot' && run.planId === plan.id && run.status === 'running',
+      );
+      targets[plan.id] = extending
+        ? availablePlanDevices(snapshot, plan, pending).map((device) => device.id)
+        : [...bound];
       continue;
     }
     if (plans.length === 1) {
       targets[plan.id] = [];
       continue;
     }
-    const preferred = snapshot.devices.find(
-      (device) => device.id === selectedDeviceId && device.state === 'idle' && !used.has(device.id),
+    const available = availablePlanDevices(snapshot, plan, pending).filter(
+      (device) => !used.has(device.id),
     );
-    const candidate =
-      preferred ||
-      snapshot.devices.find((device) => device.state === 'idle' && !used.has(device.id));
+    const preferred = available.find((device) => device.id === selectedDeviceId);
+    const candidate = preferred || available[0];
     targets[plan.id] = candidate ? [candidate.id] : [];
     if (candidate) used.add(candidate.id);
   }

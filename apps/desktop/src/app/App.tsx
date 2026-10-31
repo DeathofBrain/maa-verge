@@ -87,6 +87,7 @@ export default function App() {
   const [historyFilter, setHistoryFilter] = useState('all');
   const [historyQuery, setHistoryQuery] = useState('');
   const [executionSelection, setExecutionSelection] = useState<Run>();
+  const [executionPlanId, setExecutionPlanId] = useState<string>();
   historicalDeviceRef.current =
     executionSelection?.status !== 'running' ? executionSelection?.deviceId : undefined;
   const [copilotRunId, setCopilotRunId] = useState<string>();
@@ -164,6 +165,7 @@ export default function App() {
     setDeviceSettingsEntry(undefined);
     setRunPanel(null);
     setExecutionSelection(undefined);
+    setExecutionPlanId(undefined);
     setPage(next);
     setSidebarOpen(false);
     setPageSearch('');
@@ -206,6 +208,17 @@ export default function App() {
     navigate('tasks');
     setExecutionSelection(run);
     setTaskView('execution');
+  };
+  const showPlanExecution = (run: Run) => {
+    showExecution(run);
+    setExecutionPlanId(run.planId || undefined);
+    if (
+      snapshot?.runs.filter(
+        (item) =>
+          item.source !== 'copilot' && item.planId === run.planId && item.status === 'running',
+      ).length !== 1
+    )
+      setExecutionSelection(undefined);
   };
   const updateExecution = useCallback(
     (run: Run) => setExecutionSelection((previous) => (previous?.id === run.id ? run : previous)),
@@ -648,11 +661,16 @@ export default function App() {
                 execution={
                   <ExecutionMonitor
                     snapshot={snapshot}
+                    selectedPlanId={executionPlanId}
+                    onClearPlan={() => setExecutionPlanId(undefined)}
                     selectedRun={executionRun}
                     selectedDeviceId={selectedDevice}
                     onSelectDevice={selectDevice}
                     pending={pending}
-                    onSelectRun={showExecution}
+                    onSelectRun={(run) => {
+                      setSelectedDevice(run.deviceId);
+                      setExecutionSelection(run);
+                    }}
                     onRunUpdate={updateExecution}
                     onDevicesDeleted={refresh}
                     onOverview={() => setExecutionSelection(undefined)}
@@ -661,6 +679,7 @@ export default function App() {
                     onPrepare={() => {
                       setTaskView('plans');
                       setExecutionSelection(undefined);
+                      setExecutionPlanId(undefined);
                     }}
                   />
                 }
@@ -670,6 +689,7 @@ export default function App() {
                   setDeviceSettingsEntry(undefined);
                   setTaskView(next);
                   setExecutionSelection(undefined);
+                  setExecutionPlanId(undefined);
                 }}
                 onOpenPlan={(plan) => choosePlan(plan)}
                 onCreatePlan={() => createPlan()}
@@ -678,7 +698,7 @@ export default function App() {
                 onDeleteMany={(plans) => requestDeletePlans(plans, true)}
                 onStart={startPlan}
                 onStop={stopRun}
-                onShowRun={showExecution}
+                onShowRun={showPlanExecution}
                 onCloseDetail={closeTaskDetail}
               />
             )}

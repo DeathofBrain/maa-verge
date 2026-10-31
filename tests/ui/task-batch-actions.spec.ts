@@ -215,7 +215,7 @@ test('monitor search includes every shared binding and stopping a table stops al
       });
   }, secondDevice);
   await page.getByRole('tab', { name: '任务表', exact: true }).click();
-  await page.getByRole('button', { name: '停止任务表固源岩补给', exact: true }).click();
+  await page.getByRole('button', { name: '停止全部任务表固源岩补给', exact: true }).click();
   await expect
     .poll(async () => (await snapshot(page)).runs.map((run) => run.status))
     .toEqual(['stopped', 'stopped']);

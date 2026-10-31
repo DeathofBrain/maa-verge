@@ -23,8 +23,10 @@
   margin-bottom: 12px;
 }
 .monitor-device-list-heading h2 {
+  min-width: 0;
   margin: 0;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 .monitor-summary {
   display: flex;

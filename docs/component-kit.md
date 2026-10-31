@@ -313,6 +313,8 @@ createPortal(
 
 ## 验证
 
+任务表执行入口沿用现有 `Button`、`ContextMenu` 与 `Modal`，未修改 kit API 或样式。运行窗口使用 `bodyClassName` 承载限高滚动内容、`footer` 保留确认操作，菜单打开的窗口通过 `returnFocus` 明确回到入口。`tc-plan-row` 等原有定位类保留；「本表执行中」和多设备「停止全部」的行为变化与对应 spec 同步，按钮随状态切换及追加设备的回归位于 `plan-run-actions.spec.ts`，不添加外观断言。
+
 结构与类型：
 
 ```bash

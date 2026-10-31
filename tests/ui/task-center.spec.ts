@@ -142,7 +142,7 @@ test('multi-device launch blocks binding, offline and busy devices and starts on
   await expect(modal.getByLabel('选择启动任务表', { exact: true })).toHaveCount(0);
   for (const [name, reason] of [
     ['离线实例', '离线，请先连接'],
-    ['忙碌实例', '正在执行其他任务'],
+    ['忙碌实例', '本表执行中'],
   ] as const) {
     await expect(
       modal.getByRole('checkbox', { name: `选择设备${name}`, exact: true }),

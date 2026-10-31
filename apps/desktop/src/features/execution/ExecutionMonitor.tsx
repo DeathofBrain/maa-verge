@@ -42,6 +42,8 @@ type Props = {
   snapshot: Snapshot;
   selectedRun?: Run;
   selectedDeviceId?: string;
+  selectedPlanId?: string;
+  onClearPlan?: () => void;
   onSelectDevice?: (id: string) => void;
   pending: Set<string>;
   onSelectRun: (run: Run) => void;
@@ -100,6 +102,8 @@ export default function ExecutionMonitor({
   snapshot,
   selectedRun,
   selectedDeviceId,
+  selectedPlanId,
+  onClearPlan,
   onSelectDevice,
   pending,
   onSelectRun,
@@ -112,6 +116,21 @@ export default function ExecutionMonitor({
 }: Props) {
   const contextMenu = useContextMenu();
   const showMenu = useContextMenuShow();
+  const scopedRuns = useMemo(
+    () =>
+      selectedPlanId
+        ? snapshot.runs.filter((run) => run.source !== 'copilot' && run.planId === selectedPlanId)
+        : snapshot.runs,
+    [snapshot.runs, selectedPlanId],
+  );
+  const monitorDevices = useMemo(() => {
+    if (!selectedPlanId) return snapshot.devices;
+    const runningDeviceIds = new Set(
+      scopedRuns.filter((run) => run.status === 'running').map((run) => run.deviceId),
+    );
+    return snapshot.devices.filter((device) => runningDeviceIds.has(device.id));
+  }, [snapshot.devices, scopedRuns, selectedPlanId]);
+  const scopedPlan = snapshot.plans.find((plan) => plan.id === selectedPlanId);
   const [filter, setFilter] = useState<DeviceFilter>('all');
   const [query, setQuery] = useState('');
   const [clock, setClock] = useState(Date.now);
@@ -131,9 +150,11 @@ export default function ExecutionMonitor({
   const previousHeaderDevice = useRef(selectedDeviceId);
   const deletedHeaderDevice = useRef<string | undefined>(undefined);
   const monitorScroll = useRef<HTMLDivElement>(null);
-  const tools = (snapshot.toolJobs || []).map((job) => toolResults.get(job.id) || job);
+  const tools = selectedPlanId
+    ? []
+    : (snapshot.toolJobs || []).map((job) => toolResults.get(job.id) || job);
   const activeByDevice = new Map<string, Run>();
-  for (const run of [...snapshot.runs].sort(newestFirst)) {
+  for (const run of [...scopedRuns].sort(newestFirst)) {
     if (run.status === 'running' && !activeByDevice.has(run.deviceId))
       activeByDevice.set(run.deviceId, run);
   }
@@ -151,15 +172,15 @@ export default function ExecutionMonitor({
   }
   const latestByDevice = useMemo(() => {
     const map = new Map<string, Run>();
-    for (const run of [...snapshot.runs].sort(newestFirst))
+    for (const run of [...scopedRuns].sort(newestFirst))
       if (!map.has(run.deviceId)) map.set(run.deviceId, run);
     return map;
-  }, [snapshot.runs]);
+  }, [scopedRuns]);
   const latestToolsByDevice = new Map<string, ToolJobSummary>();
   for (const job of [...tools].sort(newestFirst))
     if (!latestToolsByDevice.has(job.deviceId)) latestToolsByDevice.set(job.deviceId, job);
   const categories = new Map(
-    snapshot.devices.map((device) => [
+    monitorDevices.map((device) => [
       device.id,
       categoryOf(device, activeByDevice.get(device.id) || activeToolsByDevice.get(device.id)),
     ]),
@@ -178,6 +199,20 @@ export default function ExecutionMonitor({
     setFilter('all');
     setQuery('');
   }, [selectedRun?.id, selectedRun?.deviceId]);
+  useLayoutEffect(() => {
+    if (!selectedPlanId) return;
+    setDeviceId(
+      selectedRun?.planId === selectedPlanId
+        ? selectedRun.deviceId
+        : monitorDevices.length === 1
+          ? monitorDevices[0].id
+          : '',
+    );
+    setHistoryToolId('');
+    setFilter('all');
+    setQuery('');
+    setSelected(new Set());
+  }, [selectedPlanId]);
   useEffect(() => {
     if (previousHeaderDevice.current === selectedDeviceId) return;
     const previous = previousHeaderDevice.current;
@@ -191,29 +226,39 @@ export default function ExecutionMonitor({
       return;
     }
     if (!selectedDeviceId || selectedRun?.deviceId === selectedDeviceId) return;
+    if (selectedPlanId && !monitorDevices.some((device) => device.id === selectedDeviceId))
+      onClearPlan?.();
     setDeviceId(selectedDeviceId);
     setHistoryToolId('');
     onOverview();
-  }, [selectedDeviceId, selectedRun?.deviceId, onOverview, snapshot.devices]);
+  }, [
+    selectedDeviceId,
+    selectedRun?.deviceId,
+    selectedPlanId,
+    monitorDevices,
+    onClearPlan,
+    onOverview,
+    snapshot.devices,
+  ]);
   useLayoutEffect(() => {
     monitorScroll.current?.scrollTo({ top: 0, behavior: 'instant' });
   }, [deviceId, selectedRun?.id]);
   useEffect(() => {
     setSelected((previous) => {
       const next = new Set(
-        [...previous].filter((id) => snapshot.devices.some((device) => device.id === id)),
+        [...previous].filter((id) => monitorDevices.some((device) => device.id === id)),
       );
       return next.size === previous.size ? previous : next;
     });
-  }, [snapshot.devices]);
+  }, [monitorDevices]);
   const counts = {
-    all: snapshot.devices.length,
-    running: snapshot.devices.filter((device) => categories.get(device.id) === 'running').length,
-    idle: snapshot.devices.filter((device) => categories.get(device.id) === 'idle').length,
-    offline: snapshot.devices.filter((device) => categories.get(device.id) === 'offline').length,
+    all: monitorDevices.length,
+    running: monitorDevices.filter((device) => categories.get(device.id) === 'running').length,
+    idle: monitorDevices.filter((device) => categories.get(device.id) === 'idle').length,
+    offline: monitorDevices.filter((device) => categories.get(device.id) === 'offline').length,
   };
   const term = query.trim().toLocaleLowerCase();
-  const visibleDevices = snapshot.devices
+  const visibleDevices = monitorDevices
     .filter((device) => {
       if (filter !== 'all' && categories.get(device.id) !== filter) return false;
       if (!term) return true;
@@ -231,13 +276,13 @@ export default function ExecutionMonitor({
         a.name.localeCompare(b.name, 'zh-CN')
       );
     });
-  const selectedRuns = snapshot.devices
+  const selectedRuns = monitorDevices
     .filter((device) => selected.has(device.id))
     .flatMap((device) => {
       const run = activeByDevice.get(device.id);
       return run ? [run] : [];
     });
-  const selectedTools = snapshot.devices
+  const selectedTools = monitorDevices
     .filter((device) => selected.has(device.id))
     .flatMap((device) => {
       const job = activeToolsByDevice.get(device.id);
@@ -335,11 +380,19 @@ export default function ExecutionMonitor({
       setDeleting(false);
     }
   };
-  const currentDevice = snapshot.devices.find((device) => device.id === deviceId);
+  const currentDevice = monitorDevices.find((device) => device.id === deviceId);
   const currentCategory = currentDevice ? categories.get(currentDevice.id) : undefined;
   const currentRun = activeByDevice.get(deviceId);
   const currentTool = activeToolsByDevice.get(deviceId);
-  const requestedRun = selectedRun?.deviceId === deviceId ? selectedRun : undefined;
+  const requestedRun =
+    selectedRun?.deviceId === deviceId &&
+    (!selectedPlanId ||
+      (currentDevice &&
+        selectedRun.source !== 'copilot' &&
+        selectedRun.planId === selectedPlanId &&
+        selectedRun.status === 'running'))
+      ? selectedRun
+      : undefined;
   const historicalRun = requestedRun?.status !== 'running' ? requestedRun : undefined;
   // Detail polling keeps an explicitly selected live run tied to its ID when it
   // temporarily falls out of summary snapshots. Finished selections stay exact.
@@ -352,7 +405,7 @@ export default function ExecutionMonitor({
       ? undefined
       : currentTool;
   const showingHistory = !!historicalRun || !!historyToolId;
-  const latestRun = [...snapshot.runs]
+  const latestRun = [...scopedRuns]
     .sort(newestFirst)
     .find((run) => run.deviceId === deviceId && run.status !== 'running');
   const latestTool = [...tools]
@@ -442,7 +495,7 @@ export default function ExecutionMonitor({
         )}
         <section className="monitor-devices" aria-label="设备执行列表">
           <header className="monitor-device-list-heading">
-            <h2>设备列表</h2>
+            <h2>{selectedPlanId ? `${scopedPlan?.name || '任务表'} · 当前执行` : '设备列表'}</h2>
             <div className="monitor-summary" role="status">
               <span>
                 <b>{counts.all}</b> 台设备
@@ -452,8 +505,28 @@ export default function ExecutionMonitor({
                 {counts.running} 台执行中
               </span>
             </div>
+            {selectedPlanId && (
+              <Button
+                size="compact"
+                onClick={() => {
+                  setSelected(new Set());
+                  setFilter('all');
+                  setQuery('');
+                  onClearPlan?.();
+                }}
+              >
+                显示全部设备
+              </Button>
+            )}
           </header>
-          {!snapshot.devices.length ? (
+          {selectedPlanId && !monitorDevices.length ? (
+            <EmptyState
+              className="monitor-empty"
+              icon={<Monitor size={30} />}
+              title="本表当前没有执行"
+              text="本表的执行已结束，可在执行记录中查看结果。"
+            />
+          ) : !snapshot.devices.length ? (
             <EmptyState
               className="monitor-empty"
               icon={<Monitor size={34} />}
@@ -818,7 +891,7 @@ export default function ExecutionMonitor({
             />
           </section>
         ) : (
-          snapshot.devices.length > 0 && (
+          monitorDevices.length > 0 && (
             <div className="monitor-empty monitor-select-prompt">
               <Monitor size={30} />
               <h2>选择一台设备</h2>

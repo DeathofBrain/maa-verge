@@ -6,7 +6,7 @@ import Tabs from '@/kit/Tabs';
 import FilterChips from '@/kit/FilterChips';
 import SearchField from '@/kit/SearchField';
 import EmptyState from '@/kit/EmptyState';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   FileJson,
   ListChecks,
@@ -30,6 +30,7 @@ import { useContextMenu, useContextMenuShow } from '@/kit/ContextMenu';
 import SelectAll from '@/shared/ui/SelectAll';
 import RunTasksDialog from './RunTasksDialog';
 import TaskDetailDrawer from './TaskDetailDrawer';
+import { availablePlanDevices } from './plan-run-availability';
 import './task-center.css';
 
 type Props = {
@@ -88,6 +89,10 @@ export default function TasksPage({
   const [query, setQuery] = useState('');
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(() => new Set());
   const [runningDialog, setRunningDialog] = useState(false);
+  const [additionalPlanId, setAdditionalPlanId] = useState<string>();
+  const additionalReturnFocus = useRef<HTMLElement | null>(null);
+  const planRows = useRef(new Map<string, HTMLElement>());
+  const additionalPlan = snapshot.plans.find((plan) => plan.id === additionalPlanId);
   const selectedPlans = snapshot.plans.filter((plan) => selectedPlanIds.has(plan.id));
   const planRuns = useMemo(
     () =>
@@ -125,22 +130,40 @@ export default function TasksPage({
       .toLowerCase()
       .includes(term);
   });
-  const menuItems = (plan: Plan) => [
-    { label: '任务表设置', action: () => onCommand(plan, 'settings') },
-    { label: '重命名', action: () => onCommand(plan, 'rename') },
-    { label: '复制任务表', action: () => onCommand(plan, 'duplicate') },
-    { label: '导出任务表', action: () => onCommand(plan, 'export') },
-    {
-      label: '删除任务表',
-      danger: true,
-      disabled: runningByPlan.has(plan.id),
-      action: () => onDelete(plan),
-    },
-  ];
+  const menuItems = (plan: Plan, returnFocus?: HTMLElement) => {
+    const running = runningByPlan.get(plan.id);
+    const available = running ? availablePlanDevices(snapshot, plan, pending).length : 0;
+    return [
+      ...(running?.length
+        ? [
+            {
+              label: available ? '在其他设备执行…' : '在其他设备执行…（暂无可用设备）',
+              disabled: !available || running.some((run) => pending.has(`stop-${run.id}`)),
+              action: () => {
+                additionalReturnFocus.current =
+                  returnFocus || planRows.current.get(plan.id) || null;
+                setAdditionalPlanId(plan.id);
+              },
+            },
+          ]
+        : []),
+      { label: '任务表设置', action: () => onCommand(plan, 'settings') },
+      { label: '重命名', action: () => onCommand(plan, 'rename') },
+      { label: '复制任务表', action: () => onCommand(plan, 'duplicate') },
+      { label: '导出任务表', action: () => onCommand(plan, 'export') },
+      {
+        label: '删除任务表',
+        danger: true,
+        disabled: runningByPlan.has(plan.id),
+        action: () => onDelete(plan),
+      },
+    ];
+  };
   const startPending = (plan: Plan) =>
-    (planDeviceIds(plan).length ? planDeviceIds(plan) : [selectedDeviceId]).some((id) =>
-      pending.has(`start-plan-${id}`),
-    );
+    (planDeviceIds(plan).length
+      ? planDeviceIds(plan)
+      : [...snapshot.devices.map((device) => device.id), selectedDeviceId]
+    ).some((id) => pending.has(`start-plan-${id}`));
   const togglePlan = (planId: string) =>
     setSelectedPlanIds((previous) => {
       const next = new Set(previous);
@@ -335,8 +358,13 @@ export default function TasksPage({
                     `未发现的设备（${id}）`,
                 );
                 const starting = startPending(plan);
+                const stopping = activeRuns.some((run) => pending.has(`stop-${run.id}`));
                 return (
                   <article
+                    ref={(element) => {
+                      if (element) planRows.current.set(plan.id, element);
+                      else planRows.current.delete(plan.id);
+                    }}
                     className={`tc-plan-row ${selectedPlanIds.has(plan.id) ? 'is-checked' : ''}`}
                     key={plan.id}
                     aria-label={`任务表 ${plan.name}`}
@@ -389,28 +417,21 @@ export default function TasksPage({
                       </div>
                     </div>
                     <div className="tc-plan-actions">
-                      {active && (
-                        <Button
-                          className="tc-plan-main-action"
-                          size="compact"
-                          onClick={() => onShowRun(active)}
-                        >
-                          查看执行
-                        </Button>
-                      )}
                       <Button
                         className="tc-plan-main-action"
                         size="compact"
                         variant="primary"
-                        disabled={starting}
-                        onClick={() => void onStart(plan)}
+                        disabled={!active && starting}
+                        onClick={() => (active ? onShowRun(active) : void onStart(plan))}
                       >
-                        {starting ? (
+                        {active ? (
+                          <Monitor size={14} />
+                        ) : starting ? (
                           <LoaderCircle size={14} className="spin" />
                         ) : (
                           <Play size={14} />
                         )}
-                        {starting ? '正在开始…' : '开始执行'}
+                        {active ? '查看执行' : starting ? '正在启动…' : '开始执行'}
                       </Button>
                       <Button
                         className="tc-plan-main-action"
@@ -424,12 +445,12 @@ export default function TasksPage({
                         <Button
                           size="compact"
                           variant="danger"
-                          disabled={activeRuns.some((run) => pending.has(`stop-${run.id}`))}
-                          aria-label={`停止任务表${plan.name}`}
+                          disabled={stopping}
+                          aria-label={`${activeRuns.length > 1 ? '停止全部任务表' : '停止任务表'}${plan.name}`}
                           onClick={() => void Promise.all(activeRuns.map((run) => onStop(run)))}
                         >
                           <Square size={12} />
-                          停止
+                          {stopping ? '正在停止…' : activeRuns.length > 1 ? '停止全部' : '停止'}
                         </Button>
                       )}
                       <IconButton
@@ -441,7 +462,7 @@ export default function TasksPage({
                             x: rect.right - 180,
                             y: rect.bottom + 4,
                             target: event.currentTarget,
-                            items: menuItems(plan),
+                            items: menuItems(plan, event.currentTarget),
                             label: '任务表菜单',
                           });
                         }}
@@ -469,6 +490,17 @@ export default function TasksPage({
           pending={pending}
           onStart={onStart}
           onClose={() => setRunningDialog(false)}
+        />
+      )}
+      {additionalPlan && (
+        <RunTasksDialog
+          snapshot={snapshot}
+          plans={[additionalPlan]}
+          returnFocus={additionalReturnFocus.current}
+          selectedDeviceId={selectedDeviceId}
+          pending={pending}
+          onStart={onStart}
+          onClose={() => setAdditionalPlanId(undefined)}
         />
       )}
       {editor && <TaskDetailDrawer onClose={onCloseDetail}>{editor}</TaskDetailDrawer>}
