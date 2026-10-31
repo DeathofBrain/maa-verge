@@ -1,6 +1,6 @@
 [package]
 name = "maaverge"
-version = "0.1.3-alpha.1"
+version = "0.1.3"
 description = "Maa Verge desktop host"
 authors = ["Maa Verge contributors"]
 license = "AGPL-3.0-only"
