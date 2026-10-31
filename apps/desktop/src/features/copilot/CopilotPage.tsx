@@ -1081,6 +1081,7 @@ export default function CopilotPage({
         className="sp-page-heading"
         actionsClassName="cp-heading-actions"
         title="作业中心"
+        icon={<BookOpen />}
         text="找到合适的作业，确认干员要求，再加入队列执行。"
         actions={
           <Button variant="secondary" disabled={savingImport} onClick={openImport}>

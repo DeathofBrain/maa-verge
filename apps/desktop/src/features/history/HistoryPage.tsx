@@ -59,6 +59,7 @@ export default function HistoryPage({
       <PageHeading
         padding="page"
         title="执行记录"
+        icon={<History />}
         text="查看每次运行的结果、设备与失败原因。"
         actions={
           <Button onClick={() => setRunPanel('logs')}>

@@ -199,7 +199,7 @@ createPortal(
 | `SettingRow`                          | `.sp-setting-row` 及其 4 层祖先前缀 padding 覆盖                                                                                                                                | 已实现 |
 | `Section`                             | 被定义两次的 `Section`、`section.sp-section`（8 文件）、`section.settings-card`（6 文件）                                                                                       | 已实现 |
 | `Notice`                              | `CaptureSettingsForm.tsx` 的本地 `Notice`、`DevicesPage.tsx` 的内联版、`.wb-running-note` ×2                                                                                    | 已实现 |
-| `PageHeading`                         | `App.tsx` 与 `SupportPages.tsx` 两份定义，以及 `DevicesPage.tsx`、`ToolsPage.tsx` 的无组件内联标记                                                                              | 已实现 |
+| `PageHeading`                         | `App.tsx` 与 `SupportPages.tsx` 两份定义、无组件内联标记及六个主导航页面的图文标题；统一可选图标与文字间距                                                                      | 已实现 |
 | `EmptyState`                          | ≥14 个空状态类族                                                                                                                                                                | 已实现 |
 | `StatusPill`                          | `.pill` + 修饰符（12 处）、`.sp-state.*`、`.monitor-device-state`、`.device-selection-state.is-*`、`.cp-state-*`、`.notification-channel-badge`、`.subtle-tag`、`.status-dot`   | 已实现 |
 | `Tabs`                                | 5 套 `role="tablist"` 与 2 处纵向 `.sp-category-nav`                                                                                                                            | 已实现 |
@@ -254,6 +254,8 @@ createPortal(
 
 `PageHeading` 的 `padding` 默认为 `none`，由宿主布局提供留白；独立页头使用 `padding="page"`（Agent 助手、执行记录），提供 `26px 28px 23px` 留白并避免被纵向 flex 压缩。760px 以下收窄为 `22px 20px 20px`，480px 以下为 `20px 17px 18px`，操作区移至标题说明下方；操作区保持自身宽度，避免按钮文案被挤压。
 
+图文标题通过 `icon` 提供装饰图标，例如 `<PageHeading title="作业中心" icon={<BookOpen />} />`。kit 提供 24px 图标槽、垂直居中、`--space-3`（12px）图文间距及 `--muted` 图标颜色；图标本身沿用 Lucide 默认 24px 尺寸。标题字号、字重和原有页面留白保持原配方。图标容器使用 `aria-hidden`，h1 的可访问名称仍只有标题文案；不传图标时保留纯文字标题结构。主页、任务、作业中心、工具箱、Agent 助手与执行记录使用各自对应的侧栏图标，根类和操作区测试耦合类保留。
+
 `Button` 与 `IconButton` 透传 React 19 的原生 `ref`，日志结果弹层据此返回触发按钮。Toast 的尺寸、边框、语义色、内部图标与文字换行由 `kit.css` 的 `mv-toast-*` 控制，关闭按钮使用 `size="sm"`，堆叠使用 `--z-toast`；定位和入场动画仍归 `app/styles/styles.css`。Tabs 的标签保持单行且不被 flex 压缩，窄窗下由使用方容器提供横向滚动。
 
 ### 页面采用与布局模式（2026-10-31）
@@ -266,7 +268,7 @@ createPortal(
 | `TextField` / `NumberField` / `TextArea` / `Checkbox` / `CheckField` / `Switch` | 透传原生 React 19 ref；复选框混合态仍设置原生 `indeterminate`。`TextArea variant="embedded"` 用于已有外框的聊天输入区，保留 55px 高、无边框和不可拖拽的输入。`Switch` 先执行原生 `onClick`，未被取消时才调用布尔值 `onChange`。                                                              |
 | `RangeField`                                                                    | 固定原生 `type="range"`，保留 min/max/step、标签和 ref，不套文本框的边框与内边距。                                                                                                                                                                                                           |
 | `SearchField`                                                                   | 默认保留搜索框配方；`size="sm"` 用于 32px 紧凑搜索，`variant="inline"` 用于 31px 顶栏搜索。原生输入 ref、focus、blur、键盘事件可透传；搜索结果仍由页面持有。                                                                                                                                 |
-| `PageHeading`                                                                   | `eyebrow` 接收标题上方的图标/说明插槽，`title` 支持 ReactNode；页面布局由根类负责，独立页头留白使用上文 `padding="page"`。                                                                                                                                                                   |
+| `PageHeading`                                                                   | `title` 支持 ReactNode，`icon` 为标题左侧的装饰图标（统一图标槽与间距、`aria-hidden`），`eyebrow` 仍是标题上方的说明插槽；页面布局由根类负责，独立页头使用 `padding="page"`。                                                                                                                |
 | `Tabs`                                                                          | `variant="page"` 保留设备页的 17px 纵向留白，`workbench` 保留任务编辑页的 13px/12px 留白。`items[].ariaLabel` 可将计数与中文可访问名称分开；根容器的左右缩进、间距和滚动仍归页面。                                                                                                           |
 | `FilterChips`                                                                   | 默认胶囊；`variant="subtle"` 保留任务和执行监控的矩形筛选，选中项使用表面背景与边框。                                                                                                                                                                                                        |
 | `DirectoryPicker`                                                               | `surface="subtle"` 表达只读目录底色；默认 `layout="inline"`，`responsive` 在 560px 以下将输入移至整行、选择按钮右对齐。目录值不会因布局变化改写。                                                                                                                                            |

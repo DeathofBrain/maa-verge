@@ -14,6 +14,7 @@ import {
   CircleCheck,
   Clock3,
   History,
+  House,
   LoaderCircle,
   Monitor,
   Settings2,
@@ -109,6 +110,7 @@ export default function HomeDashboard({
         <PageHeading
           className="home-heading"
           title="主页"
+          icon={<House />}
           text="设备状态与执行动态，一目了然。"
           eyebrow={
             <div className="home-eyebrow">

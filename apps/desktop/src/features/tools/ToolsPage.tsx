@@ -19,6 +19,7 @@ import {
   Search,
   Square,
   Trash2,
+  Wrench,
 } from 'lucide-react';
 import {
   errorMessage,
@@ -275,6 +276,7 @@ export default function ToolsPage({
       <PageHeading
         className="sp-page-heading"
         title="工具箱"
+        icon={<Wrench />}
         text="选择设备，确认空闲，再开始工具操作。"
       />
       <section className="sp-section toolbox-device" aria-label="工具箱目标设备">

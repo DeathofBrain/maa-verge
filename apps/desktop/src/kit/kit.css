@@ -479,6 +479,26 @@
   font-weight: 600;
 }
 
+.mv-page-heading-title--with-icon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mv-page-heading-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+}
+
+.mv-page-heading-label {
+  min-width: 0;
+}
+
 .mv-page-heading-text {
   font-size: var(--text-base);
   color: var(--muted);
