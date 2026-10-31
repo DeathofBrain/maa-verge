@@ -160,6 +160,7 @@ test('category context menus can remove only the category or explicitly delete i
     .check();
   await page.setViewportSize({ width: 390, height: 844 });
   await removeDialog(page, true).getByRole('button', { name: '确认删除', exact: true }).click();
+  await expect(removeDialog(page, true)).toHaveCount(0);
   expect(
     (await call<{ items: CopilotRecord[] }>(page, 'copilot.list')).items.map((item) => item.id),
   ).toEqual([kept.id]);
