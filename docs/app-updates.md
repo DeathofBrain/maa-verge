@@ -87,9 +87,9 @@ codesign --verify --deep --strict "/Applications/Maa Verge.app"
 xattr -dr com.apple.quarantine "/Applications/Maa Verge.app"
 ```
 
-v0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和包内子进程签名；该发行版有三个子进程，当前源码移除 aria2 后保留 Bun 服务和 C++ worker。普通 CI 与发行 CI 的两种 macOS 架构还会运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。
+v0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和包内子进程签名；该发行版有三个子进程，当前源码移除 aria2 后保留 Bun 服务和 C++ worker。普通 CI 验证本平台合成打包夹具；发行 CI 的两种 macOS 架构运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。
 
-发行 CI 额外传入 `--require-updater`，要求完整 DMG 具有绑定包内容与版本的有效更新签名，并核对 DMG 内应用与原应用的主程序、资源封装和子进程字节一致；不再要求或解开专用更新归档。任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。
+发行 CI 额外传入 `--require-updater`，要求完整 DMG 具有绑定包内容与版本的有效更新签名，并核对安装副本与 DMG 内应用的主程序、资源封装和子进程字节一致；不依赖已删除的中间 `.app`，不再要求或解开专用更新归档。任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。
 
 ## 信任与版本边界
 
