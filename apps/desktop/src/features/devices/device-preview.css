@@ -61,15 +61,8 @@
   color: var(--muted);
   white-space: nowrap;
 }
-.device-preview-frequency .app-select {
-  min-height: 28px;
+.device-preview-frequency-select {
   width: 77px;
-  padding: 4px 6px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 11px;
 }
 .device-preview-toggle {
   gap: 5px;

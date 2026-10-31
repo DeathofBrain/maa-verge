@@ -339,6 +339,8 @@ export default function DevicePreview({
           >
             刷新频率
             <Select
+              className="device-preview-frequency-select"
+              size="sm"
               aria-label="刷新频率"
               value={refreshHz}
               onChange={(event) =>

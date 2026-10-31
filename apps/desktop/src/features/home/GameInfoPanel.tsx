@@ -55,6 +55,8 @@ export default function GameInfoPanel({
           </h2>
           <div className="game-info-controls">
             <Select
+              className="game-info-client-select"
+              variant="subtle"
               aria-label="提醒使用的客户端"
               value={client}
               onChange={(event) => setClient(event.target.value as Client | '')}

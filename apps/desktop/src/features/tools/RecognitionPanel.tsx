@@ -149,6 +149,7 @@ export default function RecognitionPanel({
         </div>
         <div className="recognition-actions">
           <Select
+            className="recognition-client-select"
             aria-label="识别结果客户端"
             value={selectedClient}
             onChange={(event) => onClientChange(event.target.value as Client)}

@@ -531,6 +531,7 @@ function ResultImages({
         <label>
           反馈截图
           <Select
+            className="exec-capture-select"
             aria-label="选择结果截图"
             value={artifact.id}
             onChange={(event) => setSelection(event.target.value)}

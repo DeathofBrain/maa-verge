@@ -125,6 +125,7 @@ export default function CopilotImportPreview({
             <label className="cp-field">
               本次加入类型
               <Select
+                className="cp-field-select"
                 aria-label="作业集入队类型"
                 value={queueKind}
                 onChange={(event) => setQueueKind(event.target.value as CopilotKind)}

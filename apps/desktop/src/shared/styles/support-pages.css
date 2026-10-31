@@ -37,10 +37,6 @@
   flex-wrap: wrap;
 }
 
-.sp-heading-actions .app-select {
-  max-width: 180px;
-}
-
 .sp-section {
   padding: 24px 28px;
   border-bottom: 1px solid var(--border, #dde3ec);
@@ -813,9 +809,6 @@
   }
   .sp-heading-actions {
     gap: 8px;
-  }
-  .sp-heading-actions .app-select {
-    max-width: 160px;
   }
   .sp-notice {
     margin: 16px 18px;

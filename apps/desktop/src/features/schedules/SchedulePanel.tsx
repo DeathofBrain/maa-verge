@@ -274,6 +274,7 @@ export default function SchedulePanel({
       )}
       <div className="schedule-create">
         <Select
+          className="schedule-create-select"
           aria-label="新增定时任务表"
           value={newPlan}
           onChange={(event) => {
@@ -292,6 +293,7 @@ export default function SchedulePanel({
             ))}
         </Select>
         <Select
+          className="schedule-create-select"
           aria-label="新增定时设备"
           value={newDevice}
           onChange={(event) => setNewDevice(event.target.value)}

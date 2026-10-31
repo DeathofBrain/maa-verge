@@ -40,7 +40,7 @@ apps/desktop/
       styles/                 尚由多个功能消费的旧页面样式
     kit/                      无业务知识的 UI 原语和弹层机制
       kit.css                 mv-* 原语样式
-      legacy/                 Select、ContextMenu 的旧选择器
+      README.md               组件用法、样式预览与维护边界
   src-tauri/                  Rust 宿主、平台配置与安装集成
   tsconfig.json               TypeScript 检查和 @/* 路径映射
   vite.config.ts              开发、测试、构建共用的 Vite 配置
@@ -83,7 +83,7 @@ import './plan-workbench.css';
 
 原语的尺寸、颜色和变体通过 props 表达，页面 CSS 不得定位 `.mv-*` 内部类。页面通过自己的根类控制布局，通过插槽控制自己投放的内容。样式与消费组件共置，令牌在 `app/styles/styles.css` 中维护。
 
-`kit/legacy`、`shared/styles/support-pages.css` 和部分全局规则仍是迁移中的存量。文件归档已经完成，CSS 作用域尚未全部隔离；删除旧类前应检索 JSX、动态类名和行为测试定位，不能只按静态字符串判断无引用。
+组件用法、浅色/深色样式图与独立交互预览见 [Kit README](src/kit/README.md)。如无必要，不得修改 kit 的组件代码与样式；先使用现有 props、插槽和页面布局容器。Select / ContextMenu 已使用 `mv-*` 类并统一到 `kit.css`，原 `kit/legacy` 已移除。`shared/styles/support-pages.css` 和部分全局规则仍是迁移中的存量；删除旧类前应检索 JSX、动态类名和行为测试定位，不能只按静态字符串判断无引用。
 
 ## 扩展一个功能
 

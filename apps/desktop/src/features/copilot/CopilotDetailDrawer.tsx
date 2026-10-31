@@ -280,6 +280,7 @@ export default function CopilotDetailDrawer({
           <label className="cp-drawer-category cp-field">
             本地分类
             <Select
+              className="cp-field-select"
               aria-label="详情作业分类"
               value={current.categoryId ?? ''}
               disabled={categoryBusy}

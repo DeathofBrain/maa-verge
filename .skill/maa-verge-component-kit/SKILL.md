@@ -15,6 +15,8 @@ description: 为 Maa Verge 桌面界面新增或迁移组件套装原语：核�
 
 ## 开始前
 
+- **如无必要，不得修改 kit 组件代码与样式**。先查 [Kit README](../../apps/desktop/src/kit/README.md) 的用法与预览，用现有 props、插槽和页面布局容器实现需求。只有修复真实缺陷、可访问性问题或补充缺失的通用能力，才修改 kit，并记录原因、消费方影响与验证；单页视觉偏好、临时对齐和顺手重构不构成修改理由。
+
 - 读 [AGENTS.md](../../AGENTS.md)、[PLAN.md](../../PLAN.md)、[docs/STATUS.md](../../docs/STATUS.md) 与 [docs/component-kit.md](../../docs/component-kit.md)，检查 `git status` / `git diff`，保留未提交改动。
 - 在 `docs/component-kit.md` 的组件清单表里确认目标组件状态（已实现 / 已建 / 计划）与它替代的旧实现，不要凭记忆重写一份。
 - 迁移页面前先做**耦合审计**，这是本 skill 最重要的一步：
@@ -59,10 +61,10 @@ node tools/check-kit-css.mjs
 
 ```bash
 cd apps/desktop && ./node_modules/.bin/vite build --minify false --logLevel warn
-grep -n "组件套装样式\|^\.app-select {\|^\.sp-setting-row {\|--font-sans:" dist/assets/*.css
+grep -n "组件套装样式\|^\.mv-select {\|^\.sp-setting-row {\|--font-sans:" dist/assets/*.css
 ```
 
-期望 `kit.css` 的头注释在第 1–2 行，`kit/legacy/select.css` / `shared/styles/support-pages.css` 等后续样式在前段，`app/styles/styles.css` 的 `--font-sans:` 在末尾附近。`dist/` 已被忽略；核对完按需重跑一次正常构建。
+期望 `kit.css` 的头注释和 `.mv-select` 等原语样式在前，`shared/styles/support-pages.css` 等页面样式随后，`app/styles/styles.css` 的 `--font-sans:` 在末尾附近。Select / ContextMenu 已统一使用 `kit.css`，不再存在 `kit/legacy` 样式导入。`dist/` 已被忽略；核对完按需重跑一次正常构建。
 
 设计令牌在 `app/styles/styles.css` 的 `:root`。自定义属性在计算值阶段解析，与源顺序无关，`kit.css` 排在前面也能引用。
 
@@ -74,11 +76,11 @@ grep -n "组件套装样式\|^\.app-select {\|^\.sp-setting-row {\|--font-sans:"
 - CSS 需要的状态用 `data-*`，AT 需要的状态用 ARIA。不要新增 `.is-x` / `.selected` / `.active` / `.on` 之类第七种写法。
 - 可访问性契约（必填 `aria-label`、`role="switch"` 只挂 `[aria-checked='true']`、`TextField` 自身不带 label、`Tabs` 的 roving tabindex 等）逐条列在 `docs/component-kit.md`，实现前先对照。
 - **不要重写 `Select.tsx`**：它的可访问性面被 `tests/ui/fixtures/device-picker.ts` 锁死，且把菜单 portal 到 `closest('dialog,[role=dialog]') ?? document.body`，这是「弹层内 Select 能正常工作」的机制。`kit/index.ts` 只 re-export。
-- 页面使用 `kit/format.ts` / `kit/labels.ts` 时从 `@/kit/format`、`@/kit/labels` **深导入**：这两个模块不 import 任何 CSS，深导入不会扰动 Vite 的样式表合并顺序；barrel 会连带 `Select` 的 `kit/legacy/select.css`。
+- 页面使用 `kit/format.ts` / `kit/labels.ts` 时从 `@/kit/format`、`@/kit/labels` **深导入**，只加载所需纯工具。原语样式由入口统一加载 `kit.css`。
 
 ## 弹层
 
-- 每个弹层都必须走套装的 `Overlay` / `Modal` / `Drawer` / `ConfirmDialog`，或走 `native: true` 的原生 `<dialog>`。**禁止手写 Tab 陷阱、Escape 处理与焦点还原**——`kit/modal-effects.ts` 的 `acquireModalEffects` 已提供这三项，外加 inert 背景、滚动锁、overlay 栈、乱序释放，以及「`.app-context-menu, [data-select-menu]` 打开时让出 Escape」。
+- 每个弹层都必须走套装的 `Overlay` / `Modal` / `Drawer` / `ConfirmDialog`，或走 `native: true` 的原生 `<dialog>`。**禁止手写 Tab 陷阱、Escape 处理与焦点还原**——`kit/modal-effects.ts` 的 `acquireModalEffects` 已提供这三项，外加 inert 背景、滚动锁、overlay 栈、乱序释放，以及「`[data-context-menu], [data-select-menu]` 打开时让出 Escape」。
 - 保留 `close` ref 间接层（`close.current = onClose`），`shared/ui/SideDrawer.tsx` 与 `features/plans/TaskDetailDrawer.tsx` 已验证这一写法。
 - `background` 必须是 prop：默认 `[.sidebar, .main-shell, .run-dock]`，但 `CopilotDeleteDialog` 用 `[#root]` 且额外传 `returnFocus` / `fallbackFocus` / `initialFocus`。
 - `app/shell/DesktopLifecycle.tsx` 与 `features/settings/LogSettings.tsx` 的原生 `<dialog>` 用 `showModal()`，**不迁移**：关窗提示必须在 React 卸载后仍存活，`kit/modal-effects.ts` 显式为 `dialog:modal` 让路。套装只提供 `useNativeDialog(ref, handlers)` 把这种写法变成有文档的唯一写法。

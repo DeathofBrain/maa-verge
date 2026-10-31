@@ -9,14 +9,27 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
-import './legacy/select.css';
+import { cx } from './cx';
 
 type Option = { value: string; label: string; disabled: boolean; group?: string; index: number };
-type Props = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'multiple' | 'size'>;
+type Props = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'multiple' | 'size'> & {
+  size?: 'md' | 'compact' | 'sm';
+  variant?: 'default' | 'subtle';
+  textSize?: 'sm' | 'md' | 'base';
+};
 
 // Keep the native control for labels, form values, validation and change events.
 // Its popup is replaced so every desktop WebView uses the same themed menu.
-export default function Select({ className = '', style, children, onChange, ...props }: Props) {
+export default function Select({
+  className,
+  style,
+  children,
+  onChange,
+  size = 'md',
+  variant = 'default',
+  textSize,
+  ...props
+}: Props) {
   const control = useRef<HTMLSelectElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -227,10 +240,20 @@ export default function Select({ className = '', style, children, onChange, ...p
   const selectedOption = options.find((option) => option.value === selected);
 
   return (
-    <span className={`app-select ${className}`} style={style} data-open={open || undefined}>
+    <span
+      className={cx(
+        'mv-select',
+        size !== 'md' && `mv-select--${size}`,
+        variant !== 'default' && `mv-select--${variant}`,
+        textSize && `mv-select--text-${textSize}`,
+        className,
+      )}
+      style={style}
+      data-open={open || undefined}
+    >
       <select
         {...props}
-        className="app-select-native"
+        className="mv-select-native"
         ref={control}
         title={props.title ?? selectedOption?.label}
         aria-haspopup="listbox"
@@ -261,16 +284,16 @@ export default function Select({ className = '', style, children, onChange, ...p
       >
         {children}
       </select>
-      <span className="app-select-value" aria-hidden="true">
+      <span className="mv-select-value" aria-hidden="true">
         {selectedOption?.label || '\u00a0'}
       </span>
-      <ChevronDown className="app-select-chevron" size={15} aria-hidden="true" />
+      <ChevronDown className="mv-select-chevron" size={15} aria-hidden="true" />
       {open &&
         createPortal(
           <div
             ref={menu}
             id={listId}
-            className="app-select-menu"
+            className="mv-select-menu"
             data-select-menu=""
             popover={typeof HTMLElement.prototype.showPopover === 'function' ? 'manual' : undefined}
             role="listbox"
@@ -280,7 +303,11 @@ export default function Select({ className = '', style, children, onChange, ...p
             {options.map((option, index) => (
               <div key={option.index} role="presentation">
                 {option.group && option.group !== options[index - 1]?.group && (
-                  <div className="app-select-group" role="presentation">
+                  <div
+                    className="mv-select-group"
+                    data-separated={index > 0 || undefined}
+                    role="presentation"
+                  >
                     {option.group}
                   </div>
                 )}
@@ -289,7 +316,7 @@ export default function Select({ className = '', style, children, onChange, ...p
                   role="option"
                   aria-selected={option.value === selected}
                   aria-disabled={option.disabled || undefined}
-                  className="app-select-option"
+                  className="mv-select-option"
                   data-value={option.value}
                   data-option-index={option.index}
                   data-active={option.index === active || undefined}
@@ -302,12 +329,14 @@ export default function Select({ className = '', style, children, onChange, ...p
                     choose(option);
                   }}
                 >
-                  <span>{option.label}</span>
-                  {option.value === selected && <Check size={15} aria-hidden="true" />}
+                  <span className="mv-select-option-label">{option.label}</span>
+                  {option.value === selected && (
+                    <Check className="mv-select-option-check" size={15} aria-hidden="true" />
+                  )}
                 </div>
               </div>
             ))}
-            {!options.length && <div className="app-select-empty">暂无可选项</div>}
+            {!options.length && <div className="mv-select-empty">暂无可选项</div>}
           </div>,
           control.current?.closest('dialog, [role="dialog"]') ?? document.body,
         )}

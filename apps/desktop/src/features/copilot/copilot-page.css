@@ -245,9 +245,11 @@
   min-width: 0;
 }
 .cp-field > .cp-input,
-.cp-field .app-select {
+.cp-field-select {
   min-width: 0;
   width: 100%;
+}
+.cp-field > .cp-input {
   font-size: 13px;
   font-weight: 400;
 }
@@ -873,10 +875,9 @@
   width: 80px;
   font-size: 11px;
 }
-.cp-additional-row .app-select {
+.cp-additional-skill-select {
   min-width: 75px;
   max-width: 95px;
-  font-size: 11px;
 }
 .cp-save-state {
   display: flex;

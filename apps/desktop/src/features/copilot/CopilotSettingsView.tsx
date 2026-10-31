@@ -76,6 +76,7 @@ export default function CopilotSettings({
               <label className="cp-field">
                 编队栏位
                 <Select
+                  className="cp-field-select"
                   aria-label="作业编队栏位"
                   value={options.formationIndex}
                   onChange={(event) => change({ formationIndex: Number(event.target.value) })}
@@ -133,6 +134,8 @@ export default function CopilotSettings({
                       }
                     />
                     <Select
+                      className="cp-additional-skill-select"
+                      textSize="sm"
                       aria-label={`追加技能 ${index + 1}`}
                       value={operator.skill}
                       onChange={(event) =>

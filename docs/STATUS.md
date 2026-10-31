@@ -4,6 +4,14 @@
 
 默认进入主页仪表盘，汇总今日执行/完成、运行进度、最近记录、设备与三条独立组件版本；主页不包含任务表卡片、数量或新建/启动入口，侧栏不展开任务表列表。任务表统一从“任务”入口管理：列表 + 右侧详情抽屉保留逐任务设置和常驻运行条，执行监控为同页页签，开始执行不跳转；勾选任务表后由页头「运行」启动，每张表均可选择多台设备，已绑定表限绑定范围，未绑定表临时选择。执行监控统一列出在线与曾连接的离线设备，列表标题旁显示设备总数与执行中数量，已连接设备用绿色「已连接」标记，执行状态单独显示；点击设备后在下方查看当前任务表、作业或独立工具，再次点击收起；离线显示“已离线”，空闲与历史记录明确分开。任务表「查看执行」定位同一设备，设备卡日志及连接设置从右侧打开；底栏运行详情、日志、画面与多开执行向上展开，并通过底栏左侧设备选择器切换。支持设备多选停止及日志复制、导出和确认删除。产品显示名为 Maa Verge，GitHub 仓库为 [DeathofBrain/maa-verge](https://github.com/DeathofBrain/maa-verge)。六类独立工具与每日定时已接入，使用方法见 [工具箱与定时计划](toolbox-schedules.md)；独立作业中心已接入本地与 PRTS Plus 导入，完整原 MAA 兼容继续按功能矩阵验收。
 
+## 本次 Kit 使用文档与 legacy 样式归并（Windows x64，2026-10-31）
+
+- 新增 [Kit README](../apps/desktop/src/kit/README.md)，包含组件速查、用法、浅色/深色样式图，以及「如无必要，不得修改 kit 代码与样式」的维护边界；规范、前端架构、桌面开发说明与组件 skill 已同步。
+- 新增 `/kit-preview.html` 独立交互预览，复用真实 kit 组件、字体与应用令牌，支持主题切换、表单、下拉框、标签页、右键菜单、Modal 和 Drawer；入口不导入产品 App 或业务运行时，预览源码纳入桌面 TypeScript 检查。
+- Select / ContextMenu 的两份 `legacy` CSS 已并入 `kit.css`，统一使用 `mv-*` 类并删除旧样式文件。Select 通过 `size/variant/textSize` 表达既有尺寸和配色，页面保留自有布局类；菜单使用 data 标记与层级令牌，保留原生选项、portal、键盘与焦点行为。
+- 验证：固定 Node 工具链 `check:app` 通过（工具 **171 通过、2 Windows 条件跳过**，契约 **43/43**，工作区类型及同步/CSS/架构门禁）；预览源码最终 TypeScript、定向 Prettier、差异空白检查与 Vite 非压缩生产构建通过，产物顺序保持 kit 在页面及令牌之前。Edge 全量行为回归 **257/257 通过，4 workers，5.0 分钟**，未新增或修改测试，未添加外观断言。
+- 已人工检查预览页浅色/深色与 390px 窄窗，以及合成产品主页和任务详情下拉菜单的 1440×900 浅色、1280×800 深色、390×844 浅色/深色截图，未发现横向溢出；预览菜单与弹层操作正常，页面错误为零。文档示例图保存在 kit，回归日志和其余截图位于忽略目录 `test-results/kit-docs/`。本轮未运行完整 `pnpm check`，未连接真实设备或验证原生 WebView、macOS/Linux 和安装包；上述跨平台验收继续单独执行。
+
 ## 本次紧凑默认窗口与下拉框间距（Windows x64，2026-10-31）
 
 - 主窗口默认尺寸由 1360×900 改为 **900×640**，略小于 [Clash Verge Rev 的 940×700 默认窗口](https://github.com/clash-verge-rev/clash-verge-rev/blob/main/src-tauri/src/utils/resolve/window.rs)。基础配置与 macOS 覆盖配置同步，最小尺寸保持 900×640；重新启动 Tauri 应用后生效，前端热更新不会调整已创建的原生窗口。
@@ -1357,7 +1365,7 @@
 3. 接入用户自备模型 API、系统钥匙串、工具权限和费用预算，再逐步开放 Agent 的真实执行。
 4. 后续版本继续执行四宿主签名构建、草稿全量附件和公开后下载复验，保留既有发行标签与产物；补齐三平台真实升级安装验收，随后推进独立战斗研究及评测。
 5. 按 [插件系统与插件市场调研](plugin-marketplace-research.md) 推进后续扩展能力：先确定首批场景、包规范与权限边界，再做本地声明式扩展管理及审核制市场；可执行插件须先完成受限宿主原型和目标平台验证，当前不设交付日期。
-6. 前端已按 `app/features/shared/kit` 归档并增加依赖与循环门禁；Drawer、展示原语、原生弹层和主要页面采用情况见 [component-kit.md](component-kit.md)。继续按[前端架构](frontend-architecture.md)拆分 App 计划命令、Copilot 查询/导入/执行状态，设计跨功能 settings 写入协调；推进尚未采用的行/表单原语、旧选择器清理和令牌回填。`kit/legacy`、`shared/styles/support-pages.css` 与部分全局旧规则仍需逐步迁移。当前不设交付日期。
+6. 前端已按 `app/features/shared/kit` 归档并增加依赖与循环门禁；Drawer、展示原语、原生弹层和主要页面采用情况见 [component-kit.md](component-kit.md)。继续按[前端架构](frontend-architecture.md)拆分 App 计划命令、Copilot 查询/导入/执行状态，设计跨功能 settings 写入协调；推进尚未采用的行/表单原语、旧选择器清理和令牌回填。`kit/legacy` 已并入 `kit.css`；`shared/styles/support-pages.css` 与部分全局旧规则仍需逐步迁移。当前不设交付日期。
 7. 后端已按业务与基础设施归档、提取协议和 RPC 能力分派。继续按[后端架构](backend-architecture.md)拆分设备连接租约、执行会话与更新准入，并逐步缩小模块间的存储接口；保持关闭、取消、重连和请求幂等顺序。完整类型与行为回归不能被目录门禁替代。
 
 开发者在另一台电脑从相同 Git 提交执行 bootstrap，按 [development.md](development.md) 恢复依赖；无需复制虚拟环境、下载缓存或原机器路径。

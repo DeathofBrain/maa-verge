@@ -56,7 +56,7 @@ apps/desktop/src/
     styles/                   暂存仍由多个功能使用的旧页面样式
   kit/                        纯 UI 原语、弹层与焦点机制
     kit.css                   mv-* 原语样式
-    legacy/                   Select/ContextMenu 尚未改名的既有样式
+    README.md                 用法、样式预览与维护边界
 ```
 
 依赖方向为 `main → app → features → kit/shared/contracts`。`shared/ui` 可以组合 kit，kit 可以使用 `shared/lib` 的纯类型或映射；两者不能依赖任何 feature。feature 也不能导入 `app` 的组件、状态或 CSS。
@@ -86,7 +86,7 @@ apps/desktop/src/
 
 `main.tsx` 仍首先导入 `kit.css`，再导入 App，最后导入全局样式；物理迁移保持原模块图的导入顺序。页面不得引用 `.mv-*` 内部类。移动文件没有自动解决 CSS 的全局作用域：`shared/styles/support-pages.css` 和 `app/styles/styles.css` 仍包含旧规则，后续按实际消费方拆分，避免一次性重写全部选择器。
 
-`Select`、`ContextMenu` 的旧选择器暂留 `kit/legacy`。`SelectAll` 保留被现有行为测试定位的 `.cp-select-all` 类；它已归公共组合组件，不再由任务表依赖作业模块。新增原语遵循 kit 的 `mv-*` 规则，不复制这些历史做法。
+`Select`、`ContextMenu` 已使用 `mv-*` 选择器，样式统一位于 `kit.css`，原 `kit/legacy` 已移除；尺寸与配色差异通过 props 表达，业务 CSS 仅保留布局。用法、样式预览与非必要不修改约定见 [Kit README](../apps/desktop/src/kit/README.md)。`SelectAll` 保留被现有行为测试定位的 `.cp-select-all` 类；它已归公共组合组件，不再由任务表依赖作业模块。
 
 本轮清理了旧设备/作业库/工具布局、旧任务表启动菜单等无引用 CSS；Toast 的内部布局、语义色和层级归 kit，App 仅决定提示位置。
 

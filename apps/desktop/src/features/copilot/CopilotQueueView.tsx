@@ -316,6 +316,7 @@ export default function CopilotQueueView({
         <label className="cp-field">
           目标设备
           <Select
+            className="cp-field-select"
             aria-label="作业目标设备"
             value={selectedDevice}
             onChange={(event) => onSelectDevice(event.target.value)}

@@ -136,7 +136,8 @@ export default function TaskQueueView({
         </label>
         <Select
           id="task-type"
-          className="wb-parameter-control"
+          className="wb-parameter-control wb-add-task-select"
+          size="compact"
           value={
             filteredTypes.some(([type]) => type === addType) ? addType : filteredTypes[0]?.[0] || ''
           }

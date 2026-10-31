@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import './legacy/context-menu.css';
 
 export type MenuItem = { label: string; action: () => void; disabled?: boolean; danger?: boolean };
 type Menu = { x: number; y: number; items: MenuItem[]; target: HTMLElement; label: string };
@@ -84,7 +83,7 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider value={setMenu}>
       <div
-        className="context-menu-scope"
+        className="mv-context-menu-scope"
         onContextMenu={(event) => {
           if (
             !(event.target as HTMLElement).closest('input, textarea, [contenteditable="true"]') &&
@@ -100,7 +99,8 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
         createPortal(
           <div
             ref={root}
-            className="app-context-menu"
+            className="mv-context-menu"
+            data-context-menu=""
             role="menu"
             aria-label={menu.label}
             style={{ left: menu.x, top: menu.y }}
@@ -133,7 +133,8 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
                 role="menuitem"
                 key={item.label}
                 disabled={item.disabled}
-                className={item.danger ? 'is-danger' : undefined}
+                className="mv-context-menu-item"
+                data-tone={item.danger ? 'danger' : undefined}
                 onClick={() => {
                   setMenu(null);
                   item.action();

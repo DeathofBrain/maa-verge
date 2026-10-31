@@ -283,6 +283,7 @@ export default function ToolsPage({
         <label>
           目标设备
           <Select
+            className="toolbox-device-select"
             aria-label="工具箱设备"
             value={deviceId}
             onChange={(event) => {

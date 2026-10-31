@@ -86,7 +86,7 @@
 .toolbox-device p svg {
   flex: none;
 }
-.toolbox-device .app-select {
+.toolbox-device-select {
   width: clamp(240px, 24vw, 360px);
   max-width: 100%;
 }
@@ -168,7 +168,7 @@
   .toolbox-device label {
     width: 100%;
   }
-  .toolbox-device .app-select {
+  .toolbox-device-select {
     flex: 1;
     min-width: 0;
   }
@@ -193,7 +193,7 @@
     width: 100%;
     gap: 8px;
   }
-  .toolbox-page .recognition-actions .app-select {
+  .toolbox-page .recognition-client-select {
     grid-column: 1 / -1;
     width: 100%;
   }
