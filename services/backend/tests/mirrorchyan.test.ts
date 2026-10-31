@@ -334,11 +334,12 @@ async function initialized(resourceMode: Parameters<typeof sourceFixture>[0] = '
   const root = await temp();
   const store = new MemoryStore();
   const fixture = sourceFixture(resourceMode);
+  const events: any[] = [];
   let busy = false;
   const updates = new UpdateService(
     root,
     store,
-    () => {},
+    (_type, _text, data) => events.push(data.update),
     () => busy,
     {
       source: fixture.source,
@@ -350,6 +351,7 @@ async function initialized(resourceMode: Parameters<typeof sourceFixture>[0] = '
     },
   );
   await updates.check('core');
+  expect(updates.channel('core').downloadSource).toBeUndefined();
   await updates.prepare('core');
   await updates.activate('core');
   return {
@@ -357,6 +359,7 @@ async function initialized(resourceMode: Parameters<typeof sourceFixture>[0] = '
     root,
     store,
     updates,
+    events,
     setBusy(value: boolean) {
       busy = value;
     },
@@ -368,8 +371,18 @@ test('core and resource select independent full mirror packages and stage immuta
   try {
     const core = f.store.get('active', 'combo').core;
     expect(core.source).toBe('MirrorChyan');
+    expect(f.updates.channel('core').downloadSource).toBe('MirrorChyan');
+    expect(
+      f.events.some(
+        (event) =>
+          event.id === 'core' &&
+          event.downloadSource === 'MirrorChyan' &&
+          event.message === '正在通过 Mirror酱下载组件',
+      ),
+    ).toBe(true);
     expect(await Bun.file(path.join(core.path, 'MAA.exe')).exists()).toBe(false);
     await f.updates.check('resource');
+    expect(f.updates.channel('resource').downloadSource).toBeUndefined();
     await f.updates.prepare('resource');
     await f.updates.activate('resource');
     const resource = f.store.get('active', 'combo').resource;
@@ -384,7 +397,10 @@ test('core and resource select independent full mirror packages and stage immuta
     expect(manifest).not.toContain('private-download-token');
     expect(manifest).not.toContain(secret);
     expect(f.urls.some((url) => url.includes('github.com'))).toBe(false);
+    expect(f.urls.filter((url) => url === signed)).toHaveLength(2);
+    expect(f.updates.channel('resource').downloadSource).toBe('MirrorChyan');
     expect((await f.updates.check('resource')).status).toBe('idle');
+    expect(f.updates.channel('resource').downloadSource).toBeUndefined();
   } finally {
     await f.updates.close();
   }
@@ -400,6 +416,14 @@ test.each(['timestamp mismatch', 'incremental', 'download failure'] as const)(
       const result = await f.updates.prepare('resource');
       const staged = f.store.get('staged', 'resource');
       expect(staged.source).toBe('GitHub');
+      expect(result.downloadSource).toBe('GitHub');
+      const resourceDownloads = f.events.filter(
+        (event) => event.id === 'resource' && event.message.includes('下载组件'),
+      );
+      expect(resourceDownloads.some((event) => event.downloadSource === 'MirrorChyan')).toBe(true);
+      expect(resourceDownloads.at(-1)?.downloadSource).toBe('GitHub');
+      expect(resourceDownloads.at(-1)?.message).toBe('正在通过官方源下载组件');
+      expect(f.urls.some((url) => url.includes('codeload.github.com'))).toBe(true);
       expect(staged.version).toBe('a'.repeat(40));
       expect(staged.mirrorChyan).toBeUndefined();
       expect(result.latestVersion).toBe('a'.repeat(40));

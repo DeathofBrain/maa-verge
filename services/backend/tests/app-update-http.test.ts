@@ -58,8 +58,12 @@ async function fixture(
   const directory = path.join(root, 'updates', 'app', 'downloads');
   let preferences: DownloadProxySettings | undefined = initial;
   const requests: Request[] = [];
-  const progress: { operationId: string; value: number; downloadSpeedBytesPerSecond?: number }[] =
-    [];
+  const progress: {
+    operationId: string;
+    value: number;
+    downloadSpeedBytesPerSecond?: number;
+    downloadSource?: 'MirrorChyan' | 'GitHub';
+  }[] = [];
   const transport = (async (input, init) => {
     const request: Request = {
       url: typeof input === 'string' ? input : input instanceof URL ? input.href : input.url,
@@ -75,8 +79,8 @@ async function fixture(
     new AppUpdateHttp(
       directory,
       () => preferences,
-      (operationId, value, downloadSpeedBytesPerSecond) =>
-        progress.push({ operationId, value, downloadSpeedBytesPerSecond }),
+      (operationId, value, downloadSpeedBytesPerSecond, downloadSource) =>
+        progress.push({ operationId, value, downloadSpeedBytesPerSecond, downloadSource }),
       {
         resolveProxy: async () => '',
         retryDelaysMs: [0, 0],
@@ -153,7 +157,13 @@ async function assertNoInstallCandidate(root: string): Promise<void> {
   expect(await Bun.file(path.join(root, 'updates/app/pending.json')).exists()).toBe(false);
 }
 
-for (const name of ['Maa-Verge_0.2.0_x64-setup.exe', 'Maa-Verge_0.2.0_amd64.AppImage']) {
+for (const [suffix, os, arch] of [
+  ['x64-setup.exe', 'windows', 'amd64'],
+  ['amd64.AppImage', 'linux', 'amd64'],
+  ['aarch64.dmg', 'darwin', 'arm64'],
+  ['x64.dmg', 'darwin', 'amd64'],
+]) {
+  const name = `Maa-Verge_0.2.0_${suffix}`;
   test(`mirror application transport retains official digest/size binding for ${name}`, async () => {
     const notices: string[] = [];
     const f = await fixture(
@@ -162,13 +172,15 @@ for (const name of ['Maa-Verge_0.2.0_x64-setup.exe', 'Maa-Verge_0.2.0_amd64.AppI
           const url = new URL(request.url);
           expect(url.searchParams.get('current_version')).toBe('0');
           expect(url.searchParams.get('cdk')).toBe('synthetic-secret');
+          expect(url.searchParams.get('os')).toBe(os);
+          expect(url.searchParams.get('arch')).toBe(arch);
           return Response.json({
             code: 0,
             data: {
               version_name: 'v0.2.0',
               version_number: 1,
-              os: name.endsWith('.exe') ? 'windows' : 'linux',
-              arch: 'amd64',
+              os,
+              arch,
               channel: 'stable',
               url: 'https://mirrorchyan.com/resources/download/app?token=synthetic-signed-token',
               sha256,
@@ -178,6 +190,7 @@ for (const name of ['Maa-Verge_0.2.0_x64-setup.exe', 'Maa-Verge_0.2.0_amd64.AppI
           });
         }
         expect(request.url).toContain('mirrorchyan.com/resources/download/app');
+        expect(f.progress.at(-1)?.downloadSource).toBe('MirrorChyan');
         return complete(request);
       },
       {
@@ -190,78 +203,106 @@ for (const name of ['Maa-Verge_0.2.0_x64-setup.exe', 'Maa-Verge_0.2.0_amd64.AppI
     expect(notices[0]).toContain('Mirror酱下载');
     expect(await readFile(result.path)).toEqual(payload);
     expect(f.requests.some((request) => request.url.startsWith('https://github.com'))).toBe(false);
+    expect(f.progress.length).toBeGreaterThan(0);
+    expect(f.progress.every((entry) => entry.downloadSource === 'MirrorChyan')).toBe(true);
     expect(JSON.stringify(result)).not.toContain('synthetic-signed-token');
     expect(JSON.stringify(result)).not.toContain('synthetic-secret');
   });
 }
 
-for (const failure of [
-  'CDK',
-  'wrong version',
-  'wrong hash',
-  'wrong size',
-  'incremental',
-  'download',
-  'download code',
-]) {
-  test(`mirror application ${failure} falls back to official bytes with a safe diagnostic`, async () => {
-    const notices: string[] = [];
-    const f = await fixture(
-      (request) => {
-        if (request.url.includes('/api/resources/maa-verge/latest')) {
-          if (failure === 'CDK')
-            return Response.json({ code: 7002, msg: 'synthetic-secret' }, { status: 403 });
-          return Response.json({
-            code: 0,
-            data: {
-              version_name: failure === 'wrong version' ? 'v9.9.9' : 'v0.2.0',
-              os: 'windows',
-              arch: 'amd64',
-              channel: 'stable',
-              url: 'https://mirrorchyan.com/resources/download/app?token=synthetic-signed-token',
-              sha256: failure === 'wrong hash' ? 'a'.repeat(64) : sha256,
-              filesize: failure === 'wrong size' ? payload.length + 1 : payload.length,
-              update_type: failure === 'incremental' ? 'incremental' : 'full',
-            },
-          });
-        }
-        if (request.url.includes('mirrorchyan.com'))
-          return failure === 'download code'
-            ? Response.json({ code: 8009, msg: 'synthetic-secret' }, { status: 403 })
-            : new Response('', { status: 403 });
-        expect(request.url).toBe(archiveUrl);
-        return complete(request);
-      },
-      {
-        mirrorChyan: () => ({ enabled: true, cdk: 'synthetic-secret' }),
-        mirrorChyanStatus: (text) => notices.push(text),
-      },
-    );
-    const result: any = await f.service.handle(archive());
-    expect(result.sha256).toBe(sha256);
-    expect(notices[0]).toContain('已改用官方更新源');
-    if (failure === 'CDK') expect(notices[0]).toContain('CDK 无效');
-    if (failure === 'download code') expect(notices[0]).toContain('正式 CDK');
-    expect(JSON.stringify(notices)).not.toContain('synthetic-secret');
-    expect(JSON.stringify(notices)).not.toContain('synthetic-signed-token');
-  });
+for (const suffix of ['x64-setup.exe', 'aarch64.dmg', 'x64.dmg']) {
+  for (const failure of [
+    'CDK',
+    'wrong version',
+    'wrong hash',
+    'wrong size',
+    'incremental',
+    'download',
+    'download code',
+    'wrong platform',
+    'wrong architecture',
+  ]) {
+    test(`mirror application ${suffix} ${failure} falls back to official bytes with a safe diagnostic`, async () => {
+      const notices: string[] = [];
+      const f = await fixture(
+        (request) => {
+          if (request.url.includes('/api/resources/maa-verge/latest')) {
+            if (failure === 'CDK')
+              return Response.json({ code: 7002, msg: 'synthetic-secret' }, { status: 403 });
+            return Response.json({
+              code: 0,
+              data: {
+                version_name: failure === 'wrong version' ? 'v9.9.9' : 'v0.2.0',
+                os:
+                  failure === 'wrong platform'
+                    ? 'linux'
+                    : suffix.endsWith('.dmg')
+                      ? 'darwin'
+                      : 'windows',
+                arch:
+                  failure === 'wrong architecture'
+                    ? '386'
+                    : suffix === 'aarch64.dmg'
+                      ? 'arm64'
+                      : 'amd64',
+                channel: 'stable',
+                url: 'https://mirrorchyan.com/resources/download/app?token=synthetic-signed-token',
+                sha256: failure === 'wrong hash' ? 'a'.repeat(64) : sha256,
+                filesize: failure === 'wrong size' ? payload.length + 1 : payload.length,
+                update_type: failure === 'incremental' ? 'incremental' : 'full',
+              },
+            });
+          }
+          if (request.url.includes('mirrorchyan.com'))
+            return failure === 'download code'
+              ? Response.json({ code: 8009, msg: 'synthetic-secret' }, { status: 403 })
+              : new Response('', { status: 403 });
+          expect(request.url).toBe(archiveUrl.replace('x64-setup.exe', suffix));
+          expect(f.progress.at(-1)?.downloadSource).toBe('GitHub');
+          return complete(request);
+        },
+        {
+          mirrorChyan: () => ({ enabled: true, cdk: 'synthetic-secret' }),
+          mirrorChyanStatus: (text) => notices.push(text),
+        },
+      );
+      const result: any = await f.service.handle({
+        ...archive(),
+        name: `Maa-Verge_0.2.0_${suffix}`,
+      });
+      expect(result.sha256).toBe(sha256);
+      expect(f.progress.at(-1)?.downloadSource).toBe('GitHub');
+      expect(f.requests.some((request) => request.url.startsWith('https://github.com'))).toBe(true);
+      expect(f.progress.some((entry) => entry.downloadSource === 'MirrorChyan')).toBe(
+        failure === 'download' || failure === 'download code',
+      );
+      expect(notices[0]).toContain('已改用官方更新源');
+      if (failure === 'CDK') expect(notices[0]).toContain('CDK 无效');
+      if (failure === 'download code') expect(notices[0]).toContain('正式 CDK');
+      expect(JSON.stringify(notices)).not.toContain('synthetic-secret');
+      expect(JSON.stringify(notices)).not.toContain('synthetic-signed-token');
+    });
+  }
 }
 
-test('macOS app transport keeps the signed Tauri tar archive and never substitutes the mirror DMG', async () => {
-  const f = await fixture(
-    (request) => {
-      expect(request.url).toBe(archiveUrl.replace('x64-setup.exe', 'aarch64.app.tar.gz'));
-      return complete(request);
-    },
-    { mirrorChyan: () => ({ enabled: true, cdk: 'synthetic-secret' }) },
-  );
-  const result: any = await f.service.handle({
-    ...archive(),
-    name: 'Maa-Verge_0.2.0_aarch64.app.tar.gz',
-  });
-  expect(result.sha256).toBe(sha256);
-  expect(f.requests).toHaveLength(1);
-});
+for (const arch of ['aarch64', 'x64']) {
+  for (const enabled of [true, false]) {
+    test(`macOS app transport rejects legacy ${arch} tar updates before downloading (mirror=${enabled})`, async () => {
+      const f = await fixture(() => complete(), {
+        mirrorChyan: () => ({ enabled, cdk: 'synthetic-secret' }),
+      });
+      await expect(
+        f.service.handle({
+          ...archive(),
+          name: `Maa-Verge_0.2.0_${arch}.app.tar.gz`,
+        }),
+      ).rejects.toThrow('macOS 应用更新仅支持签名 DMG 安装包');
+      expect(f.requests).toHaveLength(0);
+      expect(await entries(f.directory)).toEqual([]);
+      await assertNoInstallCandidate(f.root);
+    });
+  }
+}
 
 test('host metadata constructs fixed repository URLs and forces manual redirect handling', async () => {
   const f = await fixture(() => Response.json({ ok: true }));
@@ -560,6 +601,7 @@ test('host archive progress forwards measured transfer speed with its operation 
   expect(f.progress.every((entry) => entry.operationId === 'speed-download')).toBe(true);
   expect(f.progress[0].downloadSpeedBytesPerSecond).toBe(0);
   expect(f.progress.at(-1)?.downloadSpeedBytesPerSecond).toBeUndefined();
+  expect(f.progress.every((entry) => entry.downloadSource === 'GitHub')).toBe(true);
 });
 
 test('automatic archive body interruption resumes directly with Range and If-Range', async () => {

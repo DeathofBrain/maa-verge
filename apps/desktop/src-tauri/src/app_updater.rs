@@ -2,6 +2,8 @@
 //! Verified packages survive restart. Installation always stops owned sidecars
 //! first; a failed attempt must never prevent the old application from starting.
 mod cache;
+#[cfg(any(target_os = "macos", test))]
+mod dmg;
 mod transport;
 
 use crate::runtime::Runtime;
@@ -114,7 +116,7 @@ fn platform_target(
         ("windows", _, _) => {
             Err("当前不是可识别的 MSI/NSIS 安装版，请从发行页安装对应版本后使用自动更新".into())
         }
-        ("macos", "x86_64" | "aarch64", Some("app")) => Ok(format!("darwin-{arch}")),
+        ("macos", "x86_64" | "aarch64", Some("app")) => Ok(format!("darwin-{arch}-dmg")),
         ("macos", _, _) => {
             Err("macOS 仅应用包安装版支持自动更新；请先从发行页安装 Maa Verge.app".into())
         }
@@ -195,12 +197,47 @@ fn package_filename(version: &Version, target: &str) -> Result<String, String> {
     let suffix = match target {
         "windows-x86_64-nsis" => "x64-setup.exe",
         "windows-x86_64-msi" => "x64_zh-CN.msi",
-        "darwin-aarch64" => "aarch64.app.tar.gz",
-        "darwin-x86_64" => "x64.app.tar.gz",
+        "darwin-aarch64-dmg" => "aarch64.dmg",
+        "darwin-x86_64-dmg" => "x64.dmg",
         "linux-x86_64" => "amd64.AppImage",
         _ => return Err("应用更新清单包含不支持的平台目标".into()),
     };
     Ok(format!("Maa-Verge_{version}_{suffix}"))
+}
+
+fn install_candidate(app: &AppHandle, candidate: &Candidate, bytes: &[u8]) -> Result<(), String> {
+    // The original installation path is cached by Tauri before a bundle swap.
+    // Its restart implementation uses that path through LaunchServices.
+    #[cfg(target_os = "macos")]
+    {
+        if !matches!(
+            candidate.update.target.as_str(),
+            "darwin-aarch64-dmg" | "darwin-x86_64-dmg"
+        ) {
+            return Err("macOS 应用更新仅支持签名 DMG 安装包，请重新检查并下载更新".into());
+        }
+        candidate
+            .update
+            .verify(bytes)
+            .map_err(|error| format!("安装前 DMG 签名复核失败：{error}"))?;
+        let executable = tauri::process::current_binary(&app.env())
+            .map_err(|error| format!("无法定位应用安装路径：{error}"))?;
+        dmg::install(
+            &executable,
+            &crate::configuration::data_root()?,
+            &candidate.update.version,
+            &candidate.update.target,
+            bytes,
+        )
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        candidate
+            .update
+            .install(bytes)
+            .map_err(|error| error.to_string())
+    }
 }
 
 fn package_metadata(manifest: &Value, release: &Release, target: &str) -> Result<u64, String> {
@@ -219,6 +256,8 @@ fn package_metadata(manifest: &Value, release: &Release, target: &str) -> Result
                 && manifest["platforms"].get("windows-x86_64-nsis").is_some()
             {
                 "此版本已停止提供 MSI 更新包；请先备份 config 配置与作业文件，关闭并卸载旧 MSI 版，再从官方发行页下载安装 EXE 版".into()
+            } else if matches!(target, "darwin-aarch64-dmg" | "darwin-x86_64-dmg") {
+                format!("此发行版缺少 macOS 签名 DMG 更新包（{target}）；请从发行页手动安装或等待新版本")
             } else {
                 format!("此发行版缺少 {target} 的签名更新包；请等待发行产物完成")
             }
@@ -342,10 +381,14 @@ fn cached_release(
     if !newer(&release.version, current) {
         return Ok(None);
     }
-    if record["target"].as_str() != Some(target) || !record["attempted"].is_boolean() {
+    let package_target = record["target"]
+        .as_str()
+        .filter(|package| *package == target)
+        .ok_or("更新缓存的平台或安装状态无效，请重新下载")?;
+    if !record["attempted"].is_boolean() {
         return Err("更新缓存的平台或安装状态无效，请重新下载".into());
     }
-    package_metadata(&record["manifest"], &release, target)?;
+    package_metadata(&record["manifest"], &release, package_target)?;
     Ok(Some(release))
 }
 
@@ -410,6 +453,15 @@ impl AppUpdater {
     pub fn new(app: AppHandle) -> Self {
         let current = app.package_info().version.clone();
         let can_install = host_target(&app).is_ok();
+        #[cfg(target_os = "macos")]
+        if can_install {
+            let cleanup = tauri::process::current_binary(&app.env())
+                .map_err(|error| error.to_string())
+                .and_then(|executable| dmg::cleanup_previous(&executable, &current));
+            if let Err(error) = cleanup {
+                eprintln!("旧应用包清理未完成，已继续启动：{error}");
+            }
+        }
         Self {
             app,
             state: Mutex::new(State {
@@ -447,7 +499,8 @@ impl AppUpdater {
             self.cache()?.discard()?;
             return Ok(false);
         };
-        let size = package_metadata(&record["manifest"], &release, &target)?;
+        let package_target = record["target"].as_str().unwrap();
+        let size = package_metadata(&record["manifest"], &release, package_target)?;
         if bytes.len() as u64 != size {
             return Err("更新缓存包大小不符，请重新下载".into());
         }
@@ -456,8 +509,12 @@ impl AppUpdater {
             release.tag
         ))
         .map_err(|error| error.to_string())?;
-        let update =
-            restore_signed_update(&self.app, &target, record["manifest"].clone(), manifest_url)?;
+        let update = restore_signed_update(
+            &self.app,
+            package_target,
+            record["manifest"].clone(),
+            manifest_url,
+        )?;
         update
             .verify(&bytes)
             .map_err(|error| format!("更新缓存签名校验失败：{error}"))?;
@@ -468,6 +525,12 @@ impl AppUpdater {
         state.value["appRelease"] = release.information;
         state.value["status"] = json!("staged");
         state.value["progress"] = json!(100);
+        if let Some(source) = record
+            .get("downloadSource")
+            .filter(|source| matches!(source.as_str(), Some("MirrorChyan" | "GitHub")))
+        {
+            state.value["downloadSource"] = source.clone();
+        }
         state.value["appInstallOnStartup"] = json!(!attempted);
         state.value["message"] = json!(if attempted {
             "上次应用更新未完成；已正常启动，更新包保留，可点击安装重试"
@@ -500,10 +563,11 @@ impl AppUpdater {
                 self.cache()
                     .and_then(|cache| cache.mark_attempted())
                     .and_then(|()| {
-                        candidate
-                            .update
-                            .install(candidate.bytes.as_ref().unwrap().as_ref())
-                            .map_err(|error| error.to_string())
+                        install_candidate(
+                            &self.app,
+                            &candidate,
+                            candidate.bytes.as_ref().unwrap().as_ref(),
+                        )
                     })
                     .map(|()| self.app.restart())
             }
@@ -626,6 +690,11 @@ impl AppUpdater {
             state.value["progress"] = json!(0);
             state.value["checkedAt"] = json!(now());
             state.value["message"] = json!("正在检查 GitHub 应用发行版");
+            state
+                .value
+                .as_object_mut()
+                .unwrap()
+                .remove("downloadSource");
         })?;
         let result = self.find_candidate(generation, &channel).await;
         if let Err(error) = &result {
@@ -743,6 +812,11 @@ impl AppUpdater {
             state.value["status"] = json!("downloading");
             state.value["progress"] = json!(0);
             state.value["message"] = json!("正在下载应用更新，完成后校验签名");
+            state
+                .value
+                .as_object_mut()
+                .unwrap()
+                .remove("downloadSource");
         })?;
         let result = self
             .download(generation, &candidate)
@@ -750,13 +824,22 @@ impl AppUpdater {
             .and_then(|bytes| {
                 // Serialize commit with channel invalidation. A channel change must
                 // never leave an old in-flight download scheduled for next startup.
-                let state = self.state.lock().expect("app updater state");
+                let mut state = self.state.lock().expect("app updater state");
                 if state.generation != generation {
                     return Err("应用更新通道已切换，请重新检查".into());
                 }
+                let mut metadata = candidate.metadata.clone();
+                if let Some(source) = state
+                    .value
+                    .get("downloadSource")
+                    .filter(|source| matches!(source.as_str(), Some("MirrorChyan" | "GitHub")))
+                {
+                    metadata["downloadSource"] = source.clone();
+                }
                 self.cache()?
-                    .stage(&candidate.metadata, &bytes)
+                    .stage(&metadata, &bytes)
                     .map_err(|error| format!("无法保存应用更新包：{error}"))?;
+                state.candidate.as_mut().unwrap().metadata = metadata;
                 Ok(bytes)
             });
         match result {
@@ -842,9 +925,11 @@ impl AppUpdater {
             eprintln!("更新前本地服务关闭失败，将重启恢复：{error}");
             self.app.restart();
         }
-        let installation =
-            tauri::async_runtime::spawn_blocking(move || candidate.update.install(bytes.as_ref()))
-                .await;
+        let app = self.app.clone();
+        let installation = tauri::async_runtime::spawn_blocking(move || {
+            install_candidate(&app, &candidate, bytes.as_ref())
+        })
+        .await;
         if let Err(error) = installation
             .map_err(|error| error.to_string())
             .and_then(|result| result.map_err(|error| error.to_string()))
@@ -959,11 +1044,11 @@ mod tests {
         assert!(platform_target("windows", "x86_64", None, false).is_err());
         assert_eq!(
             platform_target("macos", "aarch64", Some("app"), false).unwrap(),
-            "darwin-aarch64"
+            "darwin-aarch64-dmg"
         );
         assert_eq!(
             platform_target("macos", "x86_64", Some("app"), false).unwrap(),
-            "darwin-x86_64"
+            "darwin-x86_64-dmg"
         );
         assert_eq!(
             platform_target("linux", "x86_64", Some("appimage"), true).unwrap(),
@@ -1046,8 +1131,8 @@ mod tests {
         let targets = [
             "windows-x86_64-nsis",
             "windows-x86_64-msi",
-            "darwin-aarch64",
-            "darwin-x86_64",
+            "darwin-aarch64-dmg",
+            "darwin-x86_64-dmg",
             "linux-x86_64",
         ];
         for target in targets {
@@ -1069,6 +1154,69 @@ mod tests {
             }
             selected.assets[0]["name"] = json!("mislabeled-asset.exe");
             assert!(package_metadata(&manifest, &selected, target).is_err());
+        }
+    }
+
+    #[test]
+    fn macos_requires_signed_dmg_and_rejects_archive_only_releases_and_cached_archives() {
+        let current = Version::parse("0.1.0").unwrap();
+        for host in ["darwin-aarch64", "darwin-x86_64"] {
+            let dmg_target = format!("{host}-dmg");
+            let version = Version::parse("0.2.0").unwrap();
+            assert!(package_filename(&version, host).is_err());
+            let architecture = if host == "darwin-aarch64" {
+                "aarch64"
+            } else {
+                "x64"
+            };
+            let archive_name = format!("Maa-Verge_0.2.0_{architecture}.app.tar.gz");
+            let archive_url = format!(
+                "https://github.com/DeathofBrain/maa-verge/releases/download/v0.2.0/{archive_name}"
+            );
+            let mut manifest = json!({"version": "0.2.0", "platforms": {
+                host: {"url": archive_url, "signature": "signed-legacy-archive"}
+            }});
+            let mut selected = release("0.2.0", false, false);
+            selected["assets"] =
+                json!([{"name": archive_name, "browser_download_url": archive_url, "size": 123}]);
+            let release = select_release(&[selected.clone()], "stable").unwrap();
+            let missing = package_metadata(&manifest, &release, &dmg_target).unwrap_err();
+            assert!(missing.contains("缺少 macOS 签名 DMG"));
+            assert!(package_metadata(&manifest, &release, host).is_err());
+
+            let name = package_filename(&version, &dmg_target).unwrap();
+            let url = format!(
+                "https://github.com/DeathofBrain/maa-verge/releases/download/v0.2.0/{name}"
+            );
+            selected["assets"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!({"name": name, "browser_download_url": url, "size": 123}));
+            manifest["platforms"][&dmg_target] =
+                json!({"url": url, "signature": "signed-version-and-bytes"});
+            for target in [host, &dmg_target] {
+                let record = json!({"formatVersion": 1, "installation": "installation-A", "channel": "stable", "target": target,
+                    "attempted": false, "release": selected, "manifest": manifest});
+                let cached = cached_release(&record, &current, &dmg_target, "installation-A");
+                if target == dmg_target {
+                    assert!(cached.unwrap().is_some());
+                } else {
+                    assert!(cached.is_err());
+                }
+                let wrong_host = if host == "darwin-aarch64" {
+                    "darwin-x86_64-dmg"
+                } else {
+                    "darwin-aarch64-dmg"
+                };
+                assert!(cached_release(&record, &current, wrong_host, "installation-A").is_err());
+                assert!(
+                    cached_release(&record, &current, "windows-x86_64-nsis", "installation-A")
+                        .is_err()
+                );
+            }
+            manifest["platforms"][&dmg_target]["signature"] = json!("");
+            let release = select_release(&[selected], "stable").unwrap();
+            assert!(package_metadata(&manifest, &release, &dmg_target).is_err());
         }
     }
 
@@ -1104,6 +1252,16 @@ mod tests {
         assert_eq!(restored.raw_json, manifest);
         restored.verify(b"test").unwrap();
         assert!(restored.verify(b"tampered").is_err());
+        for target in ["darwin-aarch64-dmg", "darwin-x86_64-dmg"] {
+            let mut dmg_manifest = manifest.clone();
+            dmg_manifest["platforms"] = json!({target: manifest["platforms"]["test-target"]});
+            let restored =
+                restore_signed_update(app.handle(), target, dmg_manifest, endpoint.clone())
+                    .unwrap();
+            assert_eq!(restored.target, target);
+            restored.verify(b"test").unwrap();
+            assert!(restored.verify(b"tampered").is_err());
+        }
         let mut wrong_version = manifest.clone();
         wrong_version["version"] = json!("9.0.0");
         assert!(restore_signed_update(

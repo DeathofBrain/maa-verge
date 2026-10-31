@@ -20,6 +20,7 @@ import { root } from './project.mjs';
 import { cleanRuntimeEnvironment } from './setup-bun.mjs';
 import { seedNativeData } from './test-support/seed-native.mjs';
 import { verifyMacosBundle } from './verify-macos-bundle.mjs';
+import { verifyUpdaterSignature } from './app-updater-release.mjs';
 
 if (process.platform !== 'darwin')
   throw new Error('The macOS installation smoke requires a macOS desktop host.');
@@ -30,12 +31,6 @@ const config = JSON.parse(
 const original = path.join(bundle, 'macos', `${config.productName}.app`);
 const dmgs = readdirSync(path.join(bundle, 'dmg')).filter((name) => name.endsWith('.dmg'));
 assert.equal(dmgs.length, 1, 'Expected exactly one final macOS installer');
-const archives = readdirSync(path.join(bundle, 'macos')).filter((name) =>
-  name.endsWith('.app.tar.gz'),
-);
-assert.ok(archives.length <= 1, 'Duplicate macOS updater archives');
-if (process.argv.includes('--require-updater'))
-  assert.equal(archives.length, 1, 'A signed release must contain its macOS updater archive');
 
 const command = (executable, args, options = {}) =>
   execFileSync(executable, args, {
@@ -146,6 +141,15 @@ try {
   mkdirSync(profile);
   await verifyMacosBundle(original);
   const dmg = path.join(bundle, 'dmg', dmgs[0]);
+  if (process.argv.includes('--require-updater') || existsSync(`${dmg}.sig`)) {
+    await verifyUpdaterSignature(
+      dmg,
+      readFileSync(`${dmg}.sig`, 'utf8'),
+      config.plugins.updater.pubkey,
+      config.version,
+    );
+    report.phases.push('DMG-updater-content-and-version-signature');
+  }
   command('/usr/bin/hdiutil', ['verify', dmg]);
   command('/usr/bin/hdiutil', [
     'attach',
@@ -164,15 +168,6 @@ try {
   await verifyMacosBundle(installed);
   sameBundle(installed);
   report.phases.push('DMG-integrity-install-and-signatures');
-  if (archives.length) {
-    const extracted = path.join(temporary, 'updater');
-    mkdirSync(extracted);
-    command('/usr/bin/tar', ['-xzf', path.join(bundle, 'macos', archives[0]), '-C', extracted]);
-    const updated = path.join(extracted, `${config.productName}.app`);
-    await verifyMacosBundle(updated);
-    sameBundle(updated);
-    report.phases.push('updater-archive-signatures-and-bundle-equality');
-  }
   // Never change a global Gatekeeper setting or the source/downloaded app.
   command('/usr/bin/xattr', ['-dr', 'com.apple.quarantine', installed]);
   await seedNativeData(data);

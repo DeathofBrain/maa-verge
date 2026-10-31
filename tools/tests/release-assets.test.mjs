@@ -8,6 +8,10 @@ import {
   updaterAssetKind,
   updaterAssetKinds,
   legacyUpdaterAssetKinds,
+  dmgUpdaterAssetKinds,
+  dmgOnlyUpdaterAssetKinds,
+  releaseInstallerKinds,
+  releaseUpdaterAssetKinds,
   validateAssetSet,
   validateRelease,
 } from '../release-assets.mjs';
@@ -76,12 +80,15 @@ test('signed updater releases retain seven installers and require the complete r
   assert.equal(new Set(updaterNames.map((name) => updaterAssetKind(name, '0.1.0'))).size, 10);
   for (const name of [
     'preview.json',
-    'Maa-Verge_0.1.0_aarch64.dmg.sig',
     'Maa-Verge_0.1.1_x64.app.tar.gz',
     'Maa Verge.app.tar.gz',
     '../latest.json',
   ])
     assert.equal(updaterAssetKind(name, '0.1.0'), undefined);
+  assert.equal(
+    updaterAssetKind('Maa-Verge_0.1.0_aarch64.dmg.sig', '0.1.0'),
+    'macos-dmg-arm64-signature',
+  );
   for (const assets of [
     extendedAssets.slice(1),
     [...release.assets, extendedAssets[8]],
@@ -281,6 +288,187 @@ test('current EXE/full-ZIP releases require one complete profile and never mix M
     ],
   ])
     assert.throws(() => validateRelease({ ...current, assets: changed }, currentTag));
+});
+
+test('full-DMG updater releases accept nineteen assets and require both signatures alongside the legacy targets', () => {
+  const assets = [
+    ...release.assets.map((asset) =>
+      asset.name.endsWith('.msi') ? { ...asset, name: 'Maa-Verge_0.1.0_x64-full.zip' } : asset,
+    ),
+    ...extendedAssets.slice(8).filter((asset) => !asset.name.endsWith('.msi.sig')),
+    ...['aarch64', 'x64'].map((arch, index) => ({
+      name: `Maa-Verge_0.1.0_${arch}.dmg.sig`,
+      id: 100 + index,
+      size: 4,
+      state: 'uploaded',
+    })),
+  ];
+  assert.equal(assets.length, 19);
+  assert.equal(validateRelease({ ...release, assets }, 'v0.1.0').length, 19);
+  assert.deepEqual(
+    new Set(
+      assets
+        .filter((asset) => asset.name.endsWith('.dmg.sig'))
+        .map((asset) => updaterAssetKind(asset.name, '0.1.0')),
+    ),
+    new Set(dmgUpdaterAssetKinds),
+  );
+  const downloads = assets.filter((asset) => asset.name !== 'SHA256SUMS.txt');
+  assert.equal(
+    parseChecksums(downloads.map((asset) => `${digest}  ${asset.name}\n`).join(''), downloads).size,
+    18,
+  );
+  for (const changed of [
+    assets.filter((asset) => !asset.name.endsWith('_x64.dmg.sig')),
+    assets.filter((asset) => !asset.name.endsWith('.app.tar.gz.sig')),
+    assets.map((asset) =>
+      asset.name.endsWith('_x64.dmg.sig')
+        ? { ...asset, name: 'Maa-Verge_0.1.0_aarch64.dmg.sig' }
+        : asset,
+    ),
+    [...extendedAssets, ...assets.filter((asset) => asset.name.endsWith('.dmg.sig'))],
+  ])
+    assert.throws(() => validateRelease({ ...release, assets: changed }, 'v0.1.0'));
+});
+
+test('DMG-only updater releases require fifteen assets and reject mixed or partial archive profiles', () => {
+  const assets = [
+    ...release.assets.map((asset) =>
+      asset.name.endsWith('.msi') ? { ...asset, name: 'Maa-Verge_0.1.0_x64-full.zip' } : asset,
+    ),
+    ...extendedAssets
+      .slice(8)
+      .filter((asset) => !asset.name.endsWith('.msi.sig') && !asset.name.includes('.app.tar.gz')),
+    ...['aarch64', 'x64'].map((arch, index) => ({
+      name: `Maa-Verge_0.1.0_${arch}.dmg.sig`,
+      id: 100 + index,
+      size: 4,
+      state: 'uploaded',
+    })),
+  ];
+  assert.equal(validateRelease({ ...release, assets }, 'v0.1.0').length, 15);
+  assert.deepEqual(
+    new Set(assets.map((asset) => updaterAssetKind(asset.name, '0.1.0')).filter(Boolean)),
+    new Set(dmgOnlyUpdaterAssetKinds),
+  );
+  const downloads = assets.filter((asset) => asset.name !== 'SHA256SUMS.txt');
+  assert.equal(
+    parseChecksums(downloads.map((asset) => `${digest}  ${asset.name}\n`).join(''), downloads).size,
+    14,
+  );
+  for (const changed of [
+    assets.filter((asset) => !asset.name.endsWith('_x64.dmg.sig')),
+    assets.filter((asset) => !asset.name.endsWith('_aarch64.dmg.sig')),
+    [...assets, ...extendedAssets.filter((asset) => asset.name.includes('_x64.app.tar.gz'))],
+  ])
+    assert.throws(() => validateRelease({ ...release, assets: changed }, 'v0.1.0'));
+});
+
+const completePackageNames = [
+  'Maa-Verge_0.1.0_x64-setup.exe',
+  'Maa-Verge_0.1.0_x64-full.zip',
+  'Maa-Verge_0.1.0_aarch64.dmg',
+  'Maa-Verge_0.1.0_x64.dmg',
+  'Maa-Verge_0.1.0_amd64.AppImage',
+];
+const completePackageAssets = [
+  ...completePackageNames,
+  ...completePackageNames.filter((name) => !name.endsWith('.zip')).map((name) => `${name}.sig`),
+  'latest.json',
+  'SHA256SUMS.txt',
+].map((name, index) => ({ name, id: index + 1, size: 4, state: 'uploaded' }));
+
+test('current releases contain only five complete installation packages and their signed update metadata', () => {
+  const current = { ...release, assets: completePackageAssets };
+  assert.equal(validateRelease(current, 'v0.1.0').length, 11);
+  assert.equal(
+    validateAssetSet({ ...current, draft: true, published_at: null }, 'v0.1.0').length,
+    11,
+  );
+  assert.deepEqual(
+    new Set(completePackageNames.map((name) => installerKind(name, '0.1.0'))),
+    new Set(releaseInstallerKinds),
+  );
+  assert.deepEqual(
+    new Set(
+      completePackageAssets.map((asset) => updaterAssetKind(asset.name, '0.1.0')).filter(Boolean),
+    ),
+    new Set(releaseUpdaterAssetKinds),
+  );
+  const downloads = completePackageAssets.filter((asset) => asset.name !== 'SHA256SUMS.txt');
+  assert.equal(
+    parseChecksums(downloads.map((asset) => `${digest}  ${asset.name}\n`).join(''), downloads).size,
+    10,
+  );
+  const prereleaseVersion = '0.2.0-beta.1';
+  assert.equal(
+    validateRelease(
+      {
+        ...current,
+        tag_name: `v${prereleaseVersion}`,
+        assets: completePackageAssets.map((asset) => ({
+          ...asset,
+          name: asset.name.replace('0.1.0', prereleaseVersion),
+        })),
+      },
+      `v${prereleaseVersion}`,
+    ).length,
+    11,
+  );
+});
+
+test('complete package releases reject missing packages, signatures, metadata and mixed historical formats', () => {
+  const validate = (assets) => validateAssetSet({ ...release, assets }, 'v0.1.0');
+  for (const missing of completePackageAssets)
+    assert.throws(() => validate(completePackageAssets.filter((asset) => asset !== missing)));
+  for (const name of [
+    'maa-verge_0.1.0_amd64.deb',
+    'maa-verge-0.1.0-1.x86_64.rpm',
+    'maa-verge_0.1.0_amd64.deb.sig',
+    'maa-verge-0.1.0-1.x86_64.rpm.sig',
+    'Maa-Verge_0.1.0_aarch64.app.tar.gz',
+    'Maa-Verge_0.1.0_aarch64.app.tar.gz.sig',
+    'Maa-Verge_0.1.0_x64_zh-CN.msi',
+    'Maa-Verge_0.1.0_x64_zh-CN.msi.sig',
+    'Maa-Verge_0.1.0_x64-full.zip.sig',
+  ]) {
+    const extra = { name, id: 100, size: 4, state: 'uploaded' };
+    assert.throws(() => validate([...completePackageAssets, extra]));
+    assert.throws(() =>
+      validate(
+        completePackageAssets.map((asset) => (asset.name.endsWith('_x64.dmg.sig') ? extra : asset)),
+      ),
+    );
+  }
+  // Keep a recognized historical count while mixing incompatible asset profiles.
+  const mixed = [
+    ...completePackageAssets,
+    ...extendedAssets.filter(
+      (asset) =>
+        /\.(?:deb|rpm|app\.tar\.gz)$/.test(asset.name) || asset.name.endsWith('.app.tar.gz.sig'),
+    ),
+  ];
+  assert.equal(mixed.length, 17);
+  assert.throws(() => validate(mixed));
+});
+
+test('complete package releases reject duplicate names, equivalent architecture aliases and wrong versions', () => {
+  for (const name of [
+    'Maa-Verge_0.1.0_aarch64.dmg.sig',
+    'maa-verge_0.1.0_arm64.dmg.sig',
+    'Maa-Verge_0.2.0_x64.dmg.sig',
+  ])
+    assert.throws(() =>
+      validateAssetSet(
+        {
+          ...release,
+          assets: completePackageAssets.map((asset) =>
+            asset.name.endsWith('_x64.dmg.sig') ? { ...asset, name } : asset,
+          ),
+        },
+        'v0.1.0',
+      ),
+    );
 });
 
 test('release uploads reject unsafe numeric identities and sizes while accepting the checksum size limit', () => {

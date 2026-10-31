@@ -52,8 +52,7 @@ export function updaterAssetKind(name, version) {
   if (name.endsWith('.sig')) {
     const base = name.slice(0, -4),
       installer = installerKind(base, version);
-    if (installer && !installer.startsWith('macos-') && installer !== 'windows-full-zip-x64')
-      return `${installer}-signature`;
+    if (installer && installer !== 'windows-full-zip-x64') return `${installer}-signature`;
     const archive = updaterAssetKind(base, version);
     if (archive?.startsWith('macos-archive-')) return `${archive}-signature`;
     return undefined;
@@ -76,6 +75,26 @@ export const updaterAssetKinds = [
 // Historical releases retain MSI and its signature. A current release replaces
 // that download with a complete Windows ZIP covered only by SHA256SUMS.txt.
 export const legacyUpdaterAssetKinds = [...updaterAssetKinds, 'windows-msi-x64-signature'];
+// Retain older archive profiles only to validate already published releases.
+export const dmgUpdaterAssetKinds = ['macos-dmg-arm64-signature', 'macos-dmg-x64-signature'];
+export const dmgOnlyUpdaterAssetKinds = [
+  ...updaterAssetKinds.filter((kind) => !kind.startsWith('macos-archive-')),
+  ...dmgUpdaterAssetKinds,
+];
+// Current releases reuse complete installation packages for signed updates.
+export const releaseInstallerKinds = [
+  'windows-exe-x64',
+  'windows-full-zip-x64',
+  'macos-dmg-arm64',
+  'macos-dmg-x64',
+  'linux-appimage-x64',
+];
+export const releaseUpdaterAssetKinds = [
+  'manifest',
+  'windows-exe-x64-signature',
+  ...dmgUpdaterAssetKinds,
+  'linux-appimage-x64-signature',
+];
 const commonInstallerKinds = [
   'windows-exe-x64',
   'macos-dmg-arm64',
@@ -90,12 +109,17 @@ export function validateAssetSet(release, tag) {
   if (release?.tag_name !== tag) throw new Error('The release must use the exact requested tag.');
   if (
     !Array.isArray(release.assets) ||
-    ![8, 8 + updaterAssetKinds.length, 8 + legacyUpdaterAssetKinds.length].includes(
-      release.assets.length,
-    )
+    ![
+      8,
+      releaseInstallerKinds.length + releaseUpdaterAssetKinds.length + 1,
+      8 + dmgOnlyUpdaterAssetKinds.length,
+      8 + updaterAssetKinds.length,
+      8 + legacyUpdaterAssetKinds.length,
+      8 + updaterAssetKinds.length + dmgUpdaterAssetKinds.length,
+    ].includes(release.assets.length)
   ) {
     throw new Error(
-      'Release must contain seven downloads, SHA256SUMS.txt and optionally the complete signed updater asset set.',
+      'Release must contain five complete installation packages, their signed update metadata and SHA256SUMS.txt, or a complete historical asset set.',
     );
   }
   const kinds = new Set();
@@ -130,12 +154,21 @@ export function validateAssetSet(release, tag) {
       updaterKinds.add(updaterKind);
     } else throw new Error(`Unexpected release asset: ${asset.name}`);
   }
+  const current =
+    release.assets.length === releaseInstallerKinds.length + releaseUpdaterAssetKinds.length + 1;
   const legacy = kinds.has('windows-msi-x64');
-  const requiredInstallers = [
-    ...commonInstallerKinds,
-    legacy ? 'windows-msi-x64' : 'windows-full-zip-x64',
-  ];
-  const requiredUpdater = legacy ? legacyUpdaterAssetKinds : updaterAssetKinds;
+  const requiredInstallers = current
+    ? releaseInstallerKinds
+    : [...commonInstallerKinds, legacy ? 'windows-msi-x64' : 'windows-full-zip-x64'];
+  const hasDmgSignatures = dmgUpdaterAssetKinds.some((kind) => updaterKinds.has(kind));
+  const hasArchives = [...updaterKinds].some((kind) => kind.startsWith('macos-archive-'));
+  const requiredUpdater = current
+    ? releaseUpdaterAssetKinds
+    : legacy
+      ? legacyUpdaterAssetKinds
+      : hasArchives
+        ? [...updaterAssetKinds, ...(hasDmgSignatures ? dmgUpdaterAssetKinds : [])]
+        : dmgOnlyUpdaterAssetKinds;
   if (
     !names.has(checksumName.toLowerCase()) ||
     !release.assets.some((asset) => asset.name === checksumName) ||
@@ -143,11 +176,11 @@ export function validateAssetSet(release, tag) {
     requiredInstallers.some((kind) => !kinds.has(kind))
   ) {
     throw new Error(
-      'Release must contain one complete Windows EXE/MSI or EXE/full-ZIP download set, all other platform downloads and SHA256SUMS.txt.',
+      'Release must contain the complete Windows and other platform download set with SHA256SUMS.txt for its asset profile.',
     );
   }
   if (
-    updaterKinds.size &&
+    (current || updaterKinds.size) &&
     (updaterKinds.size !== requiredUpdater.length ||
       requiredUpdater.some((kind) => !updaterKinds.has(kind)))
   )

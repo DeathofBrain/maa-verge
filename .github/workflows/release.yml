@@ -72,7 +72,7 @@ jobs:
         run: |
           node tools/app-updater-release.mjs check --tag "$RELEASE_TAG"
           test -s "docs/releases/$RELEASE_TAG.md"
-      - name: Require a successful Checks run for the tag commit
+      - name: Require a successful full Checks run for the tag commit
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.resolve.outputs.tag }}
@@ -137,7 +137,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: node -e "if (!process.env.TAURI_SIGNING_PRIVATE_KEY?.trim()) throw new Error('TAURI_SIGNING_PRIVATE_KEY secret is required')"
-      - name: Build signed Linux installers in the CI image
+      - name: Build the signed Linux AppImage in the CI image
         if: runner.os == 'Linux'
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -150,13 +150,13 @@ jobs:
       - name: Verify the packaged Linux backend in a clean container
         if: runner.os == 'Linux'
         run: node tools/smoke-clean-linux.mjs
-      - name: Build signed installers and updater signatures
+      - name: Build Windows EXE/ZIP or macOS DMG and installer signatures
         if: runner.os != 'Linux'
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm build
-      - name: Verify the final macOS installer, updater archive and installed desktop
+      - name: Verify the signed macOS DMG and installed desktop
         if: runner.os == 'macOS'
         run: node tools/smoke-macos-install.mjs --require-updater
       - name: Save macOS installation diagnostics
@@ -166,16 +166,16 @@ jobs:
           name: macos-install-diagnostics-${{ matrix.target }}
           path: build/macos-install-smoke/
           if-no-files-found: ignore
-      - name: Verify and collect updater artifacts
+      - name: Verify and collect complete installers and signatures
         env:
           RELEASE_TAG: ${{ needs.verify.outputs.tag }}
           RELEASE_TARGET: ${{ matrix.target }}
         shell: bash
-        run: node tools/app-updater-release.mjs collect --tag "$RELEASE_TAG" --target "$RELEASE_TARGET" --input apps/desktop/src-tauri/target/release/bundle --output "dist/app-updater/$RELEASE_TARGET"
+        run: node tools/app-updater-release.mjs collect --tag "$RELEASE_TAG" --target "$RELEASE_TARGET" --input apps/desktop/src-tauri/target/release/bundle --output "dist/installers/$RELEASE_TARGET"
       - uses: actions/upload-artifact@v4
         with:
-          name: updater-${{ matrix.target }}
-          path: dist/app-updater/${{ matrix.target }}/
+          name: installers-${{ matrix.target }}
+          path: dist/installers/${{ matrix.target }}/
           if-no-files-found: error
 
   draft:
@@ -193,7 +193,7 @@ jobs:
           node-version-file: .node-version
       - uses: actions/download-artifact@v4
         with:
-          pattern: updater-*
+          pattern: installers-*
           path: dist/release
           merge-multiple: true
       - name: Verify all signatures and create the per-release manifest and checksums

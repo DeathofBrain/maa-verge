@@ -302,6 +302,34 @@ test('update download speed is optional and accepts only finite nonnegative byte
   }
 });
 
+test('update download source is optional and accepts only the supported source identities', () => {
+  const update = {
+    id: 'core',
+    currentVersion: '未安装',
+    latestVersion: 'v6.20.1',
+    status: 'downloading',
+    progress: 25,
+    message: '正在下载组件',
+  };
+  const snapshot = {
+    mode: 'native',
+    devices: [],
+    plans: [],
+    runs: [],
+    updates: [update],
+    settings: settings(),
+    events: [],
+  };
+  assert.equal(validateSnapshot(snapshot), true);
+  for (const downloadSource of ['MirrorChyan', 'GitHub'])
+    assert.equal(validateSnapshot({ ...snapshot, updates: [{ ...update, downloadSource }] }), true);
+  for (const downloadSource of ['', 'Mirror酱', 'github', 'https://mirrorchyan.com', null, 1, true])
+    assert.equal(
+      validateSnapshot({ ...snapshot, updates: [{ ...update, downloadSource }] }),
+      false,
+    );
+});
+
 test('missing defaults, invalid metadata and unknown model keys are rejected without coercion', () => {
   const missing = { name: '未规范化', tasks: [{ type: 'Award' }] };
   const original = structuredClone(missing);

@@ -732,6 +732,12 @@ function UpdateSection({
   const Icon = channel.id === 'app' ? HardDrive : channel.id === 'core' ? Cpu : Database;
   const working = preparing || ['checking', 'downloading'].includes(channel.status);
   const downloadSpeed = downloadSpeedLabel(channel);
+  const downloadSource =
+    channel.downloadSource === 'MirrorChyan'
+      ? 'Mirror酱'
+      : channel.downloadSource === 'GitHub'
+        ? '官方源'
+        : undefined;
   const isApp = channel.id === 'app';
   const canInstall = !isApp || channel.appCanInstall === true;
   const staged = ['staged', 'waiting_idle'].includes(channel.status);
@@ -858,6 +864,11 @@ function UpdateSection({
         {downloadSpeed && (
           <p className="sp-help numeric" aria-label={`${updateChannelLabels[channel.id]}下载速度`}>
             下载速度：{downloadSpeed}
+          </p>
+        )}
+        {downloadSource && (
+          <p className="sp-help" aria-label={`${updateChannelLabels[channel.id]}下载来源`}>
+            下载来源：{downloadSource}
           </p>
         )}
         {isApp && staged && hasActiveRun && (

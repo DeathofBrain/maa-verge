@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import type { Snapshot } from '../../packages/contracts/src/types';
+import type { Snapshot, UpdateChannel } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 
 async function openMirrorSettings(page: Page) {
@@ -143,3 +143,73 @@ test('disabling Mirror and clearing its CDK preserve unrelated preferences acros
   await expect(enabled).not.toBeChecked();
   await expect(credential(page)).toHaveValue('');
 });
+
+type DownloadSourceWindow = HarnessWindow & {
+  downloadSourceControl: { setSource: (source?: UpdateChannel['downloadSource']) => void };
+};
+
+async function controlDownloadSource(page: Page, id: UpdateChannel['id']) {
+  await page.evaluate(async (id) => {
+    const target = window as DownloadSourceWindow;
+    const original = target.runtimeHarness.call;
+    const initial = (await original('app.snapshot', {})) as Snapshot;
+    const channel: UpdateChannel = {
+      ...initial.updates.find((item) => item.id === id)!,
+      status: 'downloading',
+      latestVersion: 'synthetic-new-version',
+      progress: 37,
+      message: '合成下载，未访问网络',
+    };
+    target.runtimeHarness.call = async (method, params) => {
+      const result = await original(method, params);
+      if (method === 'app.snapshot') {
+        const snapshot = result as Snapshot;
+        snapshot.updates = snapshot.updates.map((item) =>
+          item.id === id ? structuredClone(channel) : item,
+        );
+      }
+      return result;
+    };
+    target.downloadSourceControl = {
+      setSource: (source) => {
+        channel.downloadSource = source;
+        target.runtimeHarness.emitEvent('update.changed', {
+          channel: id,
+          update: structuredClone(channel),
+        });
+      },
+    };
+    target.downloadSourceControl.setSource();
+  }, id);
+}
+
+for (const [id, label] of [
+  ['app', 'Maa Verge 应用'],
+  ['core', 'MaaCore 核心'],
+  ['resource', 'MaaResource 游戏资源'],
+] as const) {
+  test(`${id} download source follows the selected transport across navigation and fallback`, async ({
+    page,
+  }) => {
+    await openMirrorSettings(page);
+    await controlDownloadSource(page, id);
+    const source = page.getByLabel(`${id === 'resource' ? '游戏资源' : label}下载来源`, {
+      exact: true,
+    });
+    await expect(source).toHaveCount(0);
+    await page.evaluate(() =>
+      (window as DownloadSourceWindow).downloadSourceControl.setSource('MirrorChyan'),
+    );
+    await expect(source).toHaveText('下载来源：Mirror酱');
+    await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
+    await expect(page.getByRole('status', { name: `${label}下载通知`, exact: true })).toBeVisible();
+    await enterUpdates(page);
+    await expect(source).toHaveText('下载来源：Mirror酱');
+    await page.evaluate(() =>
+      (window as DownloadSourceWindow).downloadSourceControl.setSource('GitHub'),
+    );
+    await expect(source).toHaveText('下载来源：官方源');
+    await page.evaluate(() => (window as DownloadSourceWindow).downloadSourceControl.setSource());
+    await expect(source).toHaveCount(0);
+  });
+}

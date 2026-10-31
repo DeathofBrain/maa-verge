@@ -43,6 +43,8 @@ test('component updates propagate same-percentage speed changes and clear rates 
         download: async (_metadata, file, progress) => {
           progress(25, 1_024);
           expect(updates.channel('core').downloadSpeedBytesPerSecond).toBe(1_024);
+          expect(updates.channel('core').downloadSource).toBe('GitHub');
+          expect(updates.channel('core').message).toBe('正在通过官方源下载组件');
           await Bun.sleep(300);
           progress(25, 2_048);
           expect(updates.channel('core').downloadSpeedBytesPerSecond).toBe(2_048);

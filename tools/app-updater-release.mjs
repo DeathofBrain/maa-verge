@@ -1,15 +1,17 @@
 /** Assemble and verify Tauri 2 signed application updates. No GitHub writes. */
 import { createHash, createPublicKey, verify } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { copyFile, lstat, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   installerKind,
   releaseVersion,
   updaterAssetKind,
-  updaterAssetKinds,
+  releaseInstallerKinds,
+  releaseUpdaterAssetKinds,
 } from './release-assets.mjs';
+import { desktop, run } from './project.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const repository = 'https://github.com/DeathofBrain/maa-verge';
@@ -18,7 +20,7 @@ const platformInstallers = {
   'windows-x86_64': ['windows-exe-x64', 'windows-full-zip-x64'],
   'darwin-aarch64': ['macos-dmg-arm64'],
   'darwin-x86_64': ['macos-dmg-x64'],
-  'linux-x86_64': ['linux-appimage-x64', 'linux-deb-x64', 'linux-rpm-x64'],
+  'linux-x86_64': ['linux-appimage-x64'],
 };
 const installerSuffixes = {
   'windows-exe-x64': (version) => `_${version}_x64-setup.exe`,
@@ -26,14 +28,21 @@ const installerSuffixes = {
   'macos-dmg-arm64': (version) => `_${version}_aarch64.dmg`,
   'macos-dmg-x64': (version) => `_${version}_x64.dmg`,
   'linux-appimage-x64': (version) => `_${version}_amd64.AppImage`,
-  'linux-deb-x64': (version) => `_${version}_amd64.deb`,
-  'linux-rpm-x64': (version) => `-${version}-1.x86_64.rpm`,
 };
 
-export function updaterBuildArguments(env = process.env) {
+export function updaterBuildArguments(env = process.env, platform = process.platform) {
+  const bundles = { win32: 'nsis', darwin: 'dmg', linux: 'appimage' }[platform];
+  if (!bundles) throw new Error('不支持的发行平台');
   return [
     '--config',
-    JSON.stringify({ bundle: { createUpdaterArtifacts: !!env.TAURI_SIGNING_PRIVATE_KEY?.trim() } }),
+    JSON.stringify({
+      bundle: {
+        // macOS signs the complete DMG below and never emits a tar updater archive.
+        createUpdaterArtifacts: platform !== 'darwin' && !!env.TAURI_SIGNING_PRIVATE_KEY?.trim(),
+      },
+    }),
+    '--bundles',
+    bundles,
   ];
 }
 
@@ -160,6 +169,47 @@ async function listFiles(directory, recurse = false, depth = 0) {
   return files;
 }
 
+/** Sign the complete installer without changing the DMG or its first-install path. */
+export async function signMacosInstaller({
+  version,
+  productName,
+  publicKey,
+  directory = desktop,
+  platform = process.platform,
+  arch = process.arch,
+  env = process.env,
+  runner = run,
+}) {
+  if (platform !== 'darwin') return;
+  releaseVersion(`v${version}`);
+  const dmgArch = { arm64: 'aarch64', x64: 'x64' }[arch];
+  if (!dmgArch) throw new Error('不支持的 macOS 安装包架构');
+  const directoryName = path.join(directory, 'src-tauri', 'target', 'release', 'bundle', 'dmg');
+  const expected = `${productName}_${version}_${dmgArch}.dmg`;
+  const matches = (await listFiles(directoryName)).filter(
+    (file) => path.basename(file) === expected,
+  );
+  if (matches.length !== 1) throw new Error('未找到唯一的 macOS 完整安装包');
+  const filename = matches[0];
+  await regularFile(filename);
+  // An unsigned rebuild must not retain a signature from a previous package.
+  await rm(`${filename}.sig`, { force: true });
+  if (!env.TAURI_SIGNING_PRIVATE_KEY?.trim()) return filename;
+  // Tauri reads the existing key/password from the environment, never argv.
+  // --app-version authenticates the application SemVer in the trusted comment.
+  await runner('pnpm', ['exec', 'tauri', 'signer', 'sign', '--app-version', version, filename], {
+    cwd: directory,
+  });
+  await regularFile(`${filename}.sig`, signatureLimit);
+  await verifyUpdaterSignature(
+    filename,
+    await readFile(`${filename}.sig`, 'utf8'),
+    publicKey,
+    version,
+  );
+  return filename;
+}
+
 export async function collectUpdaterArtifacts({
   input,
   output,
@@ -194,17 +244,7 @@ export async function collectUpdaterArtifacts({
     selected.push({
       file: matches[0],
       name,
-      signed: !kind.startsWith('macos-') && kind !== 'windows-full-zip-x64',
-    });
-  }
-  if (target.startsWith('darwin-')) {
-    const accepted = new Set([`${productName}.app.tar.gz`, 'Maa-Verge.app.tar.gz']);
-    const matches = files.filter((file) => accepted.has(path.basename(file)));
-    if (matches.length !== 1) throw new Error('未找到唯一的 macOS 应用更新归档');
-    selected.push({
-      file: matches[0],
-      name: `Maa-Verge_${version}_${target === 'darwin-aarch64' ? 'aarch64' : 'x64'}.app.tar.gz`,
-      signed: true,
+      signed: kind !== 'windows-full-zip-x64',
     });
   }
   for (const item of selected) {
@@ -245,8 +285,8 @@ export async function createUpdaterManifest({
     files = await listFiles(input),
     kinds = new Map();
   const required = [
-    ...Object.values(platformInstallers).flat(),
-    ...updaterAssetKinds.filter((kind) => kind !== 'manifest'),
+    ...releaseInstallerKinds,
+    ...releaseUpdaterAssetKinds.filter((kind) => kind !== 'manifest'),
   ];
   if (!Number.isFinite(Date.parse(publishedAt))) throw new Error('发行时间格式无效');
   for (const file of files) {
@@ -258,22 +298,17 @@ export async function createUpdaterManifest({
     kinds.set(kind, file);
   }
   if (required.some((kind) => !kinds.has(kind))) throw new Error('发行安装包或签名集合不完整');
-  // Check every updater-enabled package, including package-manager downloads.
+  // Every complete installer used for updates must have a version-bound signature.
   for (const [kind, file] of kinds) {
-    if (
-      kind.endsWith('-signature') ||
-      kind.startsWith('macos-dmg-') ||
-      kind === 'windows-full-zip-x64'
-    )
-      continue;
+    if (kind.endsWith('-signature') || kind === 'windows-full-zip-x64') continue;
     const signature = kinds.get(`${kind}-signature`);
     if (!signature) throw new Error('发行安装包缺少更新签名');
     await verifyUpdaterSignature(file, await readFile(signature, 'utf8'), publicKey, version);
   }
   const targets = {
     'windows-x86_64-nsis': 'windows-exe-x64',
-    'darwin-aarch64': 'macos-archive-arm64',
-    'darwin-x86_64': 'macos-archive-x64',
+    'darwin-aarch64-dmg': 'macos-dmg-arm64',
+    'darwin-x86_64-dmg': 'macos-dmg-x64',
     'linux-x86_64': 'linux-appimage-x64',
   };
   const platforms = {};

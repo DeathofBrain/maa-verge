@@ -1027,6 +1027,11 @@
           "description": "当前网络传输速度，单位为字节/秒；非传输阶段省略。",
           "type": "number",
           "minimum": 0
+        },
+        "downloadSource": {
+          "description": "本次更新包实际选择的下载来源；尚未选定来源时省略。",
+          "type": "string",
+          "enum": ["MirrorChyan", "GitHub"]
         }
       },
       "required": ["id", "currentVersion", "latestVersion", "status", "progress", "message"],

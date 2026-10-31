@@ -18,11 +18,17 @@ Maa Verge 的「启动时检查应用更新」默认开启，只控制联网检�
 
 当前开发源码中，Maa Verge 应用、MaaCore 和游戏资源三条通道共用 Bun 的内置 HTTP 下载器与「设置 → 更新 → 下载代理」，统一使用自动、手动 HTTP/HTTPS 代理或直连模式。自动模式在代理无效、不可达或传输失败时尝试直连；手动模式失败显示错误并保留可恢复数据，不自动绕过所填代理。版本选择和安装流程仍分别管理，代理选择与系统网络边界见 [组件运行时](maacore-runtime.md)。
 
-当前开发源码还提供「设置 → 更新 → Mirror酱」，三通道共用一个 CDK。Mirror酱用户端高速下载为付费服务，官方免费来源继续保留。应用对应 `maa-verge`：Windows EXE、Linux AppImage 需与官方资产版本、大小和摘要一致，Rust 继续校验 minisign；当前镜像 macOS DMG 与应用内签名归档不同，macOS 自动更新保持官方来源。详情及第三方声明见 [Mirror酱说明](mirrorchyan.md) 和 [NOTICE.md](../NOTICE.md)。
+当前开发源码还提供「设置 → 更新 → Mirror酱」，三通道共用一个 CDK。Mirror酱用户端高速下载为付费服务，官方免费来源继续保留。应用对应 `maa-verge`：Windows EXE、macOS DMG、Linux AppImage 需与官方资产版本、大小和摘要一致，Rust 继续校验绑定内容与版本的 minisign 签名。macOS 应用内更新只接受对应架构的签名 DMG；清单缺失时提示手动安装或等待新版本，不回退 `.app.tar.gz`，旧归档缓存也不能安装。详情及第三方声明见 [Mirror酱说明](mirrorchyan.md) 和 [NOTICE.md](../NOTICE.md)。
 
 应用下载支持安全断点续传：缓存绑定固定来源 URL、版本、大小和摘要，以 HTTP Range / If-Range 核对远端内容后继续；内容身份不能确认时重新下载。临时网络故障和空闲超时默认最多进行三轮请求，重连前分别等待一秒、两秒，并从原始固定 URL 重新请求；自动模式可在代理失败时另尝试直连。切换页面不会取消下载，取消或正常退出保留可恢复分片。应用内版本回滚仍不支持。
 
+三条更新卡片在实际发起下载后显示「下载来源：Mirror酱」或「下载来源：官方源」。该提示来自下载链路的 `downloadSource`，不由 CDK 是否填写或开关是否启用推断；未知来源不显示。Mirror 版本、大小、摘要或下载校验失败而回退时，提示随实际传输改为官方源。切换页面、解压、校验和准备完成后保留本次来源；重新检查或开始新下载时清除旧标记。
+
 HTTP 下载暂存于当前数据根的 `updates/app/downloads`，已签名安装候选保存在 `updates/app`，默认是程序目录的 `config/updates/app`，开发环境是 checkout 的同一路径；遵循自定义数据根。传输完成后由 Rust 复核登记大小、版本和 minisign 签名，签名通过才把包写入独立文件并同步磁盘，再原子提交安装清单。下载分片与未通过签名的文件不会成为启动安装候选。MaaCore/资源继续使用不可变版本目录和空闲边界切换。
+
+核心与资源的「应用更新」会显示校验文件、验证核心与资源、切换版本三个阶段及进度；切换页面后仍可从常驻通知查看。准备和应用只复核当前活动组合及本通道候选，不提前读取无关回滚版本或另一通道候选的全部内容。设备忙时先等待空闲，再开始内容复核。
+
+同一服务进程内，已完整校验的文件按文件标识、大小和修改时间等元数据复查；元数据未变时复用内容摘要，变化时重新读取文件。缓存仅保存在内存，最多保留八套版本；重启或缓存淘汰后恢复完整读取，显式回滚始终重新读取全部待检查内容。首次准备的完整性校验、切换前原生加载验证和失败恢复保留；旧版仅有整树摘要的资源仍使用原有完整读取。
 
 启动安装先于本地服务、自动连接和调度。立即安装不等待组件下载结束或已有 RPC 的长时读锁；本地服务先通过 EOF 正常退出，五秒后仍未结束则强制收尾。Windows 还核对并等待本实例的服务、更新作业及原生 worker 退出，保留共享 ADB 和其他应用实例，无法确认退出时保留更新包并重启恢复应用，不继续替换占用文件。macOS/Linux 的强制收尾和真实升级仍需在对应宿主验收。
 
@@ -30,15 +36,15 @@ HTTP 下载暂存于当前数据根的 `updates/app/downloads`，已签名安装
 
 ## 平台安装方式
 
-| 平台/安装方式                      | 应用内安装                                                             |
-| ---------------------------------- | ---------------------------------------------------------------------- |
-| Windows x64 NSIS EXE               | 下载同类 EXE，签名校验后退出并运行安装器                               |
-| Windows x64 ZIP                    | 从发行页下载完整 ZIP，退出并备份配置后手动更新                         |
-| 旧 Windows x64 MSI                 | v0.1.3-alpha.1 起停止提供 MSI，须备份、卸载旧版后手动迁移 EXE / ZIP    |
-| macOS Apple Silicon / Intel `.app` | 下载对应架构 `.app.tar.gz`，替换应用包并重启；DMG 继续用于首次手动安装 |
-| Linux x64 AppImage                 | 在 AppImage 环境中更新当前 AppImage 并重启                             |
-| Linux DEB / RPM                    | 显示版本与平台提示，通过包管理器或对应安装包更新                       |
-| 开发构建、未识别的安装方式/架构    | 可以检查发行版本，禁用自动下载安装                                     |
+| 平台/安装方式                      | 应用内安装                                                                    |
+| ---------------------------------- | ----------------------------------------------------------------------------- |
+| Windows x64 NSIS EXE               | 下载同类 EXE，签名校验后退出并运行安装器                                      |
+| Windows x64 ZIP                    | 从发行页下载完整 ZIP，退出并备份配置后手动更新                                |
+| 旧 Windows x64 MSI                 | v0.1.3-alpha.1 起停止提供 MSI，须备份、卸载旧版后手动迁移 EXE / ZIP           |
+| macOS Apple Silicon / Intel `.app` | 只下载对应架构的签名 DMG，验证并替换应用包后重启；缺少签名 DMG 时提示手动安装 |
+| Linux x64 AppImage                 | 在 AppImage 环境中更新当前 AppImage 并重启                                    |
+| 旧 Linux DEB / RPM                 | 后续发行不再提供此类安装包，须手动迁移到 AppImage                             |
+| 开发构建、未识别的安装方式/架构    | 可以检查发行版本，禁用自动下载安装                                            |
 
 自动安装仍要求应用位置可写或安装器获得所需权限。macOS 签名/公证和 Windows Authenticode 发布者签名与下文的更新签名是不同机制，目前没有完成这些系统发行签名的配置与验收。
 
@@ -46,15 +52,21 @@ HTTP 下载暂存于当前数据根的 `updates/app/downloads`，已签名安装
 
 v0.1.3-alpha.1 起，Windows EXE 安装向导提供 MaaCore（含完整基础资源）与 MaaResource（完整资源）两个可选项，默认勾选，MaaResource 依赖 MaaCore；取消后可在应用中按需下载。离线组件已包含在 EXE 内，安装时无需联网下载组件。应用内更新的 `/UPDATE` 安装保留现有组件，不再次导入随包版本。
 
+应用内更新直接复用这份完整 EXE，无需另向 Mirror酱上传增量包。主程序下载并验证后，关闭本实例服务与 worker，通过安装器 CLI 的 `/P /UPDATE /R` 执行原地更新并重启；原应用启动参数由更新器传递。普通双击 EXE 仍运行完整安装向导。这里是下载完整包后的原地更新，不是只下载文件差异的二进制增量传输。
+
 完整 ZIP 包含应用、服务与两套完整组件，完全解压至可写目录后运行 `Maa Verge.exe`，系统仍须具有 WebView2 Runtime。它不注册系统卸载器或快捷方式，也不运行 EXE 自更新；升级时先退出、备份 `config/` 与作业文件，再使用新版 ZIP。不要在归档内直接运行。
 
 固定的组件来源、摘要和版本由 `tools/windows-components.lock.json` 维护。构建时使用同一 HTTP 下载、选择性提取和完整资源合并逻辑，并由生产 C++ worker 在不连接设备的情况下校验。当前源码将完整组件直接放入程序同级 `MaaCore/generations/` 与 `MaaResource/generations/`，保存普通版本清单；服务取得数据库租约并完成内容及原生校验后，登记为已下载完成的普通版本。后续更新可复用同版本内容，并遵循普通版本的激活、回滚和清理规则；不再保存新的 `runtime/bundled-components` 副本，旧布局仍可导入。安装器不写业务库或覆盖已有 generation，已有活动组件与自定义组件位置不会被旧版本替换。
 
 ## macOS 签名与首次放行
 
+后续签名发行只提供完整 DMG，不再生成 `.app.tar.gz` 更新归档。新客户端使用与 Mirror酱相同的完整 DMG：验证整个 DMG 的 minisign 签名后，只读挂载，复制固定的 `Maa Verge.app`，再复核应用标识、版本、可执行文件架构和系统签名；卸载映像后才原子替换已有应用。新版启动且旧更新进程已退出后，按绑定安装位置和目标版本的收据清理旧应用包；进程仍存活时延后清理。准备或校验失败会保留旧应用与候选包，安装位置不可写或文件系统不支持原子交换时停止安装。配置默认在 `.app` 同级；自定义数据根位于待替换的 `.app` 内时拒绝自动更新，须先迁出数据。
+
+DMG 本身仍是可完整安装的映像，可按原方式拖拽安装；`.dmg.sig` 用于自动更新信任校验。仅支持 `.app.tar.gz` 的旧 macOS 客户端须手动安装一次新版 DMG，之后才能使用新的应用内更新。新客户端拒绝旧归档及其安装缓存；历史发行版没有签名 DMG 时明确提示手动安装或等待新版本。2026-10-31 核查的 v0.1.2 与 v0.1.3-alpha.1 清单均没有 `-dmg` 目标，不能作为新客户端的 macOS 应用内更新候选。
+
 当前源码及后续发行版最低支持 **macOS 15（Sequoia）**，覆盖 Apple Silicon 和 Intel。已有发行版的历史系统要求见各版本说明。
 
-macOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付费账号或新增 GitHub Secrets。Tauri 配置显式设置 `bundle.macOS.signingIdentity: "-"`，在生成 DMG、更新归档及更新签名前封装整个 `.app`；Bun 服务和 C++ worker 保留各自的签名与权限。只签主程序或子进程、没有 `.app` 的资源封装，会导致系统报告应用「已损坏」。
+macOS 默认使用免费的 ad-hoc 本地签名，不需要 Apple Developer 付费账号或新增 GitHub Secrets。Tauri 配置显式设置 `bundle.macOS.signingIdentity: "-"`，在生成 DMG 及更新签名前封装整个 `.app`；Bun 服务和 C++ worker 保留各自的签名与权限。只签主程序或子进程、没有 `.app` 的资源封装，会导致系统报告应用「已损坏」。
 
 本地签名可以验证应用包完整性，但没有 Apple 认可的发布者身份与公证。首次安装时，先把应用从 DMG 拖到可写的安装目录，尝试打开，再按系统提示到「系统设置 → 隐私与安全性」选择「仍要打开」。应用需要用户明确放行；CI 不修改全局 Gatekeeper 设置，也不承诺未公证下载可以直接打开。
 
@@ -75,7 +87,7 @@ xattr -dr com.apple.quarantine "/Applications/Maa Verge.app"
 
 v0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封装和包内子进程签名；该发行版有三个子进程，当前源码移除 aria2 后保留 Bun 服务和 C++ worker。普通 CI 与发行 CI 的两种 macOS 架构还会运行 `node tools/smoke-macos-install.mjs`：校验最终 DMG、只读挂载并复制到临时安装目录，仅对测试副本模拟放行，用独立的数据、设备锁、日志和 Foundation 用户目录启动真实窗口与包内服务，验证原生退出及无进程残留。自动连接与自动更新在启动前关闭；已有 Maa Verge 实例存在时拒绝测试。
 
-发行 CI 额外传入 `--require-updater`，解开最终 `.app.tar.gz`，验证签名及其与原应用的主程序、资源封装和子进程字节一致；任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。
+发行 CI 额外传入 `--require-updater`，要求完整 DMG 具有绑定包内容与版本的有效更新签名，并核对 DMG 内应用与原应用的主程序、资源封装和子进程字节一致；不再要求或解开专用更新归档。任何检查失败都不能进入资产收集和上传。失败报告保存在 `build/macos-install-smoke/report.json`。这覆盖安装后启动与退出，不代替最低 macOS 版本、首次系统放行界面和真实游戏验收。
 
 ## 信任与版本边界
 
@@ -94,15 +106,15 @@ v0.1.2 起由 `tools/verify-macos-bundle.mjs` 强制验证 `.app` 的资源封�
 `.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.2](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.2)；后续发行仍需先提交新的版本号，并保留既有标签与资产。
 
 1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。
-2. 合并版本与发行说明提交，先确认该提交的 Checks 五个任务全部通过。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的 Checks 构建。
+2. 合并版本与发行说明提交，先确认该提交的完整 Checks 已通过，且 `full-validation` 成功。`main` 推送和手动 Checks 运行执行完整检查；`dev` / PR 的精简检查不能用于发行。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的完整 Checks 构建。
 3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。
 4. 推送标签（例如 `git push origin v0.1.3-alpha.1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。
-5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **17 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。
+5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **11 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。
 
-Checks 等待上限为 30 分钟；若该提交没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待通过，再补跑 Release。
+完整 Checks 运行中的等待上限为 30 分钟；没有完整运行时最多等待 5 分钟。若该提交只有精简检查、没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待 `full-validation` 成功，再补跑 Release。
 
-完整附件集合为六个首次安装包、Windows 完整 ZIP、两个分架构 macOS 更新归档、六个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`。`latest.json` 包含 `windows-x86_64-nsis`、`darwin-aarch64`、`darwin-x86_64`、`linux-x86_64` 四个目标。DEB/RPM 也生成签名供发行校验，但不交给应用内安装器；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。
+CI 和普通 `pnpm build` 只构建 Windows EXE / 完整 ZIP、macOS Apple Silicon / Intel DMG、Linux AppImage 五个完整安装包；不再生成 DEB、RPM 或 macOS `.app.tar.gz` 等专用更新归档。完整发行附件集合为这五个安装包、EXE / 两个 DMG / AppImage 的四个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`，共十一项。签名和清单是更新及校验元数据。`latest.json` 只包含 `windows-x86_64-nsis`、`darwin-aarch64-dmg`、`darwin-x86_64-dmg`、`linux-x86_64` 四个目标，直接引用完整安装包；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。
 
-发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；macOS 归档还加入版本与架构，避免多宿主上传时覆盖。复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，兼容既有八附件、含 MSI 的十八附件及当前 EXE / 完整 ZIP 的十七附件集合，拒绝不完整的混合版本；安装包仅通过 GitHub Releases 分发。
+发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。macOS 构建使用既有更新签名密钥，通过官方 Tauri signer 为完整 DMG 追加版本绑定签名，不改变 DMG 内容或 Mirror酱上传流程。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，校验当前十一附件集合，同时兼容既有八附件、含 MSI 的十八附件、EXE / 完整 ZIP 的十七附件及带完整 DMG 签名的十九附件集合，拒绝不完整的混合版本；安装包通过 GitHub Releases 与既有 Mirror酱分发。
 
-当前验证范围见 [开发状态](STATUS.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。
+当前验证范围见 [开发状态](STATUS.md) 和 [Mirror酱真实下载验证](mirrorchyan-verification-2026-10-31.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。

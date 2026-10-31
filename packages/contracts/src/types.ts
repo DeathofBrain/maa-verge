@@ -256,6 +256,10 @@ export interface UpdateChannel {
    * 当前网络传输速度，单位为字节/秒；非传输阶段省略。
    */
   downloadSpeedBytesPerSecond?: number;
+  /**
+   * 本次更新包实际选择的下载来源；尚未选定来源时省略。
+   */
+  downloadSource?: 'MirrorChyan' | 'GitHub';
 }
 export interface ResourceActivityVersion {
   clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';

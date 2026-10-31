@@ -270,7 +270,7 @@ export class Runtime {
     this.appUpdateHttp = new AppUpdateHttp(
       path.resolve(root, '../updates/app/downloads'),
       () => this.store.get('settings', 'main', {}).downloadProxy,
-      (operationId, progress, downloadSpeedBytesPerSecond) =>
+      (operationId, progress, downloadSpeedBytesPerSecond, downloadSource) =>
         options.notify?.({
           jsonrpc: '2.0',
           method: 'runtime.hostEvent',
@@ -278,6 +278,7 @@ export class Runtime {
             operationId,
             progress,
             ...(downloadSpeedBytesPerSecond === undefined ? {} : { downloadSpeedBytesPerSecond }),
+            ...(downloadSource === undefined ? {} : { downloadSource }),
           },
         }),
       {

@@ -127,6 +127,8 @@ export interface UpdateJobResult {
   resourceVersion?: Record<string, unknown>;
 }
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const downloadSource = (metadata: UpdateMetadata): 'MirrorChyan' | 'GitHub' =>
+  metadata.source === 'MirrorChyan' ? 'MirrorChyan' : 'GitHub';
 
 // Database versions are only hints: uninstall/reinstall and manual file removal
 // can leave them behind. Older generations lack an inventory, so retain support
@@ -451,6 +453,7 @@ export class OfficialSource implements UpdateSource {
         release.size !== metadata.size
       )
         throw new MirrorChyanError();
+      progress(0, 0);
       return client.download(
         release,
         metadata as UpdateMetadata & { url: string },
@@ -461,6 +464,7 @@ export class OfficialSource implements UpdateSource {
         },
       );
     }
+    progress(0, 0);
     return downloadArchive(metadata as UpdateMetadata & { url: string }, destination, progress, {
       signal: this.abort.signal,
       fetcher: this.fetcher,
@@ -1305,6 +1309,7 @@ export class UpdateService {
       status: 'checking',
       message: '正在检查官方版本',
       progress: 0,
+      downloadSource: undefined,
     });
     try {
       const releaseChannel = this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable';
@@ -1431,6 +1436,7 @@ export class UpdateService {
         status: 'staged',
         progress: 100,
         downloadSpeedBytesPerSecond: undefined,
+        downloadSource: downloadSource(snapshot),
         message: '已有下载版本已校验，等待在空闲边界生效',
       });
     }
@@ -1490,6 +1496,7 @@ export class UpdateService {
       status: 'downloading',
       progress: 0,
       downloadSpeedBytesPerSecond: undefined,
+      downloadSource: undefined,
       message: '正在准备独立更新快照',
     });
     try {
@@ -1544,12 +1551,17 @@ export class UpdateService {
             this.change(channel, {
               progress,
               downloadSpeedBytesPerSecond: speed,
-              message: '正在下载组件',
+              downloadSource: downloadSource(metadata),
+              message:
+                metadata.source === 'MirrorChyan'
+                  ? '正在通过 Mirror酱下载组件'
+                  : '正在通过官方源下载组件',
             });
           });
           this.change(channel, {
             progress: 90,
             downloadSpeedBytesPerSecond: undefined,
+            downloadSource: downloadSource(metadata),
             message: '正在解压并校验组件',
           });
           // Recheck the resource base after downloading, before copying it.
@@ -1600,6 +1612,7 @@ export class UpdateService {
             latestVersion: metadata.version,
             progress: 0,
             downloadSpeedBytesPerSecond: undefined,
+            downloadSource: downloadSource(metadata),
             message: 'Mirror酱准备失败，正在使用官方更新源重新准备',
           });
           continue;
@@ -1646,6 +1659,7 @@ export class UpdateService {
         status: 'staged',
         latestVersion: metadata.version,
         progress: 100,
+        downloadSource: downloadSource(metadata),
         message:
           '快照已校验，等待在空闲边界生效' +
           (metadata.mirrorChyanMessage ? `；${metadata.mirrorChyanMessage}` : ''),

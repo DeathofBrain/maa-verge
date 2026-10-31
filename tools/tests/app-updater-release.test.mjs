@@ -12,6 +12,7 @@ import {
   releaseConfiguration,
   updaterBuildArguments,
   verifyUpdaterSignature,
+  signMacosInstaller,
 } from '../app-updater-release.mjs';
 import { parseChecksums, validateRelease } from '../release-assets.mjs';
 
@@ -44,19 +45,12 @@ async function artifact(directory, name, key, signed = true, signedVersion = ver
   if (signed) await writeFile(`${filename}.sig`, signature(bytes, name, key, signedVersion));
   return filename;
 }
-async function fullSet(directory, key, appVersion = version) {
-  for (const name of [
-    'Maa-Verge_0.1.0_x64-setup.exe',
-    'Maa-Verge_0.1.0_amd64.AppImage',
-    'Maa-Verge_0.1.0_amd64.deb',
-    'Maa-Verge-0.1.0-1.x86_64.rpm',
-    'Maa-Verge_0.1.0_aarch64.app.tar.gz',
-    'Maa-Verge_0.1.0_x64.app.tar.gz',
-  ])
+async function fullSet(directory, key, appVersion = version, signedDmg = true) {
+  for (const name of ['Maa-Verge_0.1.0_x64-setup.exe', 'Maa-Verge_0.1.0_amd64.AppImage'])
     await artifact(directory, name.replaceAll(version, appVersion), key, true, appVersion);
   await artifact(directory, `Maa-Verge_${appVersion}_x64-full.zip`, key, false);
-  await artifact(directory, `Maa-Verge_${appVersion}_aarch64.dmg`, key, false);
-  await artifact(directory, `Maa-Verge_${appVersion}_x64.dmg`, key, false);
+  await artifact(directory, `Maa-Verge_${appVersion}_aarch64.dmg`, key, signedDmg, appVersion);
+  await artifact(directory, `Maa-Verge_${appVersion}_x64.dmg`, key, signedDmg, appVersion);
 }
 async function temporary(callback) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'maa-verge-updater-release-'));
@@ -101,14 +95,118 @@ test('version preflight requires root, both workspaces, Tauri, Cargo and tag to 
   });
 });
 
-test('build enables updater artifacts only when a private signing key is provided and never exposes that key', () => {
+test('build selects only EXE, DMG or AppImage and signs complete installers without macOS tar archives', () => {
   assert.deepEqual(JSON.parse(updaterBuildArguments({})[1]), {
     bundle: { createUpdaterArtifacts: false },
   });
-  const args = updaterBuildArguments({ TAURI_SIGNING_PRIVATE_KEY: 'private-do-not-expose' });
-  assert.equal(JSON.parse(args[1]).bundle.createUpdaterArtifacts, true);
-  assert.ok(!args.join(' ').includes('private-do-not-expose'));
+  for (const [platform, bundles] of [
+    ['win32', 'nsis'],
+    ['linux', 'appimage'],
+    ['darwin', 'dmg'],
+  ]) {
+    const args = updaterBuildArguments(
+      { TAURI_SIGNING_PRIVATE_KEY: 'private-do-not-expose' },
+      platform,
+    );
+    assert.equal(JSON.parse(args[1]).bundle.createUpdaterArtifacts, platform !== 'darwin');
+    assert.deepEqual(args.slice(2), ['--bundles', bundles]);
+    assert.equal(
+      JSON.parse(updaterBuildArguments({}, platform)[1]).bundle.createUpdaterArtifacts,
+      false,
+    );
+    assert.ok(!args.join(' ').includes('private-do-not-expose'));
+  }
+  assert.throws(() => updaterBuildArguments({}, 'unsupported'), /发行平台/);
 });
+
+test('complete DMG signing uses the pinned Tauri signer with an authenticated app version and environment-only synthetic keys', async () =>
+  temporary(async (directory) => {
+    const cli = fileURLToPath(
+      new URL('../../node_modules/@tauri-apps/cli/tauri.js', import.meta.url),
+    );
+    const keyFile = path.join(directory, 'synthetic.key');
+    const env = { ...process.env, CI: 'true' };
+    for (const name of [
+      'TAURI_SIGNING_PRIVATE_KEY',
+      'TAURI_SIGNING_PRIVATE_KEY_PATH',
+      'TAURI_SIGNING_PRIVATE_KEY_PASSWORD',
+    ])
+      delete env[name];
+    execFileSync(
+      process.execPath,
+      [cli, 'signer', 'generate', '--ci', '--password', '', '--write-keys', keyFile],
+      { env, stdio: 'pipe' },
+    );
+    const publicKey = (await readFile(`${keyFile}.pub`, 'utf8')).trim();
+    env.TAURI_SIGNING_PRIVATE_KEY = (await readFile(keyFile, 'utf8')).trim();
+    env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = '';
+    const appVersion = '0.2.0-beta.1';
+    const dmg = await artifact(
+      path.join(directory, 'src-tauri/target/release/bundle/dmg'),
+      `Maa Verge_${appVersion}_aarch64.dmg`,
+      signingKey(),
+      false,
+    );
+    const before = await readFile(dmg);
+    const calls = [];
+    assert.equal(
+      await signMacosInstaller({
+        version: appVersion,
+        productName: 'Maa Verge',
+        publicKey,
+        directory,
+        platform: 'darwin',
+        arch: 'arm64',
+        env,
+        runner: async (command, args, options) => {
+          calls.push({ command, args, options });
+          execFileSync(process.execPath, [cli, ...args.slice(2)], {
+            cwd: options.cwd,
+            env,
+            stdio: 'pipe',
+          });
+        },
+      }),
+      dmg,
+    );
+    assert.deepEqual(calls, [
+      {
+        command: 'pnpm',
+        args: ['exec', 'tauri', 'signer', 'sign', '--app-version', appVersion, dmg],
+        options: { cwd: directory },
+      },
+    ]);
+    assert.ok(!JSON.stringify(calls).includes(env.TAURI_SIGNING_PRIVATE_KEY));
+    assert.deepEqual(await readFile(dmg), before);
+    const signed = await readFile(`${dmg}.sig`, 'utf8');
+    await verifyUpdaterSignature(dmg, signed, publicKey, appVersion);
+    await assert.rejects(verifyUpdaterSignature(dmg, signed, publicKey, '0.2.0'), /绑定/);
+  }));
+
+test('unsigned macOS rebuild removes a stale DMG signature and other platforms run no signer', async () =>
+  temporary(async (directory) => {
+    const key = signingKey();
+    const dmg = await artifact(
+      path.join(directory, 'src-tauri/target/release/bundle/dmg'),
+      'Maa Verge_0.1.0_x64.dmg',
+      key,
+    );
+    const options = {
+      version,
+      productName: 'Maa Verge',
+      publicKey: key.publicKey,
+      directory,
+      platform: 'darwin',
+      arch: 'x64',
+      env: {},
+      runner: async () => assert.fail('Unexpected signer'),
+    };
+    assert.equal(await signMacosInstaller(options), dmg);
+    assert.deepEqual(await readdir(path.dirname(dmg)), [path.basename(dmg)]);
+    assert.equal(await signMacosInstaller({ ...options, platform: 'win32' }), undefined);
+    await assert.rejects(signMacosInstaller({ ...options, arch: 'other' }), /架构/);
+    await assert.rejects(signMacosInstaller({ ...options, version: '../invalid' }), /Release tag/);
+  }));
 
 test('minisign verification validates artifact bytes, key, global comment and signed app version', async () =>
   temporary(async (directory) => {
@@ -147,7 +245,7 @@ test('minisign verification validates artifact bytes, key, global comment and si
       await assert.rejects(verifyUpdaterSignature(file, malformed, key.publicKey, version));
   }));
 
-test('macOS collection renames the same Tauri archive basename by architecture without invalidating its signature', async () =>
+test('macOS collection requires a signed complete DMG and excludes stale updater archives', async () =>
   temporary(async (directory) => {
     const key = signingKey();
     for (const [target, arch] of [
@@ -156,7 +254,7 @@ test('macOS collection renames the same Tauri archive basename by architecture w
     ]) {
       const input = path.join(directory, target, 'input'),
         output = path.join(directory, 'output', target);
-      await artifact(path.join(input, 'dmg'), `Maa-Verge_0.1.0_${arch}.dmg`, key, false);
+      const dmg = await artifact(path.join(input, 'dmg'), `Maa-Verge_0.1.0_${arch}.dmg`, key);
       await artifact(path.join(input, 'macos'), 'Maa Verge.app.tar.gz', key);
       const names = await collectUpdaterArtifacts({
         input,
@@ -165,8 +263,8 @@ test('macOS collection renames the same Tauri archive basename by architecture w
         version,
         publicKey: key.publicKey,
       });
-      assert.equal(names.length, 3);
-      const renamed = path.join(output, `Maa-Verge_0.1.0_${arch}.app.tar.gz`);
+      assert.deepEqual(names, [`Maa-Verge_0.1.0_${arch}.dmg`, `Maa-Verge_0.1.0_${arch}.dmg.sig`]);
+      const renamed = path.join(output, `Maa-Verge_0.1.0_${arch}.dmg`);
       await verifyUpdaterSignature(
         renamed,
         await readFile(`${renamed}.sig`, 'utf8'),
@@ -176,6 +274,17 @@ test('macOS collection renames the same Tauri archive basename by architecture w
       await assert.rejects(
         collectUpdaterArtifacts({ input, output, target, version, publicKey: key.publicKey }),
         /EEXIST/,
+      );
+      await rm(`${dmg}.sig`);
+      await assert.rejects(
+        collectUpdaterArtifacts({
+          input,
+          output: output + '-unsigned',
+          target,
+          version,
+          publicKey: key.publicKey,
+        }),
+        /ENOENT/,
       );
     }
   }));
@@ -195,25 +304,12 @@ test('real Tauri productName filenames normalize across all platforms without ch
       ],
       [
         'darwin-aarch64',
-        [
-          ['dmg', 'Maa Verge_0.1.0_aarch64.dmg', 'Maa-Verge_0.1.0_aarch64.dmg', false],
-          ['macos', 'Maa Verge.app.tar.gz', 'Maa-Verge_0.1.0_aarch64.app.tar.gz', true],
-        ],
+        [['dmg', 'Maa Verge_0.1.0_aarch64.dmg', 'Maa-Verge_0.1.0_aarch64.dmg', true]],
       ],
-      [
-        'darwin-x86_64',
-        [
-          ['dmg', 'Maa Verge_0.1.0_x64.dmg', 'Maa-Verge_0.1.0_x64.dmg', false],
-          ['macos', 'Maa Verge.app.tar.gz', 'Maa-Verge_0.1.0_x64.app.tar.gz', true],
-        ],
-      ],
+      ['darwin-x86_64', [['dmg', 'Maa Verge_0.1.0_x64.dmg', 'Maa-Verge_0.1.0_x64.dmg', true]]],
       [
         'linux-x86_64',
-        [
-          ['appimage', 'Maa Verge_0.1.0_amd64.AppImage', 'Maa-Verge_0.1.0_amd64.AppImage', true],
-          ['deb', 'Maa Verge_0.1.0_amd64.deb', 'Maa-Verge_0.1.0_amd64.deb', true],
-          ['rpm', 'Maa Verge-0.1.0-1.x86_64.rpm', 'Maa-Verge-0.1.0-1.x86_64.rpm', true],
-        ],
+        [['appimage', 'Maa Verge_0.1.0_amd64.AppImage', 'Maa-Verge_0.1.0_amd64.AppImage', true]],
       ],
     ];
     for (const [target, originals] of platforms) {
@@ -262,7 +358,7 @@ test('real Tauri productName filenames normalize across all platforms without ch
       tag: 'v0.1.0',
       publicKey: key.publicKey,
     });
-    assert.equal((await readdir(combined)).length, 17);
+    assert.equal((await readdir(combined)).length, 11);
     for (const platform of Object.values(manifest.platforms))
       assert.ok(!platform.url.includes('%20'));
     assert.equal(manifest.platforms['windows-x86_64-msi'], undefined);
@@ -286,9 +382,8 @@ test('collection rejects raw plus normalized duplicates and matches the configur
     await assert.rejects(collectUpdaterArtifacts(options), /唯一/);
     assert.ok(!(await readdir(directory)).includes('output'));
     const mac = path.join(directory, 'mac');
-    await artifact(mac, 'Maa Verge_0.1.0_aarch64.dmg', key, false);
-    await artifact(mac, 'Maa Verge.app.tar.gz', key);
-    await artifact(mac, 'Maa-Verge.app.tar.gz', key);
+    await artifact(mac, 'Maa Verge_0.1.0_aarch64.dmg', key);
+    await artifact(mac, 'Maa-Verge_0.1.0_aarch64.dmg', key);
     await assert.rejects(
       collectUpdaterArtifacts({ ...options, input: mac, target: 'darwin-aarch64' }),
       /唯一/,
@@ -358,8 +453,8 @@ test('manifest keeps installer type, exact version URLs and signed version; all 
     assert.equal(manifest.notes.length, 16 * 1024);
     assert.deepEqual(Object.keys(manifest.platforms), [
       'windows-x86_64-nsis',
-      'darwin-aarch64',
-      'darwin-x86_64',
+      'darwin-aarch64-dmg',
+      'darwin-x86_64-dmg',
       'linux-x86_64',
     ]);
     assert.match(
@@ -368,7 +463,10 @@ test('manifest keeps installer type, exact version URLs and signed version; all 
     );
     assert.equal(manifest.platforms['windows-x86_64-msi'], undefined);
     assert.ok(!Object.values(manifest.platforms).some((platform) => platform.url.endsWith('.zip')));
-    assert.match(manifest.platforms['darwin-aarch64'].url, /_aarch64\.app\.tar\.gz$/);
+    assert.match(manifest.platforms['darwin-aarch64-dmg'].url, /_aarch64\.dmg$/);
+    assert.ok(
+      !Object.values(manifest.platforms).some((platform) => platform.url.endsWith('.app.tar.gz')),
+    );
     const assets = await Promise.all(
       (await readdir(directory)).map(async (name, index) => ({
         name,
@@ -377,20 +475,20 @@ test('manifest keeps installer type, exact version URLs and signed version; all 
         state: 'uploaded',
       })),
     );
-    assert.equal(assets.length, 17);
-    assert.equal(assets.filter((asset) => asset.name.endsWith('.sig')).length, 6);
+    assert.equal(assets.length, 11);
+    assert.equal(assets.filter((asset) => asset.name.endsWith('.sig')).length, 4);
     assert.equal(
       validateRelease(
         { tag_name: 'v0.1.0', draft: false, published_at: manifest.pub_date, assets },
         'v0.1.0',
       ).length,
-      17,
+      11,
     );
     const checksums = parseChecksums(
       await readFile(path.join(directory, 'SHA256SUMS.txt'), 'utf8'),
       assets.filter((asset) => asset.name !== 'SHA256SUMS.txt'),
     );
-    assert.equal(checksums.size, 16);
+    assert.equal(checksums.size, 10);
     for (const [name, digest] of checksums)
       assert.equal(
         createHash('sha256')
@@ -402,6 +500,126 @@ test('manifest keeps installer type, exact version URLs and signed version; all 
       createUpdaterManifest({ input: directory, tag: 'v0.1.0', publicKey: key.publicKey }),
       /已生成|未知/,
     );
+  }));
+
+test('signed full DMGs are the only macOS manifest targets and retain complete installers', async () =>
+  temporary(async (directory) => {
+    const key = signingKey();
+    await fullSet(directory, key, version, true);
+    const manifest = await createUpdaterManifest({
+      input: directory,
+      tag: `v${version}`,
+      publicKey: key.publicKey,
+    });
+    assert.deepEqual(Object.keys(manifest.platforms), [
+      'windows-x86_64-nsis',
+      'darwin-aarch64-dmg',
+      'darwin-x86_64-dmg',
+      'linux-x86_64',
+    ]);
+    for (const arch of ['aarch64', 'x64']) {
+      const target = arch === 'aarch64' ? 'darwin-aarch64-dmg' : 'darwin-x86_64-dmg';
+      const filename = `Maa-Verge_${version}_${arch}.dmg`;
+      assert.equal(
+        manifest.platforms[target].url,
+        `https://github.com/DeathofBrain/maa-verge/releases/download/v${version}/${filename}`,
+      );
+      assert.equal(
+        manifest.platforms[target].signature,
+        await readFile(path.join(directory, `${filename}.sig`), 'utf8'),
+      );
+      await verifyUpdaterSignature(
+        path.join(directory, filename),
+        manifest.platforms[target].signature,
+        key.publicKey,
+        version,
+      );
+    }
+    assert.equal(manifest.platforms['darwin-aarch64'], undefined);
+    assert.equal(manifest.platforms['darwin-x86_64'], undefined);
+    const assets = await Promise.all(
+      (await readdir(directory)).map(async (name, index) => ({
+        name,
+        id: index + 1,
+        size: (await readFile(path.join(directory, name))).length,
+        state: 'uploaded',
+      })),
+    );
+    assert.equal(
+      validateRelease(
+        { tag_name: `v${version}`, draft: false, published_at: manifest.pub_date, assets },
+        `v${version}`,
+      ).length,
+      11,
+    );
+    assert.equal(
+      parseChecksums(
+        await readFile(path.join(directory, 'SHA256SUMS.txt'), 'utf8'),
+        assets.filter((item) => item.name !== 'SHA256SUMS.txt'),
+      ).size,
+      10,
+    );
+  }));
+
+test('partial, altered or wrong-version DMG signatures never produce an installable manifest', async () => {
+  for (const failure of ['missing', 'altered', 'version'])
+    await temporary(async (directory) => {
+      const key = signingKey();
+      await fullSet(directory, key, version, true);
+      const dmg = path.join(directory, `Maa-Verge_${version}_x64.dmg`);
+      if (failure === 'missing') await rm(`${dmg}.sig`);
+      else if (failure === 'altered') await writeFile(dmg, 'altered full installer');
+      else
+        await writeFile(
+          `${dmg}.sig`,
+          signature(await readFile(dmg), path.basename(dmg), key, '0.0.9'),
+        );
+      await assert.rejects(
+        createUpdaterManifest({ input: directory, tag: `v${version}`, publicKey: key.publicKey }),
+        /不完整|签名校验失败|绑定/,
+      );
+      assert.ok(!(await readdir(directory)).includes('latest.json'));
+    });
+});
+
+test('new manifests refuse unsigned DMGs and discontinued package formats', async () => {
+  for (const extra of [
+    undefined,
+    `Maa-Verge_${version}_aarch64.app.tar.gz`,
+    `Maa-Verge_${version}_amd64.deb`,
+    `Maa-Verge-${version}-1.x86_64.rpm`,
+  ])
+    await temporary(async (directory) => {
+      const key = signingKey();
+      await fullSet(directory, key, version, !!extra);
+      if (extra) await artifact(directory, extra, key);
+      await assert.rejects(
+        createUpdaterManifest({ input: directory, tag: `v${version}`, publicKey: key.publicKey }),
+        /不完整|未知/,
+      );
+      assert.ok(!(await readdir(directory)).includes('latest.json'));
+    });
+});
+
+test('Linux collection publishes AppImage and its signature while excluding cached DEB and RPM packages', async () =>
+  temporary(async (directory) => {
+    const key = signingKey(),
+      input = path.join(directory, 'input'),
+      output = path.join(directory, 'output');
+    await artifact(path.join(input, 'appimage'), `Maa Verge_${version}_amd64.AppImage`, key);
+    await artifact(path.join(input, 'deb'), `Maa Verge_${version}_amd64.deb`, key);
+    await artifact(path.join(input, 'rpm'), `Maa Verge-${version}-1.x86_64.rpm`, key);
+    assert.deepEqual(
+      await collectUpdaterArtifacts({
+        input,
+        output,
+        target: 'linux-x86_64',
+        version,
+        publicKey: key.publicKey,
+      }),
+      [`Maa-Verge_${version}_amd64.AppImage`, `Maa-Verge_${version}_amd64.AppImage.sig`],
+    );
+    assert.equal((await readdir(output)).length, 2);
   }));
 
 test('incomplete platform sets, unsigned versions and unexpected files never produce a manifest', async () => {
@@ -426,7 +644,7 @@ test('incomplete platform sets, unsigned versions and unexpected files never pro
   await temporary(async (directory) => {
     const key = signingKey();
     await fullSet(directory, key);
-    await rm(path.join(directory, 'Maa-Verge_0.1.0_x64.app.tar.gz.sig'));
+    await rm(path.join(directory, 'Maa-Verge_0.1.0_x64.dmg.sig'));
     await assert.rejects(
       createUpdaterManifest({ input: directory, tag: 'v0.1.0', publicKey: key.publicKey }),
       /不完整/,
@@ -491,7 +709,7 @@ for (const prerelease of ['0.2.0-beta.1', '0.1.3-alpha1', '0.1.3-alpha.1']) {
           { tag_name: `v${prerelease}`, draft: false, published_at: manifest.pub_date, assets },
           `v${prerelease}`,
         ).length,
-        17,
+        11,
       );
     }));
 }

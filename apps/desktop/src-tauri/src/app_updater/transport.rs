@@ -26,6 +26,9 @@ fn apply_progress(state: &mut State, value: &Value) -> bool {
         return false;
     };
     let speed = value.get("downloadSpeedBytesPerSecond");
+    let source = value.get("downloadSource");
+    let source_changed =
+        source.is_some_and(|source| state.value.get("downloadSource") != Some(source));
     let current = state.value["progress"].as_u64().unwrap_or_default();
     // A server can ignore Range after reconnecting. Keep displayed progress
     // monotonic while still accepting the new transfer's measured speed.
@@ -33,20 +36,31 @@ fn apply_progress(state: &mut State, value: &Value) -> bool {
     if fields.keys().any(|key| {
         !matches!(
             key.as_str(),
-            "operationId" | "progress" | "downloadSpeedBytesPerSecond"
+            "operationId" | "progress" | "downloadSpeedBytesPerSecond" | "downloadSource"
         )
     }) || speed.is_some_and(|speed| {
         speed
             .as_f64()
             .is_none_or(|speed| !speed.is_finite() || speed < 0.0)
-    }) || value["operationId"].as_str() != Some(operation_id(state.generation).as_str())
+    }) || source.is_some_and(|source| !matches!(source.as_str(), Some("MirrorChyan" | "GitHub")))
+        || value["operationId"].as_str() != Some(operation_id(state.generation).as_str())
         || state.value["status"] != "downloading"
         || current >= 95
-        || (current == next && state.value.get("downloadSpeedBytesPerSecond") == speed)
+        || (current == next
+            && state.value.get("downloadSpeedBytesPerSecond") == speed
+            && !source_changed)
     {
         return false;
     }
     state.value["progress"] = json!(next);
+    if let Some(source) = source {
+        state.value["downloadSource"] = source.clone();
+        state.value["message"] = json!(if source == "MirrorChyan" {
+            "正在通过 Mirror酱下载应用更新包"
+        } else {
+            "正在通过官方源下载应用更新包"
+        });
+    }
     if let Some(speed) = speed {
         state.value["downloadSpeedBytesPerSecond"] = speed.clone();
     } else {
@@ -331,6 +345,40 @@ mod tests {
             state.clear_inactive_download_speed();
             assert!(state.value.get("downloadSpeedBytesPerSecond").is_none());
         }
+    }
+
+    #[test]
+    fn download_source_tracks_the_actual_attempt_and_switches_on_official_fallback() {
+        let mut state = state();
+        let mirror = json!({"operationId": operation_id(3), "progress": 0,
+            "downloadSpeedBytesPerSecond": 0, "downloadSource": "MirrorChyan"});
+        assert!(apply_progress(&mut state, &mirror));
+        assert_eq!(state.value["downloadSource"], "MirrorChyan");
+        assert_eq!(state.value["message"], "正在通过 Mirror酱下载应用更新包");
+        assert!(!apply_progress(&mut state, &mirror));
+        assert!(apply_progress(
+            &mut state,
+            &json!({"operationId": operation_id(3),
+            "progress": 50, "downloadSource": "MirrorChyan"})
+        ));
+
+        let official = json!({"operationId": operation_id(3), "progress": 0,
+            "downloadSource": "GitHub"});
+        assert!(apply_progress(&mut state, &official));
+        assert_eq!(state.value["progress"], 50);
+        assert_eq!(state.value["downloadSource"], "GitHub");
+        assert_eq!(state.value["message"], "正在通过官方源下载应用更新包");
+        for source in [json!("untrusted"), json!(true), json!(7), Value::Null] {
+            assert!(!apply_progress(
+                &mut state,
+                &json!({"operationId": operation_id(3),
+                "progress": 60, "downloadSource": source})
+            ));
+            assert_eq!(state.value["downloadSource"], "GitHub");
+        }
+        state.value["status"] = json!("staged");
+        assert!(!apply_progress(&mut state, &mirror));
+        assert_eq!(state.value["downloadSource"], "GitHub");
     }
 
     #[test]

@@ -69,6 +69,7 @@ export class AppUpdateHttp {
       operationId: string,
       progress: number,
       downloadSpeedBytesPerSecond?: number,
+      downloadSource?: 'MirrorChyan' | 'GitHub',
     ) => void,
     private readonly options: AppUpdateHttpOptions = {},
   ) {}
@@ -117,15 +118,13 @@ export class AppUpdateHttp {
     try {
       const archive = params.operation === 'download';
       if (archive) {
+        if (params.name.endsWith('.app.tar.gz'))
+          throw new Error('macOS 应用更新仅支持签名 DMG 安装包');
         if (
           params.tag.replace(/^v/, '') !== params.version ||
-          ![
-            'x64-setup.exe',
-            'x64_zh-CN.msi',
-            'aarch64.app.tar.gz',
-            'x64.app.tar.gz',
-            'amd64.AppImage',
-          ].some((suffix) => params.name === `Maa-Verge_${params.version}_${suffix}`)
+          !['x64-setup.exe', 'x64_zh-CN.msi', 'aarch64.dmg', 'x64.dmg', 'amd64.AppImage'].some(
+            (suffix) => params.name === `Maa-Verge_${params.version}_${suffix}`,
+          )
         )
           throw new Error('应用更新包版本或文件名无效');
       }
@@ -164,13 +163,17 @@ export class AppUpdateHttp {
         fetcher,
         active.abort.signal,
       );
-      // The registered macOS artifact is a DMG. Tauri requires its separately
-      // signed .app.tar.gz; never treat those two installation formats as equal.
+      // Use only the complete installers distributed by the official Mirror
+      // workflow. Rust requires a signed DMG target for macOS updates.
       const platform = params.name.endsWith('_x64-setup.exe')
         ? { os: 'windows', arch: 'amd64' }
         : params.name.endsWith('_amd64.AppImage')
           ? { os: 'linux', arch: 'amd64' }
-          : undefined;
+          : params.name.endsWith('_aarch64.dmg')
+            ? { os: 'darwin', arch: 'arm64' }
+            : params.name.endsWith('_x64.dmg')
+              ? { os: 'darwin', arch: 'amd64' }
+              : undefined;
       if (client.enabled && platform && identity.digest) {
         let fallbackNotice: string | undefined;
         try {
@@ -191,11 +194,13 @@ export class AppUpdateHttp {
             release.digest !== identity.digest
           )
             throw new MirrorChyanError();
+          this.progress(params.operationId, 0, 0, 'MirrorChyan');
           sha256 = await client.download(
             release,
             identity,
             destination,
-            (percent, bytesPerSecond) => this.progress(params.operationId, percent, bytesPerSecond),
+            (percent, bytesPerSecond) =>
+              this.progress(params.operationId, percent, bytesPerSecond, 'MirrorChyan'),
             {
               ...this.options,
               proxy: preferences,
@@ -209,17 +214,21 @@ export class AppUpdateHttp {
           );
         }
       }
-      sha256 ??= await downloadArchive(
-        identity,
-        destination,
-        (percent, bytesPerSecond) => this.progress(params.operationId, percent, bytesPerSecond),
-        {
-          ...this.options,
-          signal: active.abort.signal,
-          proxy: preferences,
-          fetcher: restricted,
-        },
-      );
+      if (sha256 === undefined) {
+        this.progress(params.operationId, 0, 0, 'GitHub');
+        sha256 = await downloadArchive(
+          identity,
+          destination,
+          (percent, bytesPerSecond) =>
+            this.progress(params.operationId, percent, bytesPerSecond, 'GitHub'),
+          {
+            ...this.options,
+            signal: active.abort.signal,
+            proxy: preferences,
+            fetcher: restricted,
+          },
+        );
+      }
       this.completed = { operationId: params.operationId, path: destination };
       return { path: destination, size: params.size, sha256 };
     } catch (error) {

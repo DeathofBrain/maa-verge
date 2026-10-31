@@ -1,9 +1,12 @@
 import { run, desktop, fail } from './project.mjs';
 import { assertWorkspaceDependencies } from './environment.mjs';
 import { ensureBun } from './setup-bun.mjs';
-import { releaseConfiguration, updaterBuildArguments } from './app-updater-release.mjs';
+import {
+  releaseConfiguration,
+  updaterBuildArguments,
+  signMacosInstaller,
+} from './app-updater-release.mjs';
 import { windowsInstallerConfiguration, packageWindowsPortable } from './windows-distribution.mjs';
-import { linuxBuildArguments, packageLinuxPrereleaseRpm } from './linux-distribution.mjs';
 
 async function main() {
   assertWorkspaceDependencies();
@@ -21,19 +24,9 @@ async function main() {
   }
   await run(
     'pnpm',
-    [
-      'exec',
-      'tauri',
-      'build',
-      ...updaterBuildArguments(),
-      ...windowsArguments,
-      ...linuxBuildArguments(configuration.version),
-      '--',
-      '--locked',
-    ],
+    ['exec', 'tauri', 'build', ...updaterBuildArguments(), ...windowsArguments, '--', '--locked'],
     { cwd: desktop },
   );
-  await packageLinuxPrereleaseRpm(configuration);
   if (process.platform === 'win32') {
     await packageWindowsPortable();
     await run('node', ['tools/smoke-windows-components.mjs']);
@@ -41,6 +34,9 @@ async function main() {
       env: { ...process.env, MAAVERGE_INSTALLER_TOOLS_REQUIRED: '1' },
     });
   }
-  if (process.platform === 'darwin') await run('node', ['tools/verify-macos-bundle.mjs']);
+  if (process.platform === 'darwin') {
+    await run('node', ['tools/verify-macos-bundle.mjs']);
+    await signMacosInstaller(configuration);
+  }
 }
 main().catch(fail);
