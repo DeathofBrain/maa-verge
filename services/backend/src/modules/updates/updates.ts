@@ -31,7 +31,10 @@ import {
 } from '@backend/infrastructure/config.ts';
 import { resourceActivityVersions } from './resource-version.ts';
 import { pruneGenerations } from '@backend/infrastructure/filesystem/generation-retention.ts';
-import { snapshotIntegrity } from '@backend/infrastructure/filesystem/snapshot-integrity.ts';
+import {
+  snapshotIntegrity,
+  SnapshotIntegrityCache,
+} from '@backend/infrastructure/filesystem/snapshot-integrity.ts';
 import {
   copyBundledPayload,
   copyComponentPayload,
@@ -94,6 +97,7 @@ export interface UpdateSource {
 }
 type Validator = (core: string, resource: string, version: string) => Promise<void> | void;
 type Hook = () => Promise<void> | void;
+type ReconcileScope = 'all' | 'active' | 'core' | 'resource';
 export interface UpdateOptions {
   directories?: ComponentPaths;
   source?: UpdateSource;
@@ -719,6 +723,7 @@ export class UpdateService {
   private readonly protectedPaths: () => string[];
   private queue: Promise<unknown> = Promise.resolve();
   private readonly children = new Set<ChildProcess>();
+  private readonly integrityCache = new SnapshotIntegrityCache();
   private closing = false;
   private bundledBootstrapped = false;
   private pending = 0;
@@ -831,25 +836,44 @@ export class UpdateService {
     ]);
     for (const root of roots) await rmdir(path.join(root, 'downloads')).catch(() => {});
   }
-  private async reconcileCurrent(activeOnly = false): Promise<void> {
+  private async reconcileCurrent(
+    scope: ReconcileScope = 'all',
+    progress?: (completed: number, total: number) => void,
+  ): Promise<void> {
     // Inventory checks yield to execution polling. Only initial startup scans
     // synchronously, before any workers or RPC requests can run.
     const missing = new Set<string>();
     const seen = new Set<string>();
-    // Version checks need the active payload's health. Candidates and rollback
-    // payloads are fully verified before preparation, activation and rollback.
-    const snapshots = activeOnly
-      ? Object.values(this.store.get('active', 'combo', {}))
-      : this.snapshots();
-    for (const snapshot of snapshots as any[]) {
-      if (seen.has(snapshot.path)) continue;
+    // Only read payloads involved in this operation. Inactive rollback versions
+    // get their full content check when rollback is requested.
+    const snapshots = (
+      scope === 'all'
+        ? this.snapshots()
+        : Object.values(this.store.get('active', 'combo', {})).concat(
+            scope === 'active' ? [] : [this.store.get('staged', scope)],
+          )
+    ).filter((snapshot: any) => {
+      if (!snapshot || seen.has(snapshot.path)) return false;
       seen.add(snapshot.path);
+      return true;
+    }) as any[];
+    const count = (snapshot: any) => snapshot.installedFiles?.length || 1;
+    const total = snapshots.reduce((sum, snapshot) => sum + count(snapshot), 0);
+    let completed = 0;
+    progress?.(completed, total);
+    for (const snapshot of snapshots) {
       try {
         if (snapshot.installedHash !== undefined) {
           if (
             !hasIntegrity(snapshot, true) ||
-            (await snapshotIntegrity(snapshot.path, snapshot.installedFiles)).installedHash !==
-              snapshot.installedHash
+            (
+              await snapshotIntegrity(
+                snapshot.path,
+                snapshot.installedFiles,
+                (done) => progress?.(completed + done, total),
+                scope === 'all' ? undefined : this.integrityCache,
+              )
+            ).installedHash !== snapshot.installedHash
           )
             missing.add(snapshot.path);
           continue;
@@ -865,6 +889,9 @@ export class UpdateService {
       } catch {
         missing.add(snapshot.path);
         continue;
+      } finally {
+        completed += count(snapshot);
+        progress?.(completed, total);
       }
       if (snapshot.installedFiles === undefined) continue;
       if (!Array.isArray(snapshot.installedFiles)) {
@@ -1092,8 +1119,11 @@ export class UpdateService {
         });
       };
       const integrity = inPlace
-        ? await snapshotIntegrity(generation, undefined, (completed, total) =>
-            report({ stage: 'checking', completed, total }),
+        ? await snapshotIntegrity(
+            generation,
+            undefined,
+            (completed, total) => report({ stage: 'checking', completed, total }),
+            this.integrityCache,
           )
         : local
           ? await copyComponentPayload(local.path, local.installedHash, generation, report)
@@ -1266,12 +1296,16 @@ export class UpdateService {
     return this.serial(() => this.checkCurrent(channel));
   }
   private async checkCurrent(channel: string): Promise<any> {
-    await this.reconcileCurrent(true);
+    await this.reconcileCurrent('active');
     const current = this.channel(channel);
     if (['downloading', 'staged', 'waiting_idle'].includes(current.status)) return current;
     if (channel === 'app')
       return this.change(channel, { status: 'idle', message: '请在桌面应用中检查签名更新' });
-    this.change(channel, { status: 'checking', message: '正在检查官方版本', progress: 0 });
+    this.change(channel, {
+      status: 'checking',
+      message: '正在检查官方版本',
+      progress: 0,
+    });
     try {
       const releaseChannel = this.store.get('settings', 'main', {}).coreUpdateChannel ?? 'stable';
       let metadata = await this.source.check(channel, releaseChannel);
@@ -1351,7 +1385,12 @@ export class UpdateService {
         continue;
       let integrity;
       try {
-        integrity = await snapshotIntegrity(snapshot.path);
+        integrity = await snapshotIntegrity(
+          snapshot.path,
+          undefined,
+          undefined,
+          this.integrityCache,
+        );
         if (
           integrity.installedHash !== snapshot.installedHash ||
           !installedSnapshot(snapshot, channel === 'core', false)
@@ -1397,9 +1436,10 @@ export class UpdateService {
     }
   }
   private async prepareCurrent(channel: string): Promise<any> {
-    await this.reconcileCurrent();
-    let current = this.channel(channel);
+    this.channel(channel);
     if (channel === 'app') throw new RpcError(-32020, '应用更新需使用桌面发行通道');
+    await this.reconcileCurrent(channel as 'core' | 'resource');
+    let current = this.channel(channel);
     if (['staged', 'waiting_idle', 'downloading'].includes(current.status)) return current;
     let metadata: UpdateMetadata = this.store.get('update_metadata', channel);
     if (
@@ -1513,7 +1553,7 @@ export class UpdateService {
             message: '正在解压并校验组件',
           });
           // Recheck the resource base after downloading, before copying it.
-          if (channel === 'resource') await this.reconcileCurrent();
+          if (channel === 'resource') await this.reconcileCurrent('active');
           const core = this.store.get('active', 'combo', {}).core;
           if (channel === 'resource' && !core)
             throw new Error('核心或基础资源文件缺失或损坏，请先重新下载安装并启用核心');
@@ -1559,6 +1599,7 @@ export class UpdateService {
           this.change(channel, {
             latestVersion: metadata.version,
             progress: 0,
+            downloadSpeedBytesPerSecond: undefined,
             message: 'Mirror酱准备失败，正在使用官方更新源重新准备',
           });
           continue;
@@ -1567,7 +1608,12 @@ export class UpdateService {
         }
         break;
       }
-      const integrity = await snapshotIntegrity(generation);
+      const integrity = await snapshotIntegrity(
+        generation,
+        undefined,
+        undefined,
+        this.integrityCache,
+      );
       if (
         channel === 'core' &&
         metadata.releaseChannel !==
@@ -1606,7 +1652,7 @@ export class UpdateService {
       });
     } catch (error) {
       await rm(generation, { recursive: true, force: true }).catch(() => {});
-      await this.reconcileCurrent();
+      await this.reconcileCurrent(channel as 'core' | 'resource');
       await this.pruneVersions();
       this.change(channel, { status: 'failed', progress: 0, message: message(error) });
       const combo = this.store.get('active', 'combo', {});
@@ -1625,7 +1671,65 @@ export class UpdateService {
   private async activateCurrent(channel: string): Promise<any> {
     this.channel(channel);
     const candidate = this.store.get('staged', channel);
-    await this.reconcileCurrent();
+    // A queued activation should not hash thousands of files on each idle poll.
+    // Structural checks still reject a candidate that has already disappeared.
+    this.reconcileInstalled(false);
+    if (this.store.get('staged', channel) && this.busy())
+      return this.change(channel, { status: 'waiting_idle', message: '等待当前任务结束后热切换' });
+    const state = this.channel(channel);
+    // Offline bootstrap applies a candidate within its preparation operation.
+    // Keep that operation's progress instead of restarting its bar at zero.
+    const startProgress =
+      state.status === 'downloading' ? Math.max(0, Math.min(95, state.progress)) : 0;
+    if (candidate)
+      this.change(channel, {
+        status: 'downloading',
+        progress: startProgress,
+        downloadSpeedBytesPerSecond: undefined,
+        message: '正在校验更新文件，请稍候',
+      });
+    let previousProgress = startProgress,
+      previousTime = Date.now();
+    try {
+      await this.reconcileCurrent(
+        channel === 'app' ? 'active' : (channel as 'core' | 'resource'),
+        candidate
+          ? (completed, total) => {
+              const endProgress = Math.max(80, startProgress);
+              const progress = total
+                ? startProgress + Math.floor(((endProgress - startProgress) * completed) / total)
+                : endProgress;
+              const time = Date.now();
+              if (
+                progress === previousProgress ||
+                (completed !== total && time - previousTime < 250)
+              )
+                return;
+              previousProgress = progress;
+              previousTime = time;
+              this.change(channel, {
+                progress,
+                message: `正在校验更新文件（${completed}/${total}），请稍候`,
+              });
+            }
+          : undefined,
+      );
+      return await this.activateVerifiedCurrent(channel, candidate);
+    } catch (error) {
+      // Reconciliation and version checks happen before native validation's own
+      // recovery block. Never leave a rejected request showing ongoing work.
+      if (candidate && this.channel(channel).status === 'downloading') {
+        const retained = this.store.get('staged', channel);
+        this.change(channel, {
+          status: retained ? 'staged' : 'failed',
+          progress: retained ? 100 : 0,
+          message: message(error),
+        });
+      }
+      throw error;
+    }
+  }
+  private async activateVerifiedCurrent(channel: string, candidate: any): Promise<any> {
     const state = this.channel(channel);
     const staged = this.store.get('staged', channel);
     if (!staged) {
@@ -1714,8 +1818,15 @@ export class UpdateService {
     }
     let validated = false;
     try {
+      this.change(channel, {
+        status: 'downloading',
+        progress: Math.max(85, Math.min(95, this.channel(channel).progress)),
+        downloadSpeedBytesPerSecond: undefined,
+        message: '正在验证核心与资源，请稍候',
+      });
       await this.validator(next.core.path, next.resource.path, next.core.version);
       validated = true;
+      this.change(channel, { progress: 95, message: '正在切换核心与资源，请稍候' });
       await this.switchCombo(next, combo);
       // Repair may have removed the broken active pointer. Keep the last good
       // rollback instead of replacing it with an empty or unverified combo.

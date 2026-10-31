@@ -1,5 +1,6 @@
 /** Payload integrity for newly validated, immutable component generations. */
 import { createHash } from 'node:crypto';
+import type { Stats } from 'node:fs';
 import { lstat, open, readdir, realpath } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -7,6 +8,56 @@ export type SnapshotIntegrity = { installedFiles: string[]; installedHash: strin
 
 const pathKey = (value: string) => (process.platform === 'win32' ? value.toLowerCase() : value);
 const invalid = (detail: string) => new Error('组件快照完整性校验失败: ' + detail);
+
+type FileIdentity = Pick<Stats, 'size' | 'mtimeMs' | 'ctimeMs' | 'birthtimeMs' | 'dev' | 'ino'>;
+type CachedFile = { identity: FileIdentity; entry: string };
+const fileIdentity = ({
+  size,
+  mtimeMs,
+  ctimeMs,
+  birthtimeMs,
+  dev,
+  ino,
+}: FileIdentity): FileIdentity => ({
+  size,
+  mtimeMs,
+  ctimeMs,
+  birthtimeMs,
+  dev,
+  ino,
+});
+const sameFile = (left: FileIdentity, right: FileIdentity) =>
+  left.size === right.size &&
+  left.mtimeMs === right.mtimeMs &&
+  left.ctimeMs === right.ctimeMs &&
+  left.birthtimeMs === right.birthtimeMs &&
+  left.dev === right.dev &&
+  left.ino === right.ino;
+
+/** Session-only digests for unchanged files; older generations are evicted first. */
+export class SnapshotIntegrityCache {
+  private readonly generations = new Map<string, Map<string, CachedFile>>();
+
+  lookup(directory: string, relative: string, identity: FileIdentity): string | undefined {
+    const key = pathKey(directory),
+      generation = this.generations.get(key);
+    if (!generation) return;
+    this.generations.delete(key);
+    this.generations.set(key, generation);
+    const cached = generation.get(relative);
+    return cached && sameFile(cached.identity, identity) ? cached.entry : undefined;
+  }
+
+  remember(directory: string, relative: string, identity: FileIdentity, entry: string): void {
+    const key = pathKey(directory),
+      generation = this.generations.get(key) ?? new Map<string, CachedFile>();
+    this.generations.delete(key);
+    this.generations.set(key, generation);
+    generation.set(relative, { identity: fileIdentity(identity), entry });
+    while (this.generations.size > 8)
+      this.generations.delete(this.generations.keys().next().value!);
+  }
+}
 
 function payloadFiles(files: string[]): string[] {
   if (!Array.isArray(files) || !files.length) throw invalid('文件清单不能为空');
@@ -44,6 +95,7 @@ export async function snapshotIntegrity(
   root: string,
   files?: string[],
   progress?: (completed: number, total: number) => void,
+  cache?: SnapshotIntegrityCache,
 ): Promise<SnapshotIntegrity> {
   const directory = path.resolve(root),
     checked = new Map<string, Promise<void>>();
@@ -95,15 +147,18 @@ export async function snapshotIntegrity(
         throw invalid('文件路径经过文件系统链接');
     };
     await plainPath();
+    const cached = cache?.lookup(directory, relative, before);
+    if (cached !== undefined) {
+      const current = await lstat(filename);
+      if (!current.isFile() || current.isSymbolicLink() || !sameFile(before, current))
+        throw invalid('文件在读取期间发生变化');
+      await plainPath();
+      return cached;
+    }
     const file = await open(filename, 'r');
     try {
       const opened = await file.stat();
-      if (
-        !opened.isFile() ||
-        opened.dev !== before.dev ||
-        opened.ino !== before.ino ||
-        opened.size !== before.size
-      ) {
+      if (!opened.isFile() || !sameFile(opened, before)) {
         throw invalid('文件在读取前发生变化');
       }
       const content = createHash('sha256');
@@ -116,19 +171,18 @@ export async function snapshotIntegrity(
         current = await lstat(filename);
       if (
         length !== opened.size ||
-        after.size !== opened.size ||
-        after.mtimeMs !== opened.mtimeMs ||
-        after.ctimeMs !== opened.ctimeMs ||
+        !sameFile(after, opened) ||
         current.isSymbolicLink() ||
         !current.isFile() ||
-        current.dev !== opened.dev ||
-        current.ino !== opened.ino
+        !sameFile(current, opened)
       )
         throw invalid('文件在读取期间发生变化');
       await plainPath();
       // JSON framing preserves path and size boundaries, including Unicode and
       // newlines in legal filenames. Each file's bytes have their own SHA-256.
-      return JSON.stringify([relative, opened.size, content.digest('hex')]) + '\n';
+      const entry = JSON.stringify([relative, opened.size, content.digest('hex')]) + '\n';
+      cache?.remember(directory, relative, current, entry);
+      return entry;
     } finally {
       await file.close();
     }
