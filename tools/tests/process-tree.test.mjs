@@ -1,7 +1,8 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -59,7 +60,7 @@ function running(pid) {
 }
 
 function fixture(t) {
-  const directory = mkdtempSync(path.join(tmpdir(), 'maaverge-process-tree-'));
+  const directory = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-process-tree-'));
   const children = new Set();
   const descendants = new Set();
   t.after(async () => {

@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -10,6 +10,7 @@ import {
   MAX_DOWNLOAD_BYTES,
   type DownloadMetadata,
 } from '@backend/infrastructure/network/download.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   servers: Server[] = [];
@@ -22,7 +23,7 @@ const meta = (url = 'https://example.test/archive', data = payload): DownloadMet
   digest: 'sha256:' + hash(data),
 });
 async function temp() {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-download-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-download-'));
   roots.push(root);
   return path.join(root, 'archive.zip');
 }

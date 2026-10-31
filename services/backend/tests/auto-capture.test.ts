@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { automaticCapture } from '@backend/modules/devices/auto-capture';
@@ -8,11 +8,12 @@ import { Runtime } from '@backend/app/runtime';
 import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
 import { validateWorkerConfiguration } from '@contracts/validators.js';
 import type { EmulatorInventory } from '@backend/infrastructure/native/windows-emulators';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-auto-capture-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-auto-capture-'));
   roots.push(root);
   return root;
 };

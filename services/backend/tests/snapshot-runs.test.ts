@@ -1,14 +1,15 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Run } from '@contracts/types';
 import { Runtime } from '@backend/app/runtime';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 function fresh() {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-snapshot-runs-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-snapshot-runs-'));
   roots.push(root);
   const runtime = new Runtime(root, { calendar: { fetcher: null } });
   runtimes.push(runtime);

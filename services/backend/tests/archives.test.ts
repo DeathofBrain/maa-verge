@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { lstat, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { lstat, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -9,10 +9,11 @@ import {
 } from '@backend/infrastructure/filesystem/archives.ts';
 import safetyCases from '../../../tests/fixtures/archive-safety.json';
 import { writeArchive, type FixtureMember } from './archive-fixture.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 async function temp() {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-archive-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-archive-'));
   roots.push(root);
   return root;
 }

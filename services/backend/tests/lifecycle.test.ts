@@ -1,20 +1,13 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Store } from '@backend/infrastructure/storage/storage';
 import { parseSettings } from '@backend/modules/settings/models';
 import { snapshotIntegrity } from '@backend/infrastructure/filesystem/snapshot-integrity';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const entry = path.join(repo, 'services/backend/src/entry.ts');
@@ -34,7 +27,7 @@ function temp() {
   // macOS temp roots use /var aliases; Windows may use short path names.
   // Bun's non-native sync resolver retains Windows 8.3 aliases, while the
   // asynchronous integrity checks expand them. Use the same native spelling.
-  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'maaverge-lifecycle-')));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-lifecycle-'));
   roots.push(root);
   return root;
 }

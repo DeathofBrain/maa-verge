@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parseSettings } from '@backend/modules/settings/models';
 import { Runtime } from '@backend/app/runtime';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const runtimes: Runtime[] = [],
   roots: string[] = [];
@@ -12,7 +13,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 async function fixture() {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-proxy-settings-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-proxy-settings-'));
   roots.push(root);
   const runtime = new Runtime(root);
   runtimes.push(runtime);

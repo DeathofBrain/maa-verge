@@ -1,12 +1,13 @@
 import { expect, spyOn, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 test('MirrorChyan credentials survive legacy settings saves and restart, but stay out of diagnostics', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-mirror-settings-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-mirror-settings-'));
   let runtime = new Runtime(root, { calendar: { fetcher: null } });
   try {
     const settings = runtime.snapshot().settings;
@@ -34,7 +35,7 @@ test('MirrorChyan credentials survive legacy settings saves and restart, but sta
 
 for (const enabled of [true, false]) {
   test(`runtime forwards the actual application download source to the host (mirror=${enabled})`, async () => {
-    const directory = mkdtempSync(path.join(tmpdir(), 'maaverge-host-source-'));
+    const directory = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-host-source-'));
     const notifications: any[] = [];
     const runtime = new Runtime(path.join(directory, 'native'), {
       calendar: { fetcher: null },

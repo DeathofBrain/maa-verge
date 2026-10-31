@@ -1,14 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
@@ -19,11 +10,12 @@ import {
   validateKnowledgeSearchResult,
   validateKnowledgeStatus,
 } from '@contracts/validators.js';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 const temporary = () => {
-  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'maaverge-knowledge-')));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-knowledge-'));
   roots.push(root);
   return root;
 };

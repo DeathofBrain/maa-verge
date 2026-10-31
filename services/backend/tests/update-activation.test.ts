@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -7,6 +7,7 @@ import {
   type UpdateOptions,
   type UpdateStore,
 } from '@backend/modules/updates/updates.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 class MemoryStore implements UpdateStore {
   private readonly rows = new Map<string, any>();
@@ -33,7 +34,7 @@ afterEach(async () => {
 });
 
 async function fixture(options: UpdateOptions = {}) {
-  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'maaverge-update-activation-'))),
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-update-activation-')),
     store = new MemoryStore(),
     events: any[] = [],
     state = { busy: false, coreVersion: 'v6.20.0', resourceVersion: 'a'.repeat(40) };

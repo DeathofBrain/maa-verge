@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
@@ -11,6 +11,7 @@ import {
   validateRecognitionParams,
   validateRecognitionResult,
 } from '@contracts/validators.js';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
@@ -83,7 +84,7 @@ function fresh(root: string, worker: RecognitionWorker) {
   return r;
 }
 async function fixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-recognition-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-recognition-'));
   roots.push(root);
   const worker = new RecognitionWorker(),
     r = fresh(root, worker);

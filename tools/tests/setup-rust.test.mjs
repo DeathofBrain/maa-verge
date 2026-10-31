@@ -1,6 +1,7 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { root } from '../project.mjs';
@@ -8,7 +9,7 @@ import { ensureRust } from '../setup-rust.mjs';
 
 function fixture(t, { local = false, rustup = false } = {}) {
   mkdirSync(path.join(root, '.tools'), { recursive: true });
-  const projectRoot = mkdtempSync(path.join(root, '.tools/rust-setup-test-'));
+  const projectRoot = makeTemporaryDirectorySync(path.join(root, '.tools/rust-setup-test-'));
   t.after(() => rmSync(projectRoot, { recursive: true, force: true, maxRetries: 3 }));
   writeFileSync(
     path.join(projectRoot, 'rust-toolchain.toml'),

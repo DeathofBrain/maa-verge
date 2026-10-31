@@ -1,11 +1,10 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
-  realpathSync,
   readdirSync,
   rmSync,
   symlinkSync,
@@ -31,7 +30,7 @@ const toolRoot = path.join(process.env.LOCALAPPDATA || '', 'tauri');
 const nsis = process.env.MAAVERGE_NSIS_COMPILER || path.join(toolRoot, 'NSIS/makensis.exe');
 
 function fixture(t) {
-  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'maa verge installer-')));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maa verge installer-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   return root;
 }

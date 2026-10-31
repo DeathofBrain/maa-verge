@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test';
 import { realpathSync } from 'node:fs';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -16,6 +16,7 @@ import {
   parseAdbDevices,
   validateAddress,
 } from '@backend/infrastructure/native/adb.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -52,7 +53,7 @@ test('emulator aliases share the actual ADB port', () => {
     expect(() => validateAddress(address)).toThrow();
 });
 test('fixed default ports and configured BlueStacks ports are bounded and deduplicated', async () => {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-adb-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-adb-'));
   roots.push(root);
   const config = path.join(root, 'bluestacks.conf');
   await writeFile(
@@ -84,7 +85,7 @@ test('discovery parses adb state and model without executing anything', () => {
   ]);
 });
 test('configured ADB path is validated before discovery; all platforms retain bundled candidates', async () => {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-adb-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-adb-'));
   roots.push(root);
   const adb = path.join(root, 'adb-file');
   await writeFile(adb, 'synthetic');

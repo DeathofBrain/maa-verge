@@ -1,12 +1,13 @@
 import { afterEach, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { Store } from '@backend/infrastructure/storage/storage';
 import type { CopilotKind } from '@contracts/rpc-types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
@@ -101,7 +102,7 @@ function open(root: string, worker = new Worker()) {
   return r;
 }
 async function fixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-copilot-runtime-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-copilot-runtime-'));
   roots.push(root);
   const resource = path.join(root, 'generation', 'resource', 'Arknights-Tile-Pos');
   mkdirSync(resource, { recursive: true });

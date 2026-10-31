@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { operatorResource } from '@backend/modules/resources/operator-resources';
@@ -8,6 +8,7 @@ import {
   validateOperatorResourceParams,
   validateOperatorResourceResult,
 } from '@contracts/validators.js';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
@@ -24,7 +25,7 @@ const operator = {
   rarity: 5,
 };
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-operator-test-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-operator-test-'));
   roots.push(root);
   return root;
 };

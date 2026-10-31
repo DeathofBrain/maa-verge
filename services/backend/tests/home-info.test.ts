@@ -1,10 +1,11 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { homeInfo } from '@backend/modules/home/home-info';
 import { defaultCapture, defaultConnection, parseSettings } from '@backend/modules/settings/models';
 import { Runtime } from '@backend/app/runtime';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
@@ -85,7 +86,7 @@ test('settings reject duplicate identities, malformed dates and invalid numeric 
   ).toThrow();
 });
 test('home.info uses persisted manual configuration and the selected device client without native calls', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'maaverge-home-info-'));
+  const root = makeTemporaryDirectorySync(path.join(os.tmpdir(), 'maaverge-home-info-'));
   roots.push(root);
   let runtime = new Runtime(root, { calendar: { fetcher: null } });
   runtimes.push(runtime);
@@ -119,7 +120,7 @@ test('home.info uses persisted manual configuration and the selected device clie
 });
 
 test('home.info follows the selected instance client until a successful startup establishes account context', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'maaverge-home-client-'));
+  const root = makeTemporaryDirectorySync(path.join(os.tmpdir(), 'maaverge-home-client-'));
   roots.push(root);
   const runtime = new Runtime(root, { calendar: { fetcher: null } });
   runtimes.push(runtime);
@@ -155,7 +156,7 @@ test('home.info follows the selected instance client until a successful startup 
 });
 
 test('home.info and stage selectors share the official calendar cache and explicit refresh', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'maaverge-home-calendar-'));
+  const root = makeTemporaryDirectorySync(path.join(os.tmpdir(), 'maaverge-home-calendar-'));
   roots.push(root);
   let requests = 0;
   let calendarAt = new Date('2026-10-25T19:59:59.999Z');

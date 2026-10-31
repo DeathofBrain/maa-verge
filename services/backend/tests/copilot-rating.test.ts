@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { copilotWorkspaceIdentity } from '@backend/modules/copilot/copilot';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
@@ -67,7 +68,7 @@ class Worker {
   }
 }
 async function fixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-copilot-rating-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-copilot-rating-'));
   roots.push(root);
   const directory = path.join(root, 'generation', 'resource', 'Arknights-Tile-Pos');
   mkdirSync(directory, { recursive: true });

@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@backend/modules/updates/updates.ts';
 import { zipBytes } from './archive-fixture.ts';
 import { resourceActivityVersions } from '@backend/modules/updates/resource-version';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 class MemoryStore implements UpdateStore {
   rows = new Map<string, any>();
@@ -35,7 +36,7 @@ class MemoryStore implements UpdateStore {
 }
 const roots: string[] = [];
 async function temp() {
-  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'maaverge-updates-')));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-updates-'));
   roots.push(root);
   return root;
 }

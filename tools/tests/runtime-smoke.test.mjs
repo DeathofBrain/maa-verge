@@ -1,7 +1,8 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -77,7 +78,7 @@ test('runtime readiness fails when component preparation exceeds its deadline', 
 });
 
 function temporary(t, prefix = 'maaverge-package-smoke-') {
-  const directory = mkdtempSync(path.join(tmpdir(), prefix));
+  const directory = makeTemporaryDirectorySync(path.join(tmpdir(), prefix));
   t.after(() => rm(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }));
   return directory;
 }
@@ -113,8 +114,10 @@ test(
   'runtime cleanup waits for owned children and preserves unrelated processes and files',
   { timeout: 15000 },
   async (t) => {
-    const directory = mkdtempSync(path.join(tmpdir(), 'maaverge-package-smoke-'));
-    const sibling = mkdtempSync(path.join(tmpdir(), 'maaverge-runtime-smoke-sibling-'));
+    const directory = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-package-smoke-'));
+    const sibling = makeTemporaryDirectorySync(
+      path.join(tmpdir(), 'maaverge-runtime-smoke-sibling-'),
+    );
     const processes = [];
     t.after(async () => {
       await Promise.all(processes.map((process) => process.stop()));

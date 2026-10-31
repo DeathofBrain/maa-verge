@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { processRequest } from '@backend/transport/json-rpc';
@@ -15,6 +15,7 @@ import {
   stringifyWireJson,
   wireNumberToken,
 } from '@backend/shared/wire-json';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 type Fixture = { name: string; raw: string; operation?: 'settings' | 'parsePlan'; code?: number };
 const fixtures: Fixture[] = [];
@@ -227,7 +228,7 @@ test('native task cloning retains extension tokens without mutating the saved ta
   expect(task.params).not.toHaveProperty('medicine');
 });
 test('worker NDJSON requests retain extension numeric tokens', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-wire-worker-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-wire-worker-'));
   let worker: CoreWorker | undefined;
   try {
     const peer = `
@@ -249,7 +250,7 @@ test('worker NDJSON requests retain extension numeric tokens', async () => {
   }
 });
 test('storage retains old numeric tokens, object ordering and event values after reopening', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-wire-store-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-wire-store-'));
   let store: Store | undefined;
   try {
     store = new Store(root);
@@ -275,7 +276,7 @@ test('storage retains old numeric tokens, object ordering and event values after
   }
 });
 test('a disabled floating-point task remains invalid when enabled after runtime restart', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-wire-restart-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-wire-restart-'));
   let runtime: Runtime | undefined;
   try {
     runtime = new Runtime(root);
@@ -322,7 +323,7 @@ test('RPC IDs require integer tokens', async () => {
   ).toEqual({ jsonrpc: '2.0', id: 1, result: true });
 });
 test('stdio parses raw numeric tokens before application validation', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-wire-json-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-wire-json-'));
   try {
     const input =
       [

@@ -1,5 +1,6 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -25,7 +26,7 @@ test('runtime partitions cover every discovered test exactly once and the exclus
 });
 
 test('new and nested Agent or backend tests run on every platform by default', (t) => {
-  const directory = mkdtempSync(path.join(os.tmpdir(), 'maaverge-runtime-suite-'));
+  const directory = makeTemporaryDirectorySync(path.join(os.tmpdir(), 'maaverge-runtime-suite-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const files = [
     'packages/agent/tests/new-agent.test.ts',

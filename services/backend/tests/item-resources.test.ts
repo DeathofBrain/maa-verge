@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
 import { itemResource, itemResourceNames } from '@backend/modules/resources/item-resources';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-item-test-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-item-test-'));
   roots.push(root);
   return root;
 };

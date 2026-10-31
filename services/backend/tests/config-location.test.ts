@@ -1,10 +1,11 @@
 import { afterEach, expect, test } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { dataRoot, deviceLockPath, legacyDataRoot } from '@backend/infrastructure/config';
 import { Store } from '@backend/infrastructure/storage/storage';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   stores: Store[] = [],
@@ -12,7 +13,7 @@ const roots: string[] = [],
 const originalData = process.env.MAAVERGE_DATA_DIR,
   originalApp = process.env.MAAVERGE_APP_DIR;
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maa verge config-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maa verge config-'));
   roots.push(root);
   return root;
 };

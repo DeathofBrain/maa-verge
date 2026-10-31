@@ -1,7 +1,8 @@
+import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { closeSync, existsSync, mkdtempSync, openSync, readSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
@@ -196,7 +197,7 @@ async function main() {
   assertLinuxBinary('maaverge-core-worker');
   // Pull while networking is available. Every backend run itself is offline.
   await docker(['pull', '--platform', platform, image], { timeout: 300_000 });
-  const data = mkdtempSync(path.join(tmpdir(), 'maaverge-clean-linux-'));
+  const data = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-clean-linux-'));
   try {
     await seedNativeData(data);
     const first = session(data);
@@ -256,7 +257,7 @@ async function main() {
   } finally {
     for (const name of containers)
       await docker(['rm', '--force', name], { quiet: true, timeout: 15_000 }).catch(() => {});
-    assert.equal(path.dirname(path.resolve(data)), path.resolve(tmpdir()));
+    assert.equal(path.dirname(data), realpathSync.native(tmpdir()));
     assert(path.basename(data).startsWith('maaverge-clean-linux-'));
     rmSync(data, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }

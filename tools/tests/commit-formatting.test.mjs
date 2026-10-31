@@ -1,10 +1,10 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -30,7 +30,7 @@ function linkDirectory(source, destination) {
 function fixture(t, files = {}) {
   const parent = path.join(root, '.tools');
   mkdirSync(parent, { recursive: true });
-  const directory = mkdtempSync(path.join(parent, 'commit-formatting-test-'));
+  const directory = makeTemporaryDirectorySync(path.join(parent, 'commit-formatting-test-'));
   t.after(() =>
     rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }),
   );

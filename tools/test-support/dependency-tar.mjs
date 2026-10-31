@@ -1,6 +1,7 @@
+import { makeTemporaryDirectory } from './temporary-directory.mjs';
 /** Build-only XZ fallback for Windows system tar builds without liblzma. */
 import { execFile, spawn } from 'node:child_process';
-import { lstat, mkdir, mkdtemp, open, rm } from 'node:fs/promises';
+import { lstat, mkdir, open, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -105,7 +106,7 @@ export async function withDependencyTar(
       'Windows system tar lacks XZ support. Install 7-Zip or set MAAVERGE_7ZIP_PATH to its executable before building.',
     );
   await mkdir(stage, { recursive: true });
-  const temporary = await mkdtemp(path.join(stage, '.dependency-tar-'));
+  const temporary = await makeTemporaryDirectory(path.join(stage, '.dependency-tar-'));
   try {
     const decoded = path.join(temporary, 'dependencies.tar');
     await decode(decoder, ['x', '-so', '--', archive], decoded);

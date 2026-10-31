@@ -1,12 +1,13 @@
 import { expect, test } from 'bun:test';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { childEnvironment, nativeEnvironment } from '@backend/infrastructure/config';
 import { validateNative } from '@backend/modules/updates/updates';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 test('isolated core validation receives the generation library path and clean runtime options', async () => {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-validator-env-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-validator-env-'));
   const source = path.join(root, 'validator.ts'),
     executable = path.join(root, process.platform === 'win32' ? 'validator.exe' : 'validator');
   const options = ['BUN_OPTIONS', 'BUN_BE_BUN', 'NODE_OPTIONS', 'NODE_PATH'];

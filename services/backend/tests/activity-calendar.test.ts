@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -11,12 +11,13 @@ import {
 import { stageCatalog, supportsStageNavigation } from '@backend/modules/resources/stages';
 import { Runtime } from '@backend/app/runtime';
 import { validateStageListResult } from '@contracts/validators.js';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   services: ActivityCalendar[] = [],
   runtimes: Runtime[] = [];
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-calendar-test-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-calendar-test-'));
   roots.push(root);
   return root;
 };

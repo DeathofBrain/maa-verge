@@ -1,3 +1,4 @@
+import { makeTemporaryDirectory } from './temporary-directory.mjs';
 /** Official Windows seed payloads; reuse the production downloader/extractor/validator. */
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -6,7 +7,6 @@ import {
   cp,
   lstat,
   mkdir,
-  mkdtemp,
   readFile,
   readdir,
   realpath,
@@ -292,7 +292,7 @@ export async function prepareWindowsComponentPayloads(
   const move = dependencies.rename ?? rename;
   const log = dependencies.log ?? console.log;
   try {
-    stage = await mkdtemp(path.join(parent, prefix + 'stage-'));
+    stage = await makeTemporaryDirectory(path.join(parent, prefix + 'stage-'));
     const archive = async (source: LockedArchive, filename: string) => {
       const target = path.join(cache, filename);
       if (!(await verifiedArchive(target, source))) {
@@ -421,7 +421,7 @@ export async function prepareWindowsComponentPayloads(
         previous.resource?.directory !== 'resource'
       )
         throw new Error('Existing component output is not a generated seed payload');
-      backup = await mkdtemp(path.join(parent, prefix + 'backup-'));
+      backup = await makeTemporaryDirectory(path.join(parent, prefix + 'backup-'));
       await rmdir(backup);
       await move(output, backup);
     } catch (error) {

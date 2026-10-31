@@ -47,4 +47,6 @@ Format touched files with the repository configuration: Prettier for TypeScript/
 ## Real-world effects
 
 Development starts the real native service. CI and routine tests use isolated data and synthetic fixtures with automatic connections and downloads disabled. Do not connect to or operate a real game, invoke paid models, publish releases or upload account data as part of routine tests. Explicit real-device testing must be selected and recorded.
+Node/Bun fixtures and verification tools create temporary directories through `tools/test-support/temporary-directory.mjs`; use its canonical returned path for data roots, subprocess arguments and cleanup. Canonicalize temporary-root comparisons with native realpath (`realpathSync.native` for synchronous code) too. Keep product symlink protections intact.
+
 Default consumable budgets are zero. Model-generated actions pass deterministic validation. Never expose arbitrary shell commands to the model.

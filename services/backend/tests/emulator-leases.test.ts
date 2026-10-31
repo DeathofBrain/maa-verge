@@ -1,11 +1,12 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { CoreWorker } from '@backend/infrastructure/native/worker';
 import type { EmulatorInventory } from '@backend/infrastructure/native/windows-emulators';
 import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const runtimes: Runtime[] = [];
 const worker = () => ({
@@ -49,12 +50,15 @@ function runtime(
   factory: NonNullable<ConstructorParameters<typeof Runtime>[1]>['workerFactory'],
   metadata = async () => inventory,
 ) {
-  const instance = new Runtime(mkdtempSync(path.join(tmpdir(), 'maaverge-emulator-leases-')), {
-    workerFactory: factory,
-    adbExecutable: () => 'synthetic-adb',
-    connectDeviceTransport: async () => {},
-    emulatorInventory: metadata,
-  });
+  const instance = new Runtime(
+    makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-emulator-leases-')),
+    {
+      workerFactory: factory,
+      adbExecutable: () => 'synthetic-adb',
+      connectDeviceTransport: async () => {},
+      emulatorInventory: metadata,
+    },
+  );
   runtimes.push(instance);
   instance.store.put('active', 'combo', {
     core: { path: 'synthetic-core', version: 'v1' },

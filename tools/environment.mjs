@@ -1,4 +1,5 @@
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -132,7 +133,7 @@ export function resolveCmake({
 }
 
 export function probeCppToolchain(cmake) {
-  const directory = mkdtempSync(path.join(tmpdir(), 'maaverge-toolchain-'));
+  const directory = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-toolchain-'));
   try {
     writeFileSync(
       path.join(directory, 'CMakeLists.txt'),

@@ -1,14 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import {
-  existsSync,
-  mkdtempSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -18,11 +10,12 @@ import {
 } from '@backend/modules/copilot/copilot';
 import { Store } from '@backend/infrastructure/storage/storage';
 import type { CopilotDifficulty, CopilotKind, CopilotWorkspace } from '@contracts/rpc-types';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   stores: Store[] = [];
 function setup(http?: typeof fetch) {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-copilot-library-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-copilot-library-'));
   roots.push(root);
   const directory = path.join(root, 'resources', 'resource', 'Arknights-Tile-Pos');
   mkdirSync(directory, { recursive: true });

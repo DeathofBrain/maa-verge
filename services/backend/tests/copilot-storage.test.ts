@@ -7,6 +7,7 @@ import { CopilotLibrary, defaultCopilotOptions } from '@backend/modules/copilot/
 import { Store } from '@backend/infrastructure/storage/storage';
 import { Runtime } from '@backend/app/runtime';
 import { parseSettings } from '@backend/modules/settings/models';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 const stores: Store[] = [];
@@ -16,7 +17,7 @@ const content = (title = '缓存作业') =>
   JSON.stringify({ stage_name: 'main_01-07', doc: { title }, actions: [] });
 
 function fixture() {
-  const root = fs.mkdtempSync(path.join(tmpdir(), 'maaverge-copilot-storage-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-copilot-storage-'));
   roots.push(root);
   const store = new Store(root);
   stores.push(store);
@@ -294,7 +295,7 @@ test('replacing a recorded cache directory with an execution-version junction ca
 });
 
 test('runtime settings resolve the application default, preserve omitted preferences and reject unsafe directories', async () => {
-  const root = fs.mkdtempSync(path.join(tmpdir(), 'maaverge-copilot-settings-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-copilot-settings-'));
   roots.push(root);
   const applicationDirectory = path.join(root, 'application');
   const runtime = new Runtime(path.join(root, 'data'), {

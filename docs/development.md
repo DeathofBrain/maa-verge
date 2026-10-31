@@ -179,6 +179,8 @@ CI 不再执行 `doctor --native` 的额外 C++ 编译探针；worker 构建脚�
 
 完整计划另运行 `full-validation`，要求 `application` 和四宿主 `native` 全部成功。发行只复用同一标签提交、同次运行中该标记成功的完整 Checks；增量检查成功不能用于发行。缺少完整检查时，先执行 `gh workflow run ci.yml --ref <tag>`，成功后补跑 Release。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。
 
+Node/Bun 测试夹具与验证工具通过 `tools/test-support/temporary-directory.mjs` 的 `makeTemporaryDirectory` / `makeTemporaryDirectorySync` 创建临时目录，参数沿用 `mkdtemp` 的完整路径前缀。入口创建后立即以原生 `realpath` 解析真实路径，同步使用 `realpathSync.native()`，统一处理 macOS 的 `/var` 别名和 Windows 短路径；后续数据根、子进程参数和清理边界都使用返回的路径。比较系统临时根时使用同样的原生解析方式。原生夹具保持同样的路径规范化约定，产品继续拒绝快照内的符号链接。
+
 本地 `pnpm check`、`pnpm check:app`、`pnpm check:native` 和 `pnpm test:runtime` 默认保持完整检查；只有显式 `--ci` 才读取 `MAAVERGE_CI_PLAN`。本地原生检查仍执行 doctor、worker 脚本回归和本平台打包夹具；没有 Cargo 时明确跳过 Rust，CI 计划要求的 Rust 检查缺少工具则失败，CMake/C++ 检查不会因此跳过。CI 选择器与发行门禁可单独验证：
 
 ```bash

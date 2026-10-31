@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import {
   copyFileSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -21,6 +21,7 @@ import {
   productKnowledgeVersion,
 } from '@backend/modules/knowledge/product-knowledge';
 import generated from '@backend/modules/knowledge/product-knowledge.generated.json';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const rpcFile = 'packages/contracts/schemas/rpc.schema.json';
@@ -153,7 +154,9 @@ test('callers cannot mutate the static catalogue and manifest', () => {
 
 // Seven isolated CLI invocations share this test's overall deadline.
 test('offline generator is deterministic and check detects source drift without changing output', () => {
-  const temporary = mkdtempSync(path.join(os.tmpdir(), 'maaverge-product-knowledge-'));
+  const temporary = makeTemporaryDirectorySync(
+    path.join(os.tmpdir(), 'maaverge-product-knowledge-'),
+  );
   const output = 'services/backend/src/modules/knowledge/product-knowledge.generated.json';
   try {
     for (const file of [
@@ -217,7 +220,7 @@ test('offline generator is deterministic and check detects source drift without 
   } finally {
     const absolute = path.resolve(temporary);
     if (
-      path.dirname(absolute) !== path.resolve(os.tmpdir()) ||
+      path.dirname(absolute) !== realpathSync.native(os.tmpdir()) ||
       !path.basename(absolute).startsWith('maaverge-product-knowledge-')
     )
       throw new Error('Unexpected temporary test path');

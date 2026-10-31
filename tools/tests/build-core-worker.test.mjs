@@ -1,15 +1,7 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -19,7 +11,7 @@ import { root, devEnvironment } from '../project.mjs';
 const cmake = resolveCmake().executable;
 
 function fixture(t) {
-  const directory = realpathSync(mkdtempSync(path.join(tmpdir(), 'maa verge native build-')));
+  const directory = makeTemporaryDirectorySync(path.join(tmpdir(), 'maa verge native build-'));
   t.after(() =>
     rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }),
   );

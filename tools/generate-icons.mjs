@@ -1,4 +1,12 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
+import {
+  copyFileSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { root, run, fail } from './project.mjs';
@@ -24,15 +32,18 @@ function normalizeIcns(file) {
 async function main() {
   const source = path.join(root, 'apps/desktop/public/logo.png');
   const directory = path.join(root, 'apps/desktop/src-tauri/icons');
-  const temporaryRoot = path.resolve(tmpdir());
-  const scratch = mkdtempSync(path.join(temporaryRoot, 'maa-verge-icons-'));
+  const temporaryRoot = realpathSync.native(tmpdir());
+  const scratch = makeTemporaryDirectorySync(path.join(temporaryRoot, 'maa-verge-icons-'));
   try {
     await run('pnpm', ['exec', 'tauri', 'icon', source, '--output', scratch]);
     // Dock icons need optical padding; keep the UI and Windows/Linux artwork
     // full-sized. Embed the PNG so this stays portable and needs no image tools.
     const macosSource = path.join(scratch, 'macos.svg');
     const macosDirectory = path.join(scratch, 'macos');
-    writeFileSync(macosSource, `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><image x="100" y="100" width="824" height="824" href="data:image/png;base64,${readFileSync(source).toString('base64')}" /></svg>`);
+    writeFileSync(
+      macosSource,
+      `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><image x="100" y="100" width="824" height="824" href="data:image/png;base64,${readFileSync(source).toString('base64')}" /></svg>`,
+    );
     await run('pnpm', ['exec', 'tauri', 'icon', macosSource, '--output', macosDirectory]);
     normalizeIcns(path.join(macosDirectory, 'icon.icns'));
     mkdirSync(directory, { recursive: true });
@@ -47,7 +58,10 @@ async function main() {
     }
   } finally {
     // Only remove the unique temporary directory created for this invocation.
-    if (path.dirname(scratch) === temporaryRoot && path.basename(scratch).startsWith('maa-verge-icons-')) {
+    if (
+      path.dirname(scratch) === temporaryRoot &&
+      path.basename(scratch).startsWith('maa-verge-icons-')
+    ) {
       rmSync(scratch, { recursive: true, force: true });
     }
   }

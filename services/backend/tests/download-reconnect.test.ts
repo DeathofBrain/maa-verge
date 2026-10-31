@@ -1,11 +1,12 @@
 import { afterEach, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import { createServer, request, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Socket } from 'node:net';
 import { createComponentFetch, downloadArchive } from '@backend/infrastructure/network/download.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   servers: Server[] = [];
@@ -23,7 +24,7 @@ const response = () =>
     headers: { etag: '"v1"', 'content-length': String(payload.length) },
   });
 async function destination() {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-reconnect-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-reconnect-'));
   roots.push(root);
   return path.join(root, 'archive.zip');
 }

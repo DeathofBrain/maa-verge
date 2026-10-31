@@ -15,19 +15,20 @@ const project = fileURLToPath(new URL('../../', import.meta.url));
 async function scenario(name, project) {
   const assert = (await import('node:assert/strict')).default;
   const { createHash } = await import('node:crypto');
-  const { copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, symlink, writeFile } =
+  const { copyFile, mkdir, readFile, readdir, rename, rm, symlink, writeFile } =
     await import('node:fs/promises');
   const path = (await import('node:path')).default;
   const { tmpdir } = await import('node:os');
   const { pathToFileURL } = await import('node:url');
   const load = (relative) => import(pathToFileURL(path.join(project, relative)).href);
+  const { makeTemporaryDirectory } = await load('tools/test-support/temporary-directory.mjs');
   const { prepareWindowsComponentPayloads: prepare, readWindowsComponentsLock: readLock } =
     await load('tools/test-support/windows-components.ts');
   const { zipBytes, tarBytes } = await load('services/backend/tests/archive-fixture.ts');
   const { snapshotIntegrity } = await load(
     'services/backend/src/infrastructure/filesystem/snapshot-integrity.ts',
   );
-  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'maa verge component build-')));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maa verge component build-'));
   const output = path.join(root, 'dist/windows-components');
   const cache = path.join(root, 'cache');
   const lockFile = path.join(root, 'components.lock.json');

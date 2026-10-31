@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
@@ -11,11 +11,12 @@ import {
 } from '@backend/modules/settings/models';
 import { validateWorkerConfiguration } from '@contracts/validators.js';
 import { mumuDefaultAdbAddress } from '@contracts/device-profiles';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-multi-instance-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-multi-instance-'));
   roots.push(root);
   return root;
 };

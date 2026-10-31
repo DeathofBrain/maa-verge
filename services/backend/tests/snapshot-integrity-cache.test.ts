@@ -1,27 +1,18 @@
 import { afterEach, expect, spyOn, test } from 'bun:test';
 import { utimesSync, writeFileSync } from 'node:fs';
 import * as filesystem from 'node:fs/promises';
-import {
-  mkdir,
-  mkdtemp,
-  realpath,
-  rename,
-  rm,
-  stat,
-  symlink,
-  utimes,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdir, rename, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   SnapshotIntegrityCache,
   snapshotIntegrity,
 } from '@backend/infrastructure/filesystem/snapshot-integrity';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 async function temp() {
-  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'maaverge-integrity-cache-')));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-integrity-cache-'));
   roots.push(root);
   return root;
 }

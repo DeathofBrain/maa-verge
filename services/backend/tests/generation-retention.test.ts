@@ -2,7 +2,6 @@ import { afterEach, expect, test } from 'bun:test';
 import {
   lstat,
   mkdir,
-  mkdtemp,
   readFile,
   readdir,
   realpath,
@@ -14,10 +13,11 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pruneGenerations } from '@backend/infrastructure/filesystem/generation-retention.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const temporary: string[] = [];
 async function temp() {
-  const directory = await realpath(await mkdtemp(path.join(tmpdir(), 'maaverge-retention-')));
+  const directory = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-retention-'));
   temporary.push(directory);
   return directory;
 }

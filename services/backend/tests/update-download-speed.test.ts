@@ -1,8 +1,9 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { UpdateService, type UpdateStore } from '@backend/modules/updates/updates.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 class MemoryStore implements UpdateStore {
   rows = new Map<string, any>();
@@ -28,7 +29,7 @@ afterEach(async () => {
 });
 
 test('component updates propagate same-percentage speed changes and clear rates before extraction or failure', async () => {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-update-speed-')),
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-update-speed-')),
     store = new MemoryStore(),
     events: any[] = [];
   roots.push(root);

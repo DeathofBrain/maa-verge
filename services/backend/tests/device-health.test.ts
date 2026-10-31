@@ -1,11 +1,12 @@
 import { afterEach, expect, mock, spyOn, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Device } from '@contracts/types';
 import type { AdbDevice } from '@backend/infrastructure/native/adb';
 import { Runtime } from '@backend/app/runtime';
 import { parseSettings } from '@backend/modules/settings/models';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 type Observer = {
   onDevices: (devices: AdbDevice[]) => void;
@@ -57,35 +58,38 @@ async function flushMicrotasks() {
 function fixture(holdClose = false) {
   const workers: FakeWorker[] = [];
   const observers: Observer[] = [];
-  const runtime = new Runtime(mkdtempSync(path.join(tmpdir(), 'maaverge-device-health-')), {
-    workerFactory: async () => {
-      const worker = new FakeWorker();
-      workers.push(worker);
-      return worker;
+  const runtime = new Runtime(
+    makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-device-health-')),
+    {
+      workerFactory: async () => {
+        const worker = new FakeWorker();
+        workers.push(worker);
+        return worker;
+      },
+      adbExecutable: () => 'synthetic-adb',
+      observeDeviceConnections: (onDevices, onClose) => {
+        let releaseClose!: () => void;
+        const closed = new Promise<void>((resolve) => {
+          releaseClose = resolve;
+        });
+        closeReleases.push(releaseClose);
+        const observer: Observer = {
+          onDevices,
+          onClose,
+          closed: false,
+          releaseClose,
+          async close() {
+            observer.closed = true;
+            onClose();
+            if (holdClose) await closed;
+          },
+        };
+        observers.push(observer);
+        return observer;
+      },
+      calendar: { fetcher: null },
     },
-    adbExecutable: () => 'synthetic-adb',
-    observeDeviceConnections: (onDevices, onClose) => {
-      let releaseClose!: () => void;
-      const closed = new Promise<void>((resolve) => {
-        releaseClose = resolve;
-      });
-      closeReleases.push(releaseClose);
-      const observer: Observer = {
-        onDevices,
-        onClose,
-        closed: false,
-        releaseClose,
-        async close() {
-          observer.closed = true;
-          onClose();
-          if (holdClose) await closed;
-        },
-      };
-      observers.push(observer);
-      return observer;
-    },
-    calendar: { fetcher: null },
-  });
+  );
   runtimes.push(runtime);
   runtime.store.put(
     'settings',

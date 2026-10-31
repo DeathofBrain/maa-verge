@@ -1,10 +1,11 @@
 import { afterEach, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { readFile, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { DownloadProxySettings } from '@contracts/types';
 import { AppUpdateHttp, type AppUpdateHttpOptions } from '@backend/modules/updates/app-update-http';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 const payload = Buffer.from('signed application transport fixture\n'.repeat(2048));
@@ -53,7 +54,7 @@ async function fixture(
   options: AppUpdateHttpOptions = {},
   initial: DownloadProxySettings | undefined = { mode: 'auto', url: '' },
 ) {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-app-http-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-app-http-'));
   roots.push(root);
   const directory = path.join(root, 'updates', 'app', 'downloads');
   let preferences: DownloadProxySettings | undefined = initial;

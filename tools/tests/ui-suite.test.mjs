@@ -1,5 +1,6 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -8,7 +9,7 @@ import { selectUiSpecs, resolveUiTargets, smokeTests } from '../ci/ui-suite.mjs'
 import { root as repositoryRoot } from '../project.mjs';
 
 function fixture(t, transform = (text) => text) {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-ui-suite-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-ui-suite-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const files = new Map();
   for (const { file, title } of smokeTests)
@@ -34,7 +35,7 @@ test('feature changes select their behavior specs and combine domains without du
 });
 
 test('change planning can import the selector in a checkout without node_modules', (t) => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-ui-planning-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-ui-planning-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, 'tools/ci'), { recursive: true });
   for (const file of ['.node-version', 'tools/project.mjs', 'tools/ci/ui-suite.mjs'])

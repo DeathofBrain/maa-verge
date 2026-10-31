@@ -1,10 +1,11 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { recognitionKey } from '@backend/modules/recognition/recognition';
 import { validateItemResourceResult, validateRecognitionResult } from '@contracts/validators.js';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
@@ -16,7 +17,7 @@ afterEach(async () => {
 });
 
 test('resource RPC reads only active images and enriches warehouse names without changing collected data', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-resource-rpc-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-resource-rpc-'));
   roots.push(root);
   const runtime = new Runtime(root, { calendar: { fetcher: null } });
   runtimes.push(runtime);

@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { parsePlan, parseSettings } from '@backend/modules/settings/models';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const runtimes: Runtime[] = [];
 afterEach(async () => {
@@ -14,11 +15,14 @@ afterEach(async () => {
 });
 
 function fixture(probe: () => Promise<boolean> = async () => false, address = '127.0.0.1:16416') {
-  const runtime = new Runtime(mkdtempSync(path.join(tmpdir(), 'maaverge-launch-notification-')), {
-    adbExecutable: () => 'synthetic-adb',
-    probeDeviceEndpoint: probe,
-    calendar: { fetcher: null },
-  });
+  const runtime = new Runtime(
+    makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-launch-notification-')),
+    {
+      adbExecutable: () => 'synthetic-adb',
+      probeDeviceEndpoint: probe,
+      calendar: { fetcher: null },
+    },
+  );
   runtimes.push(runtime);
   runtime.store.put(
     'settings',

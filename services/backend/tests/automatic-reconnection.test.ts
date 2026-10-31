@@ -1,5 +1,5 @@
 import { afterEach, expect, mock, spyOn, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Device } from '@contracts/types';
@@ -10,6 +10,7 @@ import {
   emptyEmulatorInventory,
   type EmulatorInventory,
 } from '@backend/infrastructure/native/windows-emulators';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 type Options = NonNullable<ConstructorParameters<typeof Runtime>[1]>;
 type Observer = {
@@ -93,43 +94,46 @@ function fixture(options: Options = {}, result: boolean | null = true) {
   };
   const observers: Observer[] = [];
   const workers: FakeWorker[] = [];
-  const runtime = new Runtime(mkdtempSync(path.join(tmpdir(), 'maaverge-reconnection-')), {
-    adbExecutable: () => {
-      calls.adb++;
-      return 'synthetic-adb';
+  const runtime = new Runtime(
+    makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-reconnection-')),
+    {
+      adbExecutable: () => {
+        calls.adb++;
+        return 'synthetic-adb';
+      },
+      emulatorInventory: async () => {
+        calls.inventory++;
+        return emptyEmulatorInventory();
+      },
+      discoverDevices: async () => {
+        throw new Error('快速历史重连不得触发广域发现');
+      },
+      observeDeviceConnections: (onDevices, onClose) => {
+        const observer: Observer = { onDevices, onClose, closed: false };
+        observers.push(observer);
+        return {
+          async close() {
+            observer.closed = true;
+          },
+        };
+      },
+      probeDeviceEndpoint: async (address) => {
+        calls.probes.push(address);
+        return false;
+      },
+      connectDeviceTransport: async (_adb, address) => {
+        calls.transports.push(address);
+      },
+      workerFactory: async (configuration) => {
+        calls.configurations.push(configuration);
+        const worker = new FakeWorker(result);
+        workers.push(worker);
+        return worker;
+      },
+      calendar: { fetcher: null },
+      ...options,
     },
-    emulatorInventory: async () => {
-      calls.inventory++;
-      return emptyEmulatorInventory();
-    },
-    discoverDevices: async () => {
-      throw new Error('快速历史重连不得触发广域发现');
-    },
-    observeDeviceConnections: (onDevices, onClose) => {
-      const observer: Observer = { onDevices, onClose, closed: false };
-      observers.push(observer);
-      return {
-        async close() {
-          observer.closed = true;
-        },
-      };
-    },
-    probeDeviceEndpoint: async (address) => {
-      calls.probes.push(address);
-      return false;
-    },
-    connectDeviceTransport: async (_adb, address) => {
-      calls.transports.push(address);
-    },
-    workerFactory: async (configuration) => {
-      calls.configurations.push(configuration);
-      const worker = new FakeWorker(result);
-      workers.push(worker);
-      return worker;
-    },
-    calendar: { fetcher: null },
-    ...options,
-  });
+  );
   runtimes.push(runtime);
   runtime.store.put(
     'settings',

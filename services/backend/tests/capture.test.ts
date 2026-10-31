@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { captureAdbPath, connectionCapture, ldPlayerPid } from '@backend/modules/devices/capture';
@@ -8,10 +8,11 @@ import { defaultConnection, parseSettings } from '@backend/modules/settings/mode
 import { Runtime } from '@backend/app/runtime';
 import { validateWorkerConfiguration } from '@contracts/validators.js';
 import { configuredAdbPath } from '@backend/infrastructure/native/adb';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-capture-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-capture-'));
   roots.push(root);
   return root;
 };

@@ -1,6 +1,7 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -12,7 +13,7 @@ import {
 } from '../runtime-notices.mjs';
 
 function fixture(t) {
-  const directory = mkdtempSync(path.join(tmpdir(), 'maa verge runtime notices-'));
+  const directory = makeTemporaryDirectorySync(path.join(tmpdir(), 'maa verge runtime notices-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   return directory;
 }

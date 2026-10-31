@@ -1,15 +1,16 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CopilotLibrary } from '@backend/modules/copilot/copilot';
 import { Store } from '@backend/infrastructure/storage/storage';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 const stores: Store[] = [];
 type OrderBy = 'hot' | 'id' | 'views';
 function fixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-copilot-sort-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-copilot-sort-'));
   roots.push(root);
   const directory = path.join(root, 'resource', 'Arknights-Tile-Pos');
   mkdirSync(directory, { recursive: true });

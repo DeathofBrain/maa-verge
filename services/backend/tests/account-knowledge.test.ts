@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { AccountKnowledge } from '@backend/modules/knowledge/account-knowledge';
@@ -10,12 +10,13 @@ import {
   validateAccountKnowledgeSnapshot,
   validateAccountSnapshotListResult,
 } from '@contracts/validators.js';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   stores: Store[] = [],
   runtimes: Runtime[] = [];
 const root = () => {
-  const value = mkdtempSync(path.join(tmpdir(), 'maaverge-account-knowledge-'));
+  const value = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-account-knowledge-'));
   roots.push(value);
   return value;
 };

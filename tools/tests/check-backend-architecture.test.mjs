@@ -1,5 +1,6 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -9,7 +10,7 @@ import ts from 'typescript';
 import { inspectBackendArchitecture } from '../check-backend-architecture.mjs';
 
 function fixture(t, files, config) {
-  const project = mkdtempSync(path.join(tmpdir(), 'maaverge-backend-architecture-'));
+  const project = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-backend-architecture-'));
   t.after(() => rmSync(project, { recursive: true, force: true }));
   const source = path.join(project, 'services/backend/src');
   mkdirSync(source, { recursive: true });

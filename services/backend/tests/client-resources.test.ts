@@ -1,10 +1,11 @@
 import { afterEach, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { parseSettings } from '@backend/modules/settings/models';
 import { CoreWorker } from '@backend/infrastructure/native/worker';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
@@ -66,7 +67,7 @@ class Worker {
   }
 }
 function fixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-client-resources-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-client-resources-'));
   roots.push(root);
   const configs: any[] = [],
     workers: Worker[] = [];
@@ -457,7 +458,7 @@ test('shutdown cancels an in-progress client reload before closing the business 
 });
 
 test('aborting the actual worker bridge closes a child that has not sent ready', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-worker-start-abort-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-worker-start-abort-'));
   roots.push(root);
   const script = path.join(root, 'startup.mjs'),
     launched = path.join(root, 'launched.txt'),
@@ -482,7 +483,7 @@ process.stdin.resume();
 });
 
 test('worker initialization errors retain the native cause from stderr without promoting unrelated output', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-worker-start-error-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-worker-start-error-'));
   roots.push(root);
   for (const [name, diagnostic, expected] of [
     ['resource', 'maaverge-core-worker: cannot load resource snapshot', '核心资源缺失或加载失败'],
@@ -521,7 +522,7 @@ test('worker initialization errors retain the native cause from stderr without p
 });
 
 test('the worker bridge finishes an explicit failed connection promptly and permits a fresh retry', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-worker-connect-result-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-worker-connect-result-'));
   roots.push(root);
   const script = path.join(root, 'connection.mjs');
   writeFileSync(

@@ -1,10 +1,10 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -28,7 +28,7 @@ async function launch(
   t,
   { browserMock = false, mode, expectedCode = 0, overrideData = true } = {},
 ) {
-  const directory = mkdtempSync(path.join(tmpdir(), 'maa verge dev mode-'));
+  const directory = makeTemporaryDirectorySync(path.join(tmpdir(), 'maa verge dev mode-'));
   const entry = path.join(directory, '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs');
   const log = path.join(directory, 'children.jsonl');
   const write = (relative, content) => {

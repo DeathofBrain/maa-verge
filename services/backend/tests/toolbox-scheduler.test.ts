@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
@@ -7,6 +7,7 @@ import { recognitionKey } from '@backend/modules/recognition/recognition';
 import { defaultScheduler } from '@backend/modules/schedules/scheduler';
 import { parseRecognition } from '@backend/modules/recognition/recognition';
 import { toolCatalog } from '@backend/modules/tools/toolbox';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
@@ -64,7 +65,7 @@ const settle = async () => {
   for (let i = 0; i < 8; i++) await Promise.resolve();
 };
 async function fixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-tools-scheduler-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-tools-scheduler-'));
   roots.push(root);
   let clock = new Date(2026, 9, 24, 3, 0, 0),
     worker = new Worker();

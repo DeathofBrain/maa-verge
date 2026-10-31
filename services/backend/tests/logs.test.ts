@@ -2,9 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import {
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
-  realpathSync,
   rmSync,
   symlinkSync,
   utimesSync,
@@ -21,11 +19,12 @@ import {
 import { Runtime } from '@backend/app/runtime';
 import { processRequest } from '@backend/transport/json-rpc';
 import { parseSettings } from '@backend/modules/settings/models';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 const temp = () => {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'maaverge-logs-')));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-logs-'));
   roots.push(root);
   return root;
 };

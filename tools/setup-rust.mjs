@@ -1,6 +1,7 @@
+import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { root, fail } from './project.mjs';
@@ -146,7 +147,7 @@ export async function ensureRust({
     if (!expected || createHash('sha256').update(bytes).digest('hex') !== expected)
       throw new Error('Official rustup installer SHA-256 mismatch');
     mkdirSync(toolRoot, { recursive: true });
-    const staging = mkdtempSync(path.join(toolRoot, 'rust-install-'));
+    const staging = makeTemporaryDirectorySync(path.join(toolRoot, 'rust-install-'));
     try {
       const installer = path.join(staging, installerName);
       writeFileSync(installer, bytes, { flag: 'wx', mode: 0o755 });

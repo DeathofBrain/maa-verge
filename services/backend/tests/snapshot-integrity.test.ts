@@ -1,13 +1,14 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { snapshotIntegrity } from '@backend/infrastructure/filesystem/snapshot-integrity';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 async function temp() {
-  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'maaverge-integrity-')));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-integrity-'));
   roots.push(root);
   return root;
 }

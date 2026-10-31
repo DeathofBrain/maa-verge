@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { parsePlan, parseSettings } from '@backend/modules/settings/models';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots = new Set<string>();
 const runtimes: Runtime[] = [];
@@ -31,7 +32,9 @@ class Worker {
     this.safeIdle = true;
   }
 }
-function fixture(root = mkdtempSync(path.join(tmpdir(), 'maaverge-plan-availability-'))) {
+function fixture(
+  root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-plan-availability-')),
+) {
   roots.add(root);
   const worker = new Worker();
   let clock = new Date(2026, 9, 30, 3, 0);

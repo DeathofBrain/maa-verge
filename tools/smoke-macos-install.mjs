@@ -1,18 +1,10 @@
+import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
 // Install the final DMG into a temporary directory and launch its real app.
 // Removing quarantine on this copy represents the user's explicit approval;
 // this smoke does not certify Gatekeeper acceptance of an unnotarized download.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -56,7 +48,7 @@ assert.ok(
 );
 
 // macOS /var -> /private/var aliases are rejected by Tauri's executable resolver.
-const temporary = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'maa-verge-install-smoke-')));
+const temporary = makeTemporaryDirectorySync(path.join(os.tmpdir(), 'maa-verge-install-smoke-'));
 const mount = path.join(temporary, 'volume');
 const installed = path.join(temporary, 'Applications', `${config.productName}.app`);
 const data = path.join(temporary, 'data');

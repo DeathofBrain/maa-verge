@@ -1,8 +1,9 @@
+import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -40,7 +41,7 @@ export async function waitForRuntimeStartup(request, { timeout = 15000 } = {}) {
 export async function cleanupRuntimeSmoke(temporary, children) {
   const resolved = path.resolve(temporary);
   if (
-    path.dirname(resolved) !== path.resolve(tmpdir()) ||
+    path.dirname(resolved) !== (await realpath(tmpdir())) ||
     !path.basename(resolved).startsWith('maaverge-package-smoke-')
   )
     throw new Error('Unexpected smoke temporary path');
@@ -59,7 +60,7 @@ export async function cleanupRuntimeSmoke(temporary, children) {
 }
 
 async function main() {
-  const temporary = mkdtempSync(path.join(tmpdir(), 'maaverge-package-smoke-'));
+  const temporary = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-package-smoke-'));
   const executable = path.join(
     root,
     'dist/runtime/maaverge-runtime',

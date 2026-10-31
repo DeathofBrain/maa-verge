@@ -1,10 +1,11 @@
+import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
 // Windows-only release smoke. Requires an installed WebView2 runtime, project
 // Playwright dependencies, and a built release executable with its runtime/.
 // Node drives CDP/DOM from the host; the application uses only packaged binaries.
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -69,7 +70,7 @@ if (processes().some((process) => process.Name.toLowerCase() === 'maaverge.exe')
 }
 const outputRoot = path.join(root, 'build/webview-smoke');
 mkdirSync(outputRoot, { recursive: true });
-const runRoot = mkdtempSync(path.join(outputRoot, 'run-'));
+const runRoot = makeTemporaryDirectorySync(path.join(outputRoot, 'run-'));
 const data = path.join(runRoot, 'data');
 const locks = path.join(runRoot, 'locks');
 const profile = path.join(runRoot, 'webview-profile');

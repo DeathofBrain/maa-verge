@@ -7,7 +7,6 @@ import {
   closeSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   openSync,
   readFileSync,
   realpathSync,
@@ -20,6 +19,7 @@ import { createInterface } from 'node:readline';
 import { setTimeout as delay } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 import test from 'node:test';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const { values: args } = parseArgs({
   options: Object.fromEntries(
@@ -160,7 +160,7 @@ class Session {
 }
 
 function fixture(t) {
-  const temporary = realpathSync(mkdtempSync(path.join(tmpdir(), 'maaverge-native-synthetic-')));
+  const temporary = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-native-synthetic-'));
   const root = path.join(temporary, '中文 runtime');
   const core = path.join(root, 'core');
   const resource = path.join(root, 'resources');

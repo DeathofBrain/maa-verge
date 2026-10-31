@@ -1,5 +1,6 @@
+import { makeTemporaryDirectory } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -11,7 +12,9 @@ import {
 import { installerKind } from '../release-assets.mjs';
 
 async function temporary(callback) {
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'maa-verge-linux-distribution-'));
+  const directory = await makeTemporaryDirectory(
+    path.join(os.tmpdir(), 'maa-verge-linux-distribution-'),
+  );
   try {
     return await callback(directory);
   } finally {

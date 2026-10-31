@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer as createHttpServer, type RequestListener, type Server } from 'node:http';
 import { createServer as createHttpsServer, type Server as HttpsServer } from 'node:https';
 import { connect } from 'node:net';
@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Duplex } from 'node:stream';
 import { pathToFileURL } from 'node:url';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 // Public test-only key and certificate, valid 2020–2120 for the loopback address.
 // They are explicitly trusted only by each isolated downloader child process.
@@ -67,7 +68,7 @@ afterEach(async () => {
 });
 
 async function fixture(handler: RequestListener) {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-download-proxy-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-download-proxy-'));
   roots.push(root);
   const certificatePath = path.join(root, 'loopback-ca.pem');
   await writeFile(certificatePath, certificate);

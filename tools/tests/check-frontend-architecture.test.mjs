@@ -1,5 +1,6 @@
+import { makeTemporaryDirectorySync } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -8,7 +9,9 @@ import { test } from 'node:test';
 import { inspectFrontendArchitecture } from '../check-frontend-architecture.mjs';
 
 function fixture(t, files, config) {
-  const project = mkdtempSync(path.join(tmpdir(), 'maaverge-frontend-architecture-'));
+  const project = makeTemporaryDirectorySync(
+    path.join(tmpdir(), 'maaverge-frontend-architecture-'),
+  );
   t.after(() => rmSync(project, { recursive: true, force: true }));
   const source = path.join(project, 'src');
   for (const [name, text] of Object.entries({ 'main.tsx': '', ...files })) {

@@ -1,16 +1,6 @@
 import { afterEach, expect, spyOn, test } from 'bun:test';
 import * as fs from 'node:fs/promises';
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  realpath,
-  rm,
-  rename,
-  symlink,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, rename, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -25,6 +15,7 @@ import {
   type UpdateOptions,
   type UpdateStore,
 } from '@backend/modules/updates/updates';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 class MemoryStore implements UpdateStore {
   rows = new Map<string, any>();
@@ -52,7 +43,7 @@ afterEach(async () => {
 });
 
 async function fixture(options: UpdateOptions = {}, busy = () => false) {
-  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'maaverge-bundled-')));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-bundled-'));
   roots.push(root);
   const directory = path.join(root, 'application/runtime/bundled-components');
   const library =

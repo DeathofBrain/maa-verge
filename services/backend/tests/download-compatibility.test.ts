@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { downloadArchive } from '@backend/infrastructure/network/download.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 const payload = Buffer.from('verified archive');
@@ -21,7 +22,7 @@ afterEach(async () => {
 
 for (const controlFile of [true, false]) {
   test(`legacy aria2 sparse bytes are discarded with control file ${controlFile}`, async () => {
-    const root = await mkdtemp(path.join(tmpdir(), 'maaverge-legacy-download-'));
+    const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-legacy-download-'));
     roots.push(root);
     const destination = path.join(root, 'archive.zip');
     // aria2 can preallocate the full length with holes; file size is not a prefix.
@@ -58,7 +59,7 @@ for (const controlFile of [true, false]) {
 }
 
 test('existing built-in HTTP partials still resume after the downloader migration', async () => {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-existing-download-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-existing-download-'));
   roots.push(root);
   const destination = path.join(root, 'archive.zip');
   await writeFile(destination + '.partial', payload.subarray(0, 4));

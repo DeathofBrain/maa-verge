@@ -1,15 +1,19 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { processRequest } from '@backend/transport/json-rpc';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const runtimes: Runtime[] = [];
 function runtime(adbExecutable: () => string, installed = true) {
-  const instance = new Runtime(mkdtempSync(path.join(tmpdir(), 'maaverge-discovery-')), {
-    adbExecutable,
-  });
+  const instance = new Runtime(
+    makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-discovery-')),
+    {
+      adbExecutable,
+    },
+  );
   runtimes.push(instance);
   if (installed)
     instance.store.put('active', 'combo', {

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,11 +12,12 @@ import { validatePlan, nativeTask } from '@backend/modules/plans/task-policy';
 import { processRequest } from '@backend/transport/json-rpc';
 import { syncDue, userDataSteps } from '@backend/modules/recognition/user-data-sync';
 import { taskConsumableLimits, validatePlan as validateSharedPlan } from '@contracts/task-policy';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 const temp = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-ts-test-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-ts-test-'));
   roots.push(root);
   return root;
 };

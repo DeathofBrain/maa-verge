@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -18,6 +18,7 @@ import {
 } from '@backend/modules/updates/updates';
 import { parseSettings } from '@backend/modules/settings/models';
 import { zipBytes } from './archive-fixture';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const secret = 'synthetic+cdk&private=value';
 const signed = 'https://mirrorchyan.com/resources/download/fixture?token=private-download-token';
@@ -27,7 +28,7 @@ const settings = () => ({ enabled: true, cdk: secret });
 const roots: string[] = [];
 const digest = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 async function temp() {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-mirror-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-mirror-'));
   roots.push(root);
   return root;
 }

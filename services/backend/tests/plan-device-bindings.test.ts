@@ -1,16 +1,19 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { parsePlan, parseSettings } from '@backend/modules/settings/models';
 import { planAllowsDevice, planDeviceIds } from '@contracts/plan-devices';
 import { validatePlan } from '@contracts/task-policy';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 const input = { id: 'shared', name: '共享任务表', tasks: [{ type: 'Award' }] };
-function runtime(root = mkdtempSync(path.join(tmpdir(), 'maaverge-plan-bindings-'))) {
+function runtime(
+  root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-plan-bindings-')),
+) {
   roots.push(root);
   const value = new Runtime(root, { calendar: { fetcher: null } });
   runtimes.push(value);

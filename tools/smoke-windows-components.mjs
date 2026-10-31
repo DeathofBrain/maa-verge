@@ -1,17 +1,9 @@
+import { makeTemporaryDirectory } from './test-support/temporary-directory.mjs';
 /** Exercise the full Windows payload with the actual compiled service, without devices or GUI. */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import {
-  lstat,
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  realpath,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -243,7 +235,7 @@ export async function smokeWindowsComponents({ staging } = {}) {
     );
 
   const temporaryParent = await realpath(tmpdir());
-  const temporary = await realpath(await mkdtemp(path.join(temporaryParent, temporaryPrefix)));
+  const temporary = await makeTemporaryDirectory(path.join(temporaryParent, temporaryPrefix));
   const children = new Set();
   let networkAttempts = 0;
   // Never forward traffic. Any unexpected use of inherited proxy networking is

@@ -1,11 +1,12 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { CoreWorker } from '@backend/infrastructure/native/worker';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 import { localizeExecutionMessage } from '@contracts/execution';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const runtimes: Runtime[] = [],
   roots: string[] = [];
@@ -52,7 +53,7 @@ class EvidenceWorker {
   }
 }
 async function setup(types = ['Fight', 'Fight']) {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-results-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-results-'));
   roots.push(root);
   const worker = new EvidenceWorker(),
     runtime = new Runtime(root, {
@@ -543,7 +544,7 @@ test.skipIf(!nativeWorker || !coreLibrary || !existsSync(nativeWorker) || !exist
   'native result callbacks and PNG pass through the C++ NDJSON worker into persisted run evidence',
   async () => {
     for (const type of ['Fight', 'Infrast']) {
-      const root = mkdtempSync(path.join(tmpdir(), 'maaverge-native-results-'));
+      const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-native-results-'));
       roots.push(root);
       const resource = path.join(root, 'resources');
       mkdirSync(path.join(resource, 'resource'), { recursive: true });

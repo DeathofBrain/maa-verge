@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,13 +10,14 @@ import {
   queryWindowsEmulatorInventory,
   windowsProcessAdbCandidates,
 } from '@backend/infrastructure/native/windows-emulators';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 async function fixture() {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-windows-adb-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-windows-adb-'));
   roots.push(root);
   const executable = path.join(root, 'nx_main', 'adb.exe');
   await mkdir(path.dirname(executable));

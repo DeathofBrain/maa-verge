@@ -1,12 +1,13 @@
 import { afterEach, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   downloadArchive,
   type DownloadMetadata,
 } from '@backend/infrastructure/network/download.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 type Sample = { percent: number; speed: number | undefined };
@@ -14,7 +15,7 @@ const digest = (data: Uint8Array) => createHash('sha256').update(data).digest('h
 const mocked = (fetcher: (...args: any[]) => Response) => fetcher as unknown as typeof fetch;
 
 async function destination() {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-download-speed-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-download-speed-'));
   roots.push(root);
   return path.join(root, 'archive.zip');
 }

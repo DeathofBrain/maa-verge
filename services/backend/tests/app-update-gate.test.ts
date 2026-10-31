@@ -1,15 +1,16 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime, type RuntimeOptions } from '@backend/app/runtime';
 import { parseSettings } from '@backend/modules/settings/models';
 import { snapshotIntegrity } from '@backend/infrastructure/filesystem/snapshot-integrity';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
 function fixture(source?: any, options: Partial<RuntimeOptions> = {}) {
-  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), 'maaverge-app-update-')));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-app-update-'));
   roots.push(root);
   const runtime = new Runtime(root, {
     source,

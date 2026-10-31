@@ -1,17 +1,18 @@
 import { afterEach, describe, expect, setSystemTime, spyOn, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ScreenFrame } from '@contracts/rpc-types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 import { Runtime } from '@backend/app/runtime';
 import { CoreWorker } from '@backend/infrastructure/native/worker';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [],
   coreWorkers: CoreWorker[] = [];
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-preview-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-preview-'));
   roots.push(root);
   return root;
 };

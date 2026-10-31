@@ -1,10 +1,11 @@
 import { afterEach, expect, spyOn, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
 import { emptyEmulatorInventory } from '@backend/infrastructure/native/windows-emulators';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const runtimes: Runtime[] = [];
 const roots: string[] = [];
@@ -30,7 +31,9 @@ class FakeWorker {
   }
 }
 
-function fixture(root = mkdtempSync(path.join(tmpdir(), 'maaverge-device-deletion-'))) {
+function fixture(
+  root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-device-deletion-')),
+) {
   roots.push(root);
   const notifications: any[] = [];
   const workers: FakeWorker[] = [];

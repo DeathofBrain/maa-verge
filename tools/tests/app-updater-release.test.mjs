@@ -1,7 +1,8 @@
+import { makeTemporaryDirectory } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -53,7 +54,9 @@ async function fullSet(directory, key, appVersion = version, signedDmg = true) {
   await artifact(directory, `Maa-Verge_${appVersion}_x64.dmg`, key, signedDmg, appVersion);
 }
 async function temporary(callback) {
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'maa-verge-updater-release-'));
+  const directory = await makeTemporaryDirectory(
+    path.join(os.tmpdir(), 'maa-verge-updater-release-'),
+  );
   try {
     return await callback(directory);
   } finally {

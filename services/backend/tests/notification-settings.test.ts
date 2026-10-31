@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { defaultNotifications, parseSettings } from '@backend/modules/settings/models';
 import { Runtime } from '@backend/app/runtime';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const runtimes: Runtime[] = [];
 const roots: string[] = [];
@@ -30,7 +31,7 @@ test('old settings get notification defaults and partial policies keep strict bo
 });
 
 test('notification preferences persist and older clients cannot clear them by saving other settings', async () => {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-notification-settings-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-notification-settings-'));
   roots.push(root);
   const runtime = new Runtime(root);
   runtimes.push(runtime);

@@ -1,11 +1,12 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CopilotLibrary } from '@backend/modules/copilot/copilot';
 import { Runtime } from '@backend/app/runtime';
 import { Store } from '@backend/infrastructure/storage/storage';
 import { validateCopilotStagesResult } from '@contracts/validators.js';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 const stores: Store[] = [];
@@ -30,7 +31,7 @@ function generation(root: string, name: string, entries: Entry[]) {
   return path.join(root, name);
 }
 function fixture(entries: Entry[]) {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-copilot-stages-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-copilot-stages-'));
   roots.push(root);
   const store = new Store(root);
   stores.push(store);
@@ -114,7 +115,7 @@ test('community catalog and case-insensitive search follow the active immutable 
 });
 
 test('runtime exposes the read-only catalog with empty params validation and no device connection', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-copilot-stages-rpc-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-copilot-stages-rpc-'));
   roots.push(root);
   const runtime = new Runtime(root, {
     calendar: { fetcher: null },

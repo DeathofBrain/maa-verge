@@ -1,5 +1,4 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -11,11 +10,12 @@ import {
   resourceVersionLabel,
 } from '../../../apps/desktop/src/shared/lib/update-display';
 import type { UpdateChannel } from '@contracts/types';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const instances: Runtime[] = [],
   roots: string[] = [];
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-component-locations-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-component-locations-'));
   roots.push(root);
   return root;
 };

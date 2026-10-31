@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import {
   createServer as createHttpServer,
   request as httpRequest,
@@ -15,6 +15,7 @@ import path from 'node:path';
 import type { Duplex } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import type { DownloadOptions } from '@backend/infrastructure/network/download.ts';
+import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 // Public, test-only loopback identity. Trust is confined to each child process.
 const key = `-----BEGIN PRIVATE KEY-----
@@ -92,7 +93,7 @@ async function fixture({
   body?: Buffer;
   proxyFailure?: 'truncated-json' | 'invalid-json' | 'oversized' | 'stall';
 } = {}) {
-  const root = await mkdtemp(path.join(tmpdir(), 'maaverge-proxy-routing-'));
+  const root = await makeTemporaryDirectory(path.join(tmpdir(), 'maaverge-proxy-routing-'));
   roots.push(root);
   const ca = path.join(root, 'loopback-ca.pem');
   await writeFile(ca, certificate);

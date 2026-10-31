@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMaaToolHost } from '@backend/app/agent-tools';
@@ -7,6 +7,7 @@ import { Runtime } from '@backend/app/runtime';
 import { parseSettings } from '@backend/modules/settings/models';
 import type { Plan } from '@contracts/types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
@@ -67,7 +68,7 @@ function instrument(runtime: Runtime, calls: { method: string; params: any }[] =
   });
 }
 async function fixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-agent-tools-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-agent-tools-'));
   roots.push(root);
   const worker = new Worker();
   const runtime = new Runtime(root, {

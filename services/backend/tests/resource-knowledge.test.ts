@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -8,10 +8,11 @@ import {
   resourceKnowledgeParserVersion,
 } from '@backend/modules/knowledge/resource-knowledge';
 import type { ResourceKnowledgePack } from '@backend/modules/knowledge/knowledge-types';
+import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [];
 const temporary = () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'maaverge-resource-knowledge-'));
+  const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-resource-knowledge-'));
   roots.push(root);
   return root;
 };

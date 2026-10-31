@@ -1,7 +1,8 @@
+import { makeTemporaryDirectory } from '../test-support/temporary-directory.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +15,9 @@ test(
   'real codesign rejects unsealed and modified apps while preserving side-process permissions',
   { skip: process.platform !== 'darwin' },
   async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), 'maa-verge-bundle-signature-'));
+    const directory = await makeTemporaryDirectory(
+      path.join(os.tmpdir(), 'maa-verge-bundle-signature-'),
+    );
     const app = path.join(directory, 'Maa Verge.app');
     const contents = path.join(app, 'Contents');
     const macos = path.join(contents, 'MacOS');
