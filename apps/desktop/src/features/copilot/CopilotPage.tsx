@@ -1082,7 +1082,7 @@ export default function CopilotPage({
         actionsClassName="cp-heading-actions"
         title="作业中心"
         icon={<BookOpen />}
-        text="找到合适的作业，确认干员要求，再加入队列执行。"
+        text="现已接入PRTS Plus"
         actions={
           <Button variant="secondary" disabled={savingImport} onClick={openImport}>
             <Upload size={16} />

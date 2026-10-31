@@ -72,7 +72,6 @@ export default function HomeDashboard({
       label: '今日执行',
       aria: '今日执行统计',
       value: today.length,
-      detail: '按本地日期统计运行次数',
       icon: Clock3,
       tone: 'blue',
     },
@@ -80,7 +79,6 @@ export default function HomeDashboard({
       label: '今日完成',
       aria: '今日完成统计',
       value: today.filter((run) => run.status === 'completed').length,
-      detail: '今日发起且已完成的执行',
       icon: CircleCheck,
       tone: 'green',
     },
@@ -88,9 +86,6 @@ export default function HomeDashboard({
       label: '已连接设备',
       aria: '设备统计',
       value: connected.length,
-      detail: connected.length
-        ? `${connected.filter((item) => item.state === 'idle').length} 台空闲就绪`
-        : '连接设备后开始执行',
       icon: Monitor,
       tone: 'violet',
     },
@@ -98,7 +93,6 @@ export default function HomeDashboard({
       label: '正在运行',
       aria: '运行统计',
       value: activeRuns.length,
-      detail: activeRuns.length ? '可随时查看进度或停止' : '当前没有执行中的任务',
       icon: Activity,
       tone: 'amber',
     },
@@ -111,13 +105,7 @@ export default function HomeDashboard({
           className="home-heading"
           title="主页"
           icon={<House />}
-          text="设备状态与执行动态，一目了然。"
-          eyebrow={
-            <div className="home-eyebrow">
-              <span className="status-dot" />
-              工作空间总览
-            </div>
-          }
+          text="虽然没什么用，总归是要有一个的"
           actions={
             <span className="home-date">
               <CalendarDays size={14} />
@@ -126,7 +114,7 @@ export default function HomeDashboard({
           }
         />
         <div className="home-metrics">
-          {metrics.map(({ label, aria, value, detail, icon: Icon, tone }) => (
+          {metrics.map(({ label, aria, value, icon: Icon, tone }) => (
             <div className="home-metric" aria-label={aria} key={aria}>
               <div className="home-metric-top">
                 <span>{label}</span>
@@ -135,7 +123,6 @@ export default function HomeDashboard({
                 </span>
               </div>
               <strong className="numeric">{value}</strong>
-              <small>{detail}</small>
             </div>
           ))}
         </div>

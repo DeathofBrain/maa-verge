@@ -43,7 +43,7 @@ export default function AgentPage({
         padding="page"
         title="Agent 助手"
         icon={<Bot />}
-        text="描述目标，检查计划，再交给任务表执行。"
+        text="暂未开放"
         actions={
           <StatusPill
             tone="info"

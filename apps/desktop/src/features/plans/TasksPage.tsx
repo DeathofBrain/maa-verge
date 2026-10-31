@@ -173,13 +173,7 @@ export default function TasksPage({
         actionsClassName="tc-heading-actions"
         title="任务"
         icon={<ListChecks />}
-        text="管理任务表与设备绑定，开始执行并查看进度。"
-        eyebrow={
-          <div className="tc-eyebrow">
-            <ListChecks size={14} />
-            任务中心
-          </div>
-        }
+        text="管理任务表与多开"
         actions={
           <>
             <Button

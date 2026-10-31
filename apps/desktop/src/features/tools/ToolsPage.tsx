@@ -277,7 +277,7 @@ export default function ToolsPage({
         className="sp-page-heading"
         title="工具箱"
         icon={<Wrench />}
-        text="选择设备，确认空闲，再开始工具操作。"
+        text="选择设备后使用"
       />
       <section className="sp-section toolbox-device" aria-label="工具箱目标设备">
         <label>

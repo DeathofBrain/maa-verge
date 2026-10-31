@@ -372,7 +372,8 @@ export function DevicesPage({
         className="sp-page-heading"
         actionsClassName="sp-heading-actions"
         title="设备"
-        text="连接正在运行的设备，为每个模拟器实例保存独立配置。"
+        icon={<Monitor />}
+        text="为每个模拟器实例保存独立配置"
         actions={
           <>
             <Button

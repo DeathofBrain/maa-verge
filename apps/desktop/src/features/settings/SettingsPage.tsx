@@ -239,7 +239,8 @@ export function SettingsPage({
         className="sp-page-heading"
         actionsClassName="sp-heading-actions"
         title="设置"
-        text="修改自动保存。"
+        icon={<Settings2 />}
+        text="自动保存修改"
       />
       <div className="sp-settings-search">
         <SearchField

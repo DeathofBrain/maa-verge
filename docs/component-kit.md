@@ -254,7 +254,7 @@ createPortal(
 
 `PageHeading` 的 `padding` 默认为 `none`，由宿主布局提供留白；独立页头使用 `padding="page"`（Agent 助手、执行记录），提供 `26px 28px 23px` 留白并避免被纵向 flex 压缩。760px 以下收窄为 `22px 20px 20px`，480px 以下为 `20px 17px 18px`，操作区移至标题说明下方；操作区保持自身宽度，避免按钮文案被挤压。
 
-图文标题通过 `icon` 提供装饰图标，例如 `<PageHeading title="作业中心" icon={<BookOpen />} />`。kit 提供 24px 图标槽、垂直居中、`--space-3`（12px）图文间距及 `--muted` 图标颜色；图标本身沿用 Lucide 默认 24px 尺寸。标题字号、字重和原有页面留白保持原配方。图标容器使用 `aria-hidden`，h1 的可访问名称仍只有标题文案；不传图标时保留纯文字标题结构。主页、任务、作业中心、工具箱、Agent 助手与执行记录使用各自对应的侧栏图标，根类和操作区测试耦合类保留。
+图文标题通过 `icon` 提供装饰图标，例如 `<PageHeading title="作业中心" icon={<BookOpen />} />`。kit 提供 24px 图标槽、垂直居中、`--space-3`（12px）图文间距及 `--muted` 图标颜色；图标本身沿用 Lucide 默认 24px 尺寸。标题字号、字重和原有页面留白保持原配方。图标容器使用 `aria-hidden`，h1 的可访问名称仍只有标题文案；不传图标时保留纯文字标题结构。主页、任务、作业中心、工具箱、Agent 助手、执行记录、设备与设置使用各自对应的侧栏图标，根类和操作区测试耦合类保留。
 
 `Button` 与 `IconButton` 透传 React 19 的原生 `ref`，日志结果弹层据此返回触发按钮。Toast 的尺寸、边框、语义色、内部图标与文字换行由 `kit.css` 的 `mv-toast-*` 控制，关闭按钮使用 `size="sm"`，堆叠使用 `--z-toast`；定位和入场动画仍归 `app/styles/styles.css`。Tabs 的标签保持单行且不被 flex 压缩，窄窗下由使用方容器提供横向滚动。
 
