@@ -20,7 +20,6 @@ const bundle = path.join(root, 'apps/desktop/src-tauri/target/release/bundle');
 const config = JSON.parse(
   readFileSync(path.join(root, 'apps/desktop/src-tauri/tauri.conf.json'), 'utf8'),
 );
-const original = path.join(bundle, 'macos', `${config.productName}.app`);
 const dmgs = readdirSync(path.join(bundle, 'dmg')).filter((name) => name.endsWith('.dmg'));
 assert.equal(dmgs.length, 1, 'Expected exactly one final macOS installer');
 
@@ -111,7 +110,7 @@ async function waitUntil(predicate, message, timeout = 30_000) {
   }
   throw new Error(`${message}\n${output}`);
 }
-function sameBundle(copy) {
+function sameBundle(copy, source) {
   for (const relative of [
     'Contents/MacOS/maaverge',
     'Contents/_CodeSignature/CodeResources',
@@ -121,7 +120,7 @@ function sameBundle(copy) {
   ]) {
     assert.deepEqual(
       readFileSync(path.join(copy, relative)),
-      readFileSync(path.join(original, relative)),
+      readFileSync(path.join(source, relative)),
       `Final artifact differs from the verified app: ${relative}`,
     );
   }
@@ -131,7 +130,6 @@ try {
   mkdirSync(mount);
   mkdirSync(path.dirname(installed));
   mkdirSync(profile);
-  await verifyMacosBundle(original);
   const dmg = path.join(bundle, 'dmg', dmgs[0]);
   if (process.argv.includes('--require-updater') || existsSync(`${dmg}.sig`)) {
     await verifyUpdaterSignature(
@@ -153,12 +151,13 @@ try {
     dmg,
   ]);
   mounted = true;
-  await verifyMacosBundle(path.join(mount, `${config.productName}.app`));
-  command('/usr/bin/ditto', [path.join(mount, `${config.productName}.app`), installed]);
+  const bundledApp = path.join(mount, `${config.productName}.app`);
+  await verifyMacosBundle(bundledApp);
+  command('/usr/bin/ditto', [bundledApp, installed]);
+  await verifyMacosBundle(installed);
+  sameBundle(installed, bundledApp);
   command('/usr/bin/hdiutil', ['detach', mount]);
   mounted = false;
-  await verifyMacosBundle(installed);
-  sameBundle(installed);
   report.phases.push('DMG-integrity-install-and-signatures');
   // Never change a global Gatekeeper setting or the source/downloaded app.
   command('/usr/bin/xattr', ['-dr', 'com.apple.quarantine', installed]);

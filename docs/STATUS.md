@@ -12,7 +12,8 @@
 - 固定 Node 24.22.0 / pnpm 10.20.0 / Bun 1.4.3 的本地 `pnpm check` 通过：工具 157 通过、1 平台条件跳过，契约 45/45，类型/生成/架构门禁、worker 工具 4/4、合成 CTest 4/4；完整业务 1630 通过、9 平台条件跳过、0 失败（88 文件），Rust fmt/严格 locked Clippy 与 Rust 69 通过、2 既有忽略，本机 macOS 打包夹具 6/6。另执行 `--platform --require-native`：24 文件、534 通过、1 既有条件跳过，没有因分组缺失夹具新增跳过。
 - 完整 Chromium UI 266/266（4 workers，3.6 分钟），日常实际入口 15/15（2 workers，28 秒）；调度、平台清单与发行拒绝门禁 22/22，actionlint 1.7.12、ShellCheck、格式及差异空白检查通过。日志位于忽略目录 `.cache/ci-refactor/`。
 - 八处应用版本同步为 0.1.3，Cargo 生成的锁文件仅更新本地应用版本，发行配置检查通过。重写 README 与版本说明，突出三平台与多模拟器、多设备执行，明确 Agent 将于 v1.0.0 推出、基建估算为草稿模块；更新九张使用中的截图并删除两张多余旧截图，历史验证截图链接固定到旧提交。所有新截图来自本机 Chromium + 合成 IPC，三平台图仅模拟界面差异，不代表对应宿主或真实设备验收。
-- 此前临时路径规范化与独立 DMG 夹具修复已在旧架构完整 [Checks 41194403192](https://github.com/DeathofBrain/maa-verge/actions/runs/41194403192) 四宿主通过。重构后的远端完整 Checks、签名构建、草稿资产与公开发布尚待本轮执行；没有连接真实设备、运行游戏或调用付费模型，最低系统与真实升级安装仍须单独验收。
+- 此前临时路径规范化与独立 DMG 夹具修复已在旧架构完整 [Checks 41194403192](https://github.com/DeathofBrain/maa-verge/actions/runs/41194403192) 四宿主通过。重构首轮 `0d8d84b` 的 [main Checks 41195521004](https://github.com/DeathofBrain/maa-verge/actions/runs/41195521004) 与 [dev Checks 41195517669](https://github.com/DeathofBrain/maa-verge/actions/runs/41195517669) 各六任务全部成功，Linux 完整业务 1630 项、CTest 4 项、UI 266 项通过，三个附加宿主专项通过。main 总耗时 17 分 08 秒、application 16 分 46 秒，高于旧成功 full 的 11 分 24 秒；该轮镜像准备约 4 分 11 秒、依赖与 Cargo target 均未命中、Rust 冷编译约 2 分 49 秒，且 Linux 检查已串入 application，不能将其描述为完整回归加速。两套新缓存均已成功保存；日常快速路径的远端稳定耗时仍待后续真实变更积累。
+- 发行前复核另发现最终安装 smoke 仍读取 Tauri 已删除的中间 `.app`，现改为严格验证最终 DMG 内应用、复制后再次验签，并在卸载映像前比对主程序、CodeResources 和两个运行时。更新签名及版本校验保持强制。本机既有 macOS 打包夹具 6/6，默认实际隔离安装/窗口启动/退出 smoke 通过，清理错误与残留进程均为零；本地旧 alpha.1 DMG 无更新签名，只用于路径与安装流程验证，不作为 v0.1.3 候选。补丁提交后的完整 Checks、四宿主签名发行与 `--require-updater` 安装 smoke、草稿资产和公开发布仍待执行。没有连接真实设备、运行游戏或调用付费模型，最低系统与真实升级安装仍须单独验收。
 
 ## 本次 DMG 最终包校验与清理保护（macOS arm64，2026-10-31）
 
