@@ -1,0 +1,994 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://maaverge.local/contracts/atomic-inputs.schema.json",
+  "title": "AtomicInputContract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["inputs"],
+  "properties": {
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation.frame",
+        "operation.click",
+        "operation.swipe",
+        "operation.press_key",
+        "operation.long_press",
+        "operation.drag",
+        "operation.recognize",
+        "observation.frame",
+        "observation.base",
+        "observation.operators",
+        "observation.overview",
+        "observation.training",
+        "game.infrast.enter_overview",
+        "game.infrast.read_room",
+        "game.infrast.set_room",
+        "workflow.infrast.queue_rotate",
+        "workflow.infrast.overview_shift",
+        "workflow.infrast.room_shift",
+        "workflow.infrast.trim"
+      ],
+      "properties": {
+        "operation.frame": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "operation.click": {
+          "$ref": "#/$defs/AtomicClickInput"
+        },
+        "operation.swipe": {
+          "$ref": "#/$defs/AtomicSwipeInput"
+        },
+        "operation.press_key": {
+          "$ref": "#/$defs/AtomicPressKeyInput"
+        },
+        "operation.long_press": {
+          "$ref": "#/$defs/AtomicLongPressInput"
+        },
+        "operation.drag": {
+          "$ref": "#/$defs/AtomicDragInput"
+        },
+        "operation.recognize": {
+          "$ref": "#/$defs/AtomicRecognizeInput"
+        },
+        "observation.frame": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.base": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.operators": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.overview": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.training": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.infrast.enter_overview": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.infrast.read_room": {
+          "$ref": "#/$defs/AtomicRoomTargetInput"
+        },
+        "game.infrast.set_room": {
+          "$ref": "#/$defs/AtomicRoomShiftInput"
+        },
+        "workflow.infrast.queue_rotate": {
+          "$ref": "#/$defs/AtomicQueueRotateInput"
+        },
+        "workflow.infrast.overview_shift": {
+          "$ref": "#/$defs/AtomicBatchShiftInput"
+        },
+        "workflow.infrast.room_shift": {
+          "$ref": "#/$defs/AtomicBatchShiftInput"
+        },
+        "workflow.infrast.trim": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "AtomicEmptyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "AtomicClickInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frameId", "x", "y"],
+      "properties": {
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        }
+      }
+    },
+    "AtomicSwipeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frameId", "x1", "y1", "x2", "y2"],
+      "properties": {
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "x1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "x2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 2000
+        },
+        "profile": {
+          "enum": ["drag", "navigation"]
+        },
+        "compensationDirection": {
+          "enum": ["none", "up", "down", "left", "right"]
+        }
+      }
+    },
+    "AtomicPressKeyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frameId", "key"],
+      "properties": {
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "key": {
+          "enum": ["back", "escape"]
+        }
+      }
+    },
+    "AtomicLongPressInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frameId", "x", "y", "durationMs"],
+      "properties": {
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        }
+      }
+    },
+    "AtomicDragInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frameId", "x1", "y1", "x2", "y2", "durationMs"],
+      "properties": {
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "x1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "x2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        }
+      }
+    },
+    "AtomicRecognizeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frameId", "kind"],
+      "properties": {
+        "kind": {
+          "enum": ["ocr", "template", "color"]
+        },
+        "roi": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8191
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 8191
+            },
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8192
+            },
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8192
+            }
+          ],
+          "additionalItems": false
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "method": {
+          "enum": [5, 40, "RGBCount"]
+        },
+        "onlyRec": {
+          "type": "boolean"
+        },
+        "replace": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        },
+        "lower": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 179
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          ],
+          "additionalItems": false
+        },
+        "upper": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 179
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          ],
+          "additionalItems": false
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16777216
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "greenMask": {
+          "type": "boolean"
+        },
+        "referenceSize": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": 1280
+            },
+            {
+              "const": 720
+            }
+          ],
+          "additionalItems": false
+        },
+        "maskRange": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "enum": [
+            [1, 255],
+            [100, 255]
+          ]
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "templateId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^(?!\\/)(?!.*(?:^|\\/)\\.{1,2}(?:\\/|$))(?!.*[\\\\:\\u0000-\\u001f\\u007f])[^/]+(?:\\/[^/]+)*$"
+        },
+        "pureColor": {
+          "const": true
+        },
+        "colorScales": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              }
+            }
+          }
+        },
+        "colorWithClose": {
+          "type": "boolean"
+        },
+        "nmsDistance": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16384
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "ocr"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": ["method"],
+                  "properties": {
+                    "method": {}
+                  }
+                },
+                {
+                  "required": ["templateId"],
+                  "properties": {
+                    "templateId": {}
+                  }
+                },
+                {
+                  "required": ["maskRange"],
+                  "properties": {
+                    "maskRange": {}
+                  }
+                },
+                {
+                  "required": ["greenMask"],
+                  "properties": {
+                    "greenMask": {}
+                  }
+                },
+                {
+                  "required": ["lower"],
+                  "properties": {
+                    "lower": {}
+                  }
+                },
+                {
+                  "required": ["upper"],
+                  "properties": {
+                    "upper": {}
+                  }
+                },
+                {
+                  "required": ["count"],
+                  "properties": {
+                    "count": {}
+                  }
+                },
+                {
+                  "required": ["connected"],
+                  "properties": {
+                    "connected": {}
+                  }
+                },
+                {
+                  "required": ["pureColor"],
+                  "properties": {
+                    "pureColor": {}
+                  }
+                },
+                {
+                  "required": ["colorScales"],
+                  "properties": {
+                    "colorScales": {}
+                  }
+                },
+                {
+                  "required": ["colorWithClose"],
+                  "properties": {
+                    "colorWithClose": {}
+                  }
+                },
+                {
+                  "required": ["nmsDistance"],
+                  "properties": {
+                    "nmsDistance": {}
+                  }
+                }
+              ]
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "onlyRec": {
+                      "const": true
+                    }
+                  },
+                  "required": ["onlyRec"]
+                },
+                "then": {
+                  "required": ["roi"],
+                  "properties": {
+                    "roi": {}
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "template"
+              }
+            }
+          },
+          "then": {
+            "required": ["templateId"],
+            "properties": {
+              "method": {
+                "enum": [5, "RGBCount"]
+              },
+              "templateId": {}
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": ["onlyRec"],
+                  "properties": {
+                    "onlyRec": {}
+                  }
+                },
+                {
+                  "required": ["replace"],
+                  "properties": {
+                    "replace": {}
+                  }
+                },
+                {
+                  "required": ["lower"],
+                  "properties": {
+                    "lower": {}
+                  }
+                },
+                {
+                  "required": ["upper"],
+                  "properties": {
+                    "upper": {}
+                  }
+                },
+                {
+                  "required": ["count"],
+                  "properties": {
+                    "count": {}
+                  }
+                },
+                {
+                  "required": ["connected"],
+                  "properties": {
+                    "connected": {}
+                  }
+                }
+              ]
+            },
+            "allOf": [
+              {
+                "if": {
+                  "required": ["maskRange"],
+                  "properties": {
+                    "maskRange": {}
+                  }
+                },
+                "then": {
+                  "not": {
+                    "required": ["greenMask"],
+                    "properties": {
+                      "greenMask": {}
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "required": ["method"],
+                  "properties": {
+                    "method": {
+                      "const": "RGBCount"
+                    }
+                  }
+                },
+                "then": {
+                  "required": ["pureColor", "colorScales"],
+                  "properties": {
+                    "pureColor": {
+                      "const": true
+                    },
+                    "colorScales": {}
+                  },
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": ["maskRange"],
+                        "properties": {
+                          "maskRange": {}
+                        }
+                      },
+                      {
+                        "required": ["greenMask"],
+                        "properties": {
+                          "greenMask": {}
+                        }
+                      }
+                    ]
+                  }
+                },
+                "else": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": ["pureColor"],
+                        "properties": {
+                          "pureColor": {}
+                        }
+                      },
+                      {
+                        "required": ["colorScales"],
+                        "properties": {
+                          "colorScales": {}
+                        }
+                      },
+                      {
+                        "required": ["colorWithClose"],
+                        "properties": {
+                          "colorWithClose": {}
+                        }
+                      },
+                      {
+                        "required": ["nmsDistance"],
+                        "properties": {
+                          "nmsDistance": {}
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "color"
+              }
+            }
+          },
+          "then": {
+            "required": ["method", "lower", "upper"],
+            "properties": {
+              "method": {
+                "const": 40
+              },
+              "lower": {},
+              "upper": {}
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": ["threshold"],
+                  "properties": {
+                    "threshold": {}
+                  }
+                },
+                {
+                  "required": ["onlyRec"],
+                  "properties": {
+                    "onlyRec": {}
+                  }
+                },
+                {
+                  "required": ["replace"],
+                  "properties": {
+                    "replace": {}
+                  }
+                },
+                {
+                  "required": ["templateId"],
+                  "properties": {
+                    "templateId": {}
+                  }
+                },
+                {
+                  "required": ["maskRange"],
+                  "properties": {
+                    "maskRange": {}
+                  }
+                },
+                {
+                  "required": ["greenMask"],
+                  "properties": {
+                    "greenMask": {}
+                  }
+                },
+                {
+                  "required": ["pureColor"],
+                  "properties": {
+                    "pureColor": {}
+                  }
+                },
+                {
+                  "required": ["colorScales"],
+                  "properties": {
+                    "colorScales": {}
+                  }
+                },
+                {
+                  "required": ["colorWithClose"],
+                  "properties": {
+                    "colorWithClose": {}
+                  }
+                },
+                {
+                  "required": ["nmsDistance"],
+                  "properties": {
+                    "nmsDistance": {}
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "AtomicRoomTargetInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facility", "room"],
+      "properties": {
+        "facility": {
+          "enum": [
+            "Mfg",
+            "Trade",
+            "Power",
+            "Control",
+            "Reception",
+            "Office",
+            "Dorm",
+            "Processing",
+            "Training",
+            "Recycle"
+          ]
+        },
+        "room": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        }
+      }
+    },
+    "AtomicRoomShiftInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facility", "room"],
+      "properties": {
+        "facility": {
+          "enum": [
+            "Mfg",
+            "Trade",
+            "Power",
+            "Control",
+            "Reception",
+            "Office",
+            "Dorm",
+            "Processing",
+            "Training",
+            "Recycle"
+          ]
+        },
+        "room": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "operators": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "trainee": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "assistant": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "AtomicBatchShiftInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rooms"],
+      "properties": {
+        "rooms": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["facility", "room"],
+            "properties": {
+              "facility": {
+                "enum": [
+                  "Mfg",
+                  "Trade",
+                  "Power",
+                  "Control",
+                  "Reception",
+                  "Office",
+                  "Dorm",
+                  "Processing",
+                  "Training",
+                  "Recycle"
+                ]
+              },
+              "room": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9
+              },
+              "position": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "operators": {
+                "type": "array",
+                "maxItems": 5,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              },
+              "trainee": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "assistant": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    "AtomicQueueRotateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expectedRooms": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["facility", "room"],
+            "properties": {
+              "facility": {
+                "enum": [
+                  "Mfg",
+                  "Trade",
+                  "Power",
+                  "Control",
+                  "Reception",
+                  "Office",
+                  "Dorm",
+                  "Processing",
+                  "Training",
+                  "Recycle"
+                ]
+              },
+              "room": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9
+              },
+              "position": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "operators": {
+                "type": "array",
+                "maxItems": 5,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              },
+              "trainee": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "assistant": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    "AtomicCapabilityResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "data", "verified"],
+      "properties": {
+        "status": {
+          "enum": ["completed", "partial", "failed", "unavailable", "cancelled", "unknown"]
+        },
+        "data": {},
+        "verified": {
+          "type": "boolean"
+        },
+        "nativeSuccess": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      }
+    }
+  }
+}

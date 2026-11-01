@@ -13,6 +13,8 @@ const rpcSource = path.join(root, 'packages/contracts/schemas/rpc.schema.json');
 const workerSource = path.join(root, 'packages/contracts/schemas/worker.schema.json');
 const rpcSchema = JSON.parse(readFileSync(rpcSource, 'utf8'));
 const workerSchema = JSON.parse(readFileSync(workerSource, 'utf8'));
+const atomicSource = path.join(root, 'packages/contracts/schemas/atomic-inputs.schema.json');
+const atomicSchema = JSON.parse(readFileSync(atomicSource, 'utf8'));
 const bannerComment =
   '/* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */';
 const typeOptions = {
@@ -32,6 +34,7 @@ const desktopUninstallTypes = await compile(
 );
 const rpcTypes = await compileFromFile(rpcSource, { ...typeOptions, unreachableDefinitions: true });
 const workerTypes = await compile(workerSchema, 'WorkerProtocol', typeOptions);
+const atomicTypes = await compile(atomicSchema, 'AtomicInputContract', typeOptions);
 
 // Build validators once, including Ajv's small runtime helpers. The application
 // ships neither Ajv's schema compiler nor dynamically evaluated validation code.
@@ -46,7 +49,25 @@ const ajv = new Ajv({
 ajv.addSchema(schema);
 ajv.addSchema(rpcSchema);
 ajv.addSchema(workerSchema);
+ajv.addSchema(atomicSchema);
 const validators = {
+  validateControlSessionStartParams: `${rpcSchema.$id}#/$defs/ControlSessionStartParams`,
+  validateControlSessionGetParams: `${rpcSchema.$id}#/$defs/ControlSessionGetParams`,
+  validateControlSessionEndParams: `${rpcSchema.$id}#/$defs/ControlSessionEndParams`,
+  validateDeviceSwipeParams: `${rpcSchema.$id}#/$defs/DeviceSwipeParams`,
+  validateDevicePressKeyParams: `${rpcSchema.$id}#/$defs/DevicePressKeyParams`,
+  validateDeviceLongPressParams: `${rpcSchema.$id}#/$defs/DeviceLongPressParams`,
+  validateDeviceDragParams: `${rpcSchema.$id}#/$defs/DeviceDragParams`,
+  validateVisionRecognizeParams: `${rpcSchema.$id}#/$defs/VisionRecognizeParams`,
+  validateVisionRecognitionResult: `${rpcSchema.$id}#/$defs/VisionRecognitionResult`,
+  validatePrimitiveCatalogParams: `${rpcSchema.$id}#/$defs/PrimitiveCatalogParams`,
+  validateDebugSessionStartParams: `${rpcSchema.$id}#/$defs/DebugSessionStartParams`,
+  validateDebugPrimitiveInvokeParams: `${rpcSchema.$id}#/$defs/DebugPrimitiveInvokeParams`,
+  validateDebugSessionEndParams: `${rpcSchema.$id}#/$defs/DebugSessionEndParams`,
+  validateFrameworkWorkerConfiguration: `${workerSchema.$id}#/$defs/FrameworkWorkerConfiguration`,
+  validateFrameworkWorkerCommand: `${workerSchema.$id}#/$defs/FrameworkWorkerCommand`,
+  validateFrameworkWorkerEvent: `${workerSchema.$id}#/$defs/FrameworkWorkerEvent`,
+  validateFrameworkWorkerValidation: `${workerSchema.$id}#/$defs/FrameworkWorkerValidation`,
   validateSnapshot: schema.$id,
   validateHostUpdateParams: `${rpcSchema.$id}#/$defs/HostUpdateParams`,
   validateCopilotListParams: `${rpcSchema.$id}#/$defs/CopilotListParams`,
@@ -114,7 +135,17 @@ const validators = {
   validateWorkerValidation: `${workerSchema.$id}#/$defs/WorkerValidation`,
   validateDesktopUninstallInfo: `${schema.$id}#/$defs/DesktopUninstallInfo`,
 };
-const standalone = standaloneCode(ajv, validators);
+const atomicMethods = Object.keys(atomicSchema.properties.inputs.properties);
+for (const [index, method] of atomicMethods.entries())
+  validators[`validateAtomicInput${index}`] =
+    `${atomicSchema.$id}#/properties/inputs/properties/${method}`;
+const standalone = `${standaloneCode(ajv, validators)}\nexport const atomicInputValidators = {\n${atomicMethods.map((method, index) => `  ${JSON.stringify(method)}: validateAtomicInput${index},`).join('\n')}\n};\n`;
+const atomicInputs = Object.fromEntries(
+  atomicMethods.map((method) => {
+    const definition = atomicSchema.properties.inputs.properties[method].$ref.split('/').at(-1);
+    return [method, atomicSchema.$defs[definition]];
+  }),
+);
 const require = createRequire(import.meta.url);
 const bundled = await build({
   stdin: {
@@ -140,6 +171,7 @@ const bundled = await build({
         builder.onLoad({ filter: /.*/, namespace: 'ajv-runtime' }, ({ path: runtimePath }) => ({
           contents: readFileSync(require.resolve(runtimePath), 'utf8'),
           loader: 'js',
+          resolveDir: path.dirname(require.resolve(runtimePath)),
         }));
       },
     },
@@ -150,6 +182,25 @@ const declaration = `${bannerComment}
 import type { Plan, Settings, Snapshot, DesktopUninstallInfo } from './types';
 import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame, HostUpdateParams } from './rpc-types';
 import type { WorkerProtocol } from './worker-types';
+import type { AtomicInputContract } from './atomic-input-types';
+export const atomicInputValidators: { [K in keyof AtomicInputContract['inputs']]: Validator<AtomicInputContract['inputs'][K]> };
+export const validateControlSessionStartParams: Validator<RpcContract['params']['control.session.start']>;
+export const validateControlSessionGetParams: Validator<RpcContract['params']['control.session.get']>;
+export const validateControlSessionEndParams: Validator<RpcContract['params']['control.session.end']>;
+export const validateDeviceSwipeParams: Validator<RpcContract['params']['device.swipe']>;
+export const validateDevicePressKeyParams: Validator<RpcContract['params']['device.press_key']>;
+export const validateDeviceLongPressParams: Validator<RpcContract['params']['device.long_press']>;
+export const validateDeviceDragParams: Validator<RpcContract['params']['device.drag']>;
+export const validateVisionRecognizeParams: Validator<RpcContract['params']['vision.recognize']>;
+export const validateVisionRecognitionResult: Validator<RpcContract['results']['vision.recognize']>;
+export const validatePrimitiveCatalogParams: Validator<RpcContract['params']['primitive.catalog.get']>;
+export const validateDebugSessionStartParams: Validator<RpcContract['params']['debug.session.start']>;
+export const validateDebugPrimitiveInvokeParams: Validator<RpcContract['params']['debug.primitive.invoke']>;
+export const validateDebugSessionEndParams: Validator<RpcContract['params']['debug.session.end']>;
+export const validateFrameworkWorkerConfiguration: Validator<WorkerProtocol['frameworkConfiguration']>;
+export const validateFrameworkWorkerCommand: Validator<WorkerProtocol['frameworkCommand']>;
+export const validateFrameworkWorkerEvent: Validator<WorkerProtocol['frameworkEvent']>;
+export const validateFrameworkWorkerValidation: Validator<WorkerProtocol['frameworkValidation']>;
 export interface ValidationError {
   instancePath: string;
   schemaPath: string;
@@ -233,6 +284,11 @@ const files = new Map([
   ['packages/contracts/src/types.ts', `${types}\n${desktopUninstallTypes}`],
   ['packages/contracts/src/rpc-types.ts', rpcTypes],
   ['packages/contracts/src/worker-types.ts', workerTypes],
+  ['packages/contracts/src/atomic-input-types.ts', atomicTypes],
+  [
+    'packages/contracts/src/atomic-input-schemas.ts',
+    `${bannerComment}\nexport const atomicInputSchemas: Record<string, Record<string, unknown>> = ${JSON.stringify(atomicInputs, null, 2)};\nexport const atomicCapabilityResultSchema: Record<string, unknown> = ${JSON.stringify(atomicSchema.$defs.AtomicCapabilityResult, null, 2)};\n`,
+  ],
   ['packages/contracts/src/validators.js', bundled.outputFiles[0].text],
   ['packages/contracts/src/validators.d.ts', declaration],
 ]);

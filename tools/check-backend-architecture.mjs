@@ -12,6 +12,8 @@ const modules = new Set([
   'plans',
   'execution',
   'agent',
+  'framework',
+  'atomic',
   'copilot',
   'schedules',
   'tools',

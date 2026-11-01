@@ -8,7 +8,7 @@ import {
 import { RpcError } from '@backend/shared/errors';
 
 type ClickParams = RpcContract['params']['device.click'];
-type Accepted = { accepted: true };
+type Accepted = { accepted: true; nativeSuccess?: true };
 export interface PreviewWorker {
   connected: boolean;
   safeIdle: boolean;
@@ -21,6 +21,12 @@ interface Owner {
   worker: (id: string) => PreviewWorker | undefined;
   hasRun: (id: string) => boolean;
   clicked: (data: ClickParams) => void;
+  context?: (id: string) => {
+    engine: 'maacore' | 'maafw';
+    sessionId?: string;
+    resourceGeneration?: string;
+  };
+  authorize?: (id: string, controlToken?: string) => boolean;
 }
 type FrameRecord = {
   deviceId: string;
@@ -29,6 +35,7 @@ type FrameRecord = {
   height: number;
   worker?: PreviewWorker;
   canControl: boolean;
+  image: ScreenFrame;
 };
 const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const base64Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -76,6 +83,9 @@ export class Preview {
   isClicking(deviceId: string) {
     return this.clicking.has(deviceId);
   }
+  isReading(deviceId: string) {
+    return this.reading.has(deviceId);
+  }
   invalidate(deviceId?: string) {
     for (const [id, frame] of this.frames)
       if (!deviceId || frame.deviceId === deviceId) this.frames.delete(id);
@@ -92,15 +102,45 @@ export class Preview {
   frame(params: unknown): Promise<ScreenFrame> {
     if (!validateDeviceFrameParams(params)) throw new RpcError(-32602, '画面请求参数无效');
     const { deviceId } = params;
+    if (params.controlToken && !this.authorized(deviceId, params.controlToken))
+      throw new RpcError(-32011, '控制会话令牌无效');
     this.device(deviceId);
     if (this.clicking.has(deviceId)) throw new RpcError(-32011, '正在发送点击，请稍后刷新画面');
     const previous = this.reading.get(deviceId);
-    if (previous) return previous;
+    if (previous)
+      return previous.then((frame) => ({
+        ...frame,
+        canControl: frame.canControl && this.authorized(deviceId, params.controlToken),
+      }));
     const promise = this.read(deviceId).finally(() => {
       if (this.reading.get(deviceId) === promise) this.reading.delete(deviceId);
     });
     this.reading.set(deviceId, promise);
-    return promise;
+    return promise.then((frame) => ({
+      ...frame,
+      canControl: frame.canControl && this.authorized(deviceId, params.controlToken),
+    }));
+  }
+  private authorized(deviceId: string, token?: string) {
+    return this.owner.authorize?.(deviceId, token) ?? true;
+  }
+  isCurrent(image: ScreenFrame) {
+    return (
+      this.frames.get(image.frameId)?.image === image &&
+      this.owner.worker(image.deviceId) === this.frames.get(image.frameId)?.worker
+    );
+  }
+  reference(deviceId: string, frameId: string, maxAgeMs = 2000): ScreenFrame {
+    const { worker } = this.device(deviceId),
+      record = this.frames.get(frameId);
+    if (
+      !record ||
+      record.deviceId !== deviceId ||
+      record.worker !== worker ||
+      Date.now() - record.issuedAt > maxAgeMs
+    )
+      throw new RpcError(-32011, '画面已失效，请重新截图');
+    return record.image;
   }
   private async read(deviceId: string): Promise<ScreenFrame> {
     const { worker } = this.device(deviceId),
@@ -134,6 +174,17 @@ export class Preview {
     const recent = [...this.frames.entries()].filter(([, frame]) => frame.deviceId === deviceId);
     for (const [id] of recent.slice(0, Math.max(0, recent.length - 31))) this.frames.delete(id);
     const frameId = randomUUID();
+    const frame: ScreenFrame = {
+      ...image,
+      deviceId,
+      frameId,
+      capturedAt: new Date(started).toISOString(),
+      canControl,
+      latencyMs: Date.now() - started,
+      ...(this.owner.context?.(deviceId) ?? {}),
+      coordinateSpace: 'frame',
+      fresh: worker.safeIdle && !this.owner.hasRun(deviceId),
+    };
     this.frames.set(frameId, {
       deviceId,
       issuedAt: started,
@@ -141,19 +192,20 @@ export class Preview {
       height: image.height,
       worker,
       canControl,
+      image: frame,
     });
-    return {
-      ...image,
-      deviceId,
-      frameId,
-      capturedAt: new Date(started).toISOString(),
-      canControl,
-      latencyMs: Date.now() - started,
-    };
+    return frame;
   }
   click(params: unknown): Promise<Accepted> {
     if (!validateDeviceClickParams(params)) throw new RpcError(-32602, '点击参数无效');
-    const signature = JSON.stringify([params.deviceId, params.frameId, params.x, params.y]);
+    const signature = JSON.stringify([
+      'click',
+      params.deviceId,
+      params.frameId,
+      params.x,
+      params.y,
+      params.controlToken,
+    ]);
     const existing = this.clicks.get(params.requestId);
     if (existing) {
       if (existing.signature !== signature)
@@ -173,6 +225,8 @@ export class Preview {
     if (this.clicking.has(deviceId)) throw new RpcError(-32011, '上一条点击尚未完成');
     this.clicking.add(deviceId);
     try {
+      if (!this.authorized(deviceId, params.controlToken))
+        throw new RpcError(-32011, '该设备由 MaaFramework 工作流占用，需要宿主控制令牌');
       // Let the single in-flight read finish; no additional frames queue behind it.
       await this.reading.get(deviceId);
       const { device, worker } = this.device(deviceId),
@@ -208,11 +262,83 @@ export class Preview {
         result.accepted !== true
       )
         throw new RpcError(-32040, '核心未确认点击，结果未知，请查看画面');
+      if (
+        this.owner.context?.(deviceId).engine === 'maafw' &&
+        (!('nativeSuccess' in result) || result.nativeSuccess !== true)
+      )
+        throw new RpcError(-32040, 'MaaFramework 未确认点击执行结果，请重新截图核对');
       if (this.owner.available()) this.owner.clicked(params);
-      return { accepted: true };
+      return {
+        accepted: true,
+        ...('nativeSuccess' in result && result.nativeSuccess === true
+          ? { nativeSuccess: true as const }
+          : {}),
+      };
     } finally {
       this.invalidate(deviceId);
       this.clicking.delete(deviceId);
     }
+  }
+  /** All atomic writes share the frame gate and at-most-once acknowledgement cache. */
+  action(
+    params: { deviceId: string; frameId: string; requestId: string; controlToken: string },
+    signature: unknown,
+    points: number[][],
+    send: () => Promise<unknown>,
+  ): Promise<{ accepted: true; nativeSuccess: true }> {
+    const identity = JSON.stringify(['action', params, signature]);
+    const existing = this.clicks.get(params.requestId);
+    if (existing) {
+      if (existing.signature !== identity)
+        throw new RpcError(-32011, '同一操作标识不能用于不同操作');
+      return existing.promise as Promise<{ accepted: true; nativeSuccess: true }>;
+    }
+    for (const [id, value] of this.clicks)
+      if (Date.now() - value.started > 300_000) this.clicks.delete(id);
+    if (this.clicks.size >= 2048) throw new RpcError(-32011, '操作请求过于频繁');
+    const promise = (async () => {
+      const id = params.deviceId;
+      if (this.clicking.has(id)) throw new RpcError(-32011, '上一条控制操作尚未完成');
+      this.clicking.add(id);
+      try {
+        await this.reading.get(id);
+        if (!this.authorized(id, params.controlToken))
+          throw new RpcError(-32011, '控制会话令牌无效');
+        const image = this.reference(id, params.frameId),
+          { worker, device } = this.device(id);
+        if (
+          !image.canControl ||
+          device.state !== 'idle' ||
+          this.owner.hasRun(id) ||
+          !worker.safeIdle
+        )
+          throw new RpcError(-32011, '设备或画面当前不可控制');
+        for (const [x, y] of points)
+          if (x! < 0 || y! < 0 || x! >= image.width || y! >= image.height)
+            throw new RpcError(-32602, '操作位置超出画面范围');
+        const result = await send();
+        if (
+          !result ||
+          typeof result !== 'object' ||
+          !('accepted' in result) ||
+          result.accepted !== true ||
+          !('nativeSuccess' in result) ||
+          result.nativeSuccess !== true
+        )
+          throw new Error('原生执行未确认');
+        return { accepted: true as const, nativeSuccess: true as const };
+      } catch (error) {
+        if (error instanceof RpcError) throw error;
+        throw new RpcError(
+          -32040,
+          '操作未获确认，结果可能未知，请重新截图核对；不会自动重放：' + String(error),
+        );
+      } finally {
+        this.invalidate(id);
+        this.clicking.delete(id);
+      }
+    })();
+    this.clicks.set(params.requestId, { signature: identity, started: Date.now(), promise });
+    return promise;
   }
 }

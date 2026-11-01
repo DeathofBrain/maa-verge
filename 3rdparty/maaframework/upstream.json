@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/MaaXYZ/MaaFramework",
+  "tag": "v5.14.3",
+  "revision": "8963191215ca49d6b037802acd07d20a4213160a",
+  "files": {
+    "include/MaaFramework/Global/MaaGlobal.h": "b29279cbb27cb06df4da6ec82ebd63a1322cee86fef0db6b12c4a9c782b0fcab",
+    "include/MaaFramework/Instance/MaaContext.h": "c326f347faea8b112f4e53cbcd1d4ef2e702360d6a2838471ed502b9bc855348",
+    "include/MaaFramework/Instance/MaaController.h": "dffbcc93089c6d2ac3a9e462faf3d149be3274506a1c09cf0802cbc15b0b1887",
+    "include/MaaFramework/Instance/MaaCustomController.h": "54472bc9aa186e7284e1a90a74ccea10a074c4540d4a6abf097e13089b17fc24",
+    "include/MaaFramework/Instance/MaaResource.h": "e7f3c6a8028e02f864c65c7f72d8b788294e54f53331327e7127be17e6fc7207",
+    "include/MaaFramework/Instance/MaaTasker.h": "2f4577395898c8431ce9d6e85c3d02dd01023932a6494587e4ac5a7779aee801",
+    "include/MaaFramework/MaaAPI.h": "21ac64e5bee1c5e5021e08f04d0ae7111231135f6f2143a796fb010ec00fef3e",
+    "include/MaaFramework/MaaDef.h": "c04d3b2ea8215b1f66749d7908ac73de7657f1591681ba8b1c5713f972b00990",
+    "include/MaaFramework/MaaMsg.h": "4f07ce5682d4d4e6ded29a6ac6b3c1b0326b8912d8b0613b5d6fb68d46d1bb1a",
+    "include/MaaFramework/MaaPort.h": "f1bb715a23a426d56a4f034ec4dea0193251d439ce99d427ec25575e146b0fad",
+    "include/MaaFramework/Utility/MaaBuffer.h": "6b8073c5172d2ce39ae1f9ff9e351d4a8750f029f7a64570105944b9761712f5",
+    "include/MaaFramework/Utility/MaaUtility.h": "fcabf0a44e982888a4d1c8903629c61a5acc61852bb18b42c3ec4651043dcf74",
+    "LICENSE.md": "446e755fae55ff034bbb21be44670b5f116c2b2667947e7036f2bfe6632539a8"
+  }
+}

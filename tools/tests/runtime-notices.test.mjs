@@ -37,11 +37,28 @@ test('bundles application and community notices and rejects missing source attri
     ['services/native/THIRD_PARTY_NOTICES.md', 'native-worker-notices.md'],
     ['services/backend/UNICODE-LICENSE.txt', 'UNICODE-LICENSE.txt'],
     ['services/backend/BUN-LICENSE.md', 'BUN-LICENSE.md'],
+    ['3rdparty/maaframework/LICENSE.md', 'maaframework/LICENSE.md'],
+    ['3rdparty/maaframework/upstream.json', 'maaframework/upstream.json'],
+    ['3rdparty/maaframework/runtime-assets.json', 'maaframework/runtime-assets.json'],
   ];
   for (const [source] of files) write(path.join(projectRoot, source), `original notice: ${source}`);
+  const gpl = path.join(projectRoot, '3rdparty/maaframework/COPYING.GPL3');
+  const gplBytes = readFileSync(
+    new URL('../../3rdparty/maaframework/COPYING.GPL3', import.meta.url),
+  );
+  write(gpl, gplBytes);
   writeApplicationNotices(output, { projectRoot });
   for (const [source, target] of files)
     assert.equal(readFileSync(path.join(output, target), 'utf8'), `original notice: ${source}`);
+  assert.deepEqual(readFileSync(path.join(output, 'maaframework/COPYING.GPL3')), gplBytes);
+  write(gpl, 'modified GPL text');
+  assert.throws(
+    () => writeApplicationNotices(output, { projectRoot }),
+    /supplemental license checksum mismatch/,
+  );
+  rmSync(gpl);
+  assert.throws(() => writeApplicationNotices(output, { projectRoot }), /COPYING\.GPL3/);
+  write(gpl, gplBytes);
   rmSync(path.join(projectRoot, 'NOTICE.md'));
   assert.throws(() => writeApplicationNotices(output, { projectRoot }), /NOTICE\.md/);
 });

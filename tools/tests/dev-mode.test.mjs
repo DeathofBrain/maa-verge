@@ -41,6 +41,7 @@ async function launch(
   write('tools/environment.mjs', 'export function assertWorkspaceDependencies() {}\n');
   for (const file of ['setup-bun', 'doctor', 'build-core-worker', 'prepare-native-check'])
     write(`tools/${file}.mjs`, '');
+  write('tools/prepare-maafw.mjs', 'export async function ensureMaaFramework() {}\n');
   for (const file of ['dev.mjs', 'project.mjs'])
     copyFileSync(path.join(root, 'tools', file), path.join(directory, 'tools', file));
   write(

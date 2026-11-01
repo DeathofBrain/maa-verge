@@ -76,7 +76,19 @@
         "knowledge.status",
         "knowledge.search",
         "account.snapshot.get",
-        "account.snapshot.list"
+        "account.snapshot.list",
+        "control.session.start",
+        "control.session.get",
+        "control.session.end",
+        "device.swipe",
+        "device.press_key",
+        "vision.recognize",
+        "device.long_press",
+        "device.drag",
+        "primitive.catalog.get",
+        "debug.session.start",
+        "debug.primitive.invoke",
+        "debug.session.end"
       ],
       "properties": {
         "app.snapshot": {
@@ -378,6 +390,42 @@
         },
         "account.snapshot.list": {
           "$ref": "#/$defs/AccountSnapshotListParams"
+        },
+        "control.session.start": {
+          "$ref": "#/$defs/ControlSessionStartParams"
+        },
+        "control.session.get": {
+          "$ref": "#/$defs/ControlSessionGetParams"
+        },
+        "control.session.end": {
+          "$ref": "#/$defs/ControlSessionEndParams"
+        },
+        "device.swipe": {
+          "$ref": "#/$defs/DeviceSwipeParams"
+        },
+        "device.press_key": {
+          "$ref": "#/$defs/DevicePressKeyParams"
+        },
+        "vision.recognize": {
+          "$ref": "#/$defs/VisionRecognizeParams"
+        },
+        "device.long_press": {
+          "$ref": "#/$defs/DeviceLongPressParams"
+        },
+        "device.drag": {
+          "$ref": "#/$defs/DeviceDragParams"
+        },
+        "primitive.catalog.get": {
+          "$ref": "#/$defs/PrimitiveCatalogParams"
+        },
+        "debug.session.start": {
+          "$ref": "#/$defs/DebugSessionStartParams"
+        },
+        "debug.primitive.invoke": {
+          "$ref": "#/$defs/DebugPrimitiveInvokeParams"
+        },
+        "debug.session.end": {
+          "$ref": "#/$defs/DebugSessionEndParams"
         }
       }
     },
@@ -450,7 +498,19 @@
         "knowledge.status",
         "knowledge.search",
         "account.snapshot.get",
-        "account.snapshot.list"
+        "account.snapshot.list",
+        "control.session.start",
+        "control.session.get",
+        "control.session.end",
+        "device.swipe",
+        "device.press_key",
+        "vision.recognize",
+        "device.long_press",
+        "device.drag",
+        "primitive.catalog.get",
+        "debug.session.start",
+        "debug.primitive.invoke",
+        "debug.session.end"
       ],
       "properties": {
         "app.snapshot": {
@@ -947,6 +1007,49 @@
         },
         "account.snapshot.list": {
           "$ref": "#/$defs/AccountSnapshotListResult"
+        },
+        "control.session.start": {
+          "$ref": "#/$defs/ControlSession"
+        },
+        "control.session.get": {
+          "$ref": "#/$defs/ControlSessionStatus"
+        },
+        "control.session.end": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ended"],
+          "properties": {
+            "ended": {
+              "const": true
+            }
+          }
+        },
+        "device.swipe": {
+          "$ref": "#/$defs/NativeActionResult"
+        },
+        "device.press_key": {
+          "$ref": "#/$defs/NativeActionResult"
+        },
+        "vision.recognize": {
+          "$ref": "#/$defs/VisionRecognitionResult"
+        },
+        "device.long_press": {
+          "$ref": "#/$defs/NativeActionResult"
+        },
+        "device.drag": {
+          "$ref": "#/$defs/NativeActionResult"
+        },
+        "primitive.catalog.get": {
+          "$ref": "#/$defs/PrimitiveCatalogResult"
+        },
+        "debug.session.start": {
+          "$ref": "#/$defs/DebugSessionStartResult"
+        },
+        "debug.primitive.invoke": {
+          "$ref": "#/$defs/DebugPrimitiveResult"
+        },
+        "debug.session.end": {
+          "$ref": "#/$defs/DebugSessionEndResult"
         }
       }
     }
@@ -1529,6 +1632,11 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 200
+        },
+        "controlToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         }
       }
     },
@@ -1561,11 +1669,16 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 200
+        },
+        "controlToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         }
       }
     },
     "ScreenFrame": {
-      "description": "Transient MaaCore preview PNG. Its width/height are the click coordinate space; image bytes never enter snapshots or persistence.",
+      "description": "Transient native preview PNG. Width/height are the frame coordinate space; image bytes never enter snapshots or persistence.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -1625,6 +1738,25 @@
           "description": "MaaCore's successful current AsstAsyncScreencap callback details.cost in milliseconds. Excludes image retrieval, PNG encoding and delivery to the frontend; omitted when MaaCore does not provide a measurement or the frame uses a running task's cached image.",
           "type": "number",
           "minimum": 0
+        },
+        "engine": {
+          "enum": ["maacore", "maafw"]
+        },
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "resourceGeneration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "coordinateSpace": {
+          "const": "frame"
+        },
+        "fresh": {
+          "type": "boolean"
         }
       }
     },
@@ -1637,8 +1769,12 @@
       "additionalProperties": false,
       "required": ["available", "coreInstalled"],
       "properties": {
-        "available": { "type": "boolean" },
-        "coreInstalled": { "type": "boolean" }
+        "available": {
+          "type": "boolean"
+        },
+        "coreInstalled": {
+          "type": "boolean"
+        }
       }
     },
     "DeviceDeleteParams": {
@@ -2590,8 +2726,16 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "value": { "type": "string", "minLength": 1, "maxLength": 200 },
-              "label": { "type": "string", "minLength": 1, "maxLength": 500 }
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
             },
             "required": ["value", "label"]
           }
@@ -3948,6 +4092,685 @@
           }
         }
       ]
+    },
+    "ControlSessionStartParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId", "requestId"],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "ControlSessionGetParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId"],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "ControlSessionEndParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId", "controlToken", "requestId"],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "controlToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "FrameworkCapabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ocr", "template", "click", "swipe", "keys"],
+      "properties": {
+        "ocr": {
+          "type": "boolean"
+        },
+        "template": {
+          "type": "boolean"
+        },
+        "click": {
+          "type": "boolean"
+        },
+        "swipe": {
+          "type": "boolean"
+        },
+        "keys": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ControlSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "controlToken",
+        "deviceId",
+        "engine",
+        "resourceGeneration",
+        "capabilities"
+      ],
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "controlToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "engine": {
+          "const": "maafw"
+        },
+        "resourceGeneration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "capabilities": {
+          "$ref": "#/$defs/FrameworkCapabilities"
+        }
+      }
+    },
+    "ControlSessionStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId", "owner", "busy"],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "owner": {
+          "enum": ["none", "maacore", "maafw", "switching"]
+        },
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "resourceGeneration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "busy": {
+          "type": "boolean"
+        }
+      }
+    },
+    "NativeActionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted", "nativeSuccess"],
+      "properties": {
+        "accepted": {
+          "const": true
+        },
+        "nativeSuccess": {
+          "const": true
+        }
+      }
+    },
+    "DeviceSwipeParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId", "controlToken", "frameId", "requestId", "x1", "y1", "x2", "y2"],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "controlToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "x1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "x2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 2000
+        },
+        "profile": {
+          "enum": ["drag", "navigation"]
+        },
+        "compensationDirection": {
+          "enum": ["none", "up", "down", "left", "right"]
+        }
+      }
+    },
+    "DevicePressKeyParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId", "controlToken", "frameId", "requestId", "key"],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "controlToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "key": {
+          "enum": ["back", "escape"]
+        }
+      }
+    },
+    "FrameRegion": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        }
+      ],
+      "additionalItems": false
+    },
+    "VisionRecognizeParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId", "frameId", "kind"],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "enum": ["ocr", "template"]
+        },
+        "roi": {
+          "$ref": "#/$defs/FrameRegion"
+        },
+        "templateId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^(?!\\/)(?!.*(?:^|\\/)\\.{1,2}(?:\\/|$))(?!.*[\\\\:\\u0000-\\u001f\\u007f])[^/]+(?:\\/[^/]+)*$"
+        }
+      }
+    },
+    "VisionMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["box", "score"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "box": {
+          "$ref": "#/$defs/FrameRegion"
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16777216
+        }
+      }
+    },
+    "VisionRecognitionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frameId", "engine", "resourceGeneration", "hit", "matches", "fresh"],
+      "properties": {
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "engine": {
+          "const": "maafw"
+        },
+        "resourceGeneration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "hit": {
+          "type": "boolean"
+        },
+        "matches": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/VisionMatch"
+          }
+        },
+        "fresh": {
+          "type": "boolean"
+        },
+        "coordinateSize": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": [
+            {
+              "const": 1280
+            },
+            {
+              "const": 720
+            }
+          ],
+          "additionalItems": false
+        }
+      }
+    },
+    "DeviceLongPressParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId", "controlToken", "frameId", "requestId", "x", "y", "durationMs"],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "controlToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        }
+      }
+    },
+    "DeviceDragParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId",
+        "controlToken",
+        "frameId",
+        "requestId",
+        "x1",
+        "y1",
+        "x2",
+        "y2",
+        "durationMs"
+      ],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "controlToken": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "x1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "x2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "y2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        }
+      }
+    },
+    "PrimitiveDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "description",
+        "layer",
+        "inputSchema",
+        "resultSchema",
+        "available"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 5000
+        },
+        "layer": {
+          "enum": ["operation", "observation", "game", "workflow"]
+        },
+        "inputSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "resultSchema": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "unavailableReason": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "requiredCapabilities": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "PrimitiveCatalogParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "PrimitiveCatalogResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/PrimitiveDescriptor"
+          }
+        }
+      }
+    },
+    "DebugSessionStartParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId", "requestId"],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "DebugSessionStartResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["debugSessionId", "deviceId"],
+      "properties": {
+        "debugSessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "DebugPrimitiveInvokeParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["debugSessionId", "primitiveId", "input", "requestId"],
+      "properties": {
+        "debugSessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "primitiveId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "DebugPrimitiveResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primitiveId", "status", "data", "steps"],
+      "properties": {
+        "primitiveId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "status": {
+          "enum": ["succeeded", "failed", "unknown", "cancelled"]
+        },
+        "nativeSuccess": {
+          "type": "boolean"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "steps": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "frame": {
+          "$ref": "#/$defs/ScreenFrame"
+        }
+      }
+    },
+    "DebugSessionEndParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["debugSessionId", "requestId"],
+      "properties": {
+        "debugSessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "DebugSessionEndResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ended"],
+      "properties": {
+        "ended": {
+          "const": true
+        }
+      }
     }
   }
 }

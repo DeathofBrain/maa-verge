@@ -45,6 +45,8 @@ import HistoryPage from '@/features/history/HistoryPage';
 import AppRunPanel from './shell/AppRunPanel';
 import { deviceActivity, type RunPanelTab } from './model/device-activity';
 import useSidebarResize from './model/useSidebarResize';
+import DebugPage from '@/features/debug/DebugPage';
+import { readDebugPreference, saveDebugPreference } from '@/features/debug/debug-preference';
 
 const uid = () => crypto.randomUUID();
 const readSelection = () => {
@@ -62,6 +64,12 @@ export default function App() {
   const { mutatePlan, deletedPlans } = usePlanWrites();
   const historicalDeviceRef = useRef<string | undefined>(undefined);
   const [page, setPage] = useState<Page>('home');
+  const [debugEnabled, setDebugEnabled] = useState(readDebugPreference);
+  const unlockDebug = () => {
+    saveDebugPreference(true);
+    setDebugEnabled(true);
+    setToast({ text: '已开启 Debug', error: false });
+  };
   const [taskView, setTaskView] = useState<'plans' | 'execution'>('plans');
   const [detailPlanId, setDetailPlanId] = useState<string | 'new' | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState(readSelection);
@@ -157,6 +165,7 @@ export default function App() {
     setProposal(null);
   };
   const navigate = (next: Page, keepDetail = false) => {
+    if (next === 'debug' && !debugEnabled) return;
     if (!keepDetail) {
       detailRevision.current++;
       setDetailPlanId(null);
@@ -475,8 +484,15 @@ export default function App() {
             setPageSearch(search.trim());
           },
         });
+    if (debugEnabled && 'debug 原语 调试'.includes(term))
+      results.push({
+        key: 'debug',
+        title: 'Debug',
+        location: '原语调试',
+        open: () => navigate('debug'),
+      });
     return results.slice(0, 9);
-  }, [search, snapshot, selectedPlanId]);
+  }, [search, snapshot, selectedPlanId, debugEnabled]);
   const platform = desktopPlatform();
   const moduleLoadFailed =
     /importing a module script failed|failed to fetch dynamically imported module|error loading dynamically imported module/iu.test(
@@ -540,6 +556,7 @@ export default function App() {
           snapshot.updates.find((channel) => channel.id === 'app')?.currentVersion || '未知版本'
         }
         hasUpdate={snapshot.updates.some((item) => item.status === 'available')}
+        debugEnabled={debugEnabled}
       />
       <div className="main-shell">
         <AppTopbar
@@ -703,7 +720,18 @@ export default function App() {
               />
             )}
             {page === 'devices' && <DevicesPage {...supportProps} />}
-            {page === 'settings' && <SettingsPage {...supportProps} />}
+            {page === 'settings' && <SettingsPage {...supportProps} onDebugUnlock={unlockDebug} />}
+            {page === 'debug' && debugEnabled && (
+              <DebugPage
+                devices={snapshot.devices}
+                onError={(text) => setToast({ text, error: true })}
+                onHide={() => {
+                  saveDebugPreference(false);
+                  setDebugEnabled(false);
+                  navigate('home');
+                }}
+              />
+            )}
             {page === 'copilot' && (
               <CopilotPage
                 {...supportProps}

@@ -1,4 +1,5 @@
 #include "native.hpp"
+#include "framework.hpp"
 
 #include <exception>
 #include <memory>
@@ -10,13 +11,18 @@ int main(int argc, char** argv) {
     Protocol protocol;
     std::string_view mode = "--worker";
     if (argc == 2) mode = argv[1];
-    if (argc > 2 || (mode != "--worker" && mode != "--validate" && mode != "--lease-only")) {
-      throw std::runtime_error("usage: maaverge-core-worker [--worker|--validate|--lease-only]");
+    if (argc > 2 || (mode != "--worker" && mode != "--validate" && mode != "--lease-only" &&
+                     mode != "--framework-worker" && mode != "--framework-validate")) {
+      throw std::runtime_error(
+          "usage: maaverge-core-worker "
+          "[--worker|--validate|--lease-only|--framework-worker|--framework-validate]");
     }
     std::string line;
     if (!read_message(line)) throw std::runtime_error("missing worker configuration");
     const auto config = Json::parse(line);
     check_protocol(config);
+    if (mode == "--framework-worker" || mode == "--framework-validate")
+      return framework_main(config, protocol, mode == "--framework-validate");
     if (mode == "--validate") {
       protocol.send(validate(config));
       return 0;
@@ -45,14 +51,17 @@ int main(int argc, char** argv) {
       try {
         command = Json::parse(line);
         if (!command.is_object()) throw std::runtime_error("command must be an object");
-        if (!command.contains("id") || (!command["id"].is_string() && !command["id"].is_number_integer())) {
+        if (!command.contains("id") ||
+            (!command["id"].is_string() && !command["id"].is_number_integer())) {
           throw std::runtime_error("command id must be a string or integer");
         }
         const auto result = core->command(command);
         protocol.send({{"type", "response"}, {"id", command["id"]}, {"result", result}});
       } catch (const std::exception& error) {
-        protocol.send({{"type", "response"}, {"id", command.is_object() ? command.value("id", Json(nullptr)) : Json(nullptr)},
-                       {"error", error.what()}});
+        protocol.send(
+            {{"type", "response"},
+             {"id", command.is_object() ? command.value("id", Json(nullptr)) : Json(nullptr)},
+             {"error", error.what()}});
       }
     }
     return 0;

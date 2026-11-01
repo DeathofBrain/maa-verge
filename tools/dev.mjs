@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { root, desktop, port, run, start, terminate, devEnvironment, fail } from './project.mjs';
 import { assertWorkspaceDependencies } from './environment.mjs';
+import { ensureMaaFramework } from './prepare-maafw.mjs';
 
 const uiOnly = process.argv.includes('--ui-only');
 const environment = devEnvironment();
@@ -21,6 +22,7 @@ async function main() {
     await run('node', ['tools/setup-bun.mjs']);
     await run('node', ['tools/doctor.mjs', '--native']);
     await run('node', ['tools/build-core-worker.mjs', '--production']);
+    await ensureMaaFramework();
     if (!existsSync(path.join(root, 'apps', 'desktop', 'src-tauri', 'Cargo.lock'))) {
       throw new Error(
         'Cargo.lock missing. Run cargo generate-lockfile --manifest-path apps/desktop/src-tauri/Cargo.toml',

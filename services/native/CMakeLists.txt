@@ -9,11 +9,14 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../3rdparty/nlohmann-json"
   "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/nlohmann-json")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../3rdparty/maaframework"
+  "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/maaframework")
 find_package(Threads REQUIRED)
 
-add_library(maaverge_native STATIC src/platform.cpp src/core.cpp)
+add_library(maaverge_native STATIC src/platform.cpp src/core.cpp src/framework.cpp)
 target_include_directories(maaverge_native PUBLIC src)
-target_link_libraries(maaverge_native PUBLIC nlohmann_json::nlohmann_json Threads::Threads ${CMAKE_DL_LIBS})
+target_link_libraries(maaverge_native PUBLIC nlohmann_json::nlohmann_json Threads::Threads ${CMAKE_DL_LIBS}
+  PRIVATE maaframework_headers)
 target_compile_definitions(maaverge_native PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
 add_executable(maaverge-core-worker src/main.cpp)
 target_link_libraries(maaverge-core-worker PRIVATE maaverge_native)
@@ -29,6 +32,10 @@ else()
 endif()
 install(TARGETS maaverge-core-worker RUNTIME DESTINATION .)
 install(FILES THIRD_PARTY_NOTICES.md DESTINATION licenses RENAME native-worker-notices.md)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../3rdparty/maaframework/LICENSE.md"
+  DESTINATION licenses RENAME maaframework-LICENSE.md)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../../3rdparty/maaframework/COPYING.GPL3"
+  DESTINATION licenses RENAME maaframework-COPYING.GPL3)
 
 include(CTest)
 if(BUILD_TESTING)
@@ -70,4 +77,29 @@ if(BUILD_TESTING)
       --lock-probe "$<TARGET_FILE:native-lock-probe>" ${native_test_launcher} --suite ${suite})
     set_tests_properties(native.${suite} PROPERTIES TIMEOUT 45)
   endforeach()
+  foreach(variant normal missing)
+    add_library(fake_framework_${variant} SHARED tests/fake_framework.cpp)
+    target_link_libraries(fake_framework_${variant} PRIVATE maaframework_headers
+      nlohmann_json::nlohmann_json Threads::Threads)
+    target_compile_definitions(fake_framework_${variant} PRIVATE MAA_FRAMEWORK_EXPORTS
+      NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
+    if(variant STREQUAL "missing")
+      target_compile_definitions(fake_framework_${variant} PRIVATE OMIT_FRAMEWORK_VERSION=1)
+    endif()
+    set_target_properties(fake_framework_${variant} PROPERTIES OUTPUT_NAME MaaFramework
+      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fixtures/framework-${variant}"
+      ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fixtures/framework-${variant}"
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/fixtures/framework-${variant}")
+    if(MSVC)
+      target_compile_options(fake_framework_${variant} PRIVATE /W4 /WX /utf-8)
+    else()
+      target_compile_options(fake_framework_${variant} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+  endforeach()
+  add_test(NAME native.framework COMMAND "${Node_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_framework.mjs"
+    --worker "$<TARGET_FILE:maaverge-core-worker>"
+    --framework "$<TARGET_FILE:fake_framework_normal>"
+    --missing "$<TARGET_FILE:fake_framework_missing>" ${native_test_launcher})
+  set_tests_properties(native.framework PROPERTIES TIMEOUT 45)
 endif()

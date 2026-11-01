@@ -20,6 +20,7 @@ type SidebarProps = {
   device?: Device;
   appVersion: string;
   hasUpdate: boolean;
+  debugEnabled: boolean;
 };
 
 export function AppSidebar({
@@ -34,6 +35,7 @@ export function AppSidebar({
   device,
   appVersion,
   hasUpdate,
+  debugEnabled,
 }: SidebarProps) {
   return (
     <>
@@ -43,26 +45,28 @@ export function AppSidebar({
       <aside id="app-sidebar" className="sidebar" data-compact={compact || undefined}>
         <Brand />
         <nav aria-label="主导航" className="primary-nav">
-          {navigation.map(({ id, label, icon: Icon }) => (
-            <button
-              className={`nav-item ${page === id ? 'active' : ''}`}
-              aria-current={page === id ? 'page' : undefined}
-              aria-label={label}
-              title={label}
-              key={id}
-              onClick={() => {
-                if (id === 'tasks') {
-                  onTasks('plans');
-                  onClearExecution(undefined);
-                }
-                navigate(id);
-              }}
-            >
-              <Icon size={19} aria-hidden="true" />
-              <span className="nav-label">{label}</span>
-              {id === 'agent' && <span className="subtle-tag">预览</span>}
-            </button>
-          ))}
+          {navigation
+            .filter(({ id }) => id !== 'debug' || debugEnabled)
+            .map(({ id, label, icon: Icon }) => (
+              <button
+                className={`nav-item ${page === id ? 'active' : ''}`}
+                aria-current={page === id ? 'page' : undefined}
+                aria-label={label}
+                title={label}
+                key={id}
+                onClick={() => {
+                  if (id === 'tasks') {
+                    onTasks('plans');
+                    onClearExecution(undefined);
+                  }
+                  navigate(id);
+                }}
+              >
+                <Icon size={19} aria-hidden="true" />
+                <span className="nav-label">{label}</span>
+                {id === 'agent' && <span className="subtle-tag">预览</span>}
+              </button>
+            ))}
         </nav>
         <div className="sidebar-bottom">
           <button

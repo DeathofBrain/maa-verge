@@ -14,6 +14,7 @@ const toolTests = [
   'tools/tests/app-updater-release.test.mjs',
   'tools/tests/require-checks.test.mjs',
   'tools/tests/runtime-notices.test.mjs',
+  'tools/tests/maafw-assets.test.mjs',
   'tools/tests/check-kit-css.test.mjs',
   'tools/tests/check-frontend-architecture.test.mjs',
   'tools/tests/check-backend-architecture.test.mjs',
@@ -22,6 +23,8 @@ const toolTests = [
 ];
 const contractTests = [
   'packages/contracts/test/validators.test.mjs',
+  'packages/contracts/test/framework.test.mjs',
+  'packages/contracts/test/atomic.test.mjs',
   'packages/contracts/test/copilot.test.mjs',
   'packages/contracts/test/copilot-attribution.test.mjs',
   'packages/contracts/test/copilot-search.test.mjs',

@@ -1,0 +1,34 @@
+{
+  "version": "v5.14.3",
+  "repository": "MaaXYZ/MaaFramework",
+  "supplementalLicenses": {
+    "COPYING.GPL3": {
+      "source": "https://raw.githubusercontent.com/coreutils/coreutils/5b9d747261590ffde5f47fcf8cef06ee5bb5df63/COPYING",
+      "canonicalSource": "https://www.gnu.org/licenses/gpl-3.0.txt",
+      "size": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    }
+  },
+  "targets": {
+    "windows-x64": {
+      "name": "MAA-win-x86_64-v5.14.3.zip",
+      "size": 83319548,
+      "sha256": "4042fde31c583cc5125ec5b12257f8d1929672bb5cb64c9052c34fc8ff4bb8ff"
+    },
+    "linux-x64": {
+      "name": "MAA-linux-x86_64-v5.14.3.zip",
+      "size": 60417048,
+      "sha256": "3510c849917a2d088fb0513fb8d41c5d5ddd80a241520bd26979870e56dfc801"
+    },
+    "macos-arm64": {
+      "name": "MAA-macos-aarch64-v5.14.3.zip",
+      "size": 27426681,
+      "sha256": "c588d3d22be1e53d0991e50bc7277c9034501fd0bac0f26d185e89d667d24033"
+    },
+    "macos-x64": {
+      "name": "MAA-macos-x86_64-v5.14.3.zip",
+      "size": 29759551,
+      "sha256": "490ba6b222fa260d8948e856665f691a428de1d217b521567f4531b0f1662708"
+    }
+  }
+}

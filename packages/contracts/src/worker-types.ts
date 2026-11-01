@@ -75,6 +75,80 @@ export type WorkerEvent =
       running: boolean;
       pendingAsync: number[];
     };
+export type FrameworkWorkerCommand =
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'connect' | 'frame' | 'stop';
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'click';
+      x: number;
+      y: number;
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'swipe';
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      durationMs?: number;
+      profile?: 'drag' | 'navigation';
+      compensationDirection?: 'none' | 'up' | 'down' | 'left' | 'right';
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'press_key';
+      key: 'back' | 'escape';
+    }
+  | {
+      [k: string]: unknown;
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'long_press';
+      x: number;
+      y: number;
+      durationMs: number;
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'drag';
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      durationMs: number;
+    };
+export type FrameworkWorkerEvent =
+  | {
+      protocolVersion: 1;
+      type: 'ready';
+      engine: 'maafw';
+      mode: 'recognition' | 'control';
+      version: 'v5.14.3';
+    }
+  | {
+      protocolVersion: 1;
+      type: 'response';
+      id: string | number | null;
+      result: {
+        [k: string]: unknown;
+      };
+    }
+  | {
+      protocolVersion: 1;
+      type: 'response';
+      id: string | number | null;
+      error: string;
+    };
 
 export interface WorkerProtocol {
   configuration: WorkerConfiguration;
@@ -83,6 +157,10 @@ export interface WorkerProtocol {
   command: WorkerCommand;
   event: WorkerEvent;
   validation: WorkerValidation;
+  frameworkConfiguration: FrameworkWorkerConfiguration;
+  frameworkCommand: FrameworkWorkerCommand;
+  frameworkEvent: FrameworkWorkerEvent;
+  frameworkValidation: FrameworkWorkerValidation;
 }
 export interface WorkerConfiguration {
   protocolVersion: 1;
@@ -137,4 +215,28 @@ export interface WorkerValidation {
   protocolVersion: 1;
   version: string;
   resourceLoaded: true;
+}
+export interface FrameworkWorkerConfiguration {
+  protocolVersion: 1;
+  framework: string;
+  resource: string;
+  userDir: string;
+  mode: 'recognition' | 'control';
+  adb?: string;
+  address?: string;
+  lockPath?: string;
+  avd?: boolean;
+  lockTimeoutMs?: number;
+  startupTimeoutMs?: number;
+  nativeCallTimeoutMs?: number;
+  asyncTimeoutMs?: number;
+  shutdownTimeoutMs?: number;
+}
+export interface FrameworkWorkerValidation {
+  protocolVersion: 1;
+  engine: 'maafw';
+  version: 'v5.14.3';
+  resourceLoaded: true;
+  ocrAvailable: boolean;
+  diagnostic?: string;
 }

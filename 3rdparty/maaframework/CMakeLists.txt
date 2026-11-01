@@ -1,0 +1,15 @@
+# Unmodified MaaFramework v5.14.3 public C headers; see upstream.json.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/upstream.json" framework_manifest)
+string(JSON framework_file_count LENGTH "${framework_manifest}" files)
+math(EXPR framework_last_file "${framework_file_count} - 1")
+foreach(index RANGE 0 ${framework_last_file})
+  string(JSON filename MEMBER "${framework_manifest}" files ${index})
+  string(JSON expected GET "${framework_manifest}" files "${filename}")
+  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${filename}" actual)
+  if(NOT actual STREQUAL expected)
+    message(FATAL_ERROR "Vendored MaaFramework v5.14.3 SHA-256 mismatch: ${filename}")
+  endif()
+endforeach()
+
+add_library(maaframework_headers INTERFACE)
+target_include_directories(maaframework_headers SYSTEM INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")

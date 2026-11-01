@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeTemporaryDirectory } from './test-support/temporary-directory.mjs';
+import { frameworkInventory, frameworkVersion, verifyFrameworkSdk } from './maafw-assets.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -16,6 +17,32 @@ export async function verifyMacosBundle(app) {
     path.join(app, 'Contents', 'Resources', 'runtime', name),
     false,
   ]);
+  const runtime = path.join(app, 'Contents', 'Resources', 'runtime');
+  const buildInfo = await readFile(path.join(runtime, 'build-info.json'), 'utf8')
+    .then(JSON.parse)
+    .catch((error) => {
+      if (error.code === 'ENOENT') return undefined; // historical fixture/application without SDK
+      throw error;
+    });
+  if (buildInfo?.maaFramework) {
+    if (buildInfo.maaFramework.version !== frameworkVersion)
+      throw new Error('macOS bundle MaaFramework version mismatch');
+    const sdk = path.join(
+      runtime,
+      'engines',
+      'maafw',
+      frameworkVersion,
+      buildInfo.maaFramework.target,
+    );
+    await verifyFrameworkSdk(sdk, buildInfo.maaFramework.target);
+    for (const relative of Object.keys(await frameworkInventory(sdk))) {
+      if (!relative.startsWith('bin/')) continue;
+      const filename = path.join(sdk, relative);
+      const magic = (await readFile(filename)).subarray(0, 4).toString('hex');
+      if (['cffaedfe', 'feedfacf', 'cafebabe', 'bebafeca', 'cefaedfe', 'feedface'].includes(magic))
+        targets.push([filename, false]);
+    }
+  }
   targets.push([app, true]);
   for (const [target, deep] of targets) {
     const args = ['--verify', '--strict', '--verbose=2', ...(deep ? ['--deep'] : []), target];

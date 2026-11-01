@@ -104,6 +104,14 @@ export type CopilotRatingValue = 'none' | 'like' | 'dislike';
  */
 export type KnowledgeKind =
   'operator' | 'item' | 'stage' | 'recruitment' | 'infrastructure' | 'document' | 'capability';
+/**
+ * @minItems 4
+ * @maxItems 4
+ *
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "FrameRegion".
+ */
+export type FrameRegion = [number, number, number, number];
 export type Mode = 'native';
 export type Id1 = string;
 export type Name1 = string;
@@ -269,6 +277,18 @@ export interface RpcContract {
     'knowledge.search': KnowledgeSearchParams;
     'account.snapshot.get': AccountSnapshotParams;
     'account.snapshot.list': AccountSnapshotListParams;
+    'control.session.start': ControlSessionStartParams;
+    'control.session.get': ControlSessionGetParams;
+    'control.session.end': ControlSessionEndParams;
+    'device.swipe': DeviceSwipeParams;
+    'device.press_key': DevicePressKeyParams;
+    'vision.recognize': VisionRecognizeParams;
+    'device.long_press': DeviceLongPressParams;
+    'device.drag': DeviceDragParams;
+    'primitive.catalog.get': PrimitiveCatalogParams;
+    'debug.session.start': DebugSessionStartParams;
+    'debug.primitive.invoke': DebugPrimitiveInvokeParams;
+    'debug.session.end': DebugSessionEndParams;
   };
   results: {
     'app.snapshot': Snapshot;
@@ -420,6 +440,20 @@ export interface RpcContract {
     'knowledge.search': KnowledgeSearchResult;
     'account.snapshot.get': AccountKnowledgeSnapshot | null;
     'account.snapshot.list': AccountSnapshotListResult;
+    'control.session.start': ControlSession;
+    'control.session.get': ControlSessionStatus;
+    'control.session.end': {
+      ended: true;
+    };
+    'device.swipe': NativeActionResult;
+    'device.press_key': NativeActionResult;
+    'vision.recognize': VisionRecognitionResult;
+    'device.long_press': NativeActionResult;
+    'device.drag': NativeActionResult;
+    'primitive.catalog.get': PrimitiveCatalogResult;
+    'debug.session.start': DebugSessionStartResult;
+    'debug.primitive.invoke': DebugPrimitiveResult;
+    'debug.session.end': DebugSessionEndResult;
   };
 }
 /**
@@ -538,6 +572,7 @@ export interface DeviceDeleteParams {
  */
 export interface DeviceFrameParams {
   deviceId: string;
+  controlToken?: string;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -549,6 +584,7 @@ export interface DeviceClickParams {
   x: number;
   y: number;
   requestId: string;
+  controlToken?: string;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -1081,6 +1117,132 @@ export interface AccountSnapshotListParams {
   offset?: number;
   limit?: number;
 }
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ControlSessionStartParams".
+ */
+export interface ControlSessionStartParams {
+  deviceId: string;
+  requestId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ControlSessionGetParams".
+ */
+export interface ControlSessionGetParams {
+  deviceId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ControlSessionEndParams".
+ */
+export interface ControlSessionEndParams {
+  deviceId: string;
+  controlToken: string;
+  requestId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DeviceSwipeParams".
+ */
+export interface DeviceSwipeParams {
+  deviceId: string;
+  controlToken: string;
+  frameId: string;
+  requestId: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  durationMs?: number;
+  profile?: 'drag' | 'navigation';
+  compensationDirection?: 'none' | 'up' | 'down' | 'left' | 'right';
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DevicePressKeyParams".
+ */
+export interface DevicePressKeyParams {
+  deviceId: string;
+  controlToken: string;
+  frameId: string;
+  requestId: string;
+  key: 'back' | 'escape';
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "VisionRecognizeParams".
+ */
+export interface VisionRecognizeParams {
+  deviceId: string;
+  frameId: string;
+  kind: 'ocr' | 'template';
+  roi?: FrameRegion;
+  templateId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DeviceLongPressParams".
+ */
+export interface DeviceLongPressParams {
+  deviceId: string;
+  controlToken: string;
+  frameId: string;
+  requestId: string;
+  x: number;
+  y: number;
+  durationMs: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DeviceDragParams".
+ */
+export interface DeviceDragParams {
+  deviceId: string;
+  controlToken: string;
+  frameId: string;
+  requestId: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  durationMs: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "PrimitiveCatalogParams".
+ */
+export interface PrimitiveCatalogParams {
+  deviceId?: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DebugSessionStartParams".
+ */
+export interface DebugSessionStartParams {
+  deviceId: string;
+  requestId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DebugPrimitiveInvokeParams".
+ */
+export interface DebugPrimitiveInvokeParams {
+  debugSessionId: string;
+  primitiveId: string;
+  input: {
+    [k: string]: unknown;
+  };
+  requestId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DebugSessionEndParams".
+ */
+export interface DebugSessionEndParams {
+  debugSessionId: string;
+  requestId: string;
+}
 export interface Snapshot {
   mode: Mode;
   devices: Devices;
@@ -1487,7 +1649,7 @@ export interface DiscoveredDevice {
   adbState: string;
 }
 /**
- * Transient MaaCore preview PNG. Its width/height are the click coordinate space; image bytes never enter snapshots or persistence.
+ * Transient native preview PNG. Width/height are the frame coordinate space; image bytes never enter snapshots or persistence.
  *
  * This interface was referenced by `RpcContract`'s JSON-Schema
  * via the `definition` "ScreenFrame".
@@ -1509,6 +1671,11 @@ export interface ScreenFrame {
    * MaaCore's successful current AsstAsyncScreencap callback details.cost in milliseconds. Excludes image retrieval, PNG encoding and delivery to the frontend; omitted when MaaCore does not provide a measurement or the frame uses a running task's cached image.
    */
   coreLatencyMs?: number;
+  engine?: 'maacore' | 'maafw';
+  sessionId?: string;
+  resourceGeneration?: string;
+  coordinateSpace?: 'frame';
+  fresh?: boolean;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -1939,6 +2106,145 @@ export interface AccountSnapshotSummary {
    * @maxItems 20
    */
   unknownFields: string[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ControlSession".
+ */
+export interface ControlSession {
+  sessionId: string;
+  controlToken: string;
+  deviceId: string;
+  engine: 'maafw';
+  resourceGeneration: string;
+  capabilities: FrameworkCapabilities;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "FrameworkCapabilities".
+ */
+export interface FrameworkCapabilities {
+  ocr: boolean;
+  template: boolean;
+  click: boolean;
+  swipe: boolean;
+  keys: boolean;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ControlSessionStatus".
+ */
+export interface ControlSessionStatus {
+  deviceId: string;
+  owner: 'none' | 'maacore' | 'maafw' | 'switching';
+  sessionId?: string;
+  resourceGeneration?: string;
+  busy: boolean;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "NativeActionResult".
+ */
+export interface NativeActionResult {
+  accepted: true;
+  nativeSuccess: true;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "VisionRecognitionResult".
+ */
+export interface VisionRecognitionResult {
+  frameId: string;
+  engine: 'maafw';
+  resourceGeneration: string;
+  hit: boolean;
+  /**
+   * @maxItems 256
+   */
+  matches: VisionMatch[];
+  fresh: boolean;
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  coordinateSize?: [1280, 720];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "VisionMatch".
+ */
+export interface VisionMatch {
+  text?: string;
+  box: FrameRegion;
+  score: number;
+  count?: number;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "PrimitiveCatalogResult".
+ */
+export interface PrimitiveCatalogResult {
+  /**
+   * @maxItems 1000
+   */
+  items: PrimitiveDescriptor[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "PrimitiveDescriptor".
+ */
+export interface PrimitiveDescriptor {
+  id: string;
+  label: string;
+  description: string;
+  layer: 'operation' | 'observation' | 'game' | 'workflow';
+  inputSchema: {
+    [k: string]: unknown;
+  };
+  resultSchema: {
+    [k: string]: unknown;
+  };
+  available: boolean;
+  unavailableReason?: string;
+  /**
+   * @maxItems 128
+   */
+  requiredCapabilities?: string[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DebugSessionStartResult".
+ */
+export interface DebugSessionStartResult {
+  debugSessionId: string;
+  deviceId: string;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DebugPrimitiveResult".
+ */
+export interface DebugPrimitiveResult {
+  primitiveId: string;
+  status: 'succeeded' | 'failed' | 'unknown' | 'cancelled';
+  nativeSuccess?: boolean;
+  verified?: boolean;
+  data: {
+    [k: string]: unknown;
+  };
+  /**
+   * @maxItems 2000
+   */
+  steps: {
+    [k: string]: unknown;
+  }[];
+  frame?: ScreenFrame;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "DebugSessionEndResult".
+ */
+export interface DebugSessionEndResult {
+  ended: true;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

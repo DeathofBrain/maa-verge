@@ -36,6 +36,8 @@ packages/contracts/schema.json
 packages/contracts/src/types.ts
 packages/contracts/src/rpc-types.ts
 packages/contracts/src/worker-types.ts
+packages/contracts/src/atomic-input-types.ts
+packages/contracts/src/atomic-input-schemas.ts
 packages/contracts/src/validators.js
 packages/contracts/src/validators.d.ts
 services/backend/src/shared/casefold-data.json

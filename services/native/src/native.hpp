@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -46,7 +47,7 @@ class Protocol final {
 // the supervisor reports an unknown result and must never replay it blindly.
 class Deadline final {
  public:
-  Deadline(std::string operation, int timeout_ms);
+  Deadline(std::string operation, int timeout_ms, std::function<void()> before_exit = {});
   ~Deadline();
   Deadline(const Deadline&) = delete;
   Deadline& operator=(const Deadline&) = delete;

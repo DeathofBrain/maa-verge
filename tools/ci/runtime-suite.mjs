@@ -6,6 +6,9 @@ import path from 'node:path';
 const backendTests = (...names) => names.map((name) => `services/backend/tests/${name}.test.ts`);
 const common = backendTests(
   'runtime',
+  'framework-runtime',
+  'framework-resources',
+  'framework-worker',
   'lifecycle',
   'config-location',
   'archives',

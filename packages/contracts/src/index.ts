@@ -26,6 +26,7 @@ export {
 export { errorMessage, RuntimeRequestError } from './error-display';
 export type { RpcMethod, RpcParams, RpcResult } from './transport';
 export type { RpcContract, RpcRequest, RpcEvent, ScreenFrame } from './rpc-types';
+export type { AtomicInputContract } from './atomic-input-types';
 export type {
   WorkerProtocol,
   WorkerConfiguration,

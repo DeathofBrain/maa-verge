@@ -126,18 +126,34 @@ void Protocol::send(Json value) {
   }
 }
 
-Deadline::Deadline(std::string operation, int timeout_ms)
-    : thread_([this, operation = std::move(operation), timeout_ms] {
+Deadline::Deadline(std::string operation, int timeout_ms, std::function<void()> before_exit)
+    : thread_([this, operation = std::move(operation), timeout_ms,
+               before_exit = std::move(before_exit)] {
         std::unique_lock guard(mutex_);
-        if (!condition_.wait_for(guard, std::chrono::milliseconds(timeout_ms), [this] { return done_; })) {
-          std::fprintf(stderr, "native timeout in %s; result unknown, do not replay\n", operation.c_str());
+        if (!condition_.wait_for(guard, std::chrono::milliseconds(timeout_ms),
+                                 [this] { return done_; })) {
+          std::fprintf(stderr, "native timeout in %s; result unknown, do not replay\n",
+                       operation.c_str());
           std::fflush(stderr);
+          if (before_exit) {
+            // Cleanup can also block inside the library; retain a hard deadline.
+            std::thread([before_exit] {
+              try {
+                before_exit();
+              } catch (...) {
+              }
+            }).detach();
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+          }
           std::_Exit(124);
         }
       }) {}
 
 Deadline::~Deadline() {
-  { std::lock_guard guard(mutex_); done_ = true; }
+  {
+    std::lock_guard guard(mutex_);
+    done_ = true;
+  }
   condition_.notify_one();
   thread_.join();
 }

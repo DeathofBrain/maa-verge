@@ -12,6 +12,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { devEnvironment, executable, root } from './project.mjs';
+import { frameworkLicenseSupplements } from './maafw-assets.mjs';
 
 const noticeName = /^(?:licen[sc]e|copying|notice|copyright)(?:[._-]|$)/iu;
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
@@ -240,12 +241,17 @@ export function writeApplicationNotices(output, { projectRoot = root } = {}) {
     ['NOTICE.md', 'NOTICE.md'],
     ['docs/copilot-attribution.md', 'docs/copilot-attribution.md'],
     ['services/native/THIRD_PARTY_NOTICES.md', 'native-worker-notices.md'],
+    ['3rdparty/maaframework/LICENSE.md', 'maaframework/LICENSE.md'],
+    ['3rdparty/maaframework/upstream.json', 'maaframework/upstream.json'],
+    ['3rdparty/maaframework/runtime-assets.json', 'maaframework/runtime-assets.json'],
     ['services/backend/UNICODE-LICENSE.txt', 'UNICODE-LICENSE.txt'],
     ['services/backend/BUN-LICENSE.md', 'BUN-LICENSE.md'],
   ]) {
     mkdirSync(path.dirname(path.join(output, target)), { recursive: true });
     copyFileSync(path.join(projectRoot, source), path.join(output, target));
   }
+  for (const { name, bytes } of frameworkLicenseSupplements(projectRoot))
+    writeFileSync(path.join(output, 'maaframework', name), bytes);
 }
 
 export function writeRuntimeNotices(destination, options = {}) {

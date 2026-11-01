@@ -31,12 +31,20 @@ export class CoreWorker {
   private log?: number;
   private stderrTail = '';
   private stderrDecoder = new StringDecoder('utf8');
+  get alive() {
+    return !this.exited && !this.closed;
+  }
   get safeIdle() {
     return !this.running && !this.pending && !this.exited && !this.closed;
   }
   static async start(
     config: any,
-    options: { leaseOnly?: boolean; command?: string[]; signal?: AbortSignal } = {},
+    options: {
+      leaseOnly?: boolean;
+      command?: string[];
+      signal?: AbortSignal;
+      nativeDirectory?: string;
+    } = {},
   ): Promise<CoreWorker> {
     const worker = new CoreWorker();
     await worker.launch(config, options);
@@ -44,7 +52,12 @@ export class CoreWorker {
   }
   private async launch(
     config: any,
-    options: { leaseOnly?: boolean; command?: string[]; signal?: AbortSignal },
+    options: {
+      leaseOnly?: boolean;
+      command?: string[];
+      signal?: AbortSignal;
+      nativeDirectory?: string;
+    },
   ) {
     options.signal?.throwIfAborted();
     const directory = config.userDir || path.dirname(config.lockPath);
@@ -54,7 +67,10 @@ export class CoreWorker {
       nativeWorkerPath(),
       ...(options.leaseOnly ? ['--lease-only'] : ['--worker']),
     ];
-    const env = config.core ? nativeEnvironment(config.core) : childEnvironment();
+    const directoryForLibraries = options.nativeDirectory ?? config.core;
+    const env = directoryForLibraries
+      ? nativeEnvironment(directoryForLibraries, process.platform, !!options.nativeDirectory)
+      : childEnvironment();
     this.child = spawn(command[0]!, command.slice(1), {
       env,
       windowsHide: true,

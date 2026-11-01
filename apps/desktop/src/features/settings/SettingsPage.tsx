@@ -69,6 +69,7 @@ type SettingsPageProps = {
   onPrepareUpdate: (channel: UpdateChannel) => Promise<void>;
   preparingUpdates: ReadonlySet<UpdateChannel['id']>;
   searchQuery?: string;
+  onDebugUnlock?: () => void;
 };
 
 function Toggle({
@@ -148,6 +149,7 @@ export function SettingsPage({
   onPrepareUpdate,
   preparingUpdates,
   searchQuery,
+  onDebugUnlock,
 }: SettingsPageProps) {
   const [category, setCategory] = useState<Category>('general');
   const [query, setQuery] = useState(searchQuery || '');
@@ -169,6 +171,10 @@ export function SettingsPage({
     )
     .sort((left, right) => categoryOrder.indexOf(left.id) - categoryOrder.indexOf(right.id));
   const selected = matches.find((item) => item.id === category) || matches[0];
+  const debugClicks = useRef(0);
+  useEffect(() => {
+    if (selected?.id !== 'about') debugClicks.current = 0;
+  }, [selected?.id]);
   const saveSettings = (patch: Partial<Settings>, _message?: string): Promise<boolean> => {
     const changedPaths =
       patch.componentPaths &&
@@ -475,7 +481,21 @@ export function SettingsPage({
                     <p className="sp-about-intro">以任务为中心的本地桌面助手。</p>
                     <dl className="sp-description-list">
                       <div>
-                        <dt>应用版本</dt>
+                        <dt>
+                          <Button
+                            variant="text"
+                            size="sm"
+                            onClick={() => {
+                              debugClicks.current++;
+                              if (debugClicks.current === 5) {
+                                debugClicks.current = 0;
+                                onDebugUnlock?.();
+                              }
+                            }}
+                          >
+                            应用版本
+                          </Button>
+                        </dt>
                         <dd>
                           {snapshot.updates.find((channel) => channel.id === 'app')
                             ?.currentVersion || '未知版本'}

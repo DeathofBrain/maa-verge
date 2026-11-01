@@ -33,6 +33,22 @@ import {
   type ComponentPathEnvironment,
 } from '@backend/infrastructure/config';
 import { CoreWorker } from '@backend/infrastructure/native/worker';
+import { nativeWorkerPath } from '@backend/infrastructure/native/native-path';
+import {
+  FrameworkWorker,
+  validateFrameworkResources,
+  type FrameworkConfiguration,
+  type FrameworkPort,
+} from '@backend/infrastructure/native/framework-worker';
+import { ControlSessions, type FrameworkView } from '@backend/modules/framework/sessions';
+import { DebugService } from '@backend/modules/atomic/debug-service';
+import { createAtomicCapabilityRegistry } from '@backend/modules/atomic/registry';
+import { loadAtomicResourceProfile } from '@backend/modules/atomic/resources';
+import type { AtomicExecutionPort, AtomicResourceProfile } from '@backend/modules/atomic/types';
+import {
+  prepareFrameworkResources,
+  resolveFrameworkSdk,
+} from '@backend/modules/framework/resources';
 import { captureAdbPath, connectionCapture } from '@backend/modules/devices/capture';
 import { Preview } from '@backend/modules/devices/preview';
 import { UpdateService } from '@backend/modules/updates/updates';
@@ -86,7 +102,25 @@ import { CopilotLibrary, copilotWorkspaceIdentity } from '@backend/modules/copil
 import { AccountKnowledge } from '@backend/modules/knowledge/account-knowledge';
 import { Knowledge } from '@backend/modules/knowledge/knowledge';
 import { createRpcDispatcher, type UpdateOperation } from './rpc-dispatch';
-import { validateCopilotStartParams, validateDeviceDeleteParams } from '@contracts/validators.js';
+import {
+  validateCopilotStartParams,
+  validateDeviceDeleteParams,
+  validateControlSessionStartParams,
+  validateControlSessionGetParams,
+  validateControlSessionEndParams,
+  validateDeviceSwipeParams,
+  validateDevicePressKeyParams,
+  validateDeviceLongPressParams,
+  validateDeviceDragParams,
+  validatePrimitiveCatalogParams,
+  validateDebugSessionStartParams,
+  validateDebugPrimitiveInvokeParams,
+  validateDebugSessionEndParams,
+  validateFrameworkWorkerCommand,
+  validateVisionRecognizeParams,
+  validateVisionRecognitionResult,
+  validateToolStartParams,
+} from '@contracts/validators.js';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
 type Worker = Pick<
@@ -119,6 +153,15 @@ type AutomaticConnection = {
   worker?: Worker;
   deviceId?: string;
 };
+type FrameworkReader = {
+  view: FrameworkView;
+  worker: Promise<FrameworkPort>;
+  tail: Promise<void>;
+  pending: number;
+  failed?: boolean;
+  idleTimer?: ReturnType<typeof setTimeout>;
+  closing?: Promise<void>;
+};
 export interface RuntimeOptions {
   copilotHttp?: typeof fetch;
   copilotDirectory?: string;
@@ -140,6 +183,16 @@ export interface RuntimeOptions {
   connectDeviceTransport?: typeof connectAdbTransport;
   ensureAvdTransport?: typeof ensureAvdTransport;
   workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker>;
+  frameworkWorkerFactory?: (
+    config: FrameworkConfiguration,
+    signal?: AbortSignal,
+  ) => Promise<FrameworkPort>;
+  frameworkResources?: (
+    deviceId: string,
+    source: string,
+    clientType: string,
+  ) => Promise<FrameworkView>;
+  frameworkReaderIdleMs?: number;
 }
 export class Runtime {
   readonly mode = 'native' as const;
@@ -155,6 +208,17 @@ export class Runtime {
   readonly updates: UpdateService;
   readonly appUpdateHttp: AppUpdateHttp;
   readonly preview: Preview;
+  readonly controlSessions: ControlSessions;
+  readonly debug: DebugService;
+  private frameworkConnections = new Map<string, any>();
+  private frameworkReleased = new Set<string>();
+  private frameworkViews = new Map<string, FrameworkView>();
+  private frameworkReaders = new Map<string, FrameworkReader>();
+  private frameworkReaderGate: Promise<unknown> = Promise.resolve();
+  private frameworkAbort = new AbortController();
+  private frameworkOperations = new Set<Promise<unknown>>();
+  private frameworkPreparing = 0;
+  private frameworkRecognizing = 0;
   readonly calendar: ActivityCalendar;
   readonly artifacts: RunArtifacts;
   private readonly dispatchRpc: ReturnType<typeof createRpcDispatcher>;
@@ -336,11 +400,16 @@ export class Runtime {
         beforeActivate: () => this.beforeSwitch(),
         afterActivate: () => this.afterSwitch(),
         finishActivate: (error?: string) => this.finishSwitch(error),
-        protectedPaths: () =>
-          [...this.workerConfigurations.values()].flatMap((config) => [
-            config.core,
-            config.resource,
+        protectedPaths: () => [
+          ...(this.controlSessions?.protectedPaths() ?? []),
+          ...[...this.frameworkReaders.values()].flatMap(({ view }) => [
+            view.path,
+            ...view.sourcePaths,
           ]),
+          ...[...this.workerConfigurations.values(), ...this.frameworkConnections.values()].flatMap(
+            (config) => [config.core, config.resource],
+          ),
+        ],
       },
     );
     this.copilot = new CopilotLibrary(root, this.store, {
@@ -356,16 +425,134 @@ export class Runtime {
           deleteJsonFiles: false,
         },
     });
+    this.controlSessions = new ControlSessions({
+      core: (id) => this.workers.get(id),
+      assertStart: (id) => {
+        const device = this.store.get('device', id);
+        if (!device) throw new RpcError(-32004, '设备不存在');
+        if (
+          !this.running ||
+          this.switching ||
+          this.appUpdating ||
+          this.appUpdatePreparing ||
+          this.initializingComponents
+        )
+          throw new RpcError(-32011, '运行时正在退出、准备组件或更新');
+        const availability = this.availability(id);
+        if (
+          availability.owner !== 'none' ||
+          this.preview.isReading(id) ||
+          (this.workers.get(id) && !this.workers.get(id)!.safeIdle)
+        )
+          throw new RpcError(-32011, availability.reason);
+        this.frameworkConnections.set(id, structuredClone(this.workerConfigurations.get(id) ?? {}));
+        this.suppressAddress(device.address, true);
+      },
+      prepare: (id, signal) => this.prepareFrameworkView(id, signal),
+      detachCore: async (id) => {
+        if (this.preview.busy || this.hasExecution(id) || this.connecting.has(id))
+          throw new RpcError(-32011, '设备异步操作尚未结束');
+        const worker = this.workers.get(id);
+        if (worker && !worker.safeIdle) throw new RpcError(-32011, 'MaaCore 尚未到达安全空闲边界');
+        this.preview.invalidate(id);
+        this.workers.delete(id);
+        this.workerConfigurations.delete(id);
+        await worker?.close();
+        this.frameworkDeviceChanged(id, false);
+      },
+      launch: async (id, view, signal) =>
+        this.startFrameworkWorker(await this.frameworkConfiguration(id, view, 'control'), signal),
+      invalidate: (id) => this.preview?.invalidate(id),
+      changed: (id, connected) => {
+        this.frameworkDeviceChanged(id, connected);
+        if (!connected) this.frameworkConnections.delete(id);
+        if (!connected) this.frameworkReleased.add(id);
+      },
+      failed: (id) => this.frameworkConnections.delete(id),
+    });
     this.preview = new Preview({
       available: () => this.running && !this.switching,
-      device: (id) => this.store.get('device', id),
-      worker: (id) => this.workers.get(id),
+      device: (id) => {
+        if (this.controlSessions.get(id).owner === 'switching')
+          throw new RpcError(-32011, '正在交接设备控制权，请等待会话建立或释放');
+        return this.store.get('device', id);
+      },
+      worker: (id) => this.controlSessions.worker(id) ?? this.workers.get(id),
+      context: (id) => {
+        const session = this.controlSessions.get(id);
+        return session.owner === 'maafw'
+          ? {
+              engine: 'maafw',
+              sessionId: session.sessionId,
+              resourceGeneration: session.resourceGeneration,
+            }
+          : {
+              engine: 'maacore',
+              resourceGeneration:
+                'maacore-resource-' +
+                createHash('sha256')
+                  .update(this.workerConfigurations.get(id)?.resource ?? '')
+                  .digest('hex')
+                  .slice(0, 32),
+            };
+      },
+      authorize: (id, token) => this.controlSessions.authorize(id, token),
       hasRun: (id) =>
         this.hasExecution(id) ||
         !!this.scheduler?.owner(id) ||
         [...this.starts.values()].some((start) => start.deviceId === id),
       clicked: (data) => {
-        this.emit('device.clicked', '点击指令已获核心确认', data);
+        const { controlToken: _token, ...publicData } = data;
+        this.emit('device.clicked', '点击指令已获核心确认', publicData);
+      },
+    });
+    this.debug = new DebugService({
+      catalog: async (deviceId) => {
+        const profile = await this.atomicProfile(deviceId);
+        const port: AtomicExecutionPort = {
+          execute: async () => {
+            throw new RpcError(-32011, '请先建立调试会话');
+          },
+        };
+        return createAtomicCapabilityRegistry(port, { profile }).list();
+      },
+      start: (deviceId, requestId) => this.controlSessions.start({ deviceId, requestId }),
+      end: (control) =>
+        this.controlSessions.get(control.deviceId).sessionId !== control.sessionId
+          ? Promise.resolve({ ended: true })
+          : this.controlSessions.end({
+              deviceId: control.deviceId,
+              controlToken: control.controlToken,
+              requestId: randomUUID(),
+            }),
+      registry: async (control, signal) => {
+        const profile = await this.atomicProfile(control.deviceId);
+        signal.throwIfAborted();
+        return createAtomicCapabilityRegistry(
+          {
+            execute: async (operation, input, context) => {
+              signal.throwIfAborted();
+              context.signal?.throwIfAborted();
+              if (!this.controlSessions.authorize(control.deviceId, control.controlToken))
+                throw new RpcError(-32011, '调试控制会话已失效');
+              if (operation === 'recognize')
+                return this.recognizeAtomicFrame(control.deviceId, input, signal);
+              const params = {
+                ...input,
+                deviceId: control.deviceId,
+                controlToken: control.controlToken,
+                requestId: randomUUID(),
+              };
+              if (operation === 'frame')
+                return this.preview.frame({
+                  deviceId: control.deviceId,
+                  controlToken: control.controlToken,
+                });
+              return this.handle(`device.${operation}`, params);
+            },
+          },
+          { profile },
+        );
       },
     });
     this.toolbox = new Toolbox({
@@ -460,6 +647,352 @@ export class Runtime {
       },
     });
   }
+  private frameworkDeviceChanged(id: string, connected: boolean) {
+    const device = this.store.get('device', id);
+    if (device) {
+      device.state = connected ? 'idle' : 'offline';
+      this.store.put('device', id, device);
+    }
+    this.emit(
+      'device.control_session',
+      connected ? 'MaaFramework 工作流已取得控制权' : '设备控制权已释放，等待后续任务连接',
+      { deviceId: id, engine: 'maafw', connected },
+    );
+  }
+  private async atomicProfile(deviceId?: string): Promise<AtomicResourceProfile> {
+    if (deviceId && !this.store.get('device', deviceId)) throw new RpcError(-32004, '设备不存在');
+    const source =
+      (deviceId &&
+        (this.frameworkConnections.get(deviceId)?.resource ??
+          this.workerConfigurations.get(deviceId)?.resource)) ||
+      this.store.get('active', 'combo', {}).resource?.path;
+    const client = deviceId
+      ? this.deviceClient(deviceId)
+      : (parseSettings(this.store.get('settings', 'main')).connection?.clientType ?? 'Official');
+    const view = deviceId ? this.controlSessions.view(deviceId) : undefined;
+    if (!source)
+      return {
+        id: 'unavailable',
+        clientType: client,
+        available: false,
+        diagnostics: ['请先安装并启用游戏资源'],
+        rules: {},
+        card: null,
+        actions: {},
+        sources: [],
+      };
+    return loadAtomicResourceProfile(source, client, {
+      resourceVersion: `${this.store.get('active', 'combo', {}).resource?.version ?? 'unknown'}:${view?.generation ?? path.basename(source)}`,
+      ...(view ? { availableTemplates: Object.keys(view.templates) } : {}),
+    });
+  }
+  private recognizeAtomicFrame(
+    deviceId: string,
+    input: Record<string, unknown>,
+    signal: AbortSignal,
+  ) {
+    signal.throwIfAborted();
+    const { expected: _expected, ...options } = input;
+    const operation = this.recognizeFrameInner({ ...options, deviceId }, true);
+    this.frameworkOperations.add(operation);
+    void operation.finally(() => this.frameworkOperations.delete(operation)).catch(() => {});
+    // Stop this caller immediately. The shared, controller-free reader remains
+    // protected until its bounded call settles, without cancelling another session.
+    return new Promise((resolve, reject) => {
+      const abort = () => reject(signal.reason ?? new Error('识别已取消'));
+      signal.addEventListener('abort', abort, { once: true });
+      if (signal.aborted) abort();
+      operation.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+    });
+  }
+  private async frameworkSdkPath() {
+    if (this.options.frameworkWorkerFactory) return 'synthetic-framework';
+    return (
+      await resolveFrameworkSdk({
+        applicationRuntimeDirectory: path.dirname(nativeWorkerPath()),
+        checkoutRoot: path.resolve(import.meta.dir, '../../../..'),
+      })
+    ).path;
+  }
+  private async frameworkConfiguration(
+    id: string,
+    view: FrameworkView,
+    mode: 'recognition' | 'control',
+  ): Promise<FrameworkConfiguration> {
+    const config: FrameworkConfiguration = {
+      framework: await this.frameworkSdkPath(),
+      resource: view.path,
+      userDir: path.join(this.root, 'workers', `maafw-${id}`),
+      mode,
+    };
+    if (mode === 'recognition') return config;
+    const device = this.store.get('device', id),
+      saved = this.frameworkConnections.get(id);
+    if (!device) throw new RpcError(-32004, '设备不存在');
+    const settings = parseSettings(this.store.get('settings', 'main'));
+    const profile = findDeviceProfile(settings, device.address);
+    const connection = saved?.connection ?? profile?.connection ?? settings.connection;
+    return {
+      ...config,
+      adb: saved?.adb ?? (await this.adbExecutable(profile ?? settings)),
+      address: saved?.address ?? device.address,
+      lockPath:
+        saved?.lockPath ??
+        deviceLockPath(adbServerIdentity() + '|' + this.lockAddress(device.address)),
+      avd: connection?.config === 'AVD',
+    };
+  }
+  private startFrameworkWorker(
+    config: FrameworkConfiguration,
+    signal?: AbortSignal,
+  ): Promise<FrameworkPort> {
+    if (!this.running || this.switching)
+      return Promise.reject(new RpcError(-32011, '运行时已退出或正在切换，不能启动 MaaFramework'));
+    signal?.throwIfAborted();
+    this.protectedWorkerLogs.add(path.basename(config.userDir));
+    return (
+      this.options.frameworkWorkerFactory?.(config, signal) ?? FrameworkWorker.start(config, signal)
+    );
+  }
+  private async prepareFrameworkView(
+    id: string,
+    signal = this.frameworkAbort.signal,
+  ): Promise<FrameworkView> {
+    signal.throwIfAborted();
+    const existing = this.controlSessions.view(id);
+    if (existing) return existing;
+    const source =
+      this.frameworkConnections.get(id)?.resource ??
+      this.workerConfigurations.get(id)?.resource ??
+      this.store.get('active', 'combo', {}).resource?.path;
+    if (!source) throw new RpcError(-32040, '请先安装并启用游戏资源');
+    const client =
+      this.frameworkConnections.get(id)?.connection?.clientType ?? this.deviceClient(id);
+    const key = JSON.stringify([source, client]),
+      cached = this.frameworkViews.get(key);
+    if (cached) return cached;
+    this.frameworkPreparing++;
+    try {
+      if (this.options.frameworkResources) {
+        const view = await this.options.frameworkResources(id, source, client);
+        signal.throwIfAborted();
+        this.frameworkViews.set(key, view);
+        return view;
+      }
+      const framework = await this.frameworkSdkPath();
+      const view = await prepareFrameworkResources({
+        source,
+        destination: path.join(this.root, 'cache', 'framework-resources'),
+        clientType: client,
+        frameworkVersion: 'v5.14.3',
+        signal,
+        validate: (resource: string) =>
+          validateFrameworkResources(
+            {
+              framework,
+              resource,
+              userDir: path.join(this.root, 'workers', 'maafw-probe'),
+              mode: 'recognition',
+            },
+            signal,
+          ),
+      });
+      signal.throwIfAborted();
+      this.frameworkViews.set(key, view);
+      return view;
+    } finally {
+      this.frameworkPreparing--;
+    }
+  }
+  withFrameworkSession<T>(
+    deviceId: string,
+    workflow: (session: RpcContract['results']['control.session.start']) => Promise<T>,
+    signal?: AbortSignal,
+  ) {
+    return this.controlSessions.withSession(deviceId, workflow, signal);
+  }
+  private serializeFrameworkReaders<T>(operation: () => Promise<T>): Promise<T> {
+    const pending = this.frameworkReaderGate.then(operation);
+    this.frameworkReaderGate = pending.catch(() => {});
+    return pending;
+  }
+  private retireFrameworkReader(reader: FrameworkReader): Promise<void> {
+    clearTimeout(reader.idleTimer);
+    return (reader.closing ??= (async () => {
+      await (await reader.worker.catch(() => undefined))?.close();
+      if (this.frameworkReaders.get(reader.view.generation) === reader)
+        this.frameworkReaders.delete(reader.view.generation);
+    })());
+  }
+  private acquireFrameworkReader(deviceId: string, view: FrameworkView) {
+    return this.serializeFrameworkReaders(async () => {
+      if (!this.running || this.switching) throw new RpcError(-32011, '识别已取消');
+      let reader = this.frameworkReaders.get(view.generation);
+      if (reader?.failed || reader?.closing) {
+        await this.retireFrameworkReader(reader);
+        reader = undefined;
+      }
+      if (!reader) {
+        // Keep one model set resident. A busy version is never evicted or
+        // duplicated; an idle version must exit before loading the next one.
+        for (const existing of this.frameworkReaders.values()) {
+          if (existing.pending)
+            throw new RpcError(-32011, '识别进程正在处理另一资源版本，请稍后重新识别');
+          await this.retireFrameworkReader(existing);
+        }
+        if (!this.running || this.switching) throw new RpcError(-32011, '识别已取消');
+        const worker = this.frameworkConfiguration(deviceId, view, 'recognition').then((config) =>
+          this.startFrameworkWorker({
+            ...config,
+            userDir: path.join(
+              this.root,
+              'workers',
+              'maafw-recognition-' + view.generation.slice(0, 16),
+            ),
+          }),
+        );
+        reader = { view, worker, tail: Promise.resolve(), pending: 0 };
+        // Startup rejection is consumed by the queued operation below.
+        void worker.catch(() => {});
+        this.frameworkReaders.set(view.generation, reader);
+      }
+      if (reader.pending >= 8) throw new RpcError(-32011, '识别请求队列已满，请稍后重试');
+      clearTimeout(reader.idleTimer);
+      reader.pending++;
+      return reader;
+    });
+  }
+  private releaseFrameworkReader(reader: FrameworkReader) {
+    reader.pending--;
+    if (reader.pending || reader.failed || reader.closing) return;
+    reader.idleTimer = setTimeout(() => {
+      void this.serializeFrameworkReaders(async () => {
+        if (!reader.pending && this.frameworkReaders.get(reader.view.generation) === reader)
+          await this.retireFrameworkReader(reader);
+      }).catch(() => {});
+    }, this.options.frameworkReaderIdleMs ?? 30_000);
+    reader.idleTimer.unref();
+  }
+  private recognizeFrame(params: unknown): Promise<RpcContract['results']['vision.recognize']> {
+    const operation = this.recognizeFrameInner(params);
+    this.frameworkOperations.add(operation);
+    void operation.finally(() => this.frameworkOperations.delete(operation)).catch(() => {});
+    return operation;
+  }
+  private async recognizeFrameInner(
+    params: unknown,
+    atomic = false,
+  ): Promise<RpcContract['results']['vision.recognize']> {
+    if (!atomic && !validateVisionRecognizeParams(params))
+      throw new RpcError(-32602, '识别请求参数无效');
+    const request = params as RpcContract['params']['vision.recognize'] & Record<string, any>;
+    return this.recognizePreparedFrame(request, atomic);
+  }
+  private async recognizePreparedFrame(
+    params: RpcContract['params']['vision.recognize'] & Record<string, any>,
+    atomic: boolean,
+  ): Promise<RpcContract['results']['vision.recognize']> {
+    const image = this.preview.reference(params.deviceId, params.frameId, atomic ? 120_000 : 2000);
+    if (
+      params.roi &&
+      (params.roi[0] + params.roi[2] > (params.referenceSize?.[0] ?? image.width) ||
+        params.roi[1] + params.roi[3] > (params.referenceSize?.[1] ?? image.height))
+    )
+      throw new RpcError(-32602, '识别区域超出画面');
+    this.frameworkRecognizing++;
+    try {
+      const view = await this.prepareFrameworkView(params.deviceId);
+      if (!this.running || this.switching) throw new RpcError(-32011, '识别已因退出或切换而取消');
+      if (params.kind === 'ocr' && !view.ocrAvailable)
+        throw new RpcError(-32040, '当前客户端资源的 OCR 模型未通过离线兼容性探针');
+      const template = params.templateId ? view.templates[params.templateId] : undefined;
+      if (params.kind === 'template' && !template)
+        throw new RpcError(-32602, '模板未在宿主资源目录中登记');
+      if (template && !template.startsWith('image/'))
+        throw new RpcError(-32040, '宿主模板资源布局无效');
+      const reader = await this.acquireFrameworkReader(params.deviceId, view);
+      const operation = reader.tail
+        .then(async () => {
+          if (!this.running || this.switching || reader.failed)
+            throw new RpcError(-32011, '识别已取消');
+          const worker = await reader.worker;
+          if (!this.running || this.switching) throw new RpcError(-32011, '识别已取消');
+          const nativeParams = {
+            kind: params.kind,
+            image: { data: image.data, width: image.width, height: image.height },
+            ...(params.roi ? { roi: params.roi } : {}),
+            ...(template ? { template: template.slice('image/'.length) } : {}),
+            ...(atomic
+              ? Object.fromEntries(
+                  [
+                    'referenceSize',
+                    'threshold',
+                    'maskRange',
+                    'method',
+                    'replace',
+                    'onlyRec',
+                    'lower',
+                    'upper',
+                    'count',
+                    'connected',
+                    'greenMask',
+                    'pureColor',
+                    'colorScales',
+                    'colorWithClose',
+                    'nmsDistance',
+                  ]
+                    .filter((key) => params[key] !== undefined)
+                    .map((key) => [key, params[key]]),
+                )
+              : {}),
+          };
+          if (
+            !validateFrameworkWorkerCommand({
+              protocolVersion: 1,
+              id: 'recognize',
+              operation: 'recognize',
+              ...nativeParams,
+            })
+          )
+            throw new RpcError(-32602, '识别规则包含不支持的参数');
+          return worker.request('recognize', nativeParams);
+        })
+        .catch(async (error) => {
+          reader.failed = true;
+          await this.serializeFrameworkReaders(() => this.retireFrameworkReader(reader));
+          throw error;
+        })
+        .finally(() => this.releaseFrameworkReader(reader));
+      reader.tail = operation.then(
+        () => {},
+        () => {},
+      );
+      const native = await operation;
+      if (!this.running || this.switching) throw new RpcError(-32011, '识别已取消');
+      const result = {
+        ...native,
+        frameId: image.frameId,
+        engine: 'maafw' as const,
+        resourceGeneration: view.generation,
+        fresh:
+          image.fresh === true &&
+          this.preview.isCurrent(image) &&
+          Date.now() - Date.parse(image.capturedAt) <= 2000,
+      };
+      if (!validateVisionRecognitionResult(result))
+        throw new RpcError(-32040, 'MaaFramework 返回了无效识别结果');
+      return result;
+    } finally {
+      this.frameworkRecognizing--;
+    }
+  }
+  private async closeFrameworkReaders() {
+    await this.serializeFrameworkReaders(async () => {
+      await Promise.all(
+        [...this.frameworkReaders.values()].map((reader) => this.retireFrameworkReader(reader)),
+      );
+    });
+  }
   private executionSnapshot(id: string): any {
     return this.store.get('run_snapshot', id) ?? this.store.get('run_plan', id);
   }
@@ -480,6 +1013,7 @@ export class Runtime {
   availability(
     deviceId: string,
     ignoreOccurrence?: string,
+    ignoreRequestId?: string,
   ): RpcContract['results']['device.availability'] {
     const device = this.store.get('device', deviceId),
       worker = this.workers.get(deviceId);
@@ -502,6 +1036,12 @@ export class Runtime {
     if (this.initializingComponents) return result('updates', '正在后台准备随附组件，请稍后再执行');
     if (this.switching || this.updates?.channels().some((item) => item.status === 'waiting_idle'))
       return result('updates', '正在准备切换核心与资源');
+    if (this.controlSessions?.owns(deviceId))
+      return result(
+        'manual',
+        'MaaFramework 控制会话占用设备（包括空闲期间）',
+        this.controlSessions.get(deviceId).sessionId ?? null,
+      );
     const owner = this.executions().find(
       (item) => item.deviceId === deviceId && item.status === 'running',
     );
@@ -511,7 +1051,9 @@ export class Runtime {
         '设备正在执行' + owner.planName + '，请等待整个操作结束',
         owner.id,
       );
-    const pending = [...this.starts.values()].find((item) => item.deviceId === deviceId);
+    const pending = [...this.starts].find(
+      ([requestId, item]) => requestId !== ignoreRequestId && item.deviceId === deviceId,
+    )?.[1];
     if (pending)
       return result(
         'run',
@@ -532,6 +1074,8 @@ export class Runtime {
     );
   }
   private async prepareScheduledDevice(id: string) {
+    if (this.controlSessions.owns(id))
+      throw new RpcError(-32011, 'MaaFramework 控制会话占用设备，定时任务不能抢占');
     const device = this.store.get('device', id);
     if (!device) throw new RpcError(-32004, '定时设备不存在');
     if (this.hasExecution(id)) throw new RpcError(-32011, '设备仍有未结束的执行');
@@ -658,6 +1202,9 @@ export class Runtime {
   }
   busy() {
     return (
+      !!this.controlSessions?.busy ||
+      this.frameworkPreparing > 0 ||
+      this.frameworkRecognizing > 0 ||
       this.automaticActive.size > 0 ||
       !!this.preview?.busy ||
       this.connecting.size > 0 ||
@@ -670,6 +1217,8 @@ export class Runtime {
   }
   private assertAppUpdateIdle() {
     const reasons: string[] = [];
+    if (this.controlSessions.busy || this.frameworkPreparing || this.frameworkRecognizing)
+      reasons.push('MaaFramework 会话或识别尚未结束');
     if (this.executions().some((run) => run.status === 'running'))
       reasons.push('任务或工具仍在执行');
     if (this.preview.busy) reasons.push('人工点击尚未结束');
@@ -769,6 +1318,10 @@ export class Runtime {
         'run.start',
         'copilot.start',
         'tool.start',
+        'control.session.start',
+        'debug.session.start',
+        'debug.primitive.invoke',
+        'vision.recognize',
       ].includes(method) ||
         (method.startsWith('updates.') &&
           method !== 'updates.maafwAdb.status' &&
@@ -778,9 +1331,87 @@ export class Runtime {
     if (
       (this.appUpdating || this.appUpdatePreparing) &&
       method !== 'app.snapshot' &&
+      method !== 'debug.session.end' &&
+      method !== 'control.session.end' &&
       !(method === 'updates.rollback' && params.channel === 'app')
     )
       throw new RpcError(-32011, '应用正在准备安装更新，请稍后重试');
+    switch (method) {
+      case 'primitive.catalog.get':
+        if (!validatePrimitiveCatalogParams(params)) throw new RpcError(-32602, '能力目录参数无效');
+        return this.debug.catalog(params.deviceId);
+      case 'debug.session.start':
+        if (!validateDebugSessionStartParams(params))
+          throw new RpcError(-32602, '调试会话参数无效');
+        return this.debug.start(params);
+      case 'debug.primitive.invoke':
+        if (!validateDebugPrimitiveInvokeParams(params))
+          throw new RpcError(-32602, '调试调用参数无效');
+        return this.debug.invoke(params);
+      case 'debug.session.end':
+        if (!validateDebugSessionEndParams(params)) throw new RpcError(-32602, '调试结束参数无效');
+        return this.debug.end(params);
+      case 'control.session.start':
+        if (!validateControlSessionStartParams(params))
+          throw new RpcError(-32602, '控制会话请求无效');
+        return this.controlSessions.start(params);
+      case 'control.session.get':
+        if (!validateControlSessionGetParams(params))
+          throw new RpcError(-32602, '控制会话查询无效');
+        if (!this.store.get('device', params.deviceId)) throw new RpcError(-32004, '设备不存在');
+        return this.controlSessions.get(params.deviceId);
+      case 'control.session.end':
+        if (!validateControlSessionEndParams(params))
+          throw new RpcError(-32602, '控制会话结束请求无效');
+        return this.controlSessions.end(params);
+      case 'vision.recognize':
+        return this.recognizeFrame(params);
+      case 'tool.start':
+        if (validateToolStartParams(params) && !this.store.get('tool_request', params.requestId))
+          await this.ensureCoreAfterFramework(params.deviceId);
+        break;
+      case 'device.swipe':
+      case 'device.long_press':
+      case 'device.drag':
+      case 'device.press_key': {
+        if (
+          !(method === 'device.swipe'
+            ? validateDeviceSwipeParams(params)
+            : method === 'device.long_press'
+              ? validateDeviceLongPressParams(params)
+              : method === 'device.drag'
+                ? validateDeviceDragParams(params)
+                : validateDevicePressKeyParams(params))
+        )
+          throw new RpcError(-32602, '控制操作参数无效');
+        if (
+          !this.controlSessions.owns(params.deviceId) ||
+          !this.controlSessions.authorize(params.deviceId, params.controlToken)
+        )
+          throw new RpcError(-32011, '操作需要有效 MaaFramework 控制会话');
+        const {
+          deviceId,
+          controlToken: _token,
+          frameId: _frameId,
+          requestId: _requestId,
+          ...action
+        } = params;
+        const worker = this.controlSessions.worker(deviceId)!;
+        return this.preview.action(
+          params,
+          [method, action],
+          method === 'device.swipe' || method === 'device.drag'
+            ? [
+                [params.x1, params.y1],
+                [params.x2, params.y2],
+              ]
+            : method === 'device.long_press'
+              ? [[params.x, params.y]]
+              : [],
+          () => worker.request(method.slice('device.'.length), action),
+        );
+      }
+    }
     return this.dispatchRpc(method, params);
   }
   private async readRecognition(params: RpcContract['params']['recognition.get']) {
@@ -905,6 +1536,12 @@ export class Runtime {
   private async saveSettings(input: any) {
     const settings = parseSettings(input),
       previous = parseSettings(this.store.get('settings', 'main'));
+    if (
+      this.controlSessions.busy &&
+      JSON.stringify([settings.connection, settings.capture, settings.deviceProfiles]) !==
+        JSON.stringify([previous.connection, previous.capture, previous.deviceProfiles])
+    )
+      throw new RpcError(-32011, '请先结束 MaaFramework 控制会话，再修改设备连接或客户端配置');
     if (!Object.hasOwn(input, 'copilotStorage') && previous.copilotStorage)
       settings.copilotStorage = previous.copilotStorage;
     if (!Object.hasOwn(input, 'downloadProxy') && previous.downloadProxy)
@@ -1091,11 +1728,37 @@ export class Runtime {
       this.starts.delete(params.requestId);
     }
   }
-  /** No await before occupancy validation and durable registration: every source shares this gate. */
+  private async ensureCoreAfterFramework(id: string, requestId?: string, occurrenceId?: string) {
+    if (!this.frameworkReleased.has(id)) return;
+    const status = this.availability(id, occurrenceId, requestId);
+    if (status.owner !== 'none') throw new RpcError(-32011, status.reason);
+    if (this.workers.get(id)?.connected) {
+      this.frameworkReleased.delete(id);
+      return;
+    }
+    const device = this.store.get('device', id);
+    if (!device) throw new RpcError(-32004, '设备不存在');
+    await this.connectDevice({ address: device.address, name: device.name });
+    const worker = this.workers.get(id);
+    if (
+      !worker ||
+      !(await worker.waitConnected(30_000, () => !this.running)) ||
+      !this.running ||
+      this.workers.get(id) !== worker
+    )
+      throw new RpcError(-32040, 'MaaCore 重新连接失败；未提交任务，不会自动重放');
+    const current = this.store.get('device', id);
+    current.state = 'idle';
+    this.store.put('device', id, current);
+    this.frameworkReleased.delete(id);
+  }
+  /** Reserve occupancy before connection; persist immutable inputs before native task effects. */
   private async beginExecution(params: any, snapshot: any, occurrence?: any) {
+    if (this.frameworkReleased.has(params.deviceId))
+      await this.ensureCoreAfterFramework(params.deviceId, params.requestId, occurrence?.id);
     const device = this.devices().find((d) => d.id === params.deviceId);
     if (!device) throw new RpcError(-32004, '设备不存在');
-    const availability = this.availability(device.id, occurrence?.id);
+    const availability = this.availability(device.id, occurrence?.id, params.requestId);
     if (!availability.available) {
       if (
         snapshot.source === 'plan' &&
@@ -1242,12 +1905,22 @@ export class Runtime {
     return run;
   }
   private isSuppressed(address: string) {
+    if (this.frameworkOwnsAddress(address)) return true;
     const profile = findDeviceProfile(parseSettings(this.store.get('settings', 'main')), address);
     return (
       this.suppressed.has(this.lockAddress(address)) ||
       this.suppressedAddresses.has(deviceLockAddress(address)) ||
       !!(profile && this.suppressedAddresses.has('profile:' + profile.id))
     );
+  }
+  private frameworkOwnsAddress(address: string) {
+    return this.store
+      .all('device')
+      .some(
+        (device) =>
+          this.controlSessions.owns(device.id) &&
+          this.lockAddress(device.address) === this.lockAddress(address),
+      );
   }
   private suppressAddress(address: string, suppress: boolean) {
     const canonical = this.lockAddress(address);
@@ -1672,6 +2345,8 @@ export class Runtime {
         throw new RpcError(-32011, '应用运行时正在退出或安装更新');
       const address = validateAddress(params.address);
       attemptedAddress = address;
+      if (this.frameworkOwnsAddress(address))
+        throw new RpcError(-32011, 'MaaFramework 控制会话占用设备，不能连接 MaaCore');
       if (automatic) this.validateAutomatic(address, attempt);
       const active = this.store
         .all('device')
@@ -1811,6 +2486,8 @@ export class Runtime {
       id =
         previous?.id ||
         'device-' + createHash('sha256').update(canonical).digest('hex').slice(0, 12);
+      if (this.controlSessions.owns(id!))
+        throw new RpcError(-32011, 'MaaFramework 控制会话占用设备');
       if (this.connecting.has(id!)) throw new RpcError(-32011, '该设备正在建立连接');
       if (this.workers.has(id!)) return this.store.get('device', id!);
       this.connecting.add(id!);
@@ -2080,6 +2757,7 @@ export class Runtime {
           (state) => this.lockAddress(state.target.address) === this.lockAddress(device.address),
         ) ||
         this.clientSwitches.has(device.id) ||
+        this.controlSessions.owns(device.id) ||
         this.hasExecution(device.id) ||
         [...this.starts.values()].some((start) => start.deviceId === device.id) ||
         this.scheduler.owner(device.id) ||
@@ -2106,6 +2784,8 @@ export class Runtime {
     return { deletedDeviceIds };
   }
   async disconnectDevice(id: string, internal = false) {
+    if (this.controlSessions.owns(id))
+      throw new RpcError(-32011, '请先通过宿主结束 MaaFramework 控制会话');
     if (this.switching && !internal)
       throw new RpcError(-32011, '正在切换核心与资源，暂不能断开设备');
     if (this.preview.isClicking(id)) throw new RpcError(-32011, '点击尚未完成，请稍后断开设备');
@@ -2133,6 +2813,8 @@ export class Runtime {
     if (!this.switching && this.busy()) throw new Error('核心或异步操作仍在运行');
     this.switching = true;
     this.preview.invalidate();
+    await this.closeFrameworkReaders();
+    this.frameworkViews.clear();
     const reconnect = new Map(this.reconnect.map((d) => [d.id, d]));
     const workers = [...this.workers.entries()];
     this.workers.clear();
@@ -2413,6 +3095,8 @@ export class Runtime {
     const id = run.deviceId,
       previous = this.workers.get(id),
       saved = this.workerConfigurations.get(id);
+    if (this.controlSessions.owns(id))
+      throw new Error('MaaFramework 控制会话占用设备，不能切换 MaaCore 客户端');
     if (!previous?.connected || !previous.safeIdle)
       throw new Error('核心尚未连接或未到达安全空闲边界');
     if ((saved?.connection?.clientType ?? 'Official') === clientType) return previous;
@@ -3467,6 +4151,7 @@ export class Runtime {
   }
   private async closeInner() {
     this.running = false;
+    this.frameworkAbort.abort();
     for (const state of this.automaticTargets.values()) {
       state.probing?.abort();
       state.controller?.abort();
@@ -3480,6 +4165,12 @@ export class Runtime {
     this.toolbox.close();
     this.cancelPendingClientSwitches();
     this.preview.invalidate();
+    await Promise.all([
+      this.debug.close(),
+      this.controlSessions.close(),
+      this.closeFrameworkReaders(),
+    ]);
+    await Promise.allSettled([...this.frameworkOperations]);
     await Promise.allSettled([...this.automaticOperations]);
     await this.knowledge.close();
     await this.calendar.close();

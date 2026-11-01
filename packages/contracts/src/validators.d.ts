@@ -2,6 +2,25 @@
 import type { Plan, Settings, Snapshot, DesktopUninstallInfo } from './types';
 import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame, HostUpdateParams } from './rpc-types';
 import type { WorkerProtocol } from './worker-types';
+import type { AtomicInputContract } from './atomic-input-types';
+export const atomicInputValidators: { [K in keyof AtomicInputContract['inputs']]: Validator<AtomicInputContract['inputs'][K]> };
+export const validateControlSessionStartParams: Validator<RpcContract['params']['control.session.start']>;
+export const validateControlSessionGetParams: Validator<RpcContract['params']['control.session.get']>;
+export const validateControlSessionEndParams: Validator<RpcContract['params']['control.session.end']>;
+export const validateDeviceSwipeParams: Validator<RpcContract['params']['device.swipe']>;
+export const validateDevicePressKeyParams: Validator<RpcContract['params']['device.press_key']>;
+export const validateDeviceLongPressParams: Validator<RpcContract['params']['device.long_press']>;
+export const validateDeviceDragParams: Validator<RpcContract['params']['device.drag']>;
+export const validateVisionRecognizeParams: Validator<RpcContract['params']['vision.recognize']>;
+export const validateVisionRecognitionResult: Validator<RpcContract['results']['vision.recognize']>;
+export const validatePrimitiveCatalogParams: Validator<RpcContract['params']['primitive.catalog.get']>;
+export const validateDebugSessionStartParams: Validator<RpcContract['params']['debug.session.start']>;
+export const validateDebugPrimitiveInvokeParams: Validator<RpcContract['params']['debug.primitive.invoke']>;
+export const validateDebugSessionEndParams: Validator<RpcContract['params']['debug.session.end']>;
+export const validateFrameworkWorkerConfiguration: Validator<WorkerProtocol['frameworkConfiguration']>;
+export const validateFrameworkWorkerCommand: Validator<WorkerProtocol['frameworkCommand']>;
+export const validateFrameworkWorkerEvent: Validator<WorkerProtocol['frameworkEvent']>;
+export const validateFrameworkWorkerValidation: Validator<WorkerProtocol['frameworkValidation']>;
 export interface ValidationError {
   instancePath: string;
   schemaPath: string;

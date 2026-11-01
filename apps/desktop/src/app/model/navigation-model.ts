@@ -1,7 +1,7 @@
-import { BookOpen, Bot, History, House, ListChecks, Wrench } from 'lucide-react';
+import { BookOpen, Bot, Bug, History, House, ListChecks, Wrench } from 'lucide-react';
 
 export type Page =
-  'home' | 'tasks' | 'copilot' | 'tools' | 'agent' | 'history' | 'devices' | 'settings';
+  'home' | 'tasks' | 'copilot' | 'tools' | 'agent' | 'history' | 'debug' | 'devices' | 'settings';
 export const navigation = [
   { id: 'home', label: '主页', icon: House },
   { id: 'tasks', label: '任务', icon: ListChecks },
@@ -9,6 +9,7 @@ export const navigation = [
   { id: 'tools', label: '工具箱', icon: Wrench },
   { id: 'agent', label: 'Agent 助手', icon: Bot },
   { id: 'history', label: '执行记录', icon: History },
+  { id: 'debug', label: 'Debug', icon: Bug },
 ] as const;
 export const pageNames: Record<Page, string> = {
   home: '主页',
@@ -17,6 +18,7 @@ export const pageNames: Record<Page, string> = {
   tools: '工具箱',
   agent: 'Agent 助手',
   history: '执行记录',
+  debug: 'Debug',
   devices: '设备',
   settings: '设置',
 };

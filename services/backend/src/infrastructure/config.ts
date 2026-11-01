@@ -93,11 +93,15 @@ export function childEnvironment(source = process.env): NodeJS.ProcessEnv {
       delete env[key];
   return env;
 }
-export function nativeEnvironment(core: string, platform = process.platform): NodeJS.ProcessEnv {
+export function nativeEnvironment(
+  core: string,
+  platform = process.platform,
+  isolated = false,
+): NodeJS.ProcessEnv {
   const env = childEnvironment();
   if (platform !== 'win32') {
     const key = platform === 'darwin' ? 'DYLD_LIBRARY_PATH' : 'LD_LIBRARY_PATH';
-    env[key] = path.resolve(core) + (env[key] ? ':' + env[key] : '');
+    env[key] = path.resolve(core) + (!isolated && env[key] ? ':' + env[key] : '');
   }
   return env;
 }
