@@ -20,7 +20,7 @@
     },
     {
       "file": "docs/maa-compatibility.md",
-      "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
+      "sha256": "ccd3b87e462fcd47920f13d4d2158409b56ca7ec3b964270754dd833c9d7bbe7"
     },
     {
       "file": "docs/maa-task-settings.md",
@@ -506,7 +506,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L5-L12",
-        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
+        "sha256": "ccd3b87e462fcd47920f13d4d2158409b56ca7ec3b964270754dd833c9d7bbe7"
       }
     },
     {
@@ -533,7 +533,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L55-L70",
-        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
+        "sha256": "ccd3b87e462fcd47920f13d4d2158409b56ca7ec3b964270754dd833c9d7bbe7"
       }
     },
     {
@@ -546,21 +546,21 @@
         "完整替代原版的发布门槛",
         "maa-compatibility"
       ],
-      "text": "原 MAA 功能覆盖与验收 > 完整替代原版的发布门槛\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n- **库存保持**：已接入仓库刷新、目标缺口、关卡开放跳过、累计掉落去重、顺序/达成率和有限消耗；待真实客户端验收。依据：[库存保持说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/depot-maintain.md)。\n- **数据更新与工具箱**：干员/仓库独立结果、资源头像、JSON/Markdown/CSV 及仓库 ArkPlanner/Lolicon 导出已接入；公招计算、补货和已审核小游戏使用独立 ToolJob。使用与未验收范围见 [工具箱与定时计划](toolbox-schedules.md)。依据：[数据更新](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/user-data-update.md)、[工具箱](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/tools.md)。\n- **定时、多配置与系统动作**：原版定时器及强制启动语义、配置切换、启动/结束动作、通知、远控、配置导入导出与运行诊断。用户手工配置的前后脚本必须保持在模型工具表之外。依据：[其他设置](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/others.md)、[原版设置实现](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/v6.20.0/src/MaaWpfGui/ViewModels/UserControl/Settings)。\n- **作业管理**：本地/社区作业及有序作业集的搜索、预览、逐项导入、不可变版本、独立队列与执行结果已接入。普通列表支持突袭和导航覆盖，单份普通/突袭/演习由用户在游戏内选择；自动编队会清空当前编队。删除库条目保留队列/运行/历史引用，重试不重放原生动作；仍需固定核心/资源与六客户端的真实执行、失败/停止及更新验收。依据：[自动作业](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/copilot.md)。\n\n真实验收记录至少包含：上游标签、核心实际版本、资源 commit、宿主系统、连接方式、客户端、使用的参数（脱敏）、成功证据、停止/失败结果，以及明确的已知限制。未全部关闭差距前，产品状态保持开发预览。",
+      "text": "原 MAA 功能覆盖与验收 > 完整替代原版的发布门槛\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n- **库存保持**：已接入仓库刷新、目标缺口、关卡开放跳过、累计掉落去重、顺序/达成率和有限消耗；待真实客户端验收。依据：[库存保持说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/depot-maintain.md)。\n- **数据更新与工具箱**：干员/仓库独立结果、资源头像、JSON/Markdown/CSV 及仓库 ArkPlanner/Lolicon 导出已接入；公招计算、补货和已审核小游戏使用独立 ToolJob。使用与未验收范围见 [工具箱与定时计划](toolbox-schedules.md)。依据：[数据更新](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/user-data-update.md)、[工具箱](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/tools.md)。\n- **定时、多配置与系统动作**：原版定时器及强制启动语义、配置切换、启动/结束动作、通知、远控、配置导入导出与运行诊断。用户手工配置的前后脚本必须保持在模型工具表之外。依据：[其他设置](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/others.md)、[原版设置实现](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/v6.20.0/src/MaaWpfGui/ViewModels/UserControl/Settings)。\n- **作业管理**：本地/社区作业及有序作业集的搜索、预览、逐项导入、不可变版本、独立队列与执行结果已接入。普通单份（含剿灭）使用单文件，多份才使用列表导航，拒绝剿灭等不支持类型进入地图队列。新队列项按声明生成普通／突袭，支持两种则各一项；界面不提供手动突袭或导航输入，旧导航字段保留兼容，单份普通/突袭/演习由用户在游戏内选择。空干员要求与部署方向缺省按原版处理。自动编队会清空当前编队；悖论单份从技能页、多份从干员列表开始。队列内可停止；真实结算回调确认成功后仅取消对应项选择，普通失败门禁停止后续，缺少证据仍未确认。详细参数、起点和保留差距见 [自动战斗执行对照](copilot-startup.md)。删除库条目保留队列/运行/历史引用，重试不重放原生动作；仍需固定核心/资源与六客户端的真实执行、失败/停止及更新验收。依据：[自动作业](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.21.0-beta.3/docs/zh-cn/manual/introduction/copilot.md)。\n\n真实验收记录至少包含：上游标签、核心实际版本、资源 commit、宿主系统、连接方式、客户端、使用的参数（脱敏）、成功证据、停止/失败结果，以及明确的已知限制。未全部关闭差距前，产品状态保持开发预览。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "原 MAA 功能覆盖与验收",
           "完整替代原版的发布门槛"
         ],
-        "content": "- **库存保持**：已接入仓库刷新、目标缺口、关卡开放跳过、累计掉落去重、顺序/达成率和有限消耗；待真实客户端验收。依据：[库存保持说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/depot-maintain.md)。\n- **数据更新与工具箱**：干员/仓库独立结果、资源头像、JSON/Markdown/CSV 及仓库 ArkPlanner/Lolicon 导出已接入；公招计算、补货和已审核小游戏使用独立 ToolJob。使用与未验收范围见 [工具箱与定时计划](toolbox-schedules.md)。依据：[数据更新](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/user-data-update.md)、[工具箱](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/tools.md)。\n- **定时、多配置与系统动作**：原版定时器及强制启动语义、配置切换、启动/结束动作、通知、远控、配置导入导出与运行诊断。用户手工配置的前后脚本必须保持在模型工具表之外。依据：[其他设置](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/others.md)、[原版设置实现](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/v6.20.0/src/MaaWpfGui/ViewModels/UserControl/Settings)。\n- **作业管理**：本地/社区作业及有序作业集的搜索、预览、逐项导入、不可变版本、独立队列与执行结果已接入。普通列表支持突袭和导航覆盖，单份普通/突袭/演习由用户在游戏内选择；自动编队会清空当前编队。删除库条目保留队列/运行/历史引用，重试不重放原生动作；仍需固定核心/资源与六客户端的真实执行、失败/停止及更新验收。依据：[自动作业](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/copilot.md)。\n\n真实验收记录至少包含：上游标签、核心实际版本、资源 commit、宿主系统、连接方式、客户端、使用的参数（脱敏）、成功证据、停止/失败结果，以及明确的已知限制。未全部关闭差距前，产品状态保持开发预览。",
+        "content": "- **库存保持**：已接入仓库刷新、目标缺口、关卡开放跳过、累计掉落去重、顺序/达成率和有限消耗；待真实客户端验收。依据：[库存保持说明](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/depot-maintain.md)。\n- **数据更新与工具箱**：干员/仓库独立结果、资源头像、JSON/Markdown/CSV 及仓库 ArkPlanner/Lolicon 导出已接入；公招计算、补货和已审核小游戏使用独立 ToolJob。使用与未验收范围见 [工具箱与定时计划](toolbox-schedules.md)。依据：[数据更新](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/user-data-update.md)、[工具箱](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/tools.md)。\n- **定时、多配置与系统动作**：原版定时器及强制启动语义、配置切换、启动/结束动作、通知、远控、配置导入导出与运行诊断。用户手工配置的前后脚本必须保持在模型工具表之外。依据：[其他设置](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/others.md)、[原版设置实现](https://github.com/MaaAssistantArknights/MaaAssistantArknights/tree/v6.20.0/src/MaaWpfGui/ViewModels/UserControl/Settings)。\n- **作业管理**：本地/社区作业及有序作业集的搜索、预览、逐项导入、不可变版本、独立队列与执行结果已接入。普通单份（含剿灭）使用单文件，多份才使用列表导航，拒绝剿灭等不支持类型进入地图队列。新队列项按声明生成普通／突袭，支持两种则各一项；界面不提供手动突袭或导航输入，旧导航字段保留兼容，单份普通/突袭/演习由用户在游戏内选择。空干员要求与部署方向缺省按原版处理。自动编队会清空当前编队；悖论单份从技能页、多份从干员列表开始。队列内可停止；真实结算回调确认成功后仅取消对应项选择，普通失败门禁停止后续，缺少证据仍未确认。详细参数、起点和保留差距见 [自动战斗执行对照](copilot-startup.md)。删除库条目保留队列/运行/历史引用，重试不重放原生动作；仍需固定核心/资源与六客户端的真实执行、失败/停止及更新验收。依据：[自动作业](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.21.0-beta.3/docs/zh-cn/manual/introduction/copilot.md)。\n\n真实验收记录至少包含：上游标签、核心实际版本、资源 commit、宿主系统、连接方式、客户端、使用的参数（脱敏）、成功证据、停止/失败结果，以及明确的已知限制。未全部关闭差距前，产品状态保持开发预览。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L71-L77",
-        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
+        "sha256": "ccd3b87e462fcd47920f13d4d2158409b56ca7ec3b964270754dd833c9d7bbe7"
       }
     },
     {
@@ -587,7 +587,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L13-L28",
-        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
+        "sha256": "ccd3b87e462fcd47920f13d4d2158409b56ca7ec3b964270754dd833c9d7bbe7"
       }
     },
     {
@@ -614,7 +614,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L29-L41",
-        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
+        "sha256": "ccd3b87e462fcd47920f13d4d2158409b56ca7ec3b964270754dd833c9d7bbe7"
       }
     },
     {
@@ -641,7 +641,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L42-L54",
-        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
+        "sha256": "ccd3b87e462fcd47920f13d4d2158409b56ca7ec3b964270754dd833c9d7bbe7"
       }
     },
     {
@@ -666,7 +666,7 @@
       "source": {
         "file": "docs/maa-compatibility.md",
         "pointer": "L1-L4",
-        "sha256": "7e38a158f41353c33355cdf9703f62f8700bd9581012f8aab845e761e47e57d6"
+        "sha256": "ccd3b87e462fcd47920f13d4d2158409b56ca7ec3b964270754dd833c9d7bbe7"
       }
     },
     {
@@ -20874,5 +20874,5 @@
       }
     }
   ],
-  "digest": "3205c8778ea657e2450358a9bc88c49d258d25355e5dd7274773216a1ac26b82"
+  "digest": "69d571a726b216873e52365410125762d1bcc4f31b575893821920075c8d0407"
 }

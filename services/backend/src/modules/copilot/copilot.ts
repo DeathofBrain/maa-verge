@@ -21,6 +21,7 @@ import type {
   CopilotKind,
   CopilotOptions,
   CopilotPreview,
+  CopilotQueueEntry,
   CopilotRating,
   CopilotRatingValue,
   CopilotRecord,
@@ -44,6 +45,9 @@ const MAX_CONTENT = 700_000,
   COMMUNITY_CONCURRENCY = 8,
   PREVIEW_TIMEOUT = 90_000;
 const kinds = new Set(['Copilot', 'SSSCopilot', 'ParadoxCopilot']);
+// MaaWpfGui v6.21.0-beta.3 CopilotViewModel's MainStageIdRegex / SideStoryStageIdRegex.
+const mainStageId = /^(main|sub|tough|hard)_/;
+const sideStoryStageId = /^(act\d+(side|mini|d\d+)|a00\d+)_/;
 // MaaCore v6.20.0 CopilotConfig::parse_actions aliases; unknown types would otherwise be silently skipped.
 const actionTypes = new Set([
   'Deploy',
@@ -1043,11 +1047,14 @@ export class CopilotLibrary {
           (!Array.isArray(item.distance) || item.distance.length !== 2)
         )
           fail('移动镜头动作需要两个 distance 分量');
+        // MaaCore defaults an omitted direction to Right, including preset TR devices.
         if (
           ['deploy', '部署'].includes(normalized) &&
-          (!item.name || !point(item.location) || typeof item.direction !== 'string')
+          (!item.name ||
+            !point(item.location) ||
+            (item.direction !== undefined && typeof item.direction !== 'string'))
         )
-          fail('部署动作需要干员名称、位置和方向');
+          fail('部署动作需要单位名称和整数位置；方向如提供须为字符串');
         for (const field of [
           'kills',
           'cost_changes',
@@ -1421,6 +1428,35 @@ export class CopilotLibrary {
     this.context.changed?.('作业队列与选项已保存');
     return workspace;
   }
+  acknowledgeVictory(
+    snapshot: { workspace?: CopilotWorkspace },
+    entryId: string,
+    versionId: string,
+  ): { kind: CopilotKind; entry: CopilotQueueEntry } | undefined {
+    const original = snapshot.workspace?.queue.find(
+      (entry) => entry.id === entryId && entry.versionId === versionId && entry.enabled,
+    );
+    if (!original || !snapshot.workspace) return undefined;
+    const kind = snapshot.workspace.kind;
+    const acknowledged = this.store.transaction(() => {
+      const workspace = this.workspaceGet({ kind });
+      const current = workspace.queue.find(
+        (entry) =>
+          entry.id === original.id &&
+          entry.versionId === original.versionId &&
+          entry.isRaid === original.isRaid &&
+          entry.navName === original.navName &&
+          entry.enabled,
+      );
+      if (!current) return undefined;
+      current.enabled = false;
+      // Keep edits made during execution; the immutable snapshot identifies only this occurrence.
+      this.store.put('copilot_workspace', kind, workspace);
+      return { kind, entry: { ...original, enabled: false } };
+    });
+    if (acknowledged) this.context.changed?.('已取消通关作业的选择');
+    return acknowledged;
+  }
   prepare(
     kind: CopilotKind,
     clientType: NonNullable<RpcContract['params']['stages.list']['clientType']> = 'Official',
@@ -1442,8 +1478,28 @@ export class CopilotLibrary {
         throw new RpcError(-32010, record.compatibility.reasons.join('；'));
       this.readVersion(version);
     }
-    const navigate = kind === 'Copilot' && workspace.options.loopTimes === 1;
+    const navigate = kind === 'Copilot' && selected.length > 1;
     if (navigate) {
+      const aliases = this.aliases(),
+        stageIds = versions.map(
+          (version) => aliases.get(version.record.stageName) ?? version.record.stageName,
+        );
+      if (
+        versions.some((version) =>
+          [version.record.stageName, aliases.get(version.record.stageName) ?? ''].some((stage) =>
+            /^camp_/i.test(stage),
+          ),
+        )
+      )
+        throw new RpcError(
+          -32010,
+          '剿灭作业不支持多作业自动选关，请仅启用一份并手动进入对应关卡准备界面',
+        );
+      if (stageIds.some((stage) => !mainStageId.test(stage) && !sideStoryStageId.test(stage)))
+        throw new RpcError(
+          -32010,
+          '多作业自动选关仅支持主线、别传、插曲和故事集，其他关卡请仅启用一份并手动进入对应关卡准备界面',
+        );
       const tasks = this.navigation(clientType);
       for (const entry of selected)
         if (entry.navName && !supportsStageNavigation(tasks, entry.navName))
@@ -1454,12 +1510,13 @@ export class CopilotLibrary {
     }
     const o = workspace.options;
     const params: Record<string, unknown> = {};
-    // MaaCore's optional string must be absent to use the map's default navigation.
+    // Match MaaCore's single-file flow; only a multi-file queue navigates between stages.
     if (navigate)
       params.copilot_list = selected.map((entry, index) => ({
         filename: path.join(this.directory, entry.versionId + '.json'),
         id: index + 1,
         is_raid: entry.isRaid,
+        // MaaCore's optional string must be absent to use the map's default navigation.
         ...(entry.navName ? { nav_name_override: entry.navName } : {}),
       }));
     else if (selected.length === 1) {

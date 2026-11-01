@@ -78,8 +78,10 @@ class Worker {
     });
   }
   battle(task: string) {
-    if (task.includes('StageDrops-Stars')) this.callback(20001, { subtask: 'BattleProcessTask' });
-    this.callback(20002, { taskchain: 'Copilot', subtask: 'ProcessTask', details: { task } });
+    this.callback(20001, { subtask: 'BattleProcessTask' });
+    const details = { taskchain: 'Copilot', subtask: 'ProcessTask', details: { task } };
+    this.callback(20001, details);
+    this.callback(20002, details);
   }
   complete(pending: number[] = []) {
     this.callback(10002);
@@ -130,9 +132,16 @@ async function fixture() {
         name: '合成保全',
         filename: 'sss.json',
       },
+      annihilation: {
+        stageId: 'camp_r_34',
+        levelId: 'obt/campaign/level_camp_r_34',
+        code: '合成剿灭',
+        name: '合成剿灭关卡',
+        filename: 'annihilation.json',
+      },
     }),
   );
-  for (const file of ['main.json', 'paradox.json', 'sss.json'])
+  for (const file of ['main.json', 'paradox.json', 'sss.json', 'annihilation.json'])
     writeFileSync(path.join(resource, file), '{}');
   writeFileSync(path.join(resource, '..', 'tasks.json'), JSON.stringify({ Episode1: {} }));
   const worker = new Worker(),
@@ -219,13 +228,17 @@ test('independent single run creates no task table and keeps missing victory evi
       user_additional: [{ name: '合成干员', skill: 1 }],
     },
   });
-  expect(worker.tasks[0].params.filename).toBeUndefined();
-  expect(worker.tasks[0].params.copilot_list).toHaveLength(1);
+  expect(worker.tasks[0].params.filename).toMatch(/\.json$/);
+  expect(worker.tasks[0].params.loop_times).toBe(1);
+  expect(worker.tasks[0].params.copilot_list).toBeUndefined();
+  expect(worker.tasks[0].params).not.toHaveProperty('nav_name_override');
+  expect(worker.tasks[0].params).not.toHaveProperty('is_raid');
   expect((await detail(run.id)).status).toBe('running');
-  expect(worker.tasks[0].params.copilot_list[0]).not.toHaveProperty('nav_name_override');
-  worker.load(0);
-  await r.tick(true);
-  expect((await detail(run.id)).copilotEntries[0].status).toBe('running');
+  // Single-file MaaCore has no list-loaded callback; submission owns the entry immediately.
+  expect((await detail(run.id)).copilotEntries[0]).toMatchObject({
+    nativeId: 1,
+    status: 'running',
+  });
   worker.complete([19]);
   await r.tick(true);
   expect((await detail(run.id)).status).toBe('running');
@@ -235,8 +248,73 @@ test('independent single run creates no task table and keeps missing victory evi
   expect(finished.status).toBe('completed');
   expect(finished.copilotEntries[0]).toMatchObject({ status: 'completed', verdict: 'unknown' });
   expect(finished.message).toContain('未确认');
+  expect((await r.handle('copilot.workspace.get', { kind: 'Copilot' })).queue[0].enabled).toBe(
+    true,
+  );
   expect(r.snapshot().runs[0].copilotEntries).toBeUndefined();
   expect(r.snapshot().events.every((event) => !(event.data.run as any)?.copilotEntries)).toBe(true);
+});
+
+for (const loopTimes of [1, 2])
+  test(`one annihilation uses the native single-file flow with ${loopTimes} iteration(s)`, async () => {
+    const { r, worker, device, imported, queue, start, detail } = await fixture();
+    const item = await imported({ stage_name: 'camp_r_34', opers: [], actions: [] });
+    await queue([item.versionId], 'Copilot', { loopTimes });
+    const run = await start();
+    expect(worker.tasks[0]).toMatchObject({
+      type: 'Copilot',
+      params: { loop_times: loopTimes },
+    });
+    expect(worker.tasks[0].params.filename).toMatch(/\.json$/);
+    expect(worker.tasks[0].params).not.toHaveProperty('copilot_list');
+    expect((await detail(run.id)).copilotEntries[0]).toMatchObject({
+      nativeId: 1,
+      status: 'running',
+      verdict: 'unknown',
+    });
+    worker.battle('StageDrops-Stars-3');
+    worker.complete([19]);
+    await r.tick(true);
+    expect((await detail(run.id)).status).toBe('running');
+    expect(r.availability(device.id).available).toBe(false);
+    worker.idle();
+    await r.tick(true);
+    expect((await detail(run.id)).copilotEntries[0]).toMatchObject({
+      status: 'completed',
+      verdict: loopTimes === 1 ? 'success' : 'unknown',
+    });
+    expect(r.availability(device.id).available).toBe(true);
+  });
+
+test('an annihilation in a multi-file queue is rejected before native submission', async () => {
+  const { worker, imported, queue, start } = await fixture();
+  const normal = await imported(),
+    annihilation = await imported({
+      stage_name: 'obt/campaign/level_camp_r_34',
+      opers: [],
+      actions: [],
+    });
+  await queue([normal.versionId, annihilation.versionId]);
+  await expect(start()).rejects.toThrow('剿灭作业不支持多作业自动选关');
+  expect(worker.tasks).toHaveLength(0);
+});
+
+test('single-file startup failure is attributed without a list-loaded callback and waits for idle', async () => {
+  const { r, worker, imported, queue, start, detail } = await fixture();
+  const item = await imported();
+  await queue([item.versionId]);
+  const run = await start();
+  worker.callback(20000, { subtask: 'ProcessTask', first: ['BattleStartAll'] });
+  worker.complete([19]);
+  await r.tick(true);
+  expect(worker.stops).toBe(1);
+  expect((await detail(run.id)).status).toBe('running');
+  worker.idle();
+  await r.tick(true);
+  expect(await detail(run.id)).toMatchObject({
+    status: 'failed',
+    copilotEntries: [{ nativeId: 1, status: 'failed', verdict: 'unknown' }],
+  });
 });
 
 test('native multi-file navigation preserves duplicate occurrences and rejects stale IDs and files', async () => {
@@ -250,8 +328,10 @@ test('native multi-file navigation preserves duplicate occurrences and rejects s
   const task = worker.tasks[0];
   expect(worker.tasks).toHaveLength(1);
   expect(task.params.filename).toBeUndefined();
+  expect(task.params.loop_times).toBeUndefined();
   expect(task.params.copilot_list).toHaveLength(2);
-  expect(task.params.copilot_list[0].id).not.toBe(task.params.copilot_list[1].id);
+  expect(task.params.copilot_list.map((entry: any) => entry.id)).toEqual([1, 2]);
+  expect((await detail(run.id)).copilotEntries.map((entry: any) => entry.nativeId)).toEqual([1, 2]);
   expect((await detail(run.id)).status).toBe('running');
   expect(task.params.copilot_list[0]).not.toHaveProperty('nav_name_override');
   expect(task.params.copilot_list[1]).toMatchObject({ is_raid: true, nav_name_override: '1-7' });
@@ -275,7 +355,7 @@ test('native multi-file navigation preserves duplicate occurrences and rejects s
   });
   await r.tick(true);
   expect((await detail(run.id)).copilotEntries[1].status).toBe('waiting');
-  worker.battle('Copilot@StageDrops-Stars-3');
+  worker.battle('StageDrops-Stars-3');
   worker.load(1);
   await r.tick(true);
   let entries = (await detail(run.id)).copilotEntries;
@@ -302,13 +382,13 @@ test('a delayed previous-entry settlement cannot confirm the next entry before i
   worker.callback(20002, {
     taskchain: 'Copilot',
     subtask: 'ProcessTask',
-    details: { task: 'Copilot@StageDrops-Stars-3' },
+    details: { task: 'StageDrops-Stars-3' },
   });
   await r.tick(true);
   const entries = (await detail(run.id)).copilotEntries;
   expect(entries[0]).toMatchObject({ status: 'completed', verdict: 'unknown' });
   expect(entries[1]).toMatchObject({ status: 'running', verdict: 'unknown' });
-  worker.battle('Copilot@StageDrops-Stars-Adverse');
+  worker.battle('StageDrops-Stars-Adverse');
   worker.complete();
   await r.tick(true);
   expect((await detail(run.id)).copilotEntries[1]).toMatchObject({
@@ -317,22 +397,160 @@ test('a delayed previous-entry settlement cannot confirm the next entry before i
   });
 });
 
+test.each([
+  ['StageDrops-Stars-3', 20001],
+  ['StageDrops-Stars-Adverse', 20001],
+  ['Copilot@StageDrops-Stars-3', 20002],
+] as const)(
+  'native settlement %s at message %i confirms once and captures once',
+  async (task, message) => {
+    const { r, worker, imported, queue, start, detail } = await fixture();
+    const item = await imported();
+    await queue([item.versionId], 'Copilot', { autoLikeOnSuccess: true });
+    let captures = 0,
+      automaticFeedback = 0;
+    (r as any).captureRunArtifact = () => captures++;
+    r.copilot.autoLikeConfirmed = () => {
+      automaticFeedback++;
+    };
+    const run = await start();
+    const resultEvents = () =>
+      r
+        .snapshot()
+        .events.filter(
+          (event) => event.type === 'run.copilot_result' && event.data.runId === run.id,
+        );
+    const settlement = { subtask: 'ProcessTask', details: { task } };
+    worker.callback(message, settlement);
+    await r.tick(true);
+    expect((await detail(run.id)).copilotEntries[0].verdict).toBe('unknown');
+    expect(resultEvents()).toHaveLength(0);
+    expect(captures).toBe(0);
+    expect((await r.handle('copilot.workspace.get', { kind: 'Copilot' })).queue[0].enabled).toBe(
+      true,
+    );
+    worker.callback(20001, { subtask: 'BattleProcessTask' });
+    worker.callback(message, { ...settlement, taskid: 999 });
+    worker.callback(message, settlement);
+    await r.tick(true);
+    expect((await detail(run.id)).copilotEntries[0].verdict).toBe('success');
+    expect((await detail(run.id)).status).toBe('running');
+    expect(resultEvents()).toHaveLength(1);
+    expect(resultEvents()[0].data.workspaceSelection).toEqual({
+      kind: 'Copilot',
+      entry: {
+        id: 'entry-1',
+        versionId: item.versionId,
+        enabled: false,
+        isRaid: false,
+        navName: '',
+      },
+    });
+    expect((await r.handle('copilot.workspace.get', { kind: 'Copilot' })).queue[0].enabled).toBe(
+      false,
+    );
+    expect(r.store.get('run_snapshot', run.id).workspace.queue[0].enabled).toBe(true);
+    expect(captures).toBe(1);
+    expect(automaticFeedback).toBe(0);
+    worker.callback(20002, settlement);
+    worker.callback(20001, settlement);
+    worker.complete();
+    await r.tick(true);
+    expect((await detail(run.id)).status).toBe('completed');
+    expect(resultEvents()).toHaveLength(1);
+    expect(captures).toBe(1);
+    expect(automaticFeedback).toBe(1);
+  },
+);
+
+test('confirmed list victories deselect their exact occurrences even when versions repeat', async () => {
+  const { r, worker, imported, queue, start, detail } = await fixture();
+  const item = await imported();
+  const workspace = await queue([item.versionId, item.versionId]);
+  const run = await start();
+  worker.load(0);
+  worker.battle('StageDrops-Stars-3');
+  await r.tick(true);
+  expect(
+    (await r.handle('copilot.workspace.get', { kind: 'Copilot' })).queue.map(
+      (entry: any) => entry.enabled,
+    ),
+  ).toEqual([false, true]);
+  worker.load(1);
+  worker.battle('StageDrops-Stars-3');
+  worker.complete();
+  await r.tick(true);
+  expect((await detail(run.id)).status).toBe('completed');
+  expect(
+    (await r.handle('copilot.workspace.get', { kind: 'Copilot' })).queue.map(
+      (entry: any) => entry.enabled,
+    ),
+  ).toEqual([false, false]);
+  expect(
+    r
+      .snapshot()
+      .events.filter((event) => event.type === 'run.copilot_result' && event.data.runId === run.id)
+      .map((event) => event.data.workspaceSelection),
+  ).toEqual(
+    workspace.queue.map((entry: any) => ({ kind: 'Copilot', entry: { ...entry, enabled: false } })),
+  );
+  expect(r.store.get('run_snapshot', run.id).workspace).toEqual(workspace);
+});
+
+test.each(['version', 'raid', 'navigation'] as const)(
+  'confirmed victory preserves a current occurrence whose %s changed during the run',
+  async (change) => {
+    const { r, worker, imported, queue, start, detail } = await fixture();
+    const item = await imported();
+    await queue([item.versionId, item.versionId]);
+    const run = await start();
+    const current = await r.handle('copilot.workspace.get', { kind: 'Copilot' });
+    if (change === 'version') {
+      const replacement = await imported({
+        stage_name: 'main_01-07',
+        actions: [{ type: 'Output', doc: '下一轮的版本' }],
+      });
+      current.queue[0].versionId = replacement.versionId;
+    } else if (change === 'raid') current.queue[0].isRaid = true;
+    else current.queue[0].navName = '1-7';
+    await r.handle('copilot.workspace.save', { workspace: current });
+    worker.load(0);
+    worker.battle('StageDrops-Stars-3');
+    await r.tick(true);
+    expect((await detail(run.id)).copilotEntries[0].verdict).toBe('success');
+    expect(await r.handle('copilot.workspace.get', { kind: 'Copilot' })).toEqual(current);
+    const result = r
+      .snapshot()
+      .events.find((event) => event.type === 'run.copilot_result' && event.data.runId === run.id);
+    expect(result?.data).not.toHaveProperty('workspaceSelection');
+  },
+);
+
 test('individual settlement callbacks cannot prove every iteration of a native loop succeeded', async () => {
   const { r, worker, imported, queue, start, detail } = await fixture();
   const item = await imported();
   await queue([item.versionId], 'Copilot', { loopTimes: 2 });
   const run = await start();
   expect(worker.tasks[0].params.loop_times).toBe(2);
-  worker.battle('Copilot@StageDrops-Stars-3');
+  worker.battle('StageDrops-Stars-3');
   await r.tick(true);
   expect((await detail(run.id)).copilotEntries[0].verdict).toBe('unknown');
-  worker.battle('Copilot@StageDrops-Stars-3');
+  worker.battle('StageDrops-Stars-3');
   worker.complete();
   await r.tick(true);
   expect((await detail(run.id)).copilotEntries[0]).toMatchObject({
     status: 'completed',
     verdict: 'unknown',
   });
+  expect((await r.handle('copilot.workspace.get', { kind: 'Copilot' })).queue[0].enabled).toBe(
+    true,
+  );
+  expect(
+    r
+      .snapshot()
+      .events.filter((event) => event.type === 'run.copilot_result' && event.data.runId === run.id)
+      .every((event) => !event.data.workspaceSelection),
+  ).toBe(true);
 });
 
 test('workspace edits, reimport and deleting a library record cannot change an active native snapshot', async () => {
@@ -341,7 +559,7 @@ test('workspace edits, reimport and deleting a library record cannot change an a
   await queue([item.versionId]);
   const run = await start('fixed-snapshot'),
     snapshot = r.store.get('run_snapshot', run.id),
-    file = worker.tasks[0].params.copilot_list[0].filename,
+    file = worker.tasks[0].params.filename,
     bytes = readFileSync(file, 'utf8');
   const changed = await imported({
     stage_name: 'main_01-07',
@@ -517,7 +735,7 @@ test('stop keeps workspace and unexecuted entries; stale callbacks cannot turn i
   worker.load(0);
   await r.tick(true);
   await r.stopRun(run.id);
-  worker.battle('Copilot@StageDrops-Stars-3');
+  worker.battle('StageDrops-Stars-3');
   worker.complete();
   await r.tick(true);
   const ended = await detail(run.id);
@@ -528,24 +746,132 @@ test('stop keeps workspace and unexecuted entries; stale callbacks cannot turn i
   expect(worker.tasks).toHaveLength(1);
 });
 
-test('battle failure clears the native queue and never begins or confirms later duplicate entries', async () => {
+test.each([
+  ['Copilot', 'FightMissionFailed'],
+  ['Copilot', 'FightMissionFailed-Bypass'],
+  ['Copilot', 'Copilot@FightMissionFailed'],
+  ['ParadoxCopilot', 'FightMissionFailed'],
+] as const)('%s failure %s stops later duplicate entries', async (kind, failure) => {
   const { r, worker, imported, queue, start, detail } = await fixture();
-  const item = await imported();
-  await queue([item.versionId, item.versionId]);
-  const run = await start();
+  const item =
+    kind === 'ParadoxCopilot'
+      ? await imported({ stage_name: 'mem_test', opers: [], actions: [] })
+      : await imported();
+  await queue([item.versionId, item.versionId], kind);
+  const run = await start(crypto.randomUUID(), kind);
   worker.load(0);
-  worker.battle('Copilot@FightMissionFailed');
+  worker.battle(failure);
   worker.load(1);
   await r.tick(true);
   expect(worker.stops).toBe(1);
   expect((await detail(run.id)).status).toBe('running');
+  expect(
+    r
+      .snapshot()
+      .events.filter((event) => event.type === 'run.copilot_result' && event.data.runId === run.id),
+  ).toHaveLength(1);
   worker.idle();
   await r.tick(true);
   const failed = await detail(run.id);
   expect(failed.status).toBe('failed');
   expect(failed.copilotEntries[0]).toMatchObject({ status: 'failed', verdict: 'failure' });
   expect(failed.copilotEntries[1].status).toBe('skipped');
+  expect(
+    (await r.handle('copilot.workspace.get', { kind })).queue.every((entry: any) => entry.enabled),
+  ).toBe(true);
+  expect(
+    r
+      .snapshot()
+      .events.filter((event) => event.type === 'run.copilot_result' && event.data.runId === run.id)
+      .every((event) => !event.data.workspaceSelection),
+  ).toBe(true);
 });
+
+test('a delayed previous-entry defeat cannot fail the next entry before its battle starts', async () => {
+  const { r, worker, imported, queue, start, detail } = await fixture();
+  const item = await imported();
+  await queue([item.versionId, item.versionId]);
+  const run = await start();
+  worker.load(0);
+  worker.callback(20001, { subtask: 'BattleProcessTask' });
+  worker.load(1);
+  worker.callback(20001, {
+    subtask: 'ProcessTask',
+    details: { task: 'FightMissionFailed' },
+  });
+  await r.tick(true);
+  expect(worker.stops).toBe(0);
+  expect((await detail(run.id)).copilotEntries[1]).toMatchObject({
+    status: 'running',
+    verdict: 'unknown',
+  });
+});
+
+test.each([0, 1])(
+  'paradox bypass failure at entry %i continues its queue and only aggregates after completion and idle',
+  async (failedIndex) => {
+    const { r, worker, device, imported, queue, start, detail } = await fixture();
+    const item = await imported({ stage_name: 'mem_test', opers: [], actions: [] });
+    await queue([item.versionId, item.versionId], 'ParadoxCopilot', { autoLikeOnSuccess: true });
+    let automaticFeedback = 0;
+    r.copilot.autoLikeConfirmed = () => {
+      automaticFeedback++;
+    };
+    const run = await start(crypto.randomUUID(), 'ParadoxCopilot');
+    worker.load(0);
+    if (failedIndex === 1) {
+      worker.battle('StageDrops-Stars-3');
+      worker.load(1);
+    }
+    worker.battle('FightMissionFailed-Bypass');
+    worker.load(failedIndex);
+    // A duplicated load and a late settlement cannot erase a known defeat.
+    worker.battle('StageDrops-Stars-3');
+    await r.tick(true);
+    expect(worker.stops).toBe(0);
+    expect((await detail(run.id)).status).toBe('running');
+    expect((await detail(run.id)).copilotEntries[failedIndex]).toMatchObject({
+      status: 'failed',
+      verdict: 'failure',
+    });
+    expect(r.store.get('execution', run.id).failed).toBe(false);
+    if (failedIndex === 0) {
+      worker.load(1);
+      await r.tick(true);
+      expect((await detail(run.id)).copilotEntries[1]).toMatchObject({
+        status: 'running',
+        verdict: 'unknown',
+      });
+    }
+    // Neither task completion plus idle nor queue completion with pending async calls is enough.
+    worker.callback(10002);
+    worker.idle();
+    await r.tick(true);
+    expect((await detail(run.id)).status).toBe('running');
+    worker.callback(3);
+    worker.idle([19]);
+    await r.tick(true);
+    expect((await detail(run.id)).status).toBe('running');
+    expect(r.availability(device.id).available).toBe(false);
+    worker.idle();
+    await r.tick(true);
+    const finished = await detail(run.id);
+    expect(finished).toMatchObject({ status: 'failed', progress: 100 });
+    expect(finished.message).toContain('存在战斗失败');
+    expect(finished.copilotEntries[failedIndex]).toMatchObject({
+      status: 'failed',
+      verdict: 'failure',
+    });
+    expect(finished.copilotEntries[1 - failedIndex]).toMatchObject({
+      status: 'completed',
+      verdict: failedIndex === 0 ? 'unknown' : 'success',
+    });
+    if (failedIndex === 0) expect(finished.message).toContain('通关结果未确认');
+    expect(worker.stops).toBe(0);
+    expect(r.availability(device.id).available).toBe(true);
+    expect(automaticFeedback).toBe(0);
+  },
+);
 
 for (const first of ['Copilot@WaitUntilEndOfAction', 'BattleStartAll'])
   test(`${first} errors stop later entries and cannot be overwritten by completion callbacks`, async () => {
@@ -558,6 +884,7 @@ for (const first of ['Copilot@WaitUntilEndOfAction', 'BattleStartAll'])
     await r.tick(true);
     expect(worker.stops).toBe(0);
     worker.callback(20000, { subtask: 'ProcessTask', first: [first] });
+    worker.battle('StageDrops-Stars-3');
     worker.load(1);
     worker.complete();
     await r.tick(true);
@@ -567,7 +894,32 @@ for (const first of ['Copilot@WaitUntilEndOfAction', 'BattleStartAll'])
     expect(failed.copilotEntries[0]).toMatchObject({ status: 'failed', verdict: 'unknown' });
     expect(failed.copilotEntries[1].status).toBe('skipped');
     expect(failed.message).toContain(first === 'BattleStartAll' ? '理智' : '三星');
+    if (first === 'Copilot@WaitUntilEndOfAction')
+      expect(failed.message).toContain('未通过三星结算检查（未三星或识别失败）');
   });
+
+test('a missing settlement task fails the queue without claiming a game defeat', async () => {
+  const { r, worker, imported, queue, start, detail } = await fixture();
+  const item = await imported();
+  await queue([item.versionId, item.versionId]);
+  const run = await start();
+  worker.load(0);
+  worker.callback(20001, { subtask: 'BattleProcessTask' });
+  worker.callback(20000, {
+    subtask: 'ProcessTask',
+    first: ['Copilot@WaitUntilEndOfAction'],
+    what: 'UnknownTask',
+    details: { tasks: ['Copilot@StageDrops-Stars-3'] },
+  });
+  worker.complete();
+  await r.tick(true);
+  const failed = await detail(run.id);
+  expect(worker.stops).toBe(1);
+  expect(failed.status).toBe('failed');
+  expect(failed.copilotEntries[0]).toMatchObject({ status: 'failed', verdict: 'unknown' });
+  expect(failed.copilotEntries[0].message).not.toContain('已识别战斗失败');
+  expect(failed.copilotEntries[1].status).toBe('skipped');
+});
 
 test('a failed failure-stop closes the worker and keeps later work unexecuted', async () => {
   const { r, worker, device, imported, queue, start, detail } = await fixture();
@@ -578,7 +930,7 @@ test('a failed failure-stop closes the worker and keeps later work unexecuted', 
     throw new Error('合成停止失败');
   };
   worker.load(0);
-  worker.battle('Copilot@FightMissionFailed');
+  worker.battle('FightMissionFailed');
   await r.tick(true);
   expect(r.workers.has(device.id)).toBe(false);
   expect((await detail(run.id)).status).toBe('failed');
@@ -632,7 +984,7 @@ test('disconnect and restart interrupt uncertain copilot work without replaying 
   expect((await next.handle('run.detail', { id: run.id })).status).toBe('failed');
 });
 
-test('SSS uses one native file with loops while paradox keeps its dedicated list and occurrence IDs', async () => {
+test('SSS and paradox retain their native filename and list modes with independent occurrence IDs', async () => {
   const { r, worker, imported, queue, start, detail } = await fixture();
   const sss = await imported({
     type: 'SSS',
@@ -644,6 +996,7 @@ test('SSS uses one native file with loops while paradox keeps its dedicated list
   const sssRun = await start('sss', 'SSSCopilot');
   expect(worker.tasks[0]).toMatchObject({ type: 'SSSCopilot', params: { loop_times: 2 } });
   expect(Object.keys(worker.tasks[0].params).sort()).toEqual(['filename', 'loop_times']);
+  worker.battle('StageDrops-Stars-3');
   worker.complete();
   await r.tick(true);
   expect((await detail(sssRun.id)).copilotEntries[0].verdict).toBe('unknown');
@@ -653,14 +1006,29 @@ test('SSS uses one native file with loops while paradox keeps its dedicated list
     actions: [],
     doc: { title: '合成悖论' },
   });
+  await queue([paradox.versionId], 'ParadoxCopilot');
+  const singleParadoxRun = await start('single-paradox', 'ParadoxCopilot');
+  expect(worker.tasks[1].type).toBe('ParadoxCopilot');
+  expect(Object.keys(worker.tasks[1].params)).toEqual(['filename']);
+  expect(worker.tasks[1].params.filename).toMatch(/\.json$/);
+  expect((await detail(singleParadoxRun.id)).copilotEntries[0]).toMatchObject({
+    nativeId: 1,
+    status: 'running',
+  });
+  worker.complete();
+  await r.tick(true);
+  expect((await detail(singleParadoxRun.id)).copilotEntries[0]).toMatchObject({
+    status: 'completed',
+    verdict: 'unknown',
+  });
   await queue([paradox.versionId, paradox.versionId], 'ParadoxCopilot');
   const paradoxRun = await start('paradox', 'ParadoxCopilot');
-  expect(worker.tasks[1].type).toBe('ParadoxCopilot');
-  expect(worker.tasks[1].params.filename).toBeUndefined();
-  expect(worker.tasks[1].params.copilot_list).toBeUndefined();
-  expect(worker.tasks[1].params.list).toHaveLength(2);
-  expect(worker.tasks[1].params.list[0].id).toBe(1);
-  expect(worker.tasks[1].params.list[1].id).toBe(2);
+  expect(worker.tasks[2].type).toBe('ParadoxCopilot');
+  expect(worker.tasks[2].params.filename).toBeUndefined();
+  expect(worker.tasks[2].params.copilot_list).toBeUndefined();
+  expect(worker.tasks[2].params.list).toHaveLength(2);
+  expect(worker.tasks[2].params.list[0].id).toBe(1);
+  expect(worker.tasks[2].params.list[1].id).toBe(2);
   worker.load(0);
   await r.tick(true);
   expect((await detail(paradoxRun.id)).copilotEntries[0].status).toBe('running');
@@ -705,7 +1073,7 @@ test('a delayed callback from an older task cannot update the next run on the sa
     taskid: 1,
     taskchain: 'Copilot',
     subtask: 'ProcessTask',
-    details: { task: 'Copilot@StageDrops-Stars-3' },
+    details: { task: 'StageDrops-Stars-3' },
   });
   worker.callback(10002, { taskid: 1 });
   worker.callback(3, { taskid: 1 });
@@ -714,7 +1082,7 @@ test('a delayed callback from an older task cannot update the next run on the sa
   expect((await detail(old.id)).status).toBe('completed');
   expect((await detail(next.id)).status).toBe('running');
   expect((await detail(next.id)).copilotEntries[0].verdict).toBe('unknown');
-  worker.battle('Copilot@StageDrops-Stars-3');
+  worker.battle('StageDrops-Stars-3');
   worker.complete();
   await r.tick(true);
   expect((await detail(next.id)).copilotEntries[0].verdict).toBe('success');

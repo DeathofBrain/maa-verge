@@ -48,6 +48,13 @@ function setup(http?: typeof fetch) {
       name: '暴君',
       filename: '1-7-f.json',
     },
+    {
+      stageId: 'camp_r_34',
+      code: '合成剿灭',
+      levelId: 'obt/campaign/level_camp_r_34',
+      name: '米诺斯',
+      filename: 'annihilation.json',
+    },
   ];
   writeFileSync(
     path.join(directory, 'overview.json'),
@@ -155,6 +162,64 @@ describe('immutable local copilot library', () => {
     });
     expect(library.prepare('Copilot').entries).toHaveLength(1);
   });
+  test.each([
+    ['empty lists', { opers: [], groups: [] }],
+    ['omitted lists', { opers: undefined, groups: undefined }],
+  ] as const)(
+    'training work with %s can deploy preset units and devices without declaring operators',
+    async (_, declarations) => {
+      // Same action structure as community #108905 (TL-TR-1): the device has no direction.
+      const raw = ordinary({
+        stage_name: 'act55side_tr01',
+        ...declarations,
+        actions: [
+          { type: 'Deploy', name: '合成装置', location: [2, 2] },
+          { type: 'Deploy', name: '合成预置干员', location: [1, 4], direction: 'Right' },
+          { type: 'SpeedUp' },
+        ],
+      });
+      const { library, directory } = setup((async (_url: any) =>
+        response({ available: true, content: raw })) as typeof fetch);
+      const overviewPath = path.join(directory, 'overview.json');
+      const overview = JSON.parse(readFileSync(overviewPath, 'utf8'));
+      overview.act55side_tr01 = {
+        stageId: 'act55side_tr01',
+        code: 'TL-TR-1',
+        filename: 'training.json',
+      };
+      writeFileSync(overviewPath, JSON.stringify(overview));
+      writeFileSync(path.join(directory, 'training.json'), '{}');
+      const preview = await library.preview({ code: '108905' });
+      expect(preview.entries[0]!.error).toBeNull();
+      expect(preview.entries[0]!.record).toMatchObject({
+        operators: [],
+        compatibility: { status: 'ready' },
+      });
+      const imported = library.import({ previewId: preview.id });
+      expect(imported.errors).toEqual([]);
+      const record = imported.items[0]!;
+      expect(record.operators).toEqual([]);
+      library.workspaceSave({
+        workspace: {
+          kind: 'Copilot',
+          options: defaultCopilotOptions(),
+          queue: [
+            {
+              id: 'training',
+              versionId: record.versionId,
+              enabled: true,
+              isRaid: false,
+              navName: '',
+            },
+          ],
+        },
+      });
+      const prepared = library.prepare('Copilot');
+      expect(prepared.tasks[0]!.params).toMatchObject({ formation: false, loop_times: 1 });
+      expect(readFileSync(prepared.tasks[0]!.params.filename as string, 'utf8')).toBe(raw);
+      expect(library.export({ versionId: record.versionId }).content).toBe(raw);
+    },
+  );
   test('local nonstandard content signatures are preserved without inferring uploaders', async () => {
     const { library } = setup();
     for (const [fields, author] of [
@@ -250,6 +315,119 @@ describe('immutable local copilot library', () => {
     expect(replacement.workspaceGet({ kind: 'Copilot' })).toEqual(draft);
     expect(replacement.list().items).toHaveLength(1);
   });
+  test('acknowledged victory durably disables only its occurrence and preserves later edits', async () => {
+    const { library, store, root, state } = setup(),
+      draft = await workspace(library);
+    draft.queue.push(
+      { ...draft.queue[0]!, id: 'same-version' },
+      { ...draft.queue[0]!, id: 'raid-variant', isRaid: true, navName: '1-7' },
+    );
+    library.workspaceSave({ workspace: draft });
+    const snapshot = library.prepare('Copilot'),
+      original = structuredClone(snapshot.workspace);
+    draft.options.formation = true;
+    draft.queue.reverse();
+    library.workspaceSave({ workspace: draft });
+    const acknowledgement = library.acknowledgeVictory(
+      snapshot,
+      original.queue[0]!.id,
+      original.queue[0]!.versionId,
+    );
+    expect(acknowledgement).toEqual({
+      kind: 'Copilot',
+      entry: { ...original.queue[0]!, enabled: false },
+    });
+    const expected = structuredClone(draft);
+    expected.queue.find((entry) => entry.id === original.queue[0]!.id)!.enabled = false;
+    expect(library.workspaceGet({ kind: 'Copilot' })).toEqual(expected);
+    expect(snapshot.workspace).toEqual(original);
+    expect(
+      library.acknowledgeVictory(snapshot, original.queue[0]!.id, original.queue[0]!.versionId),
+    ).toBeUndefined();
+    store.close();
+    stores.splice(stores.indexOf(store), 1);
+    const reopened = new Store(root);
+    stores.push(reopened);
+    const replacement = new CopilotLibrary(root, reopened, {
+      coreVersion: () => state.core,
+      resourceDirectory: () => state.resource,
+    });
+    expect(replacement.workspaceGet({ kind: 'Copilot' })).toEqual(expected);
+    expect(replacement.export({ versionId: original.queue[0]!.versionId }).content).toBe(
+      ordinary(),
+    );
+  });
+  test.each(['version', 'raid', 'navigation', 'removed', 'disabled', 'identity'] as const)(
+    'victory does not disable a saved occurrence whose %s changed during execution',
+    async (change) => {
+      const { library } = setup(),
+        draft = await workspace(library);
+      library.workspaceSave({ workspace: draft });
+      const snapshot = library.prepare('Copilot'),
+        original = snapshot.workspace.queue[0]!;
+      switch (change) {
+        case 'version':
+          draft.queue[0]!.versionId = (
+            await imported(library, ordinary({ doc: { title: '更新后的作业' } }))
+          ).versionId;
+          break;
+        case 'raid':
+          draft.queue[0]!.isRaid = true;
+          break;
+        case 'navigation':
+          draft.queue[0]!.navName = '1-7';
+          break;
+        case 'removed':
+          draft.queue = [];
+          break;
+        case 'disabled':
+          draft.queue[0]!.enabled = false;
+          break;
+        case 'identity':
+          draft.queue[0]!.id = 'replacement-occurrence';
+          break;
+      }
+      library.workspaceSave({ workspace: draft });
+      expect(library.acknowledgeVictory(snapshot, original.id, original.versionId)).toBeUndefined();
+      expect(library.workspaceGet({ kind: 'Copilot' })).toEqual(draft);
+    },
+  );
+  test('victory acknowledgement requires a matching enabled occurrence in the execution snapshot', async () => {
+    const { library } = setup(),
+      draft = await workspace(library);
+    draft.queue.push({ ...draft.queue[0]!, id: 'not-executed', enabled: false });
+    library.workspaceSave({ workspace: draft });
+    const snapshot = library.prepare('Copilot'),
+      original = snapshot.workspace.queue[0]!;
+    draft.queue[1]!.enabled = true;
+    library.workspaceSave({ workspace: draft });
+    for (const [execution, id, versionId] of [
+      [{}, original.id, original.versionId],
+      [snapshot, 'not-executed', original.versionId],
+      [snapshot, 'missing', original.versionId],
+      [snapshot, original.id, '0'.repeat(64)],
+    ] as const)
+      expect(library.acknowledgeVictory(execution, id, versionId)).toBeUndefined();
+    expect(library.workspaceGet({ kind: 'Copilot' })).toEqual(draft);
+  });
+  test.each([
+    ['Copilot', ordinary()],
+    ['SSSCopilot', sss()],
+    ['ParadoxCopilot', paradox()],
+  ] as const)('victory acknowledgement stays within the %s workspace', async (kind, raw) => {
+    const { library } = setup(),
+      draft = await workspace(library, [raw], kind);
+    library.workspaceSave({ workspace: draft });
+    const snapshot = library.prepare(kind),
+      original = snapshot.workspace.queue[0]!;
+    expect(library.acknowledgeVictory(snapshot, original.id, original.versionId)).toEqual({
+      kind,
+      entry: { ...original, enabled: false },
+    });
+    expect(library.workspaceGet({ kind }).queue[0]!.enabled).toBe(false);
+    for (const other of ['Copilot', 'SSSCopilot', 'ParadoxCopilot'] as const)
+      if (other !== kind) expect(library.workspaceGet({ kind: other }).queue).toEqual([]);
+  });
   test('corrupt immutable content cannot execute or be overwritten by reimport', async () => {
     const { library, root } = setup(),
       draft = await workspace(library),
@@ -280,7 +458,7 @@ describe('immutable local copilot library', () => {
       ['second-entry', 2],
     ]);
   });
-  test('default navigation omits the optional native string for single and multiple entries', async () => {
+  test('only multiple enabled entries use native list navigation and omit its optional override', async () => {
     const { library } = setup(),
       draft = await workspace(library);
     for (const count of [1, 2]) {
@@ -289,43 +467,101 @@ describe('immutable local copilot library', () => {
         id: `entry-${index}`,
       }));
       library.workspaceSave({ workspace: draft });
-      const list = library.prepare('Copilot').tasks[0]!.params.copilot_list as Record<
-        string,
-        unknown
-      >[];
-      expect(list).toHaveLength(count);
-      for (const entry of list) expect(entry).not.toHaveProperty('nav_name_override');
+      const params = library.prepare('Copilot').tasks[0]!.params;
+      if (count === 1) {
+        expect(params.filename).toMatch(/\.json$/);
+        expect(params.loop_times).toBe(1);
+        expect(params.copilot_list).toBeUndefined();
+      } else {
+        const list = params.copilot_list as Record<string, unknown>[];
+        expect(list).toHaveLength(count);
+        for (const entry of list) expect(entry).not.toHaveProperty('nav_name_override');
+      }
       expect(
         library.workspaceGet({ kind: 'Copilot' }).queue.every((entry) => entry.navName === ''),
       ).toBe(true);
     }
+    draft.queue[1]!.enabled = false;
+    library.workspaceSave({ workspace: draft });
+    const singleEnabled = library.prepare('Copilot');
+    expect(singleEnabled.tasks[0]!.params.filename).toMatch(/\.json$/);
+    expect(singleEnabled.tasks[0]!.params.copilot_list).toBeUndefined();
+    expect(singleEnabled.entries.map((entry) => [entry.id, entry.nativeId])).toEqual([
+      ['entry-0', 1],
+    ]);
   });
-  test('one normal entry navigates from the map with optional formation, while repeated execution keeps filename semantics', async () => {
+  test('one normal entry uses the current prepared stage at every loop count and keeps difficulty manual', async () => {
     const { library } = setup(),
       draft = await workspace(library);
-    for (const formation of [false, true]) {
-      draft.options.formation = formation;
-      draft.queue[0]!.navName = '1-7';
-      draft.queue[0]!.isRaid = true;
-      library.workspaceSave({ workspace: draft });
-      const params = library.prepare('Copilot').tasks[0]!.params;
-      expect(params.filename).toBeUndefined();
-      expect(params.loop_times).toBeUndefined();
-      expect(params.copilot_list).toMatchObject([
-        { id: 1, nav_name_override: '1-7', is_raid: true },
-      ]);
-      expect(params.formation).toBe(formation);
-    }
-    draft.queue[0]!.navName = 'Unknown-Stage';
-    library.workspaceSave({ workspace: draft });
-    expect(() => library.prepare('Copilot')).toThrow('不支持导航关卡');
-    draft.options.loopTimes = 2;
-    library.workspaceSave({ workspace: draft });
-    const repeated = library.prepare('Copilot').tasks[0]!.params;
-    expect(repeated.filename).toMatch(/\.json$/);
-    expect(repeated.loop_times).toBe(2);
-    expect(repeated.copilot_list).toBeUndefined();
+    for (const formation of [false, true])
+      for (const loopTimes of [1, 2]) {
+        draft.options.formation = formation;
+        draft.options.loopTimes = loopTimes;
+        draft.queue[0]!.navName = 'Unknown-Stage';
+        draft.queue[0]!.isRaid = true;
+        library.workspaceSave({ workspace: draft });
+        const params = library.prepare('Copilot').tasks[0]!.params;
+        expect(params.filename).toMatch(/\.json$/);
+        expect(params.loop_times).toBe(loopTimes);
+        expect(params.copilot_list).toBeUndefined();
+        // Filename mode never selects a stage or difficulty; the user prepares both in game.
+        expect(params).not.toHaveProperty('nav_name_override');
+        expect(params).not.toHaveProperty('is_raid');
+        expect(params.formation).toBe(formation);
+      }
   });
+  for (const stage of ['camp_r_34', 'obt/campaign/level_camp_r_34', '合成剿灭', '米诺斯'])
+    test(`annihilation alias ${stage} runs alone and cannot enter multi-file navigation`, async () => {
+      const { library } = setup(),
+        draft = await workspace(library, [ordinary(), ordinary({ stage_name: stage })]);
+      library.workspaceSave({ workspace: draft });
+      expect(() => library.prepare('Copilot')).toThrow('剿灭作业不支持多作业自动选关');
+      draft.queue[0]!.enabled = false;
+      library.workspaceSave({ workspace: draft });
+      const single = library.prepare('Copilot');
+      expect(single.tasks[0]!.params.filename).toMatch(/\.json$/);
+      expect(single.tasks[0]!.params.loop_times).toBe(1);
+      expect(single.tasks[0]!.params.copilot_list).toBeUndefined();
+      expect(single.entries.map((entry) => [entry.id, entry.nativeId])).toEqual([['queue-1', 1]]);
+      draft.queue[0]!.enabled = true;
+      draft.queue[1]!.enabled = false;
+      library.workspaceSave({ workspace: draft });
+      expect(library.prepare('Copilot').entries).toHaveLength(1);
+    });
+  test.each([
+    ['activity families', ['act10side_01', 'act10mini_01', 'act10d3_01', 'a003_01'], true],
+    ['other stage types', ['wk_kc_1', 'rune_test'], false],
+  ] as const)(
+    '%s follow the official multi-file navigation types after alias resolution',
+    async (_, stages, supported) => {
+      const { library, directory } = setup(),
+        overviewPath = path.join(directory, 'overview.json'),
+        overview = JSON.parse(readFileSync(overviewPath, 'utf8'));
+      for (const stageId of stages) {
+        overview[stageId] = {
+          stageId,
+          levelId: `obt/synthetic/level_${stageId}`,
+          name: `合成${stageId}`,
+          filename: `${stageId}.json`,
+        };
+        writeFileSync(path.join(directory, `${stageId}.json`), '{}');
+      }
+      writeFileSync(overviewPath, JSON.stringify(overview));
+      for (const stageId of stages) {
+        const draft = await workspace(library, [
+          ordinary(),
+          ordinary({ stage_name: overview[stageId].levelId }),
+        ]);
+        library.workspaceSave({ workspace: draft });
+        if (supported)
+          expect(library.prepare('Copilot').tasks[0]!.params.copilot_list).toHaveLength(2);
+        else expect(() => library.prepare('Copilot')).toThrow('多作业自动选关仅支持');
+        draft.queue[0]!.enabled = false;
+        library.workspaceSave({ workspace: draft });
+        expect(library.prepare('Copilot').tasks[0]!.params.filename).toMatch(/\.json$/);
+      }
+    },
+  );
   test('navigation overrides require activated navigation tasks with split-layout support', async () => {
     const { library, state, root } = setup(),
       draft = await workspace(library);
@@ -370,9 +606,8 @@ describe('immutable local copilot library', () => {
       library.workspaceSave({ workspace: draft });
       const execution = library.prepare(kind);
       expect(execution.tasks[0]!.type).toBe(kind);
-      if (kind === 'Copilot')
-        expect(execution.tasks[0]!.params.copilot_list).toMatchObject([{ id: 1, is_raid: false }]);
-      else expect(execution.tasks[0]!.params.filename).toMatch(/\.json$/);
+      expect(execution.tasks[0]!.params.filename).toMatch(/\.json$/);
+      expect(execution.tasks[0]!.params.copilot_list).toBeUndefined();
       expect(execution.entries[0]!.verdict).toBe('unknown');
     }
   });
@@ -456,6 +691,10 @@ describe('immutable local copilot library', () => {
       { type: 'MoveCamera' },
       { type: 'UnknownFutureAction' },
       { type: 'Deploy', name: '干员' },
+      { type: 'Deploy', location: [1, 2] },
+      { type: 'Deploy', name: '干员', location: [1.5, 2] },
+      { type: 'Deploy', name: '干员', location: [1, 2], direction: null },
+      { type: 'Deploy', name: '干员', location: [1, 2], direction: 1 },
     ]) {
       const preview = await library.preview({ content: ordinary({ actions: [action] }) });
       expect(preview.entries[0]!.error).toBeTruthy();
@@ -878,10 +1117,11 @@ describe('declared copilot difficulty support', () => {
         ],
       },
     });
-    expect(
-      (library.prepare('Copilot').tasks[0]!.params.copilot_list as { is_raid: boolean }[])[0]!
-        .is_raid,
-    ).toBe(false);
+    const execution = library.prepare('Copilot');
+    expect(execution.workspace.queue[0]!.isRaid).toBe(false);
+    expect(execution.tasks[0]!.params.filename).toMatch(/\.json$/);
+    expect(execution.tasks[0]!.params).not.toHaveProperty('copilot_list');
+    expect(execution.tasks[0]!.params).not.toHaveProperty('is_raid');
     expect(library.export({ versionId: record.versionId }).content).toBe(raw);
   });
 });

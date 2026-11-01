@@ -2,6 +2,11 @@ import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 import { expectHome, navigate } from './fixtures/navigation';
 
+type CopilotActionWindow = HarnessWindow & {
+  copilotStopRequests: string[];
+  releaseCopilotStop: () => void;
+};
+
 const json = (title: string, extra: Record<string, unknown> = {}) =>
   JSON.stringify({
     stage_name: 'main_01-07',
@@ -57,6 +62,9 @@ test(
     const before = await call<{ plans: unknown[] }>(page, 'app.snapshot');
     await importJson(page, json('合成 1-7 作业'));
     await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
+    await expect(queue(page).locator('.cp-start-hint')).toContainText('单份作业');
+    await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toHaveCount(0);
+    await expect(queue(page).getByLabel('突袭', { exact: true })).toHaveCount(0);
     await queue(page).locator('.cp-settings > summary').click();
     await queue(page).getByLabel('作业循环次数', { exact: true }).fill('3');
     await library(page)
@@ -65,10 +73,13 @@ test(
     await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(2);
     await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toHaveValue('1');
     await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toBeDisabled();
-    await queue(page).getByLabel('导航关卡 2', { exact: true }).fill('1-7');
+    await expect(queue(page).locator('.cp-start-hint')).toContainText('关卡地图');
+    await expect(queue(page).getByLabel('导航关卡 2', { exact: true })).toHaveCount(0);
     await queue(page).getByRole('button', { name: '上移作业 2', exact: true }).click();
-    await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toHaveValue('1-7');
     await queue(page).getByLabel('执行队列 2', { exact: true }).uncheck();
+    await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toHaveCount(0);
+    await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toBeEnabled();
+    await queue(page).getByLabel('作业循环次数', { exact: true }).fill('3');
     await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
     const saved = await call<{
       queue: { id: string; versionId: string; enabled: boolean; navName: string }[];
@@ -77,8 +88,9 @@ test(
     expect(saved.queue).toHaveLength(2);
     expect(saved.queue[0].id).not.toBe(saved.queue[1].id);
     expect(saved.queue[0].versionId).toBe(saved.queue[1].versionId);
-    expect(saved.queue[0].navName).toBe('1-7');
+    expect(saved.queue.every((entry) => entry.navName === '')).toBe(true);
     expect(saved.queue[1].enabled).toBe(false);
+    expect(saved.options.loopTimes).toBe(3);
     expect((await call<{ plans: unknown[] }>(page, 'app.snapshot')).plans).toEqual(before.plans);
     await page.reload();
     await navigate(page, '作业中心');
@@ -86,9 +98,140 @@ test(
     await expect(queue(page).getByLabel('执行队列 2', { exact: true })).not.toBeChecked();
     await queue(page).getByRole('button', { name: '清除未勾选项', exact: true }).click();
     await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
-    await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toBeVisible();
+    await expect(queue(page).getByLabel('导航关卡 1', { exact: true })).toHaveCount(0);
+    await expect(queue(page).locator('.cp-start-hint')).toContainText('「开始行动」');
   },
 );
+
+test('disabled entries do not change a single annihilation work into a navigation list', async ({
+  page,
+}) => {
+  await openCenter(page);
+  await importJson(page, json('合成剿灭作业', { stage_name: 'camp_r34' }));
+  await queue(page).getByLabel('执行队列 1', { exact: true }).uncheck();
+  await queue(page).locator('.cp-settings > summary').click();
+  await queue(page).getByLabel('作业循环次数', { exact: true }).fill('3');
+  await library(page).getByRole('button', { name: '加入队列 合成剿灭作业', exact: true }).click();
+  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(2);
+  await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toHaveValue('3');
+  await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toBeEnabled();
+  await expect(queue(page).getByLabel('导航关卡 2', { exact: true })).toHaveCount(0);
+  await expect(queue(page).getByLabel('突袭', { exact: true })).toHaveCount(0);
+  await expect(queue(page).locator('.cp-start-hint')).toContainText('关卡、难度或演习模式');
+  await expect(queue(page).locator('.cp-start-hint')).toContainText('「开始行动」');
+  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
+  const saved = await call<{
+    queue: { enabled: boolean }[];
+    options: { loopTimes: number };
+  }>(page, 'copilot.workspace.get', { kind: 'Copilot' });
+  expect(saved.queue.map((entry) => entry.enabled)).toEqual([false, true]);
+  expect(saved.options.loopTimes).toBe(3);
+  await queue(page).getByLabel('执行队列 2', { exact: true }).uncheck();
+  await importJson(page, json('导入的新剿灭作业', { stage_name: 'camp_r34' }));
+  await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toHaveValue('3');
+  await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toBeEnabled();
+  await expect(queue(page).getByLabel('导航关卡 3', { exact: true })).toHaveCount(0);
+});
+
+test('new ordinary queue entries follow declared difficulties and repeated adds preserve their order', async ({
+  page,
+}) => {
+  await openCenter(page);
+  for (const [title, extra] of [
+    ['仅普通作业', { difficulty: 1 }],
+    ['仅突袭作业', { difficulty: 2 }],
+    ['双难度作业', { difficulty: 3 }],
+    ['未声明作业', { difficulty: 0 }],
+    ['缺省难度作业', {}],
+    ['无效难度作业', { difficulty: 99 }],
+  ] as const)
+    await importJson(page, json(title, extra));
+  const entries = queue(page).locator('.cp-queue-list > li');
+  await expect(entries).toHaveCount(7);
+  await expect(entries.nth(0)).toContainText('普通');
+  await expect(entries.nth(1)).toContainText('突袭');
+  await expect(entries.nth(2)).toContainText('普通');
+  await expect(entries.nth(3)).toContainText('突袭');
+  for (const index of [4, 5, 6]) await expect(entries.nth(index)).toContainText('难度未声明');
+  await expect(queue(page).getByRole('textbox')).toHaveCount(0);
+  await expect(queue(page).getByRole('checkbox', { name: '突袭', exact: true })).toHaveCount(0);
+  await library(page).getByRole('button', { name: '加入队列 双难度作业', exact: true }).click();
+  await entries.nth(2).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '重复添加', exact: true }).click();
+  await expect(entries).toHaveCount(11);
+  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
+  const saved = await call<{
+    queue: { id: string; versionId: string; isRaid: boolean; navName: string }[];
+    options: { loopTimes: number };
+  }>(page, 'copilot.workspace.get', { kind: 'Copilot' });
+  expect(saved.queue.map((entry) => entry.isRaid)).toEqual([
+    false,
+    true,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    true,
+  ]);
+  expect(new Set(saved.queue.map((entry) => entry.id)).size).toBe(11);
+  expect(saved.queue[2].versionId).toBe(saved.queue[3].versionId);
+  expect(saved.queue[7].versionId).toBe(saved.queue[2].versionId);
+  expect(saved.queue.every((entry) => entry.navName === '')).toBe(true);
+  expect(saved.options.loopTimes).toBe(1);
+  await page.reload();
+  await navigate(page, '作业中心');
+  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(11);
+  expect(
+    (await call<{ queue: unknown[] }>(page, 'copilot.workspace.get', { kind: 'Copilot' })).queue,
+  ).toEqual(saved.queue);
+});
+
+test('difficulty expansion checks the queue limit without changing existing entries', async ({
+  page,
+}) => {
+  await openCenter(page);
+  await importJson(page, json('容量检查双难度作业', { difficulty: 3 }), false);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: '作业详情弹窗', exact: true })).toHaveCount(0);
+  await page.evaluate(async () => {
+    const api = (window as HarnessWindow).runtimeHarness;
+    const records = (await api.call('copilot.list', {})) as {
+      items: { versionId: string }[];
+    };
+    const workspace = (await api.call('copilot.workspace.get', { kind: 'Copilot' })) as {
+      queue: unknown[];
+    };
+    await api.call('copilot.workspace.save', {
+      workspace: {
+        ...workspace,
+        queue: Array.from({ length: 99 }, (_, index) => ({
+          id: `existing-${index}`,
+          versionId: records.items[0].versionId,
+          enabled: true,
+          isRaid: index % 2 === 1,
+          navName: `保留的历史导航 ${index}`,
+        })),
+      },
+    });
+  });
+  await page.reload();
+  await navigate(page, '作业中心');
+  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(99);
+  const before = await call<{ queue: unknown[] }>(page, 'copilot.workspace.get', {
+    kind: 'Copilot',
+  });
+  await library(page)
+    .getByRole('button', { name: '加入队列 容量检查双难度作业', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toContainText('每个队列最多 100 项');
+  expect(
+    (await call<{ queue: unknown[] }>(page, 'copilot.workspace.get', { kind: 'Copilot' })).queue,
+  ).toEqual(before.queue);
+});
 
 test(
   'independent execution stays in the center, fixes its queue snapshot and supports source navigation and stop',
@@ -162,6 +305,81 @@ test('busy device blocks the center while browsing and local import remain avail
   await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeEnabled();
 });
 
+test('the queue stops its active work and shares the pending state with the monitor and dock', async ({
+  page,
+}) => {
+  await openCenter(page);
+  await importJson(page, json('从执行队列停止的作业'));
+  await page.evaluate(() => {
+    const target = window as CopilotActionWindow;
+    const original = target.runtimeHarness.call.bind(target.runtimeHarness);
+    const stopped = new Promise<void>((resolve) => {
+      target.releaseCopilotStop = resolve;
+    });
+    target.copilotStopRequests = [];
+    target.runtimeHarness.call = async (method, params) => {
+      if (method === 'run.stop') {
+        target.copilotStopRequests.push(String(params.id));
+        await stopped;
+      }
+      return original(method, params);
+    };
+  });
+  await queue(page).getByRole('button', { name: '开始作业', exact: true }).click();
+  await expect(queue(page).getByRole('button', { name: '停止作业', exact: true })).toBeEnabled();
+  const run = (await call<{ runs: { id: string }[] }>(page, 'app.snapshot')).runs[0];
+  await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
+  await queue(page).getByRole('button', { name: '停止作业', exact: true }).click();
+  await expect(queue(page).getByRole('button', { name: '正在停止…', exact: true })).toBeDisabled();
+  await expect(
+    page
+      .getByRole('region', { name: '作业运行状态', exact: true })
+      .getByRole('button', { name: '正在停止…', exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByRole('button', { name: '停止执行', exact: true })).toBeDisabled();
+  await page.keyboard.press('Enter');
+  await expect
+    .poll(() => page.evaluate(() => (window as CopilotActionWindow).copilotStopRequests))
+    .toEqual([run.id]);
+  await page.evaluate(() => (window as CopilotActionWindow).releaseCopilotStop());
+  await expect(queue(page).getByRole('button', { name: '开始作业', exact: true })).toBeDisabled();
+  expect(
+    (await call<{ runs: { id: string; status: string }[] }>(page, 'app.snapshot')).runs,
+  ).toEqual(expect.arrayContaining([expect.objectContaining({ id: run.id, status: 'stopped' })]));
+});
+
+test('queue stop targets the selected device and workspace kind while other execution stays active', async ({
+  page,
+}) => {
+  await openCenter(page);
+  await importJson(page, json('按类型和设备停止的作业'));
+  await queue(page).getByRole('button', { name: '开始作业', exact: true }).click();
+  await expect(queue(page).getByRole('button', { name: '停止作业', exact: true })).toBeEnabled();
+  const copilot = (await call<{ runs: { id: string }[] }>(page, 'app.snapshot')).runs[0];
+  await page.getByRole('tab', { name: '保全派驻', exact: true }).click();
+  await expect(queue(page).getByRole('button', { name: '停止作业', exact: true })).toHaveCount(0);
+  await expect(queue(page).getByRole('button', { name: '开始作业', exact: true })).toBeDisabled();
+  await page.getByRole('tab', { name: '普通作业', exact: true }).click();
+  const otherDevice = await call<{ id: string }>(page, 'device.connect', {
+    address: '127.0.0.1:5557',
+    name: '另一个执行设备',
+  });
+  const otherRun = await call<{ id: string }>(page, 'run.start', {
+    planId: 'farm-1-7',
+    deviceId: otherDevice.id,
+    requestId: 'other-copilot-stop-device',
+  });
+  await queue(page).getByLabel('作业目标设备', { exact: true }).selectOption(otherDevice.id);
+  await expect(queue(page).getByRole('button', { name: '停止作业', exact: true })).toHaveCount(0);
+  await expect(queue(page).getByRole('button', { name: '开始作业', exact: true })).toBeDisabled();
+  await queue(page).getByLabel('作业目标设备', { exact: true }).selectOption('mock-device-1');
+  await queue(page).getByRole('button', { name: '停止作业', exact: true }).click();
+  await expect(queue(page).getByRole('button', { name: '开始作业', exact: true })).toBeEnabled();
+  const saved = await call<{ runs: { id: string; status: string }[] }>(page, 'app.snapshot');
+  expect(saved.runs.find((run) => run.id === copilot.id)?.status).toBe('stopped');
+  expect(saved.runs.find((run) => run.id === otherRun.id)?.status).toBe('running');
+});
+
 test('community pagination and set preview retain member order and explicitly show deleted members', async ({
   page,
 }) => {
@@ -184,6 +402,14 @@ test('community pagination and set preview retain member order and explicitly sh
     '合成社区作业 101',
     '合成社区作业 102',
   ]);
+  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
+  expect(
+    (
+      await call<{ queue: { isRaid: boolean }[] }>(page, 'copilot.workspace.get', {
+        kind: 'Copilot',
+      })
+    ).queue.map((entry) => entry.isRaid),
+  ).toEqual([false, true]);
   expect((await call<{ plans: unknown[] }>(page, 'app.snapshot')).plans).toHaveLength(2);
 });
 
@@ -198,6 +424,7 @@ test('three kinds use separate persisted queues and SSS only allows a single wor
     page,
     json('保全独立队列', {
       type: 'SSS',
+      difficulty: 3,
       stages: [
         { stage_name: 'main_01-07', draw_as_possible: true, actions: [{ type: 'SpeedUp' }] },
       ],
@@ -209,9 +436,19 @@ test('three kinds use separate persisted queues and SSS only allows a single wor
   ).toBeDisabled();
   await expect(queue(page).getByLabel('自动编队', { exact: true })).toHaveCount(0);
   await page.getByRole('tab', { name: '悖论模拟', exact: true }).click();
-  await importJson(page, json('悖论独立队列', { type: 'Paradox', stage_name: 'mem_amiya_1' }));
+  await importJson(
+    page,
+    json('悖论独立队列', { type: 'Paradox', stage_name: 'mem_amiya_1', difficulty: 3 }),
+  );
+  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(1);
+  await expect(queue(page).locator('.cp-start-hint')).toContainText('「开始模拟」');
   await queue(page).locator('.cp-settings > summary').click();
   await expect(queue(page).getByLabel('作业循环次数', { exact: true })).toBeDisabled();
+  await library(page).getByRole('button', { name: '加入队列 悖论独立队列', exact: true }).click();
+  await expect(queue(page).locator('.cp-start-hint')).toContainText('「等级／稀有度」');
+  await expect(queue(page).locator('.cp-start-hint')).toContainText('按作业选择技能');
+  await queue(page).getByLabel('执行队列 2', { exact: true }).uncheck();
+  await expect(queue(page).locator('.cp-start-hint')).toContainText('「开始模拟」');
   await page.getByRole('tab', { name: '普通作业', exact: true }).click();
   await expect(queue(page)).toContainText('普通独立队列');
   await expect(queue(page)).not.toContainText('保全独立队列');

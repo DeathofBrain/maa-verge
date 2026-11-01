@@ -182,7 +182,7 @@ export default function CopilotSettings({
       </label>
       <p className="sp-help">仅对本队列中明确确认通关的社区作业点赞，不覆盖手动点踩。默认关闭。</p>
       <p className="sp-help">
-        默认执行 1 次；普通单份循环需从编队界面开始。药剂、源石与加急消耗为
+        默认执行 1 次；普通单份作业需从编队界面开始。药剂、源石与加急消耗为
         0，运行中调整仅用于下次启动。
       </p>
     </details>

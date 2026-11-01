@@ -30,11 +30,17 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 400px;
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
 }
 .cp-main {
   min-width: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.cp-main > .cp-browser,
+.cp-main > .cp-preview {
+  flex: 1;
 }
 .cp-preview-loading {
   position: absolute;
@@ -69,6 +75,8 @@
 }
 .cp-browser {
   min-height: 480px;
+  display: flex;
+  flex-direction: column;
 }
 .cp-browser-heading {
   display: flex;
@@ -122,7 +130,7 @@
 }
 
 .cp-community-note {
-  margin: 0;
+  margin: auto 0 0;
   padding: 12px 20px;
   background: var(--surface-subtle);
   color: var(--muted);
@@ -761,6 +769,13 @@
   padding: 16px 0;
   border-bottom: 1px solid var(--line);
 }
+.cp-queue-list > li[data-difficulty='raid'] {
+  background: var(--danger-soft);
+  border-bottom-color: var(--danger);
+}
+.cp-queue-list > li[data-difficulty='raid'] .cp-queue-title strong {
+  color: var(--danger);
+}
 .cp-queue-list > li.is-disabled .cp-queue-title {
   color: var(--muted);
 }
@@ -802,38 +817,15 @@
   font-family: var(--font-mono);
   font-size: 10px;
 }
+.cp-queue-difficulty {
+  align-self: flex-start;
+}
 .cp-queue-actions {
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-.cp-entry-options {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 12px;
-  padding-left: 20px;
-  font-size: 10px;
-  color: var(--muted);
-}
-.cp-entry-options label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.cp-entry-options label:last-child {
-  flex: 1;
-  min-width: 0;
-}
-.cp-entry-input {
-  flex: 1;
-  min-width: 0;
-  font-size: 10px;
-  width: 70px;
-  padding: 5px 6px;
-}
 .cp-settings {
   margin-top: 18px;
   font-size: 12px;
@@ -889,6 +881,7 @@
   color: var(--muted);
 }
 .cp-launch {
+  margin-top: auto;
   flex-shrink: 0;
   border-top: 1px solid var(--line);
   padding: 18px 20px;
@@ -928,7 +921,8 @@
   font-size: 11px;
 }
 .cp-run {
-  margin: 0 0 24px;
+  grid-column: 1 / -1;
+  margin: 0;
   padding: 20px 24px;
   border: 1px solid var(--line);
   border-radius: 12px;

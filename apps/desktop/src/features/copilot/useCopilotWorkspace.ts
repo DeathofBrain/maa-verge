@@ -1,114 +1,190 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { errorMessage, rpc, type CopilotKind, type CopilotWorkspace } from '@maaverge/contracts';
+import { useEffect, useSyncExternalStore } from 'react';
+import {
+  errorMessage,
+  rpc,
+  type CopilotKind,
+  type CopilotQueueEntry,
+  type CopilotWorkspace,
+  type Event,
+} from '@maaverge/contracts';
 
-/** Keep each type's edits ordered, including edits flushed while leaving the page. */
-export default function useWorkspace(kind: CopilotKind) {
-  const [, render] = useState(0);
-  const currentKind = useRef(kind);
-  currentKind.current = kind;
-  const cache = useRef(new Map<CopilotKind, CopilotWorkspace>());
-  const reads = useRef(new Map<CopilotKind, Promise<CopilotWorkspace>>());
-  const pending = useRef(new Map<CopilotKind, CopilotWorkspace>());
-  const states = useRef(new Map<CopilotKind, { state: string; error: string }>());
-  const chain = useRef<Promise<void>>(Promise.resolve());
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const mounted = useRef(true);
-  const status = useCallback((target: CopilotKind, state: string, message = '') => {
-    states.current.set(target, { state, error: message });
-    if (mounted.current && currentKind.current === target) render((value) => value + 1);
-  }, []);
-  const flush = useCallback(
-    async (target?: CopilotKind) => {
-      if (!target || [...pending.current.keys()].every((value) => value === target))
-        clearTimeout(timer.current);
-      const task = chain.current
-        .catch(() => {})
-        .then(async () => {
-          const changes = [...pending.current.values()].filter(
-            (value) => !target || value.kind === target,
-          );
-          for (const value of changes) pending.current.delete(value.kind);
-          let failure: unknown;
-          for (const value of changes) {
-            status(value.kind, '保存中…');
-            try {
-              await rpc('copilot.workspace.save', { workspace: value });
-              status(value.kind, pending.current.has(value.kind) ? '等待保存' : '已保存');
-            } catch (cause) {
-              if (!pending.current.has(value.kind))
-                pending.current.set(value.kind, cache.current.get(value.kind) ?? value);
-              status(value.kind, '保存失败', errorMessage(cause));
-              failure = cause;
-            }
+function victorySelection(
+  event: Event,
+): { kind: CopilotKind; entry: CopilotQueueEntry } | undefined {
+  if (event.type !== 'run.copilot_result' || event.data.verdict !== 'success') return;
+  const selection = event.data.workspaceSelection;
+  if (!selection || typeof selection !== 'object') return;
+  const { kind, entry } = selection as Partial<{
+    kind: CopilotKind;
+    entry: CopilotQueueEntry;
+  }>;
+  if (
+    !['Copilot', 'SSSCopilot', 'ParadoxCopilot'].includes(kind ?? '') ||
+    !entry ||
+    typeof entry.id !== 'string' ||
+    typeof entry.versionId !== 'string' ||
+    typeof entry.isRaid !== 'boolean' ||
+    typeof entry.navName !== 'string'
+  )
+    return;
+  return { kind: kind!, entry };
+}
+
+/** One save chain per desktop window, including while the authoring page is closed. */
+function createWorkspaceStore() {
+  const cache = new Map<CopilotKind, CopilotWorkspace>();
+  const reads = new Map<CopilotKind, Promise<CopilotWorkspace>>();
+  const pending = new Map<CopilotKind, CopilotWorkspace>();
+  const states = new Map<CopilotKind, { state: string; error: string }>();
+  const unreadSelections = new Map<CopilotKind, CopilotQueueEntry[]>();
+  const listeners = new Set<() => void>();
+  let chain = Promise.resolve();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let lastEvent: number | undefined;
+  let revision = 0;
+  const status = (target: CopilotKind, state: string, message = '') => {
+    states.set(target, { state, error: message });
+    revision++;
+    for (const listener of listeners) listener();
+  };
+  const flush = async (target?: CopilotKind) => {
+    if (!target || [...pending.keys()].every((value) => value === target)) clearTimeout(timer);
+    const task = chain
+      .catch(() => {})
+      .then(async () => {
+        const changes = [...pending.values()].filter((value) => !target || value.kind === target);
+        for (const value of changes) pending.delete(value.kind);
+        let failure: unknown;
+        for (const value of changes) {
+          status(value.kind, '保存中…');
+          try {
+            await rpc('copilot.workspace.save', { workspace: value });
+            status(value.kind, pending.has(value.kind) ? '等待保存' : '已保存');
+          } catch (cause) {
+            if (!pending.has(value.kind)) pending.set(value.kind, cache.get(value.kind) ?? value);
+            status(value.kind, '保存失败', errorMessage(cause));
+            failure = cause;
           }
-          if (failure) throw failure;
-        });
-      chain.current = task;
-      await task;
-    },
-    [status],
-  );
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      void flush().catch(() => {});
-    };
-  }, [flush]);
-  const read = useCallback(
-    (target: CopilotKind): Promise<CopilotWorkspace> => {
-      const cached = cache.current.get(target);
-      if (cached) return Promise.resolve(cached);
-      const previous = reads.current.get(target);
-      if (previous) return previous;
-      const request = rpc('copilot.workspace.get', { kind: target })
-        .then((value) => {
-          if (!cache.current.has(target)) cache.current.set(target, value);
-          status(target, pending.current.has(target) ? '等待保存' : '已保存');
-          return cache.current.get(target)!;
-        })
-        .finally(() => {
-          reads.current.delete(target);
-        });
-      reads.current.set(target, request);
-      return request;
-    },
-    [status],
-  );
-  useEffect(() => {
-    void read(kind).catch((cause) => status(kind, '读取失败', errorMessage(cause)));
-  }, [kind, read, status]);
-  const applyEdit = (
-    target: CopilotKind,
-    update: (value: CopilotWorkspace) => CopilotWorkspace,
-  ) => {
-    const value = cache.current.get(target);
+        }
+        if (failure) throw failure;
+      });
+    chain = task;
+    await task;
+  };
+  const applyVictory = (target: CopilotKind, completed: CopilotQueueEntry) => {
+    const value = cache.get(target);
+    if (!value) {
+      unreadSelections.set(target, [...(unreadSelections.get(target) ?? []), completed]);
+      return;
+    }
+    let matched = false;
+    const queue = value.queue.map((entry) => {
+      if (
+        entry.id !== completed.id ||
+        entry.versionId !== completed.versionId ||
+        entry.isRaid !== completed.isRaid ||
+        entry.navName !== completed.navName
+      )
+        return entry;
+      matched = true;
+      return { ...entry, enabled: false };
+    });
+    if (!matched) return;
+    const next = { ...value, queue };
+    cache.set(target, next);
+    pending.set(target, next);
+    status(target, '等待保存');
+    // An older save may still contain enabled=true. Apply the exact merge after
+    // that request, preserving all other edits and intentional later reselection.
+    void flush(target).catch(() => {});
+  };
+  const read = (target: CopilotKind): Promise<CopilotWorkspace> => {
+    const cached = cache.get(target);
+    if (cached) return Promise.resolve(cached);
+    const previous = reads.get(target);
+    if (previous) return previous;
+    const request = rpc('copilot.workspace.get', { kind: target })
+      .then((value) => {
+        if (!cache.has(target)) cache.set(target, value);
+        const selections = unreadSelections.get(target) ?? [];
+        unreadSelections.delete(target);
+        for (const entry of selections) applyVictory(target, entry);
+        status(target, pending.has(target) ? '等待保存' : '已保存');
+        return cache.get(target)!;
+      })
+      .finally(() => {
+        reads.delete(target);
+      });
+    reads.set(target, request);
+    return request;
+  };
+  const edit = (target: CopilotKind, update: (value: CopilotWorkspace) => CopilotWorkspace) => {
+    const value = cache.get(target);
     if (!value) return;
     const next = update(value);
-    cache.current.set(next.kind, next);
-    pending.current.set(next.kind, next);
+    cache.set(next.kind, next);
+    pending.set(next.kind, next);
     status(next.kind, '等待保存');
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
       void flush().catch(() => {});
     }, 400);
   };
-  const edit = (update: (value: CopilotWorkspace) => CopilotWorkspace) =>
-    applyEdit(currentKind.current, update);
-  const editFor = async (
-    target: CopilotKind,
-    update: (value: CopilotWorkspace) => CopilotWorkspace,
-  ) => {
-    await read(target);
-    applyEdit(target, update);
-  };
-  const saved = states.current.get(kind);
   return {
-    workspace: cache.current.get(kind),
-    edit,
-    editFor,
+    cache,
+    states,
+    status,
     read,
+    edit,
     flush,
+    editFor: async (target: CopilotKind, update: (value: CopilotWorkspace) => CopilotWorkspace) => {
+      await read(target);
+      edit(target, update);
+    },
+    reconcile: (events: readonly Event[]) => {
+      // Initial history must not undo an intentional reselection from an earlier visit.
+      const previous = lastEvent;
+      lastEvent = Math.max(lastEvent ?? 0, ...events.map((event) => event.id));
+      if (previous === undefined) return;
+      for (const event of events) {
+        if (event.id <= previous) continue;
+        const selection = victorySelection(event);
+        if (selection) applyVictory(selection.kind, selection.entry);
+      }
+    },
+    revision: () => revision,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
+const store = createWorkspaceStore();
+
+/** App keeps result reconciliation alive across page navigation and pending saves. */
+export function CopilotWorkspaceSync({ events }: { events: readonly Event[] }) {
+  useEffect(() => store.reconcile(events), [events]);
+  return null;
+}
+
+export default function useWorkspace(kind: CopilotKind) {
+  useSyncExternalStore(store.subscribe, store.revision);
+  useEffect(() => {
+    void store.read(kind).catch((cause) => store.status(kind, '读取失败', errorMessage(cause)));
+    return () => {
+      void store.flush(kind).catch(() => {});
+    };
+  }, [kind]);
+  const saved = store.states.get(kind);
+  return {
+    workspace: store.cache.get(kind),
+    edit: (update: (value: CopilotWorkspace) => CopilotWorkspace) => store.edit(kind, update),
+    editFor: store.editFor,
+    read: store.read,
+    flush: store.flush,
     saveState: saved?.state ?? '',
     saveError: saved?.error ?? '',
   };

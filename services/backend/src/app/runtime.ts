@@ -2684,7 +2684,12 @@ export class Runtime {
     else await pending;
   }
   /** List IDs are local queue occurrence IDs, never community document IDs. */
-  private recordCopilotCallback(run: any, state: any, message: number, details: any): boolean {
+  private recordCopilotCallback(
+    run: any,
+    state: any,
+    message: number,
+    details: any,
+  ): 'stop' | 'victory' | undefined {
     if (
       run.source !== 'copilot' ||
       !Array.isArray(run.copilotEntries) ||
@@ -2694,14 +2699,13 @@ export class Runtime {
       state.completed ||
       state.queueEnded
     )
-      return false;
+      return;
     const entries = run.copilotEntries;
     if (message === 20003 && details.what === 'CopilotListLoadTaskFileSuccess') {
       const loaded = details.details;
-      if (!loaded || !Number.isInteger(loaded.id) || typeof loaded.file_name !== 'string')
-        return false;
+      if (!loaded || !Number.isInteger(loaded.id) || typeof loaded.file_name !== 'string') return;
       const index = entries.findIndex((item: any) => item.nativeId === loaded.id);
-      if (index < 0 || index < (state.currentCopilotIndex ?? -1)) return false;
+      if (index < 0 || index < (state.currentCopilotIndex ?? -1)) return;
       const snapshot = this.executionSnapshot(run.id),
         params = snapshot.tasks[0].params;
       const files = params.copilot_list ?? params.list;
@@ -2709,7 +2713,8 @@ export class Runtime {
         ? files.find((item: any) => item.id === loaded.id)?.filename
         : params.filename;
       if (typeof expected !== 'string' || path.resolve(loaded.file_name) !== path.resolve(expected))
-        return false;
+        return;
+      if (state.currentCopilotIndex === index && entries[index].verdict === 'failure') return;
       if (state.currentCopilotIndex !== undefined && state.currentCopilotIndex !== index) {
         const previous = entries[state.currentCopilotIndex];
         if (previous?.status === 'running')
@@ -2735,7 +2740,7 @@ export class Runtime {
         entryId: entries[index].id,
         nativeId: loaded.id,
       });
-      return false;
+      return;
     }
     const entry = entries[state.currentCopilotIndex ?? -1];
     // Fixed-core ProcessTask errors identify their configured root, not an invented
@@ -2751,57 +2756,74 @@ export class Runtime {
       if (settlement || starting) {
         state.failed = true;
         state.copilotFailureMessage = settlement
-          ? '核心未通过三星结算检查，停止后续队列；通关结果未确认'
+          ? '未通过三星结算检查（未三星或识别失败），停止后续队列；通关结果未确认'
           : '未能进入战斗，请检查理智及游戏界面；停止后续队列';
-        Object.assign(entry, { verdict: 'unknown', message: state.copilotFailureMessage });
+        Object.assign(entry, {
+          verdict: entry.verdict === 'failure' ? 'failure' : 'unknown',
+          message: state.copilotFailureMessage,
+        });
         this.putExecution(run.id, run);
         this.emit('run.copilot_result', entry.message, {
           runId: run.id,
           entryId: entry.id,
           verdict: entry.verdict,
         });
-        return true;
+        return 'stop';
       }
     }
     if (entry && message === 20001 && details.subtask === 'BattleProcessTask')
       state.copilotBattleStarted = true;
-    const action = details.details?.task;
+    // AbstractTask::callback strips the last @ prefix before delivering native
+    // callbacks. Accept older prefixed callbacks through the same path.
+    const rawAction = details.details?.task;
     if (
       !entry ||
-      typeof action !== 'string' ||
-      message !== 20002 ||
+      typeof rawAction !== 'string' ||
+      ![20001, 20002].includes(message) ||
       details.subtask !== 'ProcessTask'
     )
-      return false;
+      return;
+    const action = rawAction.slice(rawAction.lastIndexOf('@') + 1);
     const victory =
       state.copilotBattleStarted &&
       run.copilotKind !== 'SSSCopilot' &&
-      ['Copilot@StageDrops-Stars-3', 'Copilot@StageDrops-Stars-Adverse'].includes(action);
-    const failure = ['Copilot@FightMissionFailed', 'Copilot@FightMissionFailed-Bypass'].includes(
-      action,
-    );
-    if (!victory && !failure) return false;
+      ['StageDrops-Stars-3', 'StageDrops-Stars-Adverse'].includes(action);
+    const failure =
+      state.copilotBattleStarted &&
+      ['FightMissionFailed', 'FightMissionFailed-Bypass'].includes(action);
+    if (!victory && !failure) return;
+    const bypassFailure =
+      failure && run.copilotKind === 'ParadoxCopilot' && action === 'FightMissionFailed-Bypass';
+    if (entry.verdict === 'failure' && (!failure || bypassFailure)) return;
     const confirmsAll = (this.executionSnapshot(run.id).workspace?.options.loopTimes ?? 1) === 1;
     Object.assign(entry, {
+      ...(bypassFailure ? { status: 'failed' } : {}),
       verdict: failure ? 'failure' : confirmsAll ? 'success' : 'unknown',
       message: failure
-        ? '已识别战斗失败，停止后续队列'
+        ? bypassFailure
+          ? '已识别本项战斗失败，继续后续悖论作业'
+          : '已识别战斗失败，停止后续队列'
         : confirmsAll
           ? '已识别三星结算'
           : '已识别单次三星结算；整个循环结果未确认',
     });
     state.copilotBattleStarted = false;
-    if (failure) {
+    if (failure && !bypassFailure) {
       state.failed = true;
       state.copilotFailureMessage = entry.message;
     }
     this.putExecution(run.id, run);
+    const workspaceSelection =
+      entry.verdict === 'success'
+        ? this.copilot.acknowledgeVictory(this.executionSnapshot(run.id), entry.id, entry.versionId)
+        : undefined;
     this.emit('run.copilot_result', entry.message, {
       runId: run.id,
       entryId: entry.id,
       verdict: entry.verdict,
+      ...(workspaceSelection ? { workspaceSelection } : {}),
     });
-    return failure;
+    return failure && !bypassFailure ? 'stop' : victory ? 'victory' : undefined;
   }
   finishNativeRun(run: any, status: string, message: string) {
     Object.assign(run, this.execution(run.id));
@@ -2809,12 +2831,14 @@ export class Runtime {
       for (const entry of run.copilotEntries ?? []) {
         if (entry.status === 'running')
           Object.assign(entry, {
-            status,
+            status: status === 'completed' && entry.verdict === 'failure' ? 'failed' : status,
             message:
               status === 'completed'
-                ? entry.verdict === 'success'
-                  ? '已识别三星结算，核心已空闲'
-                  : '核心流程结束且已空闲；通关结果未确认'
+                ? entry.verdict === 'failure'
+                  ? '已识别战斗失败，核心已空闲'
+                  : entry.verdict === 'success'
+                    ? '已识别三星结算，核心已空闲'
+                    : '核心流程结束且已空闲；通关结果未确认'
                 : message.slice(0, 1000),
           });
         else if (entry.status === 'waiting')
@@ -2826,11 +2850,17 @@ export class Runtime {
                 : '本项尚未执行，队列配置保留',
           });
       }
-      if (
-        status === 'completed' &&
-        run.copilotEntries?.some((entry: any) => entry.verdict === 'unknown')
-      )
-        message = '核心流程已结束并确认空闲；部分作业通关结果未确认';
+      if (status === 'completed') {
+        const failed = run.copilotEntries?.some((entry: any) => entry.verdict === 'failure'),
+          unknown = run.copilotEntries?.some((entry: any) => entry.verdict === 'unknown');
+        if (failed) {
+          status = 'failed';
+          run.progress = 100;
+          message =
+            '核心流程已结束并确认空闲；存在战斗失败的作业' +
+            (unknown ? '，部分作业通关结果未确认' : '');
+        } else if (unknown) message = '核心流程已结束并确认空闲；部分作业通关结果未确认';
+      }
     }
     for (const task of run.tasks ?? [])
       if (task.status === 'running' && status !== 'completed')
@@ -3075,8 +3105,8 @@ export class Runtime {
           }
           if (run) {
             const matches = details.taskid === state.taskId;
-            const stopCopilot = this.recordCopilotCallback(run, state, message, details);
-            if (stopCopilot) {
+            const copilotResult = this.recordCopilotCallback(run, state, message, details);
+            if (copilotResult === 'stop') {
               state.copilotStopRequested = Date.now();
               this.store.put('execution', run.id, state);
               this.captureRunArtifact(run, state, worker, '作业异常反馈画面');
@@ -3093,14 +3123,7 @@ export class Runtime {
                   '作业异常且停止未获确认，已结束工作进程；请核对设备现场',
                 );
               }
-            } else if (
-              matches &&
-              message === 20002 &&
-              details.subtask === 'ProcessTask' &&
-              ['Copilot@StageDrops-Stars-3', 'Copilot@StageDrops-Stars-Adverse'].includes(
-                details.details?.task,
-              )
-            )
+            } else if (copilotResult === 'victory')
               this.captureRunArtifact(run, state, worker, '作业结算反馈画面');
             if (
               [0, 1].includes(message) ||

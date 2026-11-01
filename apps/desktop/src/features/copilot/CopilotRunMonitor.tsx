@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import { LoaderCircle, Square } from 'lucide-react';
-import { rpc, type CopilotKind, type RpcResult, type Snapshot } from '@maaverge/contracts';
+import type { CopilotKind, RpcResult, Snapshot } from '@maaverge/contracts';
 import Button from '@/kit/Button';
 import ProgressBar from '@/kit/ProgressBar';
 import Select from '@/kit/Select';
@@ -19,7 +19,8 @@ type Props = {
   run?: RpcResult<'run.detail'>;
   events: Snapshot['events'];
   detailId?: string;
-  onAction: (key: string, call: () => Promise<unknown>, success?: string) => Promise<boolean>;
+  onStopRun: (run: Snapshot['runs'][number]) => Promise<boolean>;
+  stopping: boolean;
   kindLabel: (kind: CopilotKind) => string;
 };
 
@@ -37,7 +38,8 @@ export default function CopilotRunMonitor({
   run,
   events,
   detailId,
-  onAction,
+  onStopRun,
+  stopping,
   kindLabel,
 }: Props) {
   return (
@@ -107,15 +109,11 @@ export default function CopilotRunMonitor({
               <Button
                 className="cp-run-stop"
                 icon={<Square size={15} />}
-                onClick={() => {
-                  void onAction(
-                    'stop-' + run.id,
-                    () => rpc('run.stop', { id: run.id }),
-                    '正在停止作业',
-                  );
-                }}
+                busy={stopping}
+                disabled={stopping}
+                onClick={() => void onStopRun(run)}
               >
-                停止作业
+                {stopping ? '正在停止…' : '停止作业'}
               </Button>
             )}
           </header>
@@ -137,12 +135,16 @@ export default function CopilotRunMonitor({
                 <li key={entry.id}>
                   <span className="cp-sequence">{String(index + 1).padStart(2, '0')}</span>
                   <strong>{entry.title}</strong>
-                  <span className={`cp-verdict ${entry.verdict === 'failure' ? 'is-error' : ''}`}>
+                  <span
+                    className={`cp-verdict ${entry.verdict === 'failure' || entry.status === 'failed' ? 'is-error' : ''}`}
+                  >
                     {entry.verdict === 'success'
                       ? '通关已确认'
                       : entry.verdict === 'failure'
                         ? '战斗失败'
-                        : '通关未确认'}
+                        : entry.status === 'failed'
+                          ? '执行失败，通关未确认'
+                          : '通关未确认'}
                   </span>
                   <small>
                     {entry.message ||

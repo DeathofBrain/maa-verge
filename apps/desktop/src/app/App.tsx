@@ -23,6 +23,7 @@ import { useContextMenu } from '@/kit/ContextMenu';
 import ScheduleNotifications from '@/features/schedules/ScheduleNotifications';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import CopilotPage from '@/features/copilot/CopilotPage';
+import { CopilotWorkspaceSync } from '@/features/copilot/useCopilotWorkspace';
 import ToolsPage from '@/features/tools/ToolsPage';
 import HomeDashboard from '@/features/home/HomeDashboard';
 import WindowControls from './shell/WindowControls';
@@ -526,6 +527,7 @@ export default function App() {
       data-sidebar-resizing={sidebar.resizing || undefined}
       style={{ '--sidebar-preferred-width': `${sidebar.width}px` } as CSSProperties}
     >
+      <CopilotWorkspaceSync events={snapshot.events} />
       <AppSidebar
         open={sidebarOpen}
         onOpenChange={setSidebarOpen}
@@ -707,6 +709,8 @@ export default function App() {
             {page === 'copilot' && (
               <CopilotPage
                 {...supportProps}
+                onStopRun={stopRun}
+                pending={pending}
                 initialRunId={copilotRunId}
                 onRunSelection={setCopilotRunId}
                 initialLegacy={copilotLegacy}

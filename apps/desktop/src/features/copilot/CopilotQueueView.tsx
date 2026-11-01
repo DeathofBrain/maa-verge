@@ -1,5 +1,4 @@
 import Checkbox from '@/kit/Checkbox';
-import TextField from '@/kit/TextField';
 import {
   ArrowDown,
   ArrowRight,
@@ -8,6 +7,7 @@ import {
   ListOrdered,
   LoaderCircle,
   Play,
+  Square,
   X,
 } from 'lucide-react';
 import type { KeyboardEvent, MouseEvent } from 'react';
@@ -24,6 +24,7 @@ import Button from '@/kit/Button';
 import IconButton from '@/kit/IconButton';
 import Select from '@/kit/Select';
 import Tabs from '@/kit/Tabs';
+import StatusPill from '@/kit/StatusPill';
 import SelectAll from '@/shared/ui/SelectAll';
 import CopilotSettings from './CopilotSettingsView';
 
@@ -49,8 +50,6 @@ type Props = {
   addRecords: (records: CopilotRecord[]) => void;
   remove: (id: string) => void;
   openRecord: (record: CopilotRecord, origin?: 'library' | 'preview') => void;
-  usesNavigation: boolean;
-  queueChange: (id: string, patch: Partial<CopilotWorkspace['queue'][number]>) => void;
   options: (patch: Partial<CopilotOptions>) => void;
   saveState: string;
   saveError: string;
@@ -69,6 +68,9 @@ type Props = {
   disabledReason: string;
   starting: boolean;
   start: () => Promise<void>;
+  running: boolean;
+  stopping: boolean;
+  stop: () => void;
 };
 
 export default function CopilotQueueView({
@@ -88,8 +90,6 @@ export default function CopilotQueueView({
   addRecords,
   remove,
   openRecord,
-  usesNavigation,
-  queueChange,
   options,
   saveState,
   saveError,
@@ -104,6 +104,9 @@ export default function CopilotQueueView({
   disabledReason,
   starting,
   start,
+  running,
+  stopping,
+  stop,
 }: Props) {
   const kindLabel = kinds.find((item) => item.value === kind)?.label ?? kind;
   return (
@@ -188,6 +191,7 @@ export default function CopilotQueueView({
                 <li
                   key={entry.id}
                   className={!entry.enabled ? 'is-disabled' : ''}
+                  data-difficulty={kind === 'Copilot' && entry.isRaid ? 'raid' : undefined}
                   tabIndex={0}
                   {...contextMenu('队列条目菜单', [
                     {
@@ -228,6 +232,21 @@ export default function CopilotQueueView({
                         {record?.title ?? (record === null ? '作业版本不可用' : '正在读取作业…')}
                       </strong>
                       <small>{record?.stageName || entry.versionId.slice(0, 12)}</small>
+                      {kind === 'Copilot' && (
+                        <StatusPill
+                          className="cp-queue-difficulty"
+                          label={
+                            entry.isRaid
+                              ? '突袭'
+                              : record?.difficulty === 1 ||
+                                  record?.difficulty === 2 ||
+                                  record?.difficulty === 3
+                                ? '普通'
+                                : '难度未声明'
+                          }
+                          tone={entry.isRaid ? 'danger' : 'neutral'}
+                        />
+                      )}
                     </button>
                     <div className="cp-queue-actions">
                       <IconButton
@@ -249,36 +268,6 @@ export default function CopilotQueueView({
                       </IconButton>
                     </div>
                   </div>
-                  {usesNavigation && (
-                    <div className="cp-entry-options">
-                      {
-                        <label>
-                          <Checkbox
-                            checked={entry.isRaid}
-                            onChange={(event) =>
-                              queueChange(entry.id, { isRaid: event.target.checked })
-                            }
-                          />
-                          突袭
-                        </label>
-                      }
-                      {
-                        <label>
-                          导航关卡
-                          <TextField
-                            className="cp-entry-input"
-                            aria-label={`导航关卡 ${index + 1}`}
-                            value={entry.navName}
-                            onChange={(event) =>
-                              queueChange(entry.id, { navName: event.target.value })
-                            }
-                            placeholder="沿用作业关卡"
-                            maxLength={200}
-                          />
-                        </label>
-                      }
-                    </div>
-                  )}
                   {record && record.compatibility.status !== 'ready' && (
                     <p className="cp-error-text">{record.compatibility.reasons.join('；')}</p>
                   )}
@@ -353,22 +342,27 @@ export default function CopilotQueueView({
           <details className="cp-game-help">
             <summary>游戏内准备与说明</summary>
             <p className="sp-help">
-              队列在当前区域内按关卡导航，不支持跨区域；普通与突袭由队列条目选择。单份循环、演习请在游戏内选好关卡与模式。助战限制以核心反馈为准，不使用理智药或源石。
+              单份作业请在游戏内选好关卡、难度或演习模式，并从编队界面开始。多份作业仅支持同一区域的主线、SideStory
+              或故事集关卡。普通与突袭按作业声明加入队列；支持两种难度时依次加入普通、突袭。未声明难度的作业请先核对说明。助战限制以核心反馈为准，不使用理智药或源石。
             </p>
           </details>
         )}
         <Button
           className="cp-start"
           variant="primary"
-          icon={<Play size={16} />}
-          busy={starting}
-          disabled={!!disabledReason || starting}
-          title={disabledReason || '使用已保存的队列与选项开始执行'}
-          onClick={() => void start()}
+          icon={running ? <Square size={16} /> : <Play size={16} />}
+          busy={running ? stopping : starting}
+          disabled={running ? stopping : !!disabledReason || starting}
+          title={
+            running
+              ? `停止目标设备正在执行的${kindLabel}，保留已保存的队列与选项`
+              : disabledReason || '使用已保存的队列与选项开始执行'
+          }
+          onClick={() => (running ? stop() : void start())}
         >
-          开始作业
+          {running ? (stopping ? '正在停止…' : '停止作业') : '开始作业'}
         </Button>
-        {disabledReason && <p className="sp-help">{disabledReason}</p>}
+        {!running && disabledReason && <p className="sp-help">{disabledReason}</p>}
       </div>
     </section>
   );

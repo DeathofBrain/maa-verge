@@ -57,6 +57,7 @@ import CopilotImportPreview from './CopilotImportPreview';
 import CopilotRunMonitor from './CopilotRunMonitor';
 import CopilotLibraryList from './CopilotLibraryList';
 import useWorkspace from './useCopilotWorkspace';
+import { copilotQueueSize, createCopilotQueueEntries } from './copilot-queue';
 import CopilotDeleteDialog, { type CopilotDeleteTarget } from './CopilotDeleteDialog';
 import {
   cachedCommunityPreview,
@@ -70,6 +71,8 @@ type Props = {
   selectedDevice: string;
   onSelectDevice: (id: string) => void;
   onAction: ActionRunner;
+  onStopRun: (run: Snapshot['runs'][number]) => Promise<boolean>;
+  pending: ReadonlySet<string>;
   onOpenPlan: (plan: Plan, taskType?: Task['type'], taskIndex?: number) => void;
   searchQuery?: string;
   initialRunId?: string;
@@ -131,6 +134,8 @@ export default function CopilotPage({
   selectedDevice,
   onSelectDevice,
   onAction,
+  onStopRun,
+  pending,
   onOpenPlan,
   searchQuery,
   initialRunId,
@@ -257,6 +262,13 @@ export default function CopilotPage({
   const liveRuns = snapshot.runs
     .filter((item) => item.source === 'copilot')
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  const queueRun = liveRuns.find(
+    (item) =>
+      item.deviceId === selectedDevice &&
+      item.copilotKind === kind &&
+      (item.status === 'running' || pending.has('stop-' + item.id)),
+  );
+  const stoppingQueue = !!queueRun && pending.has('stop-' + queueRun.id);
   const monitoredRuns = liveRuns.filter(
     (item) => !monitorDevice || item.deviceId === monitorDevice,
   );
@@ -586,7 +598,8 @@ export default function CopilotPage({
       setError('保全派驻仅支持一份作业，请先移除当前队列内容。');
       return;
     }
-    if ((workspace?.queue.length ?? 0) + matching.length > 100) {
+    const entries = createCopilotQueueEntries(matching);
+    if ((workspace?.queue.length ?? 0) + entries.length > 100) {
       setError('每个队列最多 100 项，请先移除部分条目。');
       return;
     }
@@ -594,26 +607,18 @@ export default function CopilotPage({
       ...value,
       options: {
         ...value.options,
-        ...(value.queue.length + matching.length > 1 || kind === 'ParadoxCopilot'
+        ...(value.queue.filter((entry) => entry.enabled).length + entries.length > 1 ||
+        kind === 'ParadoxCopilot'
           ? { loopTimes: 1 }
           : {}),
       },
-      queue: [
-        ...value.queue,
-        ...matching.map((record) => ({
-          id: crypto.randomUUID(),
-          versionId: record.versionId,
-          enabled: true,
-          isRaid: false,
-          navName: '',
-        })),
-      ],
+      queue: [...value.queue, ...entries],
     }));
     setQueueRecords((value) => ({
       ...value,
       ...Object.fromEntries(matching.map((record) => [record.versionId, record])),
     }));
-    setNotice(`已将 ${matching.length} 项加入${kindLabel(kind)}队列`);
+    setNotice(`已将 ${entries.length} 项加入${kindLabel(kind)}队列`);
     setError('');
   };
   const validateQueue = (
@@ -626,30 +631,23 @@ export default function CopilotPage({
       throw new Error('这些作业包含不同类型，请按类型分别加入对应队列。');
     if (targetKind === 'SSSCopilot' && (records.length !== 1 || targetWorkspace.queue.length > 0))
       throw new Error('保全派驻仅支持一份作业，请选择单项并先移除保全队列内容。');
-    if (targetWorkspace.queue.length + records.length > 100)
+    if (targetWorkspace.queue.length + copilotQueueSize(records) > 100)
       throw new Error('每个队列最多 100 项，请先移除部分条目。');
   };
   const appendRecords = async (records: CopilotRecord[], targetKind: CopilotKind) => {
     await editFor(targetKind, (value) => {
       validateQueue(records, targetKind, value);
+      const entries = createCopilotQueueEntries(records);
       return {
         ...value,
         options: {
           ...value.options,
-          ...(value.queue.length + records.length > 1 || targetKind === 'ParadoxCopilot'
+          ...(value.queue.filter((entry) => entry.enabled).length + entries.length > 1 ||
+          targetKind === 'ParadoxCopilot'
             ? { loopTimes: 1 }
             : {}),
         },
-        queue: [
-          ...value.queue,
-          ...records.map((record) => ({
-            id: crypto.randomUUID(),
-            versionId: record.versionId,
-            enabled: true,
-            isRaid: false,
-            navName: '',
-          })),
-        ],
+        queue: [...value.queue, ...entries],
       };
     });
     setQueueRecords((value) => ({
@@ -729,7 +727,9 @@ export default function CopilotPage({
       const targetKind = categoryQueueKind || records[0].kind;
       validateQueue(records, targetKind, await readWorkspace(targetKind));
       await appendRecords(records, targetKind);
-      setNotice(`已将分类中的 ${records.length} 项加入${kindLabel(targetKind)}队列`);
+      setNotice(
+        `已将分类中的 ${records.length} 份作业按难度加入${kindLabel(targetKind)}队列，共 ${copilotQueueSize(records)} 项`,
+      );
     } catch (cause) {
       setError(errorText(cause));
     } finally {
@@ -867,11 +867,6 @@ export default function CopilotPage({
         },
       };
     });
-  const queueChange = (id: string, patch: Partial<CopilotWorkspace['queue'][number]>) =>
-    edit((value) => ({
-      ...value,
-      queue: value.queue.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-    }));
   const remove = (id: string) =>
     edit((value) => ({ ...value, queue: value.queue.filter((item) => item.id !== id) }));
   const move = (id: string, delta: number) =>
@@ -998,7 +993,6 @@ export default function CopilotPage({
         onRunSelection?.(result.id);
         setRunDetail(result);
         setRevision((value) => value + 1);
-        requestAnimationFrame(() => runPanel.current?.scrollIntoView({ block: 'nearest' }));
       },
       '作业执行已开始',
     );
@@ -1046,15 +1040,16 @@ export default function CopilotPage({
     (queueRecords[current.versionId]?.id === current.id ||
       library.some((record) => record.id === current.id && record.versionId === current.versionId));
   const canQueue = !!workspace && (kind !== 'SSSCopilot' || !workspace.queue.length);
-  const usesNavigation = kind === 'Copilot' && (workspace?.options.loopTimes ?? 1) === 1;
   const startingHint =
     kind === 'SSSCopilot'
       ? '在保全关卡详情的「开始部署」界面开始，请先手动编队。'
       : kind === 'ParadoxCopilot'
-        ? '在所选干员的悖论关卡中手动选择技能，停在有「开始模拟」按钮的界面。'
-        : usesNavigation
-          ? `在作业所在区域的关卡地图开始，队列会自动导航，无需先进入干员选择页。${workspace?.options.formation ? '自动编队会清空并重建当前队伍。' : '请提前配好队伍与技能。'}`
-          : '单份循环请停在有「开始行动」按钮的编队界面；请确认队伍与技能。';
+        ? enabled.length > 1
+          ? '在干员列表的「等级／稀有度」筛选下开始，队列会自动寻找干员、进入悖论并按作业选择技能。'
+          : '在所选干员的悖论关卡中手动选择技能，停在有「开始模拟」按钮的界面。'
+        : enabled.length > 1
+          ? `多份作业仅支持同一区域的主线、SideStory 或故事集关卡，请在对应关卡地图开始；难度按队列条目执行。${workspace?.options.formation ? '自动编队会清空并重建当前队伍。' : '请提前配好队伍与技能。'}`
+          : `单份作业请在游戏内选好关卡、难度或演习模式${enabled[0]?.isRaid ? '，本项为突袭' : ''}，停在有「开始行动」按钮的编队界面。${workspace?.options.formation ? '自动编队会清空并重建当前队伍。' : '请确认队伍与技能。'}`;
 
   return (
     <div
@@ -1091,23 +1086,6 @@ export default function CopilotPage({
         }
       />
       <div className="cp-content">
-        <CopilotRunMonitor
-          panelRef={runPanel}
-          monitorDevice={monitorDevice}
-          monitorDeviceIds={monitorDeviceIds}
-          deviceName={deviceName}
-          selectMonitorDevice={selectMonitorDevice}
-          runId={runId}
-          runChoices={runChoices}
-          selectMonitorRun={selectMonitorRun}
-          runError={runError}
-          setRunRevision={setRunRevision}
-          run={run}
-          events={events}
-          detailId={detailId}
-          onAction={onAction}
-          kindLabel={kindLabel}
-        />
         <details
           className="cp-import sp-section"
           ref={importPanel}
@@ -1611,8 +1589,6 @@ export default function CopilotPage({
             addRecords={addRecords}
             remove={remove}
             openRecord={openRecord}
-            usesNavigation={usesNavigation}
-            queueChange={queueChange}
             options={options}
             saveState={saveState}
             saveError={saveError}
@@ -1627,6 +1603,29 @@ export default function CopilotPage({
             disabledReason={disabledReason}
             starting={starting}
             start={start}
+            running={!!queueRun}
+            stopping={stoppingQueue}
+            stop={() => {
+              if (queueRun && !stoppingQueue) void onStopRun(queueRun);
+            }}
+          />
+          <CopilotRunMonitor
+            panelRef={runPanel}
+            monitorDevice={monitorDevice}
+            monitorDeviceIds={monitorDeviceIds}
+            deviceName={deviceName}
+            selectMonitorDevice={selectMonitorDevice}
+            runId={runId}
+            runChoices={runChoices}
+            selectMonitorRun={selectMonitorRun}
+            runError={runError}
+            setRunRevision={setRunRevision}
+            run={run}
+            events={events}
+            detailId={detailId}
+            onStopRun={onStopRun}
+            stopping={!!run && pending.has('stop-' + run.id)}
+            kindLabel={kindLabel}
           />
         </div>
         {!!legacy.length && (
