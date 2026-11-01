@@ -1,4 +1,5 @@
 import { devicePicker } from './fixtures/device-picker';
+import { installAgentScenario } from './fixtures/agent-workspace';
 import type { Page } from '@playwright/test';
 import type { Plan, Snapshot } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
@@ -245,10 +246,11 @@ test(
   'Agent proposes a reviewable plan without starting a run',
   { tag: '@smoke' },
   async ({ page }) => {
-    await openWorkspace(page);
+    await installAgentScenario(page, { reviewablePlan: true });
     await navigate(page, 'Agent 助手');
-    await page.getByRole('button', { name: '制定刷 6 次 1-7 的计划' }).click();
-    await expect(page.getByText('这是本地规则生成的演示计划', { exact: false })).toBeVisible();
+    await page.getByLabel('给 Agent 的消息').fill('制定刷 6 次 1-7 的计划');
+    await page.getByRole('button', { name: '发送消息', exact: true }).click();
+    await expect(page.getByText('已准备任务表草稿，请核对后保存。', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: '检查并保存计划' }).click();
     await expect(wb(page).getByLabel('作战关卡')).toHaveValue('1-7');
     await expect(wb(page).getByLabel('作战次数')).toHaveValue('6');

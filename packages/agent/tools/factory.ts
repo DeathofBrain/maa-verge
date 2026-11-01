@@ -259,7 +259,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
       const plan = host.preparePlan(
         prepareAgentTaskDraft(input as { name: string; tasks: Plan['tasks'] }, clientType),
       );
-      assertAgentExecutablePlan(plan, clientType);
+      assertAgentExecutablePlan(plan, clientType, options.allowFiniteConsumables === true);
       return { content: { plan, requiresConfirmation: true, executed: false } };
     },
   );
@@ -316,7 +316,9 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
   );
   add(
     'maa_start_plan',
-    '执行用户已保存的任务表；需宿主审阅当前完整计划授权，强制有限作战次数、零药石加急和关闭上报。返回运行标识后查询结果。',
+    options.allowFiniteConsumables
+      ? '执行用户已保存的任务表；需宿主审阅完整快照授权并预留有限作战次数及药石上限；禁止加急、临期药和统计上报。返回运行标识后查询实际结果。'
+      : '执行用户已保存的任务表；需宿主审阅当前完整计划授权，强制有限作战次数、零药石加急和关闭上报。返回运行标识后查询结果。',
     'execute',
     rpcToolSchema('run.start', ['deviceId', 'requestId']),
     async (input, requestId, invocation) => {
@@ -325,7 +327,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
         (await host.listPlans()).find((plan) => plan.id === input.planId) ??
         fail('not_found', '任务表不存在');
       if (!planAllowsDevice(plan, deviceId!)) fail('scope_denied', '任务表未绑定当前设备');
-      assertAgentExecutablePlan(plan, clientType);
+      assertAgentExecutablePlan(plan, clientType, options.allowFiniteConsumables === true);
       const expected = structuredClone(plan);
       await permit('maa_start_plan', 'execute', { plan: expected }, requestId, invocation);
       return attachRun(

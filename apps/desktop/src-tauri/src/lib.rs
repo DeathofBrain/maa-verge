@@ -1,5 +1,6 @@
 mod app_updater;
 mod configuration;
+mod credentials;
 mod desktop_notifications;
 mod desktop_scheduler;
 mod directory_picker;

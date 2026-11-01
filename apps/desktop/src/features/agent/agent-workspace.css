@@ -1,0 +1,284 @@
+.aw-workspace {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid var(--line);
+}
+.aw-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-right: 1px solid var(--line);
+  padding: 18px 14px;
+  min-height: 0;
+}
+.aw-session-list {
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.aw-session {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 12px;
+  border-radius: 7px;
+  text-align: left;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aw-session[data-selected] {
+  background: var(--accent-soft);
+  border-color: var(--line);
+}
+.aw-session strong {
+  font-size: 12px;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.aw-session span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.aw-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.aw-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.aw-toolbar {
+  padding: 14px 20px;
+  flex: none;
+}
+.aw-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.aw-between {
+  justify-content: space-between;
+}
+.aw-grow {
+  flex: 1;
+  min-width: 100px;
+}
+.aw-error {
+  margin: 0 24px 12px;
+}
+.aw-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.aw-panel {
+  overflow: auto;
+  padding: 24px;
+  flex: 1;
+  min-height: 0;
+  font-size: 12px;
+}
+.aw-panel h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.aw-panel h3,
+.aw-interaction h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+.aw-panel p {
+  margin: 0;
+  line-height: 1.8;
+}
+.aw-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+}
+.aw-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+}
+.aw-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 14px;
+}
+.aw-editor {
+  min-height: 210px;
+  font-family: var(--font-mono, monospace);
+}
+.aw-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.aw-muted {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.aw-prewrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+}
+.aw-chat {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.aw-chat-log {
+  overflow: auto;
+  padding: 24px;
+  flex: 1;
+  min-height: 0;
+}
+.aw-welcome {
+  max-width: 520px;
+  margin: 30px auto;
+  line-height: 1.8;
+}
+.aw-welcome h2 {
+  font-size: 22px;
+  font-weight: 550;
+}
+.aw-welcome p {
+  font-size: 12px;
+}
+.aw-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 26px;
+  font-size: 13px;
+}
+.aw-message > div {
+  min-width: 0;
+  flex: 1;
+}
+.aw-message p {
+  margin: 0 0 8px;
+}
+.aw-role {
+  flex: none;
+  width: 36px;
+  padding-top: 4px;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.aw-message[data-role='user'] {
+  color: var(--muted);
+}
+.aw-interaction {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  margin: 16px 0;
+  font-size: 12px;
+}
+.aw-interaction[data-kind='approval'],
+.aw-interaction[data-kind='mcp'] {
+  border-color: var(--warning, var(--line-strong));
+}
+.aw-interaction p {
+  margin: 0;
+}
+.aw-json {
+  max-height: 280px;
+  overflow: auto;
+  padding: 14px;
+  background: var(--surface-subtle);
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.aw-turn-status {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 12px 0;
+}
+.aw-turn-status p {
+  margin: 0;
+}
+.aw-context-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 24px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.aw-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 8px 20px 16px;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border-radius: 8px;
+}
+.aw-session-actions {
+  border-top: 1px solid var(--line);
+  padding: 12px 20px;
+  flex: none;
+}
+@media (max-width: 900px) {
+  .aw-workspace {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+  .aw-sessions {
+    padding: 12px 8px;
+  }
+  .aw-toolbar,
+  .aw-panel,
+  .aw-chat-log {
+    padding: 16px;
+  }
+}
+@media (max-width: 650px) {
+  .aw-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .aw-sessions {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    max-height: 170px;
+  }
+  .aw-session-list {
+    flex-direction: row;
+  }
+  .aw-session {
+    min-width: 140px;
+  }
+  .aw-session-actions {
+    padding: 10px;
+  }
+}

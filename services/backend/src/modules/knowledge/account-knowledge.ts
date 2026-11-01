@@ -19,20 +19,25 @@ const known = (value: number, min: number, max: number) =>
   Number.isInteger(value) && value >= min && value <= max ? value : null;
 const retention = 20;
 
+/** Shared local account boundary; a configured label is never a verified game UID. */
+export function accountKnowledgeScope(store: Store, deviceId: string, clientType: ClientType) {
+  const label =
+    store.get('device_client', deviceId, clientType) === clientType
+      ? store.get('device_account', deviceId, '')
+      : '';
+  const configured = typeof label === 'string' && !!label;
+  return {
+    accountId: digest([deviceId, clientType, configured ? label : '']),
+    identity: configured ? ('configured-label' as const) : ('device-only' as const),
+  };
+}
+
 /** Labels are local configuration hints, never a verified game UID or a cross-device identity. */
 export class AccountKnowledge {
   constructor(private store: Store) {}
 
   private scope(deviceId: string, clientType: ClientType) {
-    const label =
-      this.store.get('device_client', deviceId, clientType) === clientType
-        ? this.store.get('device_account', deviceId, '')
-        : '';
-    const configured = typeof label === 'string' && !!label;
-    return {
-      accountId: digest([deviceId, clientType, configured ? label : '']),
-      identity: configured ? ('configured-label' as const) : ('device-only' as const),
-    };
+    return accountKnowledgeScope(this.store, deviceId, clientType);
   }
 
   /** Called inside the same success-and-idle transaction as the existing recognition cache. */

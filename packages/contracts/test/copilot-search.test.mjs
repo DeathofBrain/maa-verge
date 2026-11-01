@@ -13,6 +13,9 @@ const rpc = JSON.parse(
 const ajv = new Ajv({ strict: true, allowUnionTypes: true });
 ajv.addSchema(runtime);
 ajv.addSchema(rpc);
+ajv.addSchema(
+  JSON.parse(readFileSync(new URL('../schemas/agent.schema.json', import.meta.url), 'utf8')),
+);
 const validate = ajv.getSchema(`${rpc.$id}#/$defs/CopilotSearchItem`);
 const item = {
   id: '1',

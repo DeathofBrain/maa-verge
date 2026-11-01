@@ -77,6 +77,8 @@ export interface MaaToolOptions {
   clientType?: MaaClientType;
   /** Omitted means every capture or device-changing operation is denied. */
   authorize?: (request: MaaToolAuthorization, signal?: AbortSignal) => boolean | Promise<boolean>;
+  /** Only hosts with a persistent, atomic approval/reservation ledger may enable this. */
+  allowFiniteConsumables?: boolean;
   maxCalls?: number;
   /** Existing executions explicitly attached to this session by the host. */
   runIds?: readonly string[];

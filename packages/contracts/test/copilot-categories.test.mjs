@@ -50,6 +50,9 @@ test('category metadata is optional on legacy records and explicitly nullable af
   const ajv = new Ajv({ strict: true, allowUnionTypes: true });
   ajv.addSchema(runtime);
   ajv.addSchema(rpc);
+  ajv.addSchema(
+    JSON.parse(readFileSync(new URL('../schemas/agent.schema.json', import.meta.url), 'utf8')),
+  );
   const validateRecord = ajv.getSchema(`${rpc.$id}#/$defs/CopilotRecord`);
   const record = {
     id: 'record-1',

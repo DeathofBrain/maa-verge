@@ -2,7 +2,7 @@
 
 `packages/agent/tools` 把现有应用服务能力封装为 16 个工具。中立工具集负责参数校验、会话范围、零消耗策略和宿主授权；独立的 LangChain 适配器负责 SDK 工具格式。工具不持有 Runtime、数据库、MaaCore worker、ADB 或通用 RPC 客户端。
 
-本轮交付的是可注入的模块与后端端口。产品 `agent.message` 仍使用本地规则提案，尚未启用模型或自动执行。
+产品的持久会话通过 Responses／LangGraph 使用此具名工具底座，见 [Agent 产品接入](agent-integration.md)。旧 `agent.message` 保留本地规则提案。模块中 16 个工具不等于产品全部启用：本版产品明确排除截图、视觉识别和控制工具，计划模式额外禁止执行和停止。
 
 ## 入口与文件
 
@@ -63,7 +63,7 @@ const tools = createLangChainMaaTools(maaTools);
 // 此时模型可调用已注入工具，最终结构化输出仍为待审阅的计划草稿。
 ```
 
-`reviewMaaAction` 接收冻结的 `{ toolName, effect, deviceId, clientType, requestId, action }` 与可选取消信号。执行任务表和作业时，`action` 含当前完整快照。授权必须绑定这些具体内容，不能只显示工具名称。未提供回调时，截图、点击、执行和停止全部拒绝；读与草稿工具可用。产品审批界面与审批持久化仍待接入。
+`reviewMaaAction` 接收冻结的 `{ toolName, effect, deviceId, clientType, requestId, action }` 与可选取消信号。执行任务表和作业时，`action` 含当前完整快照。授权必须绑定这些具体内容，不能只显示工具名称。未提供回调时，截图、点击、执行和停止全部拒绝；读与草稿工具可用。产品通过持久交互卡片、调用账本和快照校验实现该回调。
 
 设备、客户端、请求 ID 不属于模型参数；模型不能传入 `approved` 绕过授权。宿主也是信任边界：只应注入审核过的端口、模型和本地回调，不能把 `authorize: () => true` 当作通用产品权限方案。
 
@@ -86,7 +86,9 @@ const tools = createLangChainMaaTools(maaTools);
 
 请求 ID 由 `sessionId` 与 `callId` 的 SHA-256 派生。会话内缓存不持久化，也不等于持久会话恢复：宿主恢复时须保存调用账本和结果，禁止给结果不明的动作换 ID 重放。任务表、独立工具和作业沿用后端持久去重；点击沿用现有预览调用去重，跨进程恢复不能据此宣称 exactly-once。
 
-LangChain 优先使用 SDK `tool_call.id`，直接调用可通过 `configurable.maaToolCallId` 提供宿主投递 ID，未提供时生成新 ID。模型调用额度与工具调用额度独立；模型额度默认仍为零，真实供应商 token、重试及费用预算尚未接入。
+旧 LangChain 桥接优先使用 SDK `tool_call.id`，直接调用可通过 `configurable.maaToolCallId` 提供宿主投递 ID。新产品使用 Responses `call_id`，由宿主持久化去重与核对，不在恢复时自动生成新 ID。模型调用与游戏消耗分别记账；可选调用／token／费用提醒不构成执行授权。
+
+产品宿主只有在提供持久审批与额度预留账本时才设置 `allowFiniteConsumables:true`。未设置时保持原零消耗策略。启用后只允许有限次数 Fight 的数量上限，临期药、加急和无上限作业用药仍拒绝。可能已提交的用量按上限保守占用，不因任务完成或停止推定无消耗。
 
 本阶段拒绝 LangSmith 环境/父上下文追踪及 SDK 内置远程 tracer，检查在 SDK 接收工具输入之前执行。本机回调可用；宿主注入的任意模型或回调代码仍由宿主审核，本模块不是 JavaScript 沙箱。
 

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { Snapshot } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { installAgentScenario } from './fixtures/agent-workspace';
 import { navigate as nav, readSnapshot as snapshot } from './fixtures/navigation';
 
 const center = (page: Page) => page.getByRole('region', { name: '任务中心', exact: true });
@@ -58,7 +59,7 @@ test('the detail drawer saves changes and returns to the table list or execution
 });
 
 test('search, home shortcut and Agent proposals open the unified task center', async ({ page }) => {
-  await page.goto('/');
+  await installAgentScenario(page, { reviewablePlan: true });
   await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /任务消耗设置/ }).click();
   await expect(center(page)).toBeVisible();
@@ -75,7 +76,8 @@ test('search, home shortcut and Agent proposals open the unified task center', a
   await page.getByRole('button', { name: '关闭任务表详情', exact: true }).click();
 
   await nav(page, 'Agent 助手');
-  await page.getByRole('button', { name: '制定刷 6 次 1-7 的计划' }).click();
+  await page.getByLabel('给 Agent 的消息').fill('制定刷 6 次 1-7 的计划');
+  await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await page.getByRole('button', { name: '检查并保存计划' }).click();
   await expect(drawer(page)).toBeVisible();
   await expect(wb(page).getByLabel('作战关卡')).toHaveValue('1-7');

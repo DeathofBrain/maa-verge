@@ -26,6 +26,8 @@ import {
 import { automaticCapture } from '@backend/modules/devices/auto-capture';
 import { nativeTask, validatePlan } from '@backend/modules/plans/task-policy';
 import { propose } from '@backend/modules/agent/agent';
+import { AgentService } from '@backend/modules/agent/service';
+import { createMaaToolHost } from './agent-tools';
 import {
   defaultComponentPaths,
   defaultCopilotDirectory,
@@ -145,6 +147,7 @@ export class Runtime {
   readonly mode = 'native' as const;
   readonly store: Store;
   readonly accounts: AccountKnowledge;
+  readonly agent: AgentService;
   readonly knowledge: Knowledge;
   readonly toolbox: Toolbox;
   readonly copilot: CopilotLibrary;
@@ -459,6 +462,36 @@ export class Runtime {
         },
       },
     });
+    this.agent = new AgentService(this.store, {
+      maa: createMaaToolHost(this),
+      model: () => parseSettings(this.store.get('settings', 'main')).model,
+      deviceClient: (id) => this.deviceClient(id),
+      deviceExists: (id) => !!this.store.get('device', id),
+      executionSummaries: () =>
+        this.snapshot().runs.map(
+          ({ id, deviceId, planId, planName, status, startedAt, finishedAt, message }) => ({
+            id,
+            deviceId,
+            planId,
+            planName,
+            status,
+            startedAt,
+            finishedAt,
+            message,
+          }),
+        ),
+      emit: (type, message, data) => this.emit(type, message, data),
+      reconcile: async (requestId) => {
+        const request = this.store.get('request', requestId);
+        if (request?.runId) return this.execution(request.runId);
+        const toolRequest = this.store.get('tool_request', requestId);
+        if (toolRequest?.id) {
+          const job = this.store.get('tool_job', toolRequest.id);
+          return job ? toolJob(job) : undefined;
+        }
+        return undefined;
+      },
+    });
   }
   private executionSnapshot(id: string): any {
     return this.store.get('run_snapshot', id) ?? this.store.get('run_plan', id);
@@ -654,6 +687,7 @@ export class Runtime {
     const event = this.store.event(type, message, data);
     this.logs.diagnostics.write('info', type, this.diagnosticEvent(event));
     this.options.notify?.({ jsonrpc: '2.0', method: 'runtime.event', params: event });
+    this.agent?.onBusinessEvent(type, data);
     return event;
   }
   busy() {
@@ -781,6 +815,12 @@ export class Runtime {
       !(method === 'updates.rollback' && params.channel === 'app')
     )
       throw new RpcError(-32011, '应用正在准备安装更新，请稍后重试');
+    if (method === 'host.agent.request') return this.agent.hostRequest(params);
+    if (
+      (method.startsWith('agent.') && method !== 'agent.message') ||
+      method.startsWith('model.credential.')
+    )
+      return this.agent.handle(method, params);
     return this.dispatchRpc(method, params);
   }
   private async readRecognition(params: RpcContract['params']['recognition.get']) {
@@ -3490,6 +3530,7 @@ export class Runtime {
   }
   private async closeInner() {
     this.running = false;
+    await this.agent.close();
     for (const state of this.automaticTargets.values()) {
       state.probing?.abort();
       state.controller?.abort();

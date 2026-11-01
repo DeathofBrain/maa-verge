@@ -1,6 +1,6 @@
 # Agent 独立模块与 LangChain 接入
 
-`packages/agent` 是可单独检查、测试和编译的 TypeScript workspace 包。已提取本地规则提案，提供 LangChain `createAgent` 结构化提案适配器，并在 `packages/agent/tools` 实现可单独核验的 [MaaCore 工具集](agent-tools.md)。产品的 `agent.message` 仍使用本地规则；真实模型配置、知识工具、会话持久化与自主执行尚未接入。
+`packages/agent` 是可单独检查、测试和编译的 TypeScript workspace 包，包含 LangChain 结构化提案、Responses 适配和 LangGraph 持久编排。产品新入口提供持久会话、记忆、计划／目标模式、询问、审批、有限托管、文本 Skill 与双向 MCP，详见 [Agent 产品接入](agent-integration.md)。旧 `agent.message` 作为显式本地规则提案接口保留；新模型接口失败不回退。知识检索／图谱本轮只交付设计，自动解新关卡和视觉控制继续后续推进。
 
 ## 分支整合复核
 
@@ -22,7 +22,7 @@
 
 依赖方向为 backend → Agent → contracts。Agent 不导入 backend、Tauri transport、SQLite、MaaCore 或 ADB，不持有 Runtime。保存、开始执行、设备租约及更新仍由应用服务负责。
 
-LangChain 固定为 `1.5.19`，`@langchain/core` 固定为 `1.3.0`，`langsmith` 固定为 `0.11.1`，依赖锁随仓库提交。适配器只接收 `BaseChatModel` 实例，不选择供应商、不读取模型密钥、不自动创建云模型。默认不注入业务工具；宿主可通过 `maaTools` 显式提供工具集，设备动作逐操作授权。结构化输出仍只产生草稿，没有文件或 Shell 工具。
+LangChain 固定为 `1.5.19`，`@langchain/core` 固定为 `1.3.0`，LangGraph／checkpoint 固定为 `1.5.2`／`1.2.1`，依赖锁随仓库提交。旧结构化提案适配器只接收 `BaseChatModel` 实例；新产品通过 `./responses` 和 `./response-graph` 使用 Responses 输出项，后台通过具名宿主端口执行，不提供文件或 Shell 工具。
 
 ## 接入与校验约定
 
@@ -30,7 +30,7 @@ LangChain 固定为 `1.5.19`，`@langchain/core` 固定为 `1.3.0`，`langsmith`
 
 LangChain 模型不能设置已有计划 ID、设备、定时或预算。宿主填入新草稿 ID 与默认值；模块另对任务参数强制零源石、零理智药和零加急，连未启用任务中的非零配置也拒绝，避免仅靠提示词或旧版 `Plan.budgets` 字段约束模型。非法任务、结构化输出或策略拒绝会直接失败。结果始终带 `requiresConfirmation: true`，提案本身不保存、不执行。模型错误也不会转成规则提案。
 
-`maxModelCalls` 默认 `0`，请求在调用模型前拒绝；显式范围为 `0..8`，按每次提案计数。默认时限为 30 秒，可传入 `AbortSignal`。调用次数上限不等于 token 或费用上限：真实供应商适配还需设置 token、重试、费用预算及凭据边界，完成后才能连接产品入口。非零游戏消耗的显式授权接口仍待设计，当前模型提案统一拒绝。
+旧 `createLangChainProposer` 的 `maxModelCalls` 默认 `0`，显式范围 `0..8`、默认 30 秒；其零消耗提案策略保持不变。新产品循环有每轮 12 次调用安全上限和每请求 120 秒超时，模型预算为可选软提醒，供应商缺失用量明确标记。新执行宿主启用 `allowFiniteConsumables` 后仍须经过持久审批和原子额度预留；草稿继续零消耗，用户可在既有任务编辑器内修改后审阅完整执行快照。
 
 本阶段未开放远程追踪。适配器在调用 graph 前拒绝环境变量、父追踪上下文及 SDK 内置远程 tracer，并返回 `AgentConfigurationError`；工具桥接在 SDK 回调接收输入前检查。不会修改全局环境，宿主仍须审核自己注入的模型与本机回调。独立与完整测试启动器从子进程环境移除 LangChain/LangSmith 设置，追踪边界测试在隔离子进程中核验零上传。
 
@@ -50,11 +50,10 @@ pnpm test:agent --compile
 
 `pnpm test:runtime` 同时运行模块与 backend 测试，因此本地完整检查和 CI 都覆盖新模块。原 22 类规则语义继续由固定输入与期望结果回归覆盖，不再启动旧参考后端。新增间接依赖缺失的许可证原文按精确版本和 SHA-256 补齐，来源见 `tools/licenses/javascript-overrides.md`。
 
-## 后续接入顺序
+## 后续验证与知识接入
 
-1. 接入用户选择的模型供应商与系统凭据存储，确定 token、重试、费用和错误返回约定；所有失败保持明确反馈。
-2. 向模块注入有界的只读知识查询端口，复用现有知识和账号隔离，返回来源、时间与未知状态；不让模型直接读取业务库或资源路径。
-3. 明确会话与 checkpoint 的持久化协议、预算及取消生命周期，再扩展 `agent.message` 的异步调用和界面状态；Schema 变更从 contracts 重新生成。
-4. 完成显式真实模型验收后再启用产品入口。自主托管、视觉动作和持久审批分别验收，不能由本轮提案夹具的通过推断已交付。
+1. 单独选择真实供应商、系统钥匙串和真机验收；合成通过不代表三平台实测通过。
+2. 按 [JSON/KV 知识设计](agent-rag-design.md) 增加有界只读知识端口，保留来源、时间和未知状态，不让模型直接读取业务库或资源路径。
+3. 视觉动作和自主解新关卡继续单独验收；截图和控制工具不自动加入产品模型白名单。
 
 官方 API 依据：[LangChain TypeScript](https://docs.langchain.com/oss/javascript/langchain/overview)、[结构化输出](https://docs.langchain.com/oss/javascript/langchain/structured-output)、[模型调用上限](https://reference.langchain.com/javascript/langchain/browser/modelCallLimitMiddleware)。

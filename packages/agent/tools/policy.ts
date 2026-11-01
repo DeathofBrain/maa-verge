@@ -131,6 +131,22 @@ function assertZero(tasks: Task[]): void {
   }
 }
 
+function assertFiniteConsumables(tasks: Task[]): void {
+  for (const task of tasks) {
+    for (const field of ['medicine', 'stone']) {
+      if (!Object.hasOwn(task.params, field)) continue;
+      if (task.type !== 'Fight') denied('只有有限次数的自动作战可使用已批准药石');
+      count(task.params[field], field, 1000, 0);
+    }
+    for (const field of ['expiring_medicine', 'medicine_expire_days', 'expedite_times'])
+      if (Object.hasOwn(task.params, field) && task.params[field] !== 0)
+        denied('Agent 不支持加急或临期药消耗');
+    for (const field of ['expedite', 'use_sanity_potion'])
+      if (Object.hasOwn(task.params, field) && task.params[field] !== false)
+        denied('Agent 不支持加急或无数量上限的用药');
+  }
+}
+
 export function prepareAgentTaskDraft(
   input: { name: string; tasks: Task[] },
   clientType: MaaClientType,
@@ -152,10 +168,15 @@ export function prepareAgentTaskDraft(
   return { id: '', name: input.name, tasks };
 }
 
-export function assertAgentExecutablePlan(plan: Plan, clientType: MaaClientType): void {
+export function assertAgentExecutablePlan(
+  plan: Plan,
+  clientType: MaaClientType,
+  finiteConsumables = false,
+): void {
   assertClient(clientType);
   if (!validatePlan(plan)) throw new MaaToolError('invalid_parameters', '已保存任务表不符合契约');
-  assertZero(plan.tasks);
+  if (finiteConsumables) assertFiniteConsumables(plan.tasks);
+  else assertZero(plan.tasks);
   plan.tasks.forEach((task) => assertTask(task, clientType, false));
 }
 

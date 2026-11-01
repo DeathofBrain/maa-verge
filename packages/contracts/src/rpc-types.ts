@@ -104,6 +104,16 @@ export type CopilotRatingValue = 'none' | 'like' | 'dislike';
  */
 export type KnowledgeKind =
   'operator' | 'item' | 'stage' | 'recruitment' | 'infrastructure' | 'document' | 'capability';
+export type AgentMode = 'plan' | 'goal';
+export type AgentJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | AgentJsonValue[]
+  | {
+      [k: string]: AgentJsonValue;
+    };
 export type Mode = 'native';
 export type Id1 = string;
 export type Name1 = string;
@@ -142,6 +152,14 @@ export type Events = Event[];
  * via the `definition` "CopilotDifficulty".
  */
 export type CopilotDifficulty = 0 | 1 | 2 | 3;
+/**
+ * @maxItems 100
+ */
+export type AgentInteraction1 = AgentInteraction[];
+/**
+ * @maxItems 100
+ */
+export type AgentMission = AgentMission1[];
 /**
  * Host-only application update operations. This definition is deliberately absent from the public RPC parameter and result maps; callers cannot supply URLs or output paths.
  *
@@ -269,6 +287,39 @@ export interface RpcContract {
     'knowledge.search': KnowledgeSearchParams;
     'account.snapshot.get': AccountSnapshotParams;
     'account.snapshot.list': AccountSnapshotListParams;
+    'agent.session.list': AgentSessionListParams;
+    'agent.session.create': AgentSessionCreateParams;
+    'agent.session.get': AgentSessionGetParams;
+    'agent.session.update': AgentSessionUpdateParams;
+    'agent.session.delete': AgentSessionDeleteParams;
+    'agent.turn.start': AgentTurnStartParams;
+    'agent.turn.get': AgentTurnIdentity;
+    'agent.turn.cancel': AgentTurnIdentity;
+    'agent.turn.resume': AgentTurnIdentity;
+    'agent.interaction.list': AgentInteractionListParams;
+    'agent.interaction.respond': AgentInteractionRespondParams;
+    'agent.memory.list': AgentMemoryListParams;
+    'agent.memory.save': AgentMemorySaveParams;
+    'agent.memory.delete': AgentMemoryDeleteParams;
+    'agent.context.reference': AgentContextReferenceParams;
+    'agent.mission.list': AgentMissionListParams;
+    'agent.mission.create': AgentMissionCreateParams;
+    'agent.mission.resume': AgentMissionIdentity;
+    'agent.mission.revoke': AgentMissionIdentity;
+    'agent.skill.list': AgentEmptyParams;
+    'agent.skill.save': AgentSkillSaveParams;
+    'agent.skill.import': AgentSkillImportParams;
+    'agent.skill.delete': AgentSkillDeleteParams;
+    'agent.skill.enable': AgentSkillEnableParams;
+    'agent.mcp.list': AgentEmptyParams;
+    'agent.mcp.save': AgentMcpSaveParams;
+    'agent.mcp.delete': AgentMcpIdentity;
+    'agent.mcp.check': AgentMcpIdentity;
+    'agent.mcp.tools': AgentMcpIdentity;
+    'agent.mcp.server': AgentMcpServerParams;
+    'model.credential.set': AgentCredentialSetParams;
+    'model.credential.status': AgentEmptyParams;
+    'model.credential.delete': AgentEmptyParams;
   };
   results: {
     'app.snapshot': Snapshot;
@@ -420,6 +471,39 @@ export interface RpcContract {
     'knowledge.search': KnowledgeSearchResult;
     'account.snapshot.get': AccountKnowledgeSnapshot | null;
     'account.snapshot.list': AccountSnapshotListResult;
+    'agent.session.list': AgentSessionListResult;
+    'agent.session.create': AgentSession;
+    'agent.session.get': AgentSessionDetail;
+    'agent.session.update': AgentSession;
+    'agent.session.delete': AgentDeleteResult;
+    'agent.turn.start': AgentTurn;
+    'agent.turn.get': AgentTurn;
+    'agent.turn.cancel': AgentTurn;
+    'agent.turn.resume': AgentTurn;
+    'agent.interaction.list': AgentInteraction1;
+    'agent.interaction.respond': AgentInteraction;
+    'agent.memory.list': AgentMemoryListResult;
+    'agent.memory.save': AgentMemory;
+    'agent.memory.delete': AgentDeleteResult;
+    'agent.context.reference': AgentContextReference;
+    'agent.mission.list': AgentMission;
+    'agent.mission.create': AgentMission1;
+    'agent.mission.resume': AgentMission1;
+    'agent.mission.revoke': AgentMission1;
+    'agent.skill.list': AgentSkillListResult;
+    'agent.skill.save': AgentSkill;
+    'agent.skill.import': AgentSkill;
+    'agent.skill.delete': AgentDeleteResult;
+    'agent.skill.enable': AgentSkill;
+    'agent.mcp.list': AgentMcpListResult;
+    'agent.mcp.save': AgentMcpConfig;
+    'agent.mcp.delete': AgentDeleteResult;
+    'agent.mcp.check': AgentMcpCheckResult;
+    'agent.mcp.tools': AgentMcpToolsResult;
+    'agent.mcp.server': AgentMcpServerResult;
+    'model.credential.set': AgentCredentialStatus;
+    'model.credential.status': AgentCredentialStatus;
+    'model.credential.delete': AgentCredentialStatus;
   };
 }
 /**
@@ -741,6 +825,11 @@ export interface ModelSettings {
   provider: Provider;
   baseUrl: Baseurl;
   model: Model;
+  softCallReminder?: number;
+  softTokenReminder?: number;
+  softCostReminder?: number;
+  inputPricePerMillion?: number;
+  outputPricePerMillion?: number;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -1080,6 +1169,186 @@ export interface AccountSnapshotListParams {
   kind?: 'depot' | 'operators';
   offset?: number;
   limit?: number;
+}
+export interface AgentSessionListParams {
+  deviceId?: string;
+  clientType?: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  offset?: number;
+  limit?: number;
+}
+export interface AgentSessionCreateParams {
+  deviceId?: string;
+  clientType?: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  title?: string;
+  mode?: AgentMode;
+  /**
+   * @maxItems 50
+   */
+  skillIds?: string[];
+  /**
+   * @maxItems 50
+   */
+  mcpServerIds?: string[];
+}
+export interface AgentSessionGetParams {
+  sessionId: string;
+  offset?: number;
+  limit?: number;
+}
+export interface AgentSessionUpdateParams {
+  sessionId: string;
+  revision: number;
+  title?: string;
+  mode?: AgentMode;
+  /**
+   * @maxItems 50
+   */
+  skillIds?: string[];
+  /**
+   * @maxItems 50
+   */
+  mcpServerIds?: string[];
+  status?: 'idle' | 'running' | 'waiting' | 'archived';
+}
+export interface AgentSessionDeleteParams {
+  sessionId: string;
+  revision?: number;
+}
+export interface AgentTurnStartParams {
+  sessionId: string;
+  message: string;
+  requestId: string;
+}
+export interface AgentTurnIdentity {
+  turnId: string;
+}
+export interface AgentInteractionListParams {
+  sessionId?: string;
+  turnId?: string;
+  status?: 'pending' | 'answered' | 'cancelled' | 'expired';
+}
+export interface AgentInteractionRespondParams {
+  interactionId: string;
+  answer: AgentAnswer;
+}
+export interface AgentAnswer {
+  text?: string;
+  /**
+   * @maxItems 30
+   */
+  choices?: string[];
+  decision?: 'approve' | 'reject';
+  value?: AgentJsonValue;
+}
+export interface AgentMemoryListParams {
+  sessionId?: string;
+  query?: string;
+  scope?: 'global' | 'account';
+  offset?: number;
+  limit?: number;
+}
+export interface AgentMemorySaveParams {
+  sessionId?: string;
+  id?: string;
+  key: string;
+  content: string;
+  scope: 'global' | 'account';
+  revision?: number;
+  sourceMessageId?: string;
+}
+export interface AgentMemoryDeleteParams {
+  id: string;
+  revision?: number;
+}
+export interface AgentContextReferenceParams {
+  sessionId: string;
+  sourceSessionId: string;
+  /**
+   * @maxItems 100
+   */
+  messageIds?: string[];
+}
+export interface AgentMissionListParams {
+  sessionId?: string;
+}
+export interface AgentMissionCreateParams {
+  sessionId: string;
+  expiresAt: string;
+  maxExecutions: number;
+  medicine: number;
+  stone: number;
+  /**
+   * @maxItems 100
+   */
+  targets: AgentJsonObject[];
+  wakeAt?: string;
+  wakeOnRunId?: string;
+}
+export interface AgentJsonObject {
+  [k: string]: AgentJsonValue;
+}
+export interface AgentMissionIdentity {
+  missionId: string;
+}
+export interface AgentEmptyParams {}
+export interface AgentSkillSaveParams {
+  id?: string;
+  content: string;
+  /**
+   * @maxItems 100
+   */
+  references?: AgentSkillReference[];
+  enabled?: boolean;
+}
+export interface AgentSkillReference {
+  name: string;
+  text: string;
+}
+export interface AgentSkillImportParams {
+  path: string;
+  enabled?: boolean;
+}
+export interface AgentSkillDeleteParams {
+  id: string;
+}
+export interface AgentSkillEnableParams {
+  id: string;
+  enabled: boolean;
+}
+export interface AgentMcpSaveParams {
+  server: AgentMcpConfig;
+}
+export interface AgentMcpConfig {
+  id: string;
+  name: string;
+  transport: 'stdio' | 'streamable-http';
+  enabled: boolean;
+  command?: string;
+  /**
+   * @maxItems 100
+   */
+  args?: string[];
+  env?: {
+    [k: string]: string;
+  };
+  url?: string;
+  credentialRef?: string;
+  /**
+   * @maxItems 100
+   */
+  enabledTools: string[];
+  timeoutMs: number;
+}
+export interface AgentMcpIdentity {
+  id: string;
+}
+export interface AgentMcpServerParams {
+  enabled: boolean;
+  showToken?: boolean;
+}
+export interface AgentCredentialSetParams {
+  secret: string;
+  storage: 'keychain' | 'session';
 }
 export interface Snapshot {
   mode: Mode;
@@ -1940,6 +2209,258 @@ export interface AccountSnapshotSummary {
    */
   unknownFields: string[];
 }
+export interface AgentSessionListResult {
+  /**
+   * @maxItems 100
+   */
+  sessions: AgentSession[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+export interface AgentSession {
+  id: string;
+  title: string;
+  mode: AgentMode;
+  scope: AgentScope;
+  revision: number;
+  status: 'idle' | 'running' | 'waiting' | 'archived';
+  /**
+   * @maxItems 50
+   */
+  skillIds: string[];
+  /**
+   * @maxItems 50
+   */
+  mcpServerIds: string[];
+  /**
+   * @maxItems 100
+   */
+  contextReferenceIds: string[];
+  summary?: string;
+  usage: AgentUsage;
+  createdAt: string;
+  updatedAt: string;
+  summaryUsage?: AgentUsage;
+}
+export interface AgentScope {
+  deviceId: string;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  accountId: string;
+  identity: 'configured-label' | 'device-only';
+}
+export interface AgentUsage {
+  modelCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  incomplete: boolean;
+  cachedInputTokens?: number;
+  reasoningTokens?: number;
+  estimatedCost?: number;
+}
+export interface AgentSessionDetail {
+  session: AgentSession;
+  /**
+   * @maxItems 100
+   */
+  messages: AgentMessage[];
+  /**
+   * @maxItems 100
+   */
+  turns: AgentTurn[];
+  /**
+   * @maxItems 100
+   */
+  interactions: AgentInteraction[];
+  /**
+   * @maxItems 100
+   */
+  references: AgentContextReference[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+export interface AgentMessage {
+  id: string;
+  sessionId: string;
+  turnId?: string;
+  role: 'user' | 'assistant' | 'tool' | 'system';
+  content: string;
+  /**
+   * @maxItems 1000
+   */
+  items?: AgentJsonValue[];
+  metadata?: AgentJsonObject;
+  createdAt: string;
+}
+export interface AgentTurn {
+  id: string;
+  sessionId: string;
+  requestId?: string;
+  status: 'queued' | 'running' | 'waiting' | 'completed' | 'cancelled' | 'failed' | 'interrupted';
+  createdAt: string;
+  updatedAt: string;
+  usage: AgentUsage;
+  error?: string;
+  pendingInteractionId?: string;
+  reply?: string;
+  messageId?: string;
+  missionId?: string;
+  summaryUsage?: AgentUsage;
+}
+export interface AgentInteraction {
+  id: string;
+  sessionId: string;
+  turnId: string;
+  kind: 'question' | 'approval' | 'mcp';
+  status: 'pending' | 'answered' | 'cancelled' | 'expired';
+  title: string;
+  prompt: string;
+  inputType?: 'single' | 'multiple' | 'text';
+  /**
+   * @maxItems 30
+   */
+  options?: AgentChoice[];
+  required?: boolean;
+  minChoices?: number;
+  maxChoices?: number;
+  maxLength?: number;
+  answer?: AgentAnswer;
+  snapshot?: AgentJsonObject;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string;
+}
+export interface AgentChoice {
+  id: string;
+  label: string;
+  description?: string;
+}
+export interface AgentContextReference {
+  id: string;
+  sessionId: string;
+  sourceSessionId: string;
+  /**
+   * @maxItems 100
+   */
+  messageIds: string[];
+  summary?: string;
+  createdAt: string;
+  scope: AgentScope;
+}
+export interface AgentDeleteResult {
+  deleted: boolean;
+}
+export interface AgentMemoryListResult {
+  /**
+   * @maxItems 100
+   */
+  memories: AgentMemory[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+export interface AgentMemory {
+  id: string;
+  key: string;
+  content: string;
+  scope: 'global' | 'account';
+  accountId?: string;
+  deviceId?: string;
+  clientType?: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  sourceSessionId?: string;
+  sourceMessageId?: string;
+  source: 'user' | 'summary' | 'tool';
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface AgentMission1 {
+  id: string;
+  sessionId: string;
+  deviceId: string;
+  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  expiresAt: string;
+  maxExecutions: number;
+  medicine: number;
+  stone: number;
+  status: 'active' | 'paused' | 'waiting' | 'revoked' | 'completed';
+  remainingExecutions: number;
+  reservedMedicine: number;
+  reservedStone: number;
+  /**
+   * @maxItems 100
+   */
+  targets: AgentJsonObject[];
+  /**
+   * @maxItems 100
+   */
+  snapshotHashes: string[];
+  usage: AgentUsage;
+  createdAt: string;
+  updatedAt: string;
+  wakeAt?: string;
+  wakeOnRunId?: string;
+}
+export interface AgentSkillListResult {
+  /**
+   * @maxItems 100
+   */
+  skills: AgentSkill[];
+}
+export interface AgentSkill {
+  id: string;
+  name: string;
+  description: string;
+  content: string;
+  /**
+   * @maxItems 100
+   */
+  references: AgentSkillReference[];
+  /**
+   * @maxItems 100
+   */
+  allowedTools: string[];
+  enabled: boolean;
+  version: string;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface AgentMcpListResult {
+  /**
+   * @maxItems 100
+   */
+  servers: AgentMcpConfig[];
+}
+export interface AgentMcpCheckResult {
+  ok: boolean;
+  error?: string;
+  toolCount?: number;
+}
+export interface AgentMcpToolsResult {
+  /**
+   * @maxItems 100
+   */
+  tools: AgentMcpTool[];
+}
+export interface AgentMcpTool {
+  name: string;
+  description?: string;
+  inputSchema: AgentJsonObject;
+  enabled: boolean;
+}
+export interface AgentMcpServerResult {
+  enabled: boolean;
+  url?: string;
+  tokenConfigured: boolean;
+  token?: string;
+}
+export interface AgentCredentialStatus {
+  configured: boolean;
+  storage: 'keychain' | 'session' | 'none';
+  available: boolean;
+}
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
  * via the `definition` "RpcRequest".
@@ -1960,4 +2481,18 @@ export interface RpcEvent {
   jsonrpc: '2.0';
   method: 'runtime.event';
   params: Event;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "HostAgentRequest".
+ */
+export interface HostAgentRequest {
+  method: 'agent.turn.start' | 'agent.turn.resume' | 'agent.interaction.respond' | 'agent.mission.resume';
+  params: {};
+  model: {
+    provider: string;
+    baseUrl: string;
+    model: string;
+  };
+  credential?: string | null;
 }

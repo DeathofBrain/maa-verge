@@ -7,6 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./langchain": "./src/langchain.ts",
+    "./responses": "./src/responses.ts",
+    "./response-graph": "./src/response-graph.ts",
     "./tools": "./tools/index.ts",
     "./tools/langchain": "./tools/langchain.ts"
   },
@@ -17,6 +19,8 @@
   "dependencies": {
     "@cfworker/json-schema": "4.1.1",
     "@langchain/core": "1.3.0",
+    "@langchain/langgraph": "1.5.2",
+    "@langchain/langgraph-checkpoint": "1.2.1",
     "@maaverge/contracts": "workspace:*",
     "langchain": "1.5.19",
     "langsmith": "0.11.1"

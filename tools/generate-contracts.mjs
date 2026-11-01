@@ -13,6 +13,8 @@ const rpcSource = path.join(root, 'packages/contracts/schemas/rpc.schema.json');
 const workerSource = path.join(root, 'packages/contracts/schemas/worker.schema.json');
 const rpcSchema = JSON.parse(readFileSync(rpcSource, 'utf8'));
 const workerSchema = JSON.parse(readFileSync(workerSource, 'utf8'));
+const agentSource = path.join(root, 'packages/contracts/schemas/agent.schema.json');
+const agentSchema = JSON.parse(readFileSync(agentSource, 'utf8'));
 const bannerComment =
   '/* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */';
 const typeOptions = {
@@ -32,6 +34,10 @@ const desktopUninstallTypes = await compile(
 );
 const rpcTypes = await compileFromFile(rpcSource, { ...typeOptions, unreachableDefinitions: true });
 const workerTypes = await compile(workerSchema, 'WorkerProtocol', typeOptions);
+const agentTypes = await compileFromFile(agentSource, {
+  ...typeOptions,
+  unreachableDefinitions: true,
+});
 
 // Build validators once, including Ajv's small runtime helpers. The application
 // ships neither Ajv's schema compiler nor dynamically evaluated validation code.
@@ -46,6 +52,7 @@ const ajv = new Ajv({
 ajv.addSchema(schema);
 ajv.addSchema(rpcSchema);
 ajv.addSchema(workerSchema);
+ajv.addSchema(agentSchema);
 const validators = {
   validateSnapshot: schema.$id,
   validateHostUpdateParams: `${rpcSchema.$id}#/$defs/HostUpdateParams`,
@@ -82,6 +89,7 @@ const validators = {
   validateToolCatalogParams: `${rpcSchema.$id}#/properties/params/properties/tool.catalog`,
   validateRpcRequest: `${rpcSchema.$id}#/$defs/RpcRequest`,
   validateRpcEvent: `${rpcSchema.$id}#/$defs/RpcEvent`,
+  validateHostAgentRequest: `${rpcSchema.$id}#/$defs/HostAgentRequest`,
   validateDeviceFrameParams: `${rpcSchema.$id}#/$defs/DeviceFrameParams`,
   validateDeviceClickParams: `${rpcSchema.$id}#/$defs/DeviceClickParams`,
   validateRunArtifactParams: `${rpcSchema.$id}#/$defs/RunArtifactParams`,
@@ -114,7 +122,27 @@ const validators = {
   validateWorkerValidation: `${workerSchema.$id}#/$defs/WorkerValidation`,
   validateDesktopUninstallInfo: `${schema.$id}#/$defs/DesktopUninstallInfo`,
 };
-const standalone = standaloneCode(ajv, validators);
+const agentDefinitions = Object.keys(agentSchema.$defs);
+for (const name of agentDefinitions)
+  validators[`validate${name}`] = `${agentSchema.$id}#/$defs/${name}`;
+const agentMethods = Object.keys(agentSchema.properties.params.properties);
+for (const [index, method] of agentMethods.entries()) {
+  validators[`validateAgentMethod${index}Params`] =
+    `${agentSchema.$id}#/properties/params/properties/${method}`;
+  validators[`validateAgentMethod${index}Result`] =
+    `${agentSchema.$id}#/properties/results/properties/${method}`;
+}
+const agentValidatorMaps = ['Params', 'Result']
+  .map(
+    (suffix) =>
+      `export const agent${suffix === 'Params' ? 'Param' : 'Result'}Validators = {\n${agentMethods
+        .map(
+          (method, index) => `  ${JSON.stringify(method)}: validateAgentMethod${index}${suffix},`,
+        )
+        .join('\n')}\n};`,
+  )
+  .join('\n');
+const standalone = `${standaloneCode(ajv, validators)}\n${agentValidatorMaps}`;
 const require = createRequire(import.meta.url);
 const bundled = await build({
   stdin: {
@@ -148,8 +176,9 @@ const bundled = await build({
 });
 const declaration = `${bannerComment}
 import type { Plan, Settings, Snapshot, DesktopUninstallInfo } from './types';
-import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame, HostUpdateParams } from './rpc-types';
+import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame, HostUpdateParams, HostAgentRequest } from './rpc-types';
 import type { WorkerProtocol } from './worker-types';
+import type * as AgentTypes from './agent-types';
 export interface ValidationError {
   instancePath: string;
   schemaPath: string;
@@ -197,6 +226,7 @@ export const validateLogDeleteParams: Validator<RpcContract['params']['logs.dele
 export const validateToolCatalogParams: Validator<RpcContract['params']['tool.catalog']>;
 export const validateRpcRequest: Validator<RpcRequest>;
 export const validateRpcEvent: Validator<RpcEvent>;
+export const validateHostAgentRequest: Validator<HostAgentRequest>;
 export const validateDeviceFrameParams: Validator<RpcContract['params']['device.frame']>;
 export const validateDeviceClickParams: Validator<RpcContract['params']['device.click']>;
 export const validateRunArtifactParams: Validator<RpcContract['params']['run.artifact']>;
@@ -227,12 +257,16 @@ export const validateWorkerValidationConfiguration: Validator<WorkerProtocol['va
 export const validateWorkerCommand: Validator<WorkerProtocol['command']>;
 export const validateWorkerEvent: Validator<WorkerProtocol['event']>;
 export const validateWorkerValidation: Validator<WorkerProtocol['validation']>;
+${agentDefinitions.map((name) => `export const validate${name}: Validator<AgentTypes.${name}>;`).join('\n')}
+export const agentParamValidators: { [K in keyof AgentTypes.AgentContract['params']]: Validator<AgentTypes.AgentContract['params'][K]> };
+export const agentResultValidators: { [K in keyof AgentTypes.AgentContract['results']]: Validator<AgentTypes.AgentContract['results'][K]> };
 `;
 const files = new Map([
   ['packages/contracts/schema.json', JSON.stringify(schema, null, 2) + '\n'],
   ['packages/contracts/src/types.ts', `${types}\n${desktopUninstallTypes}`],
   ['packages/contracts/src/rpc-types.ts', rpcTypes],
   ['packages/contracts/src/worker-types.ts', workerTypes],
+  ['packages/contracts/src/agent-types.ts', agentTypes],
   ['packages/contracts/src/validators.js', bundled.outputFiles[0].text],
   ['packages/contracts/src/validators.d.ts', declaration],
 ]);

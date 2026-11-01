@@ -400,6 +400,11 @@ export interface ModelSettings {
   provider: Provider;
   baseUrl: Baseurl;
   model: Model;
+  softCallReminder?: number;
+  softTokenReminder?: number;
+  softCostReminder?: number;
+  inputPricePerMillion?: number;
+  outputPricePerMillion?: number;
 }
 export interface SchedulerSettings {
   forceScheduledStart: boolean;

@@ -76,7 +76,40 @@
         "knowledge.status",
         "knowledge.search",
         "account.snapshot.get",
-        "account.snapshot.list"
+        "account.snapshot.list",
+        "agent.session.list",
+        "agent.session.create",
+        "agent.session.get",
+        "agent.session.update",
+        "agent.session.delete",
+        "agent.turn.start",
+        "agent.turn.get",
+        "agent.turn.cancel",
+        "agent.turn.resume",
+        "agent.interaction.list",
+        "agent.interaction.respond",
+        "agent.memory.list",
+        "agent.memory.save",
+        "agent.memory.delete",
+        "agent.context.reference",
+        "agent.mission.list",
+        "agent.mission.create",
+        "agent.mission.resume",
+        "agent.mission.revoke",
+        "agent.skill.list",
+        "agent.skill.save",
+        "agent.skill.import",
+        "agent.skill.delete",
+        "agent.skill.enable",
+        "agent.mcp.list",
+        "agent.mcp.save",
+        "agent.mcp.delete",
+        "agent.mcp.check",
+        "agent.mcp.tools",
+        "agent.mcp.server",
+        "model.credential.set",
+        "model.credential.status",
+        "model.credential.delete"
       ],
       "properties": {
         "app.snapshot": {
@@ -378,6 +411,105 @@
         },
         "account.snapshot.list": {
           "$ref": "#/$defs/AccountSnapshotListParams"
+        },
+        "agent.session.list": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.session.list"
+        },
+        "agent.session.create": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.session.create"
+        },
+        "agent.session.get": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.session.get"
+        },
+        "agent.session.update": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.session.update"
+        },
+        "agent.session.delete": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.session.delete"
+        },
+        "agent.turn.start": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.turn.start"
+        },
+        "agent.turn.get": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.turn.get"
+        },
+        "agent.turn.cancel": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.turn.cancel"
+        },
+        "agent.turn.resume": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.turn.resume"
+        },
+        "agent.interaction.list": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.interaction.list"
+        },
+        "agent.interaction.respond": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.interaction.respond"
+        },
+        "agent.memory.list": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.memory.list"
+        },
+        "agent.memory.save": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.memory.save"
+        },
+        "agent.memory.delete": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.memory.delete"
+        },
+        "agent.context.reference": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.context.reference"
+        },
+        "agent.mission.list": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mission.list"
+        },
+        "agent.mission.create": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mission.create"
+        },
+        "agent.mission.resume": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mission.resume"
+        },
+        "agent.mission.revoke": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mission.revoke"
+        },
+        "agent.skill.list": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.skill.list"
+        },
+        "agent.skill.save": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.skill.save"
+        },
+        "agent.skill.import": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.skill.import"
+        },
+        "agent.skill.delete": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.skill.delete"
+        },
+        "agent.skill.enable": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.skill.enable"
+        },
+        "agent.mcp.list": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mcp.list"
+        },
+        "agent.mcp.save": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mcp.save"
+        },
+        "agent.mcp.delete": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mcp.delete"
+        },
+        "agent.mcp.check": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mcp.check"
+        },
+        "agent.mcp.tools": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mcp.tools"
+        },
+        "agent.mcp.server": {
+          "$ref": "agent.schema.json#/properties/params/properties/agent.mcp.server"
+        },
+        "model.credential.set": {
+          "$ref": "agent.schema.json#/properties/params/properties/model.credential.set"
+        },
+        "model.credential.status": {
+          "$ref": "agent.schema.json#/properties/params/properties/model.credential.status"
+        },
+        "model.credential.delete": {
+          "$ref": "agent.schema.json#/properties/params/properties/model.credential.delete"
         }
       }
     },
@@ -450,7 +582,40 @@
         "knowledge.status",
         "knowledge.search",
         "account.snapshot.get",
-        "account.snapshot.list"
+        "account.snapshot.list",
+        "agent.session.list",
+        "agent.session.create",
+        "agent.session.get",
+        "agent.session.update",
+        "agent.session.delete",
+        "agent.turn.start",
+        "agent.turn.get",
+        "agent.turn.cancel",
+        "agent.turn.resume",
+        "agent.interaction.list",
+        "agent.interaction.respond",
+        "agent.memory.list",
+        "agent.memory.save",
+        "agent.memory.delete",
+        "agent.context.reference",
+        "agent.mission.list",
+        "agent.mission.create",
+        "agent.mission.resume",
+        "agent.mission.revoke",
+        "agent.skill.list",
+        "agent.skill.save",
+        "agent.skill.import",
+        "agent.skill.delete",
+        "agent.skill.enable",
+        "agent.mcp.list",
+        "agent.mcp.save",
+        "agent.mcp.delete",
+        "agent.mcp.check",
+        "agent.mcp.tools",
+        "agent.mcp.server",
+        "model.credential.set",
+        "model.credential.status",
+        "model.credential.delete"
       ],
       "properties": {
         "app.snapshot": {
@@ -947,6 +1112,105 @@
         },
         "account.snapshot.list": {
           "$ref": "#/$defs/AccountSnapshotListResult"
+        },
+        "agent.session.list": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.session.list"
+        },
+        "agent.session.create": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.session.create"
+        },
+        "agent.session.get": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.session.get"
+        },
+        "agent.session.update": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.session.update"
+        },
+        "agent.session.delete": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.session.delete"
+        },
+        "agent.turn.start": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.turn.start"
+        },
+        "agent.turn.get": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.turn.get"
+        },
+        "agent.turn.cancel": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.turn.cancel"
+        },
+        "agent.turn.resume": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.turn.resume"
+        },
+        "agent.interaction.list": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.interaction.list"
+        },
+        "agent.interaction.respond": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.interaction.respond"
+        },
+        "agent.memory.list": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.memory.list"
+        },
+        "agent.memory.save": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.memory.save"
+        },
+        "agent.memory.delete": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.memory.delete"
+        },
+        "agent.context.reference": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.context.reference"
+        },
+        "agent.mission.list": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mission.list"
+        },
+        "agent.mission.create": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mission.create"
+        },
+        "agent.mission.resume": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mission.resume"
+        },
+        "agent.mission.revoke": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mission.revoke"
+        },
+        "agent.skill.list": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.skill.list"
+        },
+        "agent.skill.save": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.skill.save"
+        },
+        "agent.skill.import": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.skill.import"
+        },
+        "agent.skill.delete": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.skill.delete"
+        },
+        "agent.skill.enable": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.skill.enable"
+        },
+        "agent.mcp.list": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mcp.list"
+        },
+        "agent.mcp.save": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mcp.save"
+        },
+        "agent.mcp.delete": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mcp.delete"
+        },
+        "agent.mcp.check": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mcp.check"
+        },
+        "agent.mcp.tools": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mcp.tools"
+        },
+        "agent.mcp.server": {
+          "$ref": "agent.schema.json#/properties/results/properties/agent.mcp.server"
+        },
+        "model.credential.set": {
+          "$ref": "agent.schema.json#/properties/results/properties/model.credential.set"
+        },
+        "model.credential.status": {
+          "$ref": "agent.schema.json#/properties/results/properties/model.credential.status"
+        },
+        "model.credential.delete": {
+          "$ref": "agent.schema.json#/properties/results/properties/model.credential.delete"
         }
       }
     }
@@ -1637,8 +1901,12 @@
       "additionalProperties": false,
       "required": ["available", "coreInstalled"],
       "properties": {
-        "available": { "type": "boolean" },
-        "coreInstalled": { "type": "boolean" }
+        "available": {
+          "type": "boolean"
+        },
+        "coreInstalled": {
+          "type": "boolean"
+        }
       }
     },
     "DeviceDeleteParams": {
@@ -2590,8 +2858,16 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "value": { "type": "string", "minLength": 1, "maxLength": 200 },
-              "label": { "type": "string", "minLength": 1, "maxLength": 500 }
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
             },
             "required": ["value", "label"]
           }
@@ -3948,6 +4224,48 @@
           }
         }
       ]
+    },
+    "HostAgentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "params", "model"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": [
+            "agent.turn.start",
+            "agent.turn.resume",
+            "agent.interaction.respond",
+            "agent.mission.resume"
+          ]
+        },
+        "params": {
+          "type": "object"
+        },
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider", "baseUrl", "model"],
+          "properties": {
+            "provider": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "baseUrl": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "model": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "credential": {
+          "type": ["string", "null"],
+          "maxLength": 8192
+        }
+      }
     }
   }
 }

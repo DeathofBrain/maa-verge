@@ -1,0 +1,2051 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://maaverge.local/contracts/agent.schema.json",
+  "$comment": "Authoritative Agent API, local memory and durable session types. Execution authorization remains in the application service.",
+  "title": "AgentContract",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent.session.list": {
+          "$ref": "#/$defs/AgentSessionListParams"
+        },
+        "agent.session.create": {
+          "$ref": "#/$defs/AgentSessionCreateParams"
+        },
+        "agent.session.get": {
+          "$ref": "#/$defs/AgentSessionGetParams"
+        },
+        "agent.session.update": {
+          "$ref": "#/$defs/AgentSessionUpdateParams"
+        },
+        "agent.session.delete": {
+          "$ref": "#/$defs/AgentSessionDeleteParams"
+        },
+        "agent.turn.start": {
+          "$ref": "#/$defs/AgentTurnStartParams"
+        },
+        "agent.turn.get": {
+          "$ref": "#/$defs/AgentTurnIdentity"
+        },
+        "agent.turn.cancel": {
+          "$ref": "#/$defs/AgentTurnIdentity"
+        },
+        "agent.turn.resume": {
+          "$ref": "#/$defs/AgentTurnIdentity"
+        },
+        "agent.interaction.list": {
+          "$ref": "#/$defs/AgentInteractionListParams"
+        },
+        "agent.interaction.respond": {
+          "$ref": "#/$defs/AgentInteractionRespondParams"
+        },
+        "agent.memory.list": {
+          "$ref": "#/$defs/AgentMemoryListParams"
+        },
+        "agent.memory.save": {
+          "$ref": "#/$defs/AgentMemorySaveParams"
+        },
+        "agent.memory.delete": {
+          "$ref": "#/$defs/AgentMemoryDeleteParams"
+        },
+        "agent.context.reference": {
+          "$ref": "#/$defs/AgentContextReferenceParams"
+        },
+        "agent.mission.list": {
+          "$ref": "#/$defs/AgentMissionListParams"
+        },
+        "agent.mission.create": {
+          "$ref": "#/$defs/AgentMissionCreateParams"
+        },
+        "agent.mission.resume": {
+          "$ref": "#/$defs/AgentMissionIdentity"
+        },
+        "agent.mission.revoke": {
+          "$ref": "#/$defs/AgentMissionIdentity"
+        },
+        "agent.skill.list": {
+          "$ref": "#/$defs/AgentEmptyParams"
+        },
+        "agent.skill.save": {
+          "$ref": "#/$defs/AgentSkillSaveParams"
+        },
+        "agent.skill.import": {
+          "$ref": "#/$defs/AgentSkillImportParams"
+        },
+        "agent.skill.delete": {
+          "$ref": "#/$defs/AgentSkillDeleteParams"
+        },
+        "agent.skill.enable": {
+          "$ref": "#/$defs/AgentSkillEnableParams"
+        },
+        "agent.mcp.list": {
+          "$ref": "#/$defs/AgentEmptyParams"
+        },
+        "agent.mcp.save": {
+          "$ref": "#/$defs/AgentMcpSaveParams"
+        },
+        "agent.mcp.delete": {
+          "$ref": "#/$defs/AgentMcpIdentity"
+        },
+        "agent.mcp.check": {
+          "$ref": "#/$defs/AgentMcpIdentity"
+        },
+        "agent.mcp.tools": {
+          "$ref": "#/$defs/AgentMcpIdentity"
+        },
+        "agent.mcp.server": {
+          "$ref": "#/$defs/AgentMcpServerParams"
+        },
+        "model.credential.set": {
+          "$ref": "#/$defs/AgentCredentialSetParams"
+        },
+        "model.credential.status": {
+          "$ref": "#/$defs/AgentEmptyParams"
+        },
+        "model.credential.delete": {
+          "$ref": "#/$defs/AgentEmptyParams"
+        }
+      },
+      "required": [
+        "agent.session.list",
+        "agent.session.create",
+        "agent.session.get",
+        "agent.session.update",
+        "agent.session.delete",
+        "agent.turn.start",
+        "agent.turn.get",
+        "agent.turn.cancel",
+        "agent.turn.resume",
+        "agent.interaction.list",
+        "agent.interaction.respond",
+        "agent.memory.list",
+        "agent.memory.save",
+        "agent.memory.delete",
+        "agent.context.reference",
+        "agent.mission.list",
+        "agent.mission.create",
+        "agent.mission.resume",
+        "agent.mission.revoke",
+        "agent.skill.list",
+        "agent.skill.save",
+        "agent.skill.import",
+        "agent.skill.delete",
+        "agent.skill.enable",
+        "agent.mcp.list",
+        "agent.mcp.save",
+        "agent.mcp.delete",
+        "agent.mcp.check",
+        "agent.mcp.tools",
+        "agent.mcp.server",
+        "model.credential.set",
+        "model.credential.status",
+        "model.credential.delete"
+      ]
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent.session.list": {
+          "$ref": "#/$defs/AgentSessionListResult"
+        },
+        "agent.session.create": {
+          "$ref": "#/$defs/AgentSession"
+        },
+        "agent.session.get": {
+          "$ref": "#/$defs/AgentSessionDetail"
+        },
+        "agent.session.update": {
+          "$ref": "#/$defs/AgentSession"
+        },
+        "agent.session.delete": {
+          "$ref": "#/$defs/AgentDeleteResult"
+        },
+        "agent.turn.start": {
+          "$ref": "#/$defs/AgentTurn"
+        },
+        "agent.turn.get": {
+          "$ref": "#/$defs/AgentTurn"
+        },
+        "agent.turn.cancel": {
+          "$ref": "#/$defs/AgentTurn"
+        },
+        "agent.turn.resume": {
+          "$ref": "#/$defs/AgentTurn"
+        },
+        "agent.interaction.list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentInteraction"
+          },
+          "maxItems": 100
+        },
+        "agent.interaction.respond": {
+          "$ref": "#/$defs/AgentInteraction"
+        },
+        "agent.memory.list": {
+          "$ref": "#/$defs/AgentMemoryListResult"
+        },
+        "agent.memory.save": {
+          "$ref": "#/$defs/AgentMemory"
+        },
+        "agent.memory.delete": {
+          "$ref": "#/$defs/AgentDeleteResult"
+        },
+        "agent.context.reference": {
+          "$ref": "#/$defs/AgentContextReference"
+        },
+        "agent.mission.list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentMission"
+          },
+          "maxItems": 100
+        },
+        "agent.mission.create": {
+          "$ref": "#/$defs/AgentMission"
+        },
+        "agent.mission.resume": {
+          "$ref": "#/$defs/AgentMission"
+        },
+        "agent.mission.revoke": {
+          "$ref": "#/$defs/AgentMission"
+        },
+        "agent.skill.list": {
+          "$ref": "#/$defs/AgentSkillListResult"
+        },
+        "agent.skill.save": {
+          "$ref": "#/$defs/AgentSkill"
+        },
+        "agent.skill.import": {
+          "$ref": "#/$defs/AgentSkill"
+        },
+        "agent.skill.delete": {
+          "$ref": "#/$defs/AgentDeleteResult"
+        },
+        "agent.skill.enable": {
+          "$ref": "#/$defs/AgentSkill"
+        },
+        "agent.mcp.list": {
+          "$ref": "#/$defs/AgentMcpListResult"
+        },
+        "agent.mcp.save": {
+          "$ref": "#/$defs/AgentMcpConfig"
+        },
+        "agent.mcp.delete": {
+          "$ref": "#/$defs/AgentDeleteResult"
+        },
+        "agent.mcp.check": {
+          "$ref": "#/$defs/AgentMcpCheckResult"
+        },
+        "agent.mcp.tools": {
+          "$ref": "#/$defs/AgentMcpToolsResult"
+        },
+        "agent.mcp.server": {
+          "$ref": "#/$defs/AgentMcpServerResult"
+        },
+        "model.credential.set": {
+          "$ref": "#/$defs/AgentCredentialStatus"
+        },
+        "model.credential.status": {
+          "$ref": "#/$defs/AgentCredentialStatus"
+        },
+        "model.credential.delete": {
+          "$ref": "#/$defs/AgentCredentialStatus"
+        }
+      },
+      "required": [
+        "agent.session.list",
+        "agent.session.create",
+        "agent.session.get",
+        "agent.session.update",
+        "agent.session.delete",
+        "agent.turn.start",
+        "agent.turn.get",
+        "agent.turn.cancel",
+        "agent.turn.resume",
+        "agent.interaction.list",
+        "agent.interaction.respond",
+        "agent.memory.list",
+        "agent.memory.save",
+        "agent.memory.delete",
+        "agent.context.reference",
+        "agent.mission.list",
+        "agent.mission.create",
+        "agent.mission.resume",
+        "agent.mission.revoke",
+        "agent.skill.list",
+        "agent.skill.save",
+        "agent.skill.import",
+        "agent.skill.delete",
+        "agent.skill.enable",
+        "agent.mcp.list",
+        "agent.mcp.save",
+        "agent.mcp.delete",
+        "agent.mcp.check",
+        "agent.mcp.tools",
+        "agent.mcp.server",
+        "model.credential.set",
+        "model.credential.status",
+        "model.credential.delete"
+      ]
+    }
+  },
+  "required": ["params", "results"],
+  "$defs": {
+    "AgentJsonValue": {
+      "title": "AgentJsonValue",
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentJsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/AgentJsonValue"
+          }
+        }
+      ]
+    },
+    "AgentJsonObject": {
+      "title": "AgentJsonObject",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/AgentJsonValue"
+      }
+    },
+    "AgentMode": {
+      "title": "AgentMode",
+      "type": "string",
+      "enum": ["plan", "goal"]
+    },
+    "AgentScope": {
+      "title": "AgentScope",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "clientType": {
+          "type": "string",
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
+        },
+        "accountId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "identity": {
+          "type": "string",
+          "enum": ["configured-label", "device-only"]
+        }
+      },
+      "required": ["deviceId", "clientType", "accountId", "identity"]
+    },
+    "AgentUsage": {
+      "title": "AgentUsage",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "modelCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "incomplete": {
+          "type": "boolean"
+        },
+        "cachedInputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasoningTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "estimatedCost": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["modelCalls", "inputTokens", "outputTokens", "totalTokens", "incomplete"]
+    },
+    "AgentSession": {
+      "title": "AgentSession",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "mode": {
+          "$ref": "#/$defs/AgentMode"
+        },
+        "scope": {
+          "$ref": "#/$defs/AgentScope"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["idle", "running", "waiting", "archived"]
+        },
+        "skillIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 50
+        },
+        "mcpServerIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 50
+        },
+        "contextReferenceIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 100
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 16000
+        },
+        "usage": {
+          "$ref": "#/$defs/AgentUsage"
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "summaryUsage": {
+          "$ref": "#/$defs/AgentUsage"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "mode",
+        "scope",
+        "revision",
+        "status",
+        "skillIds",
+        "mcpServerIds",
+        "contextReferenceIds",
+        "usage",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AgentMessage": {
+      "title": "AgentMessage",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "turnId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant", "tool", "system"]
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 200000
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentJsonValue"
+          },
+          "maxItems": 1000
+        },
+        "metadata": {
+          "$ref": "#/$defs/AgentJsonObject"
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        }
+      },
+      "required": ["id", "sessionId", "role", "content", "createdAt"]
+    },
+    "AgentTurn": {
+      "title": "AgentTurn",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "requestId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "running",
+            "waiting",
+            "completed",
+            "cancelled",
+            "failed",
+            "interrupted"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "usage": {
+          "$ref": "#/$defs/AgentUsage"
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "pendingInteractionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "reply": {
+          "type": "string",
+          "maxLength": 200000
+        },
+        "messageId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "missionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "summaryUsage": {
+          "$ref": "#/$defs/AgentUsage"
+        }
+      },
+      "required": ["id", "sessionId", "status", "createdAt", "updatedAt", "usage"]
+    },
+    "AgentChoice": {
+      "title": "AgentChoice",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      },
+      "required": ["id", "label"]
+    },
+    "AgentAnswer": {
+      "title": "AgentAnswer",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 16000
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 30
+        },
+        "decision": {
+          "type": "string",
+          "enum": ["approve", "reject"]
+        },
+        "value": {
+          "$ref": "#/$defs/AgentJsonValue"
+        }
+      }
+    },
+    "AgentInteraction": {
+      "title": "AgentInteraction",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "turnId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["question", "approval", "mcp"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "answered", "cancelled", "expired"]
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "maxLength": 16000,
+          "minLength": 1
+        },
+        "inputType": {
+          "type": "string",
+          "enum": ["single", "multiple", "text"]
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentChoice"
+          },
+          "maxItems": 30
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "minChoices": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxChoices": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16000
+        },
+        "answer": {
+          "$ref": "#/$defs/AgentAnswer"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/AgentJsonObject"
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "expiresAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "turnId",
+        "kind",
+        "status",
+        "title",
+        "prompt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AgentMemory": {
+      "title": "AgentMemory",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 16000,
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["global", "account"]
+        },
+        "accountId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "deviceId": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "clientType": {
+          "type": "string",
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
+        },
+        "sourceSessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "sourceMessageId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "enum": ["user", "summary", "tool"]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        }
+      },
+      "required": ["id", "key", "content", "scope", "source", "revision", "createdAt", "updatedAt"]
+    },
+    "AgentContextReference": {
+      "title": "AgentContextReference",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "sourceSessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "messageIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 100
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 16000
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "scope": {
+          "$ref": "#/$defs/AgentScope"
+        }
+      },
+      "required": ["id", "sessionId", "sourceSessionId", "messageIds", "createdAt", "scope"]
+    },
+    "AgentMission": {
+      "title": "AgentMission",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "deviceId": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "clientType": {
+          "type": "string",
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
+        },
+        "expiresAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "maxExecutions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "medicine": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stone": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused", "waiting", "revoked", "completed"]
+        },
+        "remainingExecutions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reservedMedicine": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reservedStone": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentJsonObject"
+          },
+          "maxItems": 100
+        },
+        "snapshotHashes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 100
+        },
+        "usage": {
+          "$ref": "#/$defs/AgentUsage"
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "wakeAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "wakeOnRunId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "deviceId",
+        "clientType",
+        "expiresAt",
+        "maxExecutions",
+        "medicine",
+        "stone",
+        "status",
+        "remainingExecutions",
+        "reservedMedicine",
+        "reservedStone",
+        "targets",
+        "snapshotHashes",
+        "usage",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AgentSkillReference": {
+      "title": "AgentSkillReference",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 300,
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 200000
+        }
+      },
+      "required": ["name", "text"]
+    },
+    "AgentSkill": {
+      "title": "AgentSkill",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 200000,
+          "minLength": 1
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentSkillReference"
+          },
+          "maxItems": 100
+        },
+        "allowedTools": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1
+          },
+          "maxItems": 100
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "content",
+        "references",
+        "allowedTools",
+        "enabled",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AgentMcpConfig": {
+      "title": "AgentMcpConfig",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "transport": {
+          "type": "string",
+          "enum": ["stdio", "streamable-http"]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "command": {
+          "type": "string",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxItems": 100
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 16000
+          }
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "credentialRef": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "enabledTools": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1
+          },
+          "maxItems": 100
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 300000
+        }
+      },
+      "required": ["id", "name", "transport", "enabled", "enabledTools", "timeoutMs"]
+    },
+    "AgentMcpTool": {
+      "title": "AgentMcpTool",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "inputSchema": {
+          "$ref": "#/$defs/AgentJsonObject"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": ["name", "inputSchema", "enabled"]
+    },
+    "AgentCredentialStatus": {
+      "title": "AgentCredentialStatus",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "configured": {
+          "type": "boolean"
+        },
+        "storage": {
+          "type": "string",
+          "enum": ["keychain", "session", "none"]
+        },
+        "available": {
+          "type": "boolean"
+        }
+      },
+      "required": ["configured", "storage", "available"]
+    },
+    "AgentEmptyParams": {
+      "title": "AgentEmptyParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "AgentDeleteResult": {
+      "title": "AgentDeleteResult",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        }
+      },
+      "required": ["deleted"]
+    },
+    "AgentSessionListParams": {
+      "title": "AgentSessionListParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "clientType": {
+          "type": "string",
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "AgentSessionListResult": {
+      "title": "AgentSessionListResult",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentSession"
+          },
+          "maxItems": 100
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["sessions", "total", "offset", "limit"]
+    },
+    "AgentSessionCreateParams": {
+      "title": "AgentSessionCreateParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "clientType": {
+          "type": "string",
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "mode": {
+          "$ref": "#/$defs/AgentMode"
+        },
+        "skillIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 50
+        },
+        "mcpServerIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 50
+        }
+      }
+    },
+    "AgentSessionGetParams": {
+      "title": "AgentSessionGetParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": ["sessionId"]
+    },
+    "AgentSessionDetail": {
+      "title": "AgentSessionDetail",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/AgentSession"
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentMessage"
+          },
+          "maxItems": 100
+        },
+        "turns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentTurn"
+          },
+          "maxItems": 100
+        },
+        "interactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentInteraction"
+          },
+          "maxItems": 100
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentContextReference"
+          },
+          "maxItems": 100
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "session",
+        "messages",
+        "turns",
+        "interactions",
+        "references",
+        "total",
+        "offset",
+        "limit"
+      ]
+    },
+    "AgentSessionUpdateParams": {
+      "title": "AgentSessionUpdateParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "mode": {
+          "$ref": "#/$defs/AgentMode"
+        },
+        "skillIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 50
+        },
+        "mcpServerIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 50
+        },
+        "status": {
+          "type": "string",
+          "enum": ["idle", "running", "waiting", "archived"]
+        }
+      },
+      "required": ["sessionId", "revision"]
+    },
+    "AgentSessionDeleteParams": {
+      "title": "AgentSessionDeleteParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["sessionId"]
+    },
+    "AgentTurnStartParams": {
+      "title": "AgentTurnStartParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 16000,
+          "minLength": 1
+        },
+        "requestId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "required": ["sessionId", "message", "requestId"]
+    },
+    "AgentTurnIdentity": {
+      "title": "AgentTurnIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "turnId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "required": ["turnId"]
+    },
+    "AgentInteractionListParams": {
+      "title": "AgentInteractionListParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "turnId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "answered", "cancelled", "expired"]
+        }
+      }
+    },
+    "AgentInteractionRespondParams": {
+      "title": "AgentInteractionRespondParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "interactionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "answer": {
+          "$ref": "#/$defs/AgentAnswer"
+        }
+      },
+      "required": ["interactionId", "answer"]
+    },
+    "AgentMemoryListParams": {
+      "title": "AgentMemoryListParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "query": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["global", "account"]
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "AgentMemoryListResult": {
+      "title": "AgentMemoryListResult",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentMemory"
+          },
+          "maxItems": 100
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["memories", "total", "offset", "limit"]
+    },
+    "AgentMemorySaveParams": {
+      "title": "AgentMemorySaveParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 16000,
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["global", "account"]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceMessageId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "required": ["key", "content", "scope"]
+    },
+    "AgentMemoryDeleteParams": {
+      "title": "AgentMemoryDeleteParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["id"]
+    },
+    "AgentContextReferenceParams": {
+      "title": "AgentContextReferenceParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "sourceSessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "messageIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "maxItems": 100
+        }
+      },
+      "required": ["sessionId", "sourceSessionId"]
+    },
+    "AgentMissionListParams": {
+      "title": "AgentMissionListParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      }
+    },
+    "AgentMissionCreateParams": {
+      "title": "AgentMissionCreateParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "expiresAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "maxExecutions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "medicine": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stone": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentJsonObject"
+          },
+          "maxItems": 100
+        },
+        "wakeAt": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1
+        },
+        "wakeOnRunId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "required": ["sessionId", "expiresAt", "maxExecutions", "medicine", "stone", "targets"]
+    },
+    "AgentMissionIdentity": {
+      "title": "AgentMissionIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "missionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "required": ["missionId"]
+    },
+    "AgentSkillListResult": {
+      "title": "AgentSkillListResult",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skills": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentSkill"
+          },
+          "maxItems": 100
+        }
+      },
+      "required": ["skills"]
+    },
+    "AgentSkillSaveParams": {
+      "title": "AgentSkillSaveParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 200000,
+          "minLength": 1
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentSkillReference"
+          },
+          "maxItems": 100
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": ["content"]
+    },
+    "AgentSkillImportParams": {
+      "title": "AgentSkillImportParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "maxLength": 4000,
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": ["path"]
+    },
+    "AgentSkillDeleteParams": {
+      "title": "AgentSkillDeleteParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "required": ["id"]
+    },
+    "AgentSkillEnableParams": {
+      "title": "AgentSkillEnableParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": ["id", "enabled"]
+    },
+    "AgentMcpListResult": {
+      "title": "AgentMcpListResult",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "servers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentMcpConfig"
+          },
+          "maxItems": 100
+        }
+      },
+      "required": ["servers"]
+    },
+    "AgentMcpSaveParams": {
+      "title": "AgentMcpSaveParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "server": {
+          "$ref": "#/$defs/AgentMcpConfig"
+        }
+      },
+      "required": ["server"]
+    },
+    "AgentMcpIdentity": {
+      "title": "AgentMcpIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        }
+      },
+      "required": ["id"]
+    },
+    "AgentMcpCheckResult": {
+      "title": "AgentMcpCheckResult",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "toolCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["ok"]
+    },
+    "AgentMcpToolsResult": {
+      "title": "AgentMcpToolsResult",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgentMcpTool"
+          },
+          "maxItems": 100
+        }
+      },
+      "required": ["tools"]
+    },
+    "AgentMcpOperationRequest": {
+      "title": "AgentMcpOperationRequest",
+      "type": "object",
+      "description": "外部 MCP 仅申请有限操作；请求必须由 Maa Verge 内的用户审批，requestId 在重试时保持不变。",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requestId", "kind", "deviceId", "planId"],
+          "properties": {
+            "requestId": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "kind": { "const": "plan" },
+            "deviceId": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "planId": { "type": "string", "minLength": 1, "maxLength": 160 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requestId", "kind", "deviceId", "toolKind"],
+          "properties": {
+            "requestId": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "kind": { "const": "tool" },
+            "deviceId": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "toolKind": {
+              "type": "string",
+              "enum": ["depot", "operators", "recruit", "inventory", "data", "games"]
+            },
+            "config": {
+              "type": "object",
+              "maxProperties": 100,
+              "propertyNames": { "maxLength": 160 },
+              "additionalProperties": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requestId", "kind", "deviceId", "copilotKind"],
+          "properties": {
+            "requestId": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "kind": { "const": "copilot" },
+            "deviceId": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "copilotKind": {
+              "type": "string",
+              "enum": ["Copilot", "SSSCopilot", "ParadoxCopilot"]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requestId", "kind", "deviceId", "runId"],
+          "properties": {
+            "requestId": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "kind": { "const": "stop" },
+            "deviceId": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "runId": { "type": "string", "minLength": 1, "maxLength": 160 }
+          }
+        }
+      ]
+    },
+    "AgentMcpServerParams": {
+      "title": "AgentMcpServerParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "showToken": {
+          "type": "boolean"
+        }
+      },
+      "required": ["enabled"]
+    },
+    "AgentMcpServerResult": {
+      "title": "AgentMcpServerResult",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "tokenConfigured": {
+          "type": "boolean"
+        },
+        "token": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": ["enabled", "tokenConfigured"]
+    },
+    "AgentCredentialSetParams": {
+      "title": "AgentCredentialSetParams",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "secret": {
+          "type": "string",
+          "maxLength": 16000,
+          "minLength": 1
+        },
+        "storage": {
+          "type": "string",
+          "enum": ["keychain", "session"]
+        }
+      },
+      "required": ["secret", "storage"]
+    },
+    "AgentContextProjection": {
+      "title": "AgentContextProjection",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "revision", "items", "updatedAt"],
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "$ref": "#/$defs/AgentJsonValue"
+          }
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 16000
+        },
+        "throughMessageId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        }
+      }
+    }
+  }
+}

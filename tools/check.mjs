@@ -21,6 +21,7 @@ const toolTests = [
   'tools/tests/runtime-suite.test.mjs',
 ];
 const contractTests = [
+  'packages/contracts/test/agent.test.mjs',
   'packages/contracts/test/validators.test.mjs',
   'packages/contracts/test/copilot.test.mjs',
   'packages/contracts/test/copilot-attribution.test.mjs',

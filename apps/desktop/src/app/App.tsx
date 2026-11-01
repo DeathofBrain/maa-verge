@@ -35,7 +35,7 @@ import UpdateNotifications, { useComponentDownloads } from '@/features/updates/U
 import ConfirmDialog from '@/kit/ConfirmDialog';
 import ErrorBanner from '@/kit/ErrorBanner';
 import Toast from '@/kit/Toast';
-import AgentPage, { type AgentMessage } from '@/features/agent/AgentPage';
+import AgentPage from '@/features/agent/AgentPage';
 import { AppSidebar, AppTopbar, Brand } from './shell/AppNavigation';
 import RunDock from './shell/RunDock';
 import useAppSnapshot from './model/useAppSnapshot';
@@ -83,8 +83,6 @@ export default function App() {
   const detailRevision = useRef(0);
   const [deleting, setDeleting] = useState<{ plans: Plan[]; batch: boolean } | null>(null);
   const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
-  const [agentQuery, setAgentQuery] = useState('');
   const [historyFilter, setHistoryFilter] = useState('all');
   const [historyQuery, setHistoryQuery] = useState('');
   const [executionSelection, setExecutionSelection] = useState<Run>();
@@ -365,21 +363,6 @@ export default function App() {
       },
       batch ? `已删除 ${plans.length} 张任务表。` : '任务表已删除',
     );
-  };
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || isPending('agent')) return;
-    setAgentQuery('');
-    setMessages((previous) => [...previous, { id: uid(), role: 'user', text: text.trim() }]);
-    await action('agent', async () => {
-      const response = await rpc('agent.message', {
-        message: text.trim(),
-        deviceId: selectedDevice || undefined,
-      });
-      setMessages((previous) => [
-        ...previous,
-        { id: uid(), role: 'assistant', text: response.reply, plan: response.plan },
-      ]);
-    });
   };
   const selectedPlan = snapshot?.plans.find((item) => item.id === selectedPlanId);
   const detailPlan =
@@ -723,11 +706,7 @@ export default function App() {
             {page === 'tools' && <ToolsPage {...supportProps} />}
             {page === 'agent' && (
               <AgentPage
-                messages={messages}
-                sendMessage={sendMessage}
-                agentQuery={agentQuery}
-                setAgentQuery={setAgentQuery}
-                pending={pending}
+                plans={snapshot.plans}
                 onReviewPlan={(plan) => {
                   setProposal(plan);
                   setDetailPlanId(null);

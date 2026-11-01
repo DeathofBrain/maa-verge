@@ -374,6 +374,7 @@ pub struct Runtime {
     pending: Pending,
     next_id: AtomicU64,
     close_preferences: Mutex<ClosePreferences>,
+    credentials: Arc<crate::credentials::Credentials>,
     pub update_gate: RwLock<()>,
     updating: AtomicBool,
     transport_failed: AtomicBool,
@@ -543,6 +544,7 @@ impl Runtime {
             pending,
             next_id: AtomicU64::new(1),
             close_preferences: Mutex::new(ClosePreferences::default()),
+            credentials: Arc::new(crate::credentials::Credentials::default()),
             update_gate: RwLock::new(()),
             updating: AtomicBool::new(false),
             transport_failed: AtomicBool::new(false),
@@ -860,6 +862,7 @@ mod tests {
             pending: Arc::new(Mutex::new(HashMap::new())),
             next_id: AtomicU64::new(1),
             close_preferences: Mutex::new(ClosePreferences::default()),
+            credentials: Arc::new(crate::credentials::Credentials::default()),
             update_gate: RwLock::new(()),
             updating: AtomicBool::new(false),
             transport_failed: AtomicBool::new(false),
@@ -1491,6 +1494,53 @@ pub async fn runtime_request(
     }
     let snapshot = method == "app.snapshot";
     let settings = method == "settings.save";
+    if method.starts_with("model.credential.")
+        || matches!(
+            method.as_str(),
+            "agent.turn.start"
+                | "agent.turn.resume"
+                | "agent.interaction.respond"
+                | "agent.mission.resume"
+        )
+    {
+        // Only this host reads the OS credential store. Public RPC/CLI callers
+        // cannot request a secret; the backend only receives an active-call lease.
+        let snapshot = runtime.request("app.snapshot".into(), json!({})).await?;
+        let raw_model = snapshot["settings"]["model"].clone();
+        let profile = crate::credentials::normalize_model(&raw_model);
+        let root = crate::configuration::data_root()?;
+        let root = dunce::canonicalize(&root).unwrap_or(root);
+        if method.starts_with("model.credential.") {
+            let profile = profile?;
+            let credentials = runtime.credentials.clone();
+            return tauri::async_runtime::spawn_blocking(move || {
+                credentials.handle(&method, &params, &root, &profile)
+            })
+            .await
+            .map_err(|_| "凭据操作未完成，请重试".to_string())?;
+        }
+        let optional = matches!(
+            method.as_str(),
+            "agent.interaction.respond" | "agent.mission.resume"
+        );
+        let profile = match profile {
+            Ok(profile) => profile,
+            Err(_) if optional => raw_model,
+            Err(error) => return Err(error),
+        };
+        let credentials = runtime.credentials.clone();
+        let key_profile = profile.clone();
+        let resolved =
+            tauri::async_runtime::spawn_blocking(move || credentials.resolve(&root, &key_profile))
+                .await
+                .map_err(|_| "凭据读取未完成，请重试".to_string())?;
+        let credential = match resolved {
+            Ok(credential) => credential,
+            Err(_) if optional => None,
+            Err(error) => return Err(error),
+        };
+        return runtime.request("host.agent.request".into(), json!({"method":method,"params":params,"model":profile,"credential":credential.as_deref().map(String::as_str)})).await;
+    }
     let mut result = runtime.request(method, params).await?;
     if settings {
         app.state::<crate::desktop_notifications::DesktopNotifications>()

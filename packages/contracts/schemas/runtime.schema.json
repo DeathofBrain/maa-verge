@@ -14,16 +14,30 @@
         "configurationDirectory"
       ],
       "properties": {
-        "available": { "type": "boolean" },
-        "reason": { "type": "string", "maxLength": 4096 },
-        "application": { "type": "string", "maxLength": 4096 },
+        "available": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "application": {
+          "type": "string",
+          "maxLength": 4096
+        },
         "componentDirectories": {
           "type": "array",
           "minItems": 2,
           "maxItems": 2,
-          "items": { "type": "string", "maxLength": 4096 }
+          "items": {
+            "type": "string",
+            "maxLength": 4096
+          }
         },
-        "configurationDirectory": { "type": "string", "maxLength": 4096 }
+        "configurationDirectory": {
+          "type": "string",
+          "maxLength": 4096
+        }
       }
     },
     "Budgets": {
@@ -285,6 +299,31 @@
           "default": "",
           "title": "Model",
           "type": "string"
+        },
+        "softCallReminder": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "softTokenReminder": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "softCostReminder": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "inputPricePerMillion": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "outputPricePerMillion": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
         }
       },
       "required": ["provider", "baseUrl", "model"],
@@ -328,7 +367,11 @@
         },
         "deviceIds": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
           "uniqueItems": true,
           "maxItems": 100,
           "description": "任务表绑定的设备列表；一台设备可被多张表绑定。空数组表示不预绑定，执行时选择设备。字段缺省时沿用旧版 deviceId。"
@@ -727,7 +770,9 @@
       "additionalProperties": false,
       "required": ["mode", "url"],
       "properties": {
-        "mode": { "enum": ["auto", "manual", "direct"] },
+        "mode": {
+          "enum": ["auto", "manual", "direct"]
+        },
         "url": {
           "type": "string",
           "maxLength": 4096,
@@ -740,7 +785,10 @@
       "additionalProperties": false,
       "required": ["enabled", "cdk"],
       "properties": {
-        "enabled": { "type": "boolean", "default": true },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
         "cdk": {
           "type": "string",
           "maxLength": 256,
@@ -771,11 +819,26 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "enabled": { "type": "boolean", "default": true },
-        "runResults": { "type": "boolean", "default": true },
-        "deviceErrors": { "type": "boolean", "default": true },
-        "updates": { "type": "boolean", "default": true },
-        "schedules": { "type": "boolean", "default": true }
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "runResults": {
+          "type": "boolean",
+          "default": true
+        },
+        "deviceErrors": {
+          "type": "boolean",
+          "default": true
+        },
+        "updates": {
+          "type": "boolean",
+          "default": true
+        },
+        "schedules": {
+          "type": "boolean",
+          "default": true
+        }
       },
       "required": ["enabled", "runResults", "deviceErrors", "updates", "schedules"]
     },

@@ -1,4 +1,5 @@
 export * from './types';
+export * from './agent-types';
 export {
   normalizeDeviceAddress,
   deviceAddressIdentity,

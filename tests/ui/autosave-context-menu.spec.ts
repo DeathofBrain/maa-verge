@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { Snapshot } from '../../packages/contracts/src/types';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { installAgentScenario } from './fixtures/agent-workspace';
 import {
   closeTaskDetail as closeDetail,
   navigate as nav,
@@ -274,7 +275,9 @@ test('new task tables automatically become saved task list entries', async ({ pa
 test('cancelled tables and unconfirmed Agent proposals do not automatically persist', async ({
   page,
 }) => {
-  await openFarm(page);
+  await installAgentScenario(page, { reviewablePlan: true });
+  await nav(page, '任务');
+  await page.getByRole('button', { name: '查看任务表详情固源岩补给', exact: true }).click();
   await page.clock.install();
   const before = (await snapshot(page)).plans.map((p) => p.id);
   await closeDetail(page);
@@ -289,7 +292,8 @@ test('cancelled tables and unconfirmed Agent proposals do not automatically pers
     .locator('.sidebar')
     .getByRole('button', { name: /^Agent 助手/ })
     .click();
-  await page.getByRole('button', { name: '制定刷 6 次 1-7 的计划', exact: true }).click();
+  await page.getByLabel('给 Agent 的消息').fill('制定刷 6 次 1-7 的计划');
+  await page.getByRole('button', { name: '发送消息', exact: true }).click();
   await page.getByRole('button', { name: '检查并保存计划', exact: true }).click();
   await page.clock.runFor(1000);
   await expect(wb(page).locator('.wb-save-state')).toHaveText('待确认保存');

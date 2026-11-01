@@ -54,7 +54,10 @@ function add(record) {
 }
 
 const schemas = new Map(
-  [rpcFile, runtimeFile].map((file) => [file, JSON.parse(source(file).text)]),
+  [rpcFile, runtimeFile, 'packages/contracts/schemas/agent.schema.json'].map((file) => [
+    file,
+    JSON.parse(source(file).text),
+  ]),
 );
 function resolve(file, pointer) {
   if (!schemas.has(file) || !pointer.startsWith('#'))
