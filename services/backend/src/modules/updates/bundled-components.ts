@@ -2,27 +2,20 @@
 import { constants } from 'node:fs';
 import { copyFile, lstat, mkdir, readFile, readdir, realpath, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { releaseVersion } from '@backend/shared/release-version';
 import {
   snapshotIntegrity,
   type SnapshotIntegrity,
 } from '@backend/infrastructure/filesystem/snapshot-integrity';
 import { validResourceTimestamp } from './mirrorchyan';
 
-export interface BundledCore {
-  version: string;
-  directory: 'core';
-  installedHash: string;
-}
 export interface BundledResource {
   version: string;
-  coreVersion: string;
+  baseResourceVersion?: string;
   directory: 'resource';
   installedHash: string;
 }
 export interface BundledComponents {
-  formatVersion: 1;
-  core?: BundledCore;
+  formatVersion: 2;
   resource?: BundledResource;
 }
 export type BundledProgress = {
@@ -32,11 +25,10 @@ export type BundledProgress = {
 };
 export interface LocalComponentSnapshot {
   version: string;
-  coreVersion?: string;
+  baseResourceVersion?: string;
   installedHash: string;
   path: string;
   validatedAt?: string;
-  releaseChannel?: 'stable' | 'preview';
 }
 
 const invalid = () => new Error('随附组件清单无效，请重新下载安装包');
@@ -44,8 +36,6 @@ const record = (value: unknown): value is Record<string, unknown> =>
   Boolean(value && typeof value === 'object' && !Array.isArray(value));
 const digest = (value: unknown): value is string =>
   typeof value === 'string' && value.length === 64 && /^[a-f0-9]{64}$/.test(value);
-const version = (value: unknown): value is string =>
-  typeof value === 'string' && !/[\r\n]/.test(value) && Boolean(releaseVersion(value));
 const resourceVersion = (value: unknown): value is string =>
   typeof value === 'string' &&
   (/^[a-f0-9]{40}$/.test(value) ||
@@ -56,7 +46,7 @@ const pathKey = (value: string) => (process.platform === 'win32' ? value.toLower
 /** Discover completed payloads without trusting a saved absolute installation path. */
 export async function readLocalComponentSnapshots(
   directory: string,
-  channel: 'core' | 'resource',
+  channel: 'resource',
 ): Promise<LocalComponentSnapshot[]> {
   const parent = path.resolve(directory, 'generations');
   try {
@@ -91,23 +81,16 @@ export async function readLocalComponentSnapshots(
       )
         continue;
       const value: unknown = JSON.parse(await readFile(filename, 'utf8'));
-      if (
-        !record(value) ||
-        !digest(value.installedHash) ||
-        (channel === 'core'
-          ? !version(value.version)
-          : !resourceVersion(value.version) || !version(value.coreVersion))
-      )
+      if (!record(value) || !digest(value.installedHash) || !resourceVersion(value.version))
         continue;
       snapshots.push({
         version: value.version as string,
-        ...(channel === 'resource' ? { coreVersion: value.coreVersion as string } : {}),
+        ...(typeof value.baseResourceVersion === 'string'
+          ? { baseResourceVersion: value.baseResourceVersion }
+          : {}),
         installedHash: value.installedHash,
         path: candidate,
         ...(typeof value.validatedAt === 'string' ? { validatedAt: value.validatedAt } : {}),
-        ...(value.releaseChannel === 'stable' || value.releaseChannel === 'preview'
-          ? { releaseChannel: value.releaseChannel }
-          : {}),
       });
     } catch {
       /* Damaged or foreign generations never authorize adoption. */
@@ -161,23 +144,8 @@ export async function readBundledComponents(
   } catch {
     throw invalid();
   }
-  if (!record(value) || value.formatVersion !== 1) throw invalid();
-  const result: BundledComponents = { formatVersion: 1 };
-  if (value.core !== undefined) {
-    const core = value.core;
-    if (
-      !record(core) ||
-      !version(core.version) ||
-      core.directory !== 'core' ||
-      !digest(core.installedHash)
-    )
-      throw invalid();
-    result.core = {
-      version: core.version,
-      directory: 'core',
-      installedHash: core.installedHash,
-    };
-  }
+  if (!record(value) || value.formatVersion !== 2) throw invalid();
+  const result: BundledComponents = { formatVersion: 2 };
   if (value.resource !== undefined) {
     const resource = value.resource;
     if (
@@ -185,14 +153,15 @@ export async function readBundledComponents(
       typeof resource.version !== 'string' ||
       resource.version.length !== 40 ||
       !/^[a-f0-9]{40}$/.test(resource.version) ||
-      !version(resource.coreVersion) ||
       resource.directory !== 'resource' ||
       !digest(resource.installedHash)
     )
       throw invalid();
     result.resource = {
       version: resource.version,
-      coreVersion: resource.coreVersion,
+      ...(typeof resource.baseResourceVersion === 'string'
+        ? { baseResourceVersion: resource.baseResourceVersion }
+        : {}),
       directory: 'resource',
       installedHash: resource.installedHash,
     };
@@ -201,10 +170,7 @@ export async function readBundledComponents(
 }
 
 /** A missing payload is a normal unchecked NSIS component. Links are never adopted. */
-export async function hasBundledPayload(
-  directory: string,
-  component: BundledCore | BundledResource,
-) {
+export async function hasBundledPayload(directory: string, component: BundledResource) {
   const info = await lstat(path.join(directory, component.directory)).catch(
     (error: NodeJS.ErrnoException) => {
       if (error.code === 'ENOENT') return undefined;
@@ -218,7 +184,7 @@ export async function hasBundledPayload(
 
 export async function copyBundledPayload(
   directory: string,
-  component: BundledCore | BundledResource,
+  component: BundledResource,
   destination: string,
   progress?: (value: BundledProgress) => void,
 ): Promise<SnapshotIntegrity> {

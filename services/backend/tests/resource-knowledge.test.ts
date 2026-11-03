@@ -113,7 +113,7 @@ describe('resource knowledge extraction', () => {
     const combo = pack(),
       result = await buildResourceKnowledge(combo, 'Official');
     expect(result.parserVersion).toBe(resourceKnowledgeParserVersion);
-    expect(result.coreVersion).toBe('v6.20.0');
+    expect(result.coreVersion).toBeNull();
     expect(result.resourceVersion).toBe('synthetic-resource-1');
     expect(result.sources).toHaveLength(5);
     expect(result.sources.every((source) => source.status === 'available')).toBe(true);
@@ -299,7 +299,7 @@ describe('resource knowledge extraction', () => {
     );
     changedCombo.core.version = 'v6.21.0';
     const nextCore = await buildResourceKnowledge(changedCombo, 'Official', changed);
-    expect(nextCore.fingerprint).not.toBe(changed.fingerprint);
+    expect(nextCore.fingerprint).toBe(changed.fingerprint);
     expect(record(nextCore, 'item:30012')).toBe(record(changed, 'item:30012'));
     changedCombo.resource.version = 'synthetic-resource-2';
     expect((await buildResourceKnowledge(changedCombo, 'Official', nextCore)).fingerprint).not.toBe(

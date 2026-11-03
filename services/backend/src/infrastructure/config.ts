@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
-export type ComponentPaths = { core: string; resource: string };
+export type ComponentPaths = { resource: string; framework?: string };
 export type ComponentPathEnvironment = {
   platform?: NodeJS.Platform;
   homeDirectory?: string;
@@ -11,7 +11,7 @@ export function defaultComponentPaths(
   root: string,
   applicationDirectory?: string,
   environment: ComponentPathEnvironment = {},
-): ComponentPaths {
+): Required<ComponentPaths> {
   const directory =
     applicationDirectory && (environment.platform ?? process.platform) === 'darwin'
       ? path.join(
@@ -23,12 +23,12 @@ export function defaultComponentPaths(
       : applicationDirectory;
   return directory
     ? {
-        core: path.resolve(directory, 'MaaCore'),
         resource: path.resolve(directory, 'MaaResource'),
+        framework: path.resolve(directory, 'MaaFramework'),
       }
     : {
-        core: path.resolve(root, 'components', 'core'),
         resource: path.resolve(root, 'components', 'resource'),
+        framework: path.resolve(root, 'components', 'framework'),
       };
 }
 export function defaultCopilotDirectory(root: string, applicationDirectory?: string): string {

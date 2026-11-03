@@ -34,7 +34,7 @@ function componentFixture(
         checks.push(`${channel}:${source}`);
         await options.beforeCheck?.(checks.length);
         return {
-          version: channel === 'core' ? 'v6.20.1' : 'synthetic-resource-version',
+          version: 'a'.repeat(40),
           name: `${channel}.zip`,
           source,
         };
@@ -47,7 +47,7 @@ function componentFixture(
       ...(options.officialFallback
         ? {
             fallback: async (channel: string) => ({
-              version: channel === 'core' ? 'v6.20.1' : 'synthetic-resource-version',
+              version: 'a'.repeat(40),
               name: `${channel}.zip`,
               source: 'GitHub',
             }),
@@ -97,7 +97,7 @@ test('MirrorChyan credentials survive legacy settings saves and restart, but sta
   }
 });
 
-for (const channel of ['core', 'resource'] as const) {
+for (const channel of ['resource'] as const) {
   test(`${channel} prepare reselects an official candidate after saving Mirror credentials`, async () => {
     const fixture = componentFixture();
     try {
@@ -108,7 +108,7 @@ for (const channel of ['core', 'resource'] as const) {
       expect(fixture.checks).toEqual([`${channel}:GitHub`]);
       expect(fixture.downloads).toEqual([]);
       expect(fixture.runtime.store.get('update_metadata', channel)).toBeUndefined();
-      await expect(fixture.runtime.updates.prepare(channel)).rejects.toThrow('准备更新失败');
+      await expect(fixture.runtime.updates.prepare(channel)).rejects.toThrow('准备资源失败');
       expect(fixture.checks).toEqual([`${channel}:GitHub`, `${channel}:MirrorChyan`]);
       expect(fixture.downloads).toEqual(['MirrorChyan']);
     } finally {
@@ -121,16 +121,16 @@ test('retry keeps the selected official fallback after both Mirror and official 
   const fixture = componentFixture({ officialFallback: true });
   try {
     await fixture.save({ enabled: true, cdk: 'synthetic-private-cdk' });
-    await fixture.runtime.updates.check('core');
-    await expect(fixture.runtime.updates.prepare('core')).rejects.toThrow('准备更新失败');
+    await fixture.runtime.updates.check('resource');
+    await expect(fixture.runtime.updates.prepare('resource')).rejects.toThrow('准备资源失败');
     expect(fixture.downloads).toEqual(['MirrorChyan', 'GitHub']);
-    const fallback = fixture.runtime.store.get('update_metadata', 'core');
+    const fallback = fixture.runtime.store.get('update_metadata', 'resource');
     expect(fallback.source).toBe('GitHub');
     expect(fallback.mirrorSettingsRevision).toBe(
       fixture.runtime.store.get('meta', 'mirror_settings_revision'),
     );
-    await expect(fixture.runtime.updates.prepare('core')).rejects.toThrow('准备更新失败');
-    expect(fixture.checks).toEqual(['core:MirrorChyan']);
+    await expect(fixture.runtime.updates.prepare('resource')).rejects.toThrow('准备资源失败');
+    expect(fixture.checks).toEqual(['resource:MirrorChyan']);
     expect(fixture.downloads).toEqual(['MirrorChyan', 'GitHub', 'GitHub']);
   } finally {
     await fixture.close();
@@ -140,20 +140,20 @@ test('retry keeps the selected official fallback after both Mirror and official 
 test('legacy official candidate without a revision reselects Mirror with previously saved credentials', async () => {
   const fixture = componentFixture();
   try {
-    await fixture.runtime.updates.check('core');
+    await fixture.runtime.updates.check('resource');
     const { mirrorSettingsRevision: omitted, ...legacy } = fixture.runtime.store.get(
       'update_metadata',
-      'core',
+      'resource',
     );
-    fixture.runtime.store.put('update_metadata', 'core', legacy);
+    fixture.runtime.store.put('update_metadata', 'resource', legacy);
     // Simulate settings and metadata saved before source revisions existed.
     fixture.runtime.store.put('settings', 'main', {
       ...fixture.runtime.snapshot().settings,
       mirrorChyan: { enabled: true, cdk: 'synthetic-private-cdk' },
     });
     fixture.runtime.store.put('meta', 'mirror_settings_revision', 0);
-    await expect(fixture.runtime.updates.prepare('core')).rejects.toThrow('准备更新失败');
-    expect(fixture.checks).toEqual(['core:GitHub', 'core:MirrorChyan']);
+    await expect(fixture.runtime.updates.prepare('resource')).rejects.toThrow('准备资源失败');
+    expect(fixture.checks).toEqual(['resource:GitHub', 'resource:MirrorChyan']);
     expect(fixture.downloads).toEqual(['MirrorChyan']);
   } finally {
     await fixture.close();
@@ -164,15 +164,15 @@ test('disabling Mirror invalidates a pending mirror candidate while unchanged cr
   const fixture = componentFixture();
   try {
     await fixture.save({ enabled: true, cdk: 'synthetic-private-cdk' });
-    await fixture.runtime.updates.check('core');
-    const metadata = fixture.runtime.store.get('update_metadata', 'core');
+    await fixture.runtime.updates.check('resource');
+    const metadata = fixture.runtime.store.get('update_metadata', 'resource');
     await fixture.save({ enabled: true, cdk: '  synthetic-private-cdk  ' });
-    expect(fixture.runtime.store.get('update_metadata', 'core')).toEqual(metadata);
+    expect(fixture.runtime.store.get('update_metadata', 'resource')).toEqual(metadata);
     await fixture.save({ enabled: false, cdk: 'synthetic-private-cdk' });
-    expect(fixture.checks).toEqual(['core:MirrorChyan']);
-    expect(fixture.runtime.store.get('update_metadata', 'core')).toBeUndefined();
-    await expect(fixture.runtime.updates.prepare('core')).rejects.toThrow('准备更新失败');
-    expect(fixture.checks).toEqual(['core:MirrorChyan', 'core:GitHub']);
+    expect(fixture.checks).toEqual(['resource:MirrorChyan']);
+    expect(fixture.runtime.store.get('update_metadata', 'resource')).toBeUndefined();
+    await expect(fixture.runtime.updates.prepare('resource')).rejects.toThrow('准备资源失败');
+    expect(fixture.checks).toEqual(['resource:MirrorChyan', 'resource:GitHub']);
     expect(fixture.downloads).toEqual(['GitHub']);
   } finally {
     await fixture.close();
@@ -190,15 +190,15 @@ test('a check already in flight reselects the source after Mirror credentials ch
       }
     },
   });
-  const checking = fixture.runtime.updates.check('core');
+  const checking = fixture.runtime.updates.check('resource');
   try {
     await started.promise;
     await fixture.save({ enabled: true, cdk: 'synthetic-private-cdk' });
-    expect(fixture.checks).toEqual(['core:GitHub']);
+    expect(fixture.checks).toEqual(['resource:GitHub']);
     release.resolve();
     await checking;
-    expect(fixture.checks).toEqual(['core:GitHub', 'core:MirrorChyan']);
-    await expect(fixture.runtime.updates.prepare('core')).rejects.toThrow('准备更新失败');
+    expect(fixture.checks).toEqual(['resource:GitHub', 'resource:MirrorChyan']);
+    await expect(fixture.runtime.updates.prepare('resource')).rejects.toThrow('准备资源失败');
     expect(fixture.downloads).toEqual(['MirrorChyan']);
   } finally {
     release.resolve();
@@ -216,23 +216,23 @@ test('Mirror credentials save immediately, preserve the active transfer and rese
       await release.promise;
     },
   });
-  await fixture.runtime.updates.check('core');
-  const downloading = fixture.runtime.updates.prepare('core').catch(() => {});
+  await fixture.runtime.updates.check('resource');
+  const downloading = fixture.runtime.updates.prepare('resource').catch(() => {});
   try {
     await started.promise;
-    const metadata = fixture.runtime.store.get('update_metadata', 'core');
+    const metadata = fixture.runtime.store.get('update_metadata', 'resource');
     const saved = fixture.save({ enabled: true, cdk: 'synthetic-private-cdk' });
     expect(await Promise.race([saved.then(() => true), Bun.sleep(100).then(() => false)])).toBe(
       true,
     );
-    expect(fixture.runtime.updates.channel('core').status).toBe('downloading');
-    expect(fixture.runtime.store.get('update_metadata', 'core')).toEqual(metadata);
-    expect(fixture.checks).toEqual(['core:GitHub']);
+    expect(fixture.runtime.updates.channel('resource').status).toBe('downloading');
+    expect(fixture.runtime.store.get('update_metadata', 'resource')).toEqual(metadata);
+    expect(fixture.checks).toEqual(['resource:GitHub']);
     expect(fixture.downloads).toEqual(['GitHub']);
     release.resolve();
     await downloading;
-    await expect(fixture.runtime.updates.prepare('core')).rejects.toThrow('准备更新失败');
-    expect(fixture.checks).toEqual(['core:GitHub', 'core:MirrorChyan']);
+    await expect(fixture.runtime.updates.prepare('resource')).rejects.toThrow('准备资源失败');
+    expect(fixture.checks).toEqual(['resource:GitHub', 'resource:MirrorChyan']);
     expect(fixture.downloads).toEqual(['GitHub', 'MirrorChyan']);
   } finally {
     release.resolve();
@@ -245,19 +245,19 @@ for (const status of ['staged', 'waiting_idle']) {
   test(`Mirror credentials changes preserve a ${status} component and its candidate metadata`, async () => {
     const fixture = componentFixture();
     try {
-      await fixture.runtime.updates.check('core');
-      const metadata = fixture.runtime.store.get('update_metadata', 'core');
+      await fixture.runtime.updates.check('resource');
+      const metadata = fixture.runtime.store.get('update_metadata', 'resource');
       const candidate = { version: metadata.version, path: 'synthetic-immutable-generation' };
-      fixture.runtime.store.put('staged', 'core', candidate);
-      fixture.runtime.store.put('update', 'core', {
-        ...fixture.runtime.updates.channel('core'),
+      fixture.runtime.store.put('staged', 'resource', candidate);
+      fixture.runtime.store.put('update', 'resource', {
+        ...fixture.runtime.updates.channel('resource'),
         status,
       });
       await fixture.save({ enabled: true, cdk: 'synthetic-private-cdk' });
-      expect(fixture.runtime.store.get('staged', 'core')).toEqual(candidate);
-      expect(fixture.runtime.store.get('update_metadata', 'core')).toEqual(metadata);
-      expect(fixture.runtime.updates.channel('core').status).toBe(status);
-      expect(fixture.checks).toEqual(['core:GitHub']);
+      expect(fixture.runtime.store.get('staged', 'resource')).toEqual(candidate);
+      expect(fixture.runtime.store.get('update_metadata', 'resource')).toEqual(metadata);
+      expect(fixture.runtime.updates.channel('resource').status).toBe(status);
+      expect(fixture.checks).toEqual(['resource:GitHub']);
       expect(fixture.downloads).toEqual([]);
     } finally {
       await fixture.close();

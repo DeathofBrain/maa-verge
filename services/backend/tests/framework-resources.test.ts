@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { link, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { link, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
@@ -36,6 +36,124 @@ async function fixture(run: (root: string, source: string, destination: string) 
   }
 }
 describe('immutable framework resource views', () => {
+  test('loads an active generation resource subtree and preserves both source and license roots', () =>
+    fixture(async (root, source, destination) => {
+      const generation = path.join(root, 'generation');
+      const resource = path.join(generation, 'resource');
+      await mkdir(generation);
+      await rename(source, resource);
+      await write(generation, 'LICENSE.md', 'generation license');
+      const view = await prepareFrameworkResources({
+        source: generation,
+        destination,
+        clientType: 'Bilibili',
+        frameworkVersion,
+        validate: async (directory) => {
+          expect(await readFile(path.join(directory, 'image/Ready.png'))).toEqual(png);
+          expect(await readFile(path.join(directory, 'model/ocr/rec.onnx'), 'utf8')).toBe(
+            'base recognizer',
+          );
+          return { ocrAvailable: true };
+        },
+      });
+      expect(view.ocrAvailable).toBe(true);
+      expect(view.sourcePaths).toEqual([generation, resource]);
+      const manifest = JSON.parse(await readFile(path.join(view.path, 'manifest.json'), 'utf8'));
+      expect(manifest.license.inheritedFrom).toEqual([generation, resource]);
+      expect(manifest.license.noticeFiles).toEqual([
+        path.join(generation, 'LICENSE.md'),
+        path.join(resource, 'LICENSE.md'),
+      ]);
+      expect(manifest.sources).toContainEqual(
+        expect.objectContaining({ source: path.join(resource, 'template/Ready.png') }),
+      );
+      expect(await readFile(path.join(view.path, 'licenses/generation/LICENSE.md'), 'utf8')).toBe(
+        'generation license',
+      );
+      expect(await readFile(path.join(view.path, 'licenses/LICENSE.md'), 'utf8')).toBe(
+        'source resource license',
+      );
+    }));
+  test('selects international overlays inside the active generation resource subtree', () =>
+    fixture(async (root, source, destination) => {
+      const generation = path.join(root, 'generation');
+      const resource = path.join(generation, 'resource');
+      const overlay = path.join(resource, 'global/YoStarJP/resource');
+      await mkdir(generation);
+      await rename(source, resource);
+      await write(overlay, 'PaddleOCR/rec/inference.onnx', 'JP recognizer');
+      await write(overlay, 'PaddleOCR/rec/keys.txt', 'JP dictionary');
+      await write(overlay, 'template/Localized.png', png);
+      const view = await prepareFrameworkResources({
+        source: generation,
+        destination,
+        clientType: 'YoStarJP',
+        frameworkVersion,
+        validate: async (directory) => {
+          expect(await readFile(path.join(directory, 'model/ocr/det.onnx'), 'utf8')).toBe(
+            'base detector',
+          );
+          expect(await readFile(path.join(directory, 'model/ocr/rec.onnx'), 'utf8')).toBe(
+            'JP recognizer',
+          );
+          expect(await readFile(path.join(directory, 'model/ocr/keys.txt'), 'utf8')).toBe(
+            'JP dictionary',
+          );
+          return { ocrAvailable: true };
+        },
+      });
+      expect(view.sourcePaths).toEqual([generation, resource, overlay]);
+      expect(view.templates['Localized.png']).toBe('image/Localized.png');
+    }));
+  test('rejects a linked generation resource subtree before validation', () =>
+    fixture(async (root, source, destination) => {
+      const generation = path.join(root, 'generation');
+      await mkdir(generation);
+      try {
+        await symlink(source, path.join(generation, 'resource'), 'dir');
+      } catch (error) {
+        if (
+          process.platform === 'win32' &&
+          ['EPERM', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')
+        )
+          return;
+        throw error;
+      }
+      let validated = false;
+      await expect(
+        prepareFrameworkResources({
+          source: generation,
+          destination,
+          clientType: 'Official',
+          frameworkVersion,
+          validate: async () => {
+            validated = true;
+            return { ocrAvailable: true };
+          },
+        }),
+      ).rejects.toThrow('链接');
+      expect(validated).toBe(false);
+    }));
+  test('an empty source cannot publish an unloadable view through a permissive validator', () =>
+    fixture(async (root, _source, destination) => {
+      const empty = path.join(root, 'empty');
+      await mkdir(empty);
+      let validated = false;
+      await expect(
+        prepareFrameworkResources({
+          source: empty,
+          destination,
+          clientType: 'Official',
+          frameworkVersion,
+          validate: async () => {
+            validated = true;
+            return { ocrAvailable: true };
+          },
+        }),
+      ).rejects.toThrow('缺少可加载');
+      expect(validated).toBe(false);
+      expect(await readdir(destination)).toEqual([]);
+    }));
   test('shares original OCR bytes and registered images with provenance', () =>
     fixture(async (_root, source, destination) => {
       let probed = false;
@@ -384,7 +502,7 @@ describe('immutable framework resource views', () => {
       expect(await readdir(destination)).toHaveLength(1);
     }));
 });
-test('SDK resolution validates packaged or development pinned payload and rejects tampering', () =>
+test('SDK resolution requires explicit development opt-in and rejects tampering', () =>
   fixture(async (root) => {
     const sdk = path.join(root, '.tools/maafw', frameworkVersion, 'macos-arm64');
     await write(sdk, 'bin/libMaaFramework.dylib', 'synthetic native');
@@ -413,16 +531,36 @@ test('SDK resolution validates packaged or development pinned payload and reject
         files,
       }),
     );
+    await expect(
+      resolveFrameworkSdk({ checkoutRoot: root, platform: 'darwin', arch: 'arm64' }),
+    ).rejects.toThrow('尚未安装');
     expect(
-      (await resolveFrameworkSdk({ checkoutRoot: root, platform: 'darwin', arch: 'arm64' })).path,
+      (
+        await resolveFrameworkSdk({
+          checkoutRoot: root,
+          platform: 'darwin',
+          arch: 'arm64',
+          allowDevelopmentSdk: true,
+        })
+      ).path,
     ).toBe(sdk);
     await write(sdk, 'share/MaaAgentBinary/LICENSE', 'changed dependency');
     await expect(
-      resolveFrameworkSdk({ checkoutRoot: root, platform: 'darwin', arch: 'arm64' }),
+      resolveFrameworkSdk({
+        checkoutRoot: root,
+        platform: 'darwin',
+        arch: 'arm64',
+        allowDevelopmentSdk: true,
+      }),
     ).rejects.toThrow('完整性');
     await write(sdk, 'share/MaaAgentBinary/LICENSE', 'agent license');
     await write(sdk, 'bin/libMaaFramework.dylib', 'tampered');
     await expect(
-      resolveFrameworkSdk({ checkoutRoot: root, platform: 'darwin', arch: 'arm64' }),
+      resolveFrameworkSdk({
+        checkoutRoot: root,
+        platform: 'darwin',
+        arch: 'arm64',
+        allowDevelopmentSdk: true,
+      }),
     ).rejects.toThrow('完整性');
   }));

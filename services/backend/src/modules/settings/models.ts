@@ -33,12 +33,30 @@ export const defaultConnection = () => ({
   adbLite: false,
   clientType: 'Official' as const,
 });
+export const defaultFrameworkConnection = () => ({
+  touchMode: 'maatouch' as const,
+  capture: { method: 'auto' as const, emulatorPath: '', instanceIndex: 0 },
+});
 function record(value: any): value is Record<string, any> {
   return (
     value !== null &&
     typeof value === 'object' &&
     [Object.prototype, null].includes(Object.getPrototypeOf(value))
   );
+}
+function frameworkConnection(value: any): any {
+  if (!record(value)) return value;
+  const defaults = defaultFrameworkConnection();
+  const result: Record<string, any> = { ...defaults, ...value };
+  if (record(value.capture)) result.capture = { ...defaults.capture, ...value.capture };
+  if (typeof result.capture?.emulatorPath === 'string')
+    result.capture = { ...result.capture, emulatorPath: result.capture.emulatorPath.trim() };
+  if (record(value.touchExtras)) {
+    result.touchExtras = { emulatorPath: '', instanceIndex: 0, ...value.touchExtras };
+    if (typeof result.touchExtras.emulatorPath === 'string')
+      result.touchExtras.emulatorPath = result.touchExtras.emulatorPath.trim();
+  }
+  return result;
 }
 // Preserve the Python model's documented scalar coercions at the RPC boundary;
 // task params remain untouched and are checked strictly by task-policy.ts.
@@ -100,15 +118,61 @@ export function parsePlan(input: any): Plan {
     deviceId: deviceIds[0] ?? null,
   } as Plan;
 }
+/** 旧核心偏好退出运行配置；截图与输入分别迁入 Framework，已有明确设置优先。 */
+export function migrateLegacySettings(input: Record<string, any>): Record<string, any> {
+  const result = { ...input };
+  delete result.autoUpdateCore;
+  delete result.coreUpdateChannel;
+  delete result.componentDownload;
+  if (record(result.componentPaths)) {
+    result.componentPaths = { ...result.componentPaths };
+    delete result.componentPaths.core;
+  }
+  const connection = (value: any, capture: any) => {
+    if (!record(value)) return value;
+    const next = { ...value };
+    if (next.framework === undefined) {
+      const touchMode = ['maatouch', 'minitouch', 'adb'].includes(next.touchMode)
+        ? next.touchMode
+        : 'maatouch';
+      next.framework = {
+        touchMode,
+        capture: {
+          ...defaultFrameworkConnection().capture,
+          ...(record(capture)
+            ? {
+                method: capture.autoDetect === false ? capture.method : 'auto',
+                emulatorPath: capture.emulatorPath ?? '',
+                instanceIndex: capture.instanceIndex ?? 0,
+              }
+            : {}),
+        },
+      };
+    }
+    if (next.touchMode === 'MaaFwAdb') next.touchMode = next.framework.touchMode;
+    return next;
+  };
+  result.connection = connection(
+    result.connection === undefined ? defaultConnection() : result.connection,
+    result.capture,
+  );
+  if (Array.isArray(result.deviceProfiles))
+    result.deviceProfiles = result.deviceProfiles.map((profile: any) =>
+      record(profile)
+        ? { ...profile, connection: connection(profile.connection, profile.capture) }
+        : profile,
+    );
+  return result;
+}
 export function parseSettings(input: any = {}): Settings {
   if (!record(input)) throw new RpcError(-32602, '请求参数无效');
+  input = migrateLegacySettings(input);
   const value = {
     autoConnect: true,
     autoUpdateApp: true,
     appUpdateChannel: 'preview',
-    coreUpdateChannel: 'stable',
-    autoUpdateCore: true,
     autoUpdateResource: true,
+    autoUpdateFramework: true,
     minimizeToTray: true,
     rememberCloseAction: false,
     theme: 'system',
@@ -137,6 +201,9 @@ export function parseSettings(input: any = {}): Settings {
             ? {
                 ...defaultConnection(),
                 ...input.connection,
+                ...(Object.hasOwn(input.connection, 'framework')
+                  ? { framework: frameworkConnection(input.connection.framework) }
+                  : {}),
                 ...(typeof input.connection.address === 'string'
                   ? { address: normalizeDeviceAddress(input.connection.address) }
                   : {}),
@@ -160,6 +227,9 @@ export function parseSettings(input: any = {}): Settings {
                         ? {
                             ...defaultConnection(),
                             ...profile.connection,
+                            ...(Object.hasOwn(profile.connection, 'framework')
+                              ? { framework: frameworkConnection(profile.connection.framework) }
+                              : {}),
                             address:
                               typeof profile.address === 'string'
                                 ? normalizeDeviceAddress(profile.address.trim())
@@ -185,14 +255,14 @@ export function parseSettings(input: any = {}): Settings {
   for (const key of [
     'autoConnect',
     'autoUpdateApp',
-    'autoUpdateCore',
     'autoUpdateResource',
+    'autoUpdateFramework',
     'minimizeToTray',
     'rememberCloseAction',
   ] as const)
     value[key] = boolean(value[key]);
   if (!validateSettings(value)) throw new RpcError(-32602, '请求参数无效', validateSettings.errors);
-  value.mirrorChyan.cdk = value.mirrorChyan.cdk.trim();
+  if (value.mirrorChyan) value.mirrorChyan.cdk = value.mirrorChyan.cdk.trim();
   if (value.downloadProxy) {
     const proxy = { ...value.downloadProxy, url: value.downloadProxy.url.trim() };
     if (proxy.mode === 'manual') {
@@ -222,8 +292,10 @@ export function parseSettings(input: any = {}): Settings {
   if (value.componentPaths) {
     try {
       value.componentPaths = {
-        core: normalizeComponentPath(value.componentPaths.core),
         resource: normalizeComponentPath(value.componentPaths.resource),
+        ...(value.componentPaths.framework === undefined
+          ? {}
+          : { framework: normalizeComponentPath(value.componentPaths.framework) }),
       };
     } catch (error) {
       throw new RpcError(-32602, error instanceof Error ? error.message : String(error));

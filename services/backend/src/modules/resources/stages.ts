@@ -87,33 +87,10 @@ function version(value: unknown): { numbers: number[]; pre: string[] } | undefin
   if (pre.some((part) => /^0\d+$/.test(part))) return;
   return { numbers, pre };
 }
-function meetsVersion(
-  current: ReturnType<typeof version>,
-  required: NonNullable<ReturnType<typeof version>>,
-): boolean {
-  if (!current) return false;
-  for (let i = 0; i < 3; i++)
-    if (current.numbers[i] !== required.numbers[i]) return current.numbers[i] > required.numbers[i];
-  if (!required.pre.length) return !current.pre.length;
-  if (!current.pre.length) return true;
-  for (let i = 0; i < Math.max(current.pre.length, required.pre.length); i++) {
-    const a = current.pre[i],
-      b = required.pre[i];
-    if (a === b) continue;
-    if (a === undefined || b === undefined) return b === undefined;
-    const numericA = /^\d+$/.test(a),
-      numericB = /^\d+$/.test(b);
-    if (numericA !== numericB) return !numericA;
-    return numericA ? (a.length !== b.length ? a.length > b.length : a > b) : a > b;
-  }
-  return true;
-}
-
 function parseCalendar(
   client: ObjectValue,
   clientType: ClientType,
   at: number,
-  coreVersion: string | undefined,
   diagnostics: string[],
   source: Activity['source'] = 'activity-metadata',
 ) {
@@ -171,13 +148,14 @@ function parseCalendar(
           diagnostics.push(`关卡 ${value} 的最低核心版本无效`);
           continue;
         }
-        const supported = !required || meetsVersion(version(coreVersion), required),
+        // 最低 MaaCore 版本仅是上游历史元数据；活动导航尚未迁移，不能与 Framework 版本比较。
+        const supported = false,
           open = ownDates.start < at;
         const activityId = ownInfo === undefined ? id : `${id}:${value}`.slice(0, 200);
         if (object(ownInfo))
           addActivity(activityId, ownInfo, ownDates, text(info.StageName, 300) ?? id);
         const tip = !supported
-          ? `需要核心 ${String(minimum).slice(0, 100)} 或更新版本`
+          ? '活动关卡导航尚未迁移到 MaaFramework，配置可以保留'
           : !open
             ? '活动尚未开放'
             : (text(entry.Drop, 1000) ?? text(info.Tip, 1000));
@@ -368,7 +346,6 @@ export async function stageCatalog(
       calendar,
       clientType,
       timestamp,
-      combo.core?.version,
       diagnostics,
       officialClient ? 'official-calendar' : 'activity-metadata',
     );
@@ -383,7 +360,7 @@ export async function stageCatalog(
           : {
               ...stage,
               available: false,
-              tip: '当前资源尚未支持该关卡导航，请在更新中心更新核心与资源',
+              tip: '当前资源尚未支持该关卡导航，请在更新中心更新资源',
             },
       );
       result.message = result.calendar.stale

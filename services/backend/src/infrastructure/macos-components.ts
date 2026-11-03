@@ -30,7 +30,7 @@ export function macosComponentLocations(
   const root = path.join(parent, 'Maa Verge');
   return {
     root,
-    core: path.join(root, 'MaaCore'),
+    framework: path.join(root, 'MaaFramework'),
     resource: path.join(root, 'MaaResource'),
     lock: path.join(parent, '.maaverge-components-lock.sqlite3'),
   };
@@ -124,7 +124,7 @@ export function assertNoMacosComponentProcesses(output: string, ownPid: number):
   for (const line of output.split('\n')) {
     const process = /^\s*(\d+)\s+(.+?)\s*$/.exec(line);
     if (!process || Number(process[1]) === ownPid) continue;
-    if ([runtimeName, 'maaverge-core-worker'].includes(path.basename(process[2]!)))
+    if ([runtimeName, 'maaverge-native-worker'].includes(path.basename(process[2]!)))
       throw new Error('仍有 Maa Verge 后台服务或核心进程在运行，请完全退出后重试');
   }
 }
@@ -232,7 +232,7 @@ export async function uninstallMacosApplication(
   if (!request.dataRoots.length || request.dataRoots.length > 8)
     throw new Error('卸载必须保留配置数据目录');
   const locations = macosComponentLocations(environment.homeDirectory);
-  const targets = [locations.core, locations.resource, bundle];
+  const targets = [locations.framework, locations.resource, bundle];
   const canonicalTargets = targets.map(resolvedPreservedPath);
   for (let left = 0; left < canonicalTargets.length; left++)
     for (let right = left + 1; right < canonicalTargets.length; right++)

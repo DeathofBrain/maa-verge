@@ -4,8 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   extractArchive,
-  extractCoreArchive,
-  normalizeRuntimeRoot,
+  extractResourceArchive,
 } from '@backend/infrastructure/filesystem/archives.ts';
 import safetyCases from '../../../tests/fixtures/archive-safety.json';
 import { writeArchive, type FixtureMember } from './archive-fixture.ts';
@@ -20,23 +19,24 @@ async function temp() {
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
-const baseline = [
-  { name: 'MaaCore.dll', content: 'core' },
-  { name: 'resource/version.json', content: '{}' },
-];
+const baseline = [{ name: 'resource/version.json', content: '{}' }];
 for (const kind of ['zip', 'tar'])
   describe(kind, () => {
-    test('full mirror snapshots reject incremental markers before writing even excluded core files', async () => {
+    test('full mirror snapshots reject incremental markers before writing even excluded files', async () => {
       const root = await temp(),
         archive = path.join(root, 'fixture.archive'),
         output = path.join(root, 'full');
       await writeArchive(archive, kind, [...baseline, { name: 'changes.json', content: '{}' }]);
       await expect(
-        extractCoreArchive(archive, output, { rejectIncremental: true }),
+        extractResourceArchive(archive, output, { rejectIncremental: true }),
       ).rejects.toThrow('增量包');
       expect(await readdir(output)).toEqual([]);
     });
-    for (const fixture of safetyCases)
+    for (const fixture of safetyCases.map((fixture) =>
+      fixture.name === 'excluded-target'
+        ? { ...fixture, links: { 'resource/alias': '../ignored/GUI.dll' } }
+        : fixture,
+    ))
       test(`validates excluded ${fixture.name} before writing`, async () => {
         const root = await temp(),
           archive = path.join(root, 'fixture.archive'),
@@ -53,47 +53,31 @@ for (const kind of ['zip', 'tar'])
           })),
         ];
         await writeArchive(archive, kind, members);
-        await expect(extractCoreArchive(archive, output)).rejects.toThrow();
+        await expect(extractResourceArchive(archive, output)).rejects.toThrow();
         expect(await readdir(output)).toEqual([]);
       });
-    test('retains runtime libraries, complete resources and licenses', async () => {
+    test('selects only complete resource trees and source licenses', async () => {
       const root = await temp(),
         archive = path.join(root, 'fixture.archive'),
         output = path.join(root, 'out');
-      const retained = [
-        'MaaUtils.dll',
-        'MaaAdbControlUnit.dll',
-        'resource/models/model',
-        'resource/minitouch/arm64/tool',
-        'LICENSE',
-        'THIRD_PARTY_NOTICES.txt',
-        'licenses/opencv/COPYING',
-      ];
-      const skipped = [
-        'MAA.dll',
-        'hostfxr.dll',
-        'hostpolicy.dll',
-        'MAA.exe',
-        'externals/GUI.dll',
-        'runtimes/native/Native.dll',
-        'libunused.so',
-        'README.md',
-      ];
       await writeArchive(archive, kind, [
         ...baseline,
-        ...retained.concat(skipped).map((name) => ({ name, content: name })),
+        { name: 'resource/models/model', content: 'model' },
+        { name: 'LICENSE', content: 'license' },
+        { name: 'source.cpp', content: 'excluded' },
+        { name: 'native.dll', content: 'excluded' },
       ]);
-      await extractCoreArchive(archive, output);
-      for (const name of retained)
-        expect(await readFile(path.join(output, name), 'utf8')).toBe(name);
-      for (const name of skipped)
-        expect(await Bun.file(path.join(output, name)).exists()).toBe(false);
+      await extractResourceArchive(archive, output);
+      expect(await readFile(path.join(output, 'resource/models/model'), 'utf8')).toBe('model');
+      expect(await readFile(path.join(output, 'LICENSE'), 'utf8')).toBe('license');
+      expect(await Bun.file(path.join(output, 'native.dll')).exists()).toBe(false);
+      expect(await Bun.file(path.join(output, 'source.cpp')).exists()).toBe(false);
     });
     test('validates excluded special files and expanded bytes', async () => {
       const root = await temp(),
         archive = path.join(root, 'fixture.archive');
       await writeArchive(archive, kind, [...baseline, { name: 'ignored-device', type: 'special' }]);
-      await expect(extractCoreArchive(archive, path.join(root, 'special'))).rejects.toThrow(
+      await expect(extractResourceArchive(archive, path.join(root, 'special'))).rejects.toThrow(
         '特殊文件',
       );
       await writeArchive(archive, kind, [
@@ -101,7 +85,7 @@ for (const kind of ['zip', 'tar'])
         { name: 'MAA.exe', content: 'x'.repeat(30) },
       ]);
       await expect(
-        extractCoreArchive(archive, path.join(root, 'size'), { maxExpandedBytes: 20 }),
+        extractResourceArchive(archive, path.join(root, 'size'), { maxExpandedBytes: 20 }),
       ).rejects.toThrow('大小');
     });
     test('materializes forward file aliases, relative parents and chains', async () => {
@@ -120,38 +104,21 @@ for (const kind of ['zip', 'tar'])
         extractArchive(archive, path.join(root, 'limit'), { maxExpandedBytes: 20 }),
       ).rejects.toThrow('大小');
     });
-    test('requires exactly one complete shallow runtime root', async () => {
+    test('requires exactly one shallow resource root', async () => {
       const root = await temp(),
         archive = path.join(root, 'fixture.archive');
       for (const [index, members] of [
-        [{ name: 'MaaCore.dll', content: 'core' }],
-        [...baseline, { name: 'libMaaCore.so', content: 'core' }],
+        [{ name: 'source.cpp', content: 'source' }],
+        [...baseline, { name: 'second/resource/version.json', content: '{}' }],
         baseline.map((member) => ({ ...member, name: 'deep/wrapper/' + member.name })),
       ].entries()) {
         await writeArchive(archive, kind, members);
-        await expect(extractCoreArchive(archive, path.join(root, `out${index}`))).rejects.toThrow(
-          '唯一',
-        );
+        await expect(
+          extractResourceArchive(archive, path.join(root, `out${index}`)),
+        ).rejects.toThrow('唯一');
       }
     });
   });
-test('wrapped macOS aliases flatten and retain executable tools', async () => {
-  const root = await temp(),
-    archive = path.join(root, 'mac.zip'),
-    output = path.join(root, 'out');
-  await writeArchive(archive, 'zip', [
-    { name: 'mac/libMaaCore.dylib', content: 'core' },
-    { name: 'mac/libonnxruntime.dylib', link: 'libonnxruntime.1.dylib' },
-    { name: 'mac/libonnxruntime.1.dylib', content: 'native' },
-    { name: 'mac/resource/version.json', content: '{}' },
-    { name: 'mac/resource/tools/maatouch', content: 'tool', mode: 0o755 },
-    { name: 'mac/GUI.app/file', content: 'skip' },
-  ]);
-  await extractCoreArchive(archive, output);
-  await normalizeRuntimeRoot(output);
-  expect(await readFile(path.join(output, 'libonnxruntime.dylib'), 'utf8')).toBe('native');
-  expect(await Bun.file(path.join(output, 'GUI.app/file')).exists()).toBe(false);
-});
 test('tar hard links are relative to the archive root', async () => {
   const root = await temp(),
     archive = path.join(root, 'hard.tar.gz'),

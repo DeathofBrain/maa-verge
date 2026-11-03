@@ -21,7 +21,7 @@ function pack(files: Record<string, unknown>) {
     mkdirSync(path.dirname(filename), { recursive: true });
     writeFileSync(filename, JSON.stringify(value));
   }
-  return { core: { version: 'v6.20.0' }, resource: { path: root, version: 'synthetic-r1' } };
+  return { resource: { path: root, version: 'synthetic-r1' } };
 }
 const clock = new Date('2026-10-26T01:00:00Z');
 const activity = (start = '2026/10/25 12:00:00', end = '2026/10/28 12:00:00') => ({
@@ -89,7 +89,11 @@ describe('installed stage catalogs', () => {
     expect(validateStageListResult(result)).toBe(true);
     expect(result.source).toBe('installed');
     expect(result.stages.slice(0, 3).map((stage) => stage.value)).toEqual(['', 'AA-8', '1-7']);
-    expect(result.stages[1]).toMatchObject({ available: true, tip: '材料', activityId: 'sample' });
+    expect(result.stages[1]).toMatchObject({
+      available: false,
+      tip: '活动关卡导航尚未迁移到 MaaFramework，配置可以保留',
+      activityId: 'sample',
+    });
     expect(result.activities).toEqual([
       {
         id: 'sample',
@@ -114,9 +118,12 @@ describe('installed stage catalogs', () => {
     const before = await stageCatalog(combo, 'Official', starts);
     expect(before.activities[0].status).toBe('upcoming');
     expect(before.stages[1].available).toBe(false);
-    expect(
-      (await stageCatalog(combo, 'Official', new Date(starts.getTime() + 1))).stages[1].available,
-    ).toBe(true);
+    const opened = await stageCatalog(combo, 'Official', new Date(starts.getTime() + 1));
+    expect(opened.activities[0].status).toBe('active');
+    expect(opened.stages[1]).toMatchObject({
+      available: false,
+      tip: '活动关卡导航尚未迁移到 MaaFramework，配置可以保留',
+    });
     const expired = await stageCatalog(combo, 'Official', ends);
     expect(expired.activities).toEqual([]);
     expect(expired.stages.some((stage) => stage.category === 'activity')).toBe(false);
@@ -140,7 +147,7 @@ describe('installed stage catalogs', () => {
     const expired = await stageCatalog(combo, 'Official', new Date('2026-11-02T01:00:00Z'));
     expect(expired.stages.find((stage) => stage.value === 'CE-6')?.available).toBe(false);
   });
-  test('minimum core versions handle prereleases and skip invalid requirements', async () => {
+  test('historical minimum core versions validate syntax without enabling unmigrated activity navigation', async () => {
     const combo = pack({
       'gui/StageActivityV2.json': {
         Official: {
@@ -155,16 +162,16 @@ describe('installed stage catalogs', () => {
     const result = await stageCatalog(combo, 'Official', clock);
     expect(result.stages.find((stage) => stage.value === 'AA-8')).toMatchObject({
       available: false,
-      tip: '需要核心 v6.21.0 或更新版本',
+      tip: '活动关卡导航尚未迁移到 MaaFramework，配置可以保留',
     });
     expect(result.stages.some((stage) => stage.value === 'BB-1')).toBe(false);
-    expect(result.stages.find((stage) => stage.value === 'CC-1')?.available).toBe(true);
+    expect(result.stages.find((stage) => stage.value === 'CC-1')?.available).toBe(false);
     expect(result.diagnostics.join()).toContain('最低核心版本无效');
-    combo.core.version = 'v6.20.0-beta.0';
-    expect(
-      (await stageCatalog(combo, 'Official', clock)).stages.find((stage) => stage.value === 'CC-1')
-        ?.available,
-    ).toBe(false);
+    // 旧快照的核心版本不再与当前Framework比较，升级或降级旧字段都不能恢复未迁移执行。
+    for (const version of ['v6.20.0-beta.0', 'v99.0.0'])
+      expect(
+        (await stageCatalog({ ...combo, core: { version } }, 'Official', clock)).stages,
+      ).toEqual(result.stages);
   });
   test('malformed dates and stage-specific expired periods are skipped', async () => {
     const stages = [

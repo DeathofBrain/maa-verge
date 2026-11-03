@@ -35,7 +35,7 @@ async function fixture() {
   const custom = path.join(root, 'custom-components');
   const trash = path.join(root, 'synthetic-trash');
   for (const directory of [
-    locations.core,
+    locations.framework,
     locations.resource,
     path.dirname(executable),
     data,
@@ -48,7 +48,7 @@ async function fixture() {
     path.join(bundle, 'Contents', 'Info.plist'),
     'synthetic identity, verified by fixture',
   );
-  await writeFile(path.join(locations.core, 'core.txt'), 'core');
+  await writeFile(path.join(locations.framework, 'core.txt'), 'core');
   await writeFile(path.join(locations.resource, 'resource.txt'), 'resource');
   await writeFile(path.join(data, 'settings.txt'), 'saved settings');
   await writeFile(path.join(custom, 'keep.txt'), 'custom');
@@ -86,8 +86,8 @@ async function fixture() {
 test('component roots and stable lease stay outside the app and separate from device leases', () => {
   const home = temporary();
   const result = macosComponentLocations(home);
-  expect(result.core).toBe(
-    path.join(home, 'Library', 'Application Support', 'Maa Verge', 'MaaCore'),
+  expect(result.framework).toBe(
+    path.join(home, 'Library', 'Application Support', 'Maa Verge', 'MaaFramework'),
   );
   expect(result.resource).toBe(
     path.join(home, 'Library', 'Application Support', 'Maa Verge', 'MaaResource'),
@@ -181,12 +181,12 @@ test('CLI accepts only the fixed bundle and bounded preserved data roots', () =>
 test('uninstall moves only fixed component roots and the bound app while preserving data, custom components and the lease file', async () => {
   const f = await fixture();
   const result = await uninstallMacosApplication(f.request, f.environment);
-  expect(result.movedPaths).toEqual([f.locations.core, f.locations.resource, f.bundle]);
+  expect(result.movedPaths).toEqual([f.locations.framework, f.locations.resource, f.bundle]);
   expect(f.moved).toEqual(result.movedPaths);
   for (const target of result.movedPaths) expect(existsSync(target)).toBe(false);
   expect(await readFile(path.join(f.data, 'settings.txt'), 'utf8')).toBe('saved settings');
   expect(await readFile(path.join(f.custom, 'keep.txt'), 'utf8')).toBe('custom');
-  expect(await readFile(path.join(f.trash, '0-MaaCore', 'core.txt'), 'utf8')).toBe('core');
+  expect(await readFile(path.join(f.trash, '0-MaaFramework', 'core.txt'), 'utf8')).toBe('core');
   expect(existsSync(f.locations.lock)).toBe(true);
   leases.push(acquireMacosComponentLease('shared', f.home));
 });
@@ -215,7 +215,7 @@ test('new service startup remains blocked throughout each trash operation', asyn
 });
 
 test('surviving native worker or another packaged runtime prevents all deletion', async () => {
-  for (const name of ['maaverge-core-worker', 'maaverge-runtime']) {
+  for (const name of ['maaverge-native-worker', 'maaverge-runtime']) {
     const f = await fixture();
     await expect(
       uninstallMacosApplication(f.request, {
@@ -236,13 +236,13 @@ test('process scan excludes itself and does not confuse similar process names', 
       55,
     ),
   ).not.toThrow();
-  expect(() => assertNoMacosComponentProcesses('99 /some path/maaverge-core-worker\n', 55)).toThrow(
-    '核心进程在运行',
-  );
+  expect(() =>
+    assertNoMacosComponentProcesses('99 /some path/maaverge-native-worker\n', 55),
+  ).toThrow('核心进程在运行');
 });
 
 test('data roots inside either component tree or the app reject uninstall before any trash operation', async () => {
-  for (const target of ['core', 'resource', 'bundle'] as const) {
+  for (const target of ['framework', 'resource', 'bundle'] as const) {
     const f = await fixture();
     const root = target === 'bundle' ? f.bundle : f.locations[target];
     await expect(
@@ -257,7 +257,7 @@ test('data roots inside either component tree or the app reject uninstall before
 
 test('case variants of preserved paths are conservatively protected on macOS', async () => {
   const f = await fixture();
-  const variant = path.join(f.locations.root, 'maacore', 'not-created-config');
+  const variant = path.join(f.locations.root, 'maaframework', 'not-created-config');
   await expect(
     uninstallMacosApplication({ ...f.request, dataRoots: [variant] }, f.environment),
   ).rejects.toThrow('请先迁出数据');
@@ -266,7 +266,7 @@ test('case variants of preserved paths are conservatively protected on macOS', a
 
 test('an app nested inside a component tree is rejected before moving either tree', async () => {
   const f = await fixture();
-  const bundle = path.join(f.locations.core, 'Nested.app');
+  const bundle = path.join(f.locations.framework, 'Nested.app');
   await rename(f.bundle, bundle);
   await expect(
     uninstallMacosApplication(
@@ -286,7 +286,7 @@ test('component roots nested inside the app are rejected before creating the lea
   const f = await fixture();
   const home = path.join(f.bundle, 'ComponentsHome');
   const locations = macosComponentLocations(home);
-  await mkdir(locations.core, { recursive: true });
+  await mkdir(locations.framework, { recursive: true });
   await mkdir(locations.resource, { recursive: true });
   await expect(
     uninstallMacosApplication(f.request, { ...f.environment, homeDirectory: home }),
@@ -300,7 +300,7 @@ test.skipIf(process.platform === 'win32')(
   async () => {
     const f = await fixture();
     const alias = path.join(f.root, 'data-alias');
-    await symlink(f.locations.core, alias, 'dir');
+    await symlink(f.locations.framework, alias, 'dir');
     await expect(
       uninstallMacosApplication(
         { ...f.request, dataRoots: [path.join(alias, 'config')] },
@@ -392,7 +392,7 @@ test('partial trash failure reports the moved paths and leaves the app plus user
     failure = error;
   }
   expect(failure).toBeInstanceOf(MacosUninstallError);
-  expect((failure as MacosUninstallError).movedPaths).toEqual([f.locations.core]);
+  expect((failure as MacosUninstallError).movedPaths).toEqual([f.locations.framework]);
   expect((failure as Error).message).toContain('可从废纸篓恢复');
   expect(existsSync(f.bundle)).toBe(true);
   expect(existsSync(f.locations.resource)).toBe(true);

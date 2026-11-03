@@ -494,7 +494,7 @@ export async function buildResourceKnowledge(
   const pack: ResourceKnowledgePack = {
     parserVersion: resourceKnowledgeParserVersion,
     clientType,
-    coreVersion: text(combo.core?.version, 200) ?? null,
+    coreVersion: null, // 新资源包不再依赖 MaaCore；历史知识包字段保留原义。
     resourceVersion: text(combo.resource?.version, 200) ?? null,
     fingerprint: '',
     sources: [],

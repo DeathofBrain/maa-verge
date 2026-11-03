@@ -13,7 +13,7 @@ import {
 const API = 'https://mirrorchyan.com/api/resources/';
 const MAX_METADATA = 256 * 1024;
 export type MirrorChyanPreferences = Settings['mirrorChyan'];
-export type MirrorChyanRid = 'maa-verge' | 'MAA' | 'MaaResource';
+export type MirrorChyanRid = 'maa-verge' | 'MaaResource' | 'MaaFramework';
 export interface MirrorChyanIdentity {
   rid: MirrorChyanRid;
   version: string;

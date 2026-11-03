@@ -5,6 +5,7 @@ import { lstat, mkdir, open, readdir, realpath, rename, rm, writeFile } from 'no
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assets from '../../../../../3rdparty/maaframework/runtime-assets.json';
+import frameworkGpl from '../../../../../3rdparty/maaframework/COPYING.GPL3' with { type: 'text' };
 
 export const frameworkVersion = assets.version;
 const adapterVersion = 1;
@@ -264,10 +265,19 @@ async function prepare(options: PrepareFrameworkResourceOptions): Promise<Framew
   signal?.throwIfAborted();
   if (!clients.has(options.clientType) || options.frameworkVersion !== frameworkVersion)
     throw new Error('不支持的MaaFramework版本或客户端');
-  const source = path.resolve(options.source),
+  const selectedSource = path.resolve(options.source),
     destination = path.resolve(options.destination);
-  if (source === destination || within(source, destination) || within(destination, source))
+  if (
+    selectedSource === destination ||
+    within(selectedSource, destination) ||
+    within(destination, selectedSource)
+  )
     throw new Error('资源视图缓存不能与来源目录重叠');
+  await plainDirectory(selectedSource);
+  // 活动组合保存不可变 generation 根；已明确选定的资源根仍可直接传入。
+  // 嵌套 resource 一旦存在就必须通过普通目录校验，不能绕过链接或改选其他代。
+  const nestedSource = path.join(selectedSource, 'resource');
+  const source = (await optionalFile(nestedSource)) ? nestedSource : selectedSource;
   await plainDirectory(source);
   signal?.throwIfAborted();
   await prepareParent(destination);
@@ -276,7 +286,8 @@ async function prepare(options: PrepareFrameworkResourceOptions): Promise<Framew
     ? undefined
     : path.join(source, 'global', options.clientType, 'resource');
   if (overlay) await plainDirectory(overlay);
-  const sourcePaths = overlay ? [source, overlay] : [source];
+  // 同时保护用户选定的代根和实际读取根，保留会话引用及资源清单的来源链。
+  const sourcePaths = [...new Set([selectedSource, source, ...(overlay ? [overlay] : [])])];
   const staging = path.join(destination, `.prepare-${randomUUID()}`);
   await mkdir(staging);
   const sources: AssetFile[] = [],
@@ -333,6 +344,8 @@ async function prepare(options: PrepareFrameworkResourceOptions): Promise<Framew
       signal?.throwIfAborted();
       if (!(await optionalFile(filename!))) modelReady = false;
     }
+    if (!selectedTemplates.size && !modelReady)
+      throw new Error('所选来源缺少可加载的模板与完整OCR模型');
     let diagnostic: string | undefined = modelReady
       ? undefined
       : '当前客户端缺少成套OCR权重或字典；OCR已禁用，未替换模型';
@@ -340,12 +353,17 @@ async function prepare(options: PrepareFrameworkResourceOptions): Promise<Framew
       for (const [filename, relative] of models)
         await copy(filename!, relative!, 128 * 1024 * 1024);
     const noticeFiles: string[] = [];
-    for (const name of ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'NOTICE', 'NOTICE.md']) {
-      signal?.throwIfAborted();
-      const filename = path.join(source, name);
-      if (await optionalFile(filename)) {
-        await copy(filename, `licenses/${name}`, 1024 * 1024);
-        noticeFiles.push(filename);
+    // 发行代根与资源内可能各有许可；分目录复制，避免同名覆盖或遗漏继承。
+    const noticeRoots = selectedSource === source ? [source] : [selectedSource, source];
+    for (const noticeRoot of noticeRoots) {
+      for (const name of ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'NOTICE', 'NOTICE.md']) {
+        signal?.throwIfAborted();
+        const filename = path.join(noticeRoot, name);
+        if (await optionalFile(filename)) {
+          const prefix = noticeRoot === source ? 'licenses' : 'licenses/generation';
+          await copy(filename, `${prefix}/${name}`, 1024 * 1024);
+          noticeFiles.push(filename);
+        }
       }
     }
     let ocrAvailable = false;
@@ -442,97 +460,184 @@ async function prepare(options: PrepareFrameworkResourceOptions): Promise<Framew
   }
 }
 
+export function frameworkTarget(
+  platform: NodeJS.Platform = process.platform,
+  arch: string = process.arch,
+) {
+  const system = { win32: 'windows', darwin: 'macos', linux: 'linux' }[platform as 'win32'];
+  const target = `${system}-${arch}`;
+  if (!Object.hasOwn(assets.targets, target)) throw new Error('当前平台没有兼容的MaaFramework SDK');
+  return target;
+}
+
+/** A manifest is accepted only for an application-pinned archive identity. */
+export async function verifyFrameworkSdkDirectory(
+  directory: string,
+  target = frameworkTarget(),
+  options: { signal?: AbortSignal; requireSupplements?: boolean } = {},
+): Promise<{ path: string; version: string; target: string; manifestSha256: string }> {
+  const selected = (assets.targets as Record<string, { sha256: string }>)[target];
+  if (!selected) throw new Error('当前平台没有兼容的MaaFramework SDK');
+  const signal = options.signal;
+  signal?.throwIfAborted();
+  await plainDirectory(directory);
+  const manifestBytes = await readPlain(
+    path.join(directory, 'maafw-manifest.json'),
+    4 * 1024 * 1024,
+    signal,
+  );
+  const manifest = JSON.parse(manifestBytes.toString('utf8'));
+  if (
+    manifest.formatVersion !== 1 ||
+    manifest.version !== frameworkVersion ||
+    manifest.target !== target ||
+    manifest.archiveSha256 !== selected.sha256 ||
+    !manifest.files ||
+    typeof manifest.files !== 'object' ||
+    Array.isArray(manifest.files)
+  )
+    throw new Error('MaaFramework SDK与固定资产清单不匹配');
+  const library = target.startsWith('windows')
+    ? 'MaaFramework.dll'
+    : target.startsWith('macos')
+      ? 'libMaaFramework.dylib'
+      : 'libMaaFramework.so';
+  if (!Object.hasOwn(manifest.files, `bin/${library}`))
+    throw new Error('MaaFramework缺少原生库清单');
+  const found = new Set<string>();
+  const verifyDirectory = async (current: string, prefix: string): Promise<void> => {
+    signal?.throwIfAborted();
+    await plainDirectory(current);
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const name = prefix + entry.name;
+      if (!validRelative(name)) throw new Error('MaaFramework SDK包含不安全的相对路径');
+      const filename = path.join(current, entry.name);
+      const info = await lstat(filename);
+      if (info.isDirectory() && !info.isSymbolicLink()) {
+        await verifyDirectory(filename, name + '/');
+        continue;
+      }
+      if (name === 'maafw-manifest.json') continue;
+      const expected = manifest.files[name];
+      if (
+        !expected ||
+        !Number.isSafeInteger(expected.size) ||
+        expected.size < 0 ||
+        !/^[a-f0-9]{64}$/.test(expected.sha256)
+      )
+        throw new Error('MaaFramework SDK文件未登记或清单无效');
+      const bytes = await readPlain(filename, 256 * 1024 * 1024, signal);
+      if (expected.size !== bytes.length || expected.sha256 !== digest(bytes))
+        throw new Error('MaaFramework SDK文件完整性校验失败');
+      found.add(name);
+    }
+  };
+  await verifyDirectory(directory, '');
+  if (Object.keys(manifest.files).length !== found.size)
+    throw new Error('MaaFramework SDK清单存在缺失文件');
+  if (!found.size || ![...found].some((name) => name.startsWith('share/MaaAgentBinary/')))
+    throw new Error('MaaFramework缺少MaaAgentBinary依赖');
+  if (options.requireSupplements) {
+    for (const [name, expected] of Object.entries(assets.supplementalLicenses)) {
+      const actual = manifest.files[`licenses/maaverge/${name}`];
+      if (actual?.size !== expected.size || actual?.sha256 !== expected.sha256)
+        throw new Error('MaaFramework补充许可缺失或无效');
+    }
+    if (!found.has('licenses/maaverge/provenance.json'))
+      throw new Error('MaaFramework补充许可来源缺失');
+  }
+  return {
+    path: directory,
+    version: frameworkVersion,
+    target,
+    manifestSha256: digest(manifestBytes),
+  };
+}
+
+/** Only called on a freshly extracted, verified archive in a private staging directory. */
+export async function writeFrameworkSdkManifest(
+  directory: string,
+  target = frameworkTarget(),
+  signal?: AbortSignal,
+): Promise<void> {
+  const selected = (assets.targets as Record<string, { name: string; sha256: string }>)[target];
+  if (!selected) throw new Error('当前平台没有兼容的MaaFramework SDK');
+  await plainDirectory(directory);
+  const license = Buffer.from(frameworkGpl);
+  const expectedLicense = assets.supplementalLicenses['COPYING.GPL3'];
+  if (license.length !== expectedLicense.size || digest(license) !== expectedLicense.sha256)
+    throw new Error('应用内嵌MaaFramework许可校验失败');
+  const licenses = path.join(directory, 'licenses', 'maaverge');
+  await prepareParent(licenses);
+  await writeFile(path.join(licenses, 'COPYING.GPL3'), license, { flag: 'wx' });
+  await writeFile(
+    path.join(licenses, 'provenance.json'),
+    JSON.stringify({ formatVersion: 1, licenses: assets.supplementalLicenses }, null, 2) + '\n',
+    { flag: 'wx' },
+  );
+  const files: Record<string, { size: number; sha256: string }> = {};
+  const visit = async (current: string, prefix: string): Promise<void> => {
+    signal?.throwIfAborted();
+    await plainDirectory(current);
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const relative = prefix + entry.name;
+      if (!validRelative(relative) || relative === 'maafw-manifest.json')
+        throw new Error('MaaFramework SDK包含不安全或重复的清单路径');
+      const filename = path.join(current, entry.name);
+      const info = await lstat(filename);
+      if (info.isDirectory() && !info.isSymbolicLink()) {
+        await visit(filename, relative + '/');
+        continue;
+      }
+      const bytes = await readPlain(filename, 256 * 1024 * 1024, signal);
+      files[relative] = { size: bytes.length, sha256: digest(bytes) };
+      if (Object.keys(files).length > 50_000) throw new Error('MaaFramework SDK文件数量超限');
+    }
+  };
+  await visit(directory, '');
+  await writeFile(
+    path.join(directory, 'maafw-manifest.json'),
+    JSON.stringify(
+      {
+        formatVersion: 1,
+        version: frameworkVersion,
+        target,
+        source: `https://github.com/${assets.repository}/releases/download/${frameworkVersion}/${selected.name}`,
+        archiveSha256: selected.sha256,
+        files,
+      },
+      null,
+      2,
+    ) + '\n',
+    { flag: 'wx' },
+  );
+  await verifyFrameworkSdkDirectory(directory, target, { signal, requireSupplements: true });
+}
+
 export async function resolveFrameworkSdk(
   options: {
     applicationRuntimeDirectory?: string;
     checkoutRoot?: string;
     platform?: NodeJS.Platform;
     arch?: string;
+    installedSdkDirectory?: string;
+    allowDevelopmentSdk?: boolean;
   } = {},
 ): Promise<{ path: string; version: string; target: string }> {
-  const systems: Partial<Record<NodeJS.Platform, string>> = {
-    win32: 'windows',
-    darwin: 'macos',
-    linux: 'linux',
-  };
-  const system = systems[options.platform ?? process.platform];
-  const target = `${system}-${options.arch ?? process.arch}`;
-  const selected = (assets.targets as Record<string, { sha256: string }>)[target];
-  if (!selected) throw new Error('当前平台没有固定版本的MaaFramework SDK');
+  const target = frameworkTarget(options.platform, options.arch);
   const checkoutRoot =
     options.checkoutRoot ?? fileURLToPath(new URL('../../../../../', import.meta.url));
   const candidates = [
-    ...(options.applicationRuntimeDirectory
-      ? [
-          path.join(
-            options.applicationRuntimeDirectory,
-            'engines',
-            'maafw',
-            frameworkVersion,
-            target,
-          ),
-        ]
-      : []),
-    ...(!Bun.isStandaloneExecutable
+    ...(options.installedSdkDirectory ? [options.installedSdkDirectory] : []),
+    ...(options.allowDevelopmentSdk && !Bun.isStandaloneExecutable
       ? [path.join(checkoutRoot, '.tools', 'maafw', frameworkVersion, target)]
       : []),
   ];
   for (const directory of candidates) {
     if (!(await optionalFile(directory))) continue;
-    await plainDirectory(directory);
-    const manifest = JSON.parse(
-      (await readPlain(path.join(directory, 'maafw-manifest.json'), 4 * 1024 * 1024)).toString(
-        'utf8',
-      ),
-    );
-    if (
-      manifest.formatVersion !== 1 ||
-      manifest.version !== frameworkVersion ||
-      manifest.target !== target ||
-      manifest.archiveSha256 !== selected.sha256 ||
-      !manifest.files ||
-      typeof manifest.files !== 'object'
-    )
-      throw new Error('MaaFramework SDK与固定资产清单不匹配');
-    const library = target.startsWith('windows')
-      ? 'MaaFramework.dll'
-      : target.startsWith('macos')
-        ? 'libMaaFramework.dylib'
-        : 'libMaaFramework.so';
-    const relative = `bin/${library}`;
-    if (!Object.hasOwn(manifest.files, relative)) throw new Error('MaaFramework缺少原生库清单');
-    const found = new Set<string>();
-    const verifyDirectory = async (current: string, prefix: string): Promise<void> => {
-      await plainDirectory(current);
-      for (const entry of await readdir(current, { withFileTypes: true })) {
-        const name = prefix + entry.name;
-        if (!validRelative(name)) throw new Error('MaaFramework SDK包含不安全的相对路径');
-        const filename = path.join(current, entry.name);
-        const info = await lstat(filename);
-        if (info.isDirectory() && !info.isSymbolicLink()) {
-          await verifyDirectory(filename, name + '/');
-          continue;
-        }
-        if (name === 'maafw-manifest.json') continue;
-        const expected = manifest.files[name];
-        if (
-          !expected ||
-          !Number.isSafeInteger(expected.size) ||
-          expected.size < 0 ||
-          !/^[a-f0-9]{64}$/.test(expected.sha256)
-        )
-          throw new Error('MaaFramework SDK文件未登记或清单无效');
-        const bytes = await readPlain(filename, 256 * 1024 * 1024);
-        if (expected.size !== bytes.length || expected.sha256 !== digest(bytes))
-          throw new Error('MaaFramework SDK文件完整性校验失败');
-        found.add(name);
-      }
-    };
-    await verifyDirectory(directory, '');
-    if (Object.keys(manifest.files).length !== found.size)
-      throw new Error('MaaFramework SDK清单存在缺失文件');
-    await plainDirectory(path.join(directory, 'share', 'MaaAgentBinary'));
-    return { path: directory, version: frameworkVersion, target };
+    return verifyFrameworkSdkDirectory(directory, target, {
+      requireSupplements: directory === options.installedSdkDirectory,
+    });
   }
-  throw new Error('固定版本MaaFramework SDK尚未准备，请运行node tools/prepare-maafw.mjs');
+  throw new Error('MaaFramework尚未安装，请前往设置的组件更新中安装');
 }

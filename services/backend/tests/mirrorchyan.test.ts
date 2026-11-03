@@ -18,6 +18,7 @@ import {
 } from '@backend/modules/updates/updates';
 import { parseSettings } from '@backend/modules/settings/models';
 import { zipBytes } from './archive-fixture';
+import { baseResourceFiles } from './resource-update-fixture';
 import { makeTemporaryDirectory } from '../../../tools/test-support/temporary-directory.mjs';
 
 const secret = 'synthetic+cdk&private=value';
@@ -261,64 +262,121 @@ test('interrupted mirror downloads persist stable resume identities without sign
   expect(sidecar).not.toContain(secret);
 });
 
-test.each(['arm64', 'amd64'])(
-  'macOS %s checks and downloads the registered full MAA mirror package independently of resources',
-  async (arch) => {
-    const root = await temp();
-    const payload = zipBytes([{ name: 'MAA-v6.20.1-macos-universal.dmg', content: 'disk image' }]);
-    const requested: URL[] = [];
+/** Resource acceleration selects only the existing official MaaResource RID. */
+test('resource checks omit platform and pin the independent source model baseline', async () => {
+  const urls: string[] = [];
+  const payload = zipBytes([{ name: 'resource/version.json', content: '{}' }]);
+  const source = new OfficialSource(
+    (async (input) => {
+      const url = new URL(String(input));
+      urls.push(url.href);
+      expect(url.pathname).toBe('/api/resources/MaaResource/latest');
+      expect(url.searchParams.has('os')).toBe(false);
+      expect(url.searchParams.has('arch')).toBe(false);
+      return latest(timestamp, payload);
+    }) as typeof fetch,
+    () => ({ mode: 'direct', url: '' }),
+    settings,
+  );
+  const metadata = await source.check('resource');
+  expect(metadata.source).toBe('MirrorChyan');
+  expect(metadata.mirrorChyan.rid).toBe('MaaResource');
+  expect(metadata.base.url).toContain('/MaaAssistantArknights/zip/');
+  expect(JSON.stringify(metadata)).not.toContain(secret);
+  expect(urls).toHaveLength(1);
+  source.close();
+});
+
+test.each(['changed candidate', 'damaged archive', 'wrong resource timestamp'])(
+  'resource preparation falls back from a %s and preserves the independent model baseline',
+  async (failure) => {
+    const root = await temp(),
+      store = new MemoryStore(),
+      version = 'c'.repeat(40),
+      base = zipBytes(baseResourceFiles),
+      overlay = zipBytes([
+        { name: 'resource/version.json', content: JSON.stringify({ last_updated: timestamp }) },
+      ]),
+      mirrorPayload = zipBytes([
+        {
+          name: 'resource/version.json',
+          content: JSON.stringify({
+            last_updated: failure === 'wrong resource timestamp' ? older : timestamp,
+          }),
+        },
+      ]);
+    let mirrorChecks = 0;
+    const requests: string[] = [];
     const source = new OfficialSource(
       (async (input) => {
         const url = new URL(String(input));
-        requested.push(url);
-        if (url.pathname === '/api/resources/MAA/latest') {
-          expect(url.searchParams.get('os')).toBe('darwin');
-          expect(url.searchParams.get('arch')).toBe(arch);
-          expect(url.searchParams.get('cdk')).toBe(secret);
-          expect(url.searchParams.get('channel')).toBe('alpha');
-          return latest('v6.20.1', payload, { os: 'darwin', arch, channel: 'alpha' });
-        }
+        requests.push(url.hostname + url.pathname);
         if (url.pathname === '/api/resources/MaaResource/latest') {
-          expect(url.searchParams.has('os')).toBe(false);
-          expect(url.searchParams.has('arch')).toBe(false);
-          return latest(timestamp, payload);
+          mirrorChecks++;
+          return latest(
+            failure === 'changed candidate' && mirrorChecks > 1 ? older : timestamp,
+            mirrorPayload,
+          );
         }
-        if (url.href === signed)
-          return new Response(Uint8Array.from(payload), {
-            headers: { 'content-length': String(payload.length) },
-          });
-        throw new Error('Unexpected fixture route');
+        if (url.hostname === 'mirrorchyan.com')
+          return new Response(
+            Uint8Array.from(
+              failure === 'damaged archive' ? Buffer.alloc(mirrorPayload.length) : mirrorPayload,
+            ),
+          );
+        if (url.hostname === 'api.github.com') return Response.json({ sha: version });
+        if (url.hostname === 'raw.githubusercontent.com')
+          return Response.json({ last_updated: timestamp });
+        if (url.hostname === 'codeload.github.com')
+          return new Response(
+            Uint8Array.from(url.pathname.includes('/MaaResource/') ? overlay : base),
+          );
+        throw new Error('network forbidden');
       }) as typeof fetch,
       () => ({ mode: 'direct', url: '' }),
       settings,
-      () => ({ os: 'darwin', arch }),
+    );
+    const updates = new UpdateService(
+      root,
+      store,
+      () => {},
+      () => false,
+      {
+        source,
+        jobRunner: (config) => runUpdateJob(config),
+        directories: { resource: root },
+      },
     );
     try {
-      const core = await source.check('core', 'preview');
-      expect(core.source).toBe('MirrorChyan');
-      expect(core.mirrorChyan).toMatchObject({ rid: 'MAA', os: 'darwin', arch });
-      expect(core.mirrorChyanMessage).toBeUndefined();
-      const destination = path.join(root, 'core.zip');
-      expect(await source.download(core, destination, () => {})).toBe(digest(payload));
-      expect((await readFile(destination)).equals(payload)).toBe(true);
-      expect((await source.check('resource')).source).toBe('MirrorChyan');
-      expect(requested.every((url) => url.hostname === 'mirrorchyan.com')).toBe(true);
+      await updates.check('resource');
+      expect(store.get('update_metadata', 'resource').source).toBe('MirrorChyan');
+      expect((await updates.prepare('resource')).latestVersion).toBe(version);
+      const staged = store.get('staged', 'resource');
+      expect(staged.source).toBe('GitHub');
+      expect(staged.baseArchiveSha256).toBe(digest(base));
+      expect(
+        await readFile(path.join(staged.path, 'resource/PaddleOCR/rec/keys.txt'), 'utf8'),
+      ).toBe('synthetic keys');
+      expect(requests.filter((url) => url.startsWith('api.github.com/'))).toHaveLength(1);
+      expect(JSON.stringify([...store.rows])).not.toContain(secret);
+      expect(JSON.stringify(staged)).not.toContain('private-download-token');
+      expect(await readdir(path.join(root, 'downloads'))).toEqual([]);
     } finally {
-      source.close();
+      await updates.close();
     }
   },
 );
 
 test.each(['resolved', 'rejected'])(
-  'changing Mirror settings discards an in-flight old check that %s',
-  async (result) => {
-    const root = await temp();
-    const store = new MemoryStore();
-    let started!: () => void;
-    const checking = new Promise<void>((resolve) => (started = resolve));
-    let resolveOld!: (value: any) => void;
-    let rejectOld!: (reason: Error) => void;
-    const oldCheck = new Promise<any>((resolve, reject) => {
+  'a changed Mirror preference discards an old check that %s',
+  async (outcome) => {
+    const root = await temp(),
+      store = new MemoryStore();
+    let started!: () => void, resolveOld!: (value: any) => void, rejectOld!: (error: Error) => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const old = new Promise<any>((resolve, reject) => {
       resolveOld = resolve;
       rejectOld = reject;
     });
@@ -330,307 +388,29 @@ test.each(['resolved', 'rejected'])(
       () => false,
       {
         source: {
-          check: () => {
+          check() {
             if (++checks === 1) {
               started();
-              return oldCheck;
+              return old;
             }
-            return { version: 'v6.20.2', source: 'MirrorChyan' };
+            return { version: 'b'.repeat(40), source: 'GitHub' };
           },
-          download: async () => {
-            throw new Error('must not download');
+          download() {
+            throw new Error('download forbidden');
           },
         },
-        validator: async () => {},
       },
     );
     try {
-      const pending = updates.check('core');
-      await checking;
+      const pending = updates.check('resource');
+      await ready;
       updates.mirrorSettingsChanged();
-      if (result === 'resolved') resolveOld({ version: 'v6.20.1', source: 'GitHub' });
-      else rejectOld(new Error('old request failed'));
-      expect((await pending).latestVersion).toBe('v6.20.2');
+      if (outcome === 'resolved') resolveOld({ version: 'a'.repeat(40) });
+      else rejectOld(new Error('old failure'));
+      expect((await pending).latestVersion).toBe('b'.repeat(40));
       expect(checks).toBe(2);
-      expect(store.get('update_metadata', 'core').source).toBe('MirrorChyan');
     } finally {
       await updates.close();
-    }
-  },
-);
-
-function sourceFixture(
-  resourceMode: 'valid' | 'timestamp mismatch' | 'incremental' | 'download failure' = 'valid',
-) {
-  const core = zipBytes([
-    { name: 'MaaCore.dll', content: 'v6.20.1' },
-    { name: 'resource/version.json', content: JSON.stringify({ last_updated: older }) },
-    { name: 'resource/config.json', content: 'base' },
-    { name: 'MAA.exe', content: 'excluded GUI' },
-  ]);
-  const resourceFor = (version: string) =>
-    zipBytes([
-      {
-        name: 'resource/version.json',
-        content: JSON.stringify({
-          last_updated: resourceMode === 'timestamp mismatch' ? older : version,
-        }),
-      },
-      { name: 'resource/new.txt', content: 'resource update' },
-      ...(resourceMode === 'incremental' ? [{ name: 'changes.json', content: '{}' }] : []),
-    ]);
-  let resource = resourceFor(timestamp);
-  const official = zipBytes([
-    {
-      name: 'snapshot/resource/version.json',
-      content: JSON.stringify({ last_updated: timestamp }),
-    },
-    { name: 'snapshot/resource/new.txt', content: 'official update' },
-  ]);
-  const urls: string[] = [];
-  let active = core;
-  let resourceVersion = timestamp;
-  const transport = (async (input: Parameters<typeof fetch>[0]) => {
-    const url = String(input);
-    urls.push(url);
-    if (url.includes('/api/resources/MAA/latest')) {
-      active = core;
-      return latest('v6.20.1', core, { os: 'windows', arch: 'amd64' });
-    }
-    if (url.includes('/api/resources/MaaResource/latest')) {
-      active = resource;
-      return latest(resourceVersion, resource);
-    }
-    if (url === signed) {
-      if (resourceMode === 'download failure' && active === resource)
-        return new Response('', { status: 403 });
-      return new Response(Uint8Array.from(active), {
-        headers: { 'content-length': String(active.length) },
-      });
-    }
-    if (url.endsWith('/commits/main')) return Response.json({ sha: 'a'.repeat(40) });
-    if (url.includes('raw.githubusercontent.com'))
-      return Response.json({ last_updated: timestamp });
-    if (url.includes('codeload.github.com')) return new Response(Uint8Array.from(official));
-    throw new Error('Unexpected fixture route');
-  }) as unknown as typeof fetch;
-  const source = new OfficialSource(
-    transport,
-    () => ({ mode: 'direct', url: '' }),
-    settings,
-    () => ({ os: 'windows', arch: 'amd64' }),
-  );
-  return {
-    source,
-    urls,
-    setResourceTimestamp(value: string) {
-      resourceVersion = value;
-      resource = resourceFor(value);
-    },
-  };
-}
-async function initialized(resourceMode: Parameters<typeof sourceFixture>[0] = 'valid') {
-  const root = await temp();
-  const store = new MemoryStore();
-  const fixture = sourceFixture(resourceMode);
-  const events: any[] = [];
-  let busy = false;
-  const updates = new UpdateService(
-    root,
-    store,
-    (_type, _text, data) => events.push(data.update),
-    () => busy,
-    {
-      source: fixture.source,
-      validator: async () => {},
-      jobRunner: (config) =>
-        runUpdateJob(config, async (_core, _resource, version) => {
-          expect(version).toBe('v6.20.1');
-        }),
-    },
-  );
-  await updates.check('core');
-  expect(updates.channel('core').downloadSource).toBeUndefined();
-  await updates.prepare('core');
-  await updates.activate('core');
-  return {
-    ...fixture,
-    root,
-    store,
-    updates,
-    events,
-    setBusy(value: boolean) {
-      busy = value;
-    },
-  };
-}
-
-test('core and resource select independent full mirror packages and stage immutable validated generations', async () => {
-  const f = await initialized();
-  try {
-    const core = f.store.get('active', 'combo').core;
-    expect(core.source).toBe('MirrorChyan');
-    expect(f.updates.channel('core').downloadSource).toBe('MirrorChyan');
-    expect(
-      f.events.some(
-        (event) =>
-          event.id === 'core' &&
-          event.downloadSource === 'MirrorChyan' &&
-          event.message === '正在通过 Mirror酱下载组件',
-      ),
-    ).toBe(true);
-    expect(await Bun.file(path.join(core.path, 'MAA.exe')).exists()).toBe(false);
-    await f.updates.check('resource');
-    expect(f.updates.channel('resource').downloadSource).toBeUndefined();
-    await f.updates.prepare('resource');
-    await f.updates.activate('resource');
-    const resource = f.store.get('active', 'combo').resource;
-    expect(resource.version).toBe('mirrorchyan:' + timestamp);
-    expect(resource.commit).toBeUndefined();
-    expect(resource.resourceVersion.last_updated).toBe(timestamp);
-    expect(await readFile(path.join(resource.path, 'resource/config.json'), 'utf8')).toBe('base');
-    expect(await readFile(path.join(resource.path, 'resource/new.txt'), 'utf8')).toBe(
-      'resource update',
-    );
-    const manifest = await readFile(path.join(resource.path, 'manifest.json'), 'utf8');
-    expect(manifest).not.toContain('private-download-token');
-    expect(manifest).not.toContain(secret);
-    expect(f.urls.some((url) => url.includes('github.com'))).toBe(false);
-    expect(f.urls.filter((url) => url === signed)).toHaveLength(2);
-    expect(f.updates.channel('resource').downloadSource).toBe('MirrorChyan');
-    expect((await f.updates.check('resource')).status).toBe('idle');
-    expect(f.updates.channel('resource').downloadSource).toBeUndefined();
-  } finally {
-    await f.updates.close();
-  }
-});
-
-test.each(['timestamp mismatch', 'incremental', 'download failure'] as const)(
-  'resource %s falls back to a fresh official source without keeping partial candidates',
-  async (mode) => {
-    const f = await initialized(mode);
-    try {
-      const core = f.store.get('active', 'combo').core.path;
-      await f.updates.check('resource');
-      const result = await f.updates.prepare('resource');
-      const staged = f.store.get('staged', 'resource');
-      expect(staged.source).toBe('GitHub');
-      expect(result.downloadSource).toBe('GitHub');
-      const resourceDownloads = f.events.filter(
-        (event) => event.id === 'resource' && event.message.includes('下载组件'),
-      );
-      expect(resourceDownloads.some((event) => event.downloadSource === 'MirrorChyan')).toBe(true);
-      expect(resourceDownloads.at(-1)?.downloadSource).toBe('GitHub');
-      expect(resourceDownloads.at(-1)?.message).toBe('正在通过官方源下载组件');
-      expect(f.urls.some((url) => url.includes('codeload.github.com'))).toBe(true);
-      expect(staged.version).toBe('a'.repeat(40));
-      expect(staged.mirrorChyan).toBeUndefined();
-      expect(result.latestVersion).toBe('a'.repeat(40));
-      expect(result.message).toContain('已改用官方更新源');
-      expect(await readFile(path.join(staged.path, 'resource/new.txt'), 'utf8')).toBe(
-        'official update',
-      );
-      expect(f.store.get('active', 'combo').core.path).toBe(core);
-      expect((await readdir(path.join(f.root, 'generations'))).length).toBe(2);
-    } finally {
-      await f.updates.close();
-    }
-  },
-);
-
-test('equal resource timestamps do not update again when switching between mirror and Git commit identities', async () => {
-  const f = await initialized();
-  try {
-    await f.updates.check('resource');
-    await f.updates.prepare('resource');
-    await f.updates.activate('resource');
-    const original = f.store.get('active', 'combo');
-    original.resource.version = 'a'.repeat(40);
-    original.resource.source = 'GitHub';
-    f.store.put('active', 'combo', original);
-    const check = await f.updates.check('resource');
-    expect(check.status).toBe('idle');
-    const count = f.urls.length;
-    await f.updates.prepare('resource');
-    expect(f.urls.length).toBe(count);
-    expect(f.store.get('staged', 'resource')).toBeUndefined();
-  } finally {
-    await f.updates.close();
-  }
-});
-
-test('a lagging mirror checks the official source and never downgrades the installed resource snapshot', async () => {
-  const f = await initialized();
-  try {
-    await f.updates.check('resource');
-    await f.updates.prepare('resource');
-    await f.updates.activate('resource');
-    const original = f.store.get('active', 'combo').resource.path;
-    f.setResourceTimestamp(older);
-    const check = await f.updates.check('resource');
-    expect(check.status).toBe('idle');
-    expect(check.message).toContain('早于已安装版本');
-    expect(check.message).toContain('已改用官方更新源');
-    const count = f.urls.length;
-    await f.updates.prepare('resource');
-    expect(f.urls.length).toBe(count);
-    expect(f.store.get('active', 'combo').resource.path).toBe(original);
-  } finally {
-    await f.updates.close();
-  }
-});
-
-test('downloaded mirror resources are reused after rollback without another download', async () => {
-  const f = await initialized();
-  try {
-    await f.updates.check('resource');
-    await f.updates.prepare('resource');
-    await f.updates.activate('resource');
-    f.setResourceTimestamp('2026-10-30 11:10:43.000');
-    await f.updates.check('resource');
-    await f.updates.prepare('resource');
-    await f.updates.activate('resource');
-    const second = f.store.get('active', 'combo').resource.path;
-    await f.updates.rollback('resource');
-    await f.updates.check('resource');
-    const calls = f.urls.length;
-    await f.updates.prepare('resource');
-    expect(f.urls.length).toBe(calls);
-    expect(f.store.get('staged', 'resource').path).toBe(second);
-  } finally {
-    await f.updates.close();
-  }
-});
-
-test.each([false, true])(
-  'resource activation rejects a candidate overtaken by rollback (waiting idle=%s)',
-  async (waiting) => {
-    const f = await initialized();
-    try {
-      await f.updates.check('resource');
-      await f.updates.prepare('resource');
-      await f.updates.activate('resource');
-      f.setResourceTimestamp('2026-11-01 11:10:43.000');
-      await f.updates.check('resource');
-      await f.updates.prepare('resource');
-      await f.updates.activate('resource');
-      const newest = f.store.get('active', 'combo').resource.path;
-      await f.updates.rollback('resource');
-      f.setResourceTimestamp('2026-10-30 11:10:43.000');
-      await f.updates.check('resource');
-      await f.updates.prepare('resource');
-      if (waiting) {
-        f.setBusy(true);
-        expect((await f.updates.activate('resource')).status).toBe('waiting_idle');
-        f.setBusy(false);
-      }
-      await f.updates.rollback('resource');
-      expect(f.store.get('active', 'combo').resource.path).toBe(newest);
-      await expect(f.updates.activate('resource')).rejects.toThrow('候选资源早于当前版本');
-      expect(f.store.get('active', 'combo').resource.path).toBe(newest);
-      expect(f.store.get('staged', 'resource')).toBeUndefined();
-    } finally {
-      await f.updates.close();
     }
   },
 );

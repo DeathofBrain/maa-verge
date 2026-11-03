@@ -45,57 +45,35 @@ export function safeDestination(root: string, name: string): string {
   return destination;
 }
 
-function coreMembers(root: string, members: Map<string, Member>): Set<string> {
-  const platforms: Record<string, string> = {
-    'MaaCore.dll': 'windows',
-    'libMaaCore.so': 'linux',
-    'libMaaCore.dylib': 'macos',
-  };
-  const roots: Array<[string, string]> = [];
-  for (const member of members.values()) {
-    const parts = path.relative(root, member.target).split(path.sep);
-    const system = platforms[path.basename(member.target)];
-    const resource = members.get(
-      path.join(path.dirname(member.target), 'resource', 'version.json'),
-    );
-    if (
-      member.kind !== 'directory' &&
-      parts.length <= 2 &&
-      system &&
-      resource &&
-      resource.kind !== 'directory'
-    ) {
-      roots.push([path.dirname(member.target), system]);
-    }
-  }
-  if (roots.length !== 1) throw new Error('核心归档必须包含唯一的平铺运行库或一层运行库外目录');
-  const [runtime, system] = roots[0];
-  const selected = new Set<string>();
-  for (const member of members.values()) {
-    const relative = path.relative(runtime, member.target);
-    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative))
-      continue;
-    const parts = relative.split(path.sep).filter(Boolean);
-    const first = casefold(parts[0] ?? '');
-    let keep =
-      parts.length === 0 ||
-      parts[0] === 'resource' ||
-      ['licenses', 'licences', 'notices'].includes(first);
-    if (!keep && parts.length === 1 && member.kind !== 'directory') {
-      const name = parts[0];
-      keep =
-        /^(?:licen[cs]es?|copying|copyright|notice|(?:third|3rd)[-_]party(?:[-_](?:licen[cs]es?|notices?))?)(?:[._-].*)?$/i.test(
-          name,
+/** Only the official resource tree and its license enter application generations. */
+function resourceMembers(root: string, members: Map<string, Member>): Set<string> {
+  const roots = [...members.values()].filter(
+    (member) =>
+      member.kind === 'file' &&
+      path.basename(member.target) === 'version.json' &&
+      path.basename(path.dirname(member.target)) === 'resource' &&
+      path.relative(root, member.target).split(path.sep).length <= 3,
+  );
+  if (roots.length !== 1) throw new Error('资源归档必须包含唯一的 resource/version.json');
+  const resource = path.dirname(roots[0]!.target);
+  const wrapper = path.dirname(resource);
+  return new Set(
+    [...members.values()]
+      .filter((member) => {
+        const relative = path.relative(resource, member.target);
+        const inside =
+          !relative ||
+          (!relative.startsWith('..' + path.sep) &&
+            relative !== '..' &&
+            !path.isAbsolute(relative));
+        return (
+          inside ||
+          (path.dirname(member.target) === wrapper &&
+            /^(?:LICENSE|COPYING|NOTICE)(?:[._-].*)?$/iu.test(path.basename(member.target)))
         );
-      if (!keep && system === 'windows')
-        keep =
-          first.endsWith('.dll') && !['maa.dll', 'hostfxr.dll', 'hostpolicy.dll'].includes(first);
-      if (!keep && system === 'linux') keep = /^lib[^/]+\.so(?:\.[0-9]+)*$/.test(name);
-      if (!keep && system === 'macos') keep = name.startsWith('lib') && name.endsWith('.dylib');
-    }
-    if (keep) selected.add(member.target);
-  }
-  return selected;
+      })
+      .map((member) => member.target),
+  );
 }
 
 class Inventory {
@@ -150,7 +128,7 @@ class Inventory {
     }
     this.links.set(member.target, safeDestination(this.root, parts.join('/')));
   }
-  select(coreOnly: boolean): Set<string> {
+  select(resourceOnly: boolean): Set<string> {
     const canonical = new Map(
       Array.from(this.members, ([target, member]) => [casefold(target), member.kind]),
     );
@@ -176,10 +154,12 @@ class Inventory {
       if (this.members.get(source)?.kind !== 'file')
         throw new Error('压缩包链接必须指向归档内的普通文件');
     }
-    const selected = coreOnly ? coreMembers(this.root, this.members) : new Set(this.members.keys());
+    const selected = resourceOnly
+      ? resourceMembers(this.root, this.members)
+      : new Set(this.members.keys());
     for (const [alias, source] of this.links) {
       if (selected.has(alias) && !selected.has(source))
-        throw new Error('核心归档链接必须指向保留的运行文件');
+        throw new Error('资源归档链接必须指向保留的资源文件');
     }
     return selected;
   }
@@ -257,7 +237,11 @@ async function writeMember(source: Readable, member: Member): Promise<void> {
   if (member.mode & 0o111) await chmod(member.target, 0o755);
 }
 
-async function extractZip(archive: string, inventory: Inventory, coreOnly: boolean): Promise<void> {
+async function extractZip(
+  archive: string,
+  inventory: Inventory,
+  resourceOnly: boolean,
+): Promise<void> {
   const file = await zipOpen(archive);
   try {
     await zipEntries(file, async (entry) => {
@@ -291,7 +275,7 @@ async function extractZip(archive: string, inventory: Inventory, coreOnly: boole
         inventory.link(member, target);
       }
     });
-    const selected = inventory.select(coreOnly);
+    const selected = inventory.select(resourceOnly);
     for (const member of inventory.members.values()) {
       if (!selected.has(member.target)) continue;
       if (member.kind === 'directory') await mkdir(member.target, { recursive: true });
@@ -334,7 +318,11 @@ function parseTar(archive: string, visit: (entry: ReadEntry) => void): Promise<v
     input.pipe(parser);
   });
 }
-async function extractTar(archive: string, inventory: Inventory, coreOnly: boolean): Promise<void> {
+async function extractTar(
+  archive: string,
+  inventory: Inventory,
+  resourceOnly: boolean,
+): Promise<void> {
   await parseTar(archive, (entry) => {
     const kind =
       entry.type === 'Directory'
@@ -349,7 +337,7 @@ async function extractTar(archive: string, inventory: Inventory, coreOnly: boole
     if (kind === 'link') inventory.link(member, entry.linkpath!, entry.type === 'Link');
     entry.resume();
   });
-  const selected = inventory.select(coreOnly),
+  const selected = inventory.select(resourceOnly),
     writes: Promise<void>[] = [];
   for (const member of inventory.members.values()) {
     if (selected.has(member.target) && member.kind === 'directory')
@@ -374,7 +362,7 @@ async function extractTar(archive: string, inventory: Inventory, coreOnly: boole
 async function extract(
   archive: string,
   destination: string,
-  coreOnly: boolean,
+  resourceOnly: boolean,
   options: ExtractOptions,
 ): Promise<void> {
   await mkdir(destination, { recursive: true });
@@ -395,8 +383,8 @@ async function extract(
     await handle.close();
   }
   if (signature[0] === 0x50 && signature[1] === 0x4b)
-    await extractZip(archive, inventory, coreOnly);
-  else await extractTar(archive, inventory, coreOnly);
+    await extractZip(archive, inventory, resourceOnly);
+  else await extractTar(archive, inventory, resourceOnly);
 }
 export function extractArchive(
   archive: string,
@@ -405,39 +393,10 @@ export function extractArchive(
 ): Promise<void> {
   return extract(archive, destination, false, options);
 }
-export function extractCoreArchive(
+export function extractResourceArchive(
   archive: string,
   destination: string,
   options: ExtractOptions = {},
 ): Promise<void> {
   return extract(archive, destination, true, options);
-}
-export async function normalizeRuntimeRoot(generation: string): Promise<void> {
-  const isRuntime = async (root: string) => {
-    const file = async (name: string) =>
-      stat(path.join(root, name)).then(
-        (value) => value.isFile(),
-        () => false,
-      );
-    return (
-      (await file('resource/version.json')) &&
-      (await Promise.all(['MaaCore.dll', 'libMaaCore.so', 'libMaaCore.dylib'].map(file))).some(
-        Boolean,
-      )
-    );
-  };
-  if (await isRuntime(generation)) return;
-  const entries = await readdir(generation, { withFileTypes: true });
-  if (
-    entries.length !== 1 ||
-    !entries[0].isDirectory() ||
-    entries[0].isSymbolicLink() ||
-    !(await isRuntime(path.join(generation, entries[0].name)))
-  ) {
-    throw new Error('核心归档必须包含平铺运行库或唯一的运行库外目录');
-  }
-  const wrapper = path.join(generation, entries[0].name);
-  for (const child of await readdir(wrapper))
-    await rename(path.join(wrapper, child), path.join(generation, child));
-  await rmdir(wrapper);
 }
