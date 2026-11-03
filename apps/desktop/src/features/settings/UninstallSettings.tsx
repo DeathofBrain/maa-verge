@@ -54,7 +54,9 @@ export default function UninstallSettings({ busy }: { busy: boolean }) {
   if (!macos) return null;
   return (
     <Section title="卸载" className="settings-card">
-      <p className="sp-help">将 Maa Verge 和默认安装的 MaaCore、MaaResource 一起移到废纸篓。</p>
+      <p className="sp-help">
+        将 Maa Verge 和默认安装的 MaaFramework、MaaResource 一起移到废纸篓。
+      </p>
       <p className="sp-help">直接在 Finder 中删除应用不会清理组件，请使用此入口卸载。</p>
       {info && !info.available && <p className="sp-help">{info.reason}</p>}
       {error && !open && <p role="alert">{error}</p>}

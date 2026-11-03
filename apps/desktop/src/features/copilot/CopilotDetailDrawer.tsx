@@ -304,7 +304,7 @@ export default function CopilotDetailDrawer({
             </dd>
           </div>
           <div>
-            <dt>最低核心版本</dt>
+            <dt>最低原版版本</dt>
             <dd>{current.minimumCoreVersion || '未声明'}</dd>
           </div>
           <div>

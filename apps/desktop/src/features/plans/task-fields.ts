@@ -108,7 +108,7 @@ export const fields: Record<string, Field[]> = {
       label: '自动使用加急许可',
       kind: 'check',
       disabled: true,
-      hint: '尚未开放：当前核心忽略加急次数限制，需要补齐可靠消耗控制。',
+      hint: '尚未开放：加急流程尚未迁移，需要补齐可靠消耗控制。',
     },
     { key: 'skip_robot', label: '跳过支援机械', kind: 'check' },
     {
@@ -188,6 +188,14 @@ export const fields: Record<string, Field[]> = {
       ],
     },
     { key: 'shopping', label: '信用交易所自动购物', kind: 'check' },
+    {
+      key: 'credit_budget',
+      label: '本次信用消费上限',
+      kind: 'number',
+      min: 0,
+      max: 999999,
+      hint: '默认 0；只有明确预算内、价格与购买结果均可核验的商品才会购买。',
+    },
     { key: 'buy_first', label: '优先购买', kind: 'list' },
     { key: 'blacklist', label: '购买黑名单', kind: 'list' },
     { key: 'force_shopping_if_credit_full', label: '信用溢出时忽略黑名单', kind: 'check' },

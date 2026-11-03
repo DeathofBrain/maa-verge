@@ -760,8 +760,8 @@ export default function ExecutionMonitor({
                   <dd>{currentDevice.address}</dd>
                 </div>
                 <div>
-                  <dt>核心版本</dt>
-                  <dd>{currentDevice.coreVersion || '未加载'}</dd>
+                  <dt>MaaFramework 版本</dt>
+                  <dd>{currentDevice.frameworkVersion || '未加载'}</dd>
                 </div>
                 <div>
                   <dt>资源版本</dt>

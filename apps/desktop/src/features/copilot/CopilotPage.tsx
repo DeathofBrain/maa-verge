@@ -47,6 +47,8 @@ import {
   type RpcResult,
 } from '@maaverge/contracts';
 import type { ActionRunner } from '@/shared/lib/actions';
+import { assertExecutionSupported } from '@/shared/lib/execution-preflight';
+import ExecutionCompatibility from '@/shared/ui/ExecutionCompatibility';
 import { useContextMenu } from '@/kit/ContextMenu';
 import { useCopilotRoster } from './CopilotOperators';
 import SelectAll from '@/shared/ui/SelectAll';
@@ -86,6 +88,8 @@ const kinds: { value: CopilotKind; label: string; short: string }[] = [
   { value: 'ParadoxCopilot', label: '悖论模拟', short: '悖论' },
 ];
 const kindLabel = (kind: CopilotKind) => kinds.find((item) => item.value === kind)?.label ?? kind;
+const preflightKind = (kind: CopilotKind) =>
+  kind === 'SSSCopilot' ? 'sss' : kind === 'ParadoxCopilot' ? 'paradox' : 'copilot';
 const errorText = errorMessage;
 const localSizeLimit = 480 * 1024;
 let lastKind: CopilotKind = 'Copilot';
@@ -987,6 +991,11 @@ export default function CopilotPage({
     await onAction(
       'copilot-start-' + selectedDevice,
       async () => {
+        await assertExecutionSupported({
+          source: 'copilot',
+          kind: preflightKind(kind),
+          deviceId: selectedDevice,
+        });
         await flush(kind);
         const result = await rpc('copilot.start', {
           kind,
@@ -1199,6 +1208,14 @@ export default function CopilotPage({
           </div>
         </details>
 
+        <ExecutionCompatibility
+          params={{
+            source: 'copilot',
+            kind: preflightKind(kind),
+            ...(selectedDevice ? { deviceId: selectedDevice } : {}),
+          }}
+          label="作业执行检查"
+        />
         {error && !detailOpen && (
           <ErrorBanner as="div" className="error-banner cp-feedback">
             {error}

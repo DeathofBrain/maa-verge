@@ -61,21 +61,43 @@ test('toolbox requires explicit selection, handles checking failures, and ignore
   await expect(page.getByRole('button', { name: '开始仓库识别' })).toBeEnabled();
 });
 
-test('tools continue across pages, keep cached results while busy, and never add plans', async ({
+test('unmigrated device tools preserve cached results and refuse new jobs before device execution', async ({
   page,
 }) => {
-  await page.clock.install();
   await page.goto('/');
+  await page.evaluate(() => {
+    const api = (window as HarnessWindow).runtimeHarness,
+      original = api.call;
+    api.call = async (method, params) => {
+      if (method === 'recognition.get' && params.kind === 'depot')
+        return {
+          deviceId: params.deviceId,
+          kind: 'depot',
+          clientType: 'Official',
+          collectedAt: '2026-10-24T08:00:00.000Z',
+          runId: 'legacy-tool',
+          items: [{ id: '30012', name: '固源岩', quantity: 4 }],
+          operators: [],
+        };
+      return original(method, params);
+    };
+  });
   await page.locator('.sidebar').getByRole('button', { name: '工具箱', exact: true }).click();
   await page.getByLabel('工具箱设备', { exact: true }).selectOption('mock-device-1');
+  await expect(page.getByRole('list', { name: '仓库物品' })).toContainText('固源岩');
   await page.getByRole('button', { name: '开始仓库识别' }).click();
-  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
-  await page.clock.runFor(12600);
-  await page.locator('.sidebar').getByRole('button', { name: '工具箱', exact: true }).click();
-  await expect(page.getByRole('list', { name: '仓库物品' }).getByRole('listitem')).toHaveCount(3);
+  await expect(page.getByRole('alert')).toContainText('尚未迁移');
+  let snapshot = (await page.evaluate(
+    async () => await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}),
+  )) as Snapshot;
+  expect(snapshot.toolJobs).toHaveLength(0);
+  expect(snapshot.runs).toHaveLength(0);
   await page.evaluate(async () => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    await api.call('run.start', { planId: 'daily', deviceId: 'mock-device-1', requestId: 'busy' });
+    await (window as HarnessWindow).runtimeHarness.call('run.start', {
+      planId: 'daily',
+      deviceId: 'mock-device-1',
+      requestId: 'busy',
+    });
   });
   await expect(page.getByRole('button', { name: '开始仓库识别' })).toBeDisabled();
   await expect(page.getByRole('button', { name: '导出仓库结果' })).toBeEnabled();
@@ -84,11 +106,11 @@ test('tools continue across pages, keep cached results while busy, and never add
     .getByRole('button', { name: '库存保持', exact: true })
     .click();
   await expect(page.getByRole('button', { name: '添加库存目标' })).toBeDisabled();
-  const snapshot = (await page.evaluate(async () =>
-    (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}),
+  snapshot = (await page.evaluate(
+    async () => await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}),
   )) as Snapshot;
   expect(snapshot.plans).toHaveLength(2);
-  expect(snapshot.toolJobs).toHaveLength(1);
+  expect(snapshot.toolJobs).toHaveLength(0);
 });
 
 test('daily schedules support eight rules, temporary overrides, global options and restart persistence', async ({

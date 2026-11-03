@@ -176,7 +176,7 @@ export function DevicesPage({
     setPendingDeviceIds([...ids]);
     let ready = devices.filter((device) => device.state !== 'offline');
     let failed = devices.filter((device) => device.state === 'offline' && device.connectionError);
-    // Leave room for MaaCore's 30-second asynchronous connection result.
+    // Leave room for MaaFramework's bounded controller connection result.
     const deadline = Date.now() + 35_000;
     while (ready.length + failed.length < ids.size && Date.now() < deadline) {
       setOperation({
@@ -247,7 +247,7 @@ export function DevicesPage({
       });
       setDiagnostics([
         result.length
-          ? '下方是本次 ADB 发现结果；“已连接”表示已建立核心连接，其余设备可单独连接。'
+          ? '下方是本次 ADB 发现结果；“已连接”表示已建立 MaaFramework 连接，其余设备可单独连接。'
           : '请确认模拟器已启动并开启 ADB 调试，也可手动填写连接地址。',
       ]);
     });
@@ -448,7 +448,7 @@ export function DevicesPage({
                   <h2>
                     已连接 <span>{connected.length}</span>
                   </h2>
-                  <p>已建立核心连接，可选择设备执行任务。</p>
+                  <p>已建立 MaaFramework 连接，可选择设备执行任务。</p>
                 </div>
                 <Button
                   busy={working && operation.kind === 'auto-connect'}
@@ -477,7 +477,7 @@ export function DevicesPage({
               <section className="sp-section" aria-label="正在连接设备">
                 <div className="sp-section-title">
                   <h2>正在连接</h2>
-                  <p>正在等待核心确认，连接完成后才可执行任务。</p>
+                  <p>正在等待 MaaFramework 确认，连接完成后才可执行任务。</p>
                 </div>
                 <div className="dp-device-grid">{connecting.map(renderDevice)}</div>
               </section>
@@ -668,8 +668,8 @@ export function DevicesPage({
               <dd aria-label="实际截图方式">{actualCaptureMethod(detailDevice)}</dd>
             </div>
             <div>
-              <dt>核心版本</dt>
-              <dd>{detailDevice.coreVersion || '尚未加载'}</dd>
+              <dt>MaaFramework 版本</dt>
+              <dd>{detailDevice.frameworkVersion || '尚未加载'}</dd>
             </div>
             <div>
               <dt>资源版本</dt>

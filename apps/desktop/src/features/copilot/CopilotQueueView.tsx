@@ -353,7 +353,8 @@ export default function CopilotQueueView({
           <details className="cp-game-help">
             <summary>游戏内准备与说明</summary>
             <p className="sp-help">
-              队列在当前区域内按关卡导航，不支持跨区域；普通与突袭由队列条目选择。单份循环、演习请在游戏内选好关卡与模式。助战限制以核心反馈为准，不使用理智药或源石。
+              队列保留原版关卡导航、普通与突袭、循环和演习配置。作业执行尚未迁移到
+              MaaFramework，当前可继续管理配置。
             </p>
           </details>
         )}

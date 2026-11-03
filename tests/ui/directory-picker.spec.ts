@@ -26,13 +26,13 @@ test('cancelling the component directory picker preserves settings and selected 
   page,
 }) => {
   await openUpdates(page);
-  const core = channelSection(page, 'MaaCore 核心');
-  await core.locator('summary').filter({ hasText: '下载与安装目录' }).click();
-  const directory = core.getByLabel('MaaCore 核心下载目录', { exact: true });
+  const framework = channelSection(page, 'MaaFramework');
+  await framework.locator('summary').filter({ hasText: '下载与安装目录' }).click();
+  const directory = framework.getByLabel('MaaFramework下载目录', { exact: true });
   const initialPath = await directory.inputValue();
   const before = await savedPaths(page);
   const writes = await page.evaluate(() => (window as HarnessWindow).runtimeHarness.settingsWrites);
-  const choose = core.getByRole('button', { name: '选择文件夹', exact: true });
+  const choose = framework.getByRole('button', { name: '选择文件夹', exact: true });
 
   await choose.click();
   await expect(choose).toBeEnabled();
@@ -50,33 +50,35 @@ test('chosen component directories save automatically and failed selections can 
   page,
 }) => {
   await openUpdates(page);
-  const core = channelSection(page, 'MaaCore 核心');
-  await core.locator('summary').filter({ hasText: '下载与安装目录' }).click();
-  const directory = core.getByLabel('MaaCore 核心下载目录', { exact: true });
-  const choose = core.getByRole('button', { name: '选择文件夹', exact: true });
-  const selected = '/fixture/自定义组件/MaaCore';
+  const framework = channelSection(page, 'MaaFramework');
+  await framework.locator('summary').filter({ hasText: '下载与安装目录' }).click();
+  const directory = framework.getByLabel('MaaFramework下载目录', { exact: true });
+  const choose = framework.getByRole('button', { name: '选择文件夹', exact: true });
+  const selected = '/fixture/自定义组件/MaaFramework';
   await page.evaluate((selection) => {
     (window as HarnessWindow).runtimeHarness.directorySelection = selection;
   }, selected);
   await choose.click();
-  await expect.poll(async () => (await savedPaths(page))?.core).toBe(selected);
+  await expect.poll(async () => (await savedPaths(page))?.framework).toBe(selected);
   await expect(directory).toHaveValue(selected);
 
-  const retryPath = '/fixture/组件 重试/MaaCore';
+  const retryPath = '/fixture/组件 重试/MaaFramework';
   await page.evaluate((selection) => {
     const harness = (window as HarnessWindow).runtimeHarness;
     harness.directorySelection = selection;
     harness.failSettings = true;
   }, retryPath);
   await choose.click();
-  await expect(core.locator('.sp-component-path .settings-save-state')).toContainText('保存失败');
+  await expect(framework.locator('.sp-component-path .settings-save-state')).toContainText(
+    '保存失败',
+  );
   await expect(directory).toHaveValue(retryPath);
-  expect((await savedPaths(page))?.core).toBe(selected);
+  expect((await savedPaths(page))?.framework).toBe(selected);
   await page.evaluate(() => {
     (window as HarnessWindow).runtimeHarness.failSettings = false;
   });
-  await core.getByRole('button', { name: '重试', exact: true }).click();
-  await expect.poll(async () => (await savedPaths(page))?.core).toBe(retryPath);
+  await framework.getByRole('button', { name: '重试', exact: true }).click();
+  await expect.poll(async () => (await savedPaths(page))?.framework).toBe(retryPath);
 
   const resource = channelSection(page, '游戏资源');
   await resource.locator('summary').filter({ hasText: '下载与安装目录' }).click();
@@ -86,7 +88,7 @@ test('chosen component directories save automatically and failed selections can 
   }, resourcePath);
   await resource.getByRole('button', { name: '选择文件夹', exact: true }).click();
   await expect.poll(async () => (await savedPaths(page))?.resource).toBe(resourcePath);
-  expect((await savedPaths(page))?.core).toBe(retryPath);
+  expect((await savedPaths(page))?.framework).toBe(retryPath);
 
   await page.reload();
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
@@ -95,7 +97,7 @@ test('chosen component directories save automatically and failed selections can 
     .getByRole('navigation', { name: '设置分类' })
     .getByRole('button', { name: '更新', exact: true })
     .click();
-  await core.locator('summary').filter({ hasText: '下载与安装目录' }).click();
+  await framework.locator('summary').filter({ hasText: '下载与安装目录' }).click();
   await resource.locator('summary').filter({ hasText: '下载与安装目录' }).click();
   await expect(directory).toHaveValue(retryPath);
   await expect(resource.getByLabel('游戏资源下载目录', { exact: true })).toHaveValue(resourcePath);

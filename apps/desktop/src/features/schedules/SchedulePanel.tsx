@@ -16,6 +16,7 @@ import {
   type RpcResult,
 } from '@maaverge/contracts';
 import ErrorBanner from '@/kit/ErrorBanner';
+import ExecutionCompatibility from '@/shared/ui/ExecutionCompatibility';
 import './schedule-panel.css';
 type Schedule = RpcResult<'schedule.save'>;
 export default function SchedulePanel({
@@ -195,6 +196,18 @@ export default function SchedulePanel({
                         </option>
                       ))}
                     </Select>
+                    <ExecutionCompatibility
+                      params={
+                        plans.some((plan) => plan.id === targetPlanId)
+                          ? {
+                              tasks: plans.find((plan) => plan.id === targetPlanId)!.tasks,
+                              deviceId: schedule.deviceId,
+                              force: options.forceScheduledStart,
+                            }
+                          : undefined
+                      }
+                      label={`定时执行检查 ${schedule.id}`}
+                    />
                   </td>
                   <td>
                     <Select

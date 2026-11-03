@@ -66,6 +66,8 @@ test('failed notification saves retain drafts and allow retry', async ({ page })
   await expect(
     region.getByRole('switch', { name: '更新结果通知', exact: false }),
   ).not.toBeChecked();
+  // Reopening restores the draft and retries it; keep the failure until that attempt settles.
+  await expect(region.getByRole('button', { name: '重试', exact: true })).toBeEnabled();
   await page.evaluate(() => {
     (window as HarnessWindow).runtimeHarness.failSettings = false;
   });

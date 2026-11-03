@@ -43,6 +43,8 @@ import EmptyState from '@/kit/EmptyState';
 import IconButton from '@/kit/IconButton';
 import Spinner from '@/kit/Spinner';
 import { downloadRecognition } from './tool-exports';
+import { assertExecutionSupported } from '@/shared/lib/execution-preflight';
+import ExecutionCompatibility from '@/shared/ui/ExecutionCompatibility';
 import './toolbox.css';
 
 type Kind = RpcParams<'tool.start'>['kind'];
@@ -246,6 +248,13 @@ export default function ToolsPage({
       'tool-start-' + deviceId,
       async () => {
         if (blocked || !config) throw new Error('请先选择空闲设备并等待状态检查完成');
+        await assertExecutionSupported({
+          source: 'tool',
+          kind,
+          deviceId,
+          clientType: client,
+          config,
+        });
         await rpc('tool.start', {
           deviceId,
           clientType: client,
@@ -361,6 +370,12 @@ export default function ToolsPage({
             <header className="tool-content-heading">
               <h2>{active.label}</h2>
             </header>
+            <ExecutionCompatibility
+              params={
+                config ? { source: 'tool', kind, deviceId, clientType: client, config } : undefined
+              }
+              label="工具执行检查"
+            />
             {job?.deviceId === deviceId && (
               <section className="sp-section tool-operation" aria-label="工具执行状态">
                 <div>

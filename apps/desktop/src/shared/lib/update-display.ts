@@ -1,5 +1,18 @@
 import type { Event, ResourceActivityVersion, UpdateChannel } from '@maaverge/contracts';
 
+export function updateCanPrepare(channel: UpdateChannel): boolean {
+  return (
+    channel.status === 'available' ||
+    (channel.status === 'failed' &&
+      !!channel.latestVersion &&
+      (channel.id === 'framework' || channel.latestVersion !== channel.currentVersion))
+  );
+}
+
+export function updateIsInstalled(channel: UpdateChannel): boolean {
+  return !!channel.currentVersion && channel.currentVersion !== '未安装';
+}
+
 export function downloadSpeedLabel(channel: UpdateChannel): string | undefined {
   const speed = channel.downloadSpeedBytesPerSecond;
   if (
@@ -22,7 +35,7 @@ export function gameDataChanged(event: Event): boolean {
   const update = event.data.update;
   return (
     event.type === 'update.changed' &&
-    ['core', 'resource'].includes(String(event.data.channel)) &&
+    ['resource'].includes(String(event.data.channel)) &&
     !!update &&
     typeof update === 'object' &&
     'status' in update &&

@@ -137,6 +137,7 @@ test('a run refresh does not swallow a pending manual rating failure', async ({ 
             reject(new Error('运行刷新期间评价失败'));
         });
       }
+      if (method === 'app.snapshot') harness.commands.push('rating-refresh-observed');
       return original(method, params);
     };
   });
@@ -146,13 +147,13 @@ test('a run refresh does not swallow a pending manual rating failure', async ({ 
   await expect
     .poll(() => page.evaluate(() => (window as unknown as HarnessWindow).runtimeHarness.commands))
     .toContain('rating-pending');
+  // 运行事件刷新已有页面即可覆盖评价竞争，不通过未迁移作业入口制造执行。
   await page.evaluate(() =>
-    (window as unknown as HarnessWindow).runtimeHarness.call('copilot.start', {
-      kind: 'Copilot',
-      deviceId: 'mock-device-1',
-      requestId: 'drawer-rating-refresh',
-    }),
+    (window as unknown as HarnessWindow).runtimeHarness.emitEvent('run.progress'),
   );
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as HarnessWindow).runtimeHarness.commands))
+    .toContain('rating-refresh-observed');
   await page.evaluate(() => (window as unknown as { rejectRating: () => void }).rejectRating());
   await expect(detail(page).getByRole('alert')).toContainText('运行刷新期间评价失败');
   await expect(like).toBeEnabled();

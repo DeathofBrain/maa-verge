@@ -185,8 +185,8 @@ async function controlDownloadSource(page: Page, id: UpdateChannel['id']) {
 
 for (const [id, label] of [
   ['app', 'Maa Verge 应用'],
-  ['core', 'MaaCore 核心'],
   ['resource', 'MaaResource 游戏资源'],
+  ['framework', 'MaaFramework'],
 ] as const) {
   test(`${id} download source follows the selected transport across navigation and fallback`, async ({
     page,

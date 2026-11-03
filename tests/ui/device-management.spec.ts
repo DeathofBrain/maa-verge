@@ -21,7 +21,7 @@ test('disconnected history stays separate and a discovered device can become an 
   await discovery.getByRole('button', { name: '保存为多开实例', exact: true }).click();
   const editor = page.getByRole('form', { name: '多开实例配置', exact: true });
   await expect(editor.getByLabel('连接地址', { exact: true })).toHaveValue('127.0.0.1:5555');
-  await expect(editor.getByLabel('截图协议', { exact: true })).toHaveValue('auto');
+  await expect(editor.getByLabel('MaaFramework 截图增强', { exact: true })).toHaveValue('auto');
   await editor.getByLabel('实例名称', { exact: true }).fill('主账号模拟器');
   await editor.getByRole('button', { name: '保存实例配置', exact: true }).click();
   await expect(
@@ -40,7 +40,7 @@ test('editing detected profiles through connection or capture settings consisten
   page,
 }) => {
   await page.goto('/');
-  await page.evaluate(async () => {
+  const originalConnection = await page.evaluate(async () => {
     const harness = (window as HarnessWindow).runtimeHarness;
     const snapshot = (await harness.call('app.snapshot', {})) as Snapshot;
     const connection = {
@@ -64,6 +64,7 @@ test('editing detected profiles through connection or capture settings consisten
         })),
       },
     });
+    return snapshot.settings.connection;
   });
   await page.locator('.sidebar').getByRole('button', { name: '设备', exact: true }).click();
   await page
@@ -71,7 +72,7 @@ test('editing detected profiles through connection or capture settings consisten
     .getByRole('button', { name: '连接设置', exact: true })
     .click();
   await page.getByLabel('编辑设备连接配置', { exact: true }).selectOption('first');
-  await page.getByLabel('触控模式', { exact: true }).selectOption('maatouch');
+  await page.getByLabel('MaaFramework 触控模式', { exact: true }).selectOption('maatouch');
   await page.getByRole('button', { name: '保存连接配置', exact: true }).click();
   await expect(page.locator('.sp-connection-form .sp-form-actions > .sp-help')).toHaveText(
     '已保存',
@@ -81,20 +82,22 @@ test('editing detected profiles through connection or capture settings consisten
   )) as Snapshot;
   expect(snapshot.settings.deviceProfiles?.[0]).toMatchObject({
     autoDetected: false,
-    connection: { touchMode: 'maatouch' },
+    connection: { framework: { touchMode: 'maatouch' } },
   });
   expect(snapshot.settings.deviceProfiles?.[1].autoDetected).toBe(true);
-  expect(snapshot.settings.connection).toBeUndefined();
+  expect(snapshot.settings.connection).toEqual(originalConnection);
   await page.getByLabel('编辑设备连接配置', { exact: true }).selectOption('second');
-  await page.getByLabel('截图协议', { exact: true }).selectOption('adb');
-  await page.getByRole('button', { name: '保存截图配置', exact: true }).click();
-  await expect(page.locator('.sp-capture-form .sp-form-actions > .sp-help')).toHaveText('已保存');
+  await page.getByLabel('MaaFramework 截图增强', { exact: true }).selectOption('adb');
+  await page.getByRole('button', { name: '保存连接配置', exact: true }).click();
+  await expect(page.locator('.sp-connection-form .sp-form-actions > .sp-help')).toHaveText(
+    '已保存',
+  );
   snapshot = (await page.evaluate(() =>
     (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}),
   )) as Snapshot;
   expect(snapshot.settings.deviceProfiles?.[1]).toMatchObject({
     autoDetected: false,
-    capture: { autoDetect: false },
+    connection: { framework: { capture: { method: 'adb' } } },
   });
   expect(snapshot.settings.capture?.method).toBe('adb');
   await page.getByRole('button', { name: '截图测试', exact: true }).click();

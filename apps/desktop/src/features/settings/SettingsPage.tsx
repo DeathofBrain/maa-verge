@@ -12,6 +12,7 @@ import {
   Database,
   Download,
   HardDrive,
+  Layers,
   Info,
   LoaderCircle,
   RefreshCw,
@@ -45,6 +46,8 @@ import {
   resourceClientLabels,
   resourceVersionDetail,
   resourceVersionLabel,
+  updateCanPrepare,
+  updateIsInstalled,
   type ResourceClient,
 } from '@/shared/lib/update-display';
 import Button from '@/kit/Button';
@@ -128,7 +131,7 @@ const categories = [
     label: '更新',
     icon: RefreshCw,
     keywords:
-      '更新 应用 核心 MaaCore MaaResource 游戏资源 资源更新 下载 版本 正式版 预览版 频道 活动 目录 路径 检查 回滚 断点续传 下载代理 Clash VPN 直连 MirrorChyan Mirror酱 mirror酱 CDK 付费 加速',
+      '更新 应用 MaaResource MaaFramework MFW 游戏资源 资源更新 下载 版本 正式版 预览版 兼容版 频道 活动 目录 路径 检查 回滚 断点续传 下载代理 Clash VPN 直连 MirrorChyan Mirror酱 mirror酱 CDK 付费 加速',
   },
   {
     id: 'data',
@@ -181,7 +184,7 @@ export function SettingsPage({
       Object.fromEntries(
         Object.entries(patch.componentPaths).filter(
           ([key, value]) =>
-            value !== (snapshot.settings.componentPaths?.[key as 'core' | 'resource'] || ''),
+            value !== (snapshot.settings.componentPaths?.[key as 'resource' | 'framework'] || ''),
         ),
       );
     const result = settingsSaveQueue.then(() =>
@@ -194,7 +197,6 @@ export function SettingsPage({
             ...(changedPaths
               ? {
                   componentPaths: {
-                    core: '',
                     resource: '',
                     ...current.settings.componentPaths,
                     ...changedPaths,
@@ -228,7 +230,7 @@ export function SettingsPage({
       'check-all',
       async () => {
         const failures: string[] = [];
-        for (const channel of ['app', 'core', 'resource'] as const) {
+        for (const channel of ['app', 'framework', 'resource'] as const) {
           try {
             await rpc('updates.check', { channel });
           } catch (cause) {
@@ -433,7 +435,7 @@ export function SettingsPage({
                   <div className="sp-content-heading">
                     <div>
                       <h2>更新</h2>
-                      <p>应用重启安装，核心与资源在空闲时生效。</p>
+                      <p>应用重启安装，MaaFramework 与游戏资源 独立更新，在空闲时生效。</p>
                     </div>
                     <Button disabled={busy || updating} onClick={() => void checkAll()}>
                       <RefreshCw size={15} />
@@ -527,6 +529,11 @@ export function SettingsPage({
   );
 }
 
+function componentPathKey(id: UpdateChannel['id']) {
+  if (id === 'app') throw new Error('应用更新不使用组件目录');
+  return id;
+}
+
 function ComponentPathForm({
   channel,
   settings,
@@ -538,7 +545,7 @@ function ComponentPathForm({
   busy: boolean;
   onSave: (patch: Partial<Settings>) => Promise<boolean>;
 }) {
-  const key = channel.id === 'core' ? 'core' : 'resource';
+  const key = componentPathKey(channel.id);
   const saved = settings.componentPaths?.[key] || channel.installDirectory || '';
   const [selecting, setSelecting] = useState(false);
   const [error, setError] = useState('');
@@ -548,8 +555,8 @@ function ComponentPathForm({
     async (value) =>
       onSave({
         componentPaths: {
-          core: settings.componentPaths?.core || '',
           resource: settings.componentPaths?.resource || '',
+          ...settings.componentPaths,
           [key]: value.path,
         },
       }),
@@ -638,7 +645,11 @@ function DownloadProxyForm({
       },
     );
   return (
-    <Section title="下载代理" className="settings-card" description="应用、核心与资源共用此设置。">
+    <Section
+      title="下载代理"
+      className="settings-card"
+      description="应用、MaaFramework 与游戏资源 共用此设置。"
+    >
       <form
         className="settings-form"
         aria-label="下载代理设置"
@@ -753,7 +764,11 @@ function UpdateSection({
   const [confirmInstall, setConfirmInstall] = useState(false);
   const [appActionBusy, setAppActionBusy] = useState(false);
   const appActionPending = useRef(false);
-  const Icon = channel.id === 'app' ? HardDrive : channel.id === 'core' ? Cpu : Database;
+  const Icon = {
+    app: HardDrive,
+    resource: Database,
+    framework: Layers,
+  }[channel.id];
   const working = preparing || ['checking', 'downloading'].includes(channel.status);
   const downloadSpeed = downloadSpeedLabel(channel);
   const downloadSource =
@@ -763,6 +778,26 @@ function UpdateSection({
         ? '官方源'
         : undefined;
   const isApp = channel.id === 'app';
+  const preference = {
+    app: {
+      autoCheck: settings.autoUpdateApp ?? true,
+      field: 'autoUpdateApp' as const,
+      label: '启动时检查应用更新',
+      description: '已安排的更新仍会在下次启动时安装',
+    },
+    resource: {
+      autoCheck: settings.autoUpdateResource,
+      field: 'autoUpdateResource' as const,
+      label: '独立检查游戏资源',
+      description: '每 6 小时检查，与 MaaFramework 版本无关',
+    },
+    framework: {
+      autoCheck: settings.autoUpdateFramework ?? true,
+      field: 'autoUpdateFramework' as const,
+      label: '自动检查 MaaFramework 更新',
+      description: '启动时及每 24 小时检查稳定兼容版',
+    },
+  }[channel.id];
   const canInstall = !isApp || channel.appCanInstall === true;
   const staged = ['staged', 'waiting_idle'].includes(channel.status);
   const hasCandidate =
@@ -788,27 +823,13 @@ function UpdateSection({
   const preferences = useAutoSaveDraft(
     `update-${channel.id}`,
     {
-      releaseChannel: isApp
-        ? (settings.appUpdateChannel ?? 'preview')
-        : (settings.coreUpdateChannel ?? 'stable'),
-      autoCheck: isApp
-        ? (settings.autoUpdateApp ?? true)
-        : channel.id === 'core'
-          ? settings.autoUpdateCore
-          : settings.autoUpdateResource,
+      releaseChannel: isApp ? (settings.appUpdateChannel ?? 'preview') : undefined,
+      autoCheck: preference.autoCheck,
     },
     async (value) =>
       onSave({
-        ...(channel.id !== 'resource'
-          ? isApp
-            ? { appUpdateChannel: value.releaseChannel }
-            : { coreUpdateChannel: value.releaseChannel }
-          : {}),
-        ...(isApp
-          ? { autoUpdateApp: value.autoCheck }
-          : channel.id === 'core'
-            ? { autoUpdateCore: value.autoCheck }
-            : { autoUpdateResource: value.autoCheck }),
+        ...(isApp ? { appUpdateChannel: value.releaseChannel } : {}),
+        [preference.field]: value.autoCheck,
       }),
   );
   useEffect(() => {
@@ -913,26 +934,22 @@ function UpdateSection({
             检查更新
           </Button>
         )}
-        {(channel.status === 'available' ||
-          (channel.status === 'failed' &&
-            channel.latestVersion &&
-            channel.latestVersion !== channel.currentVersion)) &&
-          canInstall && (
-            <Button
-              variant="primary"
-              disabled={busy || preparing}
-              onClick={() => void onPrepare(channel)}
-            >
-              <Download size={14} />
-              {channel.status === 'failed'
-                ? '重试下载'
-                : isApp
-                  ? '下载更新'
-                  : channel.currentVersion
-                    ? '准备更新'
-                    : '下载安装'}
-            </Button>
-          )}
+        {updateCanPrepare(channel) && canInstall && (
+          <Button
+            variant="primary"
+            disabled={busy || preparing}
+            onClick={() => void onPrepare(channel)}
+          >
+            <Download size={14} />
+            {channel.status === 'failed'
+              ? '重试下载'
+              : isApp
+                ? '下载更新'
+                : updateIsInstalled(channel)
+                  ? '准备更新'
+                  : '下载安装'}
+          </Button>
+        )}
         {staged && canInstall && (
           <Button
             variant="primary"
@@ -992,15 +1009,15 @@ function UpdateSection({
         </label>
       )}
       <div className="sp-update-preference">
-        {channel.id !== 'resource' && (
+        {isApp && (
           <SettingRow
             padding="compact"
-            title={isApp ? '应用更新频道' : 'MaaCore 更新频道'}
+            title="应用更新频道"
             description={staged ? '切换频道将取消已准备的版本。' : '预览版包含尚在验证中的新功能。'}
             control={
               <Select
                 className="sp-inline-select"
-                aria-label={isApp ? '应用更新频道' : 'MaaCore 更新频道'}
+                aria-label="应用更新频道"
                 value={preferences.draft.releaseChannel}
                 disabled={busy || working}
                 onChange={(event) =>
@@ -1019,21 +1036,17 @@ function UpdateSection({
             }
           />
         )}
+        {channel.id === 'framework' && (
+          <SettingRow
+            padding="compact"
+            title="MaaFramework 更新版本"
+            description="仅安装经过兼容验证的稳定版本。"
+            control={<span className="sp-value">稳定兼容版</span>}
+          />
+        )}
         <Toggle
-          label={
-            isApp
-              ? '启动时检查应用更新'
-              : channel.id === 'core'
-                ? '自动检查核心更新'
-                : '独立检查游戏资源'
-          }
-          description={
-            isApp
-              ? '已安排的更新仍会在下次启动时安装'
-              : channel.id === 'core'
-                ? '启动时及每 24 小时检查'
-                : '每 6 小时检查，与核心版本无关'
-          }
+          label={preference.label}
+          description={preference.description}
           checked={preferences.draft.autoCheck}
           disabled={busy}
           onChange={(value) =>

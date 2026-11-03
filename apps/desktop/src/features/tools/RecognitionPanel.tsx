@@ -16,6 +16,7 @@ import Button from '@/kit/Button';
 import Spinner from '@/kit/Spinner';
 import { downloadRecognition, recognitionExport, type ExportFormat } from './tool-exports';
 import './recognition-panel.css';
+import { assertExecutionSupported } from '@/shared/lib/execution-preflight';
 
 type Kind = RpcParams<'recognition.get'>['kind'];
 export type RecognitionClient = NonNullable<RpcParams<'recognition.get'>['clientType']>;
@@ -114,6 +115,12 @@ export default function RecognitionPanel({
       `recognition-${selectedDevice}`,
       async () => {
         if (!device || device.state !== 'idle') throw new Error('请先连接空闲设备');
+        await assertExecutionSupported({
+          source: 'tool',
+          kind,
+          deviceId: selectedDevice,
+          clientType: selectedClient,
+        });
         await rpc('tool.start', {
           kind,
           deviceId: selectedDevice,

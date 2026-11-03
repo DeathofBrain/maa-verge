@@ -125,11 +125,11 @@ export default function CopilotRunMonitor({
             {run.status === 'running'
               ? '运行中'
               : run.status === 'completed'
-                ? '核心流程结束'
+                ? '原执行流程结束'
                 : run.status === 'stopped'
                   ? '已停止'
                   : '执行失败'}
-            。停止会清空核心队列，本机配置和未执行项保留。
+            。停止会清空执行队列，本机配置和未执行项保留。
           </p>
           {run.copilotEntries && (
             <ol className="cp-run-entries">
@@ -149,7 +149,7 @@ export default function CopilotRunMonitor({
                       {
                         waiting: '等待执行',
                         running: '执行中',
-                        completed: '核心流程结束',
+                        completed: '原执行流程结束',
                         failed: '失败',
                         stopped: '已停止',
                         skipped: '未执行',

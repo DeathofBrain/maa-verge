@@ -191,7 +191,7 @@ function ConfigurationForm({
           </div>
         </dl>
         <p className="sp-help">
-          备份前请完全退出应用并保留整个配置目录。核心、资源和自定义作业目录需分别备份。
+          备份前请完全退出应用并保留整个配置目录。MaaFramework、游戏资源和自定义作业目录需分别备份。
         </p>
       </details>
       {locations.overridden && (

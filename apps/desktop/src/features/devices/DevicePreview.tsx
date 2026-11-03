@@ -305,7 +305,7 @@ export default function DevicePreview({
     : readOnly
       ? '执行页面仅查看画面'
       : device?.state === 'running'
-        ? '任务执行中，显示核心最近画面，仅查看'
+        ? '任务执行中，显示 MaaFramework 最近画面，仅查看'
         : !displayed?.frame.canControl && displayed
           ? '设备控制权不可用，仅查看画面'
           : !allowClicks

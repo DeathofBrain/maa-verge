@@ -12,7 +12,7 @@ export default function Compatibility({ record }: { record: CopilotRecord }) {
           ? '作业格式与当前资源已检查'
           : record.compatibility.status === 'unsupported'
             ? '当前不可执行'
-            : '仍需核对核心与资源'}
+            : '仍需核对原版版本与资源'}
         {record.compatibility.reasons.length > 0 && `：${record.compatibility.reasons.join('；')}`}
       </span>
     </div>

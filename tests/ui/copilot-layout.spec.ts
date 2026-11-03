@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { CopilotPreview } from '../../packages/contracts/src/index';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { historicalCopilotRun, restoreHistoricalRuns } from './fixtures/history';
 
 const queue = (page: Page) => page.getByRole('region', { name: '作业执行队列', exact: true });
 const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
@@ -222,25 +223,21 @@ test('the top result monitor switches devices and records independently from the
         ],
       },
     });
-    const firstRun = (await harness.call('copilot.start', {
-      kind: 'Copilot',
-      deviceId: 'mock-device-1',
-      requestId: 'monitor-first',
-    })) as { id: string };
-    const secondRun = (await harness.call('copilot.start', {
-      kind: 'Copilot',
-      deviceId: second.id,
-      requestId: 'monitor-second',
-    })) as { id: string };
-    return { second, empty, firstRun, secondRun };
+    return { second, empty, versionId: records.items[0].versionId };
   });
+  const firstRun = historicalCopilotRun('多设备执行查看', seeded.versionId, 'monitor-first');
+  const secondRun = {
+    ...historicalCopilotRun('多设备执行查看', seeded.versionId, 'monitor-second'),
+    deviceId: seeded.second.id,
+  };
+  await restoreHistoricalRuns(page, [firstRun, secondRun]);
   await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
   const monitor = page.getByRole('region', { name: '作业运行状态', exact: true });
   await expect(monitor).toBeVisible();
   const target = await queue(page).getByLabel('作业目标设备', { exact: true }).inputValue();
   await monitor.getByLabel('查看作业设备', { exact: true }).selectOption(seeded.second.id);
   await expect(monitor).toContainText('第二合成设备');
-  await monitor.getByLabel('查看作业记录', { exact: true }).selectOption(seeded.secondRun.id);
+  await monitor.getByLabel('查看作业记录', { exact: true }).selectOption(secondRun.id);
   await expect(queue(page).getByLabel('作业目标设备', { exact: true })).toHaveValue(target);
   await monitor.getByLabel('查看作业设备', { exact: true }).selectOption(seeded.empty.id);
   await expect(monitor).toContainText('此设备还没有作业执行记录');

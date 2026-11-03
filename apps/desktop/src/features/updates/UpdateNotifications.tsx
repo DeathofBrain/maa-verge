@@ -7,7 +7,11 @@ import { downloadSpeedLabel } from '@/shared/lib/update-display';
 import './update-notifications.css';
 
 type Notice = { channel: UpdateChannel; visible: boolean };
-const names = { app: 'Maa Verge 应用', core: 'MaaCore 核心', resource: 'MaaResource 游戏资源' };
+const names: Record<UpdateChannel['id'], string> = {
+  app: 'Maa Verge 应用',
+  resource: 'MaaResource 游戏资源',
+  framework: 'MaaFramework',
+};
 const terminal = new Set<UpdateChannel['status']>(['staged', 'waiting_idle', 'active', 'failed']);
 const progressFor = (channel: UpdateChannel) => Math.max(0, Math.min(100, channel.progress));
 

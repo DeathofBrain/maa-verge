@@ -19,7 +19,7 @@ function device(
   address: string,
   state: Device['state'] = 'idle',
 ): Device {
-  return { id, name, address, state, coreVersion: 'v6.20.0', resourceVersion: 'synthetic' };
+  return { id, name, address, state, frameworkVersion: 'v5.14.3', resourceVersion: 'synthetic' };
 }
 
 async function seed(page: Page, devices: Device[], deviceIds: string[]) {

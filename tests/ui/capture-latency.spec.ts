@@ -2,14 +2,14 @@ import type { ScreenFrame, Snapshot } from '@maaverge/contracts';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 import { navigate } from './fixtures/navigation';
 
-test('screenshot tests report only the current MaaCore latency and preserve the known method', async ({
+test('screenshot tests report the current MaaFramework transport latency and preserve the known method', async ({
   page,
 }) => {
   await page.goto('/');
   await page.evaluate(() => {
     const harness = (window as HarnessWindow).runtimeHarness;
     const call = harness.call;
-    const latencies = [undefined, 0, 7, undefined];
+    const latencies = [987, 0, 7, 14];
     let frameIndex = 0;
     harness.call = async (method, params) => {
       const result = await call(method, params);
@@ -24,11 +24,7 @@ test('screenshot tests report only the current MaaCore latency and preserve the 
         };
       }
       if (method === 'device.frame') {
-        const image = { ...(result as ScreenFrame), latencyMs: 987 };
-        delete image.coreLatencyMs;
-        const coreLatencyMs = latencies[frameIndex++];
-        if (coreLatencyMs !== undefined) image.coreLatencyMs = coreLatencyMs;
-        return image;
+        return { ...(result as ScreenFrame), latencyMs: latencies[frameIndex++] };
       }
       return result;
     };
@@ -39,15 +35,11 @@ test('screenshot tests report only the current MaaCore latency and preserve the 
   const dialog = page.getByRole('dialog', { name: '设备连接设置', exact: true });
   const result = dialog.getByRole('status').filter({ hasText: '截图成功' });
 
-  // A missing first value and a missing value after 7 ms must both stay unknown.
-  for (const coreLatencyMs of [undefined, 0, 7, undefined]) {
+  // 每次回执都显示本次总耗时，零值同样有效，不沿用上一次截图。
+  for (const latencyMs of [987, 0, 7, 14]) {
     await dialog.getByRole('button', { name: '截图测试', exact: true }).click();
-    await expect(result).toContainText(
-      coreLatencyMs === undefined ? '核心未提供截图耗时' : `核心截图耗时 ${coreLatencyMs} ms`,
-    );
+    await expect(result).toContainText(`总耗时 ${latencyMs} ms`);
     await expect(result).toContainText('（MumuExtras）');
-    await expect(result).not.toContainText('987');
-    if (coreLatencyMs === undefined) await expect(result).not.toContainText('核心截图耗时');
   }
   expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.frames)).toEqual([
     'mock-device-1',

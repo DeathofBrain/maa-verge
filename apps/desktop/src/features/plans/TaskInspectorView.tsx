@@ -19,6 +19,7 @@ import SearchField from '@/kit/SearchField';
 import TextArea from '@/kit/TextArea';
 import { fieldGroups, fields } from './task-fields';
 import { type Draft, type Step } from './plan-draft';
+import ExecutionCompatibility from '@/shared/ui/ExecutionCompatibility';
 
 type Props = {
   step: Step | undefined;
@@ -127,6 +128,17 @@ export default function TaskInspectorView({
               </IconButton>
             </div>
           </div>
+          <ExecutionCompatibility
+            params={
+              validJson
+                ? {
+                    tasks: draft.steps.map((entry) => entry.task),
+                    ...(contextDeviceId ? { deviceId: contextDeviceId } : {}),
+                    clientType: taskClient,
+                  }
+                : undefined
+            }
+          />
           <SearchField
             className="wb-field-search"
             aria-label="搜索当前任务设置"
@@ -217,12 +229,12 @@ export default function TaskInspectorView({
           {!fields[step.task.type]?.length && step.task.type !== 'OperProgress' && (
             <div className="wb-task-help">
               <FileText size={17} />
-              <p>识别使用核心默认参数。结果可在运行事件中查看；专用结果与导出仍待接入。</p>
+              <p>现有识别配置保持可编辑；当前引擎尚未提供完整扫描，执行前会明确说明限制。</p>
             </div>
           )}
           {step.task.type === 'Recruit' && (
             <p className="wb-helper">
-              次数为 0 时仅识别标签。当前核心无法保证加急次数上限，加急请求会被策略拒绝。
+              原配置中次数为 0 表示仅识别标签；完整公招任务尚未迁移，加急请求会被策略拒绝。
             </p>
           )}
           {step.task.type === 'StartUp' && (
@@ -287,9 +299,9 @@ export default function TaskInspectorView({
             }}
           >
             <summary>
-              高级参数 <span>完整 MaaCore JSON</span>
+              高级参数 <span>兼容任务 JSON</span>
             </summary>
-            <p>补充未列出的上游字段；保存时完整保留，并校验参数和消耗。</p>
+            <p>保留已有任务字段；执行前会检查当前引擎支持范围，未迁移字段不会被静默忽略。</p>
             <label className="field-label" htmlFor="task-json">
               任务参数 JSON
             </label>

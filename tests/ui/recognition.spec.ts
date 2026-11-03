@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
-import type { Snapshot } from '../../packages/contracts/src/types';
+import type { RpcResult } from '../../packages/contracts/src/index';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { restoreHistoricalRecognition, restoreHistoricalRuns } from './fixtures/history';
 
 const depot = (page: Page) => page.getByRole('region', { name: '仓库识别结果', exact: true });
 const operators = (page: Page) => page.getByRole('region', { name: '干员识别结果', exact: true });
@@ -31,24 +32,21 @@ test('recognition requires completed structured results and ignores unrelated wa
 }) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
-  await page.evaluate(async () => {
-    const api = (window as HarnessWindow).runtimeHarness;
-    const snapshot = (await api.call('app.snapshot', {})) as Snapshot;
-    await api.call('plan.save', {
-      plan: {
-        ...snapshot.plans[0],
-        id: 'old-depot-event',
-        name: '历史仓库事件：固源岩 999',
-        tasks: [{ type: 'Depot', params: {}, enabled: true }],
-      },
-    });
-    const run = (await api.call('run.start', {
+  const at = '2026-10-24T08:00:00.000Z';
+  await restoreHistoricalRuns(page, [
+    {
+      id: 'stopped-recognition',
       planId: 'old-depot-event',
-      deviceId: snapshot.devices[0].id,
-      requestId: 'stopped-recognition',
-    })) as { id: string };
-    await api.call('run.stop', { id: run.id });
-  });
+      planName: '历史仓库事件：固源岩 999',
+      deviceId: 'mock-device-1',
+      status: 'stopped',
+      progress: 0,
+      message: '旧事件文字不证明结构化识别结果',
+      startedAt: at,
+      finishedAt: at,
+      tasks: [],
+    },
+  ]);
   await openTools(page);
   await expect(depot(page).getByRole('listitem')).toHaveCount(0);
   await expect(depot(page)).toContainText('尚无仓库识别结果');
@@ -64,23 +62,33 @@ test('recognition requires completed structured results and ignores unrelated wa
   ).toHaveCount(0);
 });
 
-test('warehouse recognition searches and exports persistent quantities', async ({ page }) => {
-  await page.clock.install();
+test('historical warehouse recognition searches and exports persistent quantities while new scans stay blocked', async ({
+  page,
+}) => {
   await page.goto('/');
+  const historical: RpcResult<'recognition.get'> = {
+    deviceId: 'mock-device-1',
+    kind: 'depot',
+    clientType: 'Official',
+    collectedAt: '2026-10-24T08:00:00.000Z',
+    runId: 'historical-depot',
+    items: [
+      { id: '30012', name: '固源岩', quantity: 42 },
+      { id: '30013', name: '固源岩组', quantity: 7 },
+      { id: 'fixture-no-icon', name: '合成无图材料', quantity: 3 },
+    ],
+    operators: [],
+  };
+  await restoreHistoricalRecognition(page, [historical]);
   await openTools(page);
   await page.getByRole('button', { name: '开始仓库识别', exact: true }).click();
-  await expect(page.getByRole('button', { name: '开始仓库识别', exact: true })).toBeDisabled();
+  await expect(page.getByRole('alert')).toContainText('尚未迁移');
   const started = (await page.evaluate(async () =>
     (window as HarnessWindow).runtimeHarness.call('app.snapshot', {}),
-  )) as Snapshot;
+  )) as RpcResult<'app.snapshot'>;
   expect(started.plans).toHaveLength(2);
   expect(started.runs).toHaveLength(0);
-  expect(started.toolJobs?.[0]).toMatchObject({
-    kind: 'depot',
-    deviceId: 'mock-device-1',
-    status: 'running',
-  });
-  await page.clock.runFor(12_600);
+  expect(started.toolJobs).toHaveLength(0);
   await expect(depot(page).getByRole('listitem')).toHaveCount(3);
   const rock = depot(page)
     .getByRole('listitem')
@@ -96,7 +104,7 @@ test('warehouse recognition searches and exports persistent quantities', async (
     deviceId: 'mock-device-1',
     kind: 'depot',
     clientType: 'Official',
-    runId: started.toolJobs![0].id,
+    runId: historical.runId,
     items: [
       { id: '30012', name: '固源岩', quantity: 42 },
       { id: '30013', name: '固源岩组', quantity: 7 },
@@ -109,18 +117,46 @@ test('warehouse recognition searches and exports persistent quantities', async (
   await expect(depot(page).getByRole('listitem')).toHaveCount(3);
 });
 
-test('operator recognition exports owned progress and isolates devices and clients', async ({
+test('historical operator recognition exports owned progress and isolates devices and clients', async ({
   page,
 }) => {
-  await page.clock.install();
   await page.goto('/');
+  await restoreHistoricalRecognition(page, [
+    {
+      deviceId: 'mock-device-1',
+      kind: 'operators',
+      clientType: 'Official',
+      collectedAt: '2026-10-24T08:00:00.000Z',
+      runId: 'historical-operators',
+      items: [],
+      operators: [
+        {
+          id: 'char_002_amiya',
+          name: '阿米娅',
+          own: true,
+          elite: 2,
+          level: 80,
+          potential: 6,
+          rarity: 5,
+        },
+        {
+          id: 'char_103_angel',
+          name: '能天使',
+          own: true,
+          elite: 2,
+          level: 90,
+          potential: 1,
+          rarity: 6,
+        },
+      ],
+    },
+  ]);
   await openTools(page, '干员');
   await page.getByRole('button', { name: '开始干员识别', exact: true }).click();
-  await page.clock.runFor(12_600);
+  await expect(page.getByRole('alert')).toContainText('尚未迁移');
   const amiya = operators(page).getByRole('row').filter({ hasText: '阿米娅' });
   await expect(amiya).toContainText('5 星');
   await amiya.scrollIntoViewIfNeeded();
-  await page.clock.runFor(100);
   await expect(amiya).toContainText('精英 2');
   await expect(amiya).toContainText('80');
   await expect(amiya).toContainText('6');
@@ -180,7 +216,9 @@ test('operator recognition exports owned progress and isolates devices and clien
   await expect(amiya).toBeVisible();
 });
 
-test('recognition read and start errors remain actionable', async ({ page }) => {
+test('recognition read errors recover while unmigrated execution stops before a tool request', async ({
+  page,
+}) => {
   await page.goto('/');
   await openTools(page);
   await page.evaluate(() => {
@@ -206,13 +244,19 @@ test('recognition read and start errors remain actionable', async ({ page }) => 
     (api as unknown as { restoreRecognition: () => void }).restoreRecognition();
     const call = api.call;
     api.call = async (method, params) => {
-      if (method === 'tool.start') throw new Error('合成设备连接失败');
+      if (method === 'tool.start') {
+        api.commands.push('unexpected-tool-start');
+        throw new Error('不应开始未迁移的工具');
+      }
       return call(method, params);
     };
   });
   await depot(page).getByRole('button', { name: '重试', exact: true }).click();
   await expect(depot(page).getByRole('alert')).toHaveCount(0);
   await page.getByRole('button', { name: '开始仓库识别', exact: true }).click();
-  await expect(page.locator('.toast')).toContainText('合成设备连接失败');
+  await expect(page.locator('.toast')).toContainText('尚未迁移');
+  expect(
+    await page.evaluate(() => (window as HarnessWindow).runtimeHarness.commands),
+  ).not.toContain('unexpected-tool-start');
   await expect(page.getByRole('button', { name: '开始仓库识别', exact: true })).toBeEnabled();
 });

@@ -15,7 +15,6 @@ import {
   ConnectionFields,
   defaultConnectionSettings,
 } from '@/features/plans/TaskConnectionSettings';
-import { CaptureFields } from './CaptureSettingsForm';
 import { useSettingsDraft } from '@/shared/lib/settings-draft';
 import { deviceForProfile } from '@/features/devices/device-association';
 
@@ -28,6 +27,29 @@ const connectionEventTypes = [
   'device.disconnected',
 ];
 const connectionPendingMs = 30_000;
+const frameworkTouchLabels = {
+  maatouch: 'MaaTouch',
+  minitouch: 'Minitouch + ADB 按键',
+  adb: 'ADB Shell',
+  'emulator-extras': '模拟器增强触控（MuMu）',
+};
+
+/** 卡片与编辑器解释同一份 Framework 偏好；历史 capture 不再代表当前执行配置。 */
+function frameworkProfileSummary(profile: DeviceConnectionProfile): string {
+  const framework = profile.connection.framework;
+  const capture = framework?.capture;
+  const method = capture?.method ?? 'auto';
+  const screenshot =
+    method === 'auto'
+      ? '自动识别截图'
+      : method === 'adb'
+        ? 'ADB 截图'
+        : method === 'avd'
+          ? 'AVD 增强截图'
+          : `${method === 'mumu' ? 'MuMu' : '雷电'} 增强截图 · 实例 ${capture!.instanceIndex}`;
+  return `${screenshot} · ${frameworkTouchLabels[framework?.touchMode ?? 'maatouch']}`;
+}
+
 const newInstanceProfile = (
   count: number,
   candidate?: InstanceCandidate,
@@ -225,11 +247,7 @@ export function MultiInstanceSettings({
                   <h3>{profile.name}</h3>
                   <p className="sp-help">
                     {profile.autoDetected && '自动发现 · '}
-                    {profile.address} ·{' '}
-                    {(profile.capture.autoDetect ?? profile.capture.method === 'adb') && '自动 · '}
-                    {profile.capture.method === 'adb'
-                      ? 'ADB 截图'
-                      : `${profile.capture.method === 'mumu' ? 'MuMu' : '雷电'} 增强截图 · 实例 ${profile.capture.instanceIndex}`}
+                    {profile.address} · {frameworkProfileSummary(profile)}
                   </p>
                 </div>
                 <span className="sp-value">{status}</span>
@@ -401,16 +419,6 @@ function InstanceProfileEditor({
             ...current,
             address: patch.address ?? current.address,
             connection: { ...current.connection, ...patch },
-          }))
-        }
-      />
-      <CaptureFields
-        capture={draft.capture}
-        busy={busy}
-        onChange={(update) =>
-          setDraft((current) => ({
-            ...current,
-            capture: typeof update === 'function' ? update(current.capture) : update,
           }))
         }
       />

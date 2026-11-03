@@ -28,13 +28,20 @@ import {
 } from './debug-session-owner';
 import './debug-page.css';
 
+/** 维护者调试目录：元数据决定原语层级和画面副作用，会话及输入仍走类型化 RPC。 */
 type Props = { devices: Device[]; onError?: (message: string) => void; onHide: () => void };
 const layers = [
-  { id: 'operation', label: '操作层' },
-  { id: 'observation', label: '观察层' },
-  { id: 'game', label: '游戏语义层' },
-  { id: 'workflow', label: '工作流层' },
+  { id: 1, label: 'L1 最小原语' },
+  { id: 2, label: 'L2 通用组合' },
+  { id: 3, label: 'L3 游戏事件' },
+  { id: 'workflow', label: '完整流程' },
 ] as const;
+/** 新描述优先使用明确层级；旧服务仍按已有分类归入兼容分组。 */
+const primitiveGroup = (item: PrimitiveDescriptor) =>
+  item.primitiveLevel ??
+  ({ operation: 1, observation: 2, game: 3, workflow: 'workflow' } as const)[item.layer];
+const invalidatesFrame = (item: PrimitiveDescriptor) =>
+  item.effect === undefined ? item.layer !== 'observation' : item.effect !== 'observe';
 const statusLabels = {
   succeeded: '已完成',
   failed: '失败',
@@ -215,7 +222,7 @@ export default function DebugPage({ devices, onError, onHide }: Props) {
       if (!alive.current || generation !== epoch.current) return;
       setResult(next);
       if (next.frame) setFrame(next.frame);
-      else if (selected.layer !== 'observation') {
+      else if (invalidatesFrame(selected)) {
         setFrame(undefined);
         setDraft((current) => ('frameId' in current ? { ...current, frameId: '' } : current));
       }
@@ -316,7 +323,7 @@ export default function DebugPage({ devices, onError, onHide }: Props) {
       )}
       <div className="debug-layout">
         <aside className="debug-catalog" aria-label="原语目录">
-          <div className="debug-inline">
+          <div className="debug-inline debug-catalog-tools">
             <SearchField
               aria-label="搜索原语"
               placeholder="搜索名称、ID 或描述"
@@ -337,7 +344,7 @@ export default function DebugPage({ devices, onError, onHide }: Props) {
             <p role="status">正在读取原语目录…</p>
           ) : (
             layers.map((layer) => {
-              const items = visible.filter((item) => item.layer === layer.id);
+              const items = visible.filter((item) => primitiveGroup(item) === layer.id);
               return (
                 <section className="debug-layer" key={layer.id} aria-label={layer.label}>
                   <h2>

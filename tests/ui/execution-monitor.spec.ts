@@ -552,7 +552,7 @@ test('the same device monitor shows copilot execution and independently stops to
   const queue = detail(page).getByRole('region', { name: '本次作业队列', exact: true });
   await expect(queue).toContainText('启动时的第一份作业');
   await expect(queue).toContainText('正在执行的第二份作业');
-  await expect(queue).toContainText('核心流程结束');
+  await expect(queue).toContainText('原执行流程结束');
   await expect(queue.getByText('通关未确认', { exact: true })).toHaveCount(2);
   await expect(queue.getByText('通关已确认', { exact: true })).toHaveCount(0);
   await expect(page.locator('.primary-nav .nav-item[aria-current="page"]')).toHaveText('任务');

@@ -47,6 +47,7 @@ import { deviceActivity, type RunPanelTab } from './model/device-activity';
 import useSidebarResize from './model/useSidebarResize';
 import DebugPage from '@/features/debug/DebugPage';
 import { readDebugPreference, saveDebugPreference } from '@/features/debug/debug-preference';
+import { assertExecutionSupported } from '@/shared/lib/execution-preflight';
 
 const uid = () => crypto.randomUUID();
 const readSelection = () => {
@@ -262,6 +263,7 @@ export default function App() {
         let deviceId = requestedDeviceId || bindings[0] || selectedDevice;
         if (deviceId && !planAllowsDevice(plan, deviceId))
           throw new Error('请选择本任务表绑定的设备');
+        await assertExecutionSupported({ tasks: plan.tasks, ...(deviceId ? { deviceId } : {}) });
         let connectionFailure: unknown;
         if (
           !devices.some((item) => item.id === deviceId && item.state !== 'offline') &&
@@ -464,7 +466,7 @@ export default function App() {
       });
     }
     const categories = [
-      ['更新 资源更新 核心 应用 回滚', '更新', 'settings'],
+      ['更新 资源更新 MaaFramework 应用 回滚', '更新', 'settings'],
       ['主题 外观 浅色 深色 托盘', '通用与外观', 'settings'],
       ['模型 Agent API', '模型与 Agent', 'settings'],
       ['通知 远控', '通知与远控', 'settings'],

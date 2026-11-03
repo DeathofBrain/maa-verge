@@ -115,7 +115,7 @@ export default function TaskParameterField({
           </Button>
         </div>
         {Number(params.mode ?? 0) === 0 ? (
-          <small>常规模式由核心自动安排设施顺序。</small>
+          <small>保留原版常规模式的设施顺序配置，执行前检查支持情况。</small>
         ) : (
           <FacilityOrder selected={selected} onChange={set} />
         )}
@@ -324,7 +324,7 @@ export default function TaskParameterField({
             onChange={(event) => set(event.target.checked)}
           />
           {field.label}
-          {value === undefined && !field.disabled && <small>核心默认</small>}
+          {value === undefined && !field.disabled && <small>原版默认配置</small>}
         </label>
         {hint}
       </div>
@@ -362,7 +362,7 @@ export default function TaskParameterField({
             )
           }
         >
-          <option value="">使用核心默认值</option>
+          <option value="">保留原版默认配置</option>
           {textValue &&
             !field.options?.some(
               (option) => (Array.isArray(option) ? option[0] : option) === textValue,

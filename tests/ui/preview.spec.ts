@@ -172,7 +172,7 @@ test('running tasks keep frames visible and block manual input', async ({ page }
       requestId: crypto.randomUUID(),
     }),
   );
-  await expect(preview(page)).toContainText('任务执行中，显示核心最近画面，仅查看');
+  await expect(preview(page)).toContainText('任务执行中，显示 MaaFramework 最近画面，仅查看');
   await expect(preview(page).getByRole('checkbox', { name: '允许点击操作' })).toBeDisabled();
   await expect(page.getByLabel('查看哪次执行', { exact: true })).toHaveCount(0);
   const point = await pointOnImage(page, 0.5, 0.5);

@@ -11,8 +11,7 @@ import {
   type Settings,
   type ScreenFrame,
 } from '@maaverge/contracts';
-import { CaptureForm } from '@/features/settings/CaptureSettingsForm';
-import MaaFwAdbTouchMode from '@/features/devices/MaaFwAdbTouchMode';
+import FrameworkConnectionFields from '@/features/devices/FrameworkConnectionFields';
 import { useSettingsDraft } from '@/shared/lib/settings-draft';
 import '@/shared/styles/support-pages.css';
 
@@ -24,24 +23,6 @@ export const defaultConnectionSettings: NonNullable<Settings['connection']> = {
   adbLite: false,
   clientType: 'Official',
 };
-const profiles = {
-  General: '通用模式',
-  BlueStacks: '蓝叠模拟器',
-  MuMuEmulator12: 'MuMu 模拟器',
-  MuMuArm: 'MuMu ARM',
-  LDPlayer: '雷电模拟器',
-  Nox: '夜神模拟器',
-  XYAZ: '逍遥模拟器',
-  Compatible: '兼容模式',
-  SecondResolution: '第二分辨率',
-  CompatMac: 'macOS 兼容模式',
-  CompatPOSIXShell: 'POSIX Shell 兼容模式',
-  Waydroid: 'Waydroid',
-  AVD: 'Android 虚拟设备（AVD）',
-  Androws: '腾讯应用宝',
-  WSA: 'Windows 安卓子系统（WSA）',
-} as const;
-
 interface TaskConnectionSettingsProps {
   settings: Settings;
   onSaveSettings?: (settings: Settings) => Promise<boolean>;
@@ -201,7 +182,7 @@ function ConnectionSettingsBody({
                 const image = await rpc('device.frame', { deviceId: device.id });
                 setFrame(image);
                 setResult(
-                  `截图成功（${device.address}）：${image.width} × ${image.height}，${image.coreLatencyMs !== undefined ? `核心截图耗时 ${image.coreLatencyMs} ms` : '核心未提供截图耗时'}（${device.captureMethod || '核心未提供具体截图方式'}）`,
+                  `截图成功（${device.address}）：${image.width} × ${image.height}，总耗时 ${Math.round(image.latencyMs)} ms（${device.captureMethod || '截图方式未提供'}）`,
                 );
               })
             }
@@ -222,14 +203,6 @@ function ConnectionSettingsBody({
           />
         )}
       </section>
-      <CaptureForm
-        settings={settings}
-        busy={disabled}
-        draftKey={`capture${profile ? `:${profile.id}` : ''}`}
-        onSave={(capture) =>
-          onSaveSettings ? onSaveSettings({ ...settings, capture }) : Promise.resolve(false)
-        }
-      />
       <p className="sp-help">
         <ExternalLink href="https://docs.maa.plus/zh-cn/manual/connection.html">
           原版 MAA 连接设置说明
@@ -252,22 +225,6 @@ export function ConnectionFields({
 }) {
   return (
     <>
-      <label className="sp-field">
-        连接配置
-        <Select
-          className="wb-parameter-control"
-          aria-label="连接配置"
-          value={draft.config}
-          disabled={disabled}
-          onChange={(event) => patch({ config: event.target.value as typeof draft.config })}
-        >
-          {Object.entries(profiles).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </Select>
-      </label>
       <label className="sp-field">
         ADB 路径
         <TextField
@@ -302,12 +259,7 @@ export function ConnectionFields({
         />
         <span className="sp-help">此地址用于手动连接；已保存实例也会按该地址自动连接。</span>
       </label>
-      <MaaFwAdbTouchMode
-        connection={draft}
-        disabled={disabled}
-        onChange={(touchMode) => patch({ touchMode })}
-      />
-      {(draft.config === 'Androws' || draft.config === 'WSA') && (
+      {
         <label className="sp-field">
           连接时的客户端
           <Select
@@ -327,18 +279,15 @@ export function ConnectionFields({
             <option value="txwy">繁中服</option>
           </Select>
           <span className="sp-help">
-            应用宝与 WSA 在连接时用游戏包名确定显示器，应与开始唤醒任务的客户端一致。
+            用于选择资源与启动游戏的客户端，应与设备上安装的游戏一致。
           </span>
         </label>
-      )}
-      <label className="check-field">
-        <Checkbox
-          checked={draft.adbLite}
-          disabled={disabled}
-          onChange={(event) => patch({ adbLite: event.target.checked })}
-        />
-        启用 ADB Lite
-      </label>
+      }
+      <FrameworkConnectionFields
+        connection={draft.framework}
+        disabled={disabled}
+        onChange={(framework) => patch({ framework })}
+      />
     </>
   );
 }

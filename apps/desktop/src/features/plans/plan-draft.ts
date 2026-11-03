@@ -1,5 +1,6 @@
 import {
   defaultDailyTaskTypes,
+  createDefaultDailyTasks,
   planDeviceIds,
   taskDefaults,
   taskLabels,
@@ -81,7 +82,13 @@ export function createDraft(
         task: structuredClone(task),
         json: JSON.stringify(task.params, null, 2),
       }))
-    : types.map((type) => createStep(type, focus ? initialParams : undefined));
+    : focus
+      ? types.map((type) => createStep(type, initialParams))
+      : createDefaultDailyTasks().map((task) => ({
+          key: crypto.randomUUID(),
+          task,
+          json: JSON.stringify(task.params, null, 2),
+        }));
   const requestedIndex = focusedTaskIndex(steps, focus, focusTaskIndex);
   return {
     id: current?.id || crypto.randomUUID(),
@@ -201,11 +208,11 @@ export function taskSummary(task: Task): string {
     case 'CloseDown':
       return '关闭当前游戏客户端';
     case 'Fight':
-      return `${String(p.stage || '当前关卡')} · ${p.times === 2147483647 ? '不限次数' : p.times === undefined ? '次数用核心默认' : `${String(p.times)} 次`} · ${Number(p.medicine) > 0 ? `理智药 ${p.medicine}` : '零用药'}${Number(p.stone) > 0 ? ` · 源石 ${p.stone}` : ''}`;
+      return `${String(p.stage || '当前关卡')} · ${p.times === 2147483647 ? '不限次数' : p.times === undefined ? '未指定次数' : `${String(p.times)} 次`} · ${Number(p.medicine) > 0 ? `理智药 ${p.medicine}` : '零用药'}${Number(p.stone) > 0 ? ` · 源石 ${p.stone}` : ''}`;
     case 'Recruit':
-      return `${Number(p.times) === 0 ? '仅计算标签' : `${p.times === undefined ? '次数用核心默认' : `${String(p.times)} 次招募`}`} · ${p.expedite ? '使用加急' : '不加急'}`;
+      return `${Number(p.times) === 0 ? '仅计算标签' : `${p.times === undefined ? '未指定次数' : `${String(p.times)} 次招募`}`} · ${p.expedite ? '使用加急' : '不加急'}`;
     case 'Infrast':
-      return `${Number(p.mode) === 10000 ? '自定义排班' : Number(p.mode) === 20000 ? '轮换排班' : '默认排班'} · ${Array.isArray(p.facility) ? `${p.facility.length} 个设施` : '设施用核心默认'}`;
+      return `${Number(p.mode) === 10000 ? '自定义排班' : Number(p.mode) === 20000 ? '轮换排班' : '默认排班'} · ${Array.isArray(p.facility) ? `${p.facility.length} 个设施` : '未指定设施'}`;
     case 'Mall':
       return `${p.shopping === false ? '仅领取信用' : '信用购物'} · ${p.only_buy_discount ? '仅折扣商品' : '按优先级购买'}`;
     case 'Award':
@@ -217,7 +224,7 @@ export function taskSummary(task: Task): string {
     case 'SwitchTheme':
       return Array.isArray(p.themes) && p.themes.length ? p.themes.join(' / ') : '未设置候选主题';
     case 'Roguelike':
-      return `${String(p.theme || '未选主题')} · ${p.mode === undefined ? '模式用核心默认' : `模式 ${String(p.mode)}`} · ${p.starts_count === undefined ? '次数用核心默认' : `${String(p.starts_count)} 次`}`;
+      return `${String(p.theme || '未选主题')} · ${p.mode === undefined ? '未指定模式' : `模式 ${String(p.mode)}`} · ${p.starts_count === undefined ? '未指定次数' : `${String(p.starts_count)} 次`}`;
     case 'Reclamation':
       return `${p.theme === 'RelaunchAnchor' ? '重启锚点' : '沙洲遗闻'} · 模式 ${String(p.mode ?? 0)}`;
     case 'Copilot':

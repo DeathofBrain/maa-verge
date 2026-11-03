@@ -188,7 +188,7 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
       <div className="log-settings-diagnostics">
         <div>
           <strong>问题排查</strong>
-          <p className="sp-help">导出本地服务、核心与事件日志，完成后显示保存位置。</p>
+          <p className="sp-help">导出本地服务、MaaFramework 与事件日志，完成后显示保存位置。</p>
         </div>
         <div className="sp-form-actions log-settings-actions">
           <Button ref={exportButton} disabled={disabled} onClick={() => void exportLogs()}>

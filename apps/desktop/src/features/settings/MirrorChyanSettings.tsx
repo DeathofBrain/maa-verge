@@ -70,7 +70,10 @@ export default function MirrorChyanSettings({
             onBlur={() => void flush()}
           />
         </label>
-        <p className="sp-help">CDK 保存在本机，检查和下载时发送给 Mirror酱，诊断日志会脱敏。</p>
+        <p className="sp-help">
+          应用、MaaFramework 和游戏资源 共用此 CDK。CDK 保存在本机，检查和下载时发送给
+          Mirror酱，诊断日志会脱敏。
+        </p>
         <div className="sp-form-actions settings-actions">
           <ExternalLink href="https://mirrorchyan.com?source=maa_verge_settings">
             Mirror酱官网与 CDK

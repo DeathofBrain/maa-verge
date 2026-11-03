@@ -58,8 +58,8 @@ export const deviceSelectionStateLabels: Record<Device['state'] | 'missing', str
 /** 更新渠道名称。 */
 export const updateChannelLabels: Record<UpdateChannel['id'], string> = {
   app: 'Maa Verge 应用',
-  core: 'MaaCore 核心',
   resource: '游戏资源',
+  framework: 'MaaFramework',
 };
 
 // 与 updateStatusShortLabels 取值不同且都未被测试耦合；文案归一待产品确认，不得静默合并。

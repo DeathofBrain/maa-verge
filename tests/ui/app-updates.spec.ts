@@ -20,10 +20,10 @@ const appSection = (page: Page) =>
   page
     .locator('.update-channel')
     .filter({ has: page.getByRole('heading', { name: 'Maa Verge 应用', exact: true }) });
-const coreSection = (page: Page) =>
+const frameworkSection = (page: Page) =>
   page
     .locator('.update-channel')
-    .filter({ has: page.getByRole('heading', { name: 'MaaCore 核心', exact: true }) });
+    .filter({ has: page.getByRole('heading', { name: 'MaaFramework', exact: true }) });
 const home = (page: Page) => page.getByRole('region', { name: '主页仪表盘' });
 async function settingsCategory(page: Page, name: string) {
   const menu = page.getByRole('button', { name: '打开导航', exact: true });
@@ -137,7 +137,11 @@ async function controlAppUpdate(
           return structuredClone(channel);
         }
       }
-      if (method === 'updates.check' && params.channel === 'core' && options.holdComponentCheck) {
+      if (
+        method === 'updates.check' &&
+        params.channel === 'framework' &&
+        options.holdComponentCheck
+      ) {
         target.appUpdateControl.componentChecks++;
         await new Promise<void>((resolve) => {
           finishComponentCheck = resolve;
@@ -151,7 +155,7 @@ async function controlAppUpdate(
         );
         if (options.componentDownloading)
           snapshot.updates = snapshot.updates.map((item) =>
-            item.id === 'core' ? { ...item, status: 'downloading', progress: 12 } : item,
+            item.id === 'framework' ? { ...item, status: 'downloading', progress: 12 } : item,
           );
         if (running)
           snapshot.runs.push({
@@ -171,16 +175,13 @@ async function controlAppUpdate(
   }, options);
 }
 
-test('app and core update channels persist independently with startup checks', async ({ page }) => {
+test('app channel and framework startup preferences persist independently', async ({ page }) => {
   await page.goto('/');
   await expect(home(page)).toBeVisible();
   await settingsCategory(page, '更新');
   await expect(page.getByLabel('应用更新频道', { exact: true })).toHaveValue('preview');
-  await expect(page.getByLabel('MaaCore 更新频道', { exact: true })).toHaveValue('stable');
   await page.getByLabel('应用更新频道', { exact: true }).selectOption('stable');
   await expect(page.getByLabel('应用更新频道', { exact: true })).toBeEnabled();
-  await page.getByLabel('MaaCore 更新频道', { exact: true }).selectOption('preview');
-  await expect(page.getByLabel('MaaCore 更新频道', { exact: true })).toBeEnabled();
   await page.getByRole('switch', { name: '启动时检查应用更新', exact: true }).click();
   await expect(
     page.getByRole('switch', { name: '启动时检查应用更新', exact: true }),
@@ -189,19 +190,16 @@ test('app and core update channels persist independently with startup checks', a
   await expect(home(page)).toBeVisible();
   await settingsCategory(page, '更新');
   await expect(page.getByLabel('应用更新频道', { exact: true })).toHaveValue('stable');
-  await expect(page.getByLabel('MaaCore 更新频道', { exact: true })).toHaveValue('preview');
   await expect(
     page.getByRole('switch', { name: '启动时检查应用更新', exact: true }),
   ).toHaveAttribute('aria-checked', 'false');
   await appSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
   await expect(appSection(page)).toContainText('0.1.1');
-  await coreSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
-  await expect(coreSection(page)).toContainText('v6.21.0-beta.1');
+  await frameworkSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
   await page.getByLabel('应用更新频道', { exact: true }).selectOption('preview');
   await expect(page.getByLabel('应用更新频道', { exact: true })).toBeEnabled();
   await appSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
   await expect(appSection(page)).toContainText('0.2.0-beta.1');
-  await expect(page.getByLabel('MaaCore 更新频道', { exact: true })).toHaveValue('preview');
 });
 
 test(
@@ -342,7 +340,7 @@ test('component downloads do not block application installation and pending inst
   });
   await settingsCategory(page, '更新');
   await expect(
-    coreSection(page).getByRole('button', { name: '检查更新', exact: true }),
+    frameworkSection(page).getByRole('button', { name: '检查更新', exact: true }),
   ).toHaveCount(0);
   await appSection(page).getByRole('button', { name: '安装并重启', exact: true }).click();
   const confirmation = page.getByRole('dialog', { name: '安装应用更新', exact: true });
@@ -369,12 +367,15 @@ test('an unresolved component request does not block the application installatio
   await expect(home(page)).toBeVisible();
   await controlAppUpdate(page, { staged: true, holdComponentCheck: true, holdInstallation: true });
   await settingsCategory(page, '更新');
-  const coreCheck = coreSection(page).getByRole('button', { name: '检查更新', exact: true });
-  await coreCheck.click();
+  const frameworkCheck = frameworkSection(page).getByRole('button', {
+    name: '检查更新',
+    exact: true,
+  });
+  await frameworkCheck.click();
   await expect
     .poll(() => page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.componentChecks))
     .toBe(1);
-  await expect(coreCheck).toBeDisabled();
+  await expect(frameworkCheck).toBeDisabled();
   await appSection(page).getByRole('button', { name: '安装并重启', exact: true }).click();
   const confirmation = page.getByRole('dialog', { name: '安装应用更新', exact: true });
   const install = confirmation.getByRole('button', { name: '立即更新并重启', exact: true });
@@ -386,9 +387,9 @@ test('an unresolved component request does not block the application installatio
   await expect(install).toBeDisabled();
   await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.finishInstallation());
   await expect(confirmation).toHaveCount(0);
-  await expect(coreCheck).toBeDisabled();
+  await expect(frameworkCheck).toBeDisabled();
   await page.evaluate(() => (window as AppUpdateWindow).appUpdateControl.finishComponentCheck());
-  await expect(coreCheck).toBeEnabled();
+  await expect(frameworkCheck).toBeEnabled();
 });
 
 test('unsupported installers show platform guidance without download or install actions', async ({
@@ -409,35 +410,6 @@ test('unsupported installers show platform guidance without download or install 
   await expect(
     appSection(page).getByRole('button', { name: '检查更新', exact: true }),
   ).toBeEnabled();
-});
-
-test('switching a staged preview core to stable cancels the old candidate and notification', async ({
-  page,
-}) => {
-  await page.goto('/');
-  await expect(home(page)).toBeVisible();
-  await settingsCategory(page, '更新');
-  await page.getByLabel('MaaCore 更新频道', { exact: true }).selectOption('preview');
-  await expect(page.getByLabel('MaaCore 更新频道', { exact: true })).toBeEnabled();
-  await coreSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
-  await coreSection(page).getByRole('button', { name: '准备更新', exact: true }).click();
-  await expect(
-    coreSection(page).getByRole('button', { name: '应用更新', exact: true }),
-  ).toBeEnabled();
-  await expect(coreSection(page)).toContainText('v6.21.0-beta.1');
-  await page.getByLabel('MaaCore 更新频道', { exact: true }).selectOption('stable');
-  await expect(
-    coreSection(page).getByRole('button', { name: '应用更新', exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    coreSection(page).getByRole('button', { name: '准备更新', exact: true }),
-  ).toHaveCount(0);
-  await expect(coreSection(page)).not.toContainText('v6.21.0-beta.1');
-  await expect(page.getByRole('status', { name: 'MaaCore 核心下载通知', exact: true })).toHaveCount(
-    0,
-  );
-  await coreSection(page).getByRole('button', { name: '检查更新', exact: true }).click();
-  await expect(coreSection(page)).toContainText('v6.20.0');
 });
 
 test('changing the app channel invalidates its staged installation confirmation', async ({
@@ -495,9 +467,9 @@ test('check all continues after failures and reports the failed channel', async 
         () => (window as HarnessWindow & { checkedChannels: string[] }).checkedChannels,
       ),
     )
-    .toEqual(['app', 'core', 'resource']);
+    .toEqual(['app', 'framework', 'resource']);
   await expect(page.locator('.toast')).toContainText('Maa Verge 应用：合成发布源不可达');
-  await expect(coreSection(page)).toContainText('v6.20.0');
+  await expect(frameworkSection(page)).toContainText('v5.14.3');
   await expect(
     page
       .locator('.update-channel')

@@ -3,6 +3,7 @@ import Select from '@/kit/Select';
 import TextArea from '@/kit/TextArea';
 import TextField from '@/kit/TextField';
 
+/** 将能力的参数 Schema 转为草稿并解析输入；最终权限及完整约束仍由宿主契约校验。 */
 type Property = {
   type?: string;
   title?: string;
@@ -11,6 +12,8 @@ type Property = {
   enum?: unknown[];
   minimum?: number;
   maximum?: number;
+  oneOf?: Property[];
+  anyOf?: Property[];
 };
 export type InputDraft = Record<string, string>;
 export function schemaProperties(schema: Record<string, unknown>): Record<string, Property> {
@@ -40,6 +43,18 @@ export function parseInput(
       if (!raw.trim()) {
         if (required.has(name)) throw new Error(`请填写${label}`);
         return [];
+      }
+      // 帧参数同时允许 current 与轻量 JSON 引用；只把显式对象文本解析成引用。
+      const variants = property.oneOf ?? property.anyOf ?? [];
+      const objectOrString =
+        variants.some((variant) => variant.type === 'object') &&
+        variants.some((variant) => variant.type === 'string');
+      if (objectOrString && raw.trimStart().startsWith('{')) {
+        try {
+          return [[name, JSON.parse(raw)]];
+        } catch {
+          throw new Error(`${label}的格式无效`);
+        }
       }
       if (
         property.type === 'string' ||

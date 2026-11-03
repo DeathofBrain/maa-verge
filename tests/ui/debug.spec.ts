@@ -61,7 +61,7 @@ test('Debug catalogs four layers, filters capabilities, and keeps unavailable it
   await installDebugFixture(page, true);
   await page.goto('/');
   await navigate(page, 'Debug');
-  for (const label of ['操作层', '观察层', '游戏语义层', '工作流层'])
+  for (const label of ['L1 最小原语', 'L2 通用组合', 'L3 游戏事件', '完整流程'])
     await expect(debugPage(page).getByRole('region', { name: label, exact: true })).toBeVisible();
   await debugPage(page).getByRole('textbox', { name: '搜索原语' }).fill('活动');
   await debugPage(page).getByRole('button', { name: '活动导航', exact: true }).click();
@@ -145,6 +145,12 @@ test('Debug screenshots fill point and region parameters without executing the s
     expect(roi[index]).toBeLessThanOrEqual(expected + 2);
   }
   expect(await debugCalls(page, 'debug.primitive.invoke')).toHaveLength(1);
+  // effect=observe 优先于旧 operation 分类；一次只读识别仍可继续使用同一显式帧。
+  const frameId = await debugPage(page).getByRole('textbox', { name: '画面 ID' }).inputValue();
+  await debugPage(page).getByRole('button', { name: '运行此能力' }).click();
+  await expect.poll(async () => (await debugCalls(page, 'debug.primitive.invoke')).length).toBe(2);
+  await debugPage(page).getByRole('button', { name: '点击', exact: true }).click();
+  await expect(debugPage(page).getByRole('textbox', { name: '画面 ID' })).toHaveValue(frameId);
 });
 
 test('Debug stops its in-flight invocation, releases ownership, and ignores late results', async ({

@@ -58,7 +58,9 @@ export async function installDebugFixture(page: Page, enabled = false) {
           id: 'observation.ocr',
           label: 'OCR',
           description: '识别指定区域文字',
-          layer: 'observation',
+          layer: 'operation',
+          primitiveLevel: 1,
+          effect: 'observe',
           available: true,
           inputSchema: schema(
             {

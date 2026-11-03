@@ -266,7 +266,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                     </div>
                     <p>
                       {entry.status === 'completed'
-                        ? '核心流程结束'
+                        ? '原执行流程结束'
                         : runTaskStatusLabels[entry.status]}
                       {entry.message && ` · ${localizeExecutionMessage(entry.message)}`}
                     </p>
@@ -368,7 +368,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                     />
                     <div>
                       <strong>{item.name}</strong>
-                      <small>{[...item.stages].join(' · ') || '核心掉落识别'}</small>
+                      <small>{[...item.stages].join(' · ') || '原执行掉落识别'}</small>
                     </div>
                     <b>× {item.quantity.toLocaleString('zh-CN')}</b>
                   </li>
@@ -381,7 +381,11 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                 <small>作战识别到掉落后，会在这里累计。</small>
               </div>
             )}
-            <p className="exec-result-note">按本次执行的掉落识别汇总。</p>
+            <p className="exec-result-note">
+              {allDrops.some((item) => item.scope === 'visible_rewards')
+                ? '仅汇总明确读取的目标掉落，不代表全部掉落或完整库存。'
+                : '按本次执行的掉落识别汇总。'}
+            </p>
           </section>
           {(infrastructure.length > 0 || tasks.some((task) => task.type === 'Infrast')) && (
             <section className="exec-panel" aria-label="基建换班反馈">
@@ -409,7 +413,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
                       {(item.staffingStatus || item.operators.length > 0) && (
                         <small className={`exec-staff-status ${item.staffingStatus || ''}`}>
                           {item.staffingStatus === 'confirmed'
-                            ? '核心已确认换班'
+                            ? '原执行已确认换班'
                             : item.staffingStatus === 'planned'
                               ? '方案待确认'
                               : item.staffingStatus === 'unavailable'
@@ -463,7 +467,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
               <div id="exec-reference-content">
                 <ResultImages runId={run.id} artifacts={artifacts} />
                 <p className="exec-visual-note">
-                  截图仅供参考，来自任务反馈时的核心画面，保存在本机。
+                  截图仅供参考，来自任务反馈时的执行画面，保存在本机。
                 </p>
               </div>
             )}

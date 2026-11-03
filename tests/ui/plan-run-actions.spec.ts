@@ -52,9 +52,10 @@ test('single-device card prevents repeat start and stop requests and restores st
   await openTasks(page);
   await row(page).getByRole('button', { name: '开始执行', exact: true }).click();
   await expect(row(page).getByRole('button', { name: '正在启动…', exact: true })).toBeDisabled();
-  expect(await page.evaluate(() => (window as ActionWindow).startRequests)).toEqual([
-    'mock-device-1',
-  ]);
+  // 启动态先覆盖异步整表预检；只在真正发起 run.start 后检验请求去重。
+  await expect
+    .poll(() => page.evaluate(() => (window as ActionWindow).startRequests))
+    .toEqual(['mock-device-1']);
   await page.evaluate(() => (window as ActionWindow).releaseStart());
   await expect(row(page).getByRole('button', { name: '查看执行', exact: true })).toBeVisible();
   await expect(row(page).getByRole('button', { name: '开始执行', exact: true })).toHaveCount(0);

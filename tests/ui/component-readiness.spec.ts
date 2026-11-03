@@ -83,7 +83,7 @@ async function installProbe(page: Page, installed = false) {
 async function emitPreparationEvents(page: Page) {
   await page.evaluate(async () => {
     const harness = (window as ProbeWindow).runtimeHarness;
-    for (const channel of ['core', 'resource']) {
+    for (const channel of ['framework', 'resource']) {
       for (const status of [
         'checking',
         'available',
@@ -230,7 +230,7 @@ test('stage fallback stays loaded during preparation, refresh and installation',
     const target = window as ProbeWindow;
     target.gameDataProbe.installed = true;
     target.runtimeHarness.emitEvent('update.changed', {
-      channel: 'core',
+      channel: 'resource',
       update: { status: 'active' },
     });
   });

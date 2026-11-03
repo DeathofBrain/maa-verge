@@ -31,6 +31,11 @@ import StatusPill from '@/kit/StatusPill';
 import { runStatusLabels, runStatusTones, updateStatusShortLabels } from '@/kit/labels';
 
 type Destination = 'tasks' | 'devices' | 'settings' | 'history' | 'copilot' | 'agent';
+const updateNames: Record<Snapshot['updates'][number]['id'], string> = {
+  app: 'Maa Verge',
+  resource: '游戏资源',
+  framework: 'MaaFramework',
+};
 type Props = {
   snapshot: Snapshot;
   selectedDevice: string;
@@ -330,11 +335,7 @@ export default function HomeDashboard({
                     }
                   >
                     <span>
-                      {channel.id === 'app'
-                        ? 'Maa Verge'
-                        : channel.id === 'core'
-                          ? 'MaaCore'
-                          : '游戏资源'}
+                      {updateNames[channel.id]}
                       <strong>{resourceVersionLabel(channel, resourceClient)}</strong>
                     </span>
                     <small

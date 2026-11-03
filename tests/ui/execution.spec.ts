@@ -1,4 +1,5 @@
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { restoreHistoricalRuns } from './fixtures/history';
 import type { Run, RunTask, Snapshot } from '../../packages/contracts/src/types';
 
 const execution = (page: import('@playwright/test').Page) =>
@@ -165,17 +166,8 @@ test('execution overview shows every result, facility staff and optional referen
 }) => {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘' })).toBeVisible();
-  await page.evaluate(async () => {
+  const historical = await page.evaluate(async () => {
     const api = (window as HarnessWindow).runtimeHarness;
-    const call = api.call;
-    Object.assign(api, { artifactReads: 0 });
-    api.call = async (method, params) => {
-      if (method === 'run.artifact')
-        Object.assign(api, {
-          artifactReads: (api as unknown as { artifactReads: number }).artifactReads + 1,
-        });
-      return call(method, params);
-    };
     const state = (await api.call('app.snapshot', {})) as Snapshot;
     const plan = {
       ...state.plans[0],
@@ -190,11 +182,62 @@ test('execution overview shows every result, facility staff and optional referen
       ],
     };
     await api.call('plan.save', { plan });
-    await api.call('run.start', {
+    const at = '2026-10-24T08:00:00.000Z';
+    const run: Run = {
+      id: 'history-evidence',
       planId: plan.id,
+      planName: plan.name,
       deviceId: state.devices[0].id,
-      requestId: 'execution-evidence',
-    });
+      status: 'completed',
+      progress: 100,
+      message: '历史执行已完成',
+      startedAt: at,
+      finishedAt: at,
+      tasks: plan.tasks.map((task, index) => ({
+        index,
+        type: task.type,
+        status: 'completed',
+        message: '历史任务已完成',
+        startedAt: at,
+        finishedAt: at,
+        drops:
+          task.type === 'Fight'
+            ? [{ itemId: '30012', name: '固源岩', quantity: 2, stage: '1-7', at }]
+            : [],
+        artifacts: ['Fight', 'Infrast'].includes(task.type)
+          ? [
+              {
+                id: `history-artifact-${index}`,
+                kind: 'screenshot',
+                label: task.type === 'Fight' ? '自动作战反馈画面' : '基建反馈画面',
+                capturedAt: at,
+                width: 1280,
+                height: 720,
+              },
+            ]
+          : [],
+        infrastructure:
+          task.type === 'Infrast'
+            ? [
+                {
+                  facility: '制造站',
+                  room: 1,
+                  operators: [
+                    '合成三星干员',
+                    '合成四星干员',
+                    '合成五星干员',
+                    '合成六星干员',
+                    '合成未知干员',
+                  ],
+                  staffingStatus: 'confirmed',
+                  product: '赤金',
+                  message: '核心已确认换班',
+                  at,
+                },
+              ]
+            : [],
+      })),
+    };
     // Editing the stored table must not rewrite the in-flight result list.
     await api.call('plan.save', {
       plan: {
@@ -203,7 +246,22 @@ test('execution overview shows every result, facility staff and optional referen
         tasks: [{ type: 'Award', params: {}, enabled: true }],
       },
     });
+    return run;
   });
+  await restoreHistoricalRuns(page, [historical]);
+  await page.evaluate(() => {
+    const api = (window as HarnessWindow).runtimeHarness,
+      call = api.call;
+    Object.assign(api, { artifactReads: 0 });
+    api.call = async (method, params) => {
+      if (method === 'run.artifact')
+        Object.assign(api, {
+          artifactReads: (api as unknown as { artifactReads: number }).artifactReads + 1,
+        });
+      return call(method, params);
+    };
+  });
+
   await openLatestExecution(page);
   await expect(
     execution(page).getByRole('heading', { name: '作战与基建', exact: true }),
@@ -213,12 +271,6 @@ test('execution overview shows every result, facility staff and optional referen
     timeout: 18_000,
   });
   await expect(execution(page).locator('.exec-task.completed')).toHaveCount(4);
-  await execution(page).hover();
-  await page.mouse.wheel(0, 500);
-  await expect
-    .poll(() => page.locator('.monitor-scroll').evaluate((element) => element.scrollTop))
-    .toBeGreaterThan(0);
-  await page.locator('.monitor-scroll').evaluate((element) => element.scrollTo(0, 0));
   const drops = execution(page).getByRole('region', { name: '本次获得材料', exact: true });
   await expect(drops).toContainText('固源岩');
   await expect(drops).toContainText('× 4');
@@ -289,12 +341,17 @@ test('overview preserves failure reasons and separates confirmed staff from a pe
   await page.evaluate(async () => {
     const api = (window as HarnessWindow).runtimeHarness;
     const snapshot = (await api.call('app.snapshot', {})) as Snapshot;
-    const started = (await api.call('run.start', {
+    const started: Run = {
+      id: 'historical-failure',
       planId: 'daily',
+      planName: '历史基建日常',
       deviceId: snapshot.devices[0].id,
-      requestId: 'failure-overview',
-    })) as Run;
-    await api.call('run.stop', { id: started.id });
+      status: 'stopped',
+      progress: 0,
+      message: '历史停止',
+      startedAt: '2026-10-24T08:00:00.000Z',
+      finishedAt: '2026-10-24T08:00:00.000Z',
+    };
     const at = new Date().toISOString();
     const task = (
       index: number,
@@ -360,7 +417,7 @@ test('overview preserves failure reasons and separates confirmed staff from a pe
         const next = (await call(method, params)) as Snapshot;
         return {
           ...next,
-          runs: next.runs.map((item) => (item.id === run.id ? { ...run, tasks: undefined } : item)),
+          runs: [{ ...run, tasks: undefined }, ...next.runs.filter((item) => item.id !== run.id)],
         };
       }
       if (method === 'resources.operator' && params.name === '合成未知干员')

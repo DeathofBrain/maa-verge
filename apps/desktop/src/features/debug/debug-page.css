@@ -3,7 +3,10 @@
   flex-direction: column;
   gap: 24px;
   padding: 28px 32px 40px;
+  height: 100%;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 .debug-session-bar,
 .debug-inline {
@@ -21,9 +24,26 @@
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
   gap: 28px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
-.debug-catalog {
+.debug-catalog,
+.debug-workspace {
+  min-height: 0;
   min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  padding: 2px 6px 8px 2px;
+}
+.debug-catalog-tools {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: 12px;
+  background: var(--bg);
 }
 .debug-layer {
   padding-block: 16px;
@@ -149,7 +169,20 @@
   }
 }
 @media (max-width: 650px) {
+  .debug-page {
+    overflow-y: auto;
+  }
   .debug-layout {
     grid-template-columns: minmax(0, 1fr);
+    flex: none;
+    overflow: visible;
+  }
+  .debug-catalog {
+    max-height: 320px;
+  }
+  .debug-workspace {
+    overflow: visible;
+    scrollbar-gutter: auto;
+    padding: 0;
   }
 }

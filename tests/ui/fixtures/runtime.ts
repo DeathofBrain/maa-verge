@@ -11,6 +11,7 @@ import type {
   UpdateChannel,
 } from '../../../packages/contracts/src/types';
 import { taskLabels } from '../../../packages/contracts/src/tasks';
+import { compileLegacyTaskWithFeatures } from '../../../services/automation/arknights/custom/legacy/compatibility';
 import { taskEnabled, validatePlan } from '../../../packages/contracts/src/task-policy';
 import { matchingDeviceProfile } from '../../../packages/contracts/src/device-profiles';
 import { planAllowsDevice, planDeviceIds } from '../../../packages/contracts/src/plan-devices';
@@ -22,14 +23,13 @@ import {
   validateDeviceFrameParams,
 } from '../../../packages/contracts/src/validators.js';
 import { homeInfo } from '../../../services/backend/src/modules/home/home-info';
-import type { RpcResult } from '../../../packages/contracts/src/index';
+import type { RpcParams, RpcResult } from '../../../packages/contracts/src/index';
 
 const workspace =
   (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_WORKSPACE_ID ||
   'browser';
 const key = 'maaverge:test-runtime:v1:' + workspace;
 const recognitionKey = 'maaverge:test-recognition:v1:' + workspace;
-const maafwAdbKey = key + ':maafw-adb';
 type Recognition = {
   deviceId: string;
   kind: 'depot' | 'operators';
@@ -59,8 +59,11 @@ let recognition = restoreRecognition();
 const listeners = new Set<(event: Event) => void>();
 const executionTasks = new Map<string, Plan['tasks']>();
 const requestRuns = new Map<string, string>();
-const updateGenerations: Record<UpdateChannel['id'], number> = { app: 0, core: 0, resource: 0 };
-let maafwAdbAvailable = localStorage.getItem(maafwAdbKey) === 'available';
+const updateGenerations: Record<UpdateChannel['id'], number> = {
+  app: 0,
+  resource: 0,
+  framework: 0,
+};
 const previewFrames = new Map<
   string,
   { deviceId: string; captured: number; canControl: boolean }
@@ -83,7 +86,7 @@ const defaults = (): Snapshot => ({
       name: '本地模拟设备',
       address: '127.0.0.1:5555',
       state: 'idle',
-      coreVersion: 'v6.19.0',
+      frameworkVersion: 'v5.14.2',
       resourceVersion: '2026-10-18',
     },
   ],
@@ -99,10 +102,14 @@ const defaults = (): Snapshot => ({
       schedule: null,
       tasks: [
         { enabled: true, type: 'StartUp', params: { client_type: 'Official' } },
-        { enabled: true, type: 'Recruit', params: {} },
-        { enabled: true, type: 'Infrast', params: {} },
-        { enabled: true, type: 'Mall', params: {} },
-        { enabled: true, type: 'Award', params: {} },
+        { enabled: false, type: 'Recruit', params: {} },
+        { enabled: false, type: 'Infrast', params: {} },
+        {
+          enabled: true,
+          type: 'Mall',
+          params: { shopping: false, visit_friends: false, credit_budget: 0 },
+        },
+        { enabled: true, type: 'Award', params: { award: true, mail: false } },
       ],
     },
     {
@@ -115,7 +122,7 @@ const defaults = (): Snapshot => ({
       enabled: true,
       schedule: null,
       tasks: [
-        { enabled: true, type: 'Fight', params: { stage: '1-7', times: 6, medicine: 0, stone: 0 } },
+        { enabled: true, type: 'Fight', params: { stage: '', times: 6, medicine: 0, stone: 0 } },
       ],
     },
   ],
@@ -131,14 +138,6 @@ const defaults = (): Snapshot => ({
       message: '合成应用版本，未访问更新源',
     },
     {
-      id: 'core',
-      currentVersion: 'v6.19.0',
-      latestVersion: null,
-      status: 'idle',
-      progress: 0,
-      message: '演示核心版本，未加载原生库',
-    },
-    {
       id: 'resource',
       currentVersion: '2026-10-18',
       latestVersion: null,
@@ -146,14 +145,21 @@ const defaults = (): Snapshot => ({
       progress: 0,
       message: '演示资源快照，不访问网络',
     },
+    {
+      id: 'framework',
+      currentVersion: '未安装',
+      latestVersion: 'v5.14.3',
+      status: 'available',
+      progress: 0,
+      message: '合成稳定兼容版，手动准备前不访问下载源',
+    },
   ],
   settings: {
     autoConnect: true,
     autoUpdateApp: true,
     appUpdateChannel: 'preview',
-    coreUpdateChannel: 'stable',
-    autoUpdateCore: true,
     autoUpdateResource: true,
+    autoUpdateFramework: true,
     minimizeToTray: true,
     theme: 'system',
     logRetentionDays: 7,
@@ -387,7 +393,7 @@ function activate(channel: UpdateChannel) {
     channel.progress = 100;
     channel.message = '模拟版本已切换，未修改真实组件';
     state.devices.forEach((device) => {
-      if (channel.id === 'core') device.coreVersion = channel.currentVersion;
+      if (channel.id === 'framework') device.frameworkVersion = channel.currentVersion;
       if (channel.id === 'resource') device.resourceVersion = channel.currentVersion;
     });
   }
@@ -551,12 +557,115 @@ function mockAddress(value: unknown): string {
   return value;
 }
 
+/** 浏览器夹具使用同一纯编译器验证任务语义；资源能力由隔离夹具明确提供。 */
+function fixturePreflight(
+  params: RpcParams<'execution.preflight'>,
+): RpcResult<'execution.preflight'> {
+  if (params.source === 'copilot')
+    return {
+      supported: false,
+      engine: 'maafw',
+      issues: [
+        {
+          taskIndex: 0,
+          taskType:
+            params.kind === 'sss'
+              ? 'SSSCopilot'
+              : params.kind === 'paradox'
+                ? 'ParadoxCopilot'
+                : 'Copilot',
+          field: '',
+          code: 'unsupported_task',
+          message: '作业执行尚未迁移到 MaaFramework；导入、队列、文件和历史继续保留',
+        },
+      ],
+    };
+  if (params.source === 'tool') {
+    if (params.kind === 'recruit' && params.config?.mode === 'manual')
+      return { supported: true, engine: 'maafw', issues: [] };
+    if (params.kind === 'recruit')
+      return {
+        supported: false,
+        engine: 'maafw',
+        issues: [
+          {
+            taskIndex: 0,
+            taskType: 'Recruit',
+            field: 'mode',
+            code: 'unsupported_tool',
+            message:
+              '只读标签识别工具尚未迁移；可使用手动标签计算，自动公招请使用任务表的已迁移流程',
+          },
+        ],
+      };
+    const type =
+      params.kind === 'operators'
+        ? 'OperBox'
+        : params.kind === 'depot'
+          ? 'Depot'
+          : params.kind === 'games'
+            ? 'Custom'
+            : 'UserDataUpdate';
+    return fixturePreflight({
+      tasks: [{ type, params: {}, enabled: true }],
+      deviceId: params.deviceId,
+      clientType: params.clientType,
+    });
+  }
+  const plan = params.planId ? state.plans.find((item) => item.id === params.planId) : undefined;
+  if (params.planId && !plan) throw new Error('任务表不存在');
+  const tasks = params.tasks ?? plan!.tasks;
+  const issues: RpcResult<'execution.preflight'>['issues'] = [];
+  let clientType: string = params.clientType ?? 'Official';
+  if (!tasks.some(taskEnabled))
+    issues.push({
+      taskIndex: -1,
+      taskType: '',
+      field: 'tasks',
+      code: 'empty_plan',
+      message: '至少需要启用一条任务',
+    });
+  tasks.forEach((task, taskIndex) => {
+    const compiled = compileLegacyTaskWithFeatures(
+      task,
+      { clientType },
+      {
+        supportsStage: (stage) =>
+          stagePresets.some(
+            (item) =>
+              item.value === stage && !['Annihilation', 'R8-11', '12-17-HARD'].includes(stage),
+          ),
+      },
+    );
+    for (const issue of compiled.issues) issues.push({ ...issue, taskIndex, taskType: task.type });
+    if (taskEnabled(task) && task.type === 'StartUp') clientType = compiled.clientType;
+  });
+  return { supported: !issues.length, engine: 'maafw', issues };
+}
+
+function assertFixtureSupported(params: RpcParams<'execution.preflight'>) {
+  const result = fixturePreflight(params);
+  if (!result.supported) throw new Error(result.issues.map((issue) => issue.message).join('；'));
+}
+
 export async function fixtureRpc(
   method: string,
   params: Record<string, unknown>,
 ): Promise<unknown> {
+  if (method === 'copilot.start')
+    assertFixtureSupported({
+      source: 'copilot',
+      kind:
+        params.kind === 'SSSCopilot'
+          ? 'sss'
+          : params.kind === 'ParadoxCopilot'
+            ? 'paradox'
+            : 'copilot',
+    });
   if (method.startsWith('copilot.')) return copilotFixture(method, params);
   switch (method) {
+    case 'execution.preflight':
+      return fixturePreflight(params as RpcParams<'execution.preflight'>);
     case 'app.snapshot':
       return clone({
         ...state,
@@ -583,6 +692,11 @@ export async function fixtureRpc(
         return clone(toolRequests.get(String(params.requestId)));
       const available = fixtureAvailability(String(params.deviceId));
       if (!available.available) throw new Error(available.reason);
+      assertFixtureSupported({
+        source: 'tool',
+        kind: params.kind as RpcParams<'tool.start'>['kind'],
+        config: params.config as ToolConfig | undefined,
+      });
       const job: ToolJob = {
         id: 'tool-' + crypto.randomUUID(),
         kind: params.kind as ToolJob['kind'],
@@ -886,7 +1000,7 @@ export async function fixtureRpc(
               : '模拟设备 · ' + address,
           address,
           state: 'idle',
-          coreVersion: channelFor('core').currentVersion,
+          frameworkVersion: channelFor('framework').currentVersion,
           resourceVersion: channelFor('resource').currentVersion,
         } satisfies Device;
         state.devices.push(device);
@@ -987,6 +1101,7 @@ export async function fixtureRpc(
       const plan = state.plans.find((item) => item.id === params.planId);
       const device = state.devices.find((item) => item.id === params.deviceId);
       if (!plan?.enabled) throw new Error('计划不存在或尚未启用');
+      assertFixtureSupported({ tasks: plan.tasks, deviceId: String(params.deviceId) });
       validatePlan(plan, state.settings);
       if (!planAllowsDevice(plan, String(params.deviceId)))
         throw new Error('执行设备不在任务表绑定范围内');
@@ -1056,27 +1171,6 @@ export async function fixtureRpc(
       emit('run.stopped', run.message, { run: clone(run) });
       return clone(run);
     }
-    case 'updates.maafwAdb.status':
-      return {
-        available: maafwAdbAvailable,
-        coreInstalled: Boolean(channelFor('core').currentVersion),
-      };
-    case 'updates.maafwAdb.prepare': {
-      const channel = channelFor('core');
-      channel.status = 'downloading';
-      channel.progress = 0;
-      channel.message = '合成官方 MaaFwAdb 运行时准备中，不访问下载源';
-      emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
-      await delay(120);
-      channel.latestVersion = channel.currentVersion;
-      channel.status = 'active';
-      channel.progress = 100;
-      channel.message = '合成完整运行时已在空闲时生效';
-      maafwAdbAvailable = true;
-      localStorage.setItem(maafwAdbKey, 'available');
-      emit('update.changed', channel.message, { channel: channel.id, update: clone(channel) });
-      return clone(channel);
-    }
     case 'updates.check': {
       const channel = channelFor(params.channel);
       if (['downloading', 'staged', 'waiting_idle'].includes(channel.status)) return clone(channel);
@@ -1094,13 +1188,10 @@ export async function fixtureRpc(
           publishedAt: now(),
           prerelease: state.settings.appUpdateChannel !== 'stable',
         };
+      } else if (channel.id === 'framework') {
+        channel.latestVersion = 'v5.14.3';
       } else {
-        channel.latestVersion =
-          channel.id === 'core'
-            ? state.settings.coreUpdateChannel === 'preview'
-              ? 'v6.21.0-beta.1'
-              : 'v6.20.0'
-            : '2026-10-20';
+        channel.latestVersion = '2026-10-20';
       }
       channel.checkedAt = now();
       channel.status = channel.currentVersion === channel.latestVersion ? 'idle' : 'available';
@@ -1113,7 +1204,11 @@ export async function fixtureRpc(
       const channel = channelFor(params.channel);
       if (channel.id === 'app' && channel.appCanInstall !== true)
         throw new Error('当前安装方式不支持自动安装');
-      if (channel.status !== 'available') throw new Error('请先检查可用更新');
+      if (
+        channel.status !== 'available' &&
+        !(channel.id === 'framework' && channel.status === 'failed' && channel.latestVersion)
+      )
+        throw new Error('请先检查可用更新');
       const generation = updateGenerations[channel.id];
       channel.status = 'downloading';
       channel.progress = 0;
@@ -1140,7 +1235,7 @@ export async function fixtureRpc(
       if (channel.id === 'app') throw new Error('应用回滚尚未配置');
       if (state.runs.some((run) => run.status === 'running'))
         throw new Error('请等待设备空闲再回滚');
-      channel.currentVersion = channel.id === 'core' ? 'v6.19.0' : '2026-10-18';
+      channel.currentVersion = channel.id === 'framework' ? 'v5.14.2' : '2026-10-18';
       channel.status = 'active';
       channel.message = '已模拟回滚到上一版本';
       channel.progress = 100;
@@ -1211,9 +1306,9 @@ export async function fixtureRpc(
         ![0, 7, 14, 30].includes(settings.logRetentionDays)
       )
         throw new Error('日志保留天数无效');
-      for (const id of ['app', 'core'] as const) {
-        const field = id === 'app' ? 'appUpdateChannel' : 'coreUpdateChannel';
-        const fallback = id === 'app' ? 'preview' : 'stable';
+      for (const id of ['app'] as const) {
+        const field = 'appUpdateChannel';
+        const fallback = 'preview';
         if ((settings[field] ?? fallback) === (state.settings[field] ?? fallback)) continue;
         updateGenerations[id]++;
         const channel = channelFor(id);

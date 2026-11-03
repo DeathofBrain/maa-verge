@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
 import { expectHome, navigate } from './fixtures/navigation';
+import { historicalCopilotRun, restoreHistoricalRuns } from './fixtures/history';
 
 const json = (title: string, extra: Record<string, unknown> = {}) =>
   JSON.stringify({
@@ -90,56 +91,26 @@ test(
   },
 );
 
-test(
-  'independent execution stays in the center, fixes its queue snapshot and supports source navigation and stop',
-  { tag: '@smoke' },
-  async ({ page }) => {
-    await openCenter(page);
-    await importJson(page, json('独立作业快照'));
-    await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeEnabled();
-    await page.getByRole('button', { name: '开始作业', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
-    const run = page.getByRole('region', { name: '作业运行状态', exact: true });
-    await expect(run).toContainText('通关未确认');
-    await expect(run.getByRole('button', { name: '停止作业', exact: true })).toBeVisible();
-    await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
-    await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(0);
-    await expect(run.locator('.cp-run-entries')).toContainText('独立作业快照');
-    const snapshot = await call<{
-      plans: unknown[];
-      runs: { id: string; source: string; planId: null; copilotEntries: unknown[] }[];
-    }>(page, 'app.snapshot');
-    const active = snapshot.runs[0];
-    expect(active.source).toBe('copilot');
-    expect(active.planId).toBeNull();
-    expect(snapshot.plans).toHaveLength(2);
-    await navigate(page, '主页');
-    const current = page.getByRole('region', { name: '当前执行', exact: true });
-    await expect(current).toContainText('独立作业快照');
-    await current.getByRole('button', { name: '查看运行详情', exact: true }).click();
-    const monitor = page.getByRole('region', { name: '任务表执行监控', exact: true });
-    await expect(page.getByRole('tab', { name: '执行监控', exact: true })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-    await expect(
-      monitoredExecution(page).getByRole('heading', { name: '独立作业快照', exact: true }),
-    ).toBeVisible();
-    await expect(
-      monitor.getByRole('button', { name: '停止设备任务本地模拟设备', exact: true }),
-    ).toBeVisible();
-    await expect(monitor.getByRole('article')).toContainText('作业 · 独立作业快照');
-    await expect(
-      monitor.getByRole('button', { name: '查看设备执行本地模拟设备', exact: true }),
-    ).toHaveAttribute('aria-pressed', 'true');
-    await navigate(page, '作业中心');
-    await run.getByRole('button', { name: '停止作业', exact: true }).click();
-    await expect(run).toContainText('已停止');
-    expect(
-      (await call<{ queue: unknown[] }>(page, 'copilot.workspace.get', { kind: 'Copilot' })).queue,
-    ).toHaveLength(0);
-  },
-);
+test('unmigrated copilot execution is blocked while the imported immutable queue remains editable', async ({
+  page,
+}) => {
+  await openCenter(page);
+  await importJson(page, json('保留待迁移作业'));
+  const saved = await call<{ queue: { versionId: string }[] }>(page, 'copilot.workspace.get', {
+    kind: 'Copilot',
+  });
+  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  await expect(page.getByRole('status', { name: '作业执行检查', exact: true })).toContainText(
+    '尚未迁移到 MaaFramework',
+  );
+  await expect(page.getByRole('alert')).toContainText('尚未迁移到 MaaFramework');
+  expect((await call<{ runs: unknown[] }>(page, 'app.snapshot')).runs).toHaveLength(0);
+  expect(
+    (await call<{ queue: unknown[] }>(page, 'copilot.workspace.get', { kind: 'Copilot' })).queue,
+  ).toEqual(saved.queue);
+  await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
+  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(0);
+});
 
 test('busy device blocks the center while browsing and local import remain available', async ({
   page,
@@ -217,60 +188,35 @@ test('three kinds use separate persisted queues and SSS only allows a single wor
   await expect(queue(page)).not.toContainText('保全独立队列');
 });
 
-test('switching workspaces keeps the running panel, expanded logs and stop control', async ({
+test('switching workspaces retains restored historical details without enabling new execution', async ({
   page,
 }) => {
   await openCenter(page);
-  await importJson(page, json('切换时持续执行的普通作业'));
-  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  await importJson(page, json('旧普通作业记录'));
+  const saved = await call<{ queue: { versionId: string }[] }>(page, 'copilot.workspace.get', {
+    kind: 'Copilot',
+  });
+  await restoreHistoricalRuns(page, [
+    historicalCopilotRun('旧普通作业记录', saved.queue[0].versionId),
+  ]);
+  await navigate(page, '作业中心');
   const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
   await panel.locator('.cp-run-logs > summary').click();
-  const initialProgress = await panel.getByLabel('作业执行进度').getAttribute('value');
   for (const name of ['保全派驻', '悖论模拟']) {
     await page.getByRole('tab', { name, exact: true }).click();
-    await expect(
-      panel.getByRole('heading', { name: '切换时持续执行的普通作业', exact: true }),
-    ).toBeVisible();
+    await expect(panel.getByRole('heading', { name: '旧普通作业记录', exact: true })).toBeVisible();
     await expect(panel.locator('.cp-run-logs')).toHaveAttribute('open', '');
   }
-  await expect(panel.getByLabel('作业执行进度')).not.toHaveAttribute('value', initialProgress!);
-  await expect(page.getByRole('tab', { name: '悖论模拟', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
   await expect(panel).toContainText('已停止');
-  await expect(page.getByRole('tab', { name: '悖论模拟', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await navigate(page, '主页');
-  await navigate(page, '作业中心');
-  await expect(
-    panel.getByRole('heading', { name: '切换时持续执行的普通作业', exact: true }),
-  ).toBeVisible();
-  await expect(page.getByRole('tab', { name: '悖论模拟', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  await expect(panel.getByRole('button', { name: '停止作业', exact: true })).toHaveCount(0);
   await navigate(page, '执行记录');
   await page
     .locator('.history-table tbody tr')
-    .filter({ hasText: '切换时持续执行的普通作业' })
+    .filter({ hasText: '旧普通作业记录' })
     .getByRole('button')
     .click();
-  await expect(
-    monitoredExecution(page).getByRole('heading', {
-      name: '切换时持续执行的普通作业',
-      exact: true,
-    }),
-  ).toBeVisible();
   await expect(monitoredExecution(page)).toContainText('正在查看历史执行');
-  await navigate(page, '作业中心');
-  await expect(page.getByRole('tab', { name: '悖论模拟', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  expect((await call<{ runs: unknown[] }>(page, 'app.snapshot')).runs).toHaveLength(1);
 });
 
 test('a persisted queue distinguishes a pending version read from a confirmed unavailable version', async ({
@@ -336,14 +282,14 @@ test('an explicitly restored historical selection survives outside the recent sn
 }) => {
   await openCenter(page);
   await importJson(page, json('窗口外的旧作业'));
-  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  const saved = await call<{ queue: { versionId: string }[] }>(page, 'copilot.workspace.get', {
+    kind: 'Copilot',
+  });
+  const oldRun = historicalCopilotRun('窗口外的旧作业', saved.queue[0].versionId, 'historical-old'),
+    newRun = historicalCopilotRun('最近窗口内的新作业', saved.queue[0].versionId, 'historical-new');
+  await restoreHistoricalRuns(page, [newRun, oldRun]);
+  const older = oldRun.id;
   const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
-  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
-  const older = (await call<{ runs: { id: string }[] }>(page, 'app.snapshot')).runs[0].id;
-  await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
-  await importJson(page, json('最近窗口内的新作业'));
-  await page.getByRole('button', { name: '开始作业', exact: true }).click();
-  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
   await navigate(page, '执行记录');
   await page
     .locator('.history-table tbody tr')
@@ -414,41 +360,36 @@ test('failed workspace writes retain the editable queue and retry before executi
   expect((await call<{ runs: unknown[] }>(page, 'app.snapshot')).runs).toHaveLength(0);
 });
 
-test('starting a newer run updates the selection retained after explicit history navigation', async ({
+test('historical selection remains fixed when another saved run enters the recent snapshot', async ({
   page,
 }) => {
   await openCenter(page);
   await importJson(page, json('历史导航的旧作业'));
-  await page.getByRole('button', { name: '开始作业', exact: true }).click();
+  const saved = await call<{ queue: { versionId: string }[] }>(page, 'copilot.workspace.get', {
+    kind: 'Copilot',
+  });
+  const older = historicalCopilotRun('历史导航的旧作业', saved.queue[0].versionId, 'selection-old');
+  await restoreHistoricalRuns(page, [older]);
+  await navigate(page, '作业中心');
   const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
-  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
-  const older = (await call<{ runs: { id: string }[] }>(page, 'app.snapshot')).runs[0].id;
-  await navigate(page, '执行记录');
-  await page
-    .locator('.history-table tbody tr')
-    .filter({ hasText: '历史导航的旧作业' })
-    .getByRole('button')
-    .click();
-  await expect(
-    monitoredExecution(page).getByRole('heading', { name: '历史导航的旧作业', exact: true }),
-  ).toBeVisible();
-  await navigate(page, '作业中心');
-  await panel.getByLabel('查看作业记录', { exact: true }).selectOption(older);
+  await panel.getByLabel('查看作业记录', { exact: true }).selectOption(older.id);
+  const newer = historicalCopilotRun('后来恢复的新记录', saved.queue[0].versionId, 'selection-new');
+  await page.evaluate((newer) => {
+    const api = (window as HarnessWindow).runtimeHarness,
+      original = api.call;
+    api.call = async (method, params) => {
+      if (method === 'run.detail' && params.id === newer.id) return newer;
+      const value = await original(method, params);
+      if (method === 'app.snapshot')
+        return { ...(value as object), runs: [newer, ...(value as { runs: unknown[] }).runs] };
+      return value;
+    };
+    api.emitEvent('run.completed', { runId: newer.id });
+  }, newer);
   await expect(panel.getByRole('heading', { name: '历史导航的旧作业', exact: true })).toBeVisible();
-  await queue(page).getByRole('button', { name: '移除作业 1', exact: true }).click();
-  await importJson(page, json('导航后启动的新作业'));
-  await expect(page.getByRole('button', { name: '开始作业', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: '开始作业', exact: true }).click();
-  await expect(
-    panel.getByRole('heading', { name: '导航后启动的新作业', exact: true }),
-  ).toBeVisible();
-  await navigate(page, '主页');
-  await navigate(page, '作业中心');
-  await expect(
-    panel.getByRole('heading', { name: '导航后启动的新作业', exact: true }),
-  ).toBeVisible();
-  await expect(panel.locator('.cp-run-summary')).not.toContainText('历史导航的旧作业');
-  await expect(panel.locator('.cp-run-entries')).not.toContainText('历史导航的旧作业');
+  await panel.getByLabel('查看作业记录', { exact: true }).selectOption(newer.id);
+  await expect(panel.getByRole('heading', { name: '后来恢复的新记录', exact: true })).toBeVisible();
+  expect((await call<{ runs: unknown[] }>(page, 'app.snapshot')).runs).toHaveLength(2);
 });
 
 test('the local library pages beyond twenty records without changing the execution queue', async ({
@@ -503,7 +444,7 @@ test('a failed draft for another kind does not block the selected saved workspac
   await page.getByRole('tab', { name: '保全派驻', exact: true }).click();
   await importJson(
     page,
-    json('仍可执行的保全作业', {
+    json('保留的保全作业', {
       type: 'SSS',
       stages: [
         { stage_name: 'main_01-07', draw_as_possible: true, actions: [{ type: 'SpeedUp' }] },
@@ -513,11 +454,8 @@ test('a failed draft for another kind does not block the selected saved workspac
   await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
   await expect(queue(page).locator('.cp-save-state')).not.toContainText('普通作业草稿暂时保存失败');
   await page.getByRole('button', { name: '开始作业', exact: true }).click();
-  const panel = page.getByRole('region', { name: '作业运行状态', exact: true });
-  await expect(
-    panel.getByRole('heading', { name: '仍可执行的保全作业', exact: true }),
-  ).toBeVisible();
-  await panel.getByRole('button', { name: '停止作业', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('尚未迁移到 MaaFramework');
+  expect((await call<{ runs: unknown[] }>(page, 'app.snapshot')).runs).toHaveLength(0);
   await page.getByRole('tab', { name: '普通作业', exact: true }).click();
   await expect(queue(page)).toContainText('保留的普通作业草稿');
   await expect(queue(page).locator('.cp-save-state')).toContainText('普通作业草稿暂时保存失败');
