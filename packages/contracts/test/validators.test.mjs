@@ -7,17 +7,13 @@ import {
   validateSnapshot,
   validateRpcRequest,
   validateRpcEvent,
-  validateWorkerCommand,
-  validateWorkerConfiguration,
   validateWorkerLeaseConfiguration,
-  validateWorkerValidationConfiguration,
-  validateWorkerEvent,
-  validateWorkerValidation,
   validateDeviceFrameParams,
   validateDeviceClickParams,
   validateDeviceDeleteParams,
   validateScreenFrame,
   validateWorkerFrame,
+  validateFrameworkWorkerCommand,
   validateStageListParams,
   validateStageListResult,
   validateHostUpdateParams,
@@ -25,7 +21,6 @@ import {
 
 const settings = () => ({
   autoConnect: true,
-  autoUpdateCore: true,
   autoUpdateResource: true,
   minimizeToTray: true,
   theme: 'system',
@@ -42,6 +37,55 @@ const plan = () => ({
   tasks: [{ type: 'Award', params: { future_option: { nested: [1, '保留'] } }, enabled: true }],
   schedule: null,
   enabled: true,
+});
+
+test('framework update settings extend resource settings without requiring a release channel or directory', () => {
+  const legacy = {
+    ...settings(),
+    componentPaths: { resource: '/synthetic/resource' },
+  };
+  assert.equal(validateSettings(legacy), true);
+  for (const autoUpdateFramework of [true, false])
+    assert.equal(
+      validateSettings({
+        ...legacy,
+        autoUpdateFramework,
+        componentPaths: { ...legacy.componentPaths, framework: '/synthetic/framework' },
+      }),
+      true,
+    );
+  for (const autoUpdateFramework of [null, 0, 'true'])
+    assert.equal(validateSettings({ ...legacy, autoUpdateFramework }), false);
+  for (const framework of [null, false, 'a'.repeat(4097)])
+    assert.equal(
+      validateSettings({ ...legacy, componentPaths: { ...legacy.componentPaths, framework } }),
+      false,
+    );
+  assert.equal(validateSettings({ ...legacy, frameworkUpdateChannel: 'preview' }), false);
+});
+
+test('snapshots expose an independent framework update alongside the existing channels', () => {
+  const snapshot = {
+    mode: 'native',
+    devices: [],
+    plans: [],
+    runs: [],
+    updates: ['app', 'resource', 'framework'].map((id) => ({
+      id,
+      currentVersion: id === 'framework' ? 'v5.14.3' : 'synthetic-version',
+      latestVersion: null,
+      status: 'active',
+      progress: 100,
+      message: '',
+    })),
+    settings: settings(),
+    events: [],
+  };
+  assert.equal(validateSnapshot(snapshot), true);
+  assert.equal(
+    validateSnapshot({ ...snapshot, updates: [{ ...snapshot.updates[2], id: 'another-engine' }] }),
+    false,
+  );
 });
 
 test('historical device deletion requires a bounded unique list and rejects cascading options', () => {
@@ -238,7 +282,7 @@ test('standalone validators preserve normalized data and arbitrary task paramete
     name: '设备',
     address: '127.0.0.1:5555',
     state: 'idle',
-    coreVersion: null,
+    frameworkVersion: null,
     resourceVersion: null,
   };
   assert.equal(
@@ -265,7 +309,7 @@ test('standalone validators preserve normalized data and arbitrary task paramete
 
 test('update download speed is optional and accepts only finite nonnegative bytes per second', () => {
   const update = {
-    id: 'core',
+    id: 'resource',
     currentVersion: '未安装',
     latestVersion: 'v6.20.1',
     status: 'downloading',
@@ -304,7 +348,7 @@ test('update download speed is optional and accepts only finite nonnegative byte
 
 test('update download source is optional and accepts only the supported source identities', () => {
   const update = {
-    id: 'core',
+    id: 'resource',
     currentVersion: '未安装',
     latestVersion: 'v6.20.1',
     status: 'downloading',
@@ -456,42 +500,7 @@ test('JSON-RPC envelopes preserve notifications and reject malformed protocol da
   assert.equal(validateRpcEvent({ ...event, params: { ...event.params, id: '1' } }), false);
 });
 
-test('native v1 commands require task payloads and bounded integer timeouts', () => {
-  const configuration = {
-    protocolVersion: 1,
-    core: '/core',
-    resource: '/resource',
-    adb: '/adb',
-    address: '127.0.0.1:5555',
-    userDir: '/user',
-    lockPath: '/locks/device.lock',
-  };
-  assert.equal(validateWorkerConfiguration(configuration), true);
-  for (const change of [
-    { protocolVersion: 2 },
-    { lockTimeoutMs: -1 },
-    { startupTimeoutMs: 0 },
-    { nativeCallTimeoutMs: 120001 },
-    { asyncTimeoutMs: 1.5 },
-  ]) {
-    assert.equal(validateWorkerConfiguration({ ...configuration, ...change }), false);
-  }
-  assert.equal(
-    validateWorkerCommand({ protocolVersion: 1, id: 'connect', operation: 'connect' }),
-    true,
-  );
-  const command = {
-    protocolVersion: 1,
-    id: 2,
-    operation: 'task',
-    task: { type: 'Fight', params: { future: [1, { nested: true }] } },
-  };
-  const original = structuredClone(command);
-  assert.equal(validateWorkerCommand(command), true);
-  assert.deepEqual(command, original);
-  assert.equal(validateWorkerCommand({ protocolVersion: 1, id: 2, operation: 'task' }), false);
-  assert.equal(validateWorkerCommand({ ...command, operation: 'stop' }), false);
-  assert.equal(validateWorkerCommand({ ...command, protocolVersion: 0 }), false);
+test('shared native lease remains protocol v1 and rejects caller device authority', () => {
   assert.equal(
     validateWorkerLeaseConfiguration({
       protocolVersion: 1,
@@ -500,66 +509,13 @@ test('native v1 commands require task payloads and bounded integer timeouts', ()
     }),
     true,
   );
-  assert.equal(
-    validateWorkerLeaseConfiguration({
-      protocolVersion: 1,
-      lockPath: '/locks/device.lock',
-      address: 'unexpected',
-    }),
-    false,
-  );
-  assert.equal(
-    validateWorkerValidationConfiguration({
-      protocolVersion: 1,
-      core: '/core',
-      resource: '/resource',
-      version: 'v6.20.0',
-    }),
-    true,
-  );
-  assert.equal(
-    validateWorkerValidationConfiguration({
-      protocolVersion: 1,
-      core: '/core',
-      resource: '/resource',
-    }),
-    false,
-  );
-});
-
-test('native responses contain exactly one result or error and reject unknown versions', () => {
-  const response = { protocolVersion: 1, type: 'response', id: 1 };
-  assert.equal(validateWorkerEvent({ ...response, result: { taskId: 1 } }), true);
-  assert.equal(validateWorkerEvent({ ...response, id: null, error: 'invalid command' }), true);
-  assert.equal(validateWorkerEvent(response), false);
-  assert.equal(validateWorkerEvent({ ...response, result: {}, error: 'ambiguous' }), false);
-  assert.equal(
-    validateWorkerEvent({
-      protocolVersion: 1,
-      type: 'callback',
-      message: 20002,
-      details: { taskid: 1 },
-    }),
-    true,
-  );
-  assert.equal(
-    validateWorkerEvent({
-      protocolVersion: 1,
-      type: 'status',
-      running: false,
-      pendingAsync: [1, 1],
-    }),
-    false,
-  );
-  assert.equal(validateWorkerEvent({ protocolVersion: 2, type: 'ready' }), false);
-  assert.equal(
-    validateWorkerValidation({ protocolVersion: 1, version: 'v6.20.0', resourceLoaded: true }),
-    true,
-  );
-  assert.equal(
-    validateWorkerValidation({ protocolVersion: 1, version: 'v6.20.0', resourceLoaded: false }),
-    false,
-  );
+  for (const invalid of [
+    { protocolVersion: 2, lockPath: '/locks/device.lock' },
+    { protocolVersion: 1, lockPath: '' },
+    { protocolVersion: 1, lockPath: '/locks/device.lock', address: 'unexpected' },
+    { protocolVersion: 1, lockPath: '/locks/device.lock', core: '/forbidden' },
+  ])
+    assert.equal(validateWorkerLeaseConfiguration(invalid), false);
 });
 
 test('screen preview contracts bound image payloads and restrict input to integer coordinates', () => {
@@ -594,10 +550,6 @@ test('screen preview contracts bound image payloads and restrict input to intege
   };
   assert.equal(validateWorkerFrame(image), true);
   assert.equal(validateScreenFrame(frame), true);
-  for (const coreLatencyMs of [0, 1.25]) {
-    assert.equal(validateWorkerFrame({ ...image, coreLatencyMs }), true);
-    assert.equal(validateScreenFrame({ ...frame, coreLatencyMs }), true);
-  }
   for (const fields of [
     { width: 0 },
     { height: 8193 },
@@ -605,6 +557,7 @@ test('screen preview contracts bound image payloads and restrict input to intege
     { data: 'A'.repeat(4183385) },
     { mimeType: 'image/jpeg' },
     { canControl: 1 },
+    { coreLatencyMs: 1 },
     { coreLatencyMs: -1 },
     { coreLatencyMs: '4' },
     { coreLatencyMs: null },
@@ -616,15 +569,53 @@ test('screen preview contracts bound image payloads and restrict input to intege
   assert.equal(validateScreenFrame({ ...frame, latencyMs: -1 }), false);
   assert.equal(validateScreenFrame({ ...frame, command: 'shell' }), false);
   assert.equal(
-    validateWorkerCommand({ protocolVersion: 1, id: 'frame', operation: 'frame' }),
+    validateFrameworkWorkerCommand({ protocolVersion: 1, id: 'frame', operation: 'frame' }),
     true,
   );
   assert.equal(
-    validateWorkerCommand({ protocolVersion: 1, id: 'tap', operation: 'click', x: 1279, y: 719 }),
+    validateFrameworkWorkerCommand({
+      protocolVersion: 1,
+      id: 'tap',
+      operation: 'click',
+      x: 1279,
+      y: 719,
+    }),
     true,
   );
   assert.equal(
-    validateWorkerCommand({ protocolVersion: 1, id: 'tap', operation: 'click', x: 0.5, y: 0 }),
+    validateFrameworkWorkerCommand({
+      protocolVersion: 1,
+      id: 'tap',
+      operation: 'click',
+      x: 0.5,
+      y: 0,
+    }),
+    false,
+  );
+});
+
+// Old persistent data is normalized by the service; removed wire fields never authorize a core download.
+test('public settings and snapshots reject removed core update controls', () => {
+  for (const change of [
+    { autoUpdateCore: true },
+    { coreUpdateChannel: 'stable' },
+    { componentPaths: { resource: '/resources', core: '/legacy-core' } },
+  ])
+    assert.equal(validateSettings({ ...settings(), ...change }), false);
+  const snapshot = {
+    mode: 'native',
+    devices: [],
+    plans: [],
+    runs: [],
+    settings: settings(),
+    updates: [],
+    events: [],
+  };
+  assert.equal(
+    validateSnapshot({
+      ...snapshot,
+      updates: [{ id: 'core', currentVersion: 'legacy', status: 'idle', progress: 0, message: '' }],
+    }),
     false,
   );
 });

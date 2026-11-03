@@ -4,6 +4,10 @@ import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame, HostUpdateParams }
 import type { WorkerProtocol } from './worker-types';
 import type { AtomicInputContract } from './atomic-input-types';
 export const atomicInputValidators: { [K in keyof AtomicInputContract['inputs']]: Validator<AtomicInputContract['inputs'][K]> };
+export const validateAtomicCapabilityResult: Validator<import('./atomic-input-types').AtomicCapabilityResult>;
+export const validateAtomicFrameData: Validator<unknown>;
+export const validateAtomicRecognitionData: Validator<unknown>;
+export const validateAtomicAcknowledgementData: Validator<unknown>;
 export const validateControlSessionStartParams: Validator<RpcContract['params']['control.session.start']>;
 export const validateControlSessionGetParams: Validator<RpcContract['params']['control.session.get']>;
 export const validateControlSessionEndParams: Validator<RpcContract['params']['control.session.end']>;
@@ -90,11 +94,8 @@ export const validateItemResourceParams: Validator<RpcContract['params']['resour
 export const validateItemResourceResult: Validator<RpcContract['results']['resources.item']>;
 export const validateOperatorResourceParams: Validator<RpcContract['params']['resources.operator']>;
 export const validateOperatorResourceResult: Validator<RpcContract['results']['resources.operator']>;
+export const validateExecutionPreflightParams: Validator<RpcContract['params']['execution.preflight']>;
+export const validateExecutionPreflightResult: Validator<RpcContract['results']['execution.preflight']>;
 export const validateScreenFrame: Validator<ScreenFrame>;
-export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl' | 'coreLatencyMs'>>;
-export const validateWorkerConfiguration: Validator<WorkerProtocol['configuration']>;
+export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl'>>;
 export const validateWorkerLeaseConfiguration: Validator<WorkerProtocol['leaseConfiguration']>;
-export const validateWorkerValidationConfiguration: Validator<WorkerProtocol['validationConfiguration']>;
-export const validateWorkerCommand: Validator<WorkerProtocol['command']>;
-export const validateWorkerEvent: Validator<WorkerProtocol['event']>;
-export const validateWorkerValidation: Validator<WorkerProtocol['validation']>;

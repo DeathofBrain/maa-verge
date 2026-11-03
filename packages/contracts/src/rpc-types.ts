@@ -49,7 +49,6 @@ export type Schedule = string | null;
  */
 export type Enabled1 = boolean;
 export type Autoconnect = boolean;
-export type Autoupdatecore = boolean;
 export type Autoupdateresource = boolean;
 export type Minimizetotray = boolean;
 export type Theme = 'dark' | 'light' | 'system';
@@ -112,13 +111,45 @@ export type KnowledgeKind =
  * via the `definition` "FrameRegion".
  */
 export type FrameRegion = [number, number, number, number];
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ExecutionPreflightParams".
+ */
+export type ExecutionPreflightParams = ExecutionPreflightParams1 & {
+  planId?: string;
+  deviceId?: string;
+  /**
+   * @maxItems 200
+   */
+  tasks?: Task[];
+  force?: boolean;
+  clientType?: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+  source?: 'plan' | 'tool' | 'copilot';
+  kind?: 'depot' | 'operators' | 'recruit' | 'inventory' | 'data' | 'games' | 'copilot' | 'sss' | 'paradox';
+  config?: ToolConfig;
+};
+export type ExecutionPreflightParams1 =
+  | {
+      planId: string;
+      deviceId: string;
+    }
+  | {
+      /**
+       * @maxItems 200
+       */
+      tasks: Task[];
+    }
+  | {
+      source: 'tool' | 'copilot';
+      kind: 'depot' | 'operators' | 'recruit' | 'inventory' | 'data' | 'games' | 'copilot' | 'sss' | 'paradox';
+    };
 export type Mode = 'native';
 export type Id1 = string;
 export type Name1 = string;
 export type Address = string;
 export type State = 'idle' | 'running' | 'offline';
-export type Coreversion = string | null;
 export type Resourceversion = string | null;
+export type FrameworkVersion = string | null;
 export type Devices = Device[];
 export type Plans = Plan[];
 export type Id2 = string;
@@ -130,7 +161,7 @@ export type Message = string;
 export type Startedat = string;
 export type Finishedat = string | null;
 export type Runs = Run[];
-export type Id3 = 'app' | 'core' | 'resource';
+export type Id3 = 'app' | 'framework' | 'resource';
 export type Currentversion = string;
 export type Latestversion = string | null;
 export type Status1 =
@@ -220,8 +251,6 @@ export interface RpcContract {
     'run.detail': IdParams;
     'run.artifact': RunArtifactParams;
     'updates.check': ChannelParams;
-    'updates.maafwAdb.status': EmptyParams;
-    'updates.maafwAdb.prepare': EmptyParams;
     'updates.prepare': ChannelParams;
     'updates.activate': ChannelParams;
     'updates.rollback': ChannelParams;
@@ -289,6 +318,7 @@ export interface RpcContract {
     'debug.session.start': DebugSessionStartParams;
     'debug.primitive.invoke': DebugPrimitiveInvokeParams;
     'debug.session.end': DebugSessionEndParams;
+    'execution.preflight': ExecutionPreflightParams;
   };
   results: {
     'app.snapshot': Snapshot;
@@ -342,8 +372,6 @@ export interface RpcContract {
     'run.detail': Run;
     'run.artifact': RunArtifactImage;
     'updates.check': UpdateChannel;
-    'updates.maafwAdb.status': MaaFwAdbStatus;
-    'updates.maafwAdb.prepare': UpdateChannel;
     'updates.prepare': UpdateChannel;
     'updates.activate': UpdateChannel;
     'updates.rollback': UpdateChannel;
@@ -454,6 +482,7 @@ export interface RpcContract {
     'debug.session.start': DebugSessionStartResult;
     'debug.primitive.invoke': DebugPrimitiveResult;
     'debug.session.end': DebugSessionEndResult;
+    'execution.preflight': ExecutionPreflightResult;
   };
 }
 /**
@@ -599,7 +628,7 @@ export interface RunArtifactParams {
  * via the `definition` "ChannelParams".
  */
 export interface ChannelParams {
-  channel: 'app' | 'core' | 'resource';
+  channel: 'app' | 'resource' | 'framework';
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -630,9 +659,11 @@ export interface Settings {
    */
   autoUpdateApp?: boolean;
   appUpdateChannel?: 'stable' | 'preview';
-  coreUpdateChannel?: 'stable' | 'preview';
-  autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
+  /**
+   * 独立检查和准备兼容清单中的稳定版 MaaFramework；缺省启用，不跟随应用或游戏资源开关。
+   */
+  autoUpdateFramework?: boolean;
   minimizeToTray: Minimizetotray;
   /**
    * 记住 minimizeToTray 指定的关闭方式；缺失或 false 时每次关闭窗口均询问。
@@ -651,11 +682,14 @@ export interface Settings {
  * via the `definition` "ComponentPaths".
  */
 export interface ComponentPaths {
-  core: string;
   resource: string;
+  /**
+   * MaaFramework SDK installation/download root. Missing in legacy settings; the application supplies its independent default.
+   */
+  framework?: string;
 }
 /**
- * Shared HTTP proxy policy for application, MaaCore and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.
+ * Shared HTTP proxy policy for application, MaaFramework and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.
  *
  * This interface was referenced by `Snapshot`'s JSON-Schema
  * via the `definition` "DownloadProxySettings".
@@ -674,7 +708,7 @@ export interface DownloadProxySettings {
 export interface MirrorChyanSettings {
   enabled: boolean;
   /**
-   * Shared MirrorChyan CDK for the application, MaaCore and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports.
+   * Shared MirrorChyan CDK for the application, MaaFramework and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports.
    */
   cdk: string;
 }
@@ -750,9 +784,40 @@ export interface ConnectionSettings {
     | 'AVD'
     | 'Androws'
     | 'WSA';
-  touchMode: 'minitouch' | 'maatouch' | 'adb' | 'MaaFwAdb';
+  touchMode: 'minitouch' | 'maatouch' | 'adb';
+  framework?: FrameworkConnectionSettings;
   adbLite: boolean;
   clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+}
+/**
+ * MaaFramework 设备截图与触控配置；旧连接字段只供迁移读取。
+ */
+export interface FrameworkConnectionSettings {
+  /**
+   * 对应 MaaFramework Maatouch、MinitouchAndAdbKey、AdbShell、EmulatorExtras 单一输入方式，独立于截图。
+   */
+  touchMode: 'maatouch' | 'minitouch' | 'adb' | 'emulator-extras';
+  capture: FrameworkCaptureSettings;
+  touchExtras?: FrameworkTouchExtras;
+}
+/**
+ * This interface was referenced by `Snapshot`'s JSON-Schema
+ * via the `definition` "FrameworkCaptureSettings".
+ */
+export interface FrameworkCaptureSettings {
+  /**
+   * 自动核对 MuMu／雷电运行实例与 SDK，并探测 AVD 增强接口；截图选择不修改触控模式。
+   */
+  method: 'auto' | 'adb' | 'mumu' | 'ldplayer' | 'avd';
+  emulatorPath: string;
+  instanceIndex: number;
+}
+/**
+ * MuMu 增强触控的独立实例参数；省略时核对当前设备对应的运行实例。
+ */
+export interface FrameworkTouchExtras {
+  emulatorPath: string;
+  instanceIndex: number;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -1264,10 +1329,10 @@ export interface Device {
   name: Name1;
   address: Address;
   state: State;
-  coreVersion: Coreversion;
   captureMethod?: string;
   dataSync?: UserDataSync;
   resourceVersion: Resourceversion;
+  frameworkVersion: FrameworkVersion;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -1304,6 +1369,9 @@ export interface Run {
    */
   copilotEntries?: CopilotRunEntry[];
   copilotKind?: 'Copilot' | 'SSSCopilot' | 'ParadoxCopilot';
+  engine?: 'maafw';
+  frameworkVersion?: string | null;
+  resourceVersion?: string | null;
 }
 /**
  * This interface was referenced by `Snapshot`'s JSON-Schema
@@ -1338,6 +1406,10 @@ export interface RunDrop {
   name: string;
   quantity: number;
   stage: string;
+  /**
+   * Framework reports only explicitly read target items from visible rewards, not a complete inventory or all drops.
+   */
+  scope?: 'visible_rewards';
   at: string;
 }
 /**
@@ -1360,7 +1432,7 @@ export interface RunInfrastructure {
   at: string;
 }
 /**
- * Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.
+ * Bounded local observation captured after a verified or unknown workflow result, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.
  *
  * This interface was referenced by `Snapshot`'s JSON-Schema
  * via the `definition` "RunArtifact".
@@ -1667,11 +1739,7 @@ export interface ScreenFrame {
    * Application-service duration of the native frame request, including image retrieval and transport.
    */
   latencyMs: number;
-  /**
-   * MaaCore's successful current AsstAsyncScreencap callback details.cost in milliseconds. Excludes image retrieval, PNG encoding and delivery to the frontend; omitted when MaaCore does not provide a measurement or the frame uses a running task's cached image.
-   */
-  coreLatencyMs?: number;
-  engine?: 'maacore' | 'maafw';
+  engine?: 'maafw';
   sessionId?: string;
   resourceGeneration?: string;
   coordinateSpace?: 'frame';
@@ -1684,14 +1752,6 @@ export interface ScreenFrame {
 export interface RunArtifactImage {
   mimeType: 'image/png';
   data: string;
-}
-/**
- * This interface was referenced by `RpcContract`'s JSON-Schema
- * via the `definition` "MaaFwAdbStatus".
- */
-export interface MaaFwAdbStatus {
-  available: boolean;
-  coreInstalled: boolean;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -2136,7 +2196,7 @@ export interface FrameworkCapabilities {
  */
 export interface ControlSessionStatus {
   deviceId: string;
-  owner: 'none' | 'maacore' | 'maafw' | 'switching';
+  owner: 'none' | 'maafw' | 'switching';
   sessionId?: string;
   resourceGeneration?: string;
   busy: boolean;
@@ -2167,7 +2227,7 @@ export interface VisionRecognitionResult {
    * @minItems 2
    * @maxItems 2
    */
-  coordinateSize?: [1280, 720];
+  coordinateSize?: [number, number];
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema
@@ -2198,6 +2258,17 @@ export interface PrimitiveDescriptor {
   label: string;
   description: string;
   layer: 'operation' | 'observation' | 'game' | 'workflow';
+  primitiveLevel?: number;
+  effect?: 'observe' | 'input' | 'commit';
+  pipelineEntry?: string;
+  /**
+   * @maxItems 128
+   */
+  dependencies?: string[];
+  /**
+   * @maxItems 128
+   */
+  requiredResources?: string[];
   inputSchema: {
     [k: string]: unknown;
   };
@@ -2245,6 +2316,26 @@ export interface DebugPrimitiveResult {
  */
 export interface DebugSessionEndResult {
   ended: true;
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ExecutionPreflightResult".
+ */
+export interface ExecutionPreflightResult {
+  supported: boolean;
+  engine: 'maafw';
+  issues: ExecutionCompatibilityIssue[];
+}
+/**
+ * This interface was referenced by `RpcContract`'s JSON-Schema
+ * via the `definition` "ExecutionCompatibilityIssue".
+ */
+export interface ExecutionCompatibilityIssue {
+  taskIndex: number;
+  taskType: string;
+  field: string;
+  code: string;
+  message: string;
 }
 /**
  * This interface was referenced by `RpcContract`'s JSON-Schema

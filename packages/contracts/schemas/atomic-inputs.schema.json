@@ -28,7 +28,116 @@
         "workflow.infrast.queue_rotate",
         "workflow.infrast.overview_shift",
         "workflow.infrast.room_shift",
-        "workflow.infrast.trim"
+        "workflow.infrast.trim",
+        "composite.match",
+        "composite.texts",
+        "composite.click_box",
+        "composite.swipe",
+        "composite.press_key",
+        "composite.click_rule",
+        "composite.click_first",
+        "composite.action",
+        "composite.delay",
+        "composite.assert_hit",
+        "composite.assert_missing",
+        "composite.wait_until",
+        "observation.startup",
+        "game.startup.login_step",
+        "workflow.startup.login",
+        "observation.fight",
+        "game.fight.enable_agent",
+        "game.fight.prepare",
+        "game.fight.start",
+        "game.fight.read_result",
+        "game.fight.dismiss_result",
+        "observation.recruit",
+        "game.recruit.enter",
+        "game.recruit.collect_finished",
+        "game.recruit.skip_reveal",
+        "game.recruit.read_result",
+        "workflow.recruit.collect_one",
+        "observation.mall",
+        "game.mall.enter",
+        "game.mall.collect_credit",
+        "workflow.mall.collect_credit",
+        "observation.award",
+        "game.award.enter",
+        "game.award.select_daily",
+        "game.award.select_weekly",
+        "game.award.claim_current",
+        "game.award.close_reward",
+        "workflow.award.daily_weekly",
+        "observation.inventory.depot",
+        "observation.inventory.operators",
+        "game.inventory.enter_depot",
+        "game.inventory.enter_operators",
+        "game.fight.wait_result",
+        "workflow.fight.current_stage",
+        "game.mall.buy_current",
+        "game.infrast.prepare_roster",
+        "game.infrast.confirm",
+        "game.infrast.verify_room",
+        "game.infrast.open_room",
+        "game.infrast.open_roster",
+        "game.infrast.read_roster",
+        "game.infrast.rotate_queue",
+        "game.infrast.enter_trim",
+        "game.infrast.trim",
+        "observation.trim",
+        "game.mall.open_credit_store",
+        "game.inventory.select_materials",
+        "workflow.inventory.read_depot",
+        "workflow.inventory.read_operators",
+        "game.infrast.reset_filter",
+        "game.infrast.page_roster",
+        "game.infrast.select_operator",
+        "game.infrast.clear_roster",
+        "operation.start_app",
+        "operation.stop_app",
+        "game.startup.launch",
+        "game.startup.close",
+        "workflow.startup.start",
+        "workflow.startup.close",
+        "game.award.mail_enter",
+        "game.award.mail_claim",
+        "game.award.mail_close",
+        "workflow.award.mail",
+        "game.startup.return_home",
+        "game.fight.open_terminal",
+        "game.fight.open_episode",
+        "game.fight.select_stage",
+        "workflow.fight.navigate",
+        "game.fight.replenish",
+        "workflow.fight.single_battle",
+        "game.infrast.resolve_rooms",
+        "workflow.infrast.custom_shift",
+        "game.recruit.read_slots",
+        "game.recruit.refresh",
+        "game.recruit.leave",
+        "game.recruit.dismiss_result",
+        "game.recruit.open_slot",
+        "game.recruit.read_plan",
+        "game.recruit.prepare",
+        "game.recruit.confirm",
+        "workflow.recruit.daily",
+        "game.fight.set_series",
+        "game.fight.read_drops",
+        "workflow.fight.legacy_batch",
+        "game.mall.choose_product",
+        "game.mall.open_product",
+        "game.mall.close_reward",
+        "game.mall.enter_friends",
+        "game.mall.open_friend_list",
+        "game.mall.visit_first",
+        "game.mall.visit_next",
+        "game.mall.read_visit",
+        "game.mall.purchase_selected",
+        "workflow.mall.shopping",
+        "workflow.mall.visit_friends",
+        "game.infrast.prepare_auto_roster",
+        "workflow.infrast.auto_room_shift",
+        "game.infrast.enumerate_rooms",
+        "workflow.infrast.daily"
       ],
       "properties": {
         "operation.frame": {
@@ -71,7 +180,7 @@
           "$ref": "#/$defs/AtomicEmptyInput"
         },
         "game.infrast.read_room": {
-          "$ref": "#/$defs/AtomicRoomTargetInput"
+          "$ref": "#/$defs/InfrastReadRoomInput"
         },
         "game.infrast.set_room": {
           "$ref": "#/$defs/AtomicRoomShiftInput"
@@ -87,6 +196,333 @@
         },
         "workflow.infrast.trim": {
           "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "composite.match": {
+          "$ref": "#/$defs/CompositeMatchInput"
+        },
+        "composite.texts": {
+          "$ref": "#/$defs/CompositeTextsInput"
+        },
+        "composite.click_box": {
+          "$ref": "#/$defs/CompositeClickBoxInput"
+        },
+        "composite.swipe": {
+          "$ref": "#/$defs/CompositeSwipeInput"
+        },
+        "composite.press_key": {
+          "$ref": "#/$defs/CompositePressKeyInput"
+        },
+        "composite.click_rule": {
+          "$ref": "#/$defs/CompositeClickRuleInput"
+        },
+        "composite.click_first": {
+          "$ref": "#/$defs/CompositeClickFirstInput"
+        },
+        "composite.action": {
+          "$ref": "#/$defs/CompositeActionInput"
+        },
+        "composite.delay": {
+          "$ref": "#/$defs/CompositeDelayInput"
+        },
+        "composite.assert_hit": {
+          "$ref": "#/$defs/Compositeassert_hitInput"
+        },
+        "composite.assert_missing": {
+          "$ref": "#/$defs/Compositeassert_missingInput"
+        },
+        "composite.wait_until": {
+          "$ref": "#/$defs/CompositeWaitUntilInput"
+        },
+        "observation.startup": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.startup.login_step": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "workflow.startup.login": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.fight": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.fight.enable_agent": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.fight.prepare": {
+          "$ref": "#/$defs/FightPrepareInput"
+        },
+        "game.fight.start": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.fight.read_result": {
+          "$ref": "#/$defs/FightReadResultInput"
+        },
+        "game.fight.dismiss_result": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.recruit": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.recruit.enter": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.recruit.collect_finished": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.recruit.skip_reveal": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.recruit.read_result": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "workflow.recruit.collect_one": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.mall": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.enter": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.collect_credit": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "workflow.mall.collect_credit": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.award": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.award.enter": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.award.select_daily": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.award.select_weekly": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.award.claim_current": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.award.close_reward": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "workflow.award.daily_weekly": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.inventory.depot": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.inventory.operators": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.inventory.enter_depot": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.inventory.enter_operators": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.fight.wait_result": {
+          "$ref": "#/$defs/FightWaitResultInput"
+        },
+        "workflow.fight.current_stage": {
+          "$ref": "#/$defs/FightCurrentStageInput"
+        },
+        "game.mall.buy_current": {
+          "$ref": "#/$defs/MallBuyCurrentInput"
+        },
+        "game.infrast.prepare_roster": {
+          "$ref": "#/$defs/InfrastPrepareInput"
+        },
+        "game.infrast.confirm": {
+          "$ref": "#/$defs/InfrastConfirmInput"
+        },
+        "game.infrast.verify_room": {
+          "$ref": "#/$defs/InfrastVerifyRoomInput"
+        },
+        "game.infrast.open_room": {
+          "$ref": "#/$defs/InfrastOpenRoomInput"
+        },
+        "game.infrast.open_roster": {
+          "$ref": "#/$defs/InfrastOpenRosterInput"
+        },
+        "game.infrast.read_roster": {
+          "$ref": "#/$defs/InfrastReadRosterInput"
+        },
+        "game.infrast.rotate_queue": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.infrast.enter_trim": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.infrast.trim": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "observation.trim": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.open_credit_store": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.inventory.select_materials": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "workflow.inventory.read_depot": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "workflow.inventory.read_operators": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.infrast.reset_filter": {
+          "$ref": "#/$defs/InfrastResetFilterInput"
+        },
+        "game.infrast.page_roster": {
+          "$ref": "#/$defs/InfrastPageRosterInput"
+        },
+        "game.infrast.select_operator": {
+          "$ref": "#/$defs/InfrastSelectOperatorInput"
+        },
+        "game.infrast.clear_roster": {
+          "$ref": "#/$defs/InfrastClearRosterInput"
+        },
+        "operation.start_app": {
+          "$ref": "#/$defs/AtomicStartAppInput"
+        },
+        "operation.stop_app": {
+          "$ref": "#/$defs/AtomicStopAppInput"
+        },
+        "game.startup.launch": {
+          "$ref": "#/$defs/GameStartupInput"
+        },
+        "game.startup.close": {
+          "$ref": "#/$defs/GameClientInput"
+        },
+        "workflow.startup.start": {
+          "$ref": "#/$defs/GameStartupInput"
+        },
+        "workflow.startup.close": {
+          "$ref": "#/$defs/GameClientInput"
+        },
+        "game.award.mail_enter": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.award.mail_claim": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.award.mail_close": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "workflow.award.mail": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.startup.return_home": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.fight.open_terminal": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.fight.open_episode": {
+          "$ref": "#/$defs/FightStageInput"
+        },
+        "game.fight.select_stage": {
+          "$ref": "#/$defs/FightStageInput"
+        },
+        "workflow.fight.navigate": {
+          "$ref": "#/$defs/FightStageInput"
+        },
+        "game.fight.replenish": {
+          "$ref": "#/$defs/FightConsumableInput"
+        },
+        "workflow.fight.single_battle": {
+          "$ref": "#/$defs/FightSingleBattleInput"
+        },
+        "game.infrast.resolve_rooms": {
+          "$ref": "#/$defs/AtomicBatchShiftInput"
+        },
+        "workflow.infrast.custom_shift": {
+          "$ref": "#/$defs/InfrastCustomShiftInput"
+        },
+        "game.recruit.read_slots": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.recruit.refresh": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.recruit.leave": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.recruit.dismiss_result": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.recruit.open_slot": {
+          "$ref": "#/$defs/GameRecruitOpenSlotInput"
+        },
+        "game.recruit.read_plan": {
+          "$ref": "#/$defs/GameRecruitReadPlanInput"
+        },
+        "game.recruit.prepare": {
+          "$ref": "#/$defs/GameRecruitPrepareInput"
+        },
+        "game.recruit.confirm": {
+          "$ref": "#/$defs/GameRecruitConfirmInput"
+        },
+        "workflow.recruit.daily": {
+          "$ref": "#/$defs/WorkflowRecruitDailyInput"
+        },
+        "game.fight.set_series": {
+          "$ref": "#/$defs/FightSetSeriesInput"
+        },
+        "game.fight.read_drops": {
+          "$ref": "#/$defs/FightReadDropsInput"
+        },
+        "workflow.fight.legacy_batch": {
+          "$ref": "#/$defs/FightLegacyBatchInput"
+        },
+        "game.mall.choose_product": {
+          "$ref": "#/$defs/MallChooseProductInput"
+        },
+        "game.mall.open_product": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.close_reward": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.enter_friends": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.open_friend_list": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.visit_first": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.visit_next": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.read_visit": {
+          "$ref": "#/$defs/AtomicEmptyInput"
+        },
+        "game.mall.purchase_selected": {
+          "$ref": "#/$defs/MallPurchaseSelectedInput"
+        },
+        "workflow.mall.shopping": {
+          "$ref": "#/$defs/MallShoppingInput"
+        },
+        "workflow.mall.visit_friends": {
+          "$ref": "#/$defs/MallVisitFriendsInput"
+        },
+        "game.infrast.prepare_auto_roster": {
+          "$ref": "#/$defs/InfrastAutoRoomInput"
+        },
+        "workflow.infrast.auto_room_shift": {
+          "$ref": "#/$defs/InfrastAutoRoomInput"
+        },
+        "game.infrast.enumerate_rooms": {
+          "$ref": "#/$defs/InfrastEnumerateRoomsInput"
+        },
+        "workflow.infrast.daily": {
+          "$ref": "#/$defs/InfrastDailyInput"
         }
       }
     }
@@ -363,15 +799,11 @@
           "type": "array",
           "minItems": 2,
           "maxItems": 2,
-          "items": [
-            {
-              "const": 1280
-            },
-            {
-              "const": 720
-            }
-          ],
-          "additionalItems": false
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8192
+          }
         },
         "maskRange": {
           "type": "array",
@@ -987,6 +1419,1901 @@
         "message": {
           "type": "string",
           "maxLength": 4096
+        }
+      }
+    },
+    "CompositeMatchInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frame": {
+          "description": "使用 current 在本次根 Pipeline 内截图，或传入同根且未过期的帧引用；显式引用不会自动刷新。",
+          "default": "current",
+          "oneOf": [
+            {
+              "type": "string",
+              "const": "current"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "frameId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
+                },
+                "data": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4183384
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "deviceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "mimeType": {
+                  "const": "image/png"
+                },
+                "canControl": {
+                  "type": "boolean"
+                },
+                "latencyMs": {
+                  "description": "Application-service duration of the native frame request, including image retrieval and transport.",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "engine": {
+                  "const": "maafw"
+                },
+                "sessionId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "resourceGeneration": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "coordinateSpace": {
+                  "const": "frame"
+                },
+                "fresh": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["frameId", "width", "height"]
+            }
+          ]
+        },
+        "roi": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 8192
+          }
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": ["rule"]
+    },
+    "CompositeTextsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frame": {
+          "description": "使用 current 在本次根 Pipeline 内截图，或传入同根且未过期的帧引用；显式引用不会自动刷新。",
+          "default": "current",
+          "oneOf": [
+            {
+              "type": "string",
+              "const": "current"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "frameId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
+                },
+                "data": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4183384
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "deviceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "mimeType": {
+                  "const": "image/png"
+                },
+                "canControl": {
+                  "type": "boolean"
+                },
+                "latencyMs": {
+                  "description": "Application-service duration of the native frame request, including image retrieval and transport.",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "engine": {
+                  "const": "maafw"
+                },
+                "sessionId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "resourceGeneration": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "coordinateSpace": {
+                  "const": "frame"
+                },
+                "fresh": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["frameId", "width", "height"]
+            }
+          ]
+        },
+        "roi": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 8192
+          }
+        }
+      },
+      "required": []
+    },
+    "CompositeClickBoxInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frame": {
+          "description": "使用 current 在本次根 Pipeline 内截图，或传入同根且未过期的帧引用；显式引用不会自动刷新。",
+          "default": "current",
+          "oneOf": [
+            {
+              "type": "string",
+              "const": "current"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "frameId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
+                },
+                "data": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4183384
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "deviceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "mimeType": {
+                  "const": "image/png"
+                },
+                "canControl": {
+                  "type": "boolean"
+                },
+                "latencyMs": {
+                  "description": "Application-service duration of the native frame request, including image retrieval and transport.",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "engine": {
+                  "const": "maafw"
+                },
+                "sessionId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "resourceGeneration": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "coordinateSpace": {
+                  "const": "frame"
+                },
+                "fresh": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["frameId", "width", "height"]
+            }
+          ]
+        },
+        "roi": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 8192
+          }
+        },
+        "box": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 8192
+          }
+        }
+      },
+      "required": ["frame", "box"]
+    },
+    "CompositeSwipeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "frame": {
+          "description": "使用 current 在本次根 Pipeline 内截图，或传入同根且未过期的帧引用；显式引用不会自动刷新。",
+          "default": "current",
+          "oneOf": [
+            {
+              "type": "string",
+              "const": "current"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "frameId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
+                },
+                "data": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4183384
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "deviceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "mimeType": {
+                  "const": "image/png"
+                },
+                "canControl": {
+                  "type": "boolean"
+                },
+                "latencyMs": {
+                  "description": "Application-service duration of the native frame request, including image retrieval and transport.",
+                  "type": "number",
+                  "minimum": 0
+                },
+                "engine": {
+                  "const": "maafw"
+                },
+                "sessionId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "resourceGeneration": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "coordinateSpace": {
+                  "const": "frame"
+                },
+                "fresh": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["frameId", "width", "height"]
+            }
+          ]
+        },
+        "roi": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 8192
+          }
+        },
+        "from": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 8192
+          }
+        },
+        "to": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 8192
+          }
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 2000
+        }
+      },
+      "required": ["frame", "from", "to"]
+    },
+    "CompositePressKeyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "key": {
+          "enum": ["back", "escape"]
+        }
+      },
+      "required": ["key"]
+    },
+    "CompositeClickRuleInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "optional": {
+          "type": "boolean"
+        }
+      },
+      "required": ["rule"]
+    },
+    "CompositeClickFirstInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "rules": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "fallbackAction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": ["rules"]
+    },
+    "CompositeActionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": ["action"]
+    },
+    "CompositeDelayInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 90000
+        }
+      },
+      "required": ["ms"]
+    },
+    "Compositeassert_hitInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "unknown": {
+          "type": "boolean"
+        }
+      },
+      "required": ["rule"]
+    },
+    "Compositeassert_missingInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "unknown": {
+          "type": "boolean"
+        }
+      },
+      "required": ["rule"]
+    },
+    "CompositeWaitUntilInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expected": {
+          "type": "boolean"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 90000
+        },
+        "pollMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        }
+      },
+      "required": ["rule", "timeoutMs"]
+    },
+    "FightWaitResultInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 90000
+        },
+        "pollMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 5000
+        },
+        "allowPending": {
+          "type": "boolean"
+        },
+        "series": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        }
+      },
+      "required": []
+    },
+    "FightCurrentStageInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "times": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 90000
+        }
+      },
+      "required": []
+    },
+    "MallBuyCurrentInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxCredit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "required": ["maxCredit"]
+    },
+    "InfrastPrepareInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/AtomicRoomTargetInput"
+        },
+        "route": {
+          "enum": ["overview", "room"]
+        },
+        "role": {
+          "enum": ["normal", "trainee", "assistant"]
+        },
+        "operators": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": ["target", "route", "role"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "trainee"
+              }
+            },
+            "required": ["role"]
+          },
+          "then": {
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "else": {
+            "required": ["operators"],
+            "properties": {
+              "operators": {
+                "type": "array"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "InfrastConfirmInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prepared": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/AtomicRoomTargetInput"
+            },
+            "route": {
+              "enum": ["overview", "room"]
+            },
+            "role": {
+              "enum": ["normal", "trainee", "assistant"]
+            },
+            "before": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "selected": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "selectionAttempt": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "required": ["target", "route", "role", "selected"]
+        }
+      },
+      "required": ["prepared"]
+    },
+    "InfrastVerifyRoomInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/AtomicRoomTargetInput"
+            },
+            "route": {
+              "enum": ["overview", "room"]
+            },
+            "role": {
+              "enum": ["normal", "trainee", "assistant"]
+            },
+            "operators": {
+              "type": "array",
+              "maxItems": 5,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": ["target", "route", "role"],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "role": {
+                    "const": "trainee"
+                  }
+                },
+                "required": ["role"]
+              },
+              "then": {
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              },
+              "else": {
+                "required": ["operators"],
+                "properties": {
+                  "operators": {
+                    "type": "array"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "prepared": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/AtomicRoomTargetInput"
+            },
+            "route": {
+              "enum": ["overview", "room"]
+            },
+            "role": {
+              "enum": ["normal", "trainee", "assistant"]
+            },
+            "before": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "selected": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "selectionAttempt": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "required": ["target", "route", "role", "selected"]
+        },
+        "before": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": ["request", "prepared"]
+    },
+    "InfrastReadRoomInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facility", "room"],
+      "properties": {
+        "facility": {
+          "enum": [
+            "Mfg",
+            "Trade",
+            "Power",
+            "Control",
+            "Reception",
+            "Office",
+            "Dorm",
+            "Processing",
+            "Training",
+            "Recycle"
+          ]
+        },
+        "room": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "route": {
+          "enum": ["overview", "room"]
+        }
+      }
+    },
+    "InfrastOpenRoomInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facility", "room"],
+      "properties": {
+        "facility": {
+          "enum": [
+            "Mfg",
+            "Trade",
+            "Power",
+            "Control",
+            "Reception",
+            "Office",
+            "Dorm",
+            "Processing",
+            "Training",
+            "Recycle"
+          ]
+        },
+        "room": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "route": {
+          "enum": ["overview", "room"]
+        }
+      }
+    },
+    "InfrastOpenRosterInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/AtomicRoomTargetInput"
+        },
+        "role": {
+          "enum": ["trainee", "assistant"]
+        }
+      },
+      "required": ["target"]
+    },
+    "InfrastReadRosterInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxCapacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "required": []
+    },
+    "InfrastResetFilterInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "InfrastPageRosterInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "enum": ["left", "right"]
+        }
+      },
+      "required": ["direction"]
+    },
+    "InfrastSelectOperatorInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "selected": {
+          "type": "boolean"
+        }
+      },
+      "required": ["name"]
+    },
+    "InfrastClearRosterInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "AtomicFrameData": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "data": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4183384
+        },
+        "capturedAt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "mimeType": {
+          "const": "image/png"
+        },
+        "canControl": {
+          "type": "boolean"
+        },
+        "latencyMs": {
+          "description": "Application-service duration of the native frame request, including image retrieval and transport.",
+          "type": "number",
+          "minimum": 0
+        },
+        "engine": {
+          "const": "maafw"
+        },
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "resourceGeneration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "coordinateSpace": {
+          "const": "frame"
+        },
+        "fresh": {
+          "type": "boolean"
+        }
+      },
+      "required": ["frameId", "width", "height", "data"]
+    },
+    "AtomicRecognitionData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hit", "matches"],
+      "properties": {
+        "hit": {
+          "type": "boolean"
+        },
+        "matches": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["box", "score"],
+            "properties": {
+              "box": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 8192
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 8192
+                  },
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 8192
+                  },
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 8192
+                  }
+                ],
+                "additionalItems": false
+              },
+              "score": {
+                "type": "number"
+              },
+              "text": {
+                "type": "string"
+              },
+              "count": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "coordinateSize": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8192
+          }
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "engine": {
+          "const": "maafw"
+        },
+        "resourceGeneration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "fresh": {
+          "type": "boolean"
+        }
+      }
+    },
+    "AtomicAcknowledgementData": {
+      "type": "object",
+      "required": ["accepted"],
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "nativeSuccess": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AtomicStartAppInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+$"
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 400,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+/(?:\\.[A-Za-z_$][A-Za-z0-9_.$]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)+)$",
+          "description": "Explicit Android component in the same appId; native validates package equality. No shell or am flags."
+        }
+      }
+    },
+    "AtomicStopAppInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+$"
+        }
+      }
+    },
+    "GameClientInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clientType": {
+          "enum": ["Official", "Bilibili"]
+        }
+      },
+      "required": ["clientType"]
+    },
+    "GameStartupInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clientType": {
+          "enum": ["Official", "Bilibili"]
+        },
+        "startGame": {
+          "type": "boolean"
+        }
+      },
+      "required": ["clientType", "startGame"]
+    },
+    "FightStageInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      },
+      "required": ["stage"]
+    },
+    "FightPrepareInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowSanityDialog": {
+          "type": "boolean"
+        },
+        "reusePrepared": {
+          "type": "boolean"
+        },
+        "series": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        }
+      },
+      "required": []
+    },
+    "FightConsumableInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "medicine": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "stone": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "required": []
+    },
+    "InfrastCustomShiftInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plan"],
+      "properties": {
+        "plan": {
+          "type": "object"
+        },
+        "planIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        },
+        "sourceSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "facilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "Mfg",
+              "Trade",
+              "Power",
+              "Control",
+              "Reception",
+              "Office",
+              "Dorm",
+              "Processing",
+              "Training",
+              "Recycle"
+            ]
+          }
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "GameRecruitOpenSlotInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot"],
+      "properties": {
+        "slot": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      }
+    },
+    "GameRecruitReadPlanInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "select": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "uniqueItems": true
+        },
+        "confirm": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "uniqueItems": true
+        },
+        "setTime": {
+          "type": "boolean"
+        },
+        "recruitmentTime": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "3": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            },
+            "4": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            },
+            "5": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            },
+            "6": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            }
+          }
+        },
+        "extraTagsMode": {
+          "enum": [0, 1, 2]
+        },
+        "preserveTags": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "uniqueItems": true
+        },
+        "firstTags": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "uniqueItems": true
+        },
+        "skipRobot": {
+          "type": "boolean"
+        }
+      }
+    },
+    "GameRecruitPrepareInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "select": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "uniqueItems": true
+        },
+        "confirm": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "uniqueItems": true
+        },
+        "setTime": {
+          "type": "boolean"
+        },
+        "recruitmentTime": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "3": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            },
+            "4": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            },
+            "5": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            },
+            "6": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            }
+          }
+        },
+        "extraTagsMode": {
+          "enum": [0, 1, 2]
+        },
+        "preserveTags": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "uniqueItems": true
+        },
+        "firstTags": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "uniqueItems": true
+        },
+        "skipRobot": {
+          "type": "boolean"
+        }
+      }
+    },
+    "GameRecruitConfirmInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxPermits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "reservePermits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "WorkflowRecruitDailyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "select": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "uniqueItems": true
+        },
+        "confirm": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "uniqueItems": true
+        },
+        "setTime": {
+          "type": "boolean"
+        },
+        "recruitmentTime": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "3": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            },
+            "4": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            },
+            "5": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            },
+            "6": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 540,
+              "multipleOf": 10
+            }
+          }
+        },
+        "extraTagsMode": {
+          "enum": [0, 1, 2]
+        },
+        "preserveTags": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "uniqueItems": true
+        },
+        "firstTags": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "uniqueItems": true
+        },
+        "skipRobot": {
+          "type": "boolean"
+        },
+        "times": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "maxPermits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "refresh": {
+          "type": "boolean"
+        },
+        "forceRefresh": {
+          "type": "boolean"
+        },
+        "reservePermits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "FightSetSeriesInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["series"],
+      "properties": {
+        "series": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        }
+      }
+    },
+    "FightReadDropsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemIds"],
+      "properties": {
+        "itemIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        }
+      }
+    },
+    "FightSingleBattleInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "medicine": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "stone": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "series": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "drops": {
+          "type": "object",
+          "minProperties": 0,
+          "maxProperties": 100,
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          }
+        }
+      },
+      "required": []
+    },
+    "FightLegacyBatchInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["times"],
+      "properties": {
+        "medicine": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "stone": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "series": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "drops": {
+          "type": "object",
+          "minProperties": 0,
+          "maxProperties": 100,
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          }
+        },
+        "times": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "MallChooseProductInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "buyFirst": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "blacklist": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "onlyDiscount": {
+          "type": "boolean"
+        },
+        "reserveMaxCredit": {
+          "type": "boolean"
+        },
+        "phase": {
+          "enum": ["priority", "general", "overflow"]
+        }
+      }
+    },
+    "MallPurchaseSelectedInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "maxCredit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "MallShoppingInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "buyFirst": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "blacklist": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "onlyDiscount": {
+          "type": "boolean"
+        },
+        "reserveMaxCredit": {
+          "type": "boolean"
+        },
+        "forceShoppingIfCreditFull": {
+          "type": "boolean"
+        },
+        "maxCredit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "MallVisitFriendsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "oncePerDay": {
+          "type": "boolean"
+        }
+      }
+    },
+    "FightReadResultInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "series": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        }
+      }
+    },
+    "InfrastAutoRoomInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target"],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/AtomicRoomTargetInput"
+        },
+        "route": {
+          "enum": ["room", "overview"]
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "excludedNames": {
+          "type": "array",
+          "maxItems": 500,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "requiredNames": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      }
+    },
+    "InfrastEnumerateRoomsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facilities"],
+      "properties": {
+        "facilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["Mfg", "Trade", "Power", "Control", "Reception", "Office", "Dorm"]
+          }
+        }
+      }
+    },
+    "InfrastDailyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "facilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["Mfg", "Trade", "Power", "Control", "Reception", "Office", "Dorm"]
+          }
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       }
     }

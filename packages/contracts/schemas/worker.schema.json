@@ -6,35 +6,15 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "configuration",
     "leaseConfiguration",
-    "validationConfiguration",
-    "command",
-    "event",
-    "validation",
     "frameworkConfiguration",
     "frameworkCommand",
     "frameworkEvent",
     "frameworkValidation"
   ],
   "properties": {
-    "configuration": {
-      "$ref": "#/$defs/WorkerConfiguration"
-    },
     "leaseConfiguration": {
       "$ref": "#/$defs/WorkerLeaseConfiguration"
-    },
-    "validationConfiguration": {
-      "$ref": "#/$defs/WorkerValidationConfiguration"
-    },
-    "command": {
-      "$ref": "#/$defs/WorkerCommand"
-    },
-    "event": {
-      "$ref": "#/$defs/WorkerEvent"
-    },
-    "validation": {
-      "$ref": "#/$defs/WorkerValidation"
     },
     "frameworkConfiguration": {
       "$ref": "#/$defs/FrameworkWorkerConfiguration"
@@ -69,273 +49,6 @@
         }
       }
     },
-    "WorkerValidationConfiguration": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["protocolVersion", "core", "resource", "version"],
-      "properties": {
-        "protocolVersion": {
-          "const": 1
-        },
-        "core": {
-          "type": "string",
-          "minLength": 1
-        },
-        "resource": {
-          "type": "string",
-          "minLength": 1
-        },
-        "version": {
-          "type": "string",
-          "minLength": 1
-        },
-        "nativeCallTimeoutMs": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 120000
-        }
-      }
-    },
-    "WorkerConfiguration": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["protocolVersion", "core", "resource", "adb", "address", "userDir", "lockPath"],
-      "properties": {
-        "protocolVersion": {
-          "const": 1
-        },
-        "core": {
-          "type": "string",
-          "minLength": 1
-        },
-        "resource": {
-          "type": "string",
-          "minLength": 1
-        },
-        "adb": {
-          "type": "string",
-          "minLength": 1
-        },
-        "address": {
-          "type": "string",
-          "minLength": 1
-        },
-        "userDir": {
-          "type": "string",
-          "minLength": 1
-        },
-        "lockPath": {
-          "type": "string",
-          "minLength": 1
-        },
-        "capture": {
-          "$ref": "#/$defs/WorkerCaptureConfiguration"
-        },
-        "connection": {
-          "$ref": "#/$defs/WorkerConnectionConfiguration"
-        },
-        "lockTimeoutMs": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 60000
-        },
-        "startupTimeoutMs": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 120000
-        },
-        "nativeCallTimeoutMs": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 120000
-        },
-        "asyncTimeoutMs": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 120000
-        },
-        "shutdownTimeoutMs": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 120000
-        }
-      }
-    },
-    "WorkerConnectionConfiguration": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["config", "touchMode", "adbLite", "clientType"],
-      "properties": {
-        "config": {
-          "enum": [
-            "General",
-            "BlueStacks",
-            "MuMuEmulator12",
-            "MuMuArm",
-            "LDPlayer",
-            "Nox",
-            "XYAZ",
-            "Compatible",
-            "SecondResolution",
-            "CompatMac",
-            "CompatPOSIXShell",
-            "Waydroid",
-            "AVD",
-            "Androws",
-            "WSA"
-          ]
-        },
-        "touchMode": {
-          "enum": ["minitouch", "maatouch", "adb", "MaaFwAdb"]
-        },
-        "adbLite": {
-          "type": "boolean"
-        },
-        "clientType": {
-          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
-        }
-      }
-    },
-    "WorkerCaptureConfiguration": {
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["method"],
-          "properties": {
-            "method": {
-              "const": "adb"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["method", "emulatorPath", "instanceIndex"],
-          "properties": {
-            "method": {
-              "const": "mumu"
-            },
-            "emulatorPath": {
-              "type": "string",
-              "minLength": 1
-            },
-            "instanceIndex": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 2147483647
-            },
-            "mumuTouch": {
-              "type": "boolean"
-            },
-            "mumuBridge": {
-              "type": "boolean"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["method", "emulatorPath", "instanceIndex"],
-          "properties": {
-            "method": {
-              "const": "ldplayer"
-            },
-            "emulatorPath": {
-              "type": "string",
-              "minLength": 1
-            },
-            "instanceIndex": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 2147483647
-            },
-            "pid": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 2147483647
-            }
-          }
-        }
-      ]
-    },
-    "WorkerCommand": {
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["protocolVersion", "id", "operation"],
-          "properties": {
-            "protocolVersion": {
-              "const": 1
-            },
-            "id": {
-              "type": ["string", "integer"]
-            },
-            "operation": {
-              "enum": ["connect", "stop", "screencap", "frame"]
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["protocolVersion", "id", "operation", "x", "y"],
-          "properties": {
-            "protocolVersion": {
-              "const": 1
-            },
-            "id": {
-              "type": ["string", "integer"]
-            },
-            "operation": {
-              "const": "click"
-            },
-            "x": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 8191
-            },
-            "y": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 8191
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["protocolVersion", "id", "operation", "task"],
-          "properties": {
-            "protocolVersion": {
-              "const": 1
-            },
-            "id": {
-              "type": ["string", "integer"]
-            },
-            "operation": {
-              "const": "task"
-            },
-            "task": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["type", "params"],
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "params": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
     "WorkerFrame": {
       "type": "object",
       "additionalProperties": false,
@@ -361,130 +74,6 @@
         },
         "canControl": {
           "type": "boolean"
-        },
-        "coreLatencyMs": {
-          "description": "MaaCore's successful current AsstAsyncScreencap callback details.cost in milliseconds. Excludes image retrieval, PNG encoding and transport; omitted when no current measurement is available.",
-          "type": "number",
-          "minimum": 0
-        }
-      }
-    },
-    "WorkerEvent": {
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["protocolVersion", "type"],
-          "properties": {
-            "protocolVersion": {
-              "const": 1
-            },
-            "type": {
-              "const": "ready"
-            },
-            "mode": {
-              "const": "lease-only"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["protocolVersion", "type", "id", "result"],
-          "properties": {
-            "protocolVersion": {
-              "const": 1
-            },
-            "type": {
-              "const": "response"
-            },
-            "id": {
-              "type": ["string", "integer", "null"]
-            },
-            "result": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["protocolVersion", "type", "id", "error"],
-          "properties": {
-            "protocolVersion": {
-              "const": 1
-            },
-            "type": {
-              "const": "response"
-            },
-            "id": {
-              "type": ["string", "integer", "null"]
-            },
-            "error": {
-              "type": "string"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["protocolVersion", "type", "message", "details"],
-          "properties": {
-            "protocolVersion": {
-              "const": 1
-            },
-            "type": {
-              "const": "callback"
-            },
-            "message": {
-              "type": "integer"
-            },
-            "details": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["protocolVersion", "type", "running", "pendingAsync"],
-          "properties": {
-            "protocolVersion": {
-              "const": 1
-            },
-            "type": {
-              "const": "status"
-            },
-            "running": {
-              "type": "boolean"
-            },
-            "pendingAsync": {
-              "type": "array",
-              "items": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "uniqueItems": true
-            }
-          }
-        }
-      ]
-    },
-    "WorkerValidation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["protocolVersion", "version", "resourceLoaded"],
-      "properties": {
-        "protocolVersion": {
-          "const": 1
-        },
-        "version": {
-          "type": "string"
-        },
-        "resourceLoaded": {
-          "const": true
         }
       }
     },
@@ -525,6 +114,55 @@
         },
         "avd": {
           "type": "boolean"
+        },
+        "avdSerial": {
+          "type": "string",
+          "pattern": "^emulator-([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-4])$",
+          "description": "Verified local AVD console identity used only for fixed enhanced screenshot start/stop commands; the controller address and shared lease stay unchanged."
+        },
+        "touchMode": {
+          "enum": ["maatouch", "minitouch", "adb", "emulator-extras"],
+          "default": "maatouch"
+        },
+        "capture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "emulatorPath", "instanceIndex"],
+          "properties": {
+            "method": {
+              "enum": ["auto", "adb", "mumu", "ldplayer", "avd"]
+            },
+            "emulatorPath": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "instanceIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            },
+            "pid": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          }
+        },
+        "touchExtras": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["emulatorPath", "instanceIndex"],
+          "properties": {
+            "emulatorPath": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "instanceIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          }
         },
         "lockTimeoutMs": {
           "type": "integer",
@@ -567,7 +205,29 @@
               "type": ["string", "integer"]
             },
             "operation": {
-              "enum": ["connect", "frame", "stop"]
+              "enum": ["connect", "stop"]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["protocolVersion", "id", "operation"],
+          "properties": {
+            "protocolVersion": {
+              "const": 1
+            },
+            "id": {
+              "type": ["string", "integer"]
+            },
+            "operation": {
+              "const": "frame"
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
             }
           }
         },
@@ -594,6 +254,12 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 8191
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
             }
           }
         },
@@ -641,6 +307,12 @@
             },
             "compensationDirection": {
               "enum": ["none", "up", "down", "left", "right"]
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
             }
           }
         },
@@ -660,6 +332,12 @@
             },
             "key": {
               "enum": ["back", "escape"]
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
             }
           }
         },
@@ -822,10 +500,14 @@
               "maxItems": 2,
               "items": [
                 {
-                  "const": 1280
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
                 },
                 {
-                  "const": 720
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 8192
                 }
               ],
               "additionalItems": false
@@ -874,6 +556,12 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 16384
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
             }
           },
           "allOf": [
@@ -1236,6 +924,12 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 10000
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
             }
           }
         },
@@ -1277,6 +971,204 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 10000
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["protocolVersion", "id", "operation", "entry", "pipeline"],
+          "properties": {
+            "protocolVersion": {
+              "const": 1
+            },
+            "id": {
+              "type": ["string", "integer"]
+            },
+            "operation": {
+              "const": "pipeline"
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "pipeline": {
+              "type": "object",
+              "description": "Host-owned MaaFramework Pipeline nodes. The worker also enforces a 512 KiB serialized payload limit; this command is not a product RPC or model tool.",
+              "minProperties": 1,
+              "maxProperties": 256,
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "maxProperties": 64,
+                "additionalProperties": true
+              }
+            },
+            "contextId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "protocolVersion",
+            "id",
+            "operation",
+            "entry",
+            "pipeline",
+            "contextId",
+            "callbackId"
+          ],
+          "properties": {
+            "protocolVersion": {
+              "const": 1
+            },
+            "id": {
+              "type": ["string", "integer"]
+            },
+            "operation": {
+              "const": "context_pipeline"
+            },
+            "entry": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "pipeline": {
+              "type": "object",
+              "description": "Host-owned MaaFramework Pipeline nodes. The worker also enforces a 512 KiB serialized payload limit; this command is not a product RPC or model tool.",
+              "minProperties": 1,
+              "maxProperties": 256,
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "maxProperties": 64,
+                "additionalProperties": true
+              }
+            },
+            "contextId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["protocolVersion", "id", "operation", "callbackId", "success"],
+          "properties": {
+            "protocolVersion": {
+              "const": 1
+            },
+            "id": {
+              "type": ["string", "integer"]
+            },
+            "operation": {
+              "const": "custom_result"
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "success": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["protocolVersion", "id", "operation", "appId"],
+          "properties": {
+            "protocolVersion": {
+              "const": 1
+            },
+            "id": {
+              "type": ["string", "integer"]
+            },
+            "operation": {
+              "const": "start_app"
+            },
+            "appId": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 200,
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+$"
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "intent": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 400,
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+/(?:\\.[A-Za-z_$][A-Za-z0-9_.$]*|[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)+)$",
+              "description": "Explicit Android component in the same appId; native validates package equality. No shell or am flags."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["protocolVersion", "id", "operation", "appId"],
+          "properties": {
+            "protocolVersion": {
+              "const": 1
+            },
+            "id": {
+              "type": ["string", "integer"]
+            },
+            "operation": {
+              "const": "stop_app"
+            },
+            "appId": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 200,
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+$"
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
             }
           }
         }
@@ -1342,6 +1234,94 @@
             },
             "error": {
               "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "protocolVersion",
+            "type",
+            "callbackId",
+            "node",
+            "params",
+            "contextId",
+            "parentCallbackId",
+            "depth",
+            "inputEpoch"
+          ],
+          "properties": {
+            "protocolVersion": {
+              "const": 1
+            },
+            "type": {
+              "const": "framework_custom"
+            },
+            "callbackId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "node": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "params": {
+              "type": "object",
+              "maxProperties": 64,
+              "additionalProperties": true,
+              "description": "Parameters of the registered MaaVerge.Custom action. The worker also enforces a 64 KiB serialized payload limit."
+            },
+            "contextId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "parentCallbackId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "inputEpoch": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["protocolVersion", "type", "inputEpoch"],
+          "properties": {
+            "protocolVersion": {
+              "const": 1
+            },
+            "type": {
+              "const": "framework_input_epoch"
+            },
+            "inputEpoch": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
             }
           }
         }

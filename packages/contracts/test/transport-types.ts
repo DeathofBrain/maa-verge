@@ -9,6 +9,10 @@ void function verifyTransportTypes() {
   void rpc('app.snapshot', {});
   void rpc('run.start', { planId: 'plan', deviceId: 'device', requestId: 'unique' });
   void rpc('updates.check', { channel: 'resource' });
+  void rpc('updates.check', { channel: 'framework' });
+  void rpc('updates.prepare', { channel: 'framework' });
+  void rpc('updates.activate', { channel: 'framework' });
+  void rpc('updates.rollback', { channel: 'framework' });
   void rpc('stages.list', { clientType: 'YoStarEN' });
   void rpc('stages.list', { refresh: true });
   // @ts-expect-error Explicit refresh is a boolean.
@@ -25,6 +29,10 @@ void function verifyTransportTypes() {
   void rpc('run.start', { planId: 'plan', deviceId: 'device' });
   // @ts-expect-error Empty parameter methods accept no extra properties.
   void rpc('app.snapshot', { shell: 'arbitrary' });
+  // @ts-expect-error Removed core updates cannot enter the public transport.
+  void rpc('updates.check', { channel: 'core' });
+  // @ts-expect-error Removed core controller packages are not a public method.
+  void rpc('updates.maafwAdb.prepare', {});
   // @ts-expect-error Update channels form a closed set.
   void rpc('updates.check', { channel: 'combined' });
   // @ts-expect-error Result types are determined by method, not caller assertions.

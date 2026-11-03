@@ -58,6 +58,34 @@ test('complete gestures require a bounded duration and frame authority', () => {
   );
 });
 
+test('framed composites accept current or bounded references while frame results retain complete PNG data', async () => {
+  const { atomicInputValidators, validateAtomicFrameData } = await import('../src/validators.js');
+  const reference = { frameId: 'frame', width: 1280, height: 720 };
+  const full = { ...reference, data: 'png' };
+  const inputs = {
+    'composite.match': { rule: 'registered-rule' },
+    'composite.texts': {},
+    'composite.click_box': { box: [0, 0, 20, 20] },
+    'composite.swipe': { from: [0, 0], to: [20, 20], durationMs: 100 },
+  };
+  for (const [id, input] of Object.entries(inputs)) {
+    const validate = atomicInputValidators[id];
+    for (const frame of ['current', reference, full])
+      assert.equal(validate({ ...input, frame }), true, `${id}: ${JSON.stringify(frame)}`);
+    for (const frame of [
+      'latest',
+      { frameId: 'frame', width: 1280 },
+      { frameId: 'frame', width: 1280, height: 0 },
+      { ...reference, extra: true },
+      { ...reference, data: '' },
+    ])
+      assert.equal(validate({ ...input, frame }), false, `${id}: ${JSON.stringify(frame)}`);
+    assert.equal(validate(input), !['composite.click_box', 'composite.swipe'].includes(id));
+  }
+  assert.equal(validateAtomicFrameData(reference), false);
+  assert.equal(validateAtomicFrameData(full), true);
+});
+
 test('recognition validates kind-specific authority and preserves the complete bounded OCR correction map', async () => {
   const { atomicInputValidators } = await import('../src/validators.js');
   const validate = atomicInputValidators['operation.recognize'];

@@ -110,8 +110,6 @@ test('copilot storage remains optional on older settings and validates explicit 
     autoConnect: false,
     autoUpdateApp: false,
     appUpdateChannel: 'stable',
-    coreUpdateChannel: 'stable',
-    autoUpdateCore: false,
     autoUpdateResource: false,
     minimizeToTray: false,
     rememberCloseAction: false,

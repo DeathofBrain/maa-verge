@@ -5,8 +5,8 @@ export type Id = string;
 export type Name = string;
 export type Address = string;
 export type State = 'idle' | 'running' | 'offline';
-export type Coreversion = string | null;
 export type Resourceversion = string | null;
+export type FrameworkVersion = string | null;
 export type Devices = Device[];
 export type Id1 = string;
 export type Name1 = string;
@@ -61,7 +61,7 @@ export type Message = string;
 export type Startedat = string;
 export type Finishedat = string | null;
 export type Runs = Run[];
-export type Id3 = 'app' | 'core' | 'resource';
+export type Id3 = 'app' | 'framework' | 'resource';
 export type Currentversion = string;
 export type Latestversion = string | null;
 export type Status1 =
@@ -70,7 +70,6 @@ export type Progress1 = number;
 export type Message1 = string;
 export type Updates = UpdateChannel[];
 export type Autoconnect = boolean;
-export type Autoupdatecore = boolean;
 export type Autoupdateresource = boolean;
 export type Minimizetotray = boolean;
 export type Theme = 'dark' | 'light' | 'system';
@@ -100,10 +99,10 @@ export interface Device {
   name: Name;
   address: Address;
   state: State;
-  coreVersion: Coreversion;
   captureMethod?: string;
   dataSync?: UserDataSync;
   resourceVersion: Resourceversion;
+  frameworkVersion: FrameworkVersion;
 }
 export interface UserDataSync {
   operatorsAt: string | null;
@@ -162,6 +161,9 @@ export interface Run {
    */
   copilotEntries?: CopilotRunEntry[];
   copilotKind?: 'Copilot' | 'SSSCopilot' | 'ParadoxCopilot';
+  engine?: 'maafw';
+  frameworkVersion?: string | null;
+  resourceVersion?: string | null;
 }
 export interface RunTask {
   index: number;
@@ -188,6 +190,10 @@ export interface RunDrop {
   name: string;
   quantity: number;
   stage: string;
+  /**
+   * Framework reports only explicitly read target items from visible rewards, not a complete inventory or all drops.
+   */
+  scope?: 'visible_rewards';
   at: string;
 }
 export interface RunInfrastructure {
@@ -206,7 +212,7 @@ export interface RunInfrastructure {
   at: string;
 }
 /**
- * Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.
+ * Bounded local observation captured after a verified or unknown workflow result, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.
  */
 export interface RunArtifact {
   id: string;
@@ -291,9 +297,11 @@ export interface Settings {
    */
   autoUpdateApp?: boolean;
   appUpdateChannel?: 'stable' | 'preview';
-  coreUpdateChannel?: 'stable' | 'preview';
-  autoUpdateCore: Autoupdatecore;
   autoUpdateResource: Autoupdateresource;
+  /**
+   * 独立检查和准备兼容清单中的稳定版 MaaFramework；缺省启用，不跟随应用或游戏资源开关。
+   */
+  autoUpdateFramework?: boolean;
   minimizeToTray: Minimizetotray;
   /**
    * 记住 minimizeToTray 指定的关闭方式；缺失或 false 时每次关闭窗口均询问。
@@ -309,11 +317,14 @@ export interface Settings {
  * Absolute installation/download roots. An empty string restores the application default on settings.save.
  */
 export interface ComponentPaths {
-  core: string;
   resource: string;
+  /**
+   * MaaFramework SDK installation/download root. Missing in legacy settings; the application supplies its independent default.
+   */
+  framework?: string;
 }
 /**
- * Shared HTTP proxy policy for application, MaaCore and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.
+ * Shared HTTP proxy policy for application, MaaFramework and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.
  */
 export interface DownloadProxySettings {
   mode: 'auto' | 'manual' | 'direct';
@@ -325,7 +336,7 @@ export interface DownloadProxySettings {
 export interface MirrorChyanSettings {
   enabled: boolean;
   /**
-   * Shared MirrorChyan CDK for the application, MaaCore and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports.
+   * Shared MirrorChyan CDK for the application, MaaFramework and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports.
    */
   cdk: string;
 }
@@ -381,9 +392,36 @@ export interface ConnectionSettings {
     | 'AVD'
     | 'Androws'
     | 'WSA';
-  touchMode: 'minitouch' | 'maatouch' | 'adb' | 'MaaFwAdb';
+  touchMode: 'minitouch' | 'maatouch' | 'adb';
+  framework?: FrameworkConnectionSettings;
   adbLite: boolean;
   clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
+}
+/**
+ * MaaFramework 设备截图与触控配置；旧连接字段只供迁移读取。
+ */
+export interface FrameworkConnectionSettings {
+  /**
+   * 对应 MaaFramework Maatouch、MinitouchAndAdbKey、AdbShell、EmulatorExtras 单一输入方式，独立于截图。
+   */
+  touchMode: 'maatouch' | 'minitouch' | 'adb' | 'emulator-extras';
+  capture: FrameworkCaptureSettings;
+  touchExtras?: FrameworkTouchExtras;
+}
+export interface FrameworkCaptureSettings {
+  /**
+   * 自动核对 MuMu／雷电运行实例与 SDK，并探测 AVD 增强接口；截图选择不修改触控模式。
+   */
+  method: 'auto' | 'adb' | 'mumu' | 'ldplayer' | 'avd';
+  emulatorPath: string;
+  instanceIndex: number;
+}
+/**
+ * MuMu 增强触控的独立实例参数；省略时核对当前设备对应的运行实例。
+ */
+export interface FrameworkTouchExtras {
+  emulatorPath: string;
+  instanceIndex: number;
 }
 export interface DeviceConnectionProfile {
   id: string;

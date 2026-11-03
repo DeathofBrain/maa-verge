@@ -35,8 +35,6 @@
         "run.detail",
         "run.artifact",
         "updates.check",
-        "updates.maafwAdb.status",
-        "updates.maafwAdb.prepare",
         "updates.prepare",
         "updates.activate",
         "updates.rollback",
@@ -88,7 +86,8 @@
         "primitive.catalog.get",
         "debug.session.start",
         "debug.primitive.invoke",
-        "debug.session.end"
+        "debug.session.end",
+        "execution.preflight"
       ],
       "properties": {
         "app.snapshot": {
@@ -208,12 +207,6 @@
         },
         "updates.check": {
           "$ref": "#/$defs/ChannelParams"
-        },
-        "updates.maafwAdb.status": {
-          "$ref": "#/$defs/EmptyParams"
-        },
-        "updates.maafwAdb.prepare": {
-          "$ref": "#/$defs/EmptyParams"
         },
         "updates.prepare": {
           "$ref": "#/$defs/ChannelParams"
@@ -426,6 +419,9 @@
         },
         "debug.session.end": {
           "$ref": "#/$defs/DebugSessionEndParams"
+        },
+        "execution.preflight": {
+          "$ref": "#/$defs/ExecutionPreflightParams"
         }
       }
     },
@@ -457,8 +453,6 @@
         "run.detail",
         "run.artifact",
         "updates.check",
-        "updates.maafwAdb.status",
-        "updates.maafwAdb.prepare",
         "updates.prepare",
         "updates.activate",
         "updates.rollback",
@@ -510,7 +504,8 @@
         "primitive.catalog.get",
         "debug.session.start",
         "debug.primitive.invoke",
-        "debug.session.end"
+        "debug.session.end",
+        "execution.preflight"
       ],
       "properties": {
         "app.snapshot": {
@@ -703,12 +698,6 @@
           "$ref": "#/$defs/RunArtifactImage"
         },
         "updates.check": {
-          "$ref": "./runtime.schema.json#/$defs/UpdateChannel"
-        },
-        "updates.maafwAdb.status": {
-          "$ref": "#/$defs/MaaFwAdbStatus"
-        },
-        "updates.maafwAdb.prepare": {
           "$ref": "./runtime.schema.json#/$defs/UpdateChannel"
         },
         "updates.prepare": {
@@ -1050,6 +1039,9 @@
         },
         "debug.session.end": {
           "$ref": "#/$defs/DebugSessionEndResult"
+        },
+        "execution.preflight": {
+          "$ref": "#/$defs/ExecutionPreflightResult"
         }
       }
     }
@@ -1734,13 +1726,8 @@
           "type": "number",
           "minimum": 0
         },
-        "coreLatencyMs": {
-          "description": "MaaCore's successful current AsstAsyncScreencap callback details.cost in milliseconds. Excludes image retrieval, PNG encoding and delivery to the frontend; omitted when MaaCore does not provide a measurement or the frame uses a running task's cached image.",
-          "type": "number",
-          "minimum": 0
-        },
         "engine": {
-          "enum": ["maacore", "maafw"]
+          "enum": ["maafw"]
         },
         "sessionId": {
           "type": "string",
@@ -1763,19 +1750,6 @@
     "EmptyParams": {
       "type": "object",
       "additionalProperties": false
-    },
-    "MaaFwAdbStatus": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["available", "coreInstalled"],
-      "properties": {
-        "available": {
-          "type": "boolean"
-        },
-        "coreInstalled": {
-          "type": "boolean"
-        }
-      }
     },
     "DeviceDeleteParams": {
       "type": "object",
@@ -1828,7 +1802,7 @@
       "required": ["channel"],
       "properties": {
         "channel": {
-          "enum": ["app", "core", "resource"]
+          "enum": ["app", "resource", "framework"]
         }
       }
     },
@@ -4217,7 +4191,7 @@
           "maxLength": 200
         },
         "owner": {
-          "enum": ["none", "maacore", "maafw", "switching"]
+          "enum": ["none", "maafw", "switching"]
         },
         "sessionId": {
           "type": "string",
@@ -4453,10 +4427,14 @@
           "maxItems": 2,
           "items": [
             {
-              "const": 1280
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8192
             },
             {
-              "const": 720
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8192
             }
           ],
           "additionalItems": false
@@ -4595,6 +4573,39 @@
         },
         "layer": {
           "enum": ["operation", "observation", "game", "workflow"]
+        },
+        "primitiveLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "effect": {
+          "enum": ["observe", "input", "commit"]
+        },
+        "pipelineEntry": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "dependencies": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "requiredResources": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
         },
         "inputSchema": {
           "type": "object",
@@ -4769,6 +4780,138 @@
       "properties": {
         "ended": {
           "const": true
+        }
+      }
+    },
+    "ExecutionPreflightParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "planId": {
+          "type": "string"
+        },
+        "deviceId": {
+          "type": "string"
+        },
+        "tasks": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "./runtime.schema.json#/$defs/Task"
+          }
+        },
+        "force": {
+          "type": "boolean"
+        },
+        "clientType": {
+          "enum": ["Official", "Bilibili", "YoStarEN", "YoStarJP", "YoStarKR", "txwy"]
+        },
+        "source": {
+          "enum": ["plan", "tool", "copilot"]
+        },
+        "kind": {
+          "enum": [
+            "depot",
+            "operators",
+            "recruit",
+            "inventory",
+            "data",
+            "games",
+            "copilot",
+            "sss",
+            "paradox"
+          ]
+        },
+        "config": {
+          "$ref": "#/$defs/ToolConfig"
+        }
+      },
+      "anyOf": [
+        {
+          "required": ["planId", "deviceId"],
+          "properties": {
+            "planId": {
+              "type": "string"
+            },
+            "deviceId": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "required": ["tasks"],
+          "properties": {
+            "tasks": {
+              "type": "array",
+              "maxItems": 200,
+              "items": {
+                "$ref": "./runtime.schema.json#/$defs/Task"
+              }
+            }
+          }
+        },
+        {
+          "required": ["source", "kind"],
+          "properties": {
+            "source": {
+              "enum": ["tool", "copilot"]
+            },
+            "kind": {
+              "enum": [
+                "depot",
+                "operators",
+                "recruit",
+                "inventory",
+                "data",
+                "games",
+                "copilot",
+                "sss",
+                "paradox"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "ExecutionCompatibilityIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskIndex", "taskType", "field", "code", "message"],
+      "properties": {
+        "taskIndex": {
+          "type": "integer",
+          "minimum": -1
+        },
+        "taskType": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "ExecutionPreflightResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supported", "engine", "issues"],
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        },
+        "engine": {
+          "const": "maafw"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExecutionCompatibilityIssue"
+          }
         }
       }
     }

@@ -1,85 +1,16 @@
 /* Generated from packages/contracts/schemas. Run pnpm contracts:generate. Do not edit. */
 
-export type WorkerCaptureConfiguration =
-  | {
-      method: 'adb';
-    }
-  | {
-      method: 'mumu';
-      emulatorPath: string;
-      instanceIndex: number;
-      mumuTouch?: boolean;
-      mumuBridge?: boolean;
-    }
-  | {
-      method: 'ldplayer';
-      emulatorPath: string;
-      instanceIndex: number;
-      pid?: number;
-    };
-export type WorkerCommand =
-  | {
-      protocolVersion: 1;
-      id: string | number;
-      operation: 'connect' | 'stop' | 'screencap' | 'frame';
-    }
-  | {
-      protocolVersion: 1;
-      id: string | number;
-      operation: 'click';
-      x: number;
-      y: number;
-    }
-  | {
-      protocolVersion: 1;
-      id: string | number;
-      operation: 'task';
-      task: {
-        type: string;
-        params: {
-          [k: string]: unknown;
-        };
-      };
-    };
-export type WorkerEvent =
-  | {
-      protocolVersion: 1;
-      type: 'ready';
-      mode?: 'lease-only';
-    }
-  | {
-      protocolVersion: 1;
-      type: 'response';
-      id: string | number | null;
-      result: {
-        [k: string]: unknown;
-      };
-    }
-  | {
-      protocolVersion: 1;
-      type: 'response';
-      id: string | number | null;
-      error: string;
-    }
-  | {
-      protocolVersion: 1;
-      type: 'callback';
-      message: number;
-      details: {
-        [k: string]: unknown;
-      };
-    }
-  | {
-      protocolVersion: 1;
-      type: 'status';
-      running: boolean;
-      pendingAsync: number[];
-    };
 export type FrameworkWorkerCommand =
   | {
       protocolVersion: 1;
       id: string | number;
-      operation: 'connect' | 'frame' | 'stop';
+      operation: 'connect' | 'stop';
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'frame';
+      callbackId?: string;
     }
   | {
       protocolVersion: 1;
@@ -87,6 +18,7 @@ export type FrameworkWorkerCommand =
       operation: 'click';
       x: number;
       y: number;
+      callbackId?: string;
     }
   | {
       protocolVersion: 1;
@@ -99,12 +31,14 @@ export type FrameworkWorkerCommand =
       durationMs?: number;
       profile?: 'drag' | 'navigation';
       compensationDirection?: 'none' | 'up' | 'down' | 'left' | 'right';
+      callbackId?: string;
     }
   | {
       protocolVersion: 1;
       id: string | number;
       operation: 'press_key';
       key: 'back' | 'escape';
+      callbackId?: string;
     }
   | {
       [k: string]: unknown;
@@ -116,6 +50,7 @@ export type FrameworkWorkerCommand =
       x: number;
       y: number;
       durationMs: number;
+      callbackId?: string;
     }
   | {
       protocolVersion: 1;
@@ -126,6 +61,63 @@ export type FrameworkWorkerCommand =
       x2: number;
       y2: number;
       durationMs: number;
+      callbackId?: string;
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'pipeline';
+      entry: string;
+      /**
+       * Host-owned MaaFramework Pipeline nodes. The worker also enforces a 512 KiB serialized payload limit; this command is not a product RPC or model tool.
+       */
+      pipeline: {
+        [k: string]: {
+          [k: string]: unknown;
+        };
+      };
+      contextId?: string;
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'context_pipeline';
+      entry: string;
+      /**
+       * Host-owned MaaFramework Pipeline nodes. The worker also enforces a 512 KiB serialized payload limit; this command is not a product RPC or model tool.
+       */
+      pipeline: {
+        [k: string]: {
+          [k: string]: unknown;
+        };
+      };
+      contextId: string;
+      callbackId: string;
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'custom_result';
+      callbackId: string;
+      success: boolean;
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'start_app';
+      appId: string;
+      callbackId?: string;
+      /**
+       * Explicit Android component in the same appId; native validates package equality. No shell or am flags.
+       */
+      intent?: string;
+    }
+  | {
+      protocolVersion: 1;
+      id: string | number;
+      operation: 'stop_app';
+      appId: string;
+      callbackId?: string;
     };
 export type FrameworkWorkerEvent =
   | {
@@ -148,73 +140,40 @@ export type FrameworkWorkerEvent =
       type: 'response';
       id: string | number | null;
       error: string;
+    }
+  | {
+      protocolVersion: 1;
+      type: 'framework_custom';
+      callbackId: string;
+      node: string;
+      /**
+       * Parameters of the registered MaaVerge.Custom action. The worker also enforces a 64 KiB serialized payload limit.
+       */
+      params: {
+        [k: string]: unknown;
+      };
+      contextId: string;
+      parentCallbackId: string | null;
+      depth: number;
+      inputEpoch: number;
+    }
+  | {
+      protocolVersion: 1;
+      type: 'framework_input_epoch';
+      inputEpoch: number;
     };
 
 export interface WorkerProtocol {
-  configuration: WorkerConfiguration;
   leaseConfiguration: WorkerLeaseConfiguration;
-  validationConfiguration: WorkerValidationConfiguration;
-  command: WorkerCommand;
-  event: WorkerEvent;
-  validation: WorkerValidation;
   frameworkConfiguration: FrameworkWorkerConfiguration;
   frameworkCommand: FrameworkWorkerCommand;
   frameworkEvent: FrameworkWorkerEvent;
   frameworkValidation: FrameworkWorkerValidation;
 }
-export interface WorkerConfiguration {
-  protocolVersion: 1;
-  core: string;
-  resource: string;
-  adb: string;
-  address: string;
-  userDir: string;
-  lockPath: string;
-  capture?: WorkerCaptureConfiguration;
-  connection?: WorkerConnectionConfiguration;
-  lockTimeoutMs?: number;
-  startupTimeoutMs?: number;
-  nativeCallTimeoutMs?: number;
-  asyncTimeoutMs?: number;
-  shutdownTimeoutMs?: number;
-}
-export interface WorkerConnectionConfiguration {
-  config:
-    | 'General'
-    | 'BlueStacks'
-    | 'MuMuEmulator12'
-    | 'MuMuArm'
-    | 'LDPlayer'
-    | 'Nox'
-    | 'XYAZ'
-    | 'Compatible'
-    | 'SecondResolution'
-    | 'CompatMac'
-    | 'CompatPOSIXShell'
-    | 'Waydroid'
-    | 'AVD'
-    | 'Androws'
-    | 'WSA';
-  touchMode: 'minitouch' | 'maatouch' | 'adb' | 'MaaFwAdb';
-  adbLite: boolean;
-  clientType: 'Official' | 'Bilibili' | 'YoStarEN' | 'YoStarJP' | 'YoStarKR' | 'txwy';
-}
 export interface WorkerLeaseConfiguration {
   protocolVersion: 1;
   lockPath: string;
   lockTimeoutMs?: number;
-}
-export interface WorkerValidationConfiguration {
-  protocolVersion: 1;
-  core: string;
-  resource: string;
-  version: string;
-  nativeCallTimeoutMs?: number;
-}
-export interface WorkerValidation {
-  protocolVersion: 1;
-  version: string;
-  resourceLoaded: true;
 }
 export interface FrameworkWorkerConfiguration {
   protocolVersion: 1;
@@ -226,6 +185,21 @@ export interface FrameworkWorkerConfiguration {
   address?: string;
   lockPath?: string;
   avd?: boolean;
+  /**
+   * Verified local AVD console identity used only for fixed enhanced screenshot start/stop commands; the controller address and shared lease stay unchanged.
+   */
+  avdSerial?: string;
+  touchMode?: 'maatouch' | 'minitouch' | 'adb' | 'emulator-extras';
+  capture?: {
+    method: 'auto' | 'adb' | 'mumu' | 'ldplayer' | 'avd';
+    emulatorPath: string;
+    instanceIndex: number;
+    pid?: number;
+  };
+  touchExtras?: {
+    emulatorPath: string;
+    instanceIndex: number;
+  };
   lockTimeoutMs?: number;
   startupTimeoutMs?: number;
   nativeCallTimeoutMs?: number;

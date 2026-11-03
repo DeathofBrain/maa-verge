@@ -51,6 +51,10 @@ ajv.addSchema(rpcSchema);
 ajv.addSchema(workerSchema);
 ajv.addSchema(atomicSchema);
 const validators = {
+  validateAtomicCapabilityResult: `${atomicSchema.$id}#/$defs/AtomicCapabilityResult`,
+  validateAtomicFrameData: `${atomicSchema.$id}#/$defs/AtomicFrameData`,
+  validateAtomicRecognitionData: `${atomicSchema.$id}#/$defs/AtomicRecognitionData`,
+  validateAtomicAcknowledgementData: `${atomicSchema.$id}#/$defs/AtomicAcknowledgementData`,
   validateControlSessionStartParams: `${rpcSchema.$id}#/$defs/ControlSessionStartParams`,
   validateControlSessionGetParams: `${rpcSchema.$id}#/$defs/ControlSessionGetParams`,
   validateControlSessionEndParams: `${rpcSchema.$id}#/$defs/ControlSessionEndParams`,
@@ -125,14 +129,11 @@ const validators = {
   validateItemResourceResult: `${rpcSchema.$id}#/$defs/ItemResourceResult`,
   validateOperatorResourceParams: `${rpcSchema.$id}#/$defs/OperatorResourceParams`,
   validateOperatorResourceResult: `${rpcSchema.$id}#/$defs/OperatorResourceResult`,
+  validateExecutionPreflightParams: `${rpcSchema.$id}#/$defs/ExecutionPreflightParams`,
+  validateExecutionPreflightResult: `${rpcSchema.$id}#/$defs/ExecutionPreflightResult`,
   validateScreenFrame: `${rpcSchema.$id}#/$defs/ScreenFrame`,
   validateWorkerFrame: `${workerSchema.$id}#/$defs/WorkerFrame`,
-  validateWorkerConfiguration: `${workerSchema.$id}#/$defs/WorkerConfiguration`,
   validateWorkerLeaseConfiguration: `${workerSchema.$id}#/$defs/WorkerLeaseConfiguration`,
-  validateWorkerValidationConfiguration: `${workerSchema.$id}#/$defs/WorkerValidationConfiguration`,
-  validateWorkerCommand: `${workerSchema.$id}#/$defs/WorkerCommand`,
-  validateWorkerEvent: `${workerSchema.$id}#/$defs/WorkerEvent`,
-  validateWorkerValidation: `${workerSchema.$id}#/$defs/WorkerValidation`,
   validateDesktopUninstallInfo: `${schema.$id}#/$defs/DesktopUninstallInfo`,
 };
 const atomicMethods = Object.keys(atomicSchema.properties.inputs.properties);
@@ -184,6 +185,10 @@ import type { RpcContract, RpcRequest, RpcEvent, ScreenFrame, HostUpdateParams }
 import type { WorkerProtocol } from './worker-types';
 import type { AtomicInputContract } from './atomic-input-types';
 export const atomicInputValidators: { [K in keyof AtomicInputContract['inputs']]: Validator<AtomicInputContract['inputs'][K]> };
+export const validateAtomicCapabilityResult: Validator<import('./atomic-input-types').AtomicCapabilityResult>;
+export const validateAtomicFrameData: Validator<unknown>;
+export const validateAtomicRecognitionData: Validator<unknown>;
+export const validateAtomicAcknowledgementData: Validator<unknown>;
 export const validateControlSessionStartParams: Validator<RpcContract['params']['control.session.start']>;
 export const validateControlSessionGetParams: Validator<RpcContract['params']['control.session.get']>;
 export const validateControlSessionEndParams: Validator<RpcContract['params']['control.session.end']>;
@@ -270,14 +275,11 @@ export const validateItemResourceParams: Validator<RpcContract['params']['resour
 export const validateItemResourceResult: Validator<RpcContract['results']['resources.item']>;
 export const validateOperatorResourceParams: Validator<RpcContract['params']['resources.operator']>;
 export const validateOperatorResourceResult: Validator<RpcContract['results']['resources.operator']>;
+export const validateExecutionPreflightParams: Validator<RpcContract['params']['execution.preflight']>;
+export const validateExecutionPreflightResult: Validator<RpcContract['results']['execution.preflight']>;
 export const validateScreenFrame: Validator<ScreenFrame>;
-export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl' | 'coreLatencyMs'>>;
-export const validateWorkerConfiguration: Validator<WorkerProtocol['configuration']>;
+export const validateWorkerFrame: Validator<Pick<ScreenFrame, 'width' | 'height' | 'mimeType' | 'data' | 'canControl'>>;
 export const validateWorkerLeaseConfiguration: Validator<WorkerProtocol['leaseConfiguration']>;
-export const validateWorkerValidationConfiguration: Validator<WorkerProtocol['validationConfiguration']>;
-export const validateWorkerCommand: Validator<WorkerProtocol['command']>;
-export const validateWorkerEvent: Validator<WorkerProtocol['event']>;
-export const validateWorkerValidation: Validator<WorkerProtocol['validation']>;
 `;
 const files = new Map([
   ['packages/contracts/schema.json', JSON.stringify(schema, null, 2) + '\n'],
@@ -287,7 +289,7 @@ const files = new Map([
   ['packages/contracts/src/atomic-input-types.ts', atomicTypes],
   [
     'packages/contracts/src/atomic-input-schemas.ts',
-    `${bannerComment}\nexport const atomicInputSchemas: Record<string, Record<string, unknown>> = ${JSON.stringify(atomicInputs, null, 2)};\nexport const atomicCapabilityResultSchema: Record<string, unknown> = ${JSON.stringify(atomicSchema.$defs.AtomicCapabilityResult, null, 2)};\n`,
+    `${bannerComment}\nexport const atomicInputSchemas: Record<string, Record<string, unknown>> = ${JSON.stringify(atomicInputs, null, 2)};\nexport const atomicCapabilityResultSchema: Record<string, unknown> = ${JSON.stringify(atomicSchema.$defs.AtomicCapabilityResult, null, 2)};\nexport const atomicPrimitiveDataSchemas: Record<string, Record<string, unknown>> = ${JSON.stringify({ frame: atomicSchema.$defs.AtomicFrameData, recognize: atomicSchema.$defs.AtomicRecognitionData, input: atomicSchema.$defs.AtomicAcknowledgementData }, null, 2)};\n`,
   ],
   ['packages/contracts/src/validators.js', bundled.outputFiles[0].text],
   ['packages/contracts/src/validators.d.ts', declaration],

@@ -116,6 +116,87 @@
         "instanceIndex"
       ]
     },
+    "FrameworkTouchExtras": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "emulatorPath",
+        "instanceIndex"
+      ],
+      "properties": {
+        "emulatorPath": {
+          "type": "string",
+          "maxLength": 4096,
+          "default": ""
+        },
+        "instanceIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": 0
+        }
+      }
+    },
+    "FrameworkCaptureSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "emulatorPath",
+        "instanceIndex"
+      ],
+      "properties": {
+        "method": {
+          "enum": [
+            "auto",
+            "adb",
+            "mumu",
+            "ldplayer",
+            "avd"
+          ],
+          "default": "auto",
+          "description": "自动核对 MuMu／雷电运行实例与 SDK，并探测 AVD 增强接口；截图选择不修改触控模式。"
+        },
+        "emulatorPath": {
+          "type": "string",
+          "maxLength": 4096,
+          "default": ""
+        },
+        "instanceIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": 0
+        }
+      }
+    },
+    "FrameworkConnectionSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "touchMode",
+        "capture"
+      ],
+      "properties": {
+        "touchMode": {
+          "enum": [
+            "maatouch",
+            "minitouch",
+            "adb",
+            "emulator-extras"
+          ],
+          "default": "maatouch",
+          "description": "对应 MaaFramework Maatouch、MinitouchAndAdbKey、AdbShell、EmulatorExtras 单一输入方式，独立于截图。"
+        },
+        "capture": {
+          "$ref": "#/$defs/FrameworkCaptureSettings"
+        },
+        "touchExtras": {
+          "$ref": "#/$defs/FrameworkTouchExtras",
+          "description": "MuMu 增强触控的独立实例参数；省略时核对当前设备对应的运行实例。"
+        }
+      }
+    },
     "ConnectionSettings": {
       "type": "object",
       "additionalProperties": false,
@@ -156,10 +237,13 @@
           "enum": [
             "minitouch",
             "maatouch",
-            "adb",
-            "MaaFwAdb"
+            "adb"
           ],
           "default": "maatouch"
+        },
+        "framework": {
+          "$ref": "#/$defs/FrameworkConnectionSettings",
+          "description": "MaaFramework 设备截图与触控配置；旧连接字段只供迁移读取。"
         },
         "adbLite": {
           "type": "boolean",
@@ -258,18 +342,6 @@
           "title": "State",
           "type": "string"
         },
-        "coreVersion": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Coreversion"
-        },
         "captureMethod": {
           "type": "string",
           "maxLength": 128
@@ -288,6 +360,18 @@
           ],
           "default": null,
           "title": "Resourceversion"
+        },
+        "frameworkVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "FrameworkVersion"
         }
       },
       "required": [
@@ -295,7 +379,7 @@
         "name",
         "address",
         "state",
-        "coreVersion",
+        "frameworkVersion",
         "resourceVersion"
       ],
       "title": "Device",
@@ -569,6 +653,23 @@
             "SSSCopilot",
             "ParadoxCopilot"
           ]
+        },
+        "engine": {
+          "const": "maafw"
+        },
+        "frameworkVersion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "resourceVersion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
         }
       },
       "required": [
@@ -686,6 +787,10 @@
           "type": "string",
           "maxLength": 200
         },
+        "scope": {
+          "description": "Framework reports only explicitly read target items from visible rewards, not a complete inventory or all drops.",
+          "const": "visible_rewards"
+        },
         "at": {
           "type": "string"
         }
@@ -742,7 +847,7 @@
       }
     },
     "RunArtifact": {
-      "description": "Bounded local observation captured after a native result callback, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.",
+      "description": "Bounded local observation captured after a verified or unknown workflow result, not the original recognition image. PNG bytes are fetched separately and never stored in snapshots or SQLite.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -851,22 +956,22 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "core",
         "resource"
       ],
       "properties": {
-        "core": {
-          "type": "string",
-          "maxLength": 4096
-        },
         "resource": {
           "type": "string",
           "maxLength": 4096
+        },
+        "framework": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "MaaFramework SDK installation/download root. Missing in legacy settings; the application supplies its independent default."
         }
       }
     },
     "DownloadProxySettings": {
-      "description": "Shared HTTP proxy policy for application, MaaCore and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.",
+      "description": "Shared HTTP proxy policy for application, MaaFramework and MaaResource metadata checks and update downloads. Missing settings use auto mode. Auto may fall back to direct access; manual failures remain visible.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -904,7 +1009,7 @@
           "type": "string",
           "maxLength": 256,
           "pattern": "^[^\\r\\n\\u0000]*$",
-          "description": "Shared MirrorChyan CDK for the application, MaaCore and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports."
+          "description": "Shared MirrorChyan CDK for the application, MaaFramework and MaaResource. Persist locally, mask in the UI and redact from logs and configuration exports."
         }
       }
     },
@@ -1040,23 +1145,15 @@
           ],
           "default": "preview"
         },
-        "coreUpdateChannel": {
-          "type": "string",
-          "enum": [
-            "stable",
-            "preview"
-          ],
-          "default": "stable"
-        },
-        "autoUpdateCore": {
-          "default": true,
-          "title": "Autoupdatecore",
-          "type": "boolean"
-        },
         "autoUpdateResource": {
           "default": true,
           "title": "Autoupdateresource",
           "type": "boolean"
+        },
+        "autoUpdateFramework": {
+          "default": true,
+          "type": "boolean",
+          "description": "独立检查和准备兼容清单中的稳定版 MaaFramework；缺省启用，不跟随应用或游戏资源开关。"
         },
         "minimizeToTray": {
           "default": true,
@@ -1093,7 +1190,6 @@
       },
       "required": [
         "autoConnect",
-        "autoUpdateCore",
         "autoUpdateResource",
         "minimizeToTray",
         "theme",
@@ -1231,7 +1327,7 @@
         "id": {
           "enum": [
             "app",
-            "core",
+            "framework",
             "resource"
           ],
           "title": "Id",

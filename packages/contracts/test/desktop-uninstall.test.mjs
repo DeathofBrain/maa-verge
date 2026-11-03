@@ -7,7 +7,7 @@ const info = {
   reason: '',
   application: '/Applications/Maa Verge.app',
   componentDirectories: [
-    '/Users/fixture/Library/Application Support/Maa Verge/MaaCore',
+    '/Users/fixture/Library/Application Support/Maa Verge/MaaFramework',
     '/Users/fixture/Library/Application Support/Maa Verge/MaaResource',
   ],
   configurationDirectory: '/Applications/config',
