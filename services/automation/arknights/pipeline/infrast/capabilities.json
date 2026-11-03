@@ -1,0 +1,994 @@
+{
+  "Infrast@Primitive@ObserveBase": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ObserveBase@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ObserveBase@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@ReadOperators": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ReadOperators@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ReadOperators@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@ReadOverview": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ReadOverview@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ReadOverview@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@ReadTraining": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ReadTraining@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ReadTraining@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@EnterOverview": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@EnterOverview@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@EnterOverview@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@ReadRoom": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ReadRoom@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ReadRoom@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@PrepareRoster": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@PrepareRoster@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@PrepareRoster@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@Confirm": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@Confirm@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@Confirm@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@VerifyRoom": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@VerifyRoom@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@VerifyRoom@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Workflow@SetRoom": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Workflow@SetRoom@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Workflow@SetRoom@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Workflow@RotateQueue": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Workflow@RotateQueue@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Workflow@RotateQueue@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Workflow@Trim": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Workflow@Trim@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Workflow@Trim@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Workflow@OverviewShift": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Workflow@OverviewShift@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Workflow@OverviewShift@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Workflow@RoomShift": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Workflow@RoomShift@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Workflow@RoomShift@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@OpenRoom": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@OpenRoom@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@OpenRoom@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@OpenRoster": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@OpenRoster@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@OpenRoster@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@ReadRoster": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ReadRoster@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ReadRoster@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@RotateQueue": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@RotateQueue@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@RotateQueue@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@EnterTrim": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@EnterTrim@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@EnterTrim@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@Trim": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@Trim@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@Trim@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@ReadTrim": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ReadTrim@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ReadTrim@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@ResetFilter": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ResetFilter@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ResetFilter@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@PageRoster": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@PageRoster@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@PageRoster@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@SelectOperator": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@SelectOperator@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@SelectOperator@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@ClearRoster": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ClearRoster@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ClearRoster@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@ResolveRooms": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@ResolveRooms@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@ResolveRooms@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Workflow@CustomShift": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Workflow@CustomShift@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Workflow@CustomShift@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@PrepareAutoRoster": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@PrepareAutoRoster@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@PrepareAutoRoster@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Workflow@AutoRoomShift": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Workflow@AutoRoomShift@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Workflow@AutoRoomShift@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Primitive@EnumerateRooms": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Primitive@EnumerateRooms@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Primitive@EnumerateRooms@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  },
+  "Infrast@Workflow@Daily": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Workflow@Daily@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    }
+  },
+  "Infrast@Workflow@Daily@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    }
+  }
+}

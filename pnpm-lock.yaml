@@ -105,11 +105,30 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  services/automation:
+    dependencies:
+      '@maaverge/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      pngjs:
+        specifier: 7.0.0
+        version: 7.0.0
+    devDependencies:
+      '@types/bun':
+        specifier: 1.4.3
+        version: 1.4.3
+      '@types/pngjs':
+        specifier: 6.0.5
+        version: 6.0.5
+
   services/backend:
     dependencies:
       '@maaverge/agent':
         specifier: workspace:*
         version: link:../../packages/agent
+      '@maaverge/automation':
+        specifier: workspace:*
+        version: link:../automation
       tar:
         specifier: 7.5.22
         version: 7.5.22
@@ -673,6 +692,9 @@ packages:
   '@types/node@24.19.2':
     resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
 
+  '@types/pngjs@6.0.5':
+    resolution: {integrity: sha512-0k5eKfrA83JOZPppLtS2C7OUtyNAl2wKNxfyYl9Q5g9lPkgBl/9hNyAu6HuEH2J4XmIv2znEpkDd0SaZVxW6iQ==}
+
   '@types/react-dom@19.3.0':
     resolution: {integrity: sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==}
     peerDependencies:
@@ -1020,6 +1042,10 @@ packages:
     resolution: {integrity: sha512-HCrVhHr5QQuwYoswEUGTb7gGp522yflbv/ST8nF4sFWGuLjQCt17Q/EubpGGSNKYn1tsTCPZxqHhHCfVURu7UA==}
     engines: {node: '>=20'}
     hasBin: true
+
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
 
   postcss@8.5.31:
     resolution: {integrity: sha512-YUbWYCgErwnMAVkjUnYa+KlMBzGpHwiIt/DE7f0G33AuX2LH9UcTk6KgWxd3zRU+pN3u/C+Xl3EnMLM4Hea7Sg==}
@@ -1629,6 +1655,10 @@ snapshots:
     dependencies:
       undici-types: 7.24.6
 
+  '@types/pngjs@6.0.5':
+    dependencies:
+      '@types/node': 24.19.2
+
   '@types/react-dom@19.3.0(@types/react@19.3.0)':
     dependencies:
       '@types/react': 19.3.0
@@ -1943,6 +1973,8 @@ snapshots:
   playwright@1.64.1:
     dependencies:
       playwright-core: 1.64.1
+
+  pngjs@7.0.0: {}
 
   postcss@8.5.31:
     dependencies:

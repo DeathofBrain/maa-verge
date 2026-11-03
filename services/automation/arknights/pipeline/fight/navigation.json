@@ -1,0 +1,177 @@
+{
+  "Fight@Navigation@OpenTerminal": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.open_terminal",
+      "saveAs": "result"
+    },
+    "next": ["Fight@Navigation@OpenTerminal@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Fight@Navigation@OpenTerminal@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Fight@Navigation@OpenEpisode": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.open_episode",
+      "saveAs": "result"
+    },
+    "next": ["Fight@Navigation@OpenEpisode@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Fight@Navigation@OpenEpisode@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Fight@Navigation@SelectStage": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.select_stage",
+      "saveAs": "result"
+    },
+    "next": ["Fight@Navigation@SelectStage@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Fight@Navigation@SelectStage@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Fight@Navigate": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.fight.open_terminal",
+      "input": {},
+      "saveAs": "open_terminal"
+    },
+    "next": ["Fight@Navigate@Step1"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Fight@Navigate@Step1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.fight.open_episode",
+      "input": {
+        "stage": {
+          "$ref": "#/input/stage"
+        }
+      },
+      "saveAs": "open_episode"
+    },
+    "next": ["Fight@Navigate@Step2"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Fight@Navigate@Step2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.fight.select_stage",
+      "input": {
+        "stage": {
+          "$ref": "#/input/stage"
+        }
+      },
+      "saveAs": "select_stage"
+    },
+    "next": ["Fight@Navigate@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Fight@Navigate@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/select_stage"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  }
+}

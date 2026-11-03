@@ -1,0 +1,169 @@
+{
+  "Award@Mail@Enter": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.award.mail_enter",
+      "saveAs": "result"
+    },
+    "next": ["Award@Mail@Enter@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Award@Mail@Enter@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Award@Mail@Claim": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.award.mail_claim",
+      "saveAs": "result"
+    },
+    "next": ["Award@Mail@Claim@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Award@Mail@Claim@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Award@Mail@Close": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.award.mail_close",
+      "saveAs": "result"
+    },
+    "next": ["Award@Mail@Close@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Award@Mail@Close@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Award@Mail": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.mail_enter",
+      "input": {},
+      "saveAs": "enter"
+    },
+    "next": ["Award@Mail@Step1"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Award@Mail@Step1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.mail_claim",
+      "input": {},
+      "saveAs": "claim"
+    },
+    "next": ["Award@Mail@Step2"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Award@Mail@Step2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.mail_close",
+      "input": {},
+      "saveAs": "close"
+    },
+    "next": ["Award@Mail@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Award@Mail@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/close"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  }
+}

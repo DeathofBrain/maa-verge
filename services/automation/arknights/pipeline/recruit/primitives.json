@@ -1,0 +1,167 @@
+{
+  "Recruit@observation@recruit": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "observation.recruit",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@observation@recruit@Return"]
+  },
+  "Recruit@observation@recruit@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Recruit@game@recruit@enter": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.enter",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@game@recruit@enter@Return"]
+  },
+  "Recruit@game@recruit@enter@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Recruit@game@recruit@collect_finished": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.collect_finished",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@game@recruit@collect_finished@Return"]
+  },
+  "Recruit@game@recruit@collect_finished@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Recruit@game@recruit@skip_reveal": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.skip_reveal",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@game@recruit@skip_reveal@Return"]
+  },
+  "Recruit@game@recruit@skip_reveal@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Recruit@game@recruit@read_result": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.read_result",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@game@recruit@read_result@Return"]
+  },
+  "Recruit@game@recruit@read_result@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  }
+}

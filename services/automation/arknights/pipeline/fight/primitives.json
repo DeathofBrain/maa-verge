@@ -1,0 +1,299 @@
+{
+  "Fight@observation@fight": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "observation.fight",
+      "saveAs": "result"
+    },
+    "next": ["Fight@observation@fight@Return"]
+  },
+  "Fight@observation@fight@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Fight@game@fight@enable_agent": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.enable_agent",
+      "saveAs": "result"
+    },
+    "next": ["Fight@game@fight@enable_agent@Return"]
+  },
+  "Fight@game@fight@enable_agent@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Fight@game@fight@prepare": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.prepare",
+      "saveAs": "result"
+    },
+    "next": ["Fight@game@fight@prepare@Return"]
+  },
+  "Fight@game@fight@prepare@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Fight@game@fight@start": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.start",
+      "saveAs": "result"
+    },
+    "next": ["Fight@game@fight@start@Return"]
+  },
+  "Fight@game@fight@start@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Fight@game@fight@read_result": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.read_result",
+      "saveAs": "result"
+    },
+    "next": ["Fight@game@fight@read_result@Return"]
+  },
+  "Fight@game@fight@read_result@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Fight@game@fight@wait_result": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.wait_result",
+      "saveAs": "result"
+    },
+    "next": ["Fight@game@fight@wait_result@Return"]
+  },
+  "Fight@game@fight@wait_result@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Fight@game@fight@dismiss_result": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.dismiss_result",
+      "saveAs": "result"
+    },
+    "next": ["Fight@game@fight@dismiss_result@Return"]
+  },
+  "Fight@game@fight@dismiss_result@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Fight@SetSeries": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.set_series",
+      "saveAs": "result"
+    },
+    "next": ["Fight@SetSeries@Return"]
+  },
+  "Fight@SetSeries@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  },
+  "Fight@ReadDrops": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.fight.read_drops",
+      "saveAs": "result"
+    },
+    "next": ["Fight@ReadDrops@Return"]
+  },
+  "Fight@ReadDrops@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": []
+  }
+}

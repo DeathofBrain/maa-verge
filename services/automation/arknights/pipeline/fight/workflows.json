@@ -1,0 +1,119 @@
+{
+  "Fight@CurrentStage": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.fight.enable_agent",
+      "input": {},
+      "saveAs": "agent"
+    },
+    "next": ["Fight@CurrentStage@1"]
+  },
+  "Fight@CurrentStage@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.fight.prepare",
+      "input": {},
+      "saveAs": "prepared"
+    },
+    "next": ["Fight@CurrentStage@2"]
+  },
+  "Fight@CurrentStage@2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.fight.start",
+      "input": {},
+      "saveAs": "start"
+    },
+    "next": ["Fight@CurrentStage@3"]
+  },
+  "Fight@CurrentStage@3": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.fight.wait_result",
+      "input": {
+        "timeoutMs": {
+          "$ref": "#/input/timeoutMs"
+        }
+      },
+      "saveAs": "battle"
+    },
+    "next": ["Fight@CurrentStage@4"]
+  },
+  "Fight@CurrentStage@4": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.fight.dismiss_result",
+      "input": {},
+      "saveAs": "final"
+    },
+    "next": ["Fight@CurrentStage@Return"]
+  },
+  "Fight@CurrentStage@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "status": "completed",
+        "verified": {
+          "$ref": "#/steps/battle/verified"
+        },
+        "data": {
+          "battle": {
+            "$ref": "#/steps/battle"
+          },
+          "dismiss": {
+            "$ref": "#/steps/final"
+          }
+        }
+      }
+    },
+    "next": []
+  }
+}

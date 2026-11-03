@@ -1,0 +1,205 @@
+{
+  "Infrast@Training@Mastery": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Training@Tab"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "requireTrainingRoom"
+    }
+  },
+  "Infrast@Training@Tab": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Training@Check"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "action",
+      "action": "room.bottomTab"
+    }
+  },
+  "Infrast@Training@Check": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "assertHit",
+      "rule": "training.page",
+      "message": "尚未确认训练专精页，拒绝点击角色固定位置"
+    }
+  },
+  "Infrast@Training@Trainee": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Training@Expand"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "action",
+      "action": "training.trainee"
+    }
+  },
+  "Infrast@Training@Expand": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Training@All"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickRule",
+      "rule": "training.expandRole",
+      "optional": true
+    }
+  },
+  "Infrast@Training@All": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickFirst",
+      "rules": ["training.all", "training.allOcr"],
+      "message": "无法确认受训者全部筛选入口"
+    }
+  },
+  "Infrast@Training@Assistant": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Operators@Read"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "action",
+      "action": "training.assistant"
+    }
+  },
+  "Infrast@Confirm@Assistant": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Confirm@AssistantConflict"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "action",
+      "action": "operators.confirm"
+    }
+  },
+  "Infrast@Confirm@AssistantConflict": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Confirm@AssistantCheck"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickRule",
+      "rule": "operators.conflict",
+      "optional": true
+    }
+  },
+  "Infrast@Confirm@AssistantCheck": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "assertHit",
+      "rule": "training.page",
+      "message": "协助者确认后未返回专精页",
+      "unknown": true
+    }
+  },
+  "Infrast@Confirm@Trainee": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Confirm@TraineeSubmit"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickRule",
+      "rule": "training.collapseRole",
+      "optional": true
+    }
+  },
+  "Infrast@Confirm@TraineeSubmit": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Confirm@TraineeCheck"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickRule",
+      "rule": "training.confirm"
+    }
+  },
+  "Infrast@Confirm@TraineeCheck": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "assertHit",
+      "rule": "training.page",
+      "message": "受训者确认后未返回专精页",
+      "unknown": true
+    }
+  }
+}

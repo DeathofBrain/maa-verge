@@ -1,0 +1,70 @@
+{
+  "Mall@CollectCredit": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 500,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.enter",
+      "input": {},
+      "saveAs": "enter"
+    },
+    "next": ["Mall@CollectCredit@1"]
+  },
+  "Mall@CollectCredit@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.open_credit_store",
+      "input": {},
+      "saveAs": "store"
+    },
+    "next": ["Mall@CollectCredit@2"]
+  },
+  "Mall@CollectCredit@2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.collect_credit",
+      "input": {},
+      "saveAs": "final"
+    },
+    "next": ["Mall@CollectCredit@Return"]
+  },
+  "Mall@CollectCredit@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/final"
+      }
+    },
+    "next": []
+  }
+}

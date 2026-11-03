@@ -1,0 +1,147 @@
+{
+  "Award@DailyWeekly": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.enter",
+      "input": {},
+      "saveAs": "enter"
+    },
+    "next": ["Award@DailyWeekly@1"]
+  },
+  "Award@DailyWeekly@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.select_daily",
+      "input": {},
+      "saveAs": "dailyTab"
+    },
+    "next": ["Award@DailyWeekly@2"]
+  },
+  "Award@DailyWeekly@2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.claim_current",
+      "input": {},
+      "saveAs": "daily"
+    },
+    "next": ["Award@DailyWeekly@3"]
+  },
+  "Award@DailyWeekly@3": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.close_reward",
+      "input": {},
+      "saveAs": "dailyClose"
+    },
+    "next": ["Award@DailyWeekly@4"]
+  },
+  "Award@DailyWeekly@4": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.select_weekly",
+      "input": {},
+      "saveAs": "weeklyTab"
+    },
+    "next": ["Award@DailyWeekly@5"]
+  },
+  "Award@DailyWeekly@5": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.claim_current",
+      "input": {},
+      "saveAs": "weekly"
+    },
+    "next": ["Award@DailyWeekly@6"]
+  },
+  "Award@DailyWeekly@6": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.award.close_reward",
+      "input": {},
+      "saveAs": "weeklyClose"
+    },
+    "next": ["Award@DailyWeekly@Return"]
+  },
+  "Award@DailyWeekly@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "status": "completed",
+        "verified": true,
+        "data": {
+          "daily": {
+            "$ref": "#/steps/daily"
+          },
+          "weekly": {
+            "$ref": "#/steps/weekly"
+          }
+        }
+      }
+    },
+    "next": []
+  }
+}

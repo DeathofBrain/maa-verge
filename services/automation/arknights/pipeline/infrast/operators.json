@@ -1,0 +1,196 @@
+{
+  "Infrast@Room@Roster": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Room@Stationed"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "requireRoom"
+    }
+  },
+  "Infrast@Room@Stationed": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Room@Capacity"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "ensureRoomPanel"
+    }
+  },
+  "Infrast@Room@Capacity": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Room@List"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "readRoomCapacity"
+    }
+  },
+  "Infrast@Room@List": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Operators@Read"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickFirst",
+      "rules": ["room.list"],
+      "fallbackAction": "room.bottomTab"
+    }
+  },
+  "Infrast@Processing@Roster": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Processing@List"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "requireRoom"
+    }
+  },
+  "Infrast@Processing@List": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Operators@Read"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "action",
+      "action": "processing.list"
+    }
+  },
+  "Infrast@Operators@Read": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "readOperators"
+    }
+  },
+  "Infrast@Filter": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Filter@All"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickFirst",
+      "rules": ["operators.filter", "operators.filter.1"],
+      "message": "无法确认筛选入口，拒绝把受筛选列表当作完整名单"
+    }
+  },
+  "Infrast@Filter@All": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Filter@Check"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickRule",
+      "rule": "operators.all"
+    }
+  },
+  "Infrast@Filter@Check": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "assertMissing",
+      "rule": "operators.all",
+      "message": "全部筛选点击后菜单未关闭，列表状态未确认"
+    }
+  },
+  "Infrast@Clear": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickRule",
+      "rule": "operators.clear"
+    }
+  },
+  "Infrast@Confirm": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Confirm@Conflict"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "action",
+      "action": "operators.confirm"
+    }
+  },
+  "Infrast@Confirm@Conflict": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickRule",
+      "rule": "operators.conflict",
+      "optional": true
+    }
+  }
+}

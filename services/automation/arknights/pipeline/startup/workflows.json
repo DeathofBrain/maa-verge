@@ -1,0 +1,212 @@
+{
+  "Startup@Login": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login0"
+    },
+    "next": ["Startup@Login@1"]
+  },
+  "Startup@Login@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login1"
+    },
+    "next": ["Startup@Login@2"]
+  },
+  "Startup@Login@2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login2"
+    },
+    "next": ["Startup@Login@3"]
+  },
+  "Startup@Login@3": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login3"
+    },
+    "next": ["Startup@Login@4"]
+  },
+  "Startup@Login@4": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login4"
+    },
+    "next": ["Startup@Login@5"]
+  },
+  "Startup@Login@5": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login5"
+    },
+    "next": ["Startup@Login@6"]
+  },
+  "Startup@Login@6": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login6"
+    },
+    "next": ["Startup@Login@7"]
+  },
+  "Startup@Login@7": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login7"
+    },
+    "next": ["Startup@Login@8"]
+  },
+  "Startup@Login@8": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login8"
+    },
+    "next": ["Startup@Login@9"]
+  },
+  "Startup@Login@9": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.login_step",
+      "input": {},
+      "saveAs": "login9"
+    },
+    "next": ["Startup@Login@10"]
+  },
+  "Startup@Login@10": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "observation.startup",
+      "input": {},
+      "saveAs": "final"
+    },
+    "next": ["Startup@Login@Return"]
+  },
+  "Startup@Login@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "status": "completed",
+        "verified": {
+          "$ref": "#/steps/final/data/home"
+        },
+        "data": {
+          "$ref": "#/steps/final/data"
+        }
+      }
+    },
+    "next": []
+  }
+}

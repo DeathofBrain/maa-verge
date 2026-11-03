@@ -1,0 +1,37 @@
+{
+  "name": "@maaverge/automation",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "exports": {
+    ".": "./src/index.ts",
+    "./core/*": "./src/core/*.ts",
+    "./primitives/*": "./src/primitives/*.ts",
+    "./pipeline/*": "./src/pipeline/*.ts",
+    "./resources/*": "./src/resources/*.ts",
+    "./registry/*": "./src/registry/*.ts",
+    "./components/*": "./arknights/custom/*/index.ts",
+    "./custom/*": "./arknights/custom/*.ts",
+    "./pipelines/*": "./arknights/pipeline/*.json",
+    "./composites/*": "./src/composites/*.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@maaverge/contracts": "workspace:*",
+    "pngjs": "7.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "@types/pngjs": "6.0.5"
+  },
+  "imports": {
+    "#automation/*": "./src/*.ts",
+    "#components/*": "./arknights/custom/*/index.ts",
+    "#custom/*": "./arknights/custom/*.ts",
+    "#pipeline/*": "./arknights/pipeline/*.json",
+    "#common-pipeline/*": "./pipeline/*.json"
+  }
+}

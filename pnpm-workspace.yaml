@@ -2,5 +2,6 @@ packages:
   - apps/*
   - packages/*
   - services/backend
+  - services/automation
 onlyBuiltDependencies:
   - esbuild

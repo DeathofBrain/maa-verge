@@ -1,0 +1,671 @@
+{
+  "Recruit@DismissResult": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.dismiss_result",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@DismissResult@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@DismissResult@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@ReadPlan": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.read_plan",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@Event@ReadPlan@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@ReadPlan@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@ReadPlan": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.read_plan",
+      "input": {
+        "$ref": "#/input"
+      },
+      "saveAs": "step0"
+    },
+    "next": ["Recruit@ReadPlan@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@ReadPlan@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@ReadSlots": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.read_slots",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@Event@ReadSlots@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@ReadSlots@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@ReadSlots": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.read_slots",
+      "input": {
+        "$ref": "#/input"
+      },
+      "saveAs": "step0"
+    },
+    "next": ["Recruit@ReadSlots@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@ReadSlots@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@OpenSlot": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.open_slot",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@Event@OpenSlot@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@OpenSlot@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@OpenSlot": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.open_slot",
+      "input": {
+        "$ref": "#/input"
+      },
+      "saveAs": "step0"
+    },
+    "next": ["Recruit@OpenSlot@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@OpenSlot@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@Refresh": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.refresh",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@Event@Refresh@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@Refresh@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Refresh": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.refresh",
+      "input": {
+        "$ref": "#/input"
+      },
+      "saveAs": "step0"
+    },
+    "next": ["Recruit@Refresh@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Refresh@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@Prepare": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.prepare",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@Event@Prepare@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@Prepare@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Prepare": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.prepare",
+      "input": {
+        "$ref": "#/input"
+      },
+      "saveAs": "step0"
+    },
+    "next": ["Recruit@Prepare@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Prepare@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@Confirm": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.confirm",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@Event@Confirm@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@Confirm@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Confirm": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.confirm",
+      "input": {
+        "$ref": "#/input"
+      },
+      "saveAs": "step0"
+    },
+    "next": ["Recruit@Confirm@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Confirm@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@Leave": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.recruit.leave",
+      "saveAs": "result"
+    },
+    "next": ["Recruit@Event@Leave@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Event@Leave@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Leave": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.leave",
+      "input": {
+        "$ref": "#/input"
+      },
+      "saveAs": "step0"
+    },
+    "next": ["Recruit@Leave@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@Leave@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@EnterList": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.enter",
+      "input": {},
+      "saveAs": "step0"
+    },
+    "next": ["Recruit@EnterList@1"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@EnterList@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.read_slots",
+      "input": {},
+      "saveAs": "step1"
+    },
+    "next": ["Recruit@EnterList@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@EnterList@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step1"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@CollectAndClose": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.collect_finished",
+      "input": {},
+      "saveAs": "step0"
+    },
+    "next": ["Recruit@CollectAndClose@1"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@CollectAndClose@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.skip_reveal",
+      "input": {},
+      "saveAs": "step1"
+    },
+    "next": ["Recruit@CollectAndClose@2"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@CollectAndClose@2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.read_result",
+      "input": {},
+      "saveAs": "step2"
+    },
+    "next": ["Recruit@CollectAndClose@3"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@CollectAndClose@3": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.dismiss_result",
+      "input": {},
+      "saveAs": "step3"
+    },
+    "next": ["Recruit@CollectAndClose@4"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@CollectAndClose@4": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.read_slots",
+      "input": {},
+      "saveAs": "step4"
+    },
+    "next": ["Recruit@CollectAndClose@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Recruit@CollectAndClose@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step4"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  }
+}

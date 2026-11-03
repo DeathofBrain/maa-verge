@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@maaverge/agent": "workspace:*",
+    "@maaverge/automation": "workspace:*",
     "tar": "7.5.22",
     "yauzl": "3.4.0"
   },

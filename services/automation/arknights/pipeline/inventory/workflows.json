@@ -1,0 +1,121 @@
+{
+  "Inventory@ReadDepot": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.inventory.enter_depot",
+      "input": {},
+      "saveAs": "enter"
+    },
+    "next": ["Inventory@ReadDepot@1"]
+  },
+  "Inventory@ReadDepot@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.inventory.select_materials",
+      "input": {},
+      "saveAs": "materials"
+    },
+    "next": ["Inventory@ReadDepot@2"]
+  },
+  "Inventory@ReadDepot@2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "observation.inventory.depot",
+      "input": {},
+      "saveAs": "final"
+    },
+    "next": ["Inventory@ReadDepot@Return"]
+  },
+  "Inventory@ReadDepot@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/final"
+      }
+    },
+    "next": []
+  },
+  "Inventory@ReadOperators": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.inventory.enter_operators",
+      "input": {},
+      "saveAs": "enter"
+    },
+    "next": ["Inventory@ReadOperators@1"]
+  },
+  "Inventory@ReadOperators@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "observation.inventory.operators",
+      "input": {},
+      "saveAs": "final"
+    },
+    "next": ["Inventory@ReadOperators@Return"]
+  },
+  "Inventory@ReadOperators@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/final"
+      }
+    },
+    "next": []
+  }
+}

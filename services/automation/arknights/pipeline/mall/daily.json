@@ -1,0 +1,541 @@
+{
+  "Mall@Event@ChooseProduct": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.mall.choose_product",
+      "saveAs": "result"
+    },
+    "next": ["Mall@Event@ChooseProduct@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@ChooseProduct@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@OpenProduct": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.mall.open_product",
+      "saveAs": "result"
+    },
+    "next": ["Mall@Event@OpenProduct@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@OpenProduct@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@PurchaseSelected": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.mall.purchase_selected",
+      "saveAs": "result"
+    },
+    "next": ["Mall@Event@PurchaseSelected@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@PurchaseSelected@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@CloseReward": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.mall.close_reward",
+      "saveAs": "result"
+    },
+    "next": ["Mall@Event@CloseReward@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@CloseReward@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@EnterFriends": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.mall.enter_friends",
+      "saveAs": "result"
+    },
+    "next": ["Mall@Event@EnterFriends@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@EnterFriends@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@OpenFriendList": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.mall.open_friend_list",
+      "saveAs": "result"
+    },
+    "next": ["Mall@Event@OpenFriendList@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@OpenFriendList@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@VisitFirst": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.mall.visit_first",
+      "saveAs": "result"
+    },
+    "next": ["Mall@Event@VisitFirst@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@VisitFirst@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@VisitNext": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.mall.visit_next",
+      "saveAs": "result"
+    },
+    "next": ["Mall@Event@VisitNext@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@VisitNext@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@ReadVisit": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.mall.read_visit",
+      "saveAs": "result"
+    },
+    "next": ["Mall@Event@ReadVisit@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@Event@ReadVisit@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@ChooseProduct": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.choose_product",
+      "input": {
+        "$ref": "#/input"
+      },
+      "saveAs": "step0"
+    },
+    "next": ["Mall@ChooseProduct@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@ChooseProduct@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@OpenProduct": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.open_product",
+      "input": {},
+      "saveAs": "step0"
+    },
+    "next": ["Mall@OpenProduct@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@OpenProduct@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@PurchaseSelected": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.purchase_selected",
+      "input": {
+        "$ref": "#/input"
+      },
+      "saveAs": "step0"
+    },
+    "next": ["Mall@PurchaseSelected@1"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@PurchaseSelected@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.close_reward",
+      "input": {},
+      "saveAs": "step1"
+    },
+    "next": ["Mall@PurchaseSelected@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@PurchaseSelected@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@VisitFirst": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.enter_friends",
+      "input": {},
+      "saveAs": "step0"
+    },
+    "next": ["Mall@VisitFirst@1"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@VisitFirst@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.open_friend_list",
+      "input": {},
+      "saveAs": "step1"
+    },
+    "next": ["Mall@VisitFirst@2"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@VisitFirst@2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.visit_first",
+      "input": {},
+      "saveAs": "step2"
+    },
+    "next": ["Mall@VisitFirst@3"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@VisitFirst@3": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.read_visit",
+      "input": {},
+      "saveAs": "step3"
+    },
+    "next": ["Mall@VisitFirst@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@VisitFirst@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step3"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@VisitNext": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.mall.visit_next",
+      "input": {},
+      "saveAs": "step0"
+    },
+    "next": ["Mall@VisitNext@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Mall@VisitNext@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/step0"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  }
+}

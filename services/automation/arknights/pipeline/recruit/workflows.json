@@ -1,0 +1,87 @@
+{
+  "Recruit@CollectOne": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.enter",
+      "input": {},
+      "saveAs": "enter"
+    },
+    "next": ["Recruit@CollectOne@1"]
+  },
+  "Recruit@CollectOne@1": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.collect_finished",
+      "input": {},
+      "saveAs": "collect"
+    },
+    "next": ["Recruit@CollectOne@2"]
+  },
+  "Recruit@CollectOne@2": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.skip_reveal",
+      "input": {},
+      "saveAs": "skip"
+    },
+    "next": ["Recruit@CollectOne@3"]
+  },
+  "Recruit@CollectOne@3": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.recruit.read_result",
+      "input": {},
+      "saveAs": "final"
+    },
+    "next": ["Recruit@CollectOne@Return"]
+  },
+  "Recruit@CollectOne@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 100000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/final"
+      }
+    },
+    "next": []
+  }
+}

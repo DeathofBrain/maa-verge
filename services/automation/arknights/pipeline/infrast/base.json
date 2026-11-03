@@ -1,0 +1,135 @@
+{
+  "Infrast@Base": {
+    "recognition": "DirectHit",
+    "action": "DoNothing",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Base@Ready1", "Infrast@Base@Back1"]
+  },
+  "Infrast@Base@Ready1": {
+    "recognition": "TemplateMatch",
+    "action": "DoNothing",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "template": ["InfrastOverview.png"],
+    "threshold": 0.8,
+    "method": 5
+  },
+  "Infrast@Base@Back1": {
+    "recognition": "DirectHit",
+    "action": "ClickKey",
+    "pre_delay": 0,
+    "post_delay": 300,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Base@Ready2", "Infrast@Base@Back2"],
+    "key": 4
+  },
+  "Infrast@Base@Ready2": {
+    "recognition": "TemplateMatch",
+    "action": "DoNothing",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "template": ["InfrastOverview.png"],
+    "threshold": 0.8,
+    "method": 5
+  },
+  "Infrast@Base@Back2": {
+    "recognition": "DirectHit",
+    "action": "ClickKey",
+    "pre_delay": 0,
+    "post_delay": 300,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Base@Ready3", "Infrast@Base@Back3"],
+    "key": 4
+  },
+  "Infrast@Base@Ready3": {
+    "recognition": "TemplateMatch",
+    "action": "DoNothing",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "template": ["InfrastOverview.png"],
+    "threshold": 0.8,
+    "method": 5
+  },
+  "Infrast@Base@Back3": {
+    "recognition": "DirectHit",
+    "action": "ClickKey",
+    "pre_delay": 0,
+    "post_delay": 300,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Base@Ready4", "Infrast@Base@Back4"],
+    "key": 4
+  },
+  "Infrast@Base@Ready4": {
+    "recognition": "TemplateMatch",
+    "action": "DoNothing",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "template": ["InfrastOverview.png"],
+    "threshold": 0.8,
+    "method": 5
+  },
+  "Infrast@Base@Back4": {
+    "recognition": "DirectHit",
+    "action": "ClickKey",
+    "pre_delay": 0,
+    "post_delay": 300,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Base@Ready5", "Infrast@Base@Fail"],
+    "key": 4
+  },
+  "Infrast@Base@Ready5": {
+    "recognition": "TemplateMatch",
+    "action": "DoNothing",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "template": ["InfrastOverview.png"],
+    "threshold": 0.8,
+    "method": 5
+  },
+  "Infrast@Base@Fail": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "failBase"
+    }
+  }
+}

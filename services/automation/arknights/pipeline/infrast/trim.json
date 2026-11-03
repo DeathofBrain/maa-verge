@@ -1,0 +1,62 @@
+{
+  "Infrast@OpenTrim": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Trim@Check"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickRule",
+      "rule": "trim.enter"
+    }
+  },
+  "Infrast@Trim@Check": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@Trim@Read"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "assertHit",
+      "rule": "trim.apply",
+      "message": "未能确认游戏整顿入口"
+    }
+  },
+  "Infrast@Trim@Read": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "readTrim"
+    }
+  },
+  "Infrast@Trim": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 2000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "clickRule",
+      "rule": "trim.apply"
+    }
+  }
+}

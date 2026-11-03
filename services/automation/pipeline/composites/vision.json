@@ -1,0 +1,350 @@
+{
+  "Composite@match": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.match",
+      "saveAs": "result"
+    },
+    "next": ["Composite@match@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@match@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@texts": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.texts",
+      "saveAs": "result"
+    },
+    "next": ["Composite@texts@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@texts@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@click_box": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.click_box",
+      "saveAs": "result"
+    },
+    "next": ["Composite@click_box@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@click_box@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@swipe": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.swipe",
+      "saveAs": "result"
+    },
+    "next": ["Composite@swipe@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@swipe@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@press_key": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.press_key",
+      "saveAs": "result"
+    },
+    "next": ["Composite@press_key@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@press_key@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@click_rule": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.click_rule",
+      "saveAs": "result"
+    },
+    "next": ["Composite@click_rule@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@click_rule@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@click_first": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.click_first",
+      "saveAs": "result"
+    },
+    "next": ["Composite@click_first@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@click_first@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@action": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.action",
+      "saveAs": "result"
+    },
+    "next": ["Composite@action@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@action@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@delay": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.delay",
+      "saveAs": "result"
+    },
+    "next": ["Composite@delay@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@delay@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@assert_hit": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.assert_hit",
+      "saveAs": "result"
+    },
+    "next": ["Composite@assert_hit@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@assert_hit@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@assert_missing": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.assert_missing",
+      "saveAs": "result"
+    },
+    "next": ["Composite@assert_missing@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@assert_missing@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@wait_until": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "composite.wait_until",
+      "saveAs": "result"
+    },
+    "next": ["Composite@wait_until@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Composite@wait_until@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  }
+}

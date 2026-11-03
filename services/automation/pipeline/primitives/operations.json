@@ -1,0 +1,291 @@
+{
+  "Primitive@frame": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "operation.frame",
+      "saveAs": "result"
+    },
+    "next": ["Primitive@frame@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@frame@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@click": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "operation.click",
+      "saveAs": "result"
+    },
+    "next": ["Primitive@click@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@click@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@swipe": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "operation.swipe",
+      "saveAs": "result"
+    },
+    "next": ["Primitive@swipe@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@swipe@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@press_key": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "operation.press_key",
+      "saveAs": "result"
+    },
+    "next": ["Primitive@press_key@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@press_key@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@long_press": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "operation.long_press",
+      "saveAs": "result"
+    },
+    "next": ["Primitive@long_press@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@long_press@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@drag": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "operation.drag",
+      "saveAs": "result"
+    },
+    "next": ["Primitive@drag@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@drag@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@recognize": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "operation.recognize",
+      "saveAs": "result"
+    },
+    "next": ["Primitive@recognize@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@recognize@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Observation@frame": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "saveAs": "result"
+    },
+    "next": ["Observation@frame@Return"],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Observation@frame@Return": {
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "recognition": "DirectHit",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@start_app": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "operation.start_app",
+      "saveAs": "result"
+    },
+    "next": ["Primitive@start_app@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@start_app@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@stop_app": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "operation.stop_app",
+      "saveAs": "result"
+    },
+    "next": ["Primitive@stop_app@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  },
+  "Primitive@stop_app@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0
+  }
+}

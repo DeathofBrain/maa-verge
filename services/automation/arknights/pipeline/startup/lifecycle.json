@@ -1,0 +1,163 @@
+{
+  "Startup@Launch": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.startup.launch",
+      "saveAs": "result"
+    },
+    "next": ["Startup@Launch@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Startup@Launch@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Startup@Close": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.startup.close",
+      "saveAs": "result"
+    },
+    "next": ["Startup@Close@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Startup@Close@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Startup@Start": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.launch",
+      "input": {
+        "clientType": {
+          "$ref": "#/input/clientType"
+        },
+        "startGame": {
+          "$ref": "#/input/startGame"
+        }
+      },
+      "saveAs": "launch"
+    },
+    "next": ["Startup@Login"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Startup@CloseGame": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.startup.close",
+      "input": {
+        "clientType": {
+          "$ref": "#/input/clientType"
+        }
+      },
+      "saveAs": "close"
+    },
+    "next": ["Startup@CloseGame@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Startup@CloseGame@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/close"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Startup@ReturnHome": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "execute",
+      "primitive": "game.startup.return_home",
+      "saveAs": "result"
+    },
+    "next": ["Startup@ReturnHome@Return"],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  },
+  "Startup@ReturnHome@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/result"
+      }
+    },
+    "next": [],
+    "pre_delay": 0,
+    "post_delay": 0,
+    "rate_limit": 0,
+    "timeout": 100000,
+    "max_hit": 1
+  }
+}

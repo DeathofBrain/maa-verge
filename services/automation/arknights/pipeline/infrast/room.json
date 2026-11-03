@@ -1,0 +1,292 @@
+{
+  "Infrast@ApplyRoom": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyRoom@Prepare"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.read_room",
+      "input": {
+        "$ref": "#/input/target"
+      },
+      "saveAs": "before"
+    }
+  },
+  "Infrast@ApplyRoom@Prepare": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyRoom@Confirm"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.prepare_roster",
+      "input": {
+        "$ref": "#/input/request"
+      },
+      "saveAs": "prepared"
+    }
+  },
+  "Infrast@ApplyRoom@Confirm": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyRoom@Verify"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.confirm",
+      "input": {
+        "prepared": {
+          "$ref": "#/steps/prepared/data"
+        }
+      },
+      "saveAs": "confirmed"
+    }
+  },
+  "Infrast@ApplyRoom@Verify": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyRoom@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.verify_room",
+      "input": {
+        "request": {
+          "$ref": "#/input/request"
+        },
+        "prepared": {
+          "$ref": "#/steps/prepared/data"
+        },
+        "before": {
+          "$ref": "#/steps/before/data"
+        }
+      },
+      "saveAs": "verified"
+    }
+  },
+  "Infrast@ApplyRoom@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/verified"
+      }
+    }
+  },
+  "Infrast@ApplyRole": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyRole@Confirm"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.prepare_roster",
+      "input": {
+        "$ref": "#/input/request"
+      },
+      "saveAs": "prepared"
+    }
+  },
+  "Infrast@ApplyRole@Confirm": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyRole@Verify"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.confirm",
+      "input": {
+        "prepared": {
+          "$ref": "#/steps/prepared/data"
+        }
+      },
+      "saveAs": "confirmed"
+    }
+  },
+  "Infrast@ApplyRole@Verify": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyRole@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.verify_room",
+      "input": {
+        "request": {
+          "$ref": "#/input/request"
+        },
+        "prepared": {
+          "$ref": "#/steps/prepared/data"
+        },
+        "before": {
+          "$ref": "#/input/before"
+        }
+      },
+      "saveAs": "verified"
+    }
+  },
+  "Infrast@ApplyRole@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/verified"
+      }
+    }
+  },
+  "Infrast@ApplyAutoRoom": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyAutoRoom@Prepare"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.read_room",
+      "input": {
+        "$ref": "#/input/target"
+      },
+      "saveAs": "before"
+    }
+  },
+  "Infrast@ApplyAutoRoom@Prepare": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyAutoRoom@Confirm"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.prepare_auto_roster",
+      "input": {
+        "$ref": "#/input/request"
+      },
+      "saveAs": "prepared"
+    }
+  },
+  "Infrast@ApplyAutoRoom@Confirm": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyAutoRoom@Verify"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.confirm",
+      "input": {
+        "prepared": {
+          "$ref": "#/steps/prepared/data/prepared"
+        }
+      },
+      "saveAs": "confirmed"
+    }
+  },
+  "Infrast@ApplyAutoRoom@Verify": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": ["Infrast@ApplyAutoRoom@Return"],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "call",
+      "primitive": "game.infrast.verify_room",
+      "input": {
+        "request": {
+          "$ref": "#/steps/prepared/data/request"
+        },
+        "prepared": {
+          "$ref": "#/steps/prepared/data/prepared"
+        },
+        "before": {
+          "$ref": "#/steps/before/data"
+        }
+      },
+      "saveAs": "verified"
+    }
+  },
+  "Infrast@ApplyAutoRoom@Return": {
+    "recognition": "DirectHit",
+    "action": "Custom",
+    "pre_delay": 0,
+    "post_delay": 0,
+    "timeout": 120000,
+    "rate_limit": 0,
+    "max_hit": 1,
+    "next": [],
+    "custom_action": "MaaVerge.Custom",
+    "custom_action_param": {
+      "handler": "return",
+      "value": {
+        "$ref": "#/steps/verified"
+      }
+    }
+  }
+}
