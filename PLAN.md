@@ -1,12 +1,44 @@
 # Maa Verge 开发计划
 
-状态：工程已初始化，M0/M1/M2 部分能力已实现，尚未通过完整发行验收；当前实现与验证记录见 [docs/STATUS.md](docs/STATUS.md)。本文件保留完整交付路线，不把待办视为已交付。更新日期：2026-11-02。
+状态：工程已初始化，M0/M1/M2 部分能力已实现，尚未通过完整发行验收；当前实现与验证记录见 [docs/STATUS.md](docs/STATUS.md)。本文件保留完整交付路线，不把待办视为已交付。更新日期：2026-11-04。
+
+原版能力及全部设置组的 MaaFW 迁移盘点见[原版 MAA 全功能与设置清单](docs/maa-feature-inventory.md)，固定到官方 v6.21.2，并单列 macOS 客户端、宿主设置、工具和原生接口；功能存在、MaaCore 已接入与 MaaFW 已迁移分别核对。
+
+## feat/atomic 当前执行架构与交付边界
+
+本分支彻底停止加载、下载、执行及分发 MaaCore。前端、TypeScript 服务和 C++20 原生 worker 统一采用 MaaFramework，保留官方 MAA 资源、协议依据和归因。应用、MaaFramework、游戏资源独立安装与更新；资源由固定官方源码资源与模型底包叠加 MaaResource，形成可回滚的完整不可变快照，不依赖完整 MAA 发行包。
+
+旧配置和任务逐项编译为已登记流程；整表 `execution.preflight` 在任何执行副作用前报告不兼容任务位置、参数路径与原因，真正启动重新检查快照。手动、工具和强制定时共用门禁，持久请求查重优先。每设备只保留一个常驻 Controller，预览复用连接，正式任务、工具、手动及 Debug 互斥，离线识别无 Controller。
+
+首轮范围是官服／B服启动关闭、常用关卡与当前关卡代理、公招、基建、信用商店及普通奖励。药石与信用额度默认零，提交前持久预留，结果未知保守占用。业务成功须实际复核，长战斗分段只读等待，不自动重放未知提交。完整扫描、三类作业执行、长模式、活动附带动作及未迁移选项允许管理编辑，执行稳定阻断；不新增原版 MAA 客户端配置导入。实际细项、资源前提和剩余限制以[兼容矩阵](docs/maa-compatibility.md)为准。
+
+既有配置、任务表、排班原文件、作业库、历史顺序与 rowid 均保留。历史核心版本不改为 Framework 版本，旧核心目录停止维护并默认保留。下文早期阶段记录中的 MaaCore 执行、交接和作业原生队列已由本节替代，不代表当前产品路径；真实游戏和各平台须另行明确选择验收。
+
+## 本轮三层原语与常用流程
+
+automation 采用 L1 最小设备操作、L2 通用组合、L3 游戏单事件，完整业务流程通过 JSON 编排 L3。通用 TS 分别放 `src/primitives`、`src/composites`，通用 JSON 放 `pipeline/primitives`、`pipeline/composites`；游戏仍按 `arknights/{custom,pipeline}/<feature>` 浅目录维护。统一注册入口 `src/registry.ts` 声明层级、契约、资源、副作用和下层依赖，保留旧 19 项能力 ID、旧目录分类与 `Vision` 兼容出口；新增 `#common-pipeline/*` 通配符短路径。
+
+JSON 通过 `MaaVerge.Custom` 的 `execute`、`call`、`return` 与本次作用域的 JSON Pointer 绑定输入和完整步骤结果。根图使用 Tasker，子图使用官方 `MaaContextRunTask`，最大调用深度 8、继承根期限与取消。每次子调用隔离内部节点名，保留同图导航计数并避免共享 `max_hit` 阻断后续房间；实际输入推进帧代际，纯观察和调用边界保留同帧证据。Tasker 完成不能代替显式业务返回或结果复核。
+
+基建换班主干拆成读取、准备、确认与复读事件，JSON 表达固定顺序；TS 保留完整名单计算、训练保护、跨房冲突、部分完成和批次复核。筛选、翻页、当前页单个干员选择及清空名单均有独立事件入口。长批次按房间或场次建立根图，确认后未知或取消不自动重放。
+
+同时纳入原 MAA 常见功能的六类首批事件与流程：已打开游戏的登录步骤、当前关卡代理、已完成公招领取、信用收取与明确预算的当前商品购买、日常／周常领奖、仓库与干员当前屏读取。它们复用已审阅 MaaCore 资源字段，不封装原高层任务冒充原语迁移。应用启动、任意关卡导航、新建公招、完整库存扫描及长模式等仍按兼容矩阵后续推进；当前实现范围和验证限制详见 [automation 维护指南](services/automation/README.md)。本轮不提供用户任意 JSON 加载编辑界面，真实游戏与其他平台另行验收。
 
 ## 本轮 MaaCore 原语化与隐藏 Debug
 
-从核对的 `dev` 提交 `01a7ae4` 创建并推送 `feat/atomic`，后续原语工作统一在主仓库 `.worktree/atomic` 推进。首期按操作、观察、游戏操作、业务流程建立 MaaFramework 能力注册表，扩展完整长按／拖拽与独立控制会话，并接入三条基建换班路径。官方 MaaCore 源码保持原样，尚未迁移的成熟业务继续使用原引擎。
+从核对的 `dev` 提交 `01a7ae4` 创建并推送 `feat/atomic`，当前原语工作在主 checkout 的该分支推进，`dev` 暂不引入 MaaFramework。首期按操作、观察、游戏操作、业务流程建立 MaaFramework 能力注册表，扩展完整长按／拖拽与独立控制会话，并接入三条基建换班路径。官方 MAA 源码保持原样作为资源和流程依据；未迁移业务保留编辑，执行前阻断。
 
 Debug 入口为「设置 → 关于」点击「应用版本」标题五次，离页清除未完成计数；解锁偏好重启保留，导航位于「执行记录」后，可主动隐藏。页面只在明确建立自有会话并执行能力后操作设备，复用正式设备独占、帧与资源门禁，支持参数、步骤、截图选点／选区及结构化结果。接口和验收边界见 [原语 Debug](docs/debug-atomic.md)。
+
+Debug 目录与右侧内容在桌面分别纵向滚动，窄窗按单列浏览。MaaFramework 改为独立安装与更新，不随开发启动或应用打包自动携带 SDK；设置更新页提供独立目录、自动更新、官方源与 Mirror酱，以及空闲激活和回滚。只加载应用已经验证的兼容版本，流程见 [MaaFramework 独立组件](docs/framework-updates.md)。本项继续在 `feat/atomic`，不进入 `dev`。
+
+原语能力独立到与 backend 同级的 `services/automation`，通过 `@maaverge/automation` 公共入口在现有 Bun 服务进程中使用。`arknights/` 与 `src/` 同级，游戏根目录只有 `pipeline/` 与 `custom/`，各自按功能建一层目录：JSON 平放在 `pipeline/infrast/`，复杂逻辑、观察、导航及 MaaCore 资源适配平放在 `custom/infrast/`，文件按职责命名。通用 `src` 分为 `core`、`primitives`、`composites`、`pipeline`、`resources` 和 `registry`，不依赖游戏语义；backend 注入执行和资源读取能力，继续持有 Debug 会话、控制权交接、原生进程及更新准入。依赖方向与扩展规则见[后端架构](docs/backend-architecture.md)及 [automation README](services/automation/README.md)。
+
+维护者在功能的 `definitions.ts` 用 `registerPipeline` 登记 JSON，在 `src/registry.ts` 统一登记组件 provider 和流程，登记后自动参与能力目录组装，并通过 `automation.components.<功能>` 访问。包内以 `#automation/*`、`#components/*`、`#custom/*` 和 `#pipeline/*` 缩写路径，通配符按目录约定覆盖新增文件，无需逐项同步 TypeScript 别名；宿主继续使用包根入口。源码补充模块、主要功能及内部实现阶段的中文注释，注释维护要求写入根 `AGENTS.md`。
+
+新增自动化转向 MaaFramework 官方第二种 JSON Pipeline + Custom 开发方式：基建页面导航、筛选和确认主干维护在 `services/automation/arknights/pipeline/infrast/*.json`，文件按主页、总览、整顿、名单和训练在同一层存储，节点统一使用 `Infrast@具体操作`，更深层用 `@` 延伸，允许跨文件引用。TypeScript 静态导入并合并已登记 JSON，拒绝重名和断链，每次提交独立的入口可达副本；复杂房间／干员语义、训练角色策略、提交后复读与部分完成保留 TypeScript。C++ worker 使用官方 Tasker 执行 Pipeline，并注册 `MaaVerge.Custom` 经既有 NDJSON 调用当前 Bun 服务；本轮采用宿主注册 Custom，不新增官方 AgentClient／AgentServer 进程。设备独占、取消、当前帧与权限、资源代际和未知结果不重放保持原边界，原生完成不替代业务成功证据。维护路径与迁移范围见 [MaaFramework Pipeline 开发](docs/maaframework-integration.md#pipeline-与-custom-的分工)；真实设备与可视化生态工具的兼容性分别验收。
+
+MaaFramework 连接为默认设备与各多开实例独立保存截图／触控配置：截图自动核对 MuMu、雷电和 AVD 增强方案，支持手动覆盖；触控提供固定版本支持的四种具体 ADB 输入方式，默认 MaaTouch。截图与输入分别解析，不随另一项变动，真实模拟器及宿主表现按状态文档单独验收。
 
 上游变化监控由独立 bot 项目承担；本项目维护来源、适配版本、兼容与验证记录。24 小时是形成兼容验证候选或特殊变化影响报告的维护目标，不代表未经验证自动发布。首期真实设备、全部设施路径及平台验收按状态文档分别记录，不能由合成夹具代替。
 
@@ -20,9 +52,9 @@ Debug 入口为「设置 → 关于」点击「应用版本」标题五次，离
 
 ## 本轮作业中心交付
 
-按 [作业中心计划](docs/copilot-center-plan.md) 接入独立作业库、三类工作区、本地/PRTS Plus 预览导入及独立执行。新作业不创建任务表；旧任务表作业保留编辑、执行和显式复制入口。运行固定不可变文件及队列快照，与任务表、工具箱共用设备独占、停止、生命周期和更新门禁。
+按 [作业中心计划](docs/copilot-center-plan.md) 接入独立作业库、三类工作区、本地/PRTS Plus 预览导入及独立执行。新作业不创建任务表；旧任务表作业保留编辑和显式复制入口，执行明确阻断。运行固定不可变文件及队列快照，与任务表、工具箱共用设备独占、停止、生命周期和更新门禁。
 
-普通多作业使用原生 `copilot_list`，保全仅单份及循环，悖论使用专用任务。任务处理结束与通关分别记录；缺少明确战斗证据时显示未确认。自动验证和真实设备边界见 [开发状态](docs/STATUS.md)，视频离线识别、作业编辑器和社区账号功能仍待后续。
+三类作业的执行配置与历史保留，当前 MaaFramework 兼容层不执行原生作业队列。任务处理结束与通关分别记录；缺少明确战斗证据时显示未确认。自动验证和真实设备边界见 [开发状态](docs/STATUS.md)，视频离线识别、作业编辑器和社区账号功能仍待后续。
 
 ## 后续开发目标：插件系统与插件市场
 
@@ -247,6 +279,7 @@ maa-verge/
   CONTRIBUTING.md
   apps/desktop/          React 与 Tauri，Rust 桥接位于 src-tauri
   services/backend/      TypeScript 应用服务、Agent、设备、数据与更新
+  services/automation/   JSON Pipeline、原语与 Custom、游戏策略和资源语义适配
   services/native/       C++20 MaaCore worker 与合成 CTest
   packages/contracts/    JSON Schema、生成的 TypeScript 类型与校验器
   tests/fixtures/        合成或脱敏场景、事件与截图

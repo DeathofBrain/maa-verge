@@ -11,8 +11,11 @@ the pinned upstream source and provenance together when upgrading.
 The native worker uses `decltype` of these declarations for dynamically resolved
 function pointers. It does not link or download MaaFramework during compilation.
 `runtime-assets.json` separately pins the official SDK archives for the supported
-platforms. Runtime libraries and their dependencies are prepared by
-`tools/prepare-maafw.mjs`; the SDK remains separate from MaaCore and game resources.
+platforms. The application installs runtime libraries and their dependencies as an
+independent component through its update service; the SDK remains separate from
+MaaCore and game resources and is not embedded in application packages.
+`tools/prepare-maafw.mjs` is an explicit maintainer tool for offline SDK validation;
+development startup does not run it or load that cache automatically.
 
 MaaFramework is licensed under the GNU Lesser General Public License, version 3;
 see the upstream [LICENSE.md](LICENSE.md). These headers are included in the

@@ -250,7 +250,7 @@ async function emitTasks() {
       id: `task:${type}`,
       name: taskLabels[type],
       aliases: [type, taskLabels[type], '任务', '默认参数'],
-      text: `${taskLabels[type]}（${type}）\n${taskWarning}\n新建默认参数：${JSON.stringify(defaults)}\n${type === 'UserDataUpdate' ? '应用组合任务，依次调用干员和仓库识别，不直接提交 MaaCore。' : '参数仍受应用业务策略、当前核心和资源支持限制。'}`,
+      text: `${taskLabels[type]}（${type}）\n${taskWarning}\n新建默认参数：${JSON.stringify(defaults)}\n${type === 'UserDataUpdate' ? '历史组合任务，完整干员和仓库扫描尚未迁移，配置与历史保留，执行前阻断。' : '参数受应用策略、MaaFramework 已登记流程与当前资源支持限制；整表预检拒绝未迁移参数。'}`,
       data: {
         category: 'task',
         taskType: type,

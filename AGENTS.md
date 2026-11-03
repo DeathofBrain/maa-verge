@@ -2,19 +2,19 @@
 
 ## Context
 
-Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript, a TypeScript application service on pinned Bun, and a C++20 MaaCore worker. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese. See docs/runtime-migration.md for runtime and data migration boundaries.
+Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript, a TypeScript application service on pinned Bun, and a C++20 MaaFramework worker. Native MaaFramework runs outside the UI process. Product UI is Simplified Chinese. See docs/runtime-migration.md for runtime and data migration boundaries.
 
 ## Boundaries
 
 - React uses the typed transport in packages/contracts; it never executes shell, ADB or native calls.
-- TypeScript owns plans, persistence, policy, Agent proposals and updates. C++ owns MaaCore loading, device leases and native calls; it never writes the business database. JSON-RPC 2.0 uses newline-delimited JSON over stdio; stdout is protocol-only, diagnostics go to stderr.
+- TypeScript owns plans, persistence, policy, Agent proposals and updates. C++ owns MaaFramework loading, device leases and native calls; it never writes the business database. JSON-RPC 2.0 uses newline-delimited JSON over stdio; stdout is protocol-only, diagnostics go to stderr.
 - JSON Schema in packages/contracts/schemas is authoritative; regenerate TypeScript types and standalone validators with pnpm contracts:generate. Native NDJSON output uses protocolVersion 1.
 - Development and production use the TypeScript service and C++ worker. Do not introduce a Python runtime, reference backend or automatic backend fallback.
 - Every application service instance must hold the same dedicated SQLite data-root lease before opening business data. Never delete its lock file. Back up existing data with serialize, fsync, integrity validation and rename; preserve implicit rowids and persistent run.start requestId deduplication.
-- Product runtimes use real devices, execution, screenshots and update sources. Only Agent proposals remain local and deterministic. Synthetic adapters belong in tests and must run without MaaCore, a simulator, model keys or paid requests.
-- A device has one controller. Never replace files referenced by active workers. Updates stage immutable core/resource generations, validate, then activate at idle boundaries with rollback.
-- AsstStop clears the native queue; it is not pause/resume. Task-completion messages alone do not prove action success.
-- Keep application, core and resource update channels separate. Core version equality must not suppress resource updates.
+- Product runtimes use real devices, execution, screenshots and update sources. Only Agent proposals remain local and deterministic. Synthetic adapters belong in tests and must run without MaaCore or a production MaaFramework SDK, a simulator, model keys or paid requests.
+- A device has one controller. Never replace files referenced by active workers. Updates stage immutable Framework/resource generations, validate, then activate at idle boundaries with rollback.
+- Stopping cancels the current Tasker; it is not pause/resume. Task completion alone does not prove action success. Unknown committed outcomes retain evidence and consumable reservations and must never replay automatically.
+- Keep application, MaaFramework and resource update channels separate. Framework version equality must not suppress resource updates.
 
 ## Collaboration
 
@@ -41,6 +41,13 @@ Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, l
 The root package.json is the command source of truth: pnpm dev, pnpm dev:ui, pnpm setup:bun, pnpm run doctor, pnpm check, pnpm test:runtime, pnpm test:packaging, pnpm test:desktop-runtime, pnpm test:e2e, pnpm build.
 Use .bun-version and tools/setup-bun.mjs for the pinned runtime; do not depend on a global Bun. C++: node tools/build-core-worker.mjs (Node-driven synthetic CTest), or --production to skip test fixtures. Rust: cargo fmt --check and cargo clippy --locked when the native toolchain is available.
 Use targeted checks while developing, then the relevant project checks. Do not modify formatting or dependencies unrelated to the task.
+
+编写和维护代码时，必须为模块或大块功能标明职责，并为函数内部能够独立成块的实现阶段添加注释。注释重点说明意图、成立前提、状态变化或副作用，以及关键取舍；不必逐行添加，也不复述显而易见的语句。实现调整时同步维护对应注释，确保说明与代码一致。
+
+自动化功能遵循 [automation 维护指南](services/automation/README.md)：通用 TS 放 `src`，通用 JSON 放 `pipeline/{primitives,composites}`，游戏功能放同级 `arknights/{pipeline,custom}/<feature>`；按功能文件夹及文件职责归档，不增加节点级目录或通用模块的游戏前缀。实现分 L1 最小原语、L2 通用组合、L3 游戏事件，原语只向下调用，完整业务流程只组合 L3。各层声明 JSON 入口、副作用、依赖和资源前提，复用 contracts 权威输入／结果校验，不能把业务流程整体藏进一个 Custom。
+
+包内短路径由 `package.json` 的 `imports` 统一定义，使用 `#automation/*`、`#common-pipeline/*`、`#components/*`、`#custom/*` 和 `#pipeline/*`，不要复制 tsconfig 映射。功能内 `definitions.ts` 静态登记 JSON，`src/registry.ts` 统一登记组件；backend 通过 `@maaverge/automation` 包根调用。节点流转使用官方 Tasker／Context；已登记子图可在当前 Custom 内经 `MaaContextRunTask` 同步执行，禁止重新向等待中的根 Tasker 排队、TS 生产流程解释器或自动 fallback。
+
 绝对禁止添加关于外观断言的测试（test）。
 Format touched files with the repository configuration: Prettier for TypeScript/JavaScript, JSON, styles and Markdown; clang-format for C++; rustfmt for Rust. VS Code setup and CLI commands are documented in docs/development.md. Do not format generated files or vendored code; regenerate outputs from their source.
 

@@ -79,7 +79,7 @@ pnpm build
 
 开发与发行只提供 TypeScript/Bun 服务，旧参考后端与选择入口已移除。首次接管旧数据库仍保留 SQLite 租约、序列化备份与数据兼容保护；交接和手动恢复步骤见 [runtime-migration.md](runtime-migration.md)。
 
-启动后会自动下载核心与资源，并按自动连接偏好发现、连接本机模拟器；可在设置关闭自动连接或手动触发。连接后不会自动执行计划。常规自动测试使用独立数据，预先关闭自动连接与自动下载，不触碰真实设备。
+首次使用前须在应用内独立安装 MaaFramework 并准备游戏资源；开发启动器不自动下载或携带 SDK。服务启动后按各组件的自动更新偏好检查、准备兼容版本，并按自动连接偏好发现、连接本机模拟器；可在设置关闭自动连接或手动触发。连接后不会自动执行计划。常规自动测试使用独立数据，预先关闭自动连接与自动下载，不触碰真实设备。
 
 ```powershell
 # 如 ADB 未在 PATH：$env:MAAVERGE_ADB_PATH = '你的 adb.exe 绝对路径'
@@ -106,7 +106,7 @@ Playwright 在受管理的同一进程中运行前端服务器，并由测试目
 
 Windows 切换后会精确清理旧配置目录对应的唤醒任务，清理失败保留记录供下次重试。等待清理期间，旧唤醒任务携带的旧目录参数会跟随已保存的新选择，避免重新打开切走的配置；其他显式启动根不受影响。
 
-`MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各次测试的独立数据目录。macOS 安装版组件默认位于 `~/Library/Application Support/Maa Verge/{MaaCore,MaaResource}`；`MAAVERGE_COMPONENT_HOME` 仅覆盖组件用户目录，包内 smoke 将其设为临时目录，避免创建真实用户组件或组件租约。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
+`MAAVERGE_DATA_DIR` 和 `MAAVERGE_DEV_PORT` 可覆盖；`MAAVERGE_DEVICE_LOCK_DIR` 只能指向同机所有实例共用的设备锁根目录，不能放在各次测试的独立数据目录。macOS 安装版组件默认位于 `~/Library/Application Support/Maa Verge/{MaaFramework,MaaResource}`；`MAAVERGE_COMPONENT_HOME` 仅覆盖组件用户目录，包内 smoke 将其设为临时目录，避免创建真实用户组件或组件租约。`MAAVERGE_ADB_PATH` 可指定 ADB，无固定模拟器或开发者路径假设。`.env.example` 是配置说明，脚本不会自动执行或加载 `.env`；在终端显式设置环境变量。
 
 同一 checkout 同时启动界面测试与桌面时，应分别设置不同的 `MAAVERGE_DEV_PORT`。Vite 的预构建缓存按实际端口存放在 `apps/desktop/node_modules/.vite/port-<port>`，避免多个实例覆盖彼此的 Tauri 模块。若旧窗口出现 `Importing a module script failed` 等组件加载错误，点击「重新加载界面」；更新脚本后应先完全退出旧开发窗口与命令，再重新运行 `pnpm dev`。普通服务连接失败仍使用「重新连接」。
 
@@ -114,7 +114,7 @@ Windows 切换后会精确清理旧配置目录对应的唤醒任务，清理失
 
 开发启动器在 macOS/Linux 为 Vite 和 Tauri 创建独立进程组，终端按 Ctrl+C 时一并结束其后代进程；Windows 继续使用定向 `taskkill /t` 清理。不会按应用名终止其他 checkout 的进程。桌面窗口完全退出时仍由 Rust 负责关闭本地服务与释放租约。
 
-`pnpm run doctor` 检查固定工具版本、所有工作区的直接依赖和本地环境，不连接设备、不发模型请求、不输出密钥；显式写 `run` 可避免调用 pnpm 自带的同名命令。`pnpm run doctor --native` 将原生依赖设为必需。`pnpm build` 与默认 TypeScript 桌面 `pnpm dev` 在编译前执行原生诊断；构建、检查和运行入口若发现工作区依赖缺失，会直接提示冻结同步命令，避免到 Bun 打包时才出现 `Could not resolve tar/yauzl` 或缺少 Bun 类型。设备发现也会查找模拟器内置 ADB，非标准安装需配置路径。可选 ADB 的缺失不阻断界面测试。真实设备测试由用户明确选择，且必须记录核心、资源、平台及设备标识的脱敏值。
+`pnpm run doctor` 检查固定工具版本、所有工作区的直接依赖和本地环境，不连接设备、不发模型请求、不输出密钥；显式写 `run` 可避免调用 pnpm 自带的同名命令。`pnpm run doctor --native` 将原生依赖设为必需。`pnpm build` 与默认 TypeScript 桌面 `pnpm dev` 在编译前执行原生诊断；构建、检查和运行入口若发现工作区依赖缺失，会直接提示冻结同步命令，避免到 Bun 打包时才出现 `Could not resolve tar/yauzl` 或缺少 Bun 类型。设备发现也会查找模拟器内置 ADB，非标准安装需配置路径。可选 ADB 的缺失不阻断界面测试。真实设备测试由用户明确选择，且必须记录 MaaFramework、资源、平台及设备标识的脱敏值。
 
 ## 清理 Codex worktree 与分支
 
@@ -143,19 +143,19 @@ python tools/clean-codex-worktrees.py                  # 清理干净的 worktre
 
 Linux CI 使用基于 Ubuntu 22.04 的[构建镜像](ci-image.md)，从 checkout 构建并缓存工具链与 Chromium，统一 application 检查与 Linux 签名打包环境；Windows/macOS 继续使用宿主工具链。镜像定义、版本来源、本地复现和干净容器检查的边界见该文档。
 
-`pnpm build` 先检查工作区并构建 React，再由 Bun 1.4.3 `--compile` 生成自包含 TypeScript 服务，构建并复制 C++20 worker、收集许可，执行包内及 Rust transport 集成 smoke，最后调用 Tauri 打包。生产 C++ 配置使用 `BUILD_TESTING=OFF`，不构建合成测试；发行目录不包含 `.venv`、`node_modules` 或独立解释器安装。macOS/Linux 的 MaaCore 和游戏资源由运行期安装器下载；Windows 构建还会准备随附的离线组件。
+`pnpm build` 先检查工作区并构建 React，再由 Bun 1.4.3 `--compile` 生成自包含 TypeScript 服务，构建并复制 C++20 worker、收集许可，执行包内及 Rust transport 集成 smoke，最后调用 Tauri 打包。生产 C++ 配置使用 `BUILD_TESTING=OFF`，不构建合成测试；发行目录不包含 `.venv`、`node_modules` 或独立解释器安装。应用包只携带服务与原生 worker，MaaFramework SDK 在应用内独立安装；macOS/Linux 的游戏资源由运行期安装器准备，Windows 构建还会准备随附的离线游戏资源。
 
-MaaCore 首装和更新从官方归档中选择性提取原生依赖与完整资源，跳过原 GUI 和 .NET/WPF；提取规则、上游参考和验证边界见 [maacore-runtime.md](maacore-runtime.md)。
+MaaFramework 首装和更新只接受兼容清单固定的官方 SDK；游戏资源从固定官方源码资源与模型底包叠加 MaaResource，独立校验与激活。本分支不下载、加载或分发 MaaCore；来源、提取规则和旧资源只读迁移边界见 [maacore-runtime.md](maacore-runtime.md)。
 
-Windows v0.1.3-alpha.1 起只生成 NSIS EXE 和 `Maa-Verge_<version>_x64-full.zip`，不再构建 MSI。`tools/prepare-windows-components.mjs` 通过固定 Bun 按 `tools/windows-components.lock.json` 校验官方归档大小与 SHA-256，复用生产选择性提取、完整资源合并和 C++ worker 校验，输出 `dist/windows-components/`。构建包装器生成带该载荷路径的 NSIS hook 配置，安装向导提供默认勾选的 MaaCore / MaaResource 组件；MaaResource 依赖 MaaCore。ZIP 只复制主程序、包内运行时、两套组件、许可和使用说明，不收集 checkout 配置或账号数据；`MaaVerge.portable` 标记禁用 EXE 自动安装。
+Windows v0.1.3-alpha.1 起只生成 NSIS EXE 和 `Maa-Verge_<version>_x64-full.zip`，不再构建 MSI。当前 `feat/atomic` 的 `tools/prepare-windows-components.mjs` 通过固定 Bun 按 `tools/windows-components.lock.json` 获取固定源码基线并记录实际归档摘要，核对 MaaResource 包的固定大小与 SHA-256，复用生产安全提取和完整资源合并，输出资源专用 `formatVersion: 2` 的 `dist/windows-components/`。构建包装器生成带该载荷路径的 NSIS hook 配置，安装向导只提供默认勾选的 MaaResource（完整资源与 OCR 模型）；MaaFramework 独立安装。ZIP 只复制主程序、包内运行时、完整资源、许可和使用说明，不收集 checkout 配置或账号数据；`MaaVerge.portable` 标记禁用 EXE 自动安装。已发布 v0.1.3-alpha.1 的双组件行为保留为历史，见[应用更新说明](app-updates.md#windows-离线组件与完整-zip)。
 
-Windows 离线组件构建还按锁文件获取 MaaCore v6.20.1 对应源码提交的 `LICENSE` / `LICENSE.spdx`、固定 MaaUtils 子模块的 LGPLv3 许可及配套 GNU GPLv3 全文，以及 MaaDeps v2.14.1 官方开发归档，分别校验固定大小和 SHA-256。开发归档仅提取依赖的 `copyright` 与 `vcpkg.spdx.json` 声明，不复制 SDK 库或可执行文件；核心和完整资源载荷均保留 `licenses/sources.json` 来源记录，资源载荷另附 MaaResource 原始许可。许可收集失败会阻止载荷生成，完整性摘要包含这些声明文件。
+当前 Windows 离线资源保留基础源码和 MaaResource 覆盖包的原始许可与 `licenses/sources.json` 来源记录；许可收集失败阻止载荷生成，完整性摘要包含这些声明文件。资源载荷不得包含原生动态库或可执行文件。
 
-Windows 系统 tar 缺少内置 `liblzma` 时，构建侧使用已安装的 7-Zip 将 XZ 解码为当前 staging 内的临时 TAR，再选择提取许可文件；支持通过 `MAAVERGE_7ZIP_PATH` 指定 `7z.exe`，也会检查系统 Program Files 中的标准安装位置。缺少所需工具时明确终止构建。7-Zip 只用于构建，不进入发行包或应用运行流程。
+历史 MaaCore 离线组件曾按锁文件获取 MaaCore v6.20.1 对应源码提交的 `LICENSE` / `LICENSE.spdx`、固定 MaaUtils 子模块的 LGPLv3 许可及配套 GNU GPLv3 全文，以及 MaaDeps v2.14.1 官方开发归档，分别校验固定大小和 SHA-256。开发归档仅提取依赖的 `copyright` 与 `vcpkg.spdx.json` 声明，不复制 SDK 库或可执行文件。Windows 系统 tar 缺少内置 `liblzma` 时，该历史流程使用 7-Zip 将 XZ 解码为 staging 内的临时 TAR 再提取许可；7-Zip 不进入发行包或应用运行流程。当前资源构建不再获取这些核心依赖。
 
-Linux 预览版的 RPM 需要单独映射包管理版本：`0.1.3-alpha.1` 的内部 `Version` 为 `0.1.3`、`Release` 为 `0.alpha.1`，排在同版正式包的 `Release=1` 之前。构建先按原应用版本生成二进制、DEB 和 AppImage，再只打包 RPM；最终发行文件名和更新签名仍绑定完整应用版本 `0.1.3-alpha.1`，不会重编译为正式版。此映射用于 RPM 的包管理排序，不表示所有 SemVer 预览标识的内部排序都与 RPM 相同。
+历史 Linux 预览版 RPM 单独映射包管理版本：`0.1.3-alpha.1` 的内部 `Version` 为 `0.1.3`、`Release` 为 `0.alpha.1`，排在同版正式包的 `Release=1` 之前。当时构建先按原应用版本生成二进制、DEB 和 AppImage，再只打包 RPM；最终发行文件名和更新签名仍绑定完整应用版本 `0.1.3-alpha.1`，不会重编译为正式版。此映射用于 RPM 的包管理排序，不表示所有 SemVer 预览标识的内部排序都与 RPM 相同。当前构建只生成 Linux AppImage，发行格式以[应用更新说明](app-updates.md#准备新发行版)为准。
 
-Windows NSIS 完整卸载会清理程序同级默认的 `MaaCore`、`MaaResource` 与 `runtime/bundled-components`，包含旧版 `downloads`、`generations` 及其内容；Tauri `/UPDATE` 更新保留已有组件并跳过随附组件安装。程序同级 `config`、用户另选的组件目录和业务数据根保留，卸载器不读取数据库或追踪自定义路径。旧 MSI 用户备份后卸载旧版并手动迁移 EXE / ZIP；ZIP 不注册卸载器，其他平台的移除方式仍需用户自行清理程序外下载的组件。组件导入与完整资源范围见 [组件运行时](maacore-runtime.md#windows-随附离线组件)。
+Windows NSIS 完整卸载会清理程序同级默认的 `MaaFramework`、`MaaResource` 与 `runtime/bundled-components`，包含其中旧版 `downloads`、`generations` 及其内容；Tauri `/UPDATE` 更新保留已有组件并跳过随附资源安装。旧 `MaaCore` 目录、程序同级 `config`、用户另选的组件目录和业务数据根保留，卸载器不读取数据库或追踪自定义路径。旧 MSI 用户备份后卸载旧版并手动迁移 EXE / ZIP；ZIP 不注册卸载器。macOS 安装版通过应用内卸载清理默认 Framework 和资源目录，其他移除方式见[组件运行时](maacore-runtime.md#下载与安装目录)；资源导入与完整资源范围见[Windows 随附离线资源](maacore-runtime.md#windows-随附离线资源)。
 
 ```bash
 node tools/package-runtime.mjs
@@ -163,21 +163,21 @@ node tools/smoke-runtime.mjs
 pnpm test:desktop-runtime
 ```
 
-服务目录为 `dist/runtime/maaverge-runtime`，包含 `maaverge-runtime[.exe]`、`maaverge-core-worker[.exe]`、`build-info.json` 和 `licenses/`；Tauri 安装包位于 `apps/desktop/src-tauri/target/release/bundle`。自包含服务内嵌 Bun/JavaScriptCore，仍需系统库、系统 CA 证书与 WebView。Bun SQLite 在 Windows/Linux 随运行时链接，macOS 使用系统 SQLite。C++ worker 在 Windows 使用 `/MT`，Linux 静态链接 libstdc++/libgcc，macOS 使用系统 libc++；MaaCore 仍动态加载。
+服务目录为 `dist/runtime/maaverge-runtime`，包含 `maaverge-runtime[.exe]`、`maaverge-native-worker[.exe]`、`build-info.json` 和 `licenses/`；Tauri 安装包位于 `apps/desktop/src-tauri/target/release/bundle`。自包含服务内嵌 Bun/JavaScriptCore，仍需系统库、系统 CA 证书与 WebView。Bun SQLite 在 Windows/Linux 随运行时链接，macOS 使用系统 SQLite。C++ worker 在 Windows 使用 `/MT`，Linux 静态链接 libstdc++/libgcc，macOS 使用系统 libc++；仅在运行期动态加载独立安装的 MaaFramework。
 
-smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下执行包内 native 服务，覆盖空设备、Agent 提案、计划与设置持久化、缺失设备拒绝及 EOF 退出。下载专项将完整运行时复制到带空格的临时目录，另编译直接使用生产 HTTP 下载模块的探针，验证本机下载、摘要失败与传输取消；探针不进入发行目录。若已构建 CTest 合成库，还会测试包内 `--update-job` 选择性提取及 C++ 验证链路。预置测试数据禁用自动连接和更新，不下载真实核心、不连接设备或调用模型。完整测试先运行 `pnpm build:native-worker` 和 `pnpm check`；CTest 使用 Node 驱动合成核心与设备租约测试。
+smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下执行包内 native 服务，覆盖空设备、Agent 提案、计划与设置持久化、缺失设备拒绝及 EOF 退出。下载专项将完整运行时复制到带空格的临时目录，另编译直接使用生产 HTTP 下载模块的探针，验证本机下载、摘要失败与传输取消；探针不进入发行目录。包内 `--update-job` 使用合成源码及资源归档，验证没有引擎载荷时也能独立准备资源。预置测试数据禁用自动连接和更新，不下载真实 SDK 或资源、不连接设备或调用模型。完整测试先运行 `pnpm build:native-worker` 和 `pnpm check`；CTest 使用 Node 驱动合成 MaaFramework、协议与设备租约测试。
 
-`pnpm test:desktop-runtime` 直接使用桌面 `Runtime` 的同一 Rust transport，连接包内 native 服务，检查事件转发、设置与计划的重启持久化、空 PATH、环境清理及缺失设备拒绝，另用合成设备键检查包内 C++ worker 的锁排他/释放。真实控制链的运行去重、停止、更新边界由服务合成核心测试覆盖。它执行 Rust 集成测试，不启动真实窗口或 WebView。
+`pnpm test:desktop-runtime` 直接使用桌面 `Runtime` 的同一 Rust transport，连接包内 native 服务，检查事件转发、设置与计划的重启持久化、空 PATH、环境清理及缺失设备拒绝，另用合成设备键检查包内 C++ worker 的锁排他/释放。Framework 控制链的运行去重、停止、更新边界由服务合成 SDK 测试覆盖。它执行 Rust 集成测试，不启动真实窗口或 WebView。
 
 许可收集由 `tools/runtime-notices.mjs` 完成，保留应用、Bun/JSC、C++ JSON 依赖、Unicode 和归档依赖声明。对应源码与使用修改后 JavaScriptCore 重新构建服务的命令见 [runtime-migration.md](runtime-migration.md)。开发 cargo 检查创建的占位资源目录不能替代实际打包。图标主资源为 `apps/desktop/public/logo.png`，修改后运行 `node tools/generate-icons.mjs`。
 
 Checks 在同一 `ci.yml` 中使用 quick / full 两档。`changes` 按真实 Git 差异生成版本 2 的 `full`、`code`、`native` 计划：`dev` 推送和 PR 使用 quick，`main` 合并后的推送与手动 `workflow_dispatch` 使用 full。公共 CI 输入、依赖、未分类路径、空差异或无法确定比较基线时保守执行 full；PR 比较 merge base，改名检查两端路径。
 
-Linux `application` 合并应用检查与原 Linux native 任务，一次准备镜像和依赖。它始终执行工程脚本、知识与契约同步、四工作区类型和契约回归。代码变更接着直接运行 Vite 生产构建、构建 C++ worker 并执行四组合成 CTest、运行一份全量 TypeScript 运行时测试，以及 15 条带 Playwright 原生 `@smoke` 标签的行为回归；纯 UI 变更也使用这份固定基线。full 将浏览器检查切换为全量。纯文档变更仅执行静态同步检查，不构建或运行浏览器、worker 和服务测试。不再维护 UI 领域到 spec 的映射或按标题解析 AST 选择测试。
+Linux `application` 合并应用检查与原 Linux native 任务，一次准备镜像和依赖。它始终执行工程脚本、知识与契约同步、所有工作区类型和契约回归。代码变更接着直接运行 Vite 生产构建、构建 C++ worker 并执行合成 CTest、运行一份全量 TypeScript 运行时测试，以及带 Playwright 原生 `@smoke` 标签的行为回归；纯 UI 变更也使用这份固定基线。full 将浏览器检查切换为全量。纯文档变更仅执行静态同步检查，不构建或运行浏览器、worker 和服务测试。不再维护 UI 领域到 spec 的映射或按标题解析 AST 选择测试。
 
 Rust/C++、契约、SQLite 与文件系统、子进程与环境、网络代理、更新、打包及公共工具链等原生边界改动，在 quick 中启用 Windows x64 和 macOS arm64 的 `native` 专项；普通后端领域逻辑不启用宿主矩阵。Linux 专项直接接在 `application` 基线后，full 再增加 macOS Intel。`changes` 加 `application` 的普通检查共两个任务，原生边界 quick 共四个，full 加 `full-validation` 共六个。各宿主保留 Bun 编译/执行探针、C++ worker / CTest、Rust Clippy / 测试和本平台打包夹具；Rust fmt 仅由 `application` 执行一次，CI 不重复执行 doctor 的 C++ 编译探针。Windows 专项显式准备 NSIS，缺少工具直接失败。
 
-服务全量测试只在 Linux 基线执行一次。Windows/macOS 专项按 `tools/ci/runtime-suite.mjs` 的正向清单运行共同的 19 个文件，再分别加入两个 Windows 或五个 macOS 文件；清单覆盖 SQLite 租约与恢复、请求去重、文件替换与链接、子进程、更新及原生传输等边界，并因已有 Windows/macOS 路径失败证据保留 Mirror酱关键更新回归。不再用纯领域排除表将其余全部测试重复到各宿主。新增业务测试自动进入 Linux 全量；涉及平台边界时应同步审核专项清单。full 也沿用这套分工，不在四宿主重跑所有领域测试。macOS 最低支持 15，Checks 和发行使用 `macos-15` arm64 与 `macos-15-intel` x64；Tauri 与 C++ worker 部署目标均为 15.0。任一宿主失败不会取消其他平台，Checks 不生成安装包。
+服务全量测试只在 Linux 基线执行一次。Windows/macOS 专项按 `tools/ci/runtime-suite.mjs` 的正向清单运行公共文件，再加入各平台补充文件；清单覆盖 SQLite 租约与恢复、请求去重、文件替换与链接、子进程、更新及原生传输等边界，并因已有 Windows/macOS 路径失败证据保留 Mirror酱关键更新回归。不再用纯领域排除表将其余全部测试重复到各宿主。新增业务测试自动进入 Linux 全量；涉及平台边界时应同步审核专项清单。full 也沿用这套分工，不在四宿主重跑所有领域测试。macOS 最低支持 15，Checks 和发行使用 `macos-15` arm64 与 `macos-15-intel` x64；Tauri 与 C++ worker 部署目标均为 15.0。任一宿主失败不会取消其他平台，Checks 不生成安装包。
 
 完整计划的 `full-validation` 要求 Linux `application` 和三个附加宿主专项全部成功。发行门禁保持同 SHA、最新 attempt 中唯一且成功的 `full-validation`，quick 成功不能用于发行。发布前标签提交若没有可复用的 full，先执行 `gh workflow run ci.yml --ref <tag>`，成功后补跑 Release。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。依赖下载缓存与 Cargo 构建缓存分离；Cargo 以工具链和锁文件作恢复前缀、提交 SHA 作保存键，避免一直恢复不可更新的同一旧快照。
 
@@ -193,7 +193,7 @@ Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runti
 
 Windows 完整构建后可运行 `pnpm test:desktop-webview`，需要本机已有 WebView2。工具通过独立环回 CDP 端口操作真实 release 窗口，使用专属 native 空设备数据和 WebView profile，预先禁用自动连接和下载，检查初始化异常、Agent 提案、设置持久化及正常关窗；测试前须先退出其他 Maa Verge 实例。日志与截图保留在忽略目录 `build/webview-smoke`，临时数据和 profile 退出后清理。该项由宿主 Node/Playwright 驱动，不代表卸载开发工具后的干净系统安装验收。
 
-macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和下载 MaaCore 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；推送 `v*` 标签或手动补跑的 `release.yml` 会复用该提交 `full-validation` 成功的完整 Checks，在四宿主构建签名产物并只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、11 项附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
+macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和独立安装 MaaFramework 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；推送 `v*` 标签或手动补跑的 `release.yml` 会复用该提交 `full-validation` 成功的完整 Checks，在四宿主构建签名产物并只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、11 项附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
 
 ## 格式化规范与 VS Code
 
