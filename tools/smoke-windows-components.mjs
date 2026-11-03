@@ -178,10 +178,10 @@ function assertSnapshot(snapshot, lock, componentPaths) {
   assert.equal(snapshot.mode, 'native');
   for (const collection of ['devices', 'plans', 'runs', 'toolJobs'])
     assert.deepEqual(snapshot[collection], [], `The smoke must leave ${collection} empty`);
-  for (const key of ['autoConnect', 'autoUpdateApp', 'autoUpdateCore', 'autoUpdateResource'])
+  for (const key of ['autoConnect', 'autoUpdateApp', 'autoUpdateResource', 'autoUpdateFramework'])
     assert.equal(snapshot.settings[key], false);
   assert.deepEqual(snapshot.settings.componentPaths, componentPaths);
-  for (const channel of ['core', 'resource']) {
+  for (const channel of ['resource']) {
     const update = snapshot.updates.find((value) => value.id === channel);
     assert.equal(update?.currentVersion, lock[channel].version);
     assert.equal(update?.status, 'active');
@@ -202,7 +202,7 @@ export async function smokeWindowsComponents({ staging } = {}) {
   await plainDirectory(staging);
   const executable = path.join(staging, 'runtime/maaverge-runtime.exe');
   assert(existsSync(executable), 'Build the full Windows portable package first');
-  assert(existsSync(path.join(staging, 'runtime/maaverge-core-worker.exe')));
+  assert(existsSync(path.join(staging, 'runtime/maaverge-native-worker.exe')));
   assert.equal(
     (await readFile(path.join(staging, 'MaaVerge.portable'), 'utf8')).trim(),
     pkg.version,
@@ -211,12 +211,8 @@ export async function smokeWindowsComponents({ staging } = {}) {
     await readFile(path.join(root, 'tools/windows-components.lock.json'), 'utf8'),
   );
   const manifest = {};
-  for (const channel of ['core', 'resource']) {
-    const parent = path.join(
-      staging,
-      channel === 'core' ? 'MaaCore' : 'MaaResource',
-      'generations',
-    );
+  for (const channel of ['resource']) {
+    const parent = path.join(staging, 'MaaResource', 'generations');
     const generations = await readdir(parent);
     assert.equal(generations.length, 1);
     manifest[channel] = JSON.parse(
@@ -226,7 +222,7 @@ export async function smokeWindowsComponents({ staging } = {}) {
     assert.match(manifest[channel]?.installedHash ?? '', /^[a-f0-9]{64}$/u);
     assert.equal(generations[0], `${channel}-${manifest[channel].installedHash.slice(0, 32)}`);
   }
-  assert.equal(manifest.resource.coreVersion, lock.core.version);
+  assert.equal(manifest.resource.baseResourceVersion, lock.base.version);
   const sourceEntries = await readdir(staging);
   for (const name of ['config', 'log', 'cache'])
     assert(
@@ -260,8 +256,8 @@ export async function smokeWindowsComponents({ staging } = {}) {
     );
     const bun = await ensureBun({ download: false });
     const componentPaths = {
-      core: path.join(temporary, 'MaaCore'),
       resource: path.join(temporary, 'MaaResource'),
+      framework: path.join(temporary, 'MaaFramework'),
     };
     const helper = async (seed) => {
       const source = [
@@ -271,12 +267,12 @@ export async function smokeWindowsComponents({ staging } = {}) {
         'try {',
         ...(seed
           ? [
-              `store.put('settings', 'main', parseSettings(${JSON.stringify({ autoConnect: false, autoUpdateApp: false, autoUpdateCore: false, autoUpdateResource: false, componentPaths })}));`,
+              `store.put('settings', 'main', parseSettings(${JSON.stringify({ autoConnect: false, autoUpdateApp: false, autoUpdateResource: false, autoUpdateFramework: false, componentPaths })}));`,
               "store.put('meta', 'initialized', true);",
             ]
           : [
               "for (const kind of ['device', 'plan', 'run', 'tool_job', 'update_metadata']) if (store.all(kind).length) throw new Error('Unexpected persisted activity: ' + kind);",
-              "if (store.get('staged', 'core') || store.get('staged', 'resource')) throw new Error('Offline payload was left staged');",
+              "if (store.get('staged', 'resource')) throw new Error('Offline payload was left staged');",
               "process.stdout.write(JSON.stringify(store.get('active', 'combo')));",
             ]),
         '} finally { store.close(); }',
@@ -315,7 +311,7 @@ export async function smokeWindowsComponents({ staging } = {}) {
     assert.equal(snapshot.mode, 'native');
     let prepared = snapshot;
     while (
-      !['core', 'resource'].every((channel) =>
+      !['resource'].every((channel) =>
         prepared.updates.some(
           (value) =>
             value.id === channel &&
@@ -341,7 +337,7 @@ export async function smokeWindowsComponents({ staging } = {}) {
     assertSnapshot(await first.request('app.snapshot'), lock, componentPaths);
     await first.close();
     const original = JSON.parse(await helper(false));
-    for (const channel of ['core', 'resource']) {
+    for (const channel of ['resource']) {
       assert.equal(original[channel].version, lock[channel].version);
       assert.equal(original[channel].installedHash, manifest[channel].installedHash);
       assert.equal(path.dirname(path.dirname(original[channel].path)), componentPaths[channel]);
@@ -357,7 +353,7 @@ export async function smokeWindowsComponents({ staging } = {}) {
     assert.deepEqual(
       JSON.parse(await helper(false)),
       original,
-      'Restart must preserve both immutable generations',
+      'Restart must preserve the immutable resource generation',
     );
     for (const directory of Object.values(componentPaths))
       assert(
@@ -371,7 +367,7 @@ export async function smokeWindowsComponents({ staging } = {}) {
       'Smoke data must stay outside the portable package',
     );
     console.log(
-      `Full Windows offline components smoke passed: first snapshot ${firstStartupMs}ms, components ready ${componentReadyMs}ms, restart ${restartMs}ms, locked core/resource active, zero devices and HTTP requests.`,
+      `Full Windows offline components smoke passed: first snapshot ${firstStartupMs}ms, components ready ${componentReadyMs}ms, restart ${restartMs}ms, independent resources active, zero devices and HTTP requests.`,
     );
     return { firstStartupMs, componentReadyMs, restartMs };
   } finally {

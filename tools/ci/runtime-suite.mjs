@@ -4,44 +4,46 @@ import path from 'node:path';
 // Linux runs every discovered suite. Other hosts exercise the OS boundaries;
 // add new platform-specific regressions here instead of duplicating domain tests.
 const backendTests = (...names) => names.map((name) => `services/backend/tests/${name}.test.ts`);
-const common = backendTests(
-  'runtime',
-  'framework-runtime',
-  'framework-resources',
-  'framework-worker',
-  'lifecycle',
-  'config-location',
-  'archives',
-  'snapshot-integrity',
-  'generation-retention',
-  'updates',
-  'update-activation',
-  'bundled-components',
-  'copilot-storage',
-  'native-environment',
-  'emulator-leases',
-  'multi-instance',
-  'download',
-  'download-reconnect',
-  'download-proxy-routing',
-  'network-proxy',
-  'app-update-http',
-  'mirrorchyan',
-);
+const common = [
+  'services/automation/tests/atomic-infrast-resources.test.ts',
+  ...backendTests(
+    'runtime',
+    'framework-runtime',
+    'framework-resources',
+    'framework-worker',
+    'atomic-resource-source',
+    'lifecycle',
+    'config-location',
+    'archives',
+    'snapshot-integrity',
+    'generation-retention',
+    'updates',
+    'update-activation',
+    'bundled-components',
+    'copilot-storage',
+    'native-environment',
+    'emulator-leases',
+    'multi-instance',
+    'download',
+    'download-reconnect',
+    'download-proxy-routing',
+    'network-proxy',
+    'app-update-http',
+    'mirrorchyan',
+  ),
+];
 export const platformRuntimeTests = Object.freeze({
   win32: Object.freeze([...common, ...backendTests('windows-adb', 'ld-discovery')]),
   darwin: Object.freeze([
     ...common,
-    ...backendTests(
-      'component-locations',
-      'component-namespaces',
-      'macos-components',
-      'macos-core',
-      'macos-mirror-capabilities',
-    ),
+    ...backendTests('component-locations', 'component-namespaces', 'macos-components'),
   ]),
 });
-export const runtimeTestDirectories = ['packages/agent/tests', 'services/backend/tests'];
+export const runtimeTestDirectories = [
+  'packages/agent/tests',
+  'services/automation/tests',
+  'services/backend/tests',
+];
 
 export function discoverRuntimeTests(root) {
   const files = [];

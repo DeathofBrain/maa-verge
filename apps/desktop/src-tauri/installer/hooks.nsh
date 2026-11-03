@@ -1,39 +1,22 @@
-; The build wrapper defines this only after preparing verified offline payloads.
+; Resource-only offline installation. MaaFramework keeps its independent update channel.
 !ifdef MAAVERGE_COMPONENTS_DIR
 !include nsDialogs.nsh
 !include FileFunc.nsh
 !include LogicLib.nsh
-Var MaaVergeCore
 Var MaaVergeResource
-Var MaaVergeCoreCheckbox
 Var MaaVergeResourceCheckbox
 Var MaaVergeDialog
-
-; Hooks are included before Tauri's standard pages. Keep this self-contained;
-; no copy of the upstream installer template is needed.
 Page custom MaaVergeComponentsPage MaaVergeComponentsLeave
-
 Function MaaVergeComponentsDefaults
-  ; Revisiting the custom page must preserve the user's previous selection.
-  ${If} $MaaVergeCore != ""
+  ${If} $MaaVergeResource != ""
     Return
   ${EndIf}
-  StrCpy $MaaVergeCore 1
   StrCpy $MaaVergeResource 1
   ClearErrors
   ${GetOptions} $CMDLINE "/UPDATE" $0
   ${IfNot} ${Errors}
-    StrCpy $MaaVergeCore 0
     StrCpy $MaaVergeResource 0
   ${Else}
-    ${GetOptions} $CMDLINE "/CORE=" $0
-    ${IfNot} ${Errors}
-      ${If} $0 == 0
-        StrCpy $MaaVergeCore 0
-        StrCpy $MaaVergeResource 0
-      ${EndIf}
-    ${EndIf}
-    ClearErrors
     ${GetOptions} $CMDLINE "/RESOURCE=" $0
     ${IfNot} ${Errors}
       ${If} $0 == 0
@@ -42,30 +25,6 @@ Function MaaVergeComponentsDefaults
     ${EndIf}
   ${EndIf}
 FunctionEnd
-
-Function MaaVergeCoreChanged
-  ${NSD_GetState} $MaaVergeCoreCheckbox $MaaVergeCore
-  ${If} $MaaVergeCore == 0
-    StrCpy $MaaVergeResource 0
-    ${NSD_Uncheck} $MaaVergeResourceCheckbox
-    EnableWindow $MaaVergeResourceCheckbox 0
-  ${Else}
-    EnableWindow $MaaVergeResourceCheckbox 1
-  ${EndIf}
-FunctionEnd
-
-Function MaaVergeCoreClicked
-  ; nsDialogs pushes the clicked control HWND for callbacks only. Keep the
-  ; shared state helper callable from page initialization without a stack item.
-  Pop $0
-  Call MaaVergeCoreChanged
-FunctionEnd
-
-Function MaaVergeResourceClicked
-  Pop $0
-  ${NSD_GetState} $MaaVergeResourceCheckbox $MaaVergeResource
-FunctionEnd
-
 Function MaaVergeComponentsPage
   Call MaaVergeComponentsDefaults
   ClearErrors
@@ -78,44 +37,27 @@ Function MaaVergeComponentsPage
   ${IfNot} ${Errors}
     Abort
   ${EndIf}
-  !insertmacro MUI_HEADER_TEXT "额外组件" "选择随 Maa Verge 安装的离线组件"
+  !insertmacro MUI_HEADER_TEXT "游戏资源" "选择随 Maa Verge 安装的离线资源"
   nsDialogs::Create 1018
   Pop $MaaVergeDialog
   ${If} $MaaVergeDialog == error
     Abort
   ${EndIf}
-  ${NSD_CreateLabel} 0 0 100% 32u "安装包已包含以下完整组件，无需联网。取消后可在应用的更新设置中下载；已有组件和自定义位置保持不变。"
+  ${NSD_CreateLabel} 0 0 100% 32u "完整游戏资源包含 OCR 模型，无需安装旧核心。MaaFramework 在应用内独立安装。取消后可在更新设置中下载资源。"
   Pop $0
-  ${NSD_CreateCheckbox} 0 42u 100% 18u "MaaCore（自动化核心与完整基础资源）"
-  Pop $MaaVergeCoreCheckbox
-  ${NSD_SetState} $MaaVergeCoreCheckbox $MaaVergeCore
-  ${NSD_OnClick} $MaaVergeCoreCheckbox MaaVergeCoreClicked
-  ${NSD_CreateCheckbox} 0 68u 100% 18u "MaaResource（完整资源，需同时安装 MaaCore）"
+  ${NSD_CreateCheckbox} 0 42u 100% 18u "MaaResource（完整游戏资源与 OCR 模型）"
   Pop $MaaVergeResourceCheckbox
   ${NSD_SetState} $MaaVergeResourceCheckbox $MaaVergeResource
-  ${NSD_OnClick} $MaaVergeResourceCheckbox MaaVergeResourceClicked
-  Call MaaVergeCoreChanged
   nsDialogs::Show
 FunctionEnd
-
 Function MaaVergeComponentsLeave
-  ${NSD_GetState} $MaaVergeCoreCheckbox $MaaVergeCore
   ${NSD_GetState} $MaaVergeResourceCheckbox $MaaVergeResource
 FunctionEnd
-
 !macro NSIS_HOOK_POSTINSTALL
-  ${If} $MaaVergeCore == ""
+  ${If} $MaaVergeResource == ""
     Call MaaVergeComponentsDefaults
   ${EndIf}
-  ; Install directly into ordinary immutable generations. Never overwrite an
-  ; existing tree: another data root or worker may already reference it.
-  ; The service validates and registers it after acquiring its data-root lease.
-  ${If} $MaaVergeCore == 1
-    ${IfNot} ${FileExists} "$INSTDIR\MaaCore\generations\${MAAVERGE_CORE_GENERATION}"
-      SetOutPath "$INSTDIR\MaaCore\generations\${MAAVERGE_CORE_GENERATION}"
-      File /r "${MAAVERGE_COMPONENTS_DIR}\core\*"
-    ${EndIf}
-  ${EndIf}
+  ; Content-addressed generations are immutable and registered after the data-root lease.
   ${If} $MaaVergeResource == 1
     ${IfNot} ${FileExists} "$INSTDIR\MaaResource\generations\${MAAVERGE_RESOURCE_GENERATION}"
       SetOutPath "$INSTDIR\MaaResource\generations\${MAAVERGE_RESOURCE_GENERATION}"
@@ -125,17 +67,12 @@ FunctionEnd
   SetOutPath "$INSTDIR"
 !macroend
 !endif
-
-; Tauri only knows files bundled at build time. Downloaded components belong to
-; these two fixed application directories, including older downloads/generations.
-; Custom locations and the business data root are deliberately not consulted.
+; Legacy engine directories remain untouched, including on uninstall.
 !macro NSIS_HOOK_POSTUNINSTALL
   ${If} $UpdateMode <> 1
-    RMDir /r "$INSTDIR\MaaCore"
     RMDir /r "$INSTDIR\MaaResource"
+    RMDir /r "$INSTDIR\MaaFramework"
     RMDir /r "$INSTDIR\runtime\bundled-components"
-    ; The standard uninstaller attempted this before running our post hook.
-    ; Remove the installation directory only if nothing else remains in it.
     RMDir "$INSTDIR"
   ${EndIf}
 !macroend

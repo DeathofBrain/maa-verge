@@ -49,3 +49,4 @@ libMaaCore.so
 libMaaCore.dylib
 output
 /.cache
+cache/*

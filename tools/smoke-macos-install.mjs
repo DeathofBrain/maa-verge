@@ -114,7 +114,7 @@ function sameBundle(copy, source) {
   for (const relative of [
     'Contents/MacOS/maaverge',
     'Contents/_CodeSignature/CodeResources',
-    ...['maaverge-runtime', 'maaverge-core-worker'].map(
+    ...['maaverge-runtime', 'maaverge-native-worker'].map(
       (name) => `Contents/Resources/runtime/${name}`,
     ),
   ]) {
@@ -177,7 +177,7 @@ try {
     MAAVERGE_LOG_DIR: path.join(temporary, 'logs'),
     CFFIXED_USER_HOME: profile,
   };
-  for (const key of ['MAAVERGE_APP_DIR', 'MAAVERGE_CORE_WORKER_PATH']) delete env[key];
+  for (const key of ['MAAVERGE_APP_DIR', 'MAAVERGE_NATIVE_WORKER_PATH']) delete env[key];
   child = spawn(executable, [], {
     cwd: temporary,
     env,
@@ -221,7 +221,7 @@ try {
   );
   assert.ok(
     !ownTree().some((item) =>
-      /\/(maaverge-core-worker|adb|python[\d.]*|node|bun)$/.test(item.executable),
+      /\/(maaverge-native-worker|adb|python[\d.]*|node|bun)$/.test(item.executable),
     ),
     'An isolated empty desktop must not start devices or external runtimes',
   );

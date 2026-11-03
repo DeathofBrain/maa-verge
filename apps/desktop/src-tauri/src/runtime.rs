@@ -255,7 +255,7 @@ mod owned_processes {
                     || pid == self.pid
                     || self.children.contains_key(&pid)
                     || !(name.eq_ignore_ascii_case(&root_name)
-                        || name.eq_ignore_ascii_case("maaverge-core-worker.exe"))
+                        || name.eq_ignore_ascii_case("maaverge-native-worker.exe"))
                 {
                     continue;
                 }
@@ -328,7 +328,7 @@ mod owned_processes {
             .eq_ignore_ascii_case(&image.as_os_str().to_string_lossy())
             || image.file_name().is_some_and(|name| {
                 name.to_string_lossy()
-                    .eq_ignore_ascii_case("maaverge-core-worker.exe")
+                    .eq_ignore_ascii_case("maaverge-native-worker.exe")
             })
     }
 
@@ -1154,7 +1154,7 @@ mod tests {
         assert!(owned_processes::owned_image(root, root));
         assert!(owned_processes::owned_image(
             root,
-            Path::new(r"C:\Maa Verge\runtime\maaverge-core-worker.exe")
+            Path::new(r"C:\Maa Verge\runtime\maaverge-native-worker.exe")
         ));
         for image in [
             r"C:\Android\adb.exe",
@@ -1321,9 +1321,9 @@ mod tests {
         let data =
             PathBuf::from(std::env::var_os("MAAVERGE_TEST_DATA").expect("isolated test root"));
         let worker = executable.with_file_name(if cfg!(windows) {
-            "maaverge-core-worker.exe"
+            "maaverge-native-worker.exe"
         } else {
-            "maaverge-core-worker"
+            "maaverge-native-worker"
         });
         let locks = data.join("locks");
         let events = Arc::new(Mutex::new(Vec::new()));
@@ -1340,7 +1340,7 @@ mod tests {
                 .env("PATH", "")
                 .env("MAAVERGE_MODE", "native")
                 .env("MAAVERGE_DEVICE_LOCK_DIR", &locks)
-                .env_remove("MAAVERGE_CORE_WORKER_PATH")
+                .env_remove("MAAVERGE_NATIVE_WORKER_PATH")
                 .env("BUN_OPTIONS", "--invalid-option")
                 .env("BUN_BE_BUN", "1")
                 .env("NODE_OPTIONS", "--invalid-option")

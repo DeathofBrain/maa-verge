@@ -204,51 +204,49 @@ async function main() {
     await second.end();
     assert(existsSync(path.join(temporary, 'native/maaverge.sqlite3')));
     assert(!existsSync(path.join(temporary, 'mock')));
-    const coreName = windows
-      ? 'MaaCore.dll'
-      : process.platform === 'darwin'
-        ? 'libMaaCore.dylib'
-        : 'libMaaCore.so';
-    const fixture = [
-      path.join(root, 'build/native/fixtures/normal/Release', coreName),
-      path.join(root, 'build/native/fixtures/normal', coreName),
-    ].find(existsSync);
-    if (fixture) {
-      const archive = path.join(temporary, 'synthetic.zip'),
-        target = path.join(temporary, 'candidate');
-      mkdirSync(target);
-      writeFileSync(
+    const archive = path.join(temporary, 'synthetic-resource.zip'),
+      baseArchive = path.join(temporary, 'synthetic-base.zip'),
+      target = path.join(temporary, 'candidate');
+    writeFileSync(
+      baseArchive,
+      zipBytes([
+        { name: 'source/resource/version.json', content: '{}' },
+        { name: 'source/resource/tasks.json', content: '{}' },
+        { name: 'source/resource/PaddleOCR/det/inference.onnx', content: 'synthetic detector' },
+        { name: 'source/resource/PaddleOCR/rec/inference.onnx', content: 'synthetic recognizer' },
+        { name: 'source/resource/PaddleOCR/rec/keys.txt', content: 'synthetic keys' },
+        { name: 'source/LICENSE', content: 'synthetic license' },
+        { name: 'source/unneeded.cpp', content: 'excluded' },
+      ]),
+    );
+    writeFileSync(archive, zipBytes([{ name: 'overlay/resource/version.json', content: '{}' }]));
+    const job = spawnOwned(['--update-job']);
+    let output = '',
+      errors = '';
+    job.stdout.on('data', (chunk) => {
+      output += chunk;
+    });
+    job.stderr.on('data', (chunk) => {
+      errors += chunk;
+    });
+    job.stdin.end(
+      JSON.stringify({
+        channel: 'resource',
         archive,
-        zipBytes([
-          { name: coreName, content: readFileSync(fixture) },
-          { name: 'resource/version.json', content: '{}' },
-          { name: 'MAA.exe', content: 'excluded' },
-        ]),
-      );
-      const job = spawnOwned(['--update-job']);
-      let output = '',
-        errors = '';
-      job.stdout.on('data', (chunk) => {
-        output += chunk;
-      });
-      job.stderr.on('data', (chunk) => {
-        errors += chunk;
-      });
-      job.stdin.end(
-        JSON.stringify({ channel: 'core', archive, target, version: 'vsynthetic' }) + '\n',
-      );
-      const timer = setTimeout(() => job.kill(), 15000);
-      const code = await new Promise((resolve, reject) => {
-        job.once('error', reject);
-        job.once('close', resolve);
-      }).finally(() => clearTimeout(timer));
-      assert.equal(code, 0, errors);
-      assert.deepEqual(JSON.parse(output), {});
-      assert(!existsSync(path.join(target, 'MAA.exe')));
-      console.log(
-        'Packaged update-job -> selective extraction -> synthetic C++ MaaCore validation passed.',
-      );
-    }
+        baseArchive,
+        target,
+        version: 'synthetic-resource',
+      }) + '\n',
+    );
+    const timer = setTimeout(() => job.kill(), 15000);
+    const code = await new Promise((resolve, reject) => {
+      job.once('error', reject);
+      job.once('close', resolve);
+    }).finally(() => clearTimeout(timer));
+    assert.equal(code, 0, errors);
+    assert.equal(typeof JSON.parse(output).contentHash, 'string');
+    assert(!existsSync(path.join(target, 'unneeded.cpp')));
+    console.log('Packaged independent resource update job passed without native engine payloads.');
     console.log(
       'Self-contained native package smoke passed: empty PATH, RPC, empty devices, local Agent proposals, settings/plans persistence, missing-device rejection and EOF restart.',
     );

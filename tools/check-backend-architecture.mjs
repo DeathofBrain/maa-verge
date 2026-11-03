@@ -3,6 +3,14 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { root, fail } from './project.mjs';
+import {
+  compilerOptions,
+  identity,
+  moduleReferences,
+  normalized,
+  referenceTarget,
+  sourceFiles,
+} from './architecture-support.mjs';
 
 const defaultSourceRoot = path.join(root, 'services', 'backend', 'src');
 const layers = new Set(['app', 'transport', 'modules', 'infrastructure', 'shared']);
@@ -13,7 +21,7 @@ const modules = new Set([
   'execution',
   'agent',
   'framework',
-  'atomic',
+  'debug',
   'copilot',
   'schedules',
   'tools',
@@ -23,77 +31,24 @@ const modules = new Set([
   'knowledge',
   'updates',
 ]);
-const normalized = (file) => file.split(path.sep).join('/');
-const identity = (file) =>
-  ts.sys.useCaseSensitiveFileNames ? path.resolve(file) : path.resolve(file).toLowerCase();
-
-function sourceFiles(directory) {
-  return readdirSync(directory, { withFileTypes: true })
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .flatMap((entry) => {
-      const file = path.join(directory, entry.name);
-      if (entry.isDirectory()) return sourceFiles(file);
-      return entry.isFile() ? [file] : [];
-    });
-}
-
-function moduleReferences(source) {
-  const references = [];
-  const add = (literal) => {
-    if (literal && ts.isStringLiteralLike(literal))
-      references.push({
-        specifier: literal.text,
-        line: source.getLineAndCharacterOfPosition(literal.getStart(source)).line + 1,
-      });
-  };
-  const visit = (node) => {
-    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) add(node.moduleSpecifier);
-    else if (
-      ts.isImportEqualsDeclaration(node) &&
-      ts.isExternalModuleReference(node.moduleReference)
-    )
-      add(node.moduleReference.expression);
-    else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument))
-      add(node.argument.literal);
-    else if (
-      ts.isCallExpression(node) &&
-      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-        (ts.isIdentifier(node.expression) && node.expression.text === 'require'))
-    )
-      add(node.arguments[0]);
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return references;
-}
-
-function compilerOptions(sourceRoot) {
-  const defaults = {
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    allowJs: true,
-    resolveJsonModule: true,
-  };
-  const file = ts.findConfigFile(sourceRoot, ts.sys.fileExists, 'tsconfig.json');
-  if (!file) return defaults;
-  const config = ts.readConfigFile(file, ts.sys.readFile);
-  if (config.error)
-    throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'));
-  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(file));
-  if (parsed.errors.length)
-    throw new Error(
-      parsed.errors
-        .map((error) => ts.flattenDiagnosticMessageText(error.messageText, '\n'))
-        .join('\n'),
-    );
-  return { ...defaults, ...parsed.options };
-}
-
-function boundaryViolation(from, target, sourceRoot) {
-  const location = normalized(target);
+function boundaryViolation(from, target, sourceRoot, specifier) {
+  const location = normalized(identity(target));
   if (/(?:^|\/)apps\/desktop\//iu.test(location)) return `后端不得依赖桌面产品 UI：${location}`;
   const workspaceRoot = path.resolve(sourceRoot, '../../..');
   const workspacePath = normalized(path.relative(identity(workspaceRoot), identity(target)));
+  const automationRoot = identity(path.join(workspaceRoot, 'services/automation'));
+  const automationPath = normalized(path.relative(automationRoot, identity(target)));
+  const automationImport =
+    specifier === '@maaverge/automation' || specifier.startsWith('@maaverge/automation/');
+  const insideAutomation =
+    automationPath !== '..' &&
+    !automationPath.startsWith('../') &&
+    !path.isAbsolute(automationPath);
+  if (
+    (automationImport || insideAutomation) &&
+    (specifier !== '@maaverge/automation' || automationPath !== 'src/index.ts')
+  )
+    return `后端只能通过 @maaverge/automation 公共出口依赖自动化库：${location}`;
   if (
     !workspacePath.startsWith('../') &&
     !path.isAbsolute(workspacePath) &&
@@ -163,16 +118,9 @@ export function inspectBackendArchitecture(directory = defaultSourceRoot) {
         violations.push(
           `${relative(file)}:${reference.line} 不得显式导入声明路径 ${reference.specifier}，请引用源模块`,
         );
-      const resolved = ts.resolveModuleName(reference.specifier, file, options, ts.sys, cache)
-        .resolvedModule?.resolvedFileName;
-      // 缺失的相对源码同样检查边界；文件存在性由 TypeScript 检查。
-      const target =
-        resolved ??
-        (reference.specifier.startsWith('.') || path.isAbsolute(reference.specifier)
-          ? path.resolve(path.dirname(file), reference.specifier)
-          : undefined);
+      const target = referenceTarget(reference.specifier, file, options, cache);
       if (!target) continue;
-      const message = boundaryViolation(relative(file), target, sourceRoot);
+      const message = boundaryViolation(relative(file), target, sourceRoot, reference.specifier);
       if (message) violations.push(`${relative(file)}:${reference.line} ${message}`);
     }
   }

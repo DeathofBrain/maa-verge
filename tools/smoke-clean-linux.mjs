@@ -104,7 +104,7 @@ function session(data) {
       '--env',
       'MAAVERGE_DEVICE_LOCK_DIR=/data/device-locks',
       '--env',
-      'MAAVERGE_CORE_WORKER_PATH=/opt/maaverge/maaverge-core-worker',
+      'MAAVERGE_NATIVE_WORKER_PATH=/opt/maaverge/maaverge-native-worker',
       image,
       '/bin/sh',
       '-ec',
@@ -194,7 +194,7 @@ function session(data) {
 
 async function main() {
   assertLinuxBinary('maaverge-runtime');
-  assertLinuxBinary('maaverge-core-worker');
+  assertLinuxBinary('maaverge-native-worker');
   // Pull while networking is available. Every backend run itself is offline.
   await docker(['pull', '--platform', platform, image], { timeout: 300_000 });
   const data = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-clean-linux-'));
@@ -215,8 +215,8 @@ async function main() {
       ...snapshot.settings,
       theme: 'dark',
       autoConnect: false,
-      autoUpdateCore: false,
       autoUpdateResource: false,
+      autoUpdateFramework: false,
     };
     assert.deepEqual(await first.request('settings.save', { settings }), settings);
     const proposal = await first.request('agent.message', { message: '刷1-7材料3次' });

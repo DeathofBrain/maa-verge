@@ -32,7 +32,7 @@ const executable = path.resolve(
 );
 for (const file of [
   executable,
-  ...['maaverge-runtime.exe', 'maaverge-core-worker.exe'].map((name) =>
+  ...['maaverge-runtime.exe', 'maaverge-native-worker.exe'].map((name) =>
     path.join(path.dirname(executable), 'runtime', name),
   ),
 ]) {
@@ -136,7 +136,7 @@ async function start() {
     WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-debugging-address=127.0.0.1`,
   };
   for (const key of [
-    'MAAVERGE_CORE_WORKER_PATH',
+    'MAAVERGE_NATIVE_WORKER_PATH',
     'BUN_OPTIONS',
     'BUN_BE_BUN',
     'NODE_OPTIONS',
@@ -304,7 +304,7 @@ try {
   const activeTree = ownTree();
   assert.ok(activeTree.some((process) => process.Name === 'maaverge-runtime.exe'));
   assert.ok(
-    !activeTree.some((process) => process.Name === 'maaverge-core-worker.exe'),
+    !activeTree.some((process) => process.Name === 'maaverge-native-worker.exe'),
     'An empty workspace must not create a device worker',
   );
   assert.ok(

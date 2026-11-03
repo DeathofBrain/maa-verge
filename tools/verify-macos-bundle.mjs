@@ -13,7 +13,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 
 export async function verifyMacosBundle(app) {
   await access(path.join(app, 'Contents', '_CodeSignature', 'CodeResources'));
-  const targets = ['maaverge-runtime', 'maaverge-core-worker'].map((name) => [
+  const targets = ['maaverge-runtime', 'maaverge-native-worker'].map((name) => [
     path.join(app, 'Contents', 'Resources', 'runtime', name),
     false,
   ]);
@@ -24,7 +24,12 @@ export async function verifyMacosBundle(app) {
       if (error.code === 'ENOENT') return undefined; // historical fixture/application without SDK
       throw error;
     });
-  if (buildInfo?.maaFramework) {
+  if (buildInfo?.maaFramework?.distribution === 'independent') {
+    if (buildInfo.maaFramework.version !== frameworkVersion)
+      throw new Error('macOS compatible MaaFramework version mismatch');
+    if (existsSync(path.join(runtime, 'engines', 'maafw')))
+      throw new Error('Independent MaaFramework component must not be bundled');
+  } else if (buildInfo?.maaFramework) {
     if (buildInfo.maaFramework.version !== frameworkVersion)
       throw new Error('macOS bundle MaaFramework version mismatch');
     const sdk = path.join(

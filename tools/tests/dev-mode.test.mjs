@@ -26,7 +26,7 @@ async function availablePort() {
 
 async function launch(
   t,
-  { browserMock = false, mode, expectedCode = 0, overrideData = true } = {},
+  { browserMock = false, uiOnly = false, mode, expectedCode = 0, overrideData = true } = {},
 ) {
   const directory = makeTemporaryDirectorySync(path.join(tmpdir(), 'maa verge dev mode-'));
   const entry = path.join(directory, '.tools/pnpm/node_modules/pnpm/bin/pnpm.cjs');
@@ -41,7 +41,14 @@ async function launch(
   write('tools/environment.mjs', 'export function assertWorkspaceDependencies() {}\n');
   for (const file of ['setup-bun', 'doctor', 'build-core-worker', 'prepare-native-check'])
     write(`tools/${file}.mjs`, '');
-  write('tools/prepare-maafw.mjs', 'export async function ensureMaaFramework() {}\n');
+  write(
+    'tools/prepare-maafw.mjs',
+    `import { appendFileSync } from 'node:fs';
+    appendFileSync(process.env.MAAVERGE_TEST_DEV_LOG, JSON.stringify({ role: 'maafw-download' }) + '\\n');
+    throw new Error('development must not implicitly prepare or download MaaFramework');
+    export async function ensureMaaFramework() {}
+    `,
+  );
   for (const file of ['dev.mjs', 'project.mjs'])
     copyFileSync(path.join(root, 'tools', file), path.join(directory, 'tools', file));
   write(
@@ -58,7 +65,7 @@ async function launch(
       const server = require('node:http').createServer((request, response) => response.end('fixture'));
       server.listen(Number(args[args.indexOf('--port') + 1]), '127.0.0.1', () => {
         report();
-        if (process.env.VITE_MAAVERGE_MOCK === '1') server.close();
+        if (process.env.MAAVERGE_TEST_UI_ONLY === '1') server.close();
       });
       for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => server.close(() => process.exit(0)));
     } else report();
@@ -71,13 +78,18 @@ async function launch(
     MAAVERGE_DEV_PORT: String(await availablePort()),
     MAAVERGE_DATA_DIR: path.join(directory, 'data'),
     MAAVERGE_TEST_DEV_LOG: log,
+    MAAVERGE_TEST_UI_ONLY: uiOnly ? '1' : '0',
   };
   if (!overrideData) delete environment.MAAVERGE_DATA_DIR;
   if (mode === undefined) delete environment.MAAVERGE_MODE;
   else environment.MAAVERGE_MODE = mode;
   const child = spawn(
     process.execPath,
-    [path.join(directory, 'tools/dev.mjs'), ...(browserMock ? ['--mock'] : [])],
+    [
+      path.join(directory, 'tools/dev.mjs'),
+      ...(browserMock ? ['--mock'] : []),
+      ...(uiOnly ? ['--ui-only'] : []),
+    ],
     {
       cwd: directory,
       env: environment,
@@ -113,7 +125,7 @@ async function launch(
       : [],
     data: overrideData
       ? environment.MAAVERGE_DATA_DIR
-      : path.join(realpathSync(directory), 'config'),
+      : path.join(realpathSync.native(directory), 'config'),
     port: environment.MAAVERGE_DEV_PORT,
     output,
   };
@@ -158,6 +170,20 @@ test(
     const { calls, output } = await launch(t, { mode: 'mock', expectedCode: 1 });
     assert.deepEqual(calls, []);
     assert.match(output, /模拟运行模式已移除/u);
+  },
+);
+
+test(
+  'desktop and UI development start without preparing or downloading the independent framework SDK',
+  { timeout: 10000 },
+  async (t) => {
+    for (const uiOnly of [false, true]) {
+      const { calls } = await launch(t, { uiOnly });
+      assert.deepEqual(
+        calls.map((call) => call.role),
+        uiOnly ? ['vite'] : ['vite', 'tauri'],
+      );
+    }
   },
 );
 

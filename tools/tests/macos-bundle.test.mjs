@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { verifyMacosBundle, verifyMacosDmg } from '../verify-macos-bundle.mjs';
+import { frameworkTarget, frameworkVersion } from '../maafw-assets.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -85,7 +86,7 @@ for (const scenario of [
 test(
   'real codesign rejects unsealed and modified apps while preserving side-process permissions',
   { skip: process.platform !== 'darwin' },
-  async () => {
+  async (t) => {
     const directory = await makeTemporaryDirectory(
       path.join(os.tmpdir(), 'maa-verge-bundle-signature-'),
     );
@@ -131,7 +132,7 @@ test(
       const files = [];
       for (const [name, entitlement] of [
         ['maaverge-runtime', 'RuntimeEntitlements.plist'],
-        ['maaverge-core-worker', 'CoreWorkerEntitlements.plist'],
+        ['maaverge-native-worker', 'CoreWorkerEntitlements.plist'],
       ]) {
         const file = path.join(runtime, name);
         await copyFile('/usr/bin/true', file);
@@ -142,6 +143,43 @@ test(
       await assert.rejects(verifyMacosBundle(app), /CodeResources/);
       sign(app, 'Entitlements.plist');
       await verifyMacosBundle(app);
+      await t.test(
+        'independent framework metadata accepts a signed app without an SDK',
+        async () => {
+          await writeFile(
+            path.join(runtime, 'build-info.json'),
+            JSON.stringify({
+              maaFramework: {
+                distribution: 'independent',
+                version: frameworkVersion,
+                target: frameworkTarget(),
+              },
+            }),
+          );
+          sign(app, 'Entitlements.plist');
+          await verifyMacosBundle(app);
+          assert.equal(existsSync(path.join(runtime, 'engines', 'maafw')), false);
+        },
+      );
+      await t.test(
+        'an independently distributed SDK cannot be hidden inside a sealed app',
+        async () => {
+          const engines = path.join(runtime, 'engines');
+          const sdk = path.join(engines, 'maafw', frameworkVersion, frameworkTarget(), 'bin');
+          await mkdir(sdk, { recursive: true });
+          const library = path.join(sdk, 'libMaaFramework.dylib');
+          await copyFile('/usr/bin/true', library);
+          sign(library);
+          sign(app, 'Entitlements.plist');
+          await assert.rejects(
+            verifyMacosBundle(app),
+            /Independent MaaFramework component must not be bundled/,
+          );
+          await rm(engines, { recursive: true, force: true });
+          sign(app, 'Entitlements.plist');
+          await verifyMacosBundle(app);
+        },
+      );
       const image = path.join(directory, 'verified.dmg');
       const imageSource = path.join(directory, 'dmg-source');
       await cp(app, path.join(imageSource, 'Maa Verge.app'), { recursive: true });

@@ -18,6 +18,7 @@ const toolTests = [
   'tools/tests/check-kit-css.test.mjs',
   'tools/tests/check-frontend-architecture.test.mjs',
   'tools/tests/check-backend-architecture.test.mjs',
+  'tools/tests/check-automation-architecture.test.mjs',
   'tools/tests/ci-plan.test.mjs',
   'tools/tests/runtime-suite.test.mjs',
 ];
@@ -49,6 +50,7 @@ async function applicationChecks(plan) {
   await run('node', ['tools/check-kit-css.mjs']);
   await run('node', ['tools/check-frontend-architecture.mjs']);
   await run('node', ['tools/check-backend-architecture.mjs']);
+  await run('node', ['tools/check-automation-architecture.mjs']);
   await run('pnpm', ['contracts:check']);
   await run('pnpm', ['-r', 'check']);
   await run('node', ['--test', ...contractTests]);

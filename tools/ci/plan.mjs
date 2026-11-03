@@ -18,9 +18,10 @@ const documentation =
 const frontend =
   /^(?:apps\/desktop\/(?:src\/|public\/|index\.html$|vite\.config\.[^/]+$|tsconfig[^/]*\.json$)|tests\/ui\/|playwright\.config\.[^/]+$)/u;
 const native =
-  /^(?:services\/(?:backend|native)\/|packages\/(?:agent|contracts)\/|apps\/desktop\/src-tauri\/|tools\/|\.github\/workflows\/release\.yml$)/u;
+  /^(?:services\/(?:automation|backend|native)\/|packages\/(?:agent|contracts)\/|apps\/desktop\/src-tauri\/|tools\/|\.github\/workflows\/release\.yml$)/u;
+// 通用资源端口与每个游戏功能的资源适配都涉及跨平台文件来源，迁移后仍保留宿主矩阵。
 const platformBoundary =
-  /^(?:services\/native\/|packages\/contracts\/|apps\/desktop\/src-tauri\/|tools\/|\.github\/workflows\/release\.yml$|services\/backend\/(?:src\/(?:entry\.ts$|app\/|transport\/|infrastructure\/|modules\/(?:updates|schedules|devices|execution)\/)|tests\/archive-fixture\.ts$))/u;
+  /^(?:services\/native\/|services\/automation\/(?:src\/resources\/|arknights\/custom\/[^/]+\/resources\.ts$)|packages\/contracts\/|apps\/desktop\/src-tauri\/|tools\/|\.github\/workflows\/release\.yml$|services\/backend\/(?:src\/(?:entry\.ts$|app\/|transport\/|infrastructure\/|modules\/(?:(?:updates|schedules|devices|execution)\/|resources\/atomic-resource-source\.ts$))|tests\/archive-fixture\.ts$))/u;
 const platformTests = new Set(Object.values(platformRuntimeTests).flat());
 
 /** Unknown paths and shared CI inputs deliberately retain the complete matrix. */

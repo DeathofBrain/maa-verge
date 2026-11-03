@@ -17,8 +17,8 @@ try {
     parseSettings({
       autoConnect: false,
       autoUpdateApp: false,
-      autoUpdateCore: false,
       autoUpdateResource: false,
+      autoUpdateFramework: false,
     }),
   );
   store.put('meta', 'initialized', true);

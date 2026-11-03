@@ -20,6 +20,9 @@ test('documentation stays static and ordinary frontend or domain changes use the
     'services/backend/src/modules/plans/task-policy.ts',
     'services/backend/tests/policy-parity.test.ts',
     'packages/agent/src/deterministic.ts',
+    'services/automation/src/primitives/vision.ts',
+    'services/automation/arknights/custom/infrast/workflows.ts',
+    'services/automation/tests/atomic-registry.test.ts',
   ])
     assert.deepEqual(
       createCiPlan([file]),
@@ -41,6 +44,10 @@ test('OS boundaries select three systems while complete plans add Intel macOS an
     'services/backend/tests/mirrorchyan.test.ts',
     'services/backend/tests/lifecycle.test.ts',
     'services/backend/tests/macos-components.test.ts',
+    'services/automation/arknights/custom/infrast/resources.ts',
+    'services/automation/tests/atomic-infrast-resources.test.ts',
+    'services/backend/src/modules/resources/atomic-resource-source.ts',
+    'services/backend/tests/atomic-resource-source.test.ts',
   ]) {
     const plan = createCiPlan([file]);
     assert.deepEqual(plan, { version: 2, full: false, code: true, native: true }, file);

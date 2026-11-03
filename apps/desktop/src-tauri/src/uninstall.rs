@@ -46,7 +46,7 @@ pub fn get_desktop_uninstall_info(app: tauri::AppHandle) -> Result<Value, String
         "available": available,
         "reason": reason,
         "application": application.as_deref().unwrap_or(Path::new("")),
-        "componentDirectories": [root.join("MaaCore"), root.join("MaaResource")],
+        "componentDirectories": [root.join("MaaFramework"), root.join("MaaResource")],
         "configurationDirectory": crate::configuration::data_root()?,
     }))
 }
@@ -114,7 +114,7 @@ pub async fn uninstall_desktop_application(app: tauri::AppHandle) -> Result<(), 
             .collect::<Result<Vec<_>, _>>()?;
         let runtime = app.state::<crate::runtime::Runtime>();
         let snapshot = runtime.request("app.snapshot".into(), json!({})).await?;
-        for (channel, default) in ["core", "resource"].into_iter().zip(
+        for (channel, default) in ["framework", "resource"].into_iter().zip(
             info["componentDirectories"]
                 .as_array()
                 .ok_or("无法确认默认组件目录")?,
@@ -211,10 +211,10 @@ mod tests {
         assert!(helper_result(&output(256, r#"{"ok":true}"#)).is_err());
         let error = helper_result(&output(
             256,
-            r#"{"ok":false,"message":"synthetic failure","movedPaths":["/test/MaaCore"]}"#,
+            r#"{"ok":false,"message":"synthetic failure","movedPaths":["/test/MaaFramework"]}"#,
         ))
         .unwrap_err();
         assert!(error.contains("synthetic failure"));
-        assert!(error.contains("/test/MaaCore"));
+        assert!(error.contains("/test/MaaFramework"));
     }
 }

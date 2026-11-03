@@ -22,6 +22,8 @@ test('default commands and Linux discover every test; other hosts require their 
     assert.equal(new Set(selected).size, selected.length);
     assert.ok(selected.includes('services/backend/tests/lifecycle.test.ts'));
     assert.ok(selected.includes('services/backend/tests/mirrorchyan.test.ts'));
+    assert.ok(selected.includes('services/automation/tests/atomic-infrast-resources.test.ts'));
+    assert.ok(selected.includes('services/backend/tests/atomic-resource-source.test.ts'));
     assert.ok(!selected.includes('services/backend/tests/policy-parity.test.ts'));
     assert.throws(
       () =>
@@ -41,6 +43,7 @@ test('default commands and Linux discover every test; other hosts require their 
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const added = [
     'packages/agent/tests/new-agent.test.ts',
+    'services/automation/tests/new-automation.test.ts',
     'services/backend/tests/nested/new-backend.test.ts',
   ];
   for (const file of added) {

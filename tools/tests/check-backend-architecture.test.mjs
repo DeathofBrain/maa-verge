@@ -245,6 +245,55 @@ test('下层不能借用其他业务包，仅允许 contracts 与工作区根构
   assert.ok(violations.every((message) => message.includes('contracts 之外的外部源码')));
 });
 
+test('自动化库只能通过公共包出口导入，深层、相对路径和别名均被拒绝', (t) => {
+  const source = fixture(
+    t,
+    {
+      '../../../services/automation/src/index.ts': 'export const createRegistry = 1;',
+      '../../../services/automation/src/core/port.ts': 'export type Port = {};',
+      'app/runtime.ts': [
+        "import { createRegistry } from '@maaverge/automation';",
+        "export type Port = import('@maaverge/automation/core/port').Port;",
+        "import '../../../automation/src/index';",
+        "const load = () => import('@internal/port');",
+      ].join('\n'),
+      'modules/debug/debug-service.ts': "import '@maaverge/automation';",
+      'shared/model.ts': "import '@maaverge/automation';",
+    },
+    {
+      compilerOptions: {
+        paths: {
+          '@maaverge/automation': ['../automation/src/index.ts'],
+          '@maaverge/automation/*': ['../automation/src/*'],
+          '@internal/*': ['../automation/src/core/*'],
+        },
+      },
+    },
+  );
+  const violations = inspectBackendArchitecture(source);
+  assert.equal(violations.length, 4);
+  assert.equal(violations.filter((message) => message.includes('公共出口')).length, 3);
+  assert.ok(violations.some((message) => message.includes('shared 不得依赖')));
+});
+
+test('公共包名若被映射到自动化内部模块也不能绕过出口', (t) => {
+  const source = fixture(
+    t,
+    {
+      '../../../services/automation/src/core/port.ts': 'export const Port = 1;',
+      'app/runtime.ts': "import '@maaverge/automation';",
+    },
+    {
+      compilerOptions: {
+        paths: { '@maaverge/automation': ['../automation/src/core/port.ts'] },
+      },
+    },
+  );
+  const violations = inspectBackendArchitecture(source);
+  assert.equal(violations.length, 1);
+  assert.ok(violations[0].includes('公共出口'));
+});
+
 test('协议不能依赖业务模块，基础设施不能依赖未登记层级', (t) => {
   const source = fixture(t, {
     'modules/execution/run.ts': 'export type Run = {};',

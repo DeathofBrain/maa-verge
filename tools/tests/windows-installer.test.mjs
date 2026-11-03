@@ -51,106 +51,33 @@ function write(file, contents) {
   writeFileSync(file, contents);
 }
 
-const generations = { core: 'core-' + 'a'.repeat(32), resource: 'resource-' + 'b'.repeat(32) };
+const generations = { resource: 'resource-' + 'b'.repeat(32) };
 function writeComponentsManifest(directory) {
-  const components = {
-    core: { version: 'v6.20.1', directory: 'core', installedHash: 'a'.repeat(64) },
-    resource: {
-      version: 'c'.repeat(40),
-      coreVersion: 'v6.20.1',
-      directory: 'resource',
-      installedHash: 'b'.repeat(64),
-    },
+  const resource = {
+    version: 'c'.repeat(40),
+    baseResourceVersion: 'd'.repeat(40),
+    directory: 'resource',
+    installedHash: 'b'.repeat(64),
   };
-  write(path.join(directory, 'manifest.json'), JSON.stringify({ formatVersion: 1, ...components }));
-  for (const channel of ['core', 'resource'])
-    write(path.join(directory, channel, 'manifest.json'), JSON.stringify(components[channel]));
+  write(path.join(directory, 'manifest.json'), JSON.stringify({ formatVersion: 2, resource }));
+  write(path.join(directory, 'resource/manifest.json'), JSON.stringify(resource));
 }
-
 const nsisString = (value) => value.replaceAll('$', '$$').replaceAll('"', '$\\"');
 
-test('compiled NSIS cleanup removes default component trees, preserves custom data and skips application updates', (t) => {
-  if (!available(t, [nsis])) return;
-  const root = fixture(t),
-    application = path.join(root, '程序目录');
-  const executable = path.join(root, 'cleanup-fixture.exe');
-  const source = path.join(root, 'cleanup-fixture.nsi');
-  write(
-    source,
-    '\uFEFF' +
-      [
-        'Unicode true',
-        'RequestExecutionLevel user',
-        'SilentInstall silent',
-        'Name "Maa Verge installer cleanup fixture"',
-        `OutFile "${nsisString(executable)}"`,
-        '!include LogicLib.nsh',
-        '!include FileFunc.nsh',
-        `!include "${nsisString(path.resolve(tauriRoot, configuration.bundle.windows.nsis.installerHooks))}"`,
-        'Var UpdateMode',
-        'Section "fixture"',
-        `  StrCpy $INSTDIR "${nsisString(application)}"`,
-        '  StrCpy $UpdateMode 0',
-        '  ${GetOptions} $CMDLINE "/UPDATE" $0',
-        '  ${IfNot} ${Errors}',
-        '    StrCpy $UpdateMode 1',
-        '  ${EndIf}',
-        '  !insertmacro NSIS_HOOK_POSTUNINSTALL',
-        'SectionEnd',
-      ].join('\n'),
-  );
-  execFileSync(nsis, ['/V2', source], { windowsHide: true, timeout: 30_000 });
-
-  const core = path.join(application, 'MaaCore'),
-    resource = path.join(application, 'MaaResource');
-  const retained = [
-    path.join(application, '用户保留.txt'),
-    path.join(root, 'custom-components/MaaCore.dll'),
-    path.join(application, 'config/native/maaverge.sqlite3'),
-    path.join(application, 'config/native/.runtime-lock.sqlite3'),
-    path.join(root, 'business/native/maaverge.sqlite3'),
-    path.join(root, 'business/native/.data-root.lock'),
-  ];
-  const components = [
-    path.join(core, 'MaaCore.dll'),
-    path.join(core, 'resource/version.json'),
-    path.join(core, 'downloads/interrupted.zip'),
-    path.join(core, 'generations/core-old/manifest.json'),
-    path.join(resource, 'generations/resource-old/resource/version.json'),
-    path.join(resource, 'downloads/interrupted.zip'),
-  ];
-  for (const file of [...retained, ...components]) write(file, 'synthetic fixture');
-
-  // This executable runs only the configured cleanup hook against this fixture;
-  // it does not register, install or uninstall an application on the host.
-  execFileSync(executable, ['/S', '/UPDATE'], { windowsHide: true, timeout: 30_000 });
-  for (const file of [...retained, ...components]) assert.ok(existsSync(file), file);
-  execFileSync(executable, ['/S'], { windowsHide: true, timeout: 30_000 });
-  for (const directory of [core, resource]) assert.equal(existsSync(directory), false, directory);
-  for (const file of retained) assert.equal(readFileSync(file, 'utf8'), 'synthetic fixture', file);
-
-  rmSync(retained[0]);
-  rmSync(path.join(application, 'config'), { recursive: true });
-  execFileSync(executable, ['/S'], { windowsHide: true, timeout: 30_000 });
-  assert.equal(existsSync(application), false, 'empty installation directory is removed');
-});
-
-test('compiled offline component hooks honor selections and preserve active component and business files', async (t) => {
+test('compiled offline resource hook honors selection and never overwrites a generation', async (t) => {
   if (!available(t, [nsis])) return;
   const root = fixture(t),
     components = path.join(root, 'offline'),
-    application = path.join(root, '程序目录');
+    application = path.join(root, 'program');
   writeComponentsManifest(components);
-  write(path.join(components, 'core/MaaCore.dll'), 'core fixture');
-  write(path.join(components, 'core/resource/version.json'), 'base fixture');
   write(path.join(components, 'resource/resource/version.json'), 'complete resource fixture');
   write(
     path.join(root, 'apps/desktop/src-tauri/installer/hooks.nsh'),
     readFileSync(path.join(tauriRoot, 'installer/hooks.nsh'), 'utf8'),
   );
   const config = await windowsInstallerConfiguration({ directory: root, components });
-  const executable = path.join(root, 'offline-fixture.exe'),
-    source = path.join(root, 'fixture.nsi');
+  const source = path.join(root, 'fixture.nsi'),
+    executable = path.join(root, 'fixture.exe');
   write(
     source,
     '\uFEFF' +
@@ -158,106 +85,75 @@ test('compiled offline component hooks honor selections and preserve active comp
         'Unicode true',
         'RequestExecutionLevel user',
         'SilentInstall silent',
-        'Name "Maa Verge optional components fixture"',
+        'Name "Maa Verge resources fixture"',
         `OutFile "${nsisString(executable)}"`,
         '!include MUI2.nsh',
         `!include "${nsisString(config.bundle.windows.nsis.installerHooks)}"`,
         '!insertmacro MUI_LANGUAGE "SimpChinese"',
         'Section "fixture"',
-        '  ClearErrors',
-        '  ${GetOptions} $CMDLINE "/UISTATE" $0',
-        '  ${IfNot} ${Errors}',
-        '    Call MaaVergeComponentsDefaults',
-        '    ${If} $MaaVergeCore != 1',
-        '      SetErrorLevel 71',
-        '      Quit',
-        '    ${EndIf}',
-        '    ${If} $MaaVergeResource != 1',
-        '      SetErrorLevel 72',
-        '      Quit',
-        '    ${EndIf}',
-        '    StrCpy $MaaVergeResource 0',
-        '    Call MaaVergeComponentsDefaults',
-        '    ${If} $MaaVergeResource != 0',
-        '      SetErrorLevel 73',
-        '      Quit',
-        '    ${EndIf}',
-        '    StrCpy $MaaVergeCore 0',
-        '    Call MaaVergeComponentsDefaults',
-        '    ${If} $MaaVergeCore != 0',
-        '      SetErrorLevel 74',
-        '      Quit',
-        '    ${EndIf}',
-        '    StrCpy $MaaVergeCoreCheckbox 0',
-        '    StrCpy $MaaVergeResourceCheckbox 0',
-        '    StrCpy $MaaVergeResource 1',
-        '    Push "callback-stack-sentinel"',
-        '    Push 0',
-        '    Call MaaVergeCoreClicked',
-        '    Pop $0',
-        '    ${If} $0 != "callback-stack-sentinel"',
-        '      SetErrorLevel 75',
-        '      Quit',
-        '    ${EndIf}',
-        '    ${If} $MaaVergeResource != 0',
-        '      SetErrorLevel 76',
-        '      Quit',
-        '    ${EndIf}',
-        '    StrCpy $MaaVergeResource 1',
-        '    Push "resource-callback-stack-sentinel"',
-        '    Push 0',
-        '    Call MaaVergeResourceClicked',
-        '    Pop $0',
-        '    ${If} $0 != "resource-callback-stack-sentinel"',
-        '      SetErrorLevel 77',
-        '      Quit',
-        '    ${EndIf}',
-        '    ${If} $MaaVergeResource != 0',
-        '      SetErrorLevel 78',
-        '      Quit',
-        '    ${EndIf}',
-        '    SetErrorLevel 0',
-        '    Quit',
-        '  ${EndIf}',
         `  StrCpy $INSTDIR "${nsisString(application)}"`,
         '  !insertmacro NSIS_HOOK_POSTINSTALL',
         'SectionEnd',
       ].join('\n'),
   );
-  execFileSync(nsis, ['/V2', source], { windowsHide: true, timeout: 30_000 });
-  // Call the actual initialization/callback functions in the compiled fixture:
-  // revisiting preserves both deselections, and the callback consumes its HWND.
-  execFileSync(executable, ['/S', '/UISTATE'], { windowsHide: true, timeout: 30_000 });
-  const retained = [
-    path.join(application, 'config/native/maaverge.sqlite3'),
-    path.join(application, 'MaaCore/generations/active/MaaCore.dll'),
-    path.join(root, 'custom/MaaResource/resource.json'),
-  ];
-  for (const file of retained) write(file, 'retained');
-  const core = path.join(application, 'MaaCore/generations', generations.core);
-  const resource = path.join(application, 'MaaResource/generations', generations.resource);
+  execFileSync(nsis, ['/V2', source], { windowsHide: true, timeout: 30000 });
+  const resource = path.join(
+    application,
+    'MaaResource/generations',
+    generations.resource,
+    'resource/version.json',
+  );
   for (const args of [
     ['/S', '/UPDATE'],
-    ['/S', '/CORE=0'],
+    ['/S', '/RESOURCE=0'],
   ]) {
-    execFileSync(executable, args, { windowsHide: true, timeout: 30_000 });
-    assert.equal(existsSync(core), false);
+    execFileSync(executable, args, { windowsHide: true, timeout: 30000 });
     assert.equal(existsSync(resource), false);
   }
-  execFileSync(executable, ['/S', '/RESOURCE=0'], { windowsHide: true, timeout: 30_000 });
-  assert.equal(readFileSync(path.join(core, 'MaaCore.dll'), 'utf8'), 'core fixture');
-  assert.equal(existsSync(resource), false);
-  write(path.join(core, 'MaaCore.dll'), 'active core must not be overwritten');
-  execFileSync(executable, ['/S'], { windowsHide: true, timeout: 30_000 });
-  assert.equal(
-    readFileSync(path.join(resource, 'resource/version.json'), 'utf8'),
-    'complete resource fixture',
+  execFileSync(executable, ['/S'], { windowsHide: true, timeout: 30000 });
+  assert.equal(readFileSync(resource, 'utf8'), 'complete resource fixture');
+  write(resource, 'active immutable resource');
+  execFileSync(executable, ['/S'], { windowsHide: true, timeout: 30000 });
+  assert.equal(readFileSync(resource, 'utf8'), 'active immutable resource');
+  assert.equal(existsSync(path.join(application, 'MaaCore')), false);
+});
+
+test('compiled NSIS cleanup preserves configuration and historical core directories', (t) => {
+  if (!available(t, [nsis])) return;
+  const root = fixture(t),
+    application = path.join(root, 'program'),
+    source = path.join(root, 'cleanup.nsi'),
+    executable = path.join(root, 'cleanup.exe');
+  write(
+    source,
+    '\uFEFF' +
+      [
+        'Unicode true',
+        'RequestExecutionLevel user',
+        'SilentInstall silent',
+        'Name "Resource cleanup fixture"',
+        `OutFile "${nsisString(executable)}"`,
+        '!include LogicLib.nsh',
+        `!include "${nsisString(path.join(tauriRoot, 'installer/hooks.nsh'))}"`,
+        'Var UpdateMode',
+        'Section "fixture"',
+        ` StrCpy $INSTDIR "${nsisString(application)}"`,
+        ' StrCpy $UpdateMode 0',
+        ' !insertmacro NSIS_HOOK_POSTUNINSTALL',
+        'SectionEnd',
+      ].join('\n'),
   );
-  assert.equal(
-    readFileSync(path.join(core, 'MaaCore.dll'), 'utf8'),
-    'active core must not be overwritten',
-  );
-  assert.equal(existsSync(path.join(application, 'runtime/bundled-components')), false);
+  execFileSync(nsis, ['/V2', source], { windowsHide: true, timeout: 30000 });
+  const retained = [
+    path.join(application, 'MaaCore/legacy.dll'),
+    path.join(application, 'config/native/.data-root.lock'),
+  ];
+  for (const file of retained) write(file, 'retained');
+  write(path.join(application, 'MaaResource/resource/file'), 'resource');
+  write(path.join(application, 'MaaFramework/bin/file'), 'framework');
+  execFileSync(executable, ['/S'], { windowsHide: true, timeout: 30000 });
+  assert.equal(existsSync(path.join(application, 'MaaResource')), false);
+  assert.equal(existsSync(path.join(application, 'MaaFramework')), false);
   for (const file of retained) assert.equal(readFileSync(file, 'utf8'), 'retained');
 });
 
@@ -268,11 +164,10 @@ test('full portable staging includes only packaged application and complete comp
   write(path.join(root, 'LICENSE'), 'license fixture');
   write(path.join(root, 'dist/runtime/maaverge-runtime/maaverge-runtime.exe'), 'runtime fixture');
   write(
-    path.join(root, 'dist/runtime/maaverge-runtime/maaverge-core-worker.exe'),
+    path.join(root, 'dist/runtime/maaverge-runtime/maaverge-native-worker.exe'),
     'worker fixture',
   );
   writeComponentsManifest(path.join(root, 'dist/windows-components'));
-  write(path.join(root, 'dist/windows-components/core/MaaCore.dll'), 'core fixture');
   write(
     path.join(root, 'dist/windows-components/resource/resource/version.json'),
     'full resource fixture',
@@ -290,7 +185,7 @@ test('full portable staging includes only packaged application and complete comp
     'full resource fixture',
   );
   assert.equal(existsSync(path.join(staging, 'runtime/bundled-components')), false);
-  for (const name of ['config', '.env', 'uninstall.exe', 'app.exe'])
+  for (const name of ['MaaCore', 'config', '.env', 'uninstall.exe', 'app.exe'])
     assert.equal(existsSync(path.join(staging, name)), false);
   assert.match(readFileSync(path.join(staging, '使用说明.txt'), 'utf8'), /WebView2/);
 });
@@ -393,7 +288,7 @@ test(
     write(path.join(root, 'LICENSE'), 'license fixture');
     write(path.join(root, 'dist/runtime/maaverge-runtime/maaverge-runtime.exe'), 'runtime fixture');
     write(
-      path.join(root, 'dist/runtime/maaverge-runtime/maaverge-core-worker.exe'),
+      path.join(root, 'dist/runtime/maaverge-runtime/maaverge-native-worker.exe'),
       'worker fixture',
     );
     writeComponentsManifest(path.join(root, 'dist/windows-components'));

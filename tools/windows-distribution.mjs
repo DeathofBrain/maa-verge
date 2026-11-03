@@ -34,9 +34,9 @@ function nsisPath(value) {
 
 async function componentGenerations(components) {
   const manifest = JSON.parse(await readFile(path.join(components, 'manifest.json'), 'utf8'));
-  if (manifest.formatVersion !== 1) throw new Error('Invalid prepared component manifest');
+  if (manifest.formatVersion !== 2) throw new Error('Invalid prepared component manifest');
   return Object.fromEntries(
-    ['core', 'resource'].map((channel) => {
+    ['resource'].map((channel) => {
       const component = manifest[channel];
       if (component?.directory !== channel || !/^[a-f0-9]{64}$/.test(component.installedHash))
         throw new Error('Invalid prepared component integrity');
@@ -58,7 +58,6 @@ export async function windowsInstallerConfiguration({
     '\uFEFF' +
       [
         `!define MAAVERGE_COMPONENTS_DIR "${nsisPath(components)}"`,
-        `!define MAAVERGE_CORE_GENERATION "${generations.core}"`,
         `!define MAAVERGE_RESOURCE_GENERATION "${generations.resource}"`,
         `!include "${nsisPath(path.join(directory, 'apps/desktop/src-tauri/installer/hooks.nsh'))}"`,
         '',
@@ -92,7 +91,7 @@ export async function stageWindowsPortable({ directory = root, executable, stagi
   for (const [channel, name] of Object.entries(generations))
     await copyTree(
       path.join(components, channel),
-      path.join(staging, channel === 'core' ? 'MaaCore' : 'MaaResource', 'generations', name),
+      path.join(staging, 'MaaResource', 'generations', name),
     );
   await copyTree(path.join(directory, 'LICENSE'), path.join(staging, 'LICENSE'));
   const { version } = JSON.parse(await readFile(path.join(directory, 'package.json'), 'utf8'));
@@ -103,11 +102,11 @@ export async function stageWindowsPortable({ directory = root, executable, stagi
       `Maa Verge ${version} Windows x64 完整版`,
       '',
       '请完整解压到可写目录后运行 Maa Verge.exe，不要直接在压缩包中启动。',
-      'MaaCore 和完整 MaaResource 位于默认组件目录，首次启动校验并登记已有版本。',
+      '完整 MaaResource（含 OCR 模型）位于默认组件目录；MaaFramework 在应用内独立安装。',
       '系统需要 Microsoft Edge WebView2 Runtime；尚未安装时请从微软官网安装。',
       '配置默认保存在本目录的 config 文件夹。升级前退出旧版并备份 config 与作业文件。',
       'ZIP 不注册卸载器、开始菜单或自动迁移已有 MSI 安装；旧 MSI 用户应备份后卸载旧版。',
-      '组件版本见 MaaCore / MaaResource 的 generations 目录内 manifest.json，来源见组件许可文件。',
+      '资源版本见 MaaResource 的 generations 目录内 manifest.json，来源见资源许可文件。',
       '',
     ].join('\r\n'),
   );
