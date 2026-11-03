@@ -101,7 +101,7 @@ async function runService() {
           (async () => {
             try {
               await runtime.automaticUpdates();
-              if (available()) await runtime.updates.activatePending(available);
+              if (available()) await runtime.activatePendingUpdates(available);
             } finally {
               updateBusy = false;
             }
@@ -154,7 +154,7 @@ async function runService() {
     stopped = true;
     timers.forEach(clearInterval);
     runtime.running = false;
-    runtime.cancelPendingClientSwitches();
+    runtime.cancelPendingOperations();
     const deadline = setTimeout(() => {
       console.error('本地服务退出超时；进行中的操作结果未知');
       process.exit(1);

@@ -5,10 +5,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { processRequest } from '@backend/transport/json-rpc';
 import { parsePlan, parseSettings } from '@backend/modules/settings/models';
-import { nativeTask, validatePlan } from '@backend/modules/plans/task-policy';
+import { validatePlan } from '@backend/modules/plans/task-policy';
 import { Runtime } from '@backend/app/runtime';
 import { Store } from '@backend/infrastructure/storage/storage';
-import { CoreWorker } from '@backend/infrastructure/native/worker';
+import { NativeWorkerTransport } from '@backend/infrastructure/native/worker';
 import {
   isWireFloat,
   parseWireJson,
@@ -218,10 +218,10 @@ test('wire serialization keeps original numeric tokens and native JSON behavior'
   cyclic.self = cyclic;
   expect(() => stringifyWireJson(cyclic)).toThrow();
 });
-test('native task cloning retains extension tokens without mutating the saved task', () => {
+test('wire snapshot cloning retains extension tokens without mutating the saved task', () => {
   const task = parsePlan(parseWireJson(rawPlan('Fight', '{"extension":[1.0,9007199254740993]}')))
     .tasks[0];
-  const cloned = nativeTask(task);
+  const cloned = parseWireJson(stringifyWireJson(task));
   expect(cloned).not.toBe(task);
   expect(cloned.params).not.toBe(task.params);
   expect(stringifyWireJson(cloned.params)).toContain('"extension":[1.0,9007199254740993]');
@@ -229,7 +229,7 @@ test('native task cloning retains extension tokens without mutating the saved ta
 });
 test('worker NDJSON requests retain extension numeric tokens', async () => {
   const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-wire-worker-'));
-  let worker: CoreWorker | undefined;
+  let worker: NativeWorkerTransport | undefined;
   try {
     const peer = `
       const {createInterface}=require('node:readline'); let configured=false;
@@ -238,11 +238,13 @@ test('worker NDJSON requests retain extension numeric tokens', async () => {
         const response=configured?{type:'response',id:message.id,result:{raw},protocolVersion:1}:{type:'ready',protocolVersion:1};
         configured=true;process.stdout.write(JSON.stringify(response)+'\\n');
       });`;
-    worker = await CoreWorker.start({ userDir: root }, { command: [process.execPath, '-e', peer] });
-    const task = nativeTask(
-      parsePlan(parseWireJson(rawPlan('Fight', '{"extension":[1.0,9007199254740993]}'))).tasks[0],
+    worker = await NativeWorkerTransport.start(
+      { userDir: root },
+      { command: [process.execPath, '-e', peer] },
     );
-    const result = await worker.task(task);
+    const task = parsePlan(parseWireJson(rawPlan('Fight', '{"extension":[1.0,9007199254740993]}')))
+      .tasks[0];
+    const result = await worker.request('roundtrip', { params: task.params });
     expect(result.raw).toContain('"extension":[1.0,9007199254740993]');
   } finally {
     await worker?.close();

@@ -123,7 +123,7 @@ describe('immutable local copilot library', () => {
     const { library, store, root } = setup(),
       raw = ' \n' + ordinary() + '\n';
     const preview = await library.preview({ content: raw, name: '原始.json' });
-    expect(preview.entries[0]!.record?.compatibility.status).toBe('ready');
+    expect(preview.entries[0]!.record?.compatibility.status).toBe('unsupported');
     expect(library.list().items).toHaveLength(0);
     expect(store.all('plan')).toEqual([]);
     expect(library.workspaceGet({ kind: 'Copilot' }).queue).toEqual([]);
@@ -153,7 +153,7 @@ describe('immutable local copilot library', () => {
         ],
       },
     });
-    expect(library.prepare('Copilot').entries).toHaveLength(1);
+    expect(library.workspaceGet({ kind: 'Copilot' }).queue).toHaveLength(1);
   });
   test('local nonstandard content signatures are preserved without inferring uploaders', async () => {
     const { library } = setup();
@@ -256,136 +256,17 @@ describe('immutable local copilot library', () => {
       id = draft.queue[0]!.versionId;
     library.workspaceSave({ workspace: draft });
     writeFileSync(path.join(root, 'copilot', 'versions', id + '.json'), '{"changed":true}');
-    expect(() => library.prepare('Copilot')).toThrow('已损坏');
+    expect(() => library.export({ versionId: id })).toThrow('已损坏');
     const preview = await library.preview({ content: ordinary() });
     expect(preview.entries[0]!.error).toContain('不会覆盖');
   });
-  test('same version repeated in a queue keeps independent native IDs and native list navigation', async () => {
+  test('repeated immutable queue entries preserve their IDs, options and execution block', async () => {
     const { library } = setup(),
       draft = await workspace(library);
-    draft.queue.push({ ...draft.queue[0]!, id: 'second-entry', isRaid: true, navName: '1-7' });
+    draft.queue.push({ ...draft.queue[0]!, id: 'second', enabled: false });
     library.workspaceSave({ workspace: draft });
-    const execution = library.prepare('Copilot');
-    expect(execution.tasks).toHaveLength(1);
-    expect(execution.tasks[0]!.params.filename).toBeUndefined();
-    expect(execution.tasks[0]!.params.copilot_list).toMatchObject([
-      { id: 1, is_raid: false },
-      { id: 2, is_raid: true, nav_name_override: '1-7' },
-    ]);
-    expect(
-      (execution.tasks[0]!.params.copilot_list as Record<string, unknown>[])[0],
-    ).not.toHaveProperty('nav_name_override');
-    expect(execution.entries.map((entry) => [entry.id, entry.nativeId])).toEqual([
-      ['queue-0', 1],
-      ['second-entry', 2],
-    ]);
-  });
-  test('default navigation omits the optional native string for single and multiple entries', async () => {
-    const { library } = setup(),
-      draft = await workspace(library);
-    for (const count of [1, 2]) {
-      draft.queue = Array.from({ length: count }, (_, index) => ({
-        ...draft.queue[0]!,
-        id: `entry-${index}`,
-      }));
-      library.workspaceSave({ workspace: draft });
-      const list = library.prepare('Copilot').tasks[0]!.params.copilot_list as Record<
-        string,
-        unknown
-      >[];
-      expect(list).toHaveLength(count);
-      for (const entry of list) expect(entry).not.toHaveProperty('nav_name_override');
-      expect(
-        library.workspaceGet({ kind: 'Copilot' }).queue.every((entry) => entry.navName === ''),
-      ).toBe(true);
-    }
-  });
-  test('one normal entry navigates from the map with optional formation, while repeated execution keeps filename semantics', async () => {
-    const { library } = setup(),
-      draft = await workspace(library);
-    for (const formation of [false, true]) {
-      draft.options.formation = formation;
-      draft.queue[0]!.navName = '1-7';
-      draft.queue[0]!.isRaid = true;
-      library.workspaceSave({ workspace: draft });
-      const params = library.prepare('Copilot').tasks[0]!.params;
-      expect(params.filename).toBeUndefined();
-      expect(params.loop_times).toBeUndefined();
-      expect(params.copilot_list).toMatchObject([
-        { id: 1, nav_name_override: '1-7', is_raid: true },
-      ]);
-      expect(params.formation).toBe(formation);
-    }
-    draft.queue[0]!.navName = 'Unknown-Stage';
-    library.workspaceSave({ workspace: draft });
-    expect(() => library.prepare('Copilot')).toThrow('不支持导航关卡');
-    draft.options.loopTimes = 2;
-    library.workspaceSave({ workspace: draft });
-    const repeated = library.prepare('Copilot').tasks[0]!.params;
-    expect(repeated.filename).toMatch(/\.json$/);
-    expect(repeated.loop_times).toBe(2);
-    expect(repeated.copilot_list).toBeUndefined();
-  });
-  test('navigation overrides require activated navigation tasks with split-layout support', async () => {
-    const { library, state, root } = setup(),
-      draft = await workspace(library);
-    draft.queue.push({ ...draft.queue[0]!, id: 'second', navName: 'Unknown-Stage' });
-    library.workspaceSave({ workspace: draft });
-    expect(() => library.prepare('Copilot')).toThrow('不支持导航关卡');
-    draft.queue[1]!.navName = 'Fixture-Navigation';
-    library.workspaceSave({ workspace: draft });
-    expect(library.prepare('Copilot').entries).toHaveLength(2);
-    const changed = path.join(root, 'changed-resources'),
-      maps = path.join(changed, 'resource', 'Arknights-Tile-Pos');
-    mkdirSync(maps, { recursive: true });
-    writeFileSync(
-      path.join(maps, 'overview.json'),
-      JSON.stringify({
-        stage: {
-          stageId: 'main_01-07',
-          code: '1-7',
-          levelId: 'same',
-          name: '暴君',
-          filename: 'map.json',
-        },
-      }),
-    );
-    writeFileSync(path.join(maps, 'map.json'), '{}');
-    const navigation = path.join(changed, 'resource', 'tasks', 'Stages');
-    mkdirSync(navigation, { recursive: true });
-    writeFileSync(path.join(navigation, 'main.json'), JSON.stringify({ 'Split-Stage': {} }));
-    state.resource = changed;
-    draft.queue[1]!.navName = 'Split-Stage';
-    library.workspaceSave({ workspace: draft });
-    expect(library.prepare('Copilot').entries).toHaveLength(2);
-  });
-  test('three source formats map to their native task types', async () => {
-    const { library } = setup();
-    for (const [kind, raw] of [
-      ['Copilot', ordinary()],
-      ['ParadoxCopilot', paradox()],
-      ['SSSCopilot', sss()],
-    ] as const) {
-      const draft = await workspace(library, [raw], kind);
-      library.workspaceSave({ workspace: draft });
-      const execution = library.prepare(kind);
-      expect(execution.tasks[0]!.type).toBe(kind);
-      if (kind === 'Copilot')
-        expect(execution.tasks[0]!.params.copilot_list).toMatchObject([{ id: 1, is_raid: false }]);
-      else expect(execution.tasks[0]!.params.filename).toMatch(/\.json$/);
-      expect(execution.entries[0]!.verdict).toBe('unknown');
-    }
-  });
-  test('paradox uses integer native list IDs and SSS rejects multiple enabled files', async () => {
-    const { library } = setup(),
-      p = await workspace(library, [paradox(), paradox()], 'ParadoxCopilot');
-    library.workspaceSave({ workspace: p });
-    expect(library.prepare('ParadoxCopilot').tasks[0]!.params.list).toMatchObject([
-      { id: 1 },
-      { id: 2 },
-    ]);
-    const s = await workspace(library, [sss(), sss()], 'SSSCopilot');
-    expect(() => library.workspaceSave({ workspace: s })).toThrow('仅支持一份');
+    expect(library.workspaceGet({ kind: 'Copilot' }).queue).toEqual(draft.queue);
+    expect(() => library.prepare('Copilot')).toThrow('尚未迁移');
   });
   test('SSS stages follow fixed core required draw/action fields and strategy coordinates', async () => {
     const { library } = setup(),
@@ -475,21 +356,13 @@ describe('immutable local copilot library', () => {
     const { library } = setup(),
       draft = await workspace(library);
     library.workspaceSave({ workspace: draft });
-    expect(library.prepare('Copilot').tasks[0]!.params).toMatchObject({
-      formation: false,
-      support_unit_usage: 0,
-      use_sanity_potion: false,
-    });
+    expect(library.workspaceGet({ kind: 'Copilot' }).options.formation).toBe(false);
     draft.options.supportUnitName = '助战';
     expect(() => library.workspaceSave({ workspace: draft })).toThrow('自动编队');
     draft.options.formation = true;
     draft.options.additionalOperators.push({ name: '追加干员', skill: 3 });
     library.workspaceSave({ workspace: draft });
-    expect(library.prepare('Copilot').tasks[0]!.params).toMatchObject({
-      support_unit_usage: 2,
-      support_unit_name: '助战',
-      user_additional: [{ name: '追加干员', skill: 3 }],
-    });
+    expect(library.workspaceGet({ kind: 'Copilot' }).options.supportUnitName).toBe('助战');
     draft.queue.push({ ...draft.queue[0]!, id: 'second' });
     draft.options.supportUnitName = '';
     draft.options.loopTimes = 2;
@@ -570,7 +443,7 @@ describe('immutable local copilot library', () => {
           ],
         },
       });
-      expect(library.prepare(firstKind).entries).toHaveLength(1);
+      expect(library.workspaceGet({ kind: firstKind }).queue).toHaveLength(1);
     },
   );
 });
@@ -878,10 +751,7 @@ describe('declared copilot difficulty support', () => {
         ],
       },
     });
-    expect(
-      (library.prepare('Copilot').tasks[0]!.params.copilot_list as { is_raid: boolean }[])[0]!
-        .is_raid,
-    ).toBe(false);
+    expect(library.workspaceGet({ kind: 'Copilot' }).queue[0]!.isRaid).toBe(false);
     expect(library.export({ versionId: record.versionId }).content).toBe(raw);
   });
 });
@@ -1405,6 +1275,7 @@ describe('fixed-origin community adapter', () => {
       draft = await workspace(library);
     library.workspaceSave({ workspace: draft });
     expect((await library.preview({ code: '3' })).entries[0]!.error).toContain('offline');
-    expect(library.prepare('Copilot').tasks).toHaveLength(1);
+    expect(library.workspaceGet({ kind: 'Copilot' }).queue).toHaveLength(1);
+    expect(() => library.prepare('Copilot')).toThrow('尚未迁移');
   });
 });

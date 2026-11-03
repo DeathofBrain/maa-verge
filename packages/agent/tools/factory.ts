@@ -202,7 +202,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
 
   add(
     'maa_task_catalog',
-    '查询 MaaCore 任务目录、Agent 支持范围和执行入口；目录不代表已授权或真实通关验收。',
+    '查询 MAA 兼容 任务目录、Agent 支持范围和执行入口；目录不代表已授权或真实通关验收。',
     'read',
     emptySchema,
     async () => ({
@@ -218,11 +218,11 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
       content: {
         devices: (await host.listDevices())
           .slice(0, 100)
-          .map(({ id, name, state, coreVersion, resourceVersion }) => ({
+          .map(({ id, name, state, frameworkVersion, resourceVersion }) => ({
             id,
             name,
             state,
-            coreVersion,
+            frameworkVersion,
             resourceVersion,
           })),
       },
@@ -252,7 +252,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
   );
   add(
     'maa_propose_tasks',
-    '把 MaaCore 任务列表规范化为待审阅计划；使用有限次数和零药石加急，不保存、不执行。文件作业请使用作业工作区。',
+    '把 MAA 兼容 任务列表规范化为待审阅计划；使用有限次数和零药石加急，不保存、不执行。文件作业请使用作业工作区。',
     'propose',
     taskProposalSchema,
     async (input) => {
@@ -272,7 +272,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
   );
   add(
     'maa_get_frame',
-    '获取绑定设备的当前 MaaCore 画面；需宿主授权，模型仅得到帧号和尺寸，图像保留在本机 artifact。',
+    '获取绑定设备的当前 MAA 兼容 画面；需宿主授权，模型仅得到帧号和尺寸，图像保留在本机 artifact。',
     'capture',
     rpcToolSchema('device.frame', ['deviceId']),
     async (_input, requestId, invocation) => {
@@ -469,7 +469,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
       invocation.signal?.throwIfAborted();
       if (!id(invocation.callId))
         fail('invalid_parameters', '宿主必须提供有效且稳定的工具调用标识');
-      const execute = implementations.get(name) ?? fail('unknown_tool', '不支持的 MaaCore 工具');
+      const execute = implementations.get(name) ?? fail('unknown_tool', '不支持的 MAA 兼容 工具');
       const signature = canonical({ name, input });
       if (new TextEncoder().encode(signature).byteLength > 65536)
         fail('invalid_parameters', '工具参数过大');

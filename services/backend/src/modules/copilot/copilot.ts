@@ -31,7 +31,7 @@ import type {
 import type { CopilotRunEntry, Task } from '@contracts/types';
 import { Store, now } from '@backend/infrastructure/storage/storage';
 import { RpcError } from '@backend/shared/errors';
-import { compareReleaseVersions, releaseVersion } from '@backend/shared/release-version';
+import { releaseVersion } from '@backend/shared/release-version';
 import { supportsStageNavigation } from '@backend/modules/resources/stages';
 import * as validators from '@contracts/validators.js';
 import type { RpcContract } from '@contracts/rpc-types';
@@ -313,7 +313,8 @@ interface PendingCacheCleanup {
   temporary: string;
 }
 export interface CopilotContext {
-  coreVersion: () => string | undefined;
+  /** 仅兼容旧调用方的历史元数据接口；Framework 执行不会读取或比较此版本。 */
+  coreVersion?: () => string | undefined;
   resourceDirectory: () => string | undefined;
   http?: typeof fetch;
   changed?: (message: string) => void;
@@ -699,21 +700,14 @@ export class CopilotLibrary {
     record: Pick<CopilotRecord, 'minimumCoreVersion'>,
     stages: string[],
   ): CopilotCompatibility {
-    const reasons: string[] = [],
-      current = this.context.coreVersion();
-    let unsupported = false;
-    if (!current || !releaseVersion(current))
-      reasons.push('尚未启用可识别版本的 MaaCore，请先安装核心');
+    const reasons: string[] = ['作业执行尚未迁移到 MaaFramework；导入、编辑和历史继续保留'];
+    let unsupported = true;
     if (record.minimumCoreVersion) {
+      reasons.push(
+        `上游历史最低 MaaCore 版本：${record.minimumCoreVersion}；不与 MaaFramework 版本比较`,
+      );
       if (!releaseVersion(record.minimumCoreVersion)) {
         reasons.push('作业最低核心版本格式无效');
-        unsupported = true;
-      } else if (
-        current &&
-        releaseVersion(current) &&
-        compareReleaseVersions(current, record.minimumCoreVersion) < 0
-      ) {
-        reasons.push(`需要 MaaCore ${record.minimumCoreVersion} 或更新版本`);
         unsupported = true;
       }
     }
@@ -1421,104 +1415,9 @@ export class CopilotLibrary {
     this.context.changed?.('作业队列与选项已保存');
     return workspace;
   }
-  prepare(
-    kind: CopilotKind,
-    clientType: NonNullable<RpcContract['params']['stages.list']['clientType']> = 'Official',
-  ): {
-    name: string;
-    tasks: Task[];
-    entries: CopilotRunEntry[];
-    identity: string;
-    workspace: CopilotWorkspace;
-    feedbackSources: FeedbackSource[];
-  } {
-    const workspace = this.workspaceSave({ workspace: this.workspaceGet({ kind }) });
-    const selected = workspace.queue.filter((entry) => entry.enabled);
-    if (!selected.length) fail('请先勾选至少一份作业');
-    const versions = selected.map((entry) => this.version(entry.versionId));
-    for (const version of versions) {
-      const record = this.record(version);
-      if (record.compatibility.status !== 'ready')
-        throw new RpcError(-32010, record.compatibility.reasons.join('；'));
-      this.readVersion(version);
-    }
-    const navigate = kind === 'Copilot' && workspace.options.loopTimes === 1;
-    if (navigate) {
-      const tasks = this.navigation(clientType);
-      for (const entry of selected)
-        if (entry.navName && !supportsStageNavigation(tasks, entry.navName))
-          throw new RpcError(
-            -32010,
-            `当前资源不支持导航关卡：${entry.navName}；请更新资源或修改导航覆盖`,
-          );
-    }
-    const o = workspace.options;
-    const params: Record<string, unknown> = {};
-    // MaaCore's optional string must be absent to use the map's default navigation.
-    if (navigate)
-      params.copilot_list = selected.map((entry, index) => ({
-        filename: path.join(this.directory, entry.versionId + '.json'),
-        id: index + 1,
-        is_raid: entry.isRaid,
-        ...(entry.navName ? { nav_name_override: entry.navName } : {}),
-      }));
-    else if (selected.length === 1) {
-      params.filename = path.join(this.directory, selected[0]!.versionId + '.json');
-      if (kind !== 'ParadoxCopilot') params.loop_times = o.loopTimes;
-    } else if (kind === 'ParadoxCopilot')
-      params.list = selected.map((entry, index) => ({
-        filename: path.join(this.directory, entry.versionId + '.json'),
-        id: index + 1,
-      }));
-    else fail('保全派驻不支持多作业队列');
-    if (kind === 'Copilot')
-      Object.assign(params, {
-        formation: o.formation,
-        formation_index: o.formationIndex,
-        add_trust: o.addTrust,
-        ignore_requirements: o.ignoreRequirements,
-        user_additional: o.additionalOperators,
-        support_unit_usage: o.supportUnitName ? 2 : 0,
-        support_unit_name: o.supportUnitName,
-        use_sanity_potion: false,
-      });
-    const entries: CopilotRunEntry[] = selected.map((entry, index) => ({
-      id: entry.id,
-      versionId: entry.versionId,
-      title: versions[index]!.record.title,
-      nativeId: index + 1,
-      status: 'waiting',
-      verdict: 'unknown',
-      message: '等待执行，通关未确认',
-    }));
-    const name =
-      `${kind === 'Copilot' ? '普通作业' : kind === 'SSSCopilot' ? '保全派驻' : '悖论模拟'} · ${versions[0]!.record.title}`.slice(
-        0,
-        80,
-      );
-    const feedbackSources = selected.flatMap((entry) => {
-      const ids = this.communityIds(entry.versionId),
-        first = this.version(entry.versionId).record.source;
-      const localOrigin =
-        first.kind !== 'community' ||
-        this.store.get('copilot_noncommunity_origin', entry.versionId, false) ||
-        this.store
-          .all<CopilotRecord>('copilot')
-          .some(
-            (record) => record.versionId === entry.versionId && record.source.kind !== 'community',
-          );
-      return !localOrigin && ids.length === 1
-        ? [{ entryId: entry.id, versionId: entry.versionId, communityId: ids[0]! }]
-        : [];
-    });
-    return {
-      name,
-      tasks: [{ type: kind, enabled: true, params }],
-      entries,
-      identity: copilotWorkspaceIdentity(workspace),
-      workspace,
-      feedbackSources,
-    };
+  /** 作业库保留独立管理能力；新执行器尚无对应业务流程，不生成旧原生任务参数。 */
+  prepare(_kind: CopilotKind, _clientType = 'Official'): never {
+    throw new RpcError(-32010, '作业执行尚未迁移到 MaaFramework；导入、编辑和历史继续保留');
   }
   private communityIds(versionId: string): string[] {
     const source = this.version(versionId).record.source;

@@ -1,10 +1,9 @@
 import { afterEach, expect, test } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime, type RuntimeOptions } from '@backend/app/runtime';
 import { parseSettings } from '@backend/modules/settings/models';
-import { snapshotIntegrity } from '@backend/infrastructure/filesystem/snapshot-integrity';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
@@ -15,7 +14,7 @@ function fixture(source?: any, options: Partial<RuntimeOptions> = {}) {
   const runtime = new Runtime(root, {
     source,
     calendar: { fetcher: null },
-    workerFactory: async () => {
+    frameworkWorkerFactory: async () => {
       throw new Error('No device access');
     },
     ...options,
@@ -48,7 +47,7 @@ test('application installation gate blocks new work and automatic activity until
   await expect(runtime.handle('settings.save', { settings: parseSettings() })).rejects.toThrow(
     '准备安装更新',
   );
-  (runtime as any).nextChecks = { core: 0, resource: 0 };
+  (runtime as any).nextChecks = { resource: 0, framework: Number.MAX_SAFE_INTEGER };
   await runtime.automaticUpdates();
   await runtime.automaticConnections();
   expect(checks).toBe(0);
@@ -83,16 +82,18 @@ test('installation waits for a queued component check while preventing new work'
         complete = resolve;
       }),
   });
-  const checking = runtime.updates.check('core');
+  const checking = runtime.updates.check('resource');
   // The operation is queued before its visible state changes to checking.
-  expect(runtime.updates.channel('core').status).toBe('idle');
+  expect(runtime.updates.channel('resource').status).toBe('idle');
   const installing = runtime.handle('updates.activate', { channel: 'app' });
   const outcome = installing.catch((error) => error);
   await Bun.sleep(10);
   expect(runtime.updates.pendingOperations).toBe(1);
   expect(runtime.appUpdating).toBe(false);
   await expect(runtime.handle('run.start', {})).rejects.toThrow('准备安装更新');
-  await expect(runtime.connectDevice({ address: '127.0.0.1:5555' })).rejects.toThrow('安装更新');
+  await expect(runtime.connectDevice({ address: '127.0.0.1:5555' })).rejects.toThrow(
+    '退出或切换组件',
+  );
   complete({ version: 'v9.0.0' });
   await checking;
   expect((await outcome).status).toBe('staged');
@@ -121,7 +122,7 @@ test('installation preparation stops an automatic check from starting downloads 
       throw new Error('Installation must not start another download');
     },
   });
-  (runtime as any).nextChecks = { core: 0, resource: 0 };
+  (runtime as any).nextChecks = { resource: 0, framework: Number.MAX_SAFE_INTEGER };
   const automatic = runtime.automaticUpdates();
   await started;
   const installing = runtime.handle('updates.activate', { channel: 'app' });
@@ -129,7 +130,7 @@ test('installation preparation stops an automatic check from starting downloads 
   complete({ version: 'v9.0.0' });
   await automatic;
   expect((await outcome).status).toBe('staged');
-  expect(checks).toEqual(['core']);
+  expect(checks).toEqual(['resource']);
   expect(downloads).toBe(0);
   expect(runtime.appUpdating).toBe(true);
 });
@@ -142,7 +143,7 @@ test('installation rechecks native safety after draining and releases preparatio
         complete = resolve;
       }),
   });
-  const checking = runtime.updates.check('core');
+  const checking = runtime.updates.check('resource');
   await Bun.sleep(10);
   const installing = runtime.handle('updates.activate', { channel: 'app' });
   const outcome = installing.catch((error) => error);
@@ -151,7 +152,7 @@ test('installation rechecks native safety after draining and releases preparatio
   await checking;
   expect(await outcome).toMatchObject({
     code: -32021,
-    message: expect.stringContaining('核心或异步操作尚未结束'),
+    message: expect.stringContaining('异步操作尚未结束'),
   });
   expect(runtime.appUpdating).toBe(false);
   expect((await runtime.handle('agent.message', { message: '刷1-7三次' })).mode).toBe('mock');
@@ -168,7 +169,7 @@ test('cancelling preparation cannot let an older queued installation acquire the
         complete = resolve;
       }),
   });
-  const checking = runtime.updates.check('core');
+  const checking = runtime.updates.check('resource');
   await Bun.sleep(10);
   const installing = runtime.handle('updates.activate', { channel: 'app' });
   const outcome = installing.catch((error) => error);
@@ -183,80 +184,6 @@ test('cancelling preparation cannot let an older queued installation acquire the
   expect(runtime.appUpdatePreparing).toBe(false);
 });
 
-test('installation preparation lets an existing component activation finish its internal reconnect', async () => {
-  let finish!: () => void, entered!: () => void;
-  const started = new Promise<void>((resolve) => {
-    entered = resolve;
-  });
-  const workers: any[] = [];
-  const runtime = fixture(undefined, {
-    adbExecutable: () => 'synthetic-adb',
-    validator: () => {
-      entered();
-      return new Promise<void>((resolve) => {
-        finish = resolve;
-      });
-    },
-    workerFactory: async () => {
-      const worker = {
-        events: [],
-        connected: true,
-        safeIdle: true,
-        closed: false,
-        connect: async () => ({ asyncId: 1 }),
-        waitConnected: async () => true,
-        task: async () => {
-          throw new Error('No tasks allowed');
-        },
-        stop: async () => {},
-        close: async () => {
-          worker.closed = true;
-        },
-      };
-      workers.push(worker);
-      return worker;
-    },
-  });
-  const coreName =
-    process.platform === 'win32'
-      ? 'MaaCore.dll'
-      : process.platform === 'darwin'
-        ? 'libMaaCore.dylib'
-        : 'libMaaCore.so';
-  async function generation(name: string, version: string) {
-    const directory = path.join(runtime.root, 'components', 'generations', name);
-    mkdirSync(path.join(directory, 'resource'), { recursive: true });
-    writeFileSync(path.join(directory, coreName), 'synthetic library, never loaded');
-    writeFileSync(path.join(directory, 'resource', 'version.json'), '{}');
-    return {
-      path: directory,
-      version,
-      releaseChannel: 'stable',
-      ...(await snapshotIntegrity(directory)),
-    };
-  }
-  const original = await generation('core-original', 'v1.0.0'),
-    candidate = await generation('core-candidate', 'v2.0.0');
-  runtime.store.put('active', 'combo', { core: original, resource: original });
-  const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
-  runtime.store.put('device', device.id, { ...device, state: 'idle' });
-  runtime.store.put('staged', 'core', candidate);
-  const activating = runtime.updates.activate('core');
-  await started;
-  const installing = runtime.handle('updates.activate', { channel: 'app' });
-  const outcome = installing.catch((error) => error);
-  expect(runtime.appUpdatePreparing).toBe(true);
-  expect(runtime.appUpdating).toBe(false);
-  finish();
-  await activating;
-  expect((await outcome).status).toBe('staged');
-  expect(workers).toHaveLength(2);
-  expect(workers[0].closed).toBe(true);
-  expect(runtime.workers.get(device.id)).toBe(workers[1]);
-  expect(runtime.store.get('active', 'combo').core.version).toBe('v2.0.0');
-  expect(runtime.appUpdating).toBe(true);
-});
-
 test('shutdown while draining prevents installation from acquiring the gate', async () => {
   let complete!: (metadata: any) => void;
   const runtime = fixture({
@@ -265,7 +192,7 @@ test('shutdown while draining prevents installation from acquiring the gate', as
         complete = resolve;
       }),
   });
-  const checking = runtime.updates.check('core');
+  const checking = runtime.updates.check('resource');
   await Bun.sleep(10);
   const installing = runtime.handle('updates.activate', { channel: 'app' });
   const outcome = installing.catch((error) => error);
@@ -278,29 +205,27 @@ test('shutdown while draining prevents installation from acquiring the gate', as
   expect(runtime.appUpdatePreparing).toBe(false);
 });
 
-test('application and core release preferences default independently and survive saving and reopening', async () => {
+test('application and framework update preferences survive saving and reopening', async () => {
   const runtime = fixture(),
     settings = runtime.snapshot().settings;
   expect(settings.autoUpdateApp).toBe(true);
   expect(settings.appUpdateChannel).toBe('preview');
-  expect(settings.coreUpdateChannel).toBe('stable');
-  const saved = await runtime.handle('settings.save', {
+  expect(settings.autoUpdateFramework).toBe(true);
+  await runtime.handle('settings.save', {
     settings: {
       ...settings,
       autoUpdateApp: false,
       appUpdateChannel: 'stable',
-      coreUpdateChannel: 'preview',
+      autoUpdateFramework: false,
     },
   });
-  expect(saved.appUpdateChannel).toBe('stable');
-  expect(saved.coreUpdateChannel).toBe('preview');
   await runtime.close();
   const reopened = new Runtime(runtime.root, { calendar: { fetcher: null } });
   runtimes.push(reopened);
   expect(reopened.snapshot().settings).toMatchObject({
     autoUpdateApp: false,
     appUpdateChannel: 'stable',
-    coreUpdateChannel: 'preview',
+    autoUpdateFramework: false,
   });
 });
 
@@ -319,7 +244,7 @@ test('device inventory discovery reserves the installation gate before a worker 
   const connecting = runtime.connectDevice({ address: '127.0.0.1:5555' });
   const rejected = connecting.catch(() => {});
   await started;
-  expect(runtime.busy()).toBe(false);
+  expect(runtime.busy()).toBe(true);
   await expect(runtime.handle('updates.activate', { channel: 'app' })).rejects.toThrow(
     '空闲后安装',
   );
@@ -327,33 +252,7 @@ test('device inventory discovery reserves the installation gate before a worker 
   finish({ instances: [], diagnostics: [] });
   await rejected;
   await runtime.handle('updates.activate', { channel: 'app' });
-  await expect(runtime.connectDevice({ address: '127.0.0.1:5555' })).rejects.toThrow('安装更新');
-});
-
-test('saving a different core channel drops its prepared preview without changing the installed version', async () => {
-  const runtime = fixture();
-  const settings = { ...runtime.snapshot().settings, coreUpdateChannel: 'preview' };
-  await runtime.handle('settings.save', { settings });
-  runtime.store.put('staged', 'core', {
-    version: 'v6.22.0-beta.1',
-    releaseChannel: 'preview',
-    path: 'synthetic-unused-candidate',
-  });
-  runtime.store.put('update_metadata', 'core', {
-    version: 'v6.22.0-beta.1',
-    releaseChannel: 'preview',
-  });
-  runtime.store.put('update', 'core', {
-    ...runtime.updates.channel('core'),
-    status: 'staged',
-    latestVersion: 'v6.22.0-beta.1',
-  });
-  await runtime.handle('settings.save', { settings: { ...settings, coreUpdateChannel: 'stable' } });
-  expect(runtime.store.get('staged', 'core')).toBeUndefined();
-  expect(runtime.store.get('update_metadata', 'core')).toBeUndefined();
-  expect(runtime.updates.channel('core')).toMatchObject({
-    status: 'idle',
-    latestVersion: null,
-    currentVersion: '未安装',
-  });
+  await expect(runtime.connectDevice({ address: '127.0.0.1:5555' })).rejects.toThrow(
+    '退出或切换组件',
+  );
 });

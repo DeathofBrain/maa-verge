@@ -26,7 +26,7 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-/** Application-owned MaaCore ports. The Agent never receives a generic RPC client. */
+/** Application-owned MaaFramework ports. The Agent never receives a generic RPC client. */
 export function createMaaToolHost(runtime: MaaToolRuntime): MaaToolHost {
   return {
     async listDevices() {

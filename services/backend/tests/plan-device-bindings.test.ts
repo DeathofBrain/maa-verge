@@ -20,7 +20,7 @@ function runtime(
   value.store.put(
     'settings',
     'main',
-    parseSettings({ autoConnect: false, autoUpdateCore: false, autoUpdateResource: false }),
+    parseSettings({ autoConnect: false, autoUpdateResource: false }),
   );
   return value;
 }
@@ -90,7 +90,7 @@ test('schedules accept any bound device and only removed targets are disabled wi
       name: id,
       address: id,
       state: 'offline',
-      coreVersion: null,
+      frameworkVersion: null,
       resourceVersion: null,
     });
   const plan = await r.handle('plan.save', { plan: { ...input, deviceIds: ['first', 'second'] } });

@@ -63,7 +63,7 @@ function resource(tasks: Record<string, unknown>) {
     directory = path.join(root, 'resource/tasks');
   mkdirSync(directory, { recursive: true });
   writeFileSync(path.join(directory, 'tasks.json'), JSON.stringify(tasks));
-  return { core: { version: 'v6.20.0' }, resource: { path: root, version: 'synthetic-r1' } };
+  return { resource: { path: root, version: 'synthetic-r1' } };
 }
 afterEach(async () => {
   for (const runtime of runtimes.splice(0)) await runtime.close();
@@ -339,7 +339,7 @@ describe('official activity calendar cache', () => {
 });
 
 describe('official calendar and installed navigation', () => {
-  test('official periods supply homepage activities while installed tasks determine selectable navigation', async () => {
+  test('official periods supply homepage activities while unmigrated activity navigation stays blocked', async () => {
     const calendar = service(fake(() => response())),
       combo = resource({ 'AA-8': {}, Episode17: {}, 'AA-OpenOpt': {} });
     const official = await calendar.get();
@@ -351,13 +351,16 @@ describe('official calendar and installed navigation', () => {
       clientType: 'Bilibili',
       endAt: '2026-10-28T04:00:00.000Z',
     });
-    expect(result.stages.find((stage) => stage.value === 'AA-8')?.available).toBe(true);
+    expect(result.stages.find((stage) => stage.value === 'AA-8')).toMatchObject({
+      available: false,
+      tip: '活动关卡导航尚未迁移到 MaaFramework，配置可以保留',
+    });
     expect(result.stages.find((stage) => stage.value === 'AA-7')).toMatchObject({
       available: false,
-      tip: '当前资源尚未支持该关卡导航，请在更新中心更新核心与资源',
+      tip: '当前资源尚未支持该关卡导航，请在更新中心更新资源',
     });
-    expect(result.stages.find((stage) => stage.value === '17-11')?.available).toBe(true);
-    expect(result.stages.find((stage) => stage.value === 'SSReopen-AA')?.available).toBe(true);
+    expect(result.stages.find((stage) => stage.value === '17-11')?.available).toBe(false);
+    expect(result.stages.find((stage) => stage.value === 'SSReopen-AA')?.available).toBe(false);
     const missing = await stageCatalog({}, 'Official', new Date(initial), official);
     expect(missing.activities[0].status).toBe('active');
     expect(
@@ -387,7 +390,7 @@ describe('official calendar and installed navigation', () => {
       [],
     );
   });
-  test('MaaCore generalized navigation preserves direct-task precedence, reopen and difficulty requirements', () => {
+  test('historical MaaCore resource navigation parsing preserves direct-task precedence, reopen and difficulty requirements', () => {
     const tasks = {
       'AA-8': {},
       'AA-OpenOpt': {},

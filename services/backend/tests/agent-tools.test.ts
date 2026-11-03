@@ -6,50 +6,14 @@ import { createMaaToolHost } from '@backend/app/agent-tools';
 import { Runtime } from '@backend/app/runtime';
 import { parseSettings } from '@backend/modules/settings/models';
 import type { Plan } from '@contracts/types';
-import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
+import { FakeFramework, frameworkFixtureOptions, seedFrameworkResource } from './framework-fixture';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
   runtimes: Runtime[] = [];
-class Worker {
-  events: any[] = [];
-  connected = true;
-  safeIdle = true;
-  tasks: any[] = [];
-  clicks: number[][] = [];
-  stops = 0;
-  frameError?: Error;
-  clickError?: Error;
-  taskError?: Error;
-  async connect() {
-    return { asyncId: 1 };
-  }
-  async waitConnected() {
-    return this.connected && this.safeIdle;
-  }
-  async task(task: any) {
-    this.tasks.push(structuredClone(task));
-    if (this.taskError) throw this.taskError;
-    this.safeIdle = false;
-    return { taskId: this.tasks.length };
-  }
-  async frame() {
-    if (this.frameError) throw this.frameError;
-    return { ...mockPreviewImage, canControl: true };
-  }
-  async click(x: number, y: number) {
-    this.clicks.push([x, y]);
-    if (this.clickError) throw this.clickError;
-    return { accepted: true as const };
-  }
-  async stop() {
-    this.stops++;
-    return { stopping: true };
-  }
-  async close() {
-    this.connected = false;
-    this.safeIdle = true;
-  }
+/** Agent tests observe fixed host ports over a synthetic Framework controller. */
+class Worker extends FakeFramework {
+  tasks = this.submitted;
 }
 function instrument(runtime: Runtime, calls: { method: string; params: any }[] = []) {
   return createMaaToolHost({
@@ -71,12 +35,10 @@ async function fixture() {
   const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-agent-tools-'));
   roots.push(root);
   const worker = new Worker();
-  const runtime = new Runtime(root, {
-    workerFactory: async () => worker,
-    validator: async () => {},
-    adbExecutable: () => 'synthetic-adb',
-    calendar: { fetcher: null },
-  });
+  const runtime = new Runtime(
+    root,
+    frameworkFixtureOptions({ frameworkWorkerFactory: async () => worker }),
+  );
   runtimes.push(runtime);
   runtime.store.put(
     'settings',
@@ -84,14 +46,10 @@ async function fixture() {
     parseSettings({
       autoConnect: false,
       autoUpdateApp: false,
-      autoUpdateCore: false,
       autoUpdateResource: false,
     }),
   );
-  runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'r1' },
-  });
+  seedFrameworkResource(runtime);
   const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
   device.state = 'idle';
   runtime.store.put('device', device.id, device);
@@ -279,14 +237,14 @@ test('explicit task clients cannot differ from the approved host client', async 
   expect(runtime.snapshot().runs).toEqual([]);
 });
 
-test('later tasks retain the approved client when ambient device defaults change', async () => {
+test('a supported empty Award preserves approved client binding in immutable inputs without native effects', async () => {
   const { runtime, worker, device, host } = await fixture();
   const plan: Plan = await runtime.handle('plan.save', {
     plan: {
       name: '固定客户端',
       tasks: [
-        { type: 'Fight', params: { stage: '1-7', times: 1 } },
-        { type: 'Fight', params: { stage: 'CE-6', times: 1 } },
+        { type: 'Award', params: { award: false, mail: false } },
+        { type: 'Award', params: { award: false, mail: false } },
       ],
     },
   });
@@ -303,25 +261,18 @@ test('later tasks retain the approved client when ambient device defaults change
   ]);
   expect(runtime.store.get('plan', plan.id)).toEqual(original);
   expect(plan).toEqual(original);
-  runtime.store.put('device_client', device.id, 'Bilibili');
-  worker.safeIdle = true;
-  worker.events.push(
-    { type: 'callback', message: 10002, details: { taskid: 1 } },
-    { type: 'callback', message: 3, details: { taskid: 1 } },
-    { type: 'status', running: false, pendingAsync: [] },
-  );
-  await runtime.tick(true);
-  expect(worker.tasks).toHaveLength(2);
-  expect(worker.tasks[1].params).toMatchObject({ client_type: 'Official', stage: 'CE-6' });
-  expect((await host.getRun(run.id)).status).toBe('running');
+  expect(worker.submitted).toEqual([]);
 });
 
-test('equivalent object ordering starts once and preserves persistent requestId deduplication', async () => {
-  const { runtime, worker, device, plan, host, calls } = await fixture();
+test('equivalent object ordering preserves persistent request identity without repeating native effects', async () => {
+  const { runtime, worker, device, host, calls } = await fixture();
+  const plan = await runtime.handle('plan.save', {
+    plan: { name: '空操作授权', tasks: [{ type: 'Award', params: { award: false, mail: false } }] },
+  });
   const params = { planId: plan.id, deviceId: device.id, requestId: 'stable-host-request' };
   const run = await host.startPlan(params, reverseKeys(plan), 'Official');
   expect((await host.startPlan(params, plan, 'Official')).id).toBe(run.id);
-  expect(worker.tasks).toHaveLength(1);
+  expect(worker.submitted).toEqual([]);
   expect(runtime.store.get('request', params.requestId)).toMatchObject({
     runId: run.id,
     planId: plan.id,
@@ -331,16 +282,17 @@ test('equivalent object ordering starts once and preserves persistent requestId 
     params,
   ]);
   expect(await host.getRun(run.id)).toEqual(await runtime.handle('run.detail', { id: run.id }));
-  await host.stopRun(run.id);
-  expect(worker.stops).toBe(1);
 });
 
-test('the final plan comparison does not yield before the runtime freezes execution inputs', async () => {
-  const { runtime, worker, device, plan } = await fixture();
+test('the final plan comparison freezes approved inputs before a concurrent edit', async () => {
+  const { runtime, worker, device } = await fixture();
+  const plan = await runtime.handle('plan.save', {
+    plan: { name: '空操作授权', tasks: [{ type: 'Award', params: { award: false, mail: false } }] },
+  });
   const changed = {
     ...plan,
     name: '随后编辑',
-    tasks: [{ ...plan.tasks[0], params: { stage: '1-7', times: 3 } }],
+    tasks: [{ ...plan.tasks[0], params: { award: true } }],
   };
   const host = createMaaToolHost({
     handle: (method, params) => runtime.handle(method, params),
@@ -361,13 +313,13 @@ test('the final plan comparison does not yield before the runtime freezes execut
   );
   expect(runtime.store.get('run_plan', run.id)).toMatchObject({
     name: plan.name,
-    tasks: [{ params: { times: 1 } }],
+    tasks: [{ params: { award: false } }],
   });
   expect(runtime.store.get('plan', plan.id).name).toBe(changed.name);
-  expect(worker.tasks[0].params.times).toBe(1);
+  expect(worker.submitted).toEqual([]);
 });
 
-test('workspace field ordering passes through to the fixed copilot RPC and preserves its validation', async () => {
+test('workspace field ordering reaches the fixed copilot port and receives the migration blocker', async () => {
   const { device, host, calls, worker } = await fixture();
   const workspace = await host.getCopilotWorkspace('Copilot');
   const params = {
@@ -376,14 +328,14 @@ test('workspace field ordering passes through to the fixed copilot RPC and prese
     requestId: 'empty-reviewed-workspace',
   };
   await expect(host.startCopilot(params, reverseKeys(workspace), 'Official')).rejects.toThrow(
-    '请先勾选至少一份作业',
+    '尚未迁移',
   );
   expect(calls.at(-1)).toEqual({ method: 'copilot.start', params });
-  expect(worker.tasks).toEqual([]);
+  expect(worker.submitted).toEqual([]);
 });
 
-test('fixed status, recognition, frame and click ports preserve runtime gates and uncertain native errors', async () => {
-  const { runtime, worker, device, plan, host, calls } = await fixture();
+test('fixed frame and click ports protect an owned session and deduplicate uncertain input', async () => {
+  const { runtime, worker, device, host, calls } = await fixture();
   expect(await host.deviceStatus({ deviceId: device.id })).toMatchObject({
     available: true,
     owner: 'none',
@@ -391,51 +343,50 @@ test('fixed status, recognition, frame and click ports preserve runtime gates an
   expect(
     await host.getRecognition({ deviceId: device.id, clientType: 'Official', kind: 'depot' }),
   ).toMatchObject({ deviceId: device.id, items: [] });
-  const frame = await host.getFrame({ deviceId: device.id });
+  const source = await host.getFrame({ deviceId: device.id });
+  const session = await runtime.handle('control.session.start', {
+    deviceId: device.id,
+    requestId: 'host-control',
+  });
+  await expect(
+    host.click({
+      deviceId: device.id,
+      frameId: source.frameId,
+      x: 7,
+      y: 9,
+      requestId: 'unauthorized',
+    }),
+  ).rejects.toMatchObject({ code: -32011 });
+  const frame = await host.getFrame({ deviceId: device.id, controlToken: session.controlToken });
   const click = {
     deviceId: device.id,
     frameId: frame.frameId,
     x: 7,
     y: 9,
     requestId: 'click-identity',
+    controlToken: session.controlToken,
   };
-  expect(await host.click(click)).toEqual({ accepted: true });
-  expect(await host.click(click)).toEqual({ accepted: true });
-  expect(worker.clicks).toEqual([[7, 9]]);
-  worker.clickError = new Error('synthetic lost acknowledgement');
-  const nextFrame = await host.getFrame({ deviceId: device.id });
-  const uncertain = { ...click, frameId: nextFrame.frameId, requestId: 'uncertain-click' };
-  await expect(host.click(uncertain)).rejects.toMatchObject({
-    code: -32040,
-    message: expect.stringContaining('结果可能未知'),
-  });
+  expect(await host.click(click)).toMatchObject({ accepted: true });
+  expect(await host.click(click)).toMatchObject({ accepted: true });
+  expect(worker.clicks).toEqual([{ x: 7, y: 9 }]);
+  worker.result = async (operation) => {
+    if (operation === 'click') throw new Error('synthetic lost acknowledgement');
+    return { accepted: true, nativeSuccess: true };
+  };
+  const next = await host.getFrame({ deviceId: device.id, controlToken: session.controlToken });
+  const uncertain = { ...click, frameId: next.frameId, requestId: 'uncertain-click' };
+  await expect(host.click(uncertain)).rejects.toMatchObject({ code: -32040 });
   await expect(host.click(uncertain)).rejects.toMatchObject({ code: -32040 });
   expect(worker.clicks).toHaveLength(2);
-  const run = await host.startPlan(
-    { planId: plan.id, deviceId: device.id, requestId: 'occupy' },
-    plan,
-    'Official',
-  );
-  await expect(
-    host.startTool({
-      kind: 'depot',
-      deviceId: device.id,
-      clientType: 'Official',
-      requestId: 'busy-tool',
-      config: {},
-    }),
-  ).rejects.toMatchObject({ code: -32011 });
-  expect(await host.deviceStatus({ deviceId: device.id })).toMatchObject({
-    available: false,
-    owner: 'run',
-    ownerId: run.id,
-  });
-  expect(calls.find((call) => call.method === 'device.click')?.params).toEqual(click);
-  expect(runtime.snapshot().runs).toHaveLength(1);
+  expect(
+    calls.find(
+      (call) => call.method === 'device.click' && call.params.requestId === 'click-identity',
+    )?.params,
+  ).toEqual(click);
 });
 
-test('tool jobs use fixed start/get/stop ports and retain runtime request identity', async () => {
-  const { device, host, calls, runtime } = await fixture();
+test('unsupported tool ports retain fixed parameters without admitting a new job', async () => {
+  const { device, host, calls, runtime, worker } = await fixture();
   const params = {
     kind: 'depot' as const,
     deviceId: device.id,
@@ -443,29 +394,25 @@ test('tool jobs use fixed start/get/stop ports and retain runtime request identi
     requestId: 'tool-identity',
     config: {},
   };
-  const job = await host.startTool(params);
-  expect((await host.startTool(params)).id).toBe(job.id);
-  expect((await host.getTool(job.id)).id).toBe(job.id);
-  expect((await host.stopTool(job.id)).id).toBe(job.id);
+  for (let attempt = 0; attempt < 2; attempt++)
+    await expect(host.startTool(params)).rejects.toThrow('尚未迁移');
   expect(calls.filter((call) => call.method === 'tool.start').map((call) => call.params)).toEqual([
     params,
     params,
   ]);
-  expect(runtime.store.all('tool_job')).toHaveLength(1);
+  expect(runtime.store.all('tool_job')).toEqual([]);
+  expect(worker.submitted).toEqual([]);
 });
 
-test('native submission failure remains a failed run with the backend evidence message', async () => {
-  const { worker, device, plan, host } = await fixture();
-  worker.taskError = new Error('synthetic native failure');
-  const run = await host.startPlan(
-    { planId: plan.id, deviceId: device.id, requestId: 'native-failure' },
-    plan,
-    'Official',
-  );
-  expect(run).toMatchObject({
-    status: 'failed',
-    message: expect.stringContaining('synthetic native failure'),
-  });
-  expect((await host.getRun(run.id)).status).toBe('failed');
-  expect(worker.tasks).toHaveLength(1);
+test('unsupported plan execution rejects at preflight with no native task or run record', async () => {
+  const { runtime, worker, device, plan, host } = await fixture();
+  await expect(
+    host.startPlan(
+      { planId: plan.id, deviceId: device.id, requestId: 'unsupported' },
+      plan,
+      'Official',
+    ),
+  ).rejects.toThrow();
+  expect(runtime.store.all('run')).toEqual([]);
+  expect(worker.submitted).toEqual([]);
 });

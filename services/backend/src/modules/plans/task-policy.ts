@@ -1,12 +1,7 @@
 import type { Plan, Settings, Task } from '@backend/modules/settings/models';
 import { RpcError } from '@backend/shared/errors';
 import { casefold } from '@backend/shared/casefold';
-import {
-  isWireFloat,
-  parseWireJson,
-  stringifyWireJson,
-  wireNumberToken,
-} from '@backend/shared/wire-json';
+import { isWireFloat, wireNumberToken } from '@backend/shared/wire-json';
 import { taskConsumableLimits } from '@contracts/task-policy';
 const CLIENTS = new Set(['', 'Official', 'Bilibili', 'txwy', 'YoStarEN', 'YoStarJP', 'YoStarKR']);
 const FACILITIES = new Set([
@@ -330,39 +325,4 @@ export function validatePlan(plan: Plan, _settings: Settings): void {
   } catch (error) {
     reject((error as Error).message);
   }
-}
-export function nativeTask(task: Task): Task {
-  if (task.type === 'UserDataUpdate') reject('更新数据必须由应用服务拆分后执行');
-  const result = parseWireJson(stringifyWireJson(task)),
-    p: any = result.params;
-  const defaults = (values: Record<string, any>) => {
-    for (const [key, value] of Object.entries(values)) if (!(key in p)) p[key] = value;
-  };
-  if (['StartUp', 'CloseDown'].includes(task.type)) defaults({ client_type: 'Official' });
-  if (task.type === 'StartUp') defaults({ start_game_enabled: true });
-  if (task.type === 'Fight') {
-    defaults({ medicine: 0, stone: 0, expiring_medicine: 0, medicine_expire_days: 0, times: 1 });
-    if (p.drops_enabled === false) p.drops = {};
-    delete p.drops_enabled;
-  }
-  if (['Fight', 'Recruit', 'Roguelike'].includes(task.type))
-    defaults({ report_to_penguin: false, report_to_yituliu: false });
-  if (task.type === 'Recruit')
-    defaults({ expedite: false, expedite_times: 0, select: [3, 4, 5], confirm: [3, 4] });
-  if (task.type === 'Infrast')
-    defaults({
-      facility: ['Mfg', 'Trade', 'Power', 'Control', 'Reception', 'Office', 'Dorm'],
-      drones: '_NotUse',
-      threshold: 0.3,
-    });
-  if (task.type === 'Copilot') {
-    defaults({ use_sanity_potion: false });
-    // Older saved lists used null for no override; MaaCore requires an absent field.
-    if (Array.isArray(p.copilot_list))
-      for (const entry of p.copilot_list) {
-        if (object(entry) && entry.nav_name_override === null) delete entry.nav_name_override;
-      }
-  }
-  if (task.type === 'Mall') delete p.visit_friends_once_a_day;
-  return result;
 }

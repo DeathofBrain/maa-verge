@@ -1,9 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import type { RunTask, RunDrop, RunArtifact } from '@contracts/types';
+import type { RunTask, RunArtifact } from '@contracts/types';
 import type { ScreenFrame } from '@contracts/rpc-types';
 import { RpcError } from '@backend/shared/errors';
+import type { AtomicCapabilityResult } from '@maaverge/automation';
 
 const facilities: Record<string, string> = {
   Mfg: '制造站',
@@ -18,120 +19,137 @@ const facilities: Record<string, string> = {
   Training: '训练室',
   AssistantChange: '助理',
 };
-const products: Record<string, string> = {
-  Money: '龙门币',
-  Gold: '赤金',
-  CombatRecord: '作战记录',
-  PureGold: '赤金',
-  OriginiumShard: '源石碎片',
-  Chip: '芯片',
-};
 const text = (value: unknown, limit = 200): string =>
   typeof value === 'string' ? value.slice(0, limit) : '';
 const quantity = (value: unknown): value is number =>
   Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 2_147_483_647;
 
-/** Uses the upstream cumulative stats, so repeated notifications cannot inflate totals. */
-export function recordDrops(task: RunTask, details: any, at: string): boolean {
-  if (!Array.isArray(details?.stats) || details.stats.length > 200) return false;
-  const stage = text(details.stage?.stageCode);
-  const stats = details.stats;
-  if (
-    !stats.every(
-      (drop: any) =>
-        drop && text(drop.itemId) && quantity(drop.quantity) && typeof drop.itemName === 'string',
-    )
-  )
-    return false;
-  let changed = false;
-  for (const drop of stats) {
-    const itemId = text(drop.itemId),
-      previous = task.drops.find((item) => item.itemId === itemId);
-    if (previous && drop.quantity <= previous.quantity) continue;
-    const value: RunDrop = {
-      itemId,
-      name: text(drop.itemName) || itemId,
-      quantity: drop.quantity,
-      stage,
-      at,
-    };
-    if (previous) Object.assign(previous, value);
-    else if (task.drops.length < 200) task.drops.push(value);
-    else continue;
-    changed = true;
-  }
-  return changed;
+/** 正式流程证据独立限额；帧字节另存 PNG，数据库只保留观察与状态及原结果摘要。 */
+export function boundedExecutionEvidence(result: AtomicCapabilityResult) {
+  const original = JSON.stringify(result);
+  let remaining = 240 * 1024,
+    truncated = false;
+  const visit = (value: unknown, depth = 0): unknown => {
+    if (remaining < 32 || depth > 12) {
+      truncated = true;
+      return '[证据已截断]';
+    }
+    if (typeof value === 'string') {
+      const clipped = value.slice(0, Math.min(4096, Math.floor(remaining / 6)));
+      if (clipped.length !== value.length) truncated = true;
+      remaining -= Buffer.byteLength(JSON.stringify(clipped));
+      return clipped;
+    }
+    if (value === null || typeof value !== 'object') {
+      remaining -= 24;
+      return value;
+    }
+    const pairs = Array.isArray(value)
+      ? value.map((item, index) => [String(index), item] as const)
+      : Object.entries(value);
+    const output: Record<string, unknown> = {},
+      list: unknown[] = [];
+    for (const [index, [key, item]] of pairs.entries()) {
+      if (index >= 100 || remaining < 64) {
+        truncated = true;
+        break;
+      }
+      // 原语帧可在多层结果重复出现；二进制不挤占业务证据与 NDJSON。
+      if (key === 'data' && typeof item === 'string' && item.length > 4096) {
+        truncated = true;
+        continue;
+      }
+      remaining -= Buffer.byteLength(key) * 2 + 8;
+      if (Array.isArray(value)) list.push(visit(item, depth + 1));
+      else output[key] = visit(item, depth + 1);
+    }
+    return Array.isArray(value) ? list : output;
+  };
+  return {
+    result: visit(result),
+    resultSha256: createHash('sha256').update(original).digest('hex'),
+    truncated,
+  };
 }
 
-const infrastructureMessages: Record<string, string> = {
-  EnterFacility: '已进入设施',
-  ProductOfFacility: '识别到设施产物',
-  NotEnoughStaff: '可用干员不足',
-  CustomInfrastRoomOperators: '排班方案指定干员（尚未确认换班）',
-  InfrastConfirmButton: '核心已确认换班',
-  CustomInfrastRoomKeptUnchanged: '保留当前房间排班',
-  CustomInfrastRoomsNotConfigured: '未配置的房间保留原排班',
-  CustomInfrastRoomGroupsMatchFailed: '排班编组不可用',
-};
-/** CustomInfrastRoomOperators is a proposal; only the confirm callback says it was applied. */
-export function recordInfrastructure(
+/** 只映射正式流程已复核的累计掉落与实际名单；请求名单不能作为换班结果。 */
+export function recordFrameworkResult(
   task: RunTask,
-  what: string,
-  details: any,
+  capabilityId: string,
+  result: AtomicCapabilityResult,
   at: string,
-): boolean {
+  stage = '',
+) {
+  const data = result.data as Record<string, any> | null;
+  if (!data || typeof data !== 'object') return;
   if (
-    !Object.hasOwn(infrastructureMessages, what) ||
-    !details ||
-    !Number.isInteger(details.index) ||
-    details.index < 0 ||
-    details.index > 99 ||
-    !text(details.facility, 80)
-  )
-    return false;
-  const facility = text(details.facility, 80),
-    room = details.index + 1;
-  let record = task.infrastructure.find(
-    (item) => item.facility === (facilities[facility] ?? facility) && item.room === room,
-  );
-  if (!record) {
-    if (task.infrastructure.length >= 100) return false;
-    record = {
-      facility: facilities[facility] ?? facility,
-      room,
-      operators: [],
+    capabilityId === 'workflow.fight.legacy_batch' &&
+    data.drops &&
+    typeof data.drops === 'object'
+  ) {
+    for (const [itemId, amount] of Object.entries(data.drops)) {
+      if (!itemId || itemId.length > 200 || !quantity(amount) || !amount) continue;
+      const previous = task.drops.find((item) => item.itemId === itemId);
+      if (previous && amount <= previous.quantity) continue;
+      if (!previous && task.drops.length >= 200) break;
+      const drop = {
+        itemId,
+        name: itemId,
+        quantity: amount,
+        stage: text(stage),
+        at,
+        scope: 'visible_rewards' as const,
+      };
+      if (previous) Object.assign(previous, drop);
+      else task.drops.push(drop);
+    }
+  }
+  if (!capabilityId.startsWith('workflow.infrast.')) return;
+  const rooms = Array.isArray(data.rooms) ? data.rooms : [];
+  for (const room of rooms.slice(0, 100)) {
+    const target = room?.target;
+    if (
+      !target ||
+      typeof target.facility !== 'string' ||
+      !Number.isInteger(target.room) ||
+      target.room < 1 ||
+      target.room > 100
+    )
+      continue;
+    const final = Array.isArray(data.finalChecks)
+      ? data.finalChecks.find(
+          (check: any) =>
+            check?.target?.facility === target.facility && check?.target?.room === target.room,
+        )?.result
+      : undefined;
+    const checked = final ?? room.result;
+    const actual = final ? final.data : room.result?.data?.after;
+    const names = actual?.operators;
+    const verified =
+      checked?.status === 'completed' &&
+      checked?.verified === true &&
+      Array.isArray(names) &&
+      names.length <= 20 &&
+      names.every(
+        (name: unknown) => typeof name === 'string' && name.length > 0 && name.length <= 80,
+      ) &&
+      new Set(names).size === names.length;
+    const facility = facilities[target.facility] ?? text(target.facility, 80);
+    const value = {
+      facility,
+      room: target.room,
+      operators: verified ? names : [],
       product: '',
-      message: '',
+      staffingStatus: verified ? ('confirmed' as const) : ('unavailable' as const),
+      message: verified ? '确认后已复读实际进驻名单' : '实际名单未能完整复核，请核对已提交动作',
       at,
     };
-    task.infrastructure.push(record);
+    const existing = task.infrastructure.find(
+      (item) => item.facility === facility && item.room === target.room,
+    );
+    if (existing) Object.assign(existing, value);
+    else if (task.infrastructure.length < 100) task.infrastructure.push(value);
   }
-  const previous = JSON.stringify(record);
-  if (what === 'CustomInfrastRoomOperators' && Array.isArray(details.names)) {
-    record.operators = details.names
-      .filter((name: unknown) => typeof name === 'string')
-      .slice(0, 20)
-      .map((name: string) => text(name, 80));
-    record.staffingStatus = 'planned';
-  }
-  if (what === 'InfrastConfirmButton') record.staffingStatus = 'confirmed';
-  if (
-    [
-      'CustomInfrastRoomKeptUnchanged',
-      'CustomInfrastRoomGroupsMatchFailed',
-      'CustomInfrastRoomsNotConfigured',
-    ].includes(what)
-  ) {
-    record.operators = [];
-    record.staffingStatus = 'unavailable';
-  }
-  if (what === 'ProductOfFacility')
-    record.product = products[text(details.product)] ?? text(details.product);
-  const message = infrastructureMessages[what]!;
-  record.message = message;
-  if (JSON.stringify(record) === previous) return false;
-  record.at = at;
-  return true;
 }
 
 /** Each run stores at most twelve PNGs, each task three, each image below 3 MiB. */

@@ -86,7 +86,7 @@ function fixture(options: MaaToolOptions = {}) {
         name: '合成设备',
         address: 'private-address',
         state: 'idle',
-        coreVersion: 'v1',
+        frameworkVersion: 'v1',
         resourceVersion: 'r1',
       },
     ] as Device[],
@@ -271,7 +271,13 @@ test('read tools expose a capability catalog and scoped summaries without device
   expect(catalog.tasks.some((item: any) => item.availableVia === 'unavailable')).toBe(true);
   const devices = (await invoke('maa_list_devices')).content as any;
   expect(devices.devices).toEqual([
-    { id: deviceId, name: '合成设备', state: 'idle', coreVersion: 'v1', resourceVersion: 'r1' },
+    {
+      id: deviceId,
+      name: '合成设备',
+      state: 'idle',
+      frameworkVersion: 'v1',
+      resourceVersion: 'r1',
+    },
   ]);
   expect(JSON.stringify(devices)).not.toContain('private-address');
   expect((await invoke('maa_list_plans')).content).toMatchObject({

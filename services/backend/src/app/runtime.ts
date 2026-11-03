@@ -3,13 +3,10 @@ import { createHash, randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { Store, now } from '@backend/infrastructure/storage/storage';
 import { RpcError } from '@backend/shared/errors';
-import {
-  connectionError,
-  errorDetail,
-  nativeConnectionError,
-} from '@backend/infrastructure/native/connection-errors';
+import { connectionError, errorDetail } from '@backend/infrastructure/native/connection-errors';
 import { observeAdbDevices } from '@backend/infrastructure/native/connection-health';
 import { ensureAvdTransport } from '@backend/infrastructure/native/avd-transport';
+import { detectAvdSerial } from '@backend/infrastructure/native/avd-detection';
 import {
   connectAdbTransport,
   localAdbServer,
@@ -23,8 +20,9 @@ import {
   type Plan,
   type Settings,
 } from '@backend/modules/settings/models';
-import { automaticCapture } from '@backend/modules/devices/auto-capture';
-import { nativeTask, validatePlan } from '@backend/modules/plans/task-policy';
+import { validatePlan } from '@backend/modules/plans/task-policy';
+import { snapshotLegacyInputs, type LegacyInputs } from '@backend/modules/plans/legacy-inputs';
+import { gameDate, syncDue } from '@backend/modules/recognition/user-data-sync';
 import { propose } from '@backend/modules/agent/agent';
 import {
   defaultComponentPaths,
@@ -32,8 +30,7 @@ import {
   deviceLockPath,
   type ComponentPathEnvironment,
 } from '@backend/infrastructure/config';
-import { CoreWorker } from '@backend/infrastructure/native/worker';
-import { nativeWorkerPath } from '@backend/infrastructure/native/native-path';
+import { deviceWorker, type DeviceWorker } from '@backend/modules/framework/device-worker';
 import {
   FrameworkWorker,
   validateFrameworkResources,
@@ -41,17 +38,27 @@ import {
   type FrameworkPort,
 } from '@backend/infrastructure/native/framework-worker';
 import { ControlSessions, type FrameworkView } from '@backend/modules/framework/sessions';
-import { DebugService } from '@backend/modules/atomic/debug-service';
-import { createAtomicCapabilityRegistry } from '@backend/modules/atomic/registry';
-import { loadAtomicResourceProfile } from '@backend/modules/atomic/resources';
-import type { AtomicExecutionPort, AtomicResourceProfile } from '@backend/modules/atomic/types';
+import { frameworkConnection } from '@backend/modules/framework/connection';
+import { DebugService } from '@backend/modules/debug/debug-service';
 import {
-  prepareFrameworkResources,
-  resolveFrameworkSdk,
-} from '@backend/modules/framework/resources';
+  AtomicFailure,
+  createAtomicCapabilityRegistry,
+  loadAutomationResourceProfiles,
+  compileLegacyTask,
+  validateCompiledLegacyTaskResources,
+  validateCompiledLegacyTaskInputs,
+  type AtomicExecutionPort,
+  type AutomationOptions,
+} from '@maaverge/automation';
+import { openAtomicResourceSource } from '@backend/modules/resources/atomic-resource-source';
+import { prepareFrameworkResources } from '@backend/modules/framework/resources';
 import { captureAdbPath, connectionCapture } from '@backend/modules/devices/capture';
 import { Preview } from '@backend/modules/devices/preview';
 import { UpdateService } from '@backend/modules/updates/updates';
+import {
+  FrameworkUpdateService,
+  type FrameworkUpdateOptions,
+} from '@backend/modules/framework/updates';
 import { AppUpdateHttp } from '@backend/modules/updates/app-update-http';
 import {
   configuredAdbPath,
@@ -70,7 +77,6 @@ import {
   runningWindowsEmulatorInventory,
   type EmulatorInventory,
 } from '@backend/infrastructure/native/windows-emulators';
-import { syncDue, userDataSteps, type SyncStep } from '@backend/modules/recognition/user-data-sync';
 import { findDeviceProfile } from '@backend/modules/devices/device-profiles';
 import { stageCatalog } from '@backend/modules/resources/stages';
 import { homeInfo } from '@backend/modules/home/home-info';
@@ -78,13 +84,12 @@ import {
   ActivityCalendar,
   type ActivityCalendarOptions,
 } from '@backend/modules/home/activity-calendar';
-import { localizeExecutionMessage } from '@contracts/execution';
 import { taskLabels } from '@contracts/tasks';
 import { planAllowsDevice } from '@contracts/plan-devices';
 import type { RunTask } from '@contracts/types';
 import {
-  recordDrops,
-  recordInfrastructure,
+  boundedExecutionEvidence,
+  recordFrameworkResult,
   RunArtifacts,
 } from '@backend/modules/execution/execution-evidence';
 import type { RpcContract } from '@contracts/rpc-types';
@@ -120,14 +125,24 @@ import {
   validateVisionRecognizeParams,
   validateVisionRecognitionResult,
   validateToolStartParams,
+  validateExecutionPreflightParams,
 } from '@contracts/validators.js';
 
 const ident = (prefix: string) => prefix + '-' + randomUUID().replaceAll('-', '').slice(0, 12);
-type Worker = Pick<
-  CoreWorker,
-  'events' | 'connected' | 'safeIdle' | 'task' | 'stop' | 'connect' | 'waitConnected' | 'close'
-> &
-  Partial<Pick<CoreWorker, 'frame' | 'click'>>;
+// Directory validation can yield while another settings form saves. Apply this
+// request's changes to the latest value so unrelated successful saves survive.
+function mergeSettingsChanges(before: any, requested: any, current: any): any {
+  if (JSON.stringify(before) === JSON.stringify(requested)) return current;
+  const object = (value: any) => value && typeof value === 'object' && !Array.isArray(value);
+  if (!object(before) || !object(requested) || !object(current)) return requested;
+  const result = { ...current };
+  for (const key of new Set([...Object.keys(before), ...Object.keys(requested)])) {
+    if (!Object.hasOwn(requested, key)) delete result[key];
+    else result[key] = mergeSettingsChanges(before[key], requested[key], current[key]);
+  }
+  return result;
+}
+type Worker = DeviceWorker;
 type DeviceObservation = {
   workers: Map<string, Worker>;
   close: () => Promise<void>;
@@ -182,7 +197,7 @@ export interface RuntimeOptions {
   probeDeviceEndpoint?: typeof probeAdbEndpoint;
   connectDeviceTransport?: typeof connectAdbTransport;
   ensureAvdTransport?: typeof ensureAvdTransport;
-  workerFactory?: (config: any, options?: { signal?: AbortSignal }) => Promise<Worker>;
+  detectAvdSerial?: typeof detectAvdSerial;
   frameworkWorkerFactory?: (
     config: FrameworkConfiguration,
     signal?: AbortSignal,
@@ -193,6 +208,7 @@ export interface RuntimeOptions {
     clientType: string,
   ) => Promise<FrameworkView>;
   frameworkReaderIdleMs?: number;
+  frameworkUpdates?: FrameworkUpdateOptions;
 }
 export class Runtime {
   readonly mode = 'native' as const;
@@ -206,17 +222,22 @@ export class Runtime {
   // Keep session-used directories protected through disconnect/client-switch shutdown.
   private protectedWorkerLogs = new Set<string>();
   readonly updates: UpdateService;
+  readonly frameworkUpdates: FrameworkUpdateService;
   readonly appUpdateHttp: AppUpdateHttp;
   readonly preview: Preview;
   readonly controlSessions: ControlSessions;
   readonly debug: DebugService;
   private frameworkConnections = new Map<string, any>();
-  private frameworkReleased = new Set<string>();
+  private runOperations = new Map<string, Promise<void>>();
+  private runControllers = new Map<string, AbortController>();
+  private runControls = new Map<string, RpcContract['results']['control.session.start']>();
   private frameworkViews = new Map<string, FrameworkView>();
   private frameworkReaders = new Map<string, FrameworkReader>();
   private frameworkReaderGate: Promise<unknown> = Promise.resolve();
   private frameworkAbort = new AbortController();
   private frameworkOperations = new Set<Promise<unknown>>();
+  /** 跨自动化功能累计真实输入尝试；帧有效期与根流程生命周期不充当输入证据。 */
+  private frameworkInputRevisions = new Map<string, number>();
   private frameworkPreparing = 0;
   private frameworkRecognizing = 0;
   readonly calendar: ActivityCalendar;
@@ -237,6 +258,8 @@ export class Runtime {
   >();
   private unavailableRunRequests = new Set<string>();
   private connecting = new Set<string>();
+  private connectionOperations = new Set<Promise<any>>();
+  private connectionReservations = new Map<Promise<any>, string>();
   private connectingAddresses = new Set<string>();
   private suppressed = new Set<string>();
   private suppressedAddresses = new Set<string>();
@@ -249,13 +272,14 @@ export class Runtime {
   private endpointProbes?: Promise<void>;
   private reconnect: any[] = [];
   private switching = false;
+  private switchOwner?: 'components' | 'framework';
   private autoConnecting = false;
   private lastDiagnostics: string[] = [];
   private nextAutoConnect = Date.now() + 2000;
   private emulatorInventory = emptyEmulatorInventory();
   private nextChecks: Record<string, number> = {
-    core: Date.now() + 3000,
     resource: Date.now() + 6000,
+    framework: Date.now() + 9000,
   };
   private lastTick = Date.now();
   private ticking = false;
@@ -306,15 +330,15 @@ export class Runtime {
     const removedDownloadPreference = Object.hasOwn(storedSettings, 'componentDownload');
     if (removedDownloadPreference) delete storedSettings.componentDownload;
     const settings = parseSettings(storedSettings);
-    const componentPaths = { ...(settings.componentPaths ?? defaults) };
+    const componentPaths = { ...defaults, ...settings.componentPaths };
     const previousRoots: string[] = [];
     if (
       options.applicationDirectory &&
       (options.componentEnvironment?.platform ?? process.platform) === 'darwin'
     ) {
       for (const [channel, name] of [
-        ['core', 'MaaCore'],
         ['resource', 'MaaResource'],
+        ['framework', 'MaaFramework'],
       ] as const) {
         const previous = path.resolve(options.applicationDirectory, name);
         if (componentPaths[channel] && path.resolve(componentPaths[channel]) === previous) {
@@ -329,7 +353,12 @@ export class Runtime {
       this.store.put('meta', 'component_roots', [
         ...new Set([...this.store.get('meta', 'component_roots', []), ...previousRoots]),
       ]);
-    if (!settings.componentPaths || removedDownloadPreference || previousRoots.length)
+    if (
+      !settings.componentPaths?.framework ||
+      !Object.hasOwn(storedSettings, 'autoUpdateFramework') ||
+      removedDownloadPreference ||
+      previousRoots.length
+    )
       this.store.put('settings', 'main', {
         ...settings,
         componentPaths,
@@ -387,10 +416,29 @@ export class Runtime {
       path.join(root, 'components'),
       this.store,
       this.emit.bind(this),
-      this.busy.bind(this),
+      () => this.busy() || this.switchOwner === 'framework',
       {
         source: options.source,
-        validator: options.validator,
+        // 安装资源只依赖静态快照；启用前通过无 Controller 的官方 Framework 探针复核。
+        validator:
+          options.validator ??
+          (async (_unused, resource) => {
+            const framework = await this.frameworkSdkPath();
+            for (const clientType of ['Official', 'Bilibili'])
+              await prepareFrameworkResources({
+                source: resource,
+                destination: path.join(this.root, 'cache', 'framework-resources'),
+                clientType,
+                frameworkVersion: 'v5.14.3',
+                validate: (view) =>
+                  validateFrameworkResources({
+                    framework,
+                    resource: view,
+                    userDir: path.join(this.root, 'workers', 'maafw-probe'),
+                    mode: 'recognition',
+                  }),
+              });
+          }),
         directories: defaults,
         generationNamespace:
           options.applicationDirectory &&
@@ -407,13 +455,48 @@ export class Runtime {
             ...view.sourcePaths,
           ]),
           ...[...this.workerConfigurations.values(), ...this.frameworkConnections.values()].flatMap(
-            (config) => [config.core, config.resource],
+            (config) => [config.resource],
           ),
         ],
       },
     );
+    this.frameworkUpdates = new FrameworkUpdateService(
+      root,
+      this.store,
+      this.emit.bind(this),
+      () => this.busy() || this.switching,
+      {
+        ...options.frameworkUpdates,
+        directory: () =>
+          parseSettings(this.store.get('settings', 'main')).componentPaths?.framework ||
+          defaults.framework!,
+        mirror: () => parseSettings(this.store.get('settings', 'main')).mirrorChyan,
+        proxy: () => parseSettings(this.store.get('settings', 'main')).downloadProxy,
+        beforeActivate: async () => {
+          if (this.switchOwner || this.busy()) throw new Error('组件或异步操作仍在运行');
+          this.switching = true;
+          this.switchOwner = 'framework';
+          this.preview.invalidate();
+          this.reconnect = this.store
+            .all('device')
+            .filter((device) => this.workers.get(device.id)?.connected);
+          await this.closeFrameworkReaders();
+          await Promise.all([...this.workers.values()].map((worker) => worker.close()));
+          this.workers.clear();
+          this.workerConfigurations.clear();
+          this.frameworkConnections.clear();
+          this.frameworkViews.clear();
+        },
+        finishActivate: async () => {
+          if (this.switchOwner !== 'framework') return;
+          this.switchOwner = undefined;
+          this.switching = false;
+          await this.afterSwitch();
+          this.reconnect = [];
+        },
+      },
+    );
     this.copilot = new CopilotLibrary(root, this.store, {
-      coreVersion: () => this.store.get('active', 'combo', {}).core?.version,
       resourceDirectory: () => this.store.get('active', 'combo', {}).resource?.path,
       http: options.copilotHttp,
       changed: (message: string) => this.emit('copilot.changed', message),
@@ -426,10 +509,10 @@ export class Runtime {
         },
     });
     this.controlSessions = new ControlSessions({
-      core: (id) => this.workers.get(id),
-      assertStart: (id) => {
-        const device = this.store.get('device', id);
-        if (!device) throw new RpcError(-32004, '设备不存在');
+      worker: (id) => this.workers.get(id),
+      assertStart: (id, requestId, internal) => {
+        const worker = this.workers.get(id);
+        if (!this.store.get('device', id)) throw new RpcError(-32004, '设备不存在');
         if (
           !this.running ||
           this.switching ||
@@ -438,37 +521,20 @@ export class Runtime {
           this.initializingComponents
         )
           throw new RpcError(-32011, '运行时正在退出、准备组件或更新');
-        const availability = this.availability(id);
-        if (
-          availability.owner !== 'none' ||
-          this.preview.isReading(id) ||
-          (this.workers.get(id) && !this.workers.get(id)!.safeIdle)
-        )
-          throw new RpcError(-32011, availability.reason);
-        this.frameworkConnections.set(id, structuredClone(this.workerConfigurations.get(id) ?? {}));
-        this.suppressAddress(device.address, true);
+        if (!worker?.connected || !worker.safeIdle || this.preview?.isReading(id))
+          throw new RpcError(-32011, '设备尚未连接或异步操作未结束');
+        if (!internal) {
+          const status = this.availability(id, undefined, requestId);
+          if (status.owner !== 'none') throw new RpcError(-32011, status.reason);
+        }
       },
       prepare: (id, signal) => this.prepareFrameworkView(id, signal),
-      detachCore: async (id) => {
-        if (this.preview.busy || this.hasExecution(id) || this.connecting.has(id))
-          throw new RpcError(-32011, '设备异步操作尚未结束');
-        const worker = this.workers.get(id);
-        if (worker && !worker.safeIdle) throw new RpcError(-32011, 'MaaCore 尚未到达安全空闲边界');
-        this.preview.invalidate(id);
-        this.workers.delete(id);
-        this.workerConfigurations.delete(id);
-        await worker?.close();
-        this.frameworkDeviceChanged(id, false);
-      },
-      launch: async (id, view, signal) =>
-        this.startFrameworkWorker(await this.frameworkConfiguration(id, view, 'control'), signal),
       invalidate: (id) => this.preview?.invalidate(id),
-      changed: (id, connected) => {
-        this.frameworkDeviceChanged(id, connected);
-        if (!connected) this.frameworkConnections.delete(id);
-        if (!connected) this.frameworkReleased.add(id);
-      },
-      failed: (id) => this.frameworkConnections.delete(id),
+      changed: (id) =>
+        this.emit('device.control_session', '设备控制会话状态已更新', {
+          deviceId: id,
+          engine: 'maafw',
+        }),
     });
     this.preview = new Preview({
       available: () => this.running && !this.switching,
@@ -478,43 +544,37 @@ export class Runtime {
         return this.store.get('device', id);
       },
       worker: (id) => this.controlSessions.worker(id) ?? this.workers.get(id),
-      context: (id) => {
-        const session = this.controlSessions.get(id);
-        return session.owner === 'maafw'
-          ? {
-              engine: 'maafw',
-              sessionId: session.sessionId,
-              resourceGeneration: session.resourceGeneration,
-            }
-          : {
-              engine: 'maacore',
-              resourceGeneration:
-                'maacore-resource-' +
-                createHash('sha256')
-                  .update(this.workerConfigurations.get(id)?.resource ?? '')
-                  .digest('hex')
-                  .slice(0, 32),
-            };
-      },
+      context: (id) => ({
+        engine: 'maafw',
+        sessionId: this.controlSessions.get(id).sessionId,
+        resourceGeneration: this.controlSessions.view(id)?.generation,
+      }),
       authorize: (id, token) => this.controlSessions.authorize(id, token),
+      canOperate: (id) => this.controlSessions.owns(id),
       hasRun: (id) =>
-        this.hasExecution(id) ||
-        !!this.scheduler?.owner(id) ||
-        [...this.starts.values()].some((start) => start.deviceId === id),
+        !this.controlSessions.owns(id) &&
+        (this.hasExecution(id) ||
+          !!this.scheduler?.owner(id) ||
+          [...this.starts.values()].some((start) => start.deviceId === id)),
       clicked: (data) => {
         const { controlToken: _token, ...publicData } = data;
-        this.emit('device.clicked', '点击指令已获核心确认', publicData);
+        this.emit('device.clicked', '点击指令已获 MaaFramework 确认', publicData);
       },
     });
+    // Debug 持有自己的不透明会话；Runtime 将其接到正式控制会话及 automation 能力库。
     this.debug = new DebugService({
       catalog: async (deviceId) => {
-        const profile = await this.atomicProfile(deviceId);
+        // 目录读取只解析资源元数据；禁止执行的端口使浏览能力不触发设备动作。
+        const resourceProfiles = await this.atomicProfiles(deviceId);
         const port: AtomicExecutionPort = {
           execute: async () => {
             throw new RpcError(-32011, '请先建立调试会话');
           },
+          runPipeline: async () => {
+            throw new RpcError(-32011, '请先建立调试会话');
+          },
         };
-        return createAtomicCapabilityRegistry(port, { profile }).list();
+        return createAtomicCapabilityRegistry(port, resourceProfiles).list();
       },
       start: (deviceId, requestId) => this.controlSessions.start({ deviceId, requestId }),
       end: (control) =>
@@ -525,42 +585,27 @@ export class Runtime {
               controlToken: control.controlToken,
               requestId: randomUUID(),
             }),
-      registry: async (control, signal) => {
-        const profile = await this.atomicProfile(control.deviceId);
-        signal.throwIfAborted();
-        return createAtomicCapabilityRegistry(
-          {
-            execute: async (operation, input, context) => {
-              signal.throwIfAborted();
-              context.signal?.throwIfAborted();
-              if (!this.controlSessions.authorize(control.deviceId, control.controlToken))
-                throw new RpcError(-32011, '调试控制会话已失效');
-              if (operation === 'recognize')
-                return this.recognizeAtomicFrame(control.deviceId, input, signal);
-              const params = {
-                ...input,
-                deviceId: control.deviceId,
-                controlToken: control.controlToken,
-                requestId: randomUUID(),
-              };
-              if (operation === 'frame')
-                return this.preview.frame({
-                  deviceId: control.deviceId,
-                  controlToken: control.controlToken,
-                });
-              return this.handle(`device.${operation}`, params);
-            },
-          },
-          { profile },
-        );
-      },
+      registry: (control, signal) => this.automationRegistry(control, signal),
     });
     this.toolbox = new Toolbox({
       store: this.store,
       availability: (id) => this.availability(id),
       emit: this.emit.bind(this),
-      begin: (job) => this.submitNativeTask(job, 0),
-      stages: (client) => this.stages(client),
+      preflight: async (input, config) => {
+        const result = await this.executionPreflight({
+          source: 'tool',
+          kind: input.kind,
+          deviceId: input.deviceId,
+          clientType: input.clientType,
+          config,
+        });
+        if (!result.supported)
+          throw new RpcError(
+            -32010,
+            result.issues.map((issue) => issue.message).join('；'),
+            result,
+          );
+      },
     });
     this.scheduler = new Scheduler(
       {
@@ -572,6 +617,9 @@ export class Runtime {
             (item) => item.deviceId === id && item.status === 'running',
           ))
             await this.stopRun(job.id);
+        },
+        preflight: async (plan, deviceId, force) => {
+          await this.requirePreflight(parsePlan(plan).tasks, deviceId, force);
         },
         prepareDevice: (id) => this.prepareScheduledDevice(id),
         start: (plan, deviceId, requestId, occurrence) =>
@@ -637,51 +685,133 @@ export class Runtime {
         return result;
       },
       update: (operation, channel) => this.updateChannel(operation, channel),
-      maaFwAdb: {
-        status: () => this.updates.maaFwAdbStatus(),
-        prepare: async () => {
-          const state = await this.updates.prepareMaaFwAdb();
-          if (state.status === 'active') this.nextChecks.resource = Date.now();
-          return state;
-        },
-      },
     });
   }
-  private frameworkDeviceChanged(id: string, connected: boolean) {
-    const device = this.store.get('device', id);
-    if (device) {
-      device.state = connected ? 'idle' : 'offline';
-      this.store.put('device', id, device);
-    }
-    this.emit(
-      'device.control_session',
-      connected ? 'MaaFramework 工作流已取得控制权' : '设备控制权已释放，等待后续任务连接',
-      { deviceId: id, engine: 'maafw', connected },
+  /** Debug 与正式业务使用同一能力目录和授权端口，避免形成第二套自动化执行路径。 */
+  private async automationRegistry(
+    control: RpcContract['results']['control.session.start'],
+    signal: AbortSignal,
+    clientType?: string,
+  ) {
+    const resourceProfiles = await this.atomicProfiles(control.deviceId, clientType);
+    signal.throwIfAborted();
+    // 只有真实输入推进代际才失效旧帧；纯 Custom/Context 调用保持同帧证据可传递。
+    let inputEpoch = 0;
+    const synchronizeInputEpoch = (epoch: number) => {
+      if (epoch > inputEpoch) {
+        // 原生标准节点可绕过 TS 动作端口；只累计新增输入，重复通知与纯 Context 不增。
+        this.advanceFrameworkInputRevision(control.deviceId, epoch - inputEpoch);
+        inputEpoch = epoch;
+        this.preview.invalidate(control.deviceId);
+      }
+    };
+    const submitPipeline =
+      (nested: boolean): AtomicExecutionPort['runPipeline'] =>
+      async (entry, pipeline, custom, context) => {
+        // TS 指定的更短期限也覆盖原生等待；子调用同时继承父任务的取消与剩余时限。
+        const signals = [signal, ...(context.signal ? [context.signal] : [])];
+        if (context.deadline !== undefined) {
+          const remaining = Math.ceil(context.deadline - Date.now());
+          if (remaining <= 0) throw new AtomicFailure('根流程期限已耗尽', 'unknown');
+          signals.push(AbortSignal.timeout(Math.min(remaining, 120_000)));
+        }
+        const combined = AbortSignal.any(signals);
+        combined.throwIfAborted();
+        if (!this.controlSessions.authorize(control.deviceId, control.controlToken))
+          throw new RpcError(-32011, '调试控制会话已失效');
+        const worker = this.controlSessions.worker(control.deviceId);
+        const submit = nested
+          ? worker?.runContextPipeline?.bind(worker)
+          : worker?.runPipeline?.bind(worker);
+        if (!submit)
+          throw new RpcError(-32040, '当前 MaaFramework worker 不支持请求的 Pipeline 上下文');
+        if (!nested) this.preview.invalidate(control.deviceId);
+        const operation = submit(
+          entry,
+          pipeline,
+          async (node, params, metadata) => {
+            combined.throwIfAborted();
+            if (!this.controlSessions.authorize(control.deviceId, control.controlToken))
+              throw new RpcError(-32011, 'Pipeline 控制会话已失效');
+            if (metadata) synchronizeInputEpoch(metadata.inputEpoch);
+            await custom(node, params);
+            combined.throwIfAborted();
+          },
+          combined,
+          synchronizeInputEpoch,
+        );
+        this.frameworkOperations.add(operation);
+        try {
+          await operation;
+        } finally {
+          this.frameworkOperations.delete(operation);
+          if (!nested) this.preview.invalidate(control.deviceId);
+        }
+      };
+    // 端口在服务端绑定设备与控制令牌，所有输入继续经过正式帧校验和 RPC 执行路径。
+    return createAtomicCapabilityRegistry(
+      {
+        runPipeline: submitPipeline(false),
+        runContextPipeline: submitPipeline(true),
+        getInputRevision: () => this.frameworkInputRevision(control.deviceId),
+        execute: async (operation, input, context) => {
+          try {
+            signal.throwIfAborted();
+            context.signal?.throwIfAborted();
+            if (!this.controlSessions.authorize(control.deviceId, control.controlToken))
+              throw new RpcError(-32011, '调试控制会话已失效');
+            if (operation === 'recognize')
+              return await this.recognizeAtomicFrame(control.deviceId, input, signal);
+            const params = {
+              ...input,
+              deviceId: control.deviceId,
+              controlToken: control.controlToken,
+              requestId: randomUUID(),
+            };
+            if (operation === 'frame')
+              return await this.preview.frame({
+                deviceId: control.deviceId,
+                controlToken: control.controlToken,
+              });
+            if (operation === 'start_app' || operation === 'stop_app') {
+              // 固定包名由登记的 L3 校验；异步原生操作仍在同一设备会话内，不暴露通用 shell。
+              const worker = this.controlSessions.worker(control.deviceId);
+              if (!worker) throw new RpcError(-32011, '设备控制会话已失效');
+              this.advanceFrameworkInputRevision(control.deviceId);
+              this.preview.invalidate(control.deviceId);
+              return await worker.request(operation, input);
+            }
+            return await this.handle(`device.${operation}`, params);
+          } catch (error) {
+            // 将明确的参数拒绝转成领域失败，避免能力库依赖 JSON-RPC 错误类型。
+            if (error instanceof RpcError && error.code === -32602)
+              throw new AtomicFailure(error.message);
+            throw error;
+          }
+        },
+      },
+      resourceProfiles,
     );
   }
-  private async atomicProfile(deviceId?: string): Promise<AtomicResourceProfile> {
+  /** 从设备当前使用的不可变资源构建能力规则；目录和文件防护留在宿主读取适配器。 */
+  private async atomicProfiles(
+    deviceId?: string,
+    selectedClient?: string,
+  ): Promise<AutomationOptions> {
     if (deviceId && !this.store.get('device', deviceId)) throw new RpcError(-32004, '设备不存在');
     const source =
       (deviceId &&
         (this.frameworkConnections.get(deviceId)?.resource ??
           this.workerConfigurations.get(deviceId)?.resource)) ||
       this.store.get('active', 'combo', {}).resource?.path;
-    const client = deviceId
-      ? this.deviceClient(deviceId)
-      : (parseSettings(this.store.get('settings', 'main')).connection?.clientType ?? 'Official');
+    const client =
+      selectedClient ??
+      (deviceId
+        ? this.deviceClient(deviceId)
+        : (parseSettings(this.store.get('settings', 'main')).connection?.clientType ?? 'Official'));
     const view = deviceId ? this.controlSessions.view(deviceId) : undefined;
-    if (!source)
-      return {
-        id: 'unavailable',
-        clientType: client,
-        available: false,
-        diagnostics: ['请先安装并启用游戏资源'],
-        rules: {},
-        card: null,
-        actions: {},
-        sources: [],
-      };
-    return loadAtomicResourceProfile(source, client, {
+    if (!source) return loadAutomationResourceProfiles(null, client);
+    return loadAutomationResourceProfiles(await openAtomicResourceSource(source), client, {
       resourceVersion: `${this.store.get('active', 'combo', {}).resource?.version ?? 'unknown'}:${view?.generation ?? path.basename(source)}`,
       ...(view ? { availableTemplates: Object.keys(view.templates) } : {}),
     });
@@ -707,17 +837,13 @@ export class Runtime {
   }
   private async frameworkSdkPath() {
     if (this.options.frameworkWorkerFactory) return 'synthetic-framework';
-    return (
-      await resolveFrameworkSdk({
-        applicationRuntimeDirectory: path.dirname(nativeWorkerPath()),
-        checkoutRoot: path.resolve(import.meta.dir, '../../../..'),
-      })
-    ).path;
+    return (await this.frameworkUpdates.resolveInstalledSdk()).path;
   }
   private async frameworkConfiguration(
     id: string,
     view: FrameworkView,
     mode: 'recognition' | 'control',
+    signal?: AbortSignal,
   ): Promise<FrameworkConfiguration> {
     const config: FrameworkConfiguration = {
       framework: await this.frameworkSdkPath(),
@@ -730,23 +856,115 @@ export class Runtime {
       saved = this.frameworkConnections.get(id);
     if (!device) throw new RpcError(-32004, '设备不存在');
     const settings = parseSettings(this.store.get('settings', 'main'));
-    const profile = findDeviceProfile(settings, device.address);
-    const connection = saved?.connection ?? profile?.connection ?? settings.connection;
+    const profile =
+      settings.deviceProfiles?.find((item) => item.id === device.connectionProfileId) ??
+      findDeviceProfile(settings, device.address);
+    const framework = profile ? profile.connection.framework : settings.connection?.framework;
+    const address = saved?.address ?? device.address;
+    this.emulatorInventory = await this.readEmulatorInventory();
+    const resolved = await frameworkConnection(framework, address, this.emulatorInventory);
+    const adb = saved?.adb ?? (await this.adbExecutable(profile ?? settings));
+    const probe =
+      this.options.detectAvdSerial ??
+      (this.options.frameworkWorkerFactory ||
+      this.options.frameworkWorkerFactory ||
+      this.options.adbExecutable
+        ? undefined
+        : detectAvdSerial);
+    const avdSerial =
+      (resolved.capture?.method === 'auto' || resolved.capture?.method === 'avd') &&
+      !address.startsWith('emulator-')
+        ? await probe?.(adb, address, signal)
+        : undefined;
+    if (
+      resolved.capture?.method === 'avd' &&
+      !address.startsWith('emulator-') &&
+      !avdSerial &&
+      probe
+    )
+      throw new RpcError(-32040, '无法确认本机 AVD 的 console 身份，请核对连接地址或改用自动截图');
     return {
       ...config,
-      adb: saved?.adb ?? (await this.adbExecutable(profile ?? settings)),
-      address: saved?.address ?? device.address,
+      adb,
+      address,
       lockPath:
         saved?.lockPath ??
         deviceLockPath(adbServerIdentity() + '|' + this.lockAddress(device.address)),
-      avd: connection?.config === 'AVD',
+      ...resolved,
+      ...(avdSerial ? { avdSerial } : {}),
     };
+  }
+  private frameworkInputRevision(deviceId: string): number {
+    return this.frameworkInputRevisions.get(deviceId) ?? 0;
+  }
+  /** 在实际派发前登记尝试；即使原生回执丢失，也不能让旧准备凭据继续授权确认。 */
+  private advanceFrameworkInputRevision(deviceId: string, increment = 1) {
+    const revision = this.frameworkInputRevision(deviceId) + increment;
+    if (!Number.isSafeInteger(revision) || revision < 0)
+      throw new RpcError(-32011, '设备输入修订号超出安全范围，请重启应用后重新准备');
+    this.frameworkInputRevisions.set(deviceId, revision);
+  }
+  /** 为控制会话提供稳定接口；只有通过 Preview 门禁后的派发才记录输入，帧仍绑定此接口。 */
+  private trackFrameworkInputs(deviceId: string, worker: FrameworkPort): FrameworkPort {
+    return {
+      get connected() {
+        return worker.connected;
+      },
+      get safeIdle() {
+        return worker.safeIdle;
+      },
+      connect: () => worker.connect(),
+      frame: () => worker.frame(),
+      click: (x, y) => {
+        this.advanceFrameworkInputRevision(deviceId);
+        return worker.click(x, y);
+      },
+      request: (operation, params) => {
+        if (['click', 'swipe', 'press_key', 'long_press', 'drag'].includes(operation))
+          this.advanceFrameworkInputRevision(deviceId);
+        return worker.request(operation, params);
+      },
+      runPipeline: worker.runPipeline?.bind(worker),
+      runContextPipeline: worker.runContextPipeline?.bind(worker),
+      close: () => worker.close(),
+    };
+  }
+  /** 控制 worker ready 后已持有设备租约；先登记明确 AVD 串号，再让会话连接设备。 */
+  private async launchFrameworkControl(
+    deviceId: string,
+    view: FrameworkView,
+    signal: AbortSignal,
+  ): Promise<FrameworkPort> {
+    const config = await this.frameworkConfiguration(deviceId, view, 'control', signal);
+    const worker = await this.startFrameworkWorker(config, signal);
+    try {
+      signal.throwIfAborted();
+      // 高端口 AVD 可能只在管理器的独立 server 登记；复用当前 server 的官方登记协议，
+      // 不启动／切换 server，也不把未经身份核对的 TCP 地址推断成模拟器 console。
+      const avdSerial = /^emulator-\d{1,5}$/.test(config.address ?? '')
+        ? config.address
+        : config.avdSerial;
+      const prepare =
+        this.options.ensureAvdTransport ??
+        (this.options.frameworkWorkerFactory ||
+        this.options.frameworkWorkerFactory ||
+        this.options.adbExecutable
+          ? undefined
+          : ensureAvdTransport);
+      if (avdSerial) await prepare?.(avdSerial, signal);
+      signal.throwIfAborted();
+      return this.trackFrameworkInputs(deviceId, worker);
+    } catch (error) {
+      // launch 返回前会话尚未保存 worker；登记失败或取消必须在本阶段关闭它并释放租约。
+      await worker.close();
+      throw error;
+    }
   }
   private startFrameworkWorker(
     config: FrameworkConfiguration,
     signal?: AbortSignal,
   ): Promise<FrameworkPort> {
-    if (!this.running || this.switching)
+    if (!this.running)
       return Promise.reject(new RpcError(-32011, '运行时已退出或正在切换，不能启动 MaaFramework'));
     signal?.throwIfAborted();
     this.protectedWorkerLogs.add(path.basename(config.userDir));
@@ -1034,14 +1252,8 @@ export class Runtime {
     if (!this.running || this.appUpdating || this.appUpdatePreparing)
       return result('runtime', '应用正在退出或安装更新');
     if (this.initializingComponents) return result('updates', '正在后台准备随附组件，请稍后再执行');
-    if (this.switching || this.updates?.channels().some((item) => item.status === 'waiting_idle'))
-      return result('updates', '正在准备切换核心与资源');
-    if (this.controlSessions?.owns(deviceId))
-      return result(
-        'manual',
-        'MaaFramework 控制会话占用设备（包括空闲期间）',
-        this.controlSessions.get(deviceId).sessionId ?? null,
-      );
+    if (this.switching || this.componentChannels().some((item) => item.status === 'waiting_idle'))
+      return result('updates', '正在准备切换运行组件');
     const owner = this.executions().find(
       (item) => item.deviceId === deviceId && item.status === 'running',
     );
@@ -1050,6 +1262,12 @@ export class Runtime {
         owner.toolKind ? 'tool' : 'run',
         '设备正在执行' + owner.planName + '，请等待整个操作结束',
         owner.id,
+      );
+    if (this.controlSessions?.owns(deviceId))
+      return result(
+        'manual',
+        'MaaFramework 控制会话占用设备（包括空闲期间）',
+        this.controlSessions.get(deviceId).sessionId ?? null,
       );
     const pending = [...this.starts].find(
       ([requestId, item]) => requestId !== ignoreRequestId && item.deviceId === deviceId,
@@ -1062,10 +1280,16 @@ export class Runtime {
     const occurrence = this.scheduler?.owner(deviceId);
     if (occurrence && occurrence.id !== ignoreOccurrence)
       return result('run', '设备正在准备定时执行', occurrence.id);
-    if (this.connecting.has(deviceId) || this.clientSwitches.has(deviceId))
+    if (
+      this.connecting.has(deviceId) ||
+      this.clientSwitches.has(deviceId) ||
+      [...this.connectionReservations.values()].some(
+        (address) => this.lockAddress(address) === this.lockAddress(device.address),
+      )
+    )
       return result('connecting', '设备正在连接或切换客户端');
     if (this.preview?.isClicking(deviceId)) return result('manual', '人工控制指令尚未结束');
-    if (worker && !worker.safeIdle) return result('manual', '核心或异步操作尚未结束');
+    if (worker && !worker.safeIdle) return result('manual', 'MaaFramework 或异步操作尚未结束');
     return result(
       'none',
       connected && device.state === 'idle'
@@ -1117,17 +1341,17 @@ export class Runtime {
       protocolVersion: 1,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       uptimeSeconds: Math.round(process.uptime()),
-      components: this.updates.channels(),
+      components: this.componentChannels(),
       generations: Object.fromEntries(
-        ['core', 'resource'].map((key) => [
+        ['resource'].map((key) => [
           key,
           combo[key] ? { version: combo[key].version, path: combo[key].path } : null,
         ]),
       ),
       settings: {
         autoConnect: settings.autoConnect,
-        autoUpdateCore: settings.autoUpdateCore,
         autoUpdateResource: settings.autoUpdateResource,
+        autoUpdateFramework: settings.autoUpdateFramework,
         logRetentionDays: settings.logRetentionDays,
         capture: settings.capture,
         connection: settings.connection,
@@ -1139,9 +1363,8 @@ export class Runtime {
         connectionError,
       })),
       workers: [...this.workerConfigurations].map(
-        ([deviceId, { core, resource, adb, address, capture, connection }]) => ({
+        ([deviceId, { resource, adb, address, capture, connection }]) => ({
           deviceId,
-          core,
           resource,
           adb,
           address,
@@ -1207,13 +1430,26 @@ export class Runtime {
       this.frameworkRecognizing > 0 ||
       this.automaticActive.size > 0 ||
       !!this.preview?.busy ||
+      this.connectionOperations.size > 0 ||
       this.connecting.size > 0 ||
+      // 准入仍在读整表资源时也保护当前代际，避免预检旧代、连接新代后才发现末项不兼容。
+      this.starts.size > 0 ||
       this.executions().some(
         (run) =>
           run.status === 'running' && !this.store.get('execution', run.id, {}).boundaryWaiting,
       ) ||
       [...this.workers.values()].some((worker) => !worker.safeIdle)
     );
+  }
+  private componentChannels() {
+    return [
+      ...this.updates.channels(),
+      ...(this.frameworkUpdates ? [this.frameworkUpdates.channel()] : []),
+    ];
+  }
+  async activatePendingUpdates(available: () => boolean = () => true) {
+    await this.updates.activatePending(available);
+    if (available()) await this.frameworkUpdates.applyIdle();
   }
   private assertAppUpdateIdle() {
     const reasons: string[] = [];
@@ -1224,17 +1460,18 @@ export class Runtime {
     if (this.preview.busy) reasons.push('人工点击尚未结束');
     if (
       this.connecting.size ||
+      this.connectionOperations.size ||
       this.connectingAddresses.size ||
       this.autoConnecting ||
       this.automaticActive.size
     )
       reasons.push('设备连接或自动发现尚未结束');
-    if (this.switching) reasons.push('核心与资源正在切换');
+    if (this.switching) reasons.push('MaaFramework 与资源正在切换');
     if (this.starts.size) reasons.push('任务正在启动');
     if (this.clientSwitches.size) reasons.push('正在切换客户端');
     if (this.artifactCaptures.size) reasons.push('正在保存执行反馈画面');
     if ([...this.workers.values()].some((worker) => !worker.safeIdle))
-      reasons.push('核心或异步操作尚未结束');
+      reasons.push('MaaFramework 或异步操作尚未结束');
     if (reasons.length)
       throw new RpcError(-32021, '请空闲后安装应用更新：' + reasons.join('；'), { reasons });
   }
@@ -1246,6 +1483,7 @@ export class Runtime {
     this.appUpdatePreparation = preparation;
     try {
       await this.updates.drain();
+      await this.frameworkUpdates.drain();
       if (this.appUpdatePreparation !== preparation)
         throw new RpcError(-32011, '应用更新安装准备已取消');
       if (!this.running) throw new RpcError(-32011, '应用运行时正在退出');
@@ -1267,7 +1505,8 @@ export class Runtime {
         this.store.get('device_client', device.id, 'Official'),
       );
       return {
-        ...device,
+        ...Object.fromEntries(Object.entries(device).filter(([key]) => key !== 'coreVersion')),
+        frameworkVersion: device.frameworkVersion ?? null,
         dataSync: { operatorsAt: synced.operatorsAt ?? null, depotAt: synced.depotAt ?? null },
       };
     });
@@ -1296,7 +1535,7 @@ export class Runtime {
       devices: this.devices(),
       plans: this.store.all('plan').map(parsePlan),
       runs,
-      updates: this.updates.channels(),
+      updates: this.componentChannels(),
       settings: parseSettings(this.store.get('settings', 'main')),
       events: this.store.events().map((event) => {
         if (!event.data.run?.tasks && !event.data.run?.copilotEntries) return event;
@@ -1323,9 +1562,7 @@ export class Runtime {
         'debug.primitive.invoke',
         'vision.recognize',
       ].includes(method) ||
-        (method.startsWith('updates.') &&
-          method !== 'updates.maafwAdb.status' &&
-          params.channel !== 'app'))
+        (method.startsWith('updates.') && params.channel !== 'app'))
     )
       throw new RpcError(-32021, '正在后台准备随附组件，请稍后再连接或执行');
     if (
@@ -1337,6 +1574,8 @@ export class Runtime {
     )
       throw new RpcError(-32011, '应用正在准备安装更新，请稍后重试');
     switch (method) {
+      case 'execution.preflight':
+        return this.executionPreflight(params);
       case 'primitive.catalog.get':
         if (!validatePrimitiveCatalogParams(params)) throw new RpcError(-32602, '能力目录参数无效');
         return this.debug.catalog(params.deviceId);
@@ -1366,10 +1605,6 @@ export class Runtime {
         return this.controlSessions.end(params);
       case 'vision.recognize':
         return this.recognizeFrame(params);
-      case 'tool.start':
-        if (validateToolStartParams(params) && !this.store.get('tool_request', params.requestId))
-          await this.ensureCoreAfterFramework(params.deviceId);
-        break;
       case 'device.swipe':
       case 'device.long_press':
       case 'device.drag':
@@ -1536,35 +1771,54 @@ export class Runtime {
   private async saveSettings(input: any) {
     const settings = parseSettings(input),
       previous = parseSettings(this.store.get('settings', 'main'));
-    if (
-      this.controlSessions.busy &&
-      JSON.stringify([settings.connection, settings.capture, settings.deviceProfiles]) !==
-        JSON.stringify([previous.connection, previous.capture, previous.deviceProfiles])
-    )
-      throw new RpcError(-32011, '请先结束 MaaFramework 控制会话，再修改设备连接或客户端配置');
+    const assertConnectionSettings = (next: Settings, current: Settings) => {
+      if (
+        this.controlSessions.busy &&
+        JSON.stringify([next.connection, next.capture, next.deviceProfiles]) !==
+          JSON.stringify([current.connection, current.capture, current.deviceProfiles])
+      )
+        throw new RpcError(-32011, '请先结束 MaaFramework 控制会话，再修改设备连接或客户端配置');
+    };
+    assertConnectionSettings(settings, previous);
     if (!Object.hasOwn(input, 'copilotStorage') && previous.copilotStorage)
       settings.copilotStorage = previous.copilotStorage;
     if (!Object.hasOwn(input, 'downloadProxy') && previous.downloadProxy)
       settings.downloadProxy = previous.downloadProxy;
     if (!Object.hasOwn(input, 'notifications')) settings.notifications = previous.notifications;
     if (!Object.hasOwn(input, 'mirrorChyan')) settings.mirrorChyan = previous.mirrorChyan;
+    if (!Object.hasOwn(input, 'autoUpdateFramework'))
+      settings.autoUpdateFramework = previous.autoUpdateFramework;
+    const paths = settings.componentPaths ?? previous.componentPaths ?? this.updates.directories();
+    if (!Object.hasOwn(input.componentPaths ?? {}, 'framework'))
+      paths.framework = previous.componentPaths?.framework;
     this.copilot.validateStorageDirectory(settings.copilotStorage?.directory ?? '');
-    if (settings.coreUpdateChannel !== previous.coreUpdateChannel && this.updates.pendingOperations)
-      throw new RpcError(-32021, '组件检查、下载或切换正在进行，请完成后再切换核心更新通道');
-    await this.updates.saveDirectories(
-      settings.componentPaths ?? previous.componentPaths!,
-      (componentPaths) => {
+    const persist = () =>
+      this.updates.saveDirectories(paths, (componentPaths) => {
         settings.componentPaths = componentPaths;
-        this.store.put('settings', 'main', settings);
-        if (settings.coreUpdateChannel !== previous.coreUpdateChannel)
-          this.updates.coreChannelChanged();
+        const latest = parseSettings(this.store.get('settings', 'main'));
+        const merged = parseSettings(mergeSettingsChanges(previous, settings, latest));
+        assertConnectionSettings(merged, latest);
+        Object.assign(settings, merged);
+        this.store.put('settings', 'main', merged);
         if (
-          settings.mirrorChyan?.enabled !== previous.mirrorChyan?.enabled ||
-          settings.mirrorChyan?.cdk !== previous.mirrorChyan?.cdk
+          settings.mirrorChyan?.enabled !== latest.mirrorChyan?.enabled ||
+          settings.mirrorChyan?.cdk !== latest.mirrorChyan?.cdk
         )
           this.updates.mirrorSettingsChanged();
-      },
-    );
+      });
+    if (paths.framework !== previous.componentPaths?.framework) {
+      if (this.frameworkUpdates.pendingOperations)
+        throw new RpcError(-32021, 'MaaFramework 检查、下载或切换正在进行，请完成后再修改目录');
+      await this.frameworkUpdates.saveDirectory(
+        paths.framework ||
+          defaultComponentPaths(
+            this.root,
+            this.options.applicationDirectory,
+            this.options.componentEnvironment,
+          ).framework!,
+        persist,
+      );
+    } else await persist();
     if (settings.autoConnect && !previous.autoConnect) {
       this.suppressed.clear();
       this.suppressedAddresses.clear();
@@ -1592,8 +1846,8 @@ export class Runtime {
       this.appUpdating = false;
       return { ...this.updates.channel('app'), message: '已取消安装准备，可以继续使用' };
     }
+    if (channel === 'framework') return this.frameworkUpdates[operation]();
     const result = await this.updates[operation](channel);
-    if (operation === 'activate' && channel === 'core') this.nextChecks.resource = Date.now();
     return result;
   }
   validatePolicy(plan: Plan) {
@@ -1610,6 +1864,191 @@ export class Runtime {
       this.options.calendar?.now?.() ?? new Date(),
       calendar,
     );
+  }
+  /** 无副作用整表预检：保存合法性与执行支持分离，禁用项不参与检查。 */
+  private compatibility(
+    tasks: Plan['tasks'],
+    deviceId?: string,
+    force = false,
+    initialClient?: string,
+    inputs?: LegacyInputs,
+  ): RpcContract['results']['execution.preflight'] {
+    const issues: RpcContract['results']['execution.preflight']['issues'] = [];
+    let clientType = initialClient ?? (deviceId ? this.deviceClient(deviceId) : 'Official');
+    const enabled = tasks.filter((task) => task.enabled !== false && task.params.enable !== false);
+    if (!enabled.length)
+      issues.push({
+        taskIndex: -1,
+        taskType: '',
+        field: 'tasks',
+        code: 'empty_plan',
+        message: '至少需要启用一条任务',
+      });
+    const entries: Plan['tasks'] = force
+      ? [{ type: 'CloseDown', params: { client_type: clientType }, enabled: true }, ...tasks]
+      : tasks;
+    entries.forEach((task, index) => {
+      const filename = String(task.params.filename ?? '');
+      const compiled = compileLegacyTask(task, {
+        clientType,
+        customInfrastPlan: inputs?.plans[filename],
+      });
+      if (inputs?.errors[filename] && task.enabled !== false && task.params.enable !== false)
+        issues.push({
+          taskIndex: force ? index - 1 : index,
+          taskType: task.type,
+          field: 'filename',
+          code: 'unavailable_resource',
+          message: inputs.errors[filename],
+        });
+      for (const issue of compiled.issues)
+        issues.push({ ...issue, taskIndex: force ? index - 1 : index, taskType: task.type });
+      if (task.enabled !== false && task.params.enable !== false && task.type === 'StartUp')
+        clientType = compiled.clientType;
+    });
+    return { supported: issues.length === 0, engine: 'maafw', issues };
+  }
+  private assertCompatible(
+    tasks: Plan['tasks'],
+    deviceId?: string,
+    force = false,
+    inputs?: LegacyInputs,
+  ) {
+    const result = this.compatibility(tasks, deviceId, force, undefined, inputs);
+    if (!result.supported)
+      throw new RpcError(
+        -32010,
+        result.issues
+          .map(
+            (issue) =>
+              `第 ${issue.taskIndex + 1} 项 ${taskLabels[issue.taskType] ?? issue.taskType}：${issue.message}`,
+          )
+          .join('；'),
+        result,
+      );
+    return result;
+  }
+  async executionPreflight(
+    params: RpcContract['params']['execution.preflight'],
+    inputs?: LegacyInputs,
+  ): Promise<RpcContract['results']['execution.preflight']> {
+    if (!validateExecutionPreflightParams(params)) throw new RpcError(-32602, '兼容检查参数无效');
+    if (params.source === 'copilot')
+      return {
+        supported: false,
+        engine: 'maafw',
+        issues: [
+          {
+            taskIndex: 0,
+            taskType:
+              params.kind === 'sss'
+                ? 'SSSCopilot'
+                : params.kind === 'paradox'
+                  ? 'ParadoxCopilot'
+                  : 'Copilot',
+            field: '',
+            code: 'unsupported_task',
+            message: '作业执行尚未迁移到 MaaFramework；导入、队列、文件和历史继续保留',
+          },
+        ],
+      };
+    if (params.source === 'tool') {
+      if (params.kind === 'recruit' && params.config?.mode === 'manual')
+        return { supported: true, engine: 'maafw', issues: [] };
+      if (params.kind === 'recruit')
+        return {
+          supported: false,
+          engine: 'maafw',
+          issues: [
+            {
+              taskIndex: 0,
+              taskType: 'Recruit',
+              field: 'mode',
+              code: 'unsupported_tool',
+              message:
+                '只读标签识别工具尚未迁移；可使用手动标签计算，自动公招请使用任务表的已迁移流程',
+            },
+          ],
+        };
+      const type =
+        params.kind === 'operators'
+          ? 'OperBox'
+          : params.kind === 'depot'
+            ? 'Depot'
+            : params.kind === 'games'
+              ? 'Custom'
+              : 'UserDataUpdate';
+      return this.executionPreflight({
+        deviceId: params.deviceId,
+        clientType: params.clientType,
+        tasks: [{ type, params: {}, enabled: true }] as Plan['tasks'],
+      });
+    }
+    const saved = params.planId ? this.store.get('plan', params.planId) : undefined;
+    if (params.planId && !saved) throw new RpcError(-32004, '任务表不存在');
+    const tasks = params.tasks ?? parsePlan(saved).tasks;
+    inputs ??= await snapshotLegacyInputs(tasks);
+    const result = this.compatibility(
+      tasks,
+      params.deviceId,
+      params.force,
+      params.clientType,
+      inputs,
+    );
+    // 类型／参数错误已经能完整定位时不读取资源；浏览预检绝不建立控制会话。
+    if (!result.supported) return result;
+    let clientType: string =
+      params.clientType ?? (params.deviceId ? this.deviceClient(params.deviceId) : 'Official');
+    const entries: Plan['tasks'] = params.force
+      ? [{ type: 'CloseDown', params: { client_type: clientType }, enabled: true }, ...tasks]
+      : tasks;
+    const catalogs = new Map<
+      string,
+      {
+        profiles: AutomationOptions;
+        catalog: ReturnType<ReturnType<typeof createAtomicCapabilityRegistry>['list']>;
+      }
+    >();
+    for (const [index, task] of entries.entries()) {
+      const taskIndex = params.force ? index - 1 : index;
+      const compiled = compileLegacyTask(task, {
+        clientType,
+        customInfrastPlan: inputs.plans[String(task.params.filename ?? '')],
+      });
+      let selected = catalogs.get(compiled.clientType);
+      if (!selected) {
+        const profiles = await this.atomicProfiles(params.deviceId, compiled.clientType);
+        const catalog = createAtomicCapabilityRegistry(
+          {
+            execute: async () => {
+              throw new Error('预检禁止设备输入');
+            },
+            runPipeline: async () => {
+              throw new Error('预检禁止执行');
+            },
+          },
+          profiles,
+        ).list();
+        selected = { profiles, catalog };
+        catalogs.set(compiled.clientType, selected);
+      }
+      for (const issue of [
+        ...validateCompiledLegacyTaskResources(compiled, selected.catalog),
+        ...validateCompiledLegacyTaskInputs(compiled, selected.profiles),
+      ])
+        result.issues.push({ ...issue, taskIndex, taskType: task.type });
+      if (task.enabled !== false && task.params.enable !== false && task.type === 'StartUp')
+        clientType = compiled.clientType;
+    }
+    result.supported = result.issues.length === 0;
+    return result;
+  }
+  private async requirePreflight(tasks: Plan['tasks'], deviceId: string, force = false) {
+    const inputs = await snapshotLegacyInputs(tasks);
+    const result = await this.executionPreflight({ tasks, deviceId, force }, inputs);
+    if (!result.supported)
+      throw new RpcError(-32010, result.issues.map((issue) => issue.message).join('；'), result);
+    return inputs;
   }
   async startRun(params: any, scheduledPlan?: any, occurrence?: any) {
     const token = params.requestId;
@@ -1653,6 +2092,11 @@ export class Runtime {
     if (!saved) throw new RpcError(-32004, '计划不存在');
     const plan = parsePlan(saved);
     this.validatePolicy(plan);
+    const legacyInputs = await this.requirePreflight(
+      plan.tasks,
+      params.deviceId,
+      !!occurrence?.force,
+    );
     if (!planAllowsDevice(plan, params.deviceId))
       throw new RpcError(-32011, '设备不在任务表绑定范围内，请使用绑定设备执行');
     plan.tasks = plan.tasks.filter(
@@ -1667,7 +2111,7 @@ export class Runtime {
       });
     return this.beginExecution(
       params,
-      { ...plan, source: 'plan', identity: params.planId },
+      { ...plan, source: 'plan', identity: params.planId, legacyInputs },
       occurrence,
     );
   }
@@ -1707,55 +2151,23 @@ export class Runtime {
         throw new RpcError(-32011, '同一请求标识不能用于不同执行');
       return pending.promise;
     }
-    const clientType = this.deviceClient(params.deviceId);
-    const prepared = this.copilot.prepare(params.kind, clientType);
-    this.validatePolicy(parsePlan({ name: prepared.name, tasks: prepared.tasks }));
-    const promise = this.beginExecution(params, {
-      ...prepared,
-      source: 'copilot',
-      kind: params.kind,
-      clientType,
-    });
-    this.starts.set(params.requestId, {
-      source: 'copilot',
-      identity,
-      deviceId: params.deviceId,
-      promise,
-    });
-    try {
-      return await promise;
-    } finally {
-      this.starts.delete(params.requestId);
-    }
-  }
-  private async ensureCoreAfterFramework(id: string, requestId?: string, occurrenceId?: string) {
-    if (!this.frameworkReleased.has(id)) return;
-    const status = this.availability(id, occurrenceId, requestId);
-    if (status.owner !== 'none') throw new RpcError(-32011, status.reason);
-    if (this.workers.get(id)?.connected) {
-      this.frameworkReleased.delete(id);
-      return;
-    }
-    const device = this.store.get('device', id);
-    if (!device) throw new RpcError(-32004, '设备不存在');
-    await this.connectDevice({ address: device.address, name: device.name });
-    const worker = this.workers.get(id);
-    if (
-      !worker ||
-      !(await worker.waitConnected(30_000, () => !this.running)) ||
-      !this.running ||
-      this.workers.get(id) !== worker
-    )
-      throw new RpcError(-32040, 'MaaCore 重新连接失败；未提交任务，不会自动重放');
-    const current = this.store.get('device', id);
-    current.state = 'idle';
-    this.store.put('device', id, current);
-    this.frameworkReleased.delete(id);
+    throw new RpcError(
+      -32010,
+      '作业执行尚未迁移到 MaaFramework；配置、作业库和历史继续保留',
+      await this.executionPreflight({
+        source: 'copilot',
+        kind:
+          params.kind === 'SSSCopilot'
+            ? 'sss'
+            : params.kind === 'ParadoxCopilot'
+              ? 'paradox'
+              : 'copilot',
+        deviceId: params.deviceId,
+      }),
+    );
   }
   /** Reserve occupancy before connection; persist immutable inputs before native task effects. */
   private async beginExecution(params: any, snapshot: any, occurrence?: any) {
-    if (this.frameworkReleased.has(params.deviceId))
-      await this.ensureCoreAfterFramework(params.deviceId, params.requestId, occurrence?.id);
     const device = this.devices().find((d) => d.id === params.deviceId);
     if (!device) throw new RpcError(-32004, '设备不存在');
     const availability = this.availability(device.id, occurrence?.id, params.requestId);
@@ -1772,17 +2184,25 @@ export class Runtime {
     this.preview.invalidate(device.id);
     const worker = this.workers.get(device.id);
     if (!worker?.connected || !worker.safeIdle)
-      throw new RpcError(-32011, '核心尚未连接或异步操作未结束');
+      throw new RpcError(-32011, 'MaaFramework 尚未连接或异步操作未结束');
     if (!this.running || this.appUpdating || this.appUpdatePreparing || this.switching)
       throw new RpcError(-32011, '应用运行时正在退出、安装更新或切换');
     const isCopilot = snapshot.source === 'copilot',
       id = ident('run');
+    const control = await this.controlSessions.start(
+      { deviceId: device.id, requestId: 'execution-' + id },
+      true,
+    );
+    this.runControls.set(id, control);
     const run: any = {
       ...(occurrence
         ? { scheduleId: occurrence.scheduleId, scheduledFor: occurrence.scheduledFor }
         : {}),
       id,
       source: snapshot.source,
+      engine: 'maafw',
+      frameworkVersion: device.frameworkVersion ?? null,
+      resourceVersion: device.resourceVersion ?? null,
       sourceName: snapshot.name,
       planId: isCopilot ? null : params.planId,
       planName: snapshot.name,
@@ -1808,23 +2228,33 @@ export class Runtime {
       })),
     };
     // Persist deduplication and immutable execution inputs before any native effect.
-    this.store.transaction(() => {
-      this.putExecution(id, run);
-      if (isCopilot) this.store.put('run_snapshot', id, structuredClone(snapshot));
-      else this.store.put('run_plan', id, snapshot);
-      this.store.put('request', params.requestId, {
-        runId: id,
-        source: snapshot.source,
-        planId: run.planId,
-        kind: snapshot.kind,
-        identity: snapshot.identity,
-        deviceId: device.id,
+    try {
+      this.store.transaction(() => {
+        this.putExecution(id, run);
+        if (isCopilot) this.store.put('run_snapshot', id, structuredClone(snapshot));
+        else this.store.put('run_plan', id, snapshot);
+        this.store.put('request', params.requestId, {
+          runId: id,
+          source: snapshot.source,
+          planId: run.planId,
+          kind: snapshot.kind,
+          identity: snapshot.identity,
+          deviceId: device.id,
+        });
       });
-    });
+    } catch (error) {
+      this.runControls.delete(id);
+      await this.controlSessions.end({
+        deviceId: device.id,
+        controlToken: control.controlToken,
+        requestId: 'execution-failed-' + id,
+      });
+      throw error;
+    }
     this.emit('run.started', run.message, { run });
     device.state = 'running';
     this.store.put('device', device.id, device);
-    await this.submitNativeTask(run, 0);
+    await this.submitFrameworkRun(run);
     return this.execution(id);
   }
   private async notifyUnavailableRunDevice(params: any, device: any) {
@@ -1840,10 +2270,12 @@ export class Runtime {
     )
       return;
     const combo = this.store.get('active', 'combo', {});
-    if (!combo.core || !combo.resource) return;
+    if (!combo.resource) return;
     const probe =
       this.options.probeDeviceEndpoint ??
-      (this.options.workerFactory || this.options.adbExecutable ? undefined : probeAdbEndpoint);
+      (this.options.frameworkWorkerFactory || this.options.adbExecutable
+        ? undefined
+        : probeAdbEndpoint);
     if (!probe) return;
     const key = `${params.requestId}|${params.planId}|${device.id}`;
     if (this.unavailableRunRequests.has(key)) return;
@@ -1879,28 +2311,18 @@ export class Runtime {
     const run = this.execution(id);
     if (!run) throw new RpcError(-32004, '执行记录不存在');
     if (run.status === 'running') {
-      if (run.toolKind && !this.store.get('execution', id)) {
-        this.finishNativeRun(run, 'stopped', '工具操作已取消，尚未向设备提交任务');
-        return this.execution(id);
-      }
-      this.clientSwitches.get(run.deviceId)?.abort();
+      this.runControllers.get(id)?.abort(new Error('用户停止执行'));
       const worker = this.workers.get(run.deviceId);
-      if (worker) {
-        const execution = this.store.get('execution', id, {});
-        execution.stopRequested = Date.now();
-        this.store.put('execution', id, execution);
-        run.message = '正在停止并等待核心与异步调用结束，保存的配置保留';
-        this.putExecution(id, run);
+      if (worker && !worker.safeIdle) {
         try {
           await worker.stop();
-          return this.execution(id);
         } catch {
           await worker.close();
-          this.workers.delete(run.deviceId);
-          this.workerConfigurations.delete(run.deviceId);
         }
       }
-      this.finishNativeRun(run, 'stopped', '工作进程已结束，请核对设备现场，保存的配置保留');
+      await this.runOperations.get(id)?.catch(() => {});
+      if (this.execution(id)?.status === 'running')
+        this.finishFrameworkRun(run, 'stopped', '执行已停止，配置保留；已提交动作请核对设备现场');
     }
     return run;
   }
@@ -1993,7 +2415,7 @@ export class Runtime {
       !this.appUpdatePreparing &&
       !this.switching &&
       parseSettings(this.store.get('settings', 'main')).autoConnect &&
-      !!this.store.get('active', 'combo', {}).core
+      !!this.store.get('active', 'combo', {}).resource
     );
   }
   private syncAutomaticTargets() {
@@ -2101,7 +2523,7 @@ export class Runtime {
         if (!state.online && !nativeTransport) {
           const transport =
             this.options.connectDeviceTransport ??
-            (this.options.workerFactory || this.options.adbExecutable
+            (this.options.frameworkWorkerFactory || this.options.adbExecutable
               ? undefined
               : connectAdbTransport);
           if (!transport) throw new Error('合成测试未配置 ADB 传输适配器');
@@ -2122,7 +2544,8 @@ export class Runtime {
         const worker = this.workers.get(device.id);
         if (!worker || !(await this.waitAutomaticConnected(worker, controller.signal)))
           throw new Error(
-            this.store.get('device', device.id)?.connectionError || '核心设备连接失败或超时',
+            this.store.get('device', device.id)?.connectionError ||
+              'MaaFramework 设备连接失败或超时',
           );
         this.validateAutomatic(state.target.address, state);
         state.failures = 0;
@@ -2225,7 +2648,9 @@ export class Runtime {
     if (this.endpointProbes || Date.now() < this.nextEndpointProbe || !localAdbServer()) return;
     const probe =
       this.options.probeDeviceEndpoint ??
-      (this.options.workerFactory || this.options.adbExecutable ? undefined : probeAdbEndpoint);
+      (this.options.frameworkWorkerFactory || this.options.adbExecutable
+        ? undefined
+        : probeAdbEndpoint);
     if (!probe) return;
     this.nextEndpointProbe = Date.now() + 2000;
     const candidates = states.filter(
@@ -2306,7 +2731,7 @@ export class Runtime {
     // Test adapters must never enumerate or operate real host emulators.
     return (
       this.options.emulatorInventory ??
-      (this.options.workerFactory || this.options.adbExecutable
+      (this.options.frameworkWorkerFactory || this.options.adbExecutable
         ? async () => emptyEmulatorInventory()
         : runningWindowsEmulatorInventory)
     )();
@@ -2323,267 +2748,122 @@ export class Runtime {
     if (process.env.MAAVERGE_ADB_PATH) return resolveAdbPath();
     return captureAdbPath(capture) || resolveAdbPath();
   }
-  async connectDevice(
+  /** 设备连接只创建 Framework Controller；资源与 SDK 均独立解析，不读取旧核心目录。 */
+  connectDevice(
     params: any,
     internal = false,
     automatic = false,
     inventory?: EmulatorInventory,
     attempt?: AutomaticConnection,
   ): Promise<any> {
-    let id: string | undefined,
-      reservedAddress: string | undefined,
-      profileId: string | undefined,
-      attemptedAddress: string | undefined,
-      reserved = false,
-      worker: Worker | undefined;
+    const operation = this.connectDeviceInner(params, internal, automatic, inventory, attempt);
+    this.connectionOperations.add(operation);
+    this.connectionReservations.set(operation, params.address);
+    void operation
+      .finally(() => {
+        this.connectionOperations.delete(operation);
+        this.connectionReservations.delete(operation);
+      })
+      .catch(() => {});
+    return operation;
+  }
+  private async connectDeviceInner(
+    params: any,
+    internal = false,
+    automatic = false,
+    inventory?: EmulatorInventory,
+    attempt?: AutomaticConnection,
+  ): Promise<any> {
+    const address = validateAddress(params.address);
+    if (
+      !this.running ||
+      this.appUpdating ||
+      (!internal && (this.switching || this.appUpdatePreparing))
+    )
+      throw new RpcError(-32011, '运行时正在退出或切换组件');
+    if (this.initializingComponents) throw new RpcError(-32021, '正在准备随附资源');
+    if (automatic) this.validateAutomatic(address, attempt);
+    // 先解析真实实例身份再分配设备 ID 和 OS 租约；别名不能各自取得一个控制器。
+    this.emulatorInventory = inventory ?? (await this.readEmulatorInventory());
+    if (!this.running) throw new RpcError(-32011, '运行时正在退出');
+    const canonical = this.lockAddress(address);
+    const previous = this.store
+      .all('device')
+      .find((device) => this.lockAddress(device.address) === canonical);
+    const id =
+      previous?.id ?? 'device-' + createHash('sha256').update(canonical).digest('hex').slice(0, 12);
+    if (this.workers.get(id)?.connected) return this.store.get('device', id);
+    if (
+      this.controlSessions.owns(id) ||
+      this.connectingAddresses.has(address) ||
+      this.connecting.has(id)
+    )
+      throw new RpcError(-32011, '设备正在连接或被控制会话占用');
+    this.connecting.add(id);
+    this.connectingAddresses.add(address);
+    let worker: Worker | undefined;
     try {
-      if (this.switching && !internal)
-        throw new RpcError(-32011, '正在切换核心与资源，暂不能连接设备');
-      if (this.initializingComponents && !internal)
-        throw new RpcError(-32021, '正在后台准备随附组件，请稍后再连接设备');
-      if (!this.running || this.appUpdating || (this.appUpdatePreparing && !internal))
-        throw new RpcError(-32011, '应用运行时正在退出或安装更新');
-      const address = validateAddress(params.address);
-      attemptedAddress = address;
-      if (this.frameworkOwnsAddress(address))
-        throw new RpcError(-32011, 'MaaFramework 控制会话占用设备，不能连接 MaaCore');
-      if (automatic) this.validateAutomatic(address, attempt);
-      const active = this.store
-        .all('device')
-        .find((device) => device.address === address && this.workers.has(device.id));
-      if (active) return active;
-      if (this.connectingAddresses.has(address)) throw new RpcError(-32011, '该设备正在建立连接');
-      if (!attempt)
-        for (const state of this.automaticActive)
-          if (this.lockAddress(state.target.address) === this.lockAddress(address))
-            throw new RpcError(-32011, '该设备正在自动建立连接');
-      this.connectingAddresses.add(address);
-      reservedAddress = address;
-      this.emulatorInventory = inventory ?? (await this.readEmulatorInventory());
-      if (
-        !this.running ||
-        this.appUpdating ||
-        ((this.appUpdatePreparing || this.switching) && !internal)
-      )
-        throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
+      if (!internal && !automatic) this.suppressAddress(address, false);
       const settings = parseSettings(this.store.get('settings', 'main'));
-      let profile =
-        findDeviceProfile(settings, address) ??
-        settings.deviceProfiles?.find(
-          (profile) => this.profileLockAddress(profile) === this.lockAddress(address),
-        );
-      profileId = profile?.id;
-      let selected = profile
-        ? { capture: profile.capture, connection: profile.connection }
-        : settings;
-      const detected = automaticCapture(selected.capture, address, this.emulatorInventory);
-      if (detected)
-        selected = {
-          ...selected,
-          capture: detected.capture,
-          ...(detected.config
-            ? {
-                connection: {
-                  ...defaultConnection(),
-                  ...selected.connection,
-                  config: detected.config,
-                },
-              }
-            : {}),
-        };
-      const knownInstance =
-        emulatorInstanceForAddress(address, this.emulatorInventory) ??
-        (selected.capture?.mumuBridge ? this.sdkInstance(selected.capture) : undefined);
-      const capture = await connectionCapture(
-        selected.capture,
-        address,
-        process.platform,
-        knownInstance,
-      );
-      if (
-        !this.running ||
-        this.appUpdating ||
-        ((this.appUpdatePreparing || this.switching) && !internal)
-      )
-        throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
-      if (detected?.instance && detected.capture.method !== 'adb') {
-        const current = parseSettings(this.store.get('settings', 'main'));
-        const profiles = current.deviceProfiles ?? [];
-        const profileKey =
-          profile?.id ??
-          `detected-${createHash('sha256').update(`${detected.capture.method}|${capture.emulatorPath.toLowerCase()}|${capture.instanceIndex}`).digest('hex').slice(0, 16)}`;
-        const existing = profiles.find((item) => item.id === profileKey);
-        const unchangedDefaults =
-          JSON.stringify([current.capture, current.connection]) ===
-          JSON.stringify([settings.capture, settings.connection]);
-        const currentProfile = profiles.find(
-          (item) => this.profileLockAddress(item) === this.lockAddress(address),
-        );
-        if (
-          profile
-            ? existing && JSON.stringify(existing) === JSON.stringify(profile)
-            : !existing && !currentProfile && unchangedDefaults
-        ) {
-          const automaticProfile = {
-            ...existing,
-            id: profileKey,
-            name:
-              existing?.name ??
-              `${detected.instance.name}（实例 ${detected.instance.index}）`.slice(0, 80),
-            address: existing && !existing.autoDetected ? existing.address : address,
-            connection: {
-              ...defaultConnection(),
-              ...selected.connection,
-              address: existing && !existing.autoDetected ? existing.address : address,
-            },
-            capture: {
-              method: capture.method,
-              emulatorPath: capture.emulatorPath,
-              instanceIndex: capture.instanceIndex,
-              autoDetect: true,
-            },
-            ...(!existing ? { autoDetected: true } : {}),
-          };
-          if (!existing && profiles.length >= 32)
-            throw new Error('自动截图配置最多保存 32 个实例，请清理不用的实例配置');
-          const next = parseSettings({
-            ...current,
-            deviceProfiles: existing
-              ? profiles.map((item) => (item.id === profileKey ? automaticProfile : item))
-              : [...profiles, automaticProfile],
-          });
-          this.store.put('settings', 'main', next);
-          if (attempt) attempt.target.revision = this.automaticConfiguration(address);
-          profile = next.deviceProfiles!.find((item) => item.id === profileKey);
-          profileId = profileKey;
-          if (!existing || JSON.stringify(existing) !== JSON.stringify(profile))
-            this.emit('settings.changed', '已自动配置实例增强截图', {
-              profileId: profileKey,
-              method: capture.method,
-              instanceIndex: capture.instanceIndex,
-            });
-        }
-      }
-      // A bridged ADB address still controls the selected local MuMu SDK instance.
-      // Keep its alias after settings changes so reconnect/disconnect uses the same lease.
-      const sdkInstance = this.sdkInstance(capture);
-      if (
-        sdkInstance &&
-        (capture.mumuBridge ||
-          emulatorInstanceForAddress(address, this.emulatorInventory) === sdkInstance)
-      )
-        this.store.put('device-alias', address, sdkInstance.address);
-      else if (capture.method === 'mumu' && capture.mumuBridge)
-        throw new Error('未能确认 MuMu 桥接实例，请启动对应实例并检查多开管理器');
-      else this.store.delete('device-alias', address);
-      if (automatic) this.validateAutomatic(address, attempt);
-      else if (!internal) this.suppressAddress(address, false);
+      const profile = findDeviceProfile(settings, address);
       const combo = this.store.get('active', 'combo', {});
-      if (!combo.core) throw new Error('请先在更新中心安装并启用核心');
-      const canonical = this.lockAddress(address),
-        aliases = this.store.all('device').filter((d) => this.lockAddress(d.address) === canonical);
-      const previous = aliases.find((d) => this.workers.has(d.id)) || aliases[0];
-      id =
-        previous?.id ||
-        'device-' + createHash('sha256').update(canonical).digest('hex').slice(0, 12);
-      if (this.controlSessions.owns(id!))
-        throw new RpcError(-32011, 'MaaFramework 控制会话占用设备');
-      if (this.connecting.has(id!)) throw new RpcError(-32011, '该设备正在建立连接');
-      if (this.workers.has(id!)) return this.store.get('device', id!);
-      this.connecting.add(id!);
-      reserved = true;
-      const adb = await this.adbExecutable(selected);
-      if (!this.running || (this.switching && !internal))
-        throw new RpcError(-32011, '正在退出或切换核心，连接已取消');
-      if (automatic) this.validateAutomatic(address, attempt);
-      const connection = (({ config, touchMode, adbLite, clientType }) => ({
-        config,
-        touchMode,
-        adbLite,
-        clientType,
-      }))(selected.connection ?? defaultConnection());
-      const { mumuTouch, mumuBridge, autoDetect: _autoDetect, ...plainCapture } = capture;
-      const workerCapture =
-        capture.method === 'adb'
-          ? { method: 'adb' }
-          : capture.method === 'mumu'
-            ? {
-                ...plainCapture,
-                ...(mumuTouch !== undefined ? { mumuTouch } : {}),
-                ...(mumuBridge !== undefined ? { mumuBridge } : {}),
-              }
-            : plainCapture;
-      const config = {
-        core: combo.core.path,
-        resource: combo.resource.path,
-        adb,
+      if (!combo.resource) throw new RpcError(-32040, '请先安装并启用游戏资源');
+      const device = {
+        ...previous,
+        id,
+        name: String(params.name || profile?.name || previous?.name || address).slice(0, 80),
         address,
-        capture: workerCapture,
-        ...(connection ? { connection } : {}),
-        userDir: path.join(this.root, 'workers', id!),
-        lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical),
-        ...(automatic ? { lockTimeoutMs: 0 } : {}),
+        state: 'offline',
+        frameworkVersion: this.frameworkUpdates.channel().currentVersion,
+        resourceVersion: combo.resource.version,
+        ...(profile ? { connectionProfileId: profile.id } : {}),
       };
-      worker = await this.startWorker(config, attempt?.controller?.signal);
-      if (
-        connection.config === 'AVD' &&
-        connection.touchMode === 'MaaFwAdb' &&
-        /^emulator-\d{1,5}$/.test(address)
-      ) {
-        // High-port AVDs may only be registered with the emulator manager's
-        // private server. Register the explicit serial with our existing server
-        // after acquiring the shared device lease, before MaaCore get-state.
-        const prepare =
-          this.options.ensureAvdTransport ??
-          (this.options.workerFactory || this.options.adbExecutable
-            ? undefined
-            : ensureAvdTransport);
-        await prepare?.(address, attempt?.controller?.signal);
-        if (
-          !this.running ||
-          this.appUpdating ||
-          ((this.appUpdatePreparing || this.switching) && !internal)
-        )
-          throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
-      }
-      if (automatic) this.validateAutomatic(address, attempt);
+      delete device.coreVersion;
+      this.store.put('device', id, device);
+      const config = {
+        resource: combo.resource.path,
+        adb: await this.adbExecutable(profile ?? settings),
+        address,
+        lockPath: deviceLockPath(adbServerIdentity() + '|' + canonical),
+        connection: profile?.connection ?? settings.connection ?? defaultConnection(),
+      };
+      this.frameworkConnections.set(id, config);
+      const view = await this.prepareFrameworkView(id, attempt?.controller?.signal);
+      const port = await this.launchFrameworkControl(
+        id,
+        view,
+        attempt?.controller?.signal ?? this.frameworkAbort.signal,
+      );
+      worker = deviceWorker(port);
       await worker.connect();
-      if (!this.running || this.appUpdating)
-        throw new RpcError(-32011, '应用运行时正在退出或安装更新');
+      if (!worker.connected || !this.running) throw new Error('MaaFramework 未确认设备连接');
       if (automatic) this.validateAutomatic(address, attempt);
-      this.workers.set(id!, worker);
-      this.workerConfigurations.set(id!, structuredClone(config));
+      this.workers.set(id, worker);
+      this.workerConfigurations.set(id, config);
       if (attempt) {
         attempt.worker = worker;
         attempt.deviceId = id;
       }
-      const device = {
-        id,
-        name: String(params.name || profile?.name || address).slice(0, 80),
-        address,
-        state: 'offline',
-        ...(profile ? { connectionProfileId: profile.id } : {}),
-        coreVersion: combo.core.version,
-        resourceVersion: combo.resource.version,
-      };
-      this.store.put('device', id!, device);
-      this.emit('device.connecting', '正在异步连接设备', { device });
+      device.state = 'idle';
+      device.frameworkVersion = this.frameworkUpdates.channel().currentVersion;
+      delete device.connectionError;
+      this.store.put('device', id, device);
+      this.emit('device.connected', 'MaaFramework 已连接设备', { device });
       return device;
     } catch (error) {
-      if (worker && !this.workers.has(id!)) await worker.close();
-      const reason = connectionError(error);
-      if (profileId)
-        this.emit('device.connection_failed', '多开实例连接失败：' + reason, {
-          profileId,
-          address: attemptedAddress,
-          error: reason,
-          detail: String(error),
-        });
+      await worker?.close().catch(() => {});
+      this.frameworkConnections.delete(id);
+      const device = this.store.get('device', id);
+      if (device) {
+        device.state = 'offline';
+        device.connectionError = connectionError(error);
+        this.store.put('device', id, device);
+      }
       if (error instanceof RpcError) throw error;
-      throw new RpcError(-32040, '设备连接失败：' + reason, String(error));
+      throw new RpcError(-32040, '设备连接失败：' + connectionError(error), errorDetail(error));
     } finally {
-      if (reserved) this.connecting.delete(id!);
-      if (reservedAddress) this.connectingAddresses.delete(reservedAddress);
+      this.connecting.delete(id);
+      this.connectingAddresses.delete(address);
     }
   }
   async autoConnectDevices(automatic = false): Promise<any> {
@@ -2591,7 +2871,7 @@ export class Runtime {
     this.autoConnecting = true;
     try {
       if (!this.running || this.appUpdating || this.appUpdatePreparing || this.switching)
-        throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，请稍后重试');
+        throw new RpcError(-32011, '正在退出、安装应用更新或切换运行组件，请稍后重试');
       if (!automatic) {
         this.suppressed.clear();
         this.suppressedAddresses.clear();
@@ -2600,8 +2880,11 @@ export class Runtime {
           state.retryAt = 0;
         }
       }
-      if (!this.store.get('active', 'combo', {}).core)
-        throw new RpcError(-32040, '请先在更新中心安装并启用核心，再自动连接模拟器');
+      if (!this.store.get('active', 'combo', {}).resource)
+        throw new RpcError(
+          -32040,
+          '请先在更新中心安装并启用游戏资源和 MaaFramework，再自动连接模拟器',
+        );
       const profiles = parseSettings(this.store.get('settings', 'main')).deviceProfiles ?? [];
       const configuredOnly = profiles.some((profile) => !profile.autoDetected);
       let discovered: { address: string; name: string; adbState: string }[] = [],
@@ -2658,7 +2941,7 @@ export class Runtime {
         seen.add(key);
         try {
           if (this.switching || !this.running)
-            throw new RpcError(-32011, '正在退出或切换核心，请稍后重试');
+            throw new RpcError(-32011, '正在退出或切换运行组件，请稍后重试');
           const queued = [...this.automaticTargets.values()].find(
             (state) => this.lockAddress(state.target.address) === key,
           );
@@ -2694,7 +2977,16 @@ export class Runtime {
           }
           devices.push(await this.connectDevice(candidate, false, automatic, inventory));
         } catch (error) {
-          diagnostics.push(candidate.address + '：' + connectionError(error));
+          const reason = connectionError(error);
+          diagnostics.push(candidate.address + '：' + reason);
+          this.emit('device.connection_failed', '设备连接失败：' + reason, {
+            address: candidate.address,
+            profileId: findDeviceProfile(
+              parseSettings(this.store.get('settings', 'main')),
+              candidate.address,
+            )?.id,
+            error: reason,
+          });
         }
       }
       if (!devices.length)
@@ -2738,12 +3030,15 @@ export class Runtime {
   }
   private deleteDevices(params: unknown): RpcContract['results']['device.delete'] {
     if (!validateDeviceDeleteParams(params)) throw new RpcError(-32602, '历史设备删除请求无效');
-    if (this.switching) throw new RpcError(-32011, '正在切换核心与资源，暂不能删除历史设备');
+    if (this.switching)
+      throw new RpcError(-32011, '正在切换 MaaFramework 与资源，暂不能删除历史设备');
     const devices = params.deviceIds
       .map((id) => this.store.get('device', id))
       .filter((device) => !!device);
     const connectingAddresses = new Set(
-      [...this.connectingAddresses].map((address) => this.lockAddress(address)),
+      [...this.connectingAddresses, ...this.connectionReservations.values()].map((address) =>
+        this.lockAddress(address),
+      ),
     );
     // Preflight the entire batch without yielding: an offline-looking record can
     // still belong to an asynchronous connection, execution or scheduled start.
@@ -2787,7 +3082,7 @@ export class Runtime {
     if (this.controlSessions.owns(id))
       throw new RpcError(-32011, '请先通过宿主结束 MaaFramework 控制会话');
     if (this.switching && !internal)
-      throw new RpcError(-32011, '正在切换核心与资源，暂不能断开设备');
+      throw new RpcError(-32011, '正在切换 MaaFramework 与资源，暂不能断开设备');
     if (this.preview.isClicking(id)) throw new RpcError(-32011, '点击尚未完成，请稍后断开设备');
     this.preview.invalidate(id);
     if (
@@ -2810,8 +3105,10 @@ export class Runtime {
     return { disconnected: true };
   }
   async beforeSwitch() {
-    if (!this.switching && this.busy()) throw new Error('核心或异步操作仍在运行');
+    if (this.switchOwner === 'framework') throw new Error('MaaFramework 正在切换');
+    if (!this.switching && this.busy()) throw new Error('MaaFramework 或异步操作仍在运行');
     this.switching = true;
+    this.switchOwner = 'components';
     this.preview.invalidate();
     await this.closeFrameworkReaders();
     this.frameworkViews.clear();
@@ -2819,6 +3116,7 @@ export class Runtime {
     const workers = [...this.workers.entries()];
     this.workers.clear();
     this.workerConfigurations.clear();
+    this.frameworkConnections.clear();
     for (const [id, worker] of workers) {
       const d = this.store.get('device', id);
       // Only a device that was actually connected needs to come back after the
@@ -2827,11 +3125,12 @@ export class Runtime {
       if (worker.connected) reconnect.set(id, d);
       d.state = 'offline';
       this.store.put('device', id, d);
-      this.emit('device.disconnected', '正在安全切换核心工作进程', { deviceId: id });
+      this.emit('device.disconnected', '正在安全切换 MaaFramework 工作进程', { deviceId: id });
     }
     this.reconnect = [...reconnect.values()];
     const results = await Promise.allSettled(workers.map(([, w]) => w.close()));
-    if (results.some((r) => r.status === 'rejected')) throw new Error('旧核心工作进程退出失败');
+    if (results.some((r) => r.status === 'rejected'))
+      throw new Error('旧 MaaFramework 工作进程退出失败');
   }
   async afterSwitch() {
     for (const device of this.reconnect) {
@@ -2841,7 +3140,7 @@ export class Runtime {
           true,
         );
         if (!(await this.workers.get(connected.id)?.waitConnected()))
-          throw new Error('新版核心设备重连失败或超时: ' + device.name);
+          throw new Error('MaaFramework 设备重连失败或超时: ' + device.name);
       } catch (error) {
         // The new files were validated before the switch. A device that cannot
         // come back is reported as offline; it must not roll back a valid idle
@@ -2867,7 +3166,7 @@ export class Runtime {
     });
   }
   async finishSwitch(error?: string) {
-    if (!this.switching) return;
+    if (!this.switching || this.switchOwner !== 'components') return;
     if (error) {
       await Promise.all([...this.workers.values()].map((w) => w.close()));
       this.workers.clear();
@@ -2878,11 +3177,16 @@ export class Runtime {
       }
       for (const run of this.executions())
         if (run.status === 'running')
-          this.finishNativeRun(run, 'failed', '核心切换及旧版重连失败；请人工核对设备: ' + error);
+          this.finishFrameworkRun(
+            run,
+            'failed',
+            'MaaFramework 切换及旧版重连失败；请人工核对设备: ' + error,
+          );
       this.emit('update.recovery_failed', '设备重连失败，已终止等待中的计划', { error });
     }
     this.reconnect = [];
     this.switching = false;
+    this.switchOwner = undefined;
   }
   private taskClient(run: any, index: number): string {
     const snapshot = this.executionSnapshot(run.id),
@@ -2968,12 +3272,6 @@ export class Runtime {
         { deviceId: run.deviceId, runId: run.id },
       );
   }
-  private startWorker(config: any, signal?: AbortSignal) {
-    this.protectedWorkerLogs.add(path.basename(config.userDir));
-    return this.options.workerFactory
-      ? this.options.workerFactory(structuredClone(config), { signal })
-      : CoreWorker.start(config, { signal });
-  }
   private canSubmit(runId: string) {
     return (
       this.running &&
@@ -3013,71 +3311,220 @@ export class Runtime {
     Object.assign(run, current);
     return true;
   }
-  private captureRunArtifact(run: any, state: any, worker: Worker, label: string) {
-    const key = run.id + ':' + state.index;
+  /** 正式任务逐条调用登记的 JSON／L3 流程；后台 Promise 持有会话直到停止完全收敛。 */
+  private submitFrameworkRun(run: any): Promise<void> {
+    const controller = new AbortController();
+    this.runControllers.set(run.id, controller);
+    const operation = this.executeFrameworkRun(run, controller.signal).finally(() => {
+      this.runControllers.delete(run.id);
+      this.runOperations.delete(run.id);
+      this.submissions.delete(operation);
+    });
+    this.submissions.add(operation);
+    this.runOperations.set(run.id, operation);
+    return Promise.resolve();
+  }
+  private async executeFrameworkRun(run: any, signal: AbortSignal) {
+    let control = this.runControls.get(run.id);
+    try {
+      const snapshot = this.executionSnapshot(run.id);
+      this.assertCompatible(snapshot.tasks, run.deviceId, false, snapshot.legacyInputs);
+      control ??= await this.controlSessions.start(
+        { deviceId: run.deviceId, requestId: 'execution-' + run.id },
+        true,
+      );
+      this.runControls.set(run.id, control);
+      for (let index = 0; index < snapshot.tasks.length; index++) {
+        signal.throwIfAborted();
+        const configured = snapshot.tasks[index];
+        const compiled = compileLegacyTask(configured, {
+          clientType: this.taskClient(run, index),
+          customInfrastPlan: snapshot.legacyInputs?.plans[String(configured.params.filename ?? '')],
+        });
+        if (!compiled.supported)
+          throw new Error(compiled.issues.map((issue) => issue.message).join('；'));
+        // 官服／B 服共用中文素材，规则按不可变快照的客户端选择，绝不继承上个任务的配置。
+        const registry = await this.automationRegistry(control, signal, compiled.clientType);
+        const resourceIssues = [
+          ...validateCompiledLegacyTaskResources(compiled, registry.list()),
+          ...validateCompiledLegacyTaskInputs(
+            compiled,
+            await this.atomicProfiles(run.deviceId, compiled.clientType),
+          ),
+        ];
+        if (resourceIssues.length)
+          throw new Error(resourceIssues.map((issue) => issue.message).join('；'));
+        this.store.put('execution', run.id, { index, engine: 'maafw' });
+        this.updateRunTask(run, index, (task) =>
+          Object.assign(task, {
+            status: 'running',
+            startedAt: now(),
+            message: '正在执行 ' + (taskLabels[configured.type] ?? configured.type),
+          }),
+        );
+        const context = {
+          signal,
+          claimDailyAction: async (key: 'visit_friends') => {
+            const at = this.options.now?.() ?? new Date(),
+              clientType = compiled.clientType;
+            const day = gameDate(at, clientType).toISOString().slice(0, 10);
+            const claim = `${run.deviceId}:${clientType}:${day}:${key}`;
+            return this.store.transaction(() => {
+              const legacy = this.store.get('mall_visit', run.deviceId);
+              if (
+                this.store.get('daily_action_claim', claim) ||
+                (legacy?.clientType === clientType &&
+                  !syncDue(legacy.visitedAt, 'daily', at, clientType))
+              )
+                return false;
+              this.store.put('daily_action_claim', claim, {
+                runId: run.id,
+                taskIndex: index,
+                claimedAt: at.toISOString(),
+              });
+              return true;
+            });
+          },
+          onProgress: (progress: { message: string; capabilityId?: string; data?: unknown }) => {
+            this.updateRunTask(
+              run,
+              index,
+              (task) => {
+                task.message = progress.message.slice(0, 1000);
+                if (progress.capabilityId === 'workflow.fight.legacy_batch')
+                  recordFrameworkResult(
+                    task,
+                    progress.capabilityId,
+                    { status: 'partial', verified: false, data: progress.data },
+                    now(),
+                    String(configured.params.stage ?? ''),
+                  );
+              },
+              true,
+            );
+          },
+          reserveConsumable: async (
+            kind: string,
+            amount: number,
+            limit: number,
+            operationId: string,
+          ) => {
+            this.reserveConsumption(
+              run.id,
+              index,
+              configured.params,
+              kind,
+              amount,
+              limit,
+              operationId,
+            );
+          },
+        };
+        for (const step of compiled.steps) {
+          for (let iteration = 0; iteration < (step.repeat ?? 1); iteration++) {
+            signal.throwIfAborted();
+            const result = await registry.execute(step.capabilityId, step.input, context);
+            // 保存未知结果证据供人工核对；完成信号本身不构成业务成功。
+            this.store.put(
+              'execution_evidence',
+              `${run.id}:${index}:${step.capabilityId}:${iteration}`,
+              {
+                runId: run.id,
+                taskIndex: index,
+                capabilityId: step.capabilityId,
+                iteration,
+                recordedAt: now(),
+                ...boundedExecutionEvidence(result),
+              },
+            );
+            this.updateRunTask(
+              run,
+              index,
+              (task) =>
+                recordFrameworkResult(
+                  task,
+                  step.capabilityId,
+                  result,
+                  now(),
+                  String(configured.params.stage ?? ''),
+                ),
+              true,
+            );
+            await this.captureRunEvidence(
+              run,
+              index,
+              control,
+              signal,
+              result.verified ? '流程结束后的核对画面' : '结果未确认，请人工核对',
+            );
+            if (result.status !== 'completed' || result.verified !== true)
+              throw new Error(result.message ?? '业务结果未确认；不会自动重放');
+          }
+        }
+        if (configured.type === 'StartUp') this.rememberClient(run, configured.params);
+        this.updateRunTask(run, index, (task) =>
+          Object.assign(task, { status: 'completed', finishedAt: now(), message: '已复核完成' }),
+        );
+        const current = this.execution(run.id);
+        current.progress = Math.round(((index + 1) * 100) / snapshot.tasks.length);
+        this.putExecution(run.id, current);
+      }
+      this.finishFrameworkRun(run, 'completed', '全部任务已完成并复核');
+    } catch (error) {
+      this.finishFrameworkRun(
+        run,
+        signal.aborted ? 'stopped' : 'failed',
+        (signal.aborted ? '执行已停止；请核对已提交动作，配置保留' : String(error)).slice(0, 1000),
+      );
+    } finally {
+      if (control)
+        await this.controlSessions
+          .end({
+            deviceId: run.deviceId,
+            controlToken: control.controlToken,
+            requestId: 'execution-end-' + run.id,
+          })
+          .catch(() => {});
+      this.runControls.delete(run.id);
+      const device = this.store.get('device', run.deviceId);
+      if (device) {
+        device.state = this.workers.get(run.deviceId)?.connected ? 'idle' : 'offline';
+        this.store.put('device', device.id, device);
+      }
+    }
+  }
+  /** 结果截图只作事后证据；750 ms 后失效，不把迟到画面记给下一任务或据此重放。 */
+  private async captureRunEvidence(
+    run: any,
+    index: number,
+    control: { controlToken: string },
+    signal: AbortSignal,
+    label: string,
+  ) {
     const current = this.execution(run.id),
-      task = current?.tasks?.[state.index];
+      task = current?.tasks?.[index];
     if (
-      !worker.frame ||
+      signal.aborted ||
+      current?.status !== 'running' ||
       !task ||
       task.artifacts.length >= 3 ||
-      current.tasks.reduce((total: number, task: RunTask) => total + task.artifacts.length, 0) >=
-        12 ||
-      this.artifactCaptures.has(key)
+      current.tasks.reduce((count: number, item: RunTask) => count + item.artifacts.length, 0) >= 12
     )
       return;
-    let capture!: Promise<void>;
-    capture = (async () => {
-      try {
-        // Preview validates protocol, PNG dimensions, size and worker identity.
-        // Running workers return their latest cached image without a new ADB action.
-        const frame = await this.preview.frame({ deviceId: run.deviceId });
-        const execution = this.running ? this.store.get('execution', run.id) : undefined;
-        if (
-          !this.running ||
-          this.artifactCaptures.get(key) !== capture ||
-          this.workers.get(run.deviceId) !== worker ||
-          execution?.taskId !== state.taskId ||
-          execution?.index !== state.index ||
-          this.execution(run.id)?.status !== 'running'
-        )
-          return;
-        const latest = this.execution(run.id),
-          latestTask = latest?.tasks?.[state.index];
-        if (
-          !latestTask ||
-          latestTask.artifacts.length >= 3 ||
-          latest.tasks.reduce((total: number, task: RunTask) => total + task.artifacts.length, 0) >=
-            12
-        )
-          return;
-        const artifact = this.artifacts.save(run.id, latestTask, frame, label);
-        this.putExecution(run.id, latest);
-        this.emit('run.artifact', label + '已保存', {
-          runId: run.id,
-          index: state.index,
-          taskId: state.taskId,
-          artifact,
-        });
-      } catch (error) {
-        if (this.running)
-          this.emit('run.artifact_unavailable', '反馈画面获取失败，已保留核心结果信息', {
-            runId: run.id,
-            index: state.index,
-            reason: String(error).slice(0, 500),
-          });
-      }
-    })();
-    this.artifactCaptures.set(key, capture);
-    void capture.finally(() => {
-      if (this.artifactCaptures.get(key) === capture) this.artifactCaptures.delete(key);
-    });
-  }
-  private async finishRunArtifact(runId: string, index: number) {
-    const key = runId + ':' + index,
-      capture = this.artifactCaptures.get(key);
-    if (!capture) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let active = true,
+      timer: ReturnType<typeof setTimeout> | undefined;
+    const capture = this.preview
+      .frame({ deviceId: run.deviceId, controlToken: control.controlToken })
+      .then((frame) => {
+        if (!active || signal.aborted || !this.canSubmit(run.id)) return;
+        this.updateRunTask(
+          run,
+          index,
+          (target) => this.artifacts.save(run.id, target, frame, label),
+          true,
+        );
+      })
+      .catch(() => {});
     try {
       await Promise.race([
         capture,
@@ -3086,409 +3533,59 @@ export class Runtime {
         }),
       ]);
     } finally {
+      active = false;
       clearTimeout(timer);
-      // A timed-out read may still complete; revoke its permission to persist.
-      if (this.artifactCaptures.get(key) === capture) this.artifactCaptures.delete(key);
     }
   }
-  private async workerForClient(run: any, clientType: string): Promise<Worker | undefined> {
-    const id = run.deviceId,
-      previous = this.workers.get(id),
-      saved = this.workerConfigurations.get(id);
-    if (this.controlSessions.owns(id))
-      throw new Error('MaaFramework 控制会话占用设备，不能切换 MaaCore 客户端');
-    if (!previous?.connected || !previous.safeIdle)
-      throw new Error('核心尚未连接或未到达安全空闲边界');
-    if ((saved?.connection?.clientType ?? 'Official') === clientType) return previous;
-    if (!saved) throw new Error('缺少已连接核心的配置快照，无法安全切换客户端资源');
-    if (this.clientSwitches.has(id)) throw new Error('该设备正在切换客户端资源');
-    const controller = new AbortController(),
-      cancelled = () => controller.signal.aborted || !this.canSubmit(run.id);
-    this.clientSwitches.set(id, controller);
-    this.connecting.add(id);
-    this.preview.invalidate(id);
-    let replacement: Worker | undefined,
-      ready = false;
-    const abort = () => {
-      void replacement?.close().catch(() => {});
-    };
-    controller.signal.addEventListener('abort', abort, { once: true });
-    try {
-      const config = {
-        ...structuredClone(saved),
-        connection: {
-          config: 'General',
-          touchMode: 'maatouch',
-          adbLite: false,
-          ...saved.connection,
-          clientType,
-        },
-      };
-      this.workers.delete(id);
-      this.workerConfigurations.delete(id);
-      await previous.close();
-      if (cancelled()) return;
-      this.emit('device.client_switching', '正在切换客户端资源并重新连接当前设备', {
-        deviceId: id,
-        runId: run.id,
-        clientType,
-      });
-      replacement = await this.startWorker(config, controller.signal);
-      if (cancelled()) {
-        await replacement.close();
-        return;
-      }
-      this.workers.set(id, replacement);
-      this.workerConfigurations.set(id, structuredClone(config));
-      await replacement.connect();
-      if (!(await replacement.waitConnected(30_000, cancelled))) {
-        if (cancelled()) return;
-        throw new Error('客户端资源切换后的设备连接失败或超时');
-      }
-      if (cancelled()) return;
-      ready = true;
-      return replacement;
-    } catch (error) {
-      if (!cancelled())
-        throw new Error('客户端资源切换失败，本次执行已结束且不会重放：' + String(error));
-    } finally {
-      if (!ready) {
-        await replacement?.close();
-        if (this.workers.get(id) === replacement) {
-          this.workers.delete(id);
-          this.workerConfigurations.delete(id);
-        }
-      }
-      controller.signal.removeEventListener('abort', abort);
-      this.clientSwitches.delete(id);
-      this.connecting.delete(id);
-    }
-  }
-  submitNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0): Promise<void> {
-    const pending = this.submitNativeTaskInner(run, index, syncSteps, syncIndex);
-    this.submissions.add(pending);
-    return pending.finally(() => {
-      this.submissions.delete(pending);
-    });
-  }
-  private async submitNativeTaskInner(
-    run: any,
+  /** 消耗资格先入库再输入；未知结果仍占额度，不能凭重试退回或再次花费。 */
+  private reserveConsumption(
+    runId: string,
     index: number,
-    syncSteps?: SyncStep[],
-    syncIndex = 0,
+    params: any,
+    kind: string,
+    amount: number,
+    limit: number,
+    operationId: string,
   ) {
-    const current = this.execution(run.id);
+    const maximum =
+      kind === 'medicine'
+        ? (params.medicine ?? 0)
+        : kind === 'stone'
+          ? (params.stone ?? 0)
+          : kind === 'credit'
+            ? (params.credit_budget ?? 0)
+            : kind === 'recruit'
+              ? (params.times ?? 0)
+              : -1;
     if (
-      !this.running ||
-      this.switching ||
-      current?.status !== 'running' ||
-      this.store.get('execution', run.id, {}).stopRequested
+      !Number.isSafeInteger(amount) ||
+      amount < 1 ||
+      !Number.isSafeInteger(limit) ||
+      limit < 0 ||
+      limit > maximum ||
+      typeof operationId !== 'string' ||
+      !operationId ||
+      operationId.length > 200
     )
-      return;
-    if (run.toolKind && !this.toolbox.beforeTask(run, index)) {
-      this.updateRunTask(run, index, (task) => {
-        Object.assign(task, {
-          status: 'skipped',
-          finishedAt: now(),
-          message: '库存已达标或仅执行首个不足项',
-        });
-      });
-      await this.advanceNativeTask(run, index + 1);
-      return;
-    }
-    const plan = this.executionSnapshot(run.id),
-      configuredTask = plan.tasks[index],
-      clientType = this.taskClient(run, index);
-    if (configuredTask.type === 'UserDataUpdate') {
-      syncSteps ??= userDataSteps(
-        configuredTask.params,
-        this.syncHistory(run.deviceId, clientType),
-        new Date(),
-        clientType,
-      );
-      if (!syncSteps.length) {
-        this.updateRunTask(run, index, (task) => {
-          Object.assign(task, {
-            status: 'skipped',
-            finishedAt: now(),
-            message: '当前周期已完成或未选择识别项目',
-          });
-        });
-        this.emit('run.task_skipped', '更新数据已在当前周期完成或未选择识别项目，已跳过', {
-          runId: run.id,
-          index,
-        });
-        await this.advanceNativeTask(run, index + 1);
-        return;
-      }
-    }
-    const state: any = {
-      index,
-      syncSteps,
-      syncIndex,
-      clientType,
-      completed: false,
-      failed: false,
-      queueEnded: false,
-      idleAfterEnd: false,
-      taskId: null,
-      stopRequested: null,
-      submitting: true,
-    };
-    const task = nativeTask(
-      syncSteps ? { type: syncSteps[syncIndex]!.type, params: {}, enabled: true } : configuredTask,
-    );
-    if (task.type === 'Fight') {
-      if (!('client_type' in task.params)) task.params.client_type = clientType;
-      if (!('server' in task.params))
-        task.params.server =
-          ({ YoStarEN: 'US', YoStarJP: 'JP', YoStarKR: 'KR' } as Record<string, string>)[
-            clientType
-          ] ?? 'CN';
-    }
-    if (['OperBox', 'Depot'].includes(task.type)) state.recognitionType = task.type;
-    if (task.type === 'Mall') {
-      const visited = this.store.get('mall_visit', run.deviceId);
-      if (
-        configuredTask.params.visit_friends_once_a_day &&
-        visited?.clientType === clientType &&
-        !syncDue(visited.visitedAt, 'daily', new Date(), clientType)
-      )
-        task.params.visit_friends = false;
-      state.mallVisitEnabled = task.params.visit_friends !== false;
-    }
-    if (run.source === 'copilot' && run.copilotEntries?.length === 1) {
-      state.currentCopilotIndex = 0;
-      Object.assign(run.copilotEntries[0], {
-        status: 'running',
-        message: '正在执行；通关结果未确认',
-      });
-      this.putExecution(run.id, run);
-    }
-    this.store.put('execution', run.id, state);
-    this.updateRunTask(run, index, (item) => {
-      Object.assign(item, {
-        status: 'running',
-        startedAt: item.startedAt ?? now(),
-        message: '正在准备' + (taskLabels[configuredTask.type] ?? configuredTask.type),
-      });
+      throw new RpcError(-32010, '消耗额度请求无效');
+    const key = runId + ':' + index + ':' + kind;
+    this.store.transaction(() => {
+      const ledger = this.store.get('consumption', key, { reserved: 0 });
+      const reservationKey = key + ':' + createHash('sha256').update(operationId).digest('hex');
+      if (this.store.get('consumption_reservation', reservationKey))
+        throw new RpcError(-32011, '消耗动作已经预留，不允许重放');
+      if (ledger.reserved + amount > limit)
+        throw new RpcError(-32010, '已达到本次任务的明确消耗上限');
+      ledger.reserved += amount;
+      this.store.put('consumption', key, ledger);
+      this.store.put('consumption_reservation', reservationKey, { amount, operationId });
     });
-    try {
-      const worker = await this.workerForClient(run, clientType);
-      if (!worker || !this.canSubmit(run.id)) {
-        Object.assign(state, this.store.get('execution', run.id, {}), { submitting: false });
-        this.store.put('execution', run.id, state);
-        if (this.execution(run.id)?.status === 'running' && (state.stopRequested || !this.running))
-          this.finishNativeRun(run, 'stopped', '执行已停止，保存的配置及未执行项保留');
-        return;
-      }
-      if (this.updates.channels().some((channel) => channel.status === 'waiting_idle')) {
-        Object.assign(state, {
-          submitting: false,
-          boundaryWaiting: true,
-          nextIndex: index,
-          nextSyncSteps: syncSteps,
-          nextSyncIndex: syncIndex,
-        });
-        this.store.put('execution', run.id, state);
-        run.message = '已到达安全边界，等待核心与资源更新后继续执行';
-        this.putExecution(run.id, run);
-        this.emit('run.progress', run.message, { run });
-        return;
-      }
-      const result = await worker.task(task);
-      if (run.toolKind === 'inventory' && run.inventoryTargets?.[index]) {
-        run.executedInventory = index;
-        this.putExecution(run.id, run);
-      }
-      Object.assign(state, this.store.get('execution', run.id, {}), {
-        taskId: result.taskId,
-        submitting: false,
-      });
-      this.store.put('execution', run.id, state);
-      if (state.stopRequested || this.execution(run.id).status !== 'running') return;
-      this.updateRunTask(run, index, (item) => {
-        item.message = '正在执行' + (taskLabels[task.type] ?? task.type);
-      });
-      Object.assign(run, {
-        message: '正在执行' + (taskLabels[task.type] ?? task.type),
-        progress: Math.floor((index * 100) / plan.tasks.length),
-      });
-      this.putExecution(run.id, run);
-      const device = this.store.get('device', run.deviceId);
-      device.state = 'running';
-      this.store.put('device', device.id, device);
-      this.emit('run.progress', run.message, { run });
-    } catch (error) {
-      Object.assign(state, this.store.get('execution', run.id, {}), { submitting: false });
-      this.store.put('execution', run.id, state);
-      if (this.execution(run.id)?.status === 'running')
-        this.finishNativeRun(
-          run,
-          state.stopRequested ? 'stopped' : 'failed',
-          state.stopRequested
-            ? '执行已停止，保存的配置及未执行项保留'
-            : '任务提交失败或结果未知: ' + String(error),
-        );
-    }
   }
-  private async advanceNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
-    const plan = this.executionSnapshot(run.id);
-    if (index >= plan.tasks.length)
-      this.finishNativeRun(run, 'completed', '所有任务链均报告成功且核心已空闲');
-    else if (this.updates.channels().some((c) => c.status === 'waiting_idle')) {
-      const state = this.store.get('execution', run.id, {});
-      Object.assign(state, {
-        boundaryWaiting: true,
-        nextIndex: index,
-        nextSyncSteps: syncSteps,
-        nextSyncIndex: syncIndex,
-      });
-      this.store.put('execution', run.id, state);
-      Object.assign(run, {
-        progress: Math.floor((index * 100) / plan.tasks.length),
-        message: '当前任务完成，等待核心与资源热切换后继续剩余计划',
-      });
-      this.putExecution(run.id, run);
-      this.emit('run.progress', run.message, { run });
-    } else await this.continueNativeTask(run, index, syncSteps, syncIndex);
-  }
-  private async continueNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
-    const changesClient =
-      (this.workerConfigurations.get(run.deviceId)?.connection?.clientType ?? 'Official') !==
-      this.taskClient(run, index);
-    const pending = this.submitNativeTask(run, index, syncSteps, syncIndex);
-    // Reconnection can take tens of seconds. Keep this run occupied while the
-    // polling loop continues to process completion and stop events on others.
-    if (changesClient)
-      void pending.catch((error) => {
-        if (this.running && this.execution(run.id)?.status === 'running')
-          this.finishNativeRun(run, 'failed', '客户端任务准备失败，不会重放：' + String(error));
-      });
-    else await pending;
-  }
-  /** List IDs are local queue occurrence IDs, never community document IDs. */
-  private recordCopilotCallback(run: any, state: any, message: number, details: any): boolean {
-    if (
-      run.source !== 'copilot' ||
-      !Array.isArray(run.copilotEntries) ||
-      details.taskid !== state.taskId ||
-      state.stopRequested ||
-      state.failed ||
-      state.completed ||
-      state.queueEnded
-    )
-      return false;
-    const entries = run.copilotEntries;
-    if (message === 20003 && details.what === 'CopilotListLoadTaskFileSuccess') {
-      const loaded = details.details;
-      if (!loaded || !Number.isInteger(loaded.id) || typeof loaded.file_name !== 'string')
-        return false;
-      const index = entries.findIndex((item: any) => item.nativeId === loaded.id);
-      if (index < 0 || index < (state.currentCopilotIndex ?? -1)) return false;
-      const snapshot = this.executionSnapshot(run.id),
-        params = snapshot.tasks[0].params;
-      const files = params.copilot_list ?? params.list;
-      const expected = Array.isArray(files)
-        ? files.find((item: any) => item.id === loaded.id)?.filename
-        : params.filename;
-      if (typeof expected !== 'string' || path.resolve(loaded.file_name) !== path.resolve(expected))
-        return false;
-      if (state.currentCopilotIndex !== undefined && state.currentCopilotIndex !== index) {
-        const previous = entries[state.currentCopilotIndex];
-        if (previous?.status === 'running')
-          Object.assign(previous, {
-            status: 'completed',
-            message:
-              previous.verdict === 'success'
-                ? '已收到三星结算识别，开始下一项'
-                : '核心已开始下一项；本项通关结果未确认',
-          });
-      }
-      if (state.currentCopilotIndex !== index) state.copilotBattleStarted = false;
-      state.currentCopilotIndex = index;
-      Object.assign(entries[index], {
-        status: 'running',
-        message: '作业文件已加载；通关结果未确认',
-      });
-      run.progress = Math.floor((index * 100) / entries.length);
-      run.message = `正在执行 ${index + 1}/${entries.length}：${entries[index].title}`;
-      this.putExecution(run.id, run);
-      this.emit('run.copilot_entry', run.message, {
-        runId: run.id,
-        entryId: entries[index].id,
-        nativeId: loaded.id,
-      });
-      return false;
-    }
-    const entry = entries[state.currentCopilotIndex ?? -1];
-    // Fixed-core ProcessTask errors identify their configured root, not an invented
-    // sanity/non-three-star result. Both roots are fatal in native CopilotTask.
-    if (
-      entry &&
-      message === 20000 &&
-      details.subtask === 'ProcessTask' &&
-      Array.isArray(details.first)
-    ) {
-      const settlement = details.first.includes('Copilot@WaitUntilEndOfAction');
-      const starting = details.first.includes('BattleStartAll');
-      if (settlement || starting) {
-        state.failed = true;
-        state.copilotFailureMessage = settlement
-          ? '核心未通过三星结算检查，停止后续队列；通关结果未确认'
-          : '未能进入战斗，请检查理智及游戏界面；停止后续队列';
-        Object.assign(entry, { verdict: 'unknown', message: state.copilotFailureMessage });
-        this.putExecution(run.id, run);
-        this.emit('run.copilot_result', entry.message, {
-          runId: run.id,
-          entryId: entry.id,
-          verdict: entry.verdict,
-        });
-        return true;
-      }
-    }
-    if (entry && message === 20001 && details.subtask === 'BattleProcessTask')
-      state.copilotBattleStarted = true;
-    const action = details.details?.task;
-    if (
-      !entry ||
-      typeof action !== 'string' ||
-      message !== 20002 ||
-      details.subtask !== 'ProcessTask'
-    )
-      return false;
-    const victory =
-      state.copilotBattleStarted &&
-      run.copilotKind !== 'SSSCopilot' &&
-      ['Copilot@StageDrops-Stars-3', 'Copilot@StageDrops-Stars-Adverse'].includes(action);
-    const failure = ['Copilot@FightMissionFailed', 'Copilot@FightMissionFailed-Bypass'].includes(
-      action,
-    );
-    if (!victory && !failure) return false;
-    const confirmsAll = (this.executionSnapshot(run.id).workspace?.options.loopTimes ?? 1) === 1;
-    Object.assign(entry, {
-      verdict: failure ? 'failure' : confirmsAll ? 'success' : 'unknown',
-      message: failure
-        ? '已识别战斗失败，停止后续队列'
-        : confirmsAll
-          ? '已识别三星结算'
-          : '已识别单次三星结算；整个循环结果未确认',
-    });
-    state.copilotBattleStarted = false;
-    if (failure) {
-      state.failed = true;
-      state.copilotFailureMessage = entry.message;
-    }
-    this.putExecution(run.id, run);
-    this.emit('run.copilot_result', entry.message, {
-      runId: run.id,
-      entryId: entry.id,
-      verdict: entry.verdict,
-    });
-    return failure;
-  }
-  finishNativeRun(run: any, status: string, message: string) {
-    Object.assign(run, this.execution(run.id));
+  finishFrameworkRun(run: any, status: string, message: string) {
+    const persisted = this.execution(run.id);
+    // 断线、用户停止和取消回执可能竞态；第一个持久终态拥有结果，晚到回执不得改写。
+    if (!persisted || persisted.status !== 'running') return;
+    Object.assign(run, persisted);
     if (run.source === 'copilot') {
       for (const entry of run.copilotEntries ?? []) {
         if (entry.status === 'running')
@@ -3556,10 +3653,12 @@ export class Runtime {
       return;
     }
     // Synthetic workers must explicitly opt into a synthetic observer. Never let
-    // routine tests reach the host ADB, even when their fixture uses CoreWorker.
+    // routine tests reach the host ADB, even when their fixture uses FrameworkWorker.
     const observe =
       this.options.observeDeviceConnections ??
-      (this.options.workerFactory || this.options.adbExecutable ? undefined : observeAdbDevices);
+      (this.options.frameworkWorkerFactory || this.options.adbExecutable
+        ? undefined
+        : observeAdbDevices);
     if (!observe) return;
     const workers = new Map(
       [...this.workers].filter(
@@ -3636,439 +3735,33 @@ export class Runtime {
     if (this.workers.get(id) === worker) {
       this.workers.delete(id);
       this.workerConfigurations.delete(id);
+      this.frameworkConnections.delete(id);
     }
   }
   async pollNativeWorkers() {
-    for (const [id, worker] of [...this.workers.entries()]) {
-      if (this.workers.get(id) !== worker) continue;
-      let run = this.executions().find((r) => r.deviceId === id && r.status === 'running');
-      if (run && this.store.get('execution', run.id, {}).submitting) continue;
-      while (worker.events.length) {
-        const event = worker.events.shift(),
-          state = run ? this.store.get('execution', run.id, {}) : {};
-        if (['exit', 'protocol_error', 'connection_lost'].includes(event.type)) {
-          const connectionLost = event.type === 'connection_lost';
-          const reason = connectionLost
-            ? '设备已离线，模拟器可能已关闭或 ADB 连接已中断；请启动模拟器或检查连接后重试'
-            : undefined;
-          worker.connected = false;
-          this.preview.invalidate(id);
-          if (run)
-            this.finishNativeRun(
-              run,
-              'failed',
-              connectionLost
-                ? reason + '；执行结果未知，不会自动重放'
-                : '核心工作进程异常，执行结果未知；不会自动重放',
-            );
-          run = undefined;
-          const d = this.store.get('device', id);
-          d.state = 'offline';
-          delete d.captureMethod;
-          d.connectionError =
-            reason ??
-            (event.error
-              ? String(event.error).slice(0, 4096)
-              : '核心工作进程异常退出，请重新连接；若仍失败可在设置中导出诊断日志');
-          this.store.put('device', id, d);
-          if (connectionLost) this.emit('device.failed', reason!, { device: d });
-          await this.releaseOfflineWorker(id, worker);
-          break;
-        }
-        if (event.type === 'callback') {
-          const { message, details } = event;
-          if (
-            message === 2 &&
-            details.what === 'FastestWayToScreencap' &&
-            typeof details.details?.method === 'string'
-          ) {
-            const d = this.store.get('device', id);
-            d.captureMethod = details.details.method;
-            this.store.put('device', id, d);
-            this.emit('device.capture', '核心实际截图方式：' + d.captureMethod, {
-              deviceId: id,
-              method: d.captureMethod,
-              cost: details.details.cost,
-            });
-          }
-          if (message === 2) {
-            const reason = nativeConnectionError(details);
-            if (reason) {
-              this.connectionErrors.set(worker, reason);
-              this.emit('device.connection_diagnostic', reason, {
-                deviceId: id,
-                what: details.what,
-                why: String(details.why ?? '').slice(0, 4096),
-                rawOutput: String(details.details?.raw_output ?? '').slice(0, 4096),
-              });
-            }
-          }
-          if (message === 4 && details.what === 'Connect') {
-            worker.connected = !!details.details?.ret;
-            const d = this.store.get('device', id);
-            d.state = worker.connected ? (this.hasExecution(id) ? 'running' : 'idle') : 'offline';
-            const reported = details.details?.error,
-              translated = reported ? connectionError(reported) : undefined;
-            if (worker.connected) delete d.connectionError;
-            else {
-              delete d.captureMethod;
-              d.connectionError =
-                (reported && translated !== errorDetail(reported).slice(0, 4096)
-                  ? translated
-                  : undefined) ||
-                this.connectionErrors.get(worker) ||
-                translated ||
-                '设备连接失败，核心未返回具体原因；请确认模拟器已启动、ADB 调试已开启，并核对连接地址';
-            }
-            this.connectionErrors.delete(worker);
-            this.store.put('device', id, d);
-            this.emit(
-              worker.connected ? 'device.connected' : 'device.failed',
-              worker.connected ? '设备已连接' : '核心设备连接失败：' + d.connectionError,
-              {
-                device: d,
-                ...(details.details?.error
-                  ? { detail: String(details.details.error).slice(0, 4096) }
-                  : {}),
-              },
-            );
-            if (!worker.connected) {
-              if (run) this.finishNativeRun(run, 'failed', d.connectionError);
-              await this.releaseOfflineWorker(id, worker);
-              break;
-            }
-          }
-          if (message === 2 && ['Disconnect', 'ResolutionChanged'].includes(details.what)) {
-            worker.connected = false;
-            const d = this.store.get('device', id);
-            d.state = 'offline';
-            delete d.captureMethod;
-            this.store.put('device', id, d);
-            const reason =
-              details.why === 'RequiredCaptureProtocolUnavailable'
-                ? '增强截图不可用，已停止执行并断开：' +
-                  (details.details?.error || '未确认要求的截图协议')
-                : '设备连接中断，请核对现场后重试';
-            d.connectionError = reason.slice(0, 4096);
-            this.store.put('device', id, d);
-            this.emit('device.failed', reason, { device: d });
-            if (run) this.finishNativeRun(run, 'failed', reason);
-            run = undefined;
-            await this.releaseOfflineWorker(id, worker);
-            break;
-          }
-          if (run) {
-            const matches = details.taskid === state.taskId;
-            const stopCopilot = this.recordCopilotCallback(run, state, message, details);
-            if (stopCopilot) {
-              state.copilotStopRequested = Date.now();
-              this.store.put('execution', run.id, state);
-              this.captureRunArtifact(run, state, worker, '作业异常反馈画面');
-              try {
-                await worker.stop();
-              } catch {
-                await worker.close();
-                worker.connected = false;
-                this.workers.delete(id);
-                this.workerConfigurations.delete(id);
-                this.finishNativeRun(
-                  run,
-                  'failed',
-                  '作业异常且停止未获确认，已结束工作进程；请核对设备现场',
-                );
-              }
-            } else if (
-              matches &&
-              message === 20002 &&
-              details.subtask === 'ProcessTask' &&
-              ['Copilot@StageDrops-Stars-3', 'Copilot@StageDrops-Stars-Adverse'].includes(
-                details.details?.task,
-              )
-            )
-              this.captureRunArtifact(run, state, worker, '作业结算反馈画面');
-            if (
-              [0, 1].includes(message) ||
-              (message === 10000 && matches) ||
-              (message === 10004 && matches)
-            )
-              state.failed = true;
-            if (message === 10002 && matches) state.completed = true;
-            if (
-              message === 3 &&
-              (matches ||
-                (!('taskid' in details) &&
-                  (!Array.isArray(details.finished_tasks) ||
-                    details.finished_tasks.includes(state.taskId))))
-            )
-              state.queueEnded = true;
-            if (
-              message === 20003 &&
-              matches &&
-              !state.stopRequested &&
-              !state.failed &&
-              !state.completed &&
-              !state.queueEnded &&
-              run.toolKind === 'recruit' &&
-              details.what === 'RecruitResult'
-            ) {
-              const result = this.toolbox.recruitResult(run, details.details);
-              if (result) state.toolResult = result;
-            }
-            if (
-              message === 20003 &&
-              matches &&
-              !state.stopRequested &&
-              !state.failed &&
-              !state.completed &&
-              !state.queueEnded &&
-              details.what === 'StageDrops'
-            )
-              this.toolbox.drops(run, state, details.details);
-            if (
-              message === 20003 &&
-              matches &&
-              state.recognitionType &&
-              !state.completed &&
-              !state.failed &&
-              !state.queueEnded &&
-              !state.stopRequested
-            ) {
-              const recognized = parseRecognition(state.recognitionType, details);
-              if (recognized) {
-                state.recognitionResult = recognized;
-                state.recognitionResultAt = now();
-              }
-            }
-            if (
-              message === 20002 &&
-              matches &&
-              state.mallVisitEnabled &&
-              details.subtask === 'ProcessTask' &&
-              details.taskchain === 'Mall' &&
-              ['VisitLimited', 'VisitNextBlack'].includes(details.details?.task)
-            )
-              state.mallVisitedAt = now();
-            if (matches && !state.stopRequested && !state.failed && !state.queueEnded) {
-              // SubTaskCompleted ends one internal step, never the configured task.
-              // After TaskChainCompleted, late step callbacks must not undo the idle wait.
-              if (message === 10002 || (!state.completed && [10001, 20001].includes(message))) {
-                const action =
-                  details.details?.task ??
-                  details.subtask ??
-                  details.taskchain ??
-                  this.executionSnapshot(run.id)?.tasks[state.index]?.type ??
-                  '';
-                const taskType =
-                  state.syncSteps?.[state.syncIndex]?.type ??
-                  this.executionSnapshot(run.id)?.tasks[state.index]?.type;
-                const taskLabel = taskLabels[taskType] ?? '当前任务',
-                  localized = localizeExecutionMessage(String(action));
-                const namedStep =
-                  typeof details.details?.task === 'string' &&
-                  localized !== action &&
-                  !/[A-Za-z]/.test(localized) &&
-                  !taskLabels[action] &&
-                  !['Start', 'ProcessTask'].includes(action);
-                const messageText =
-                  message === 10002
-                    ? taskLabel + '流程结束，正在确认核心空闲'
-                    : message === 10001
-                      ? taskLabel + '执行中'
-                      : namedStep
-                        ? localized.startsWith(taskLabel + ' · ')
-                          ? localized
-                          : taskLabel + ' · ' + localized
-                        : null;
-                if (messageText && messageText !== run.message) {
-                  this.updateRunTask(run, state.index, (item) => {
-                    item.message = messageText.slice(0, 1000);
-                  });
-                  run.message = messageText;
-                  this.putExecution(run.id, run);
-                  this.emit('run.task_progress', messageText, {
-                    runId: run.id,
-                    index: state.index,
-                    taskId: state.taskId,
-                    action,
-                  });
-                }
-              }
-              if (message === 20003) {
-                let changed = false;
-                const recorded = this.updateRunTask(
-                  run,
-                  state.index,
-                  (item) => {
-                    if (details.what === 'StageDrops' && details.taskchain === 'Fight')
-                      changed = recordDrops(item, details.details, now());
-                    else if (details.taskchain === 'Infrast')
-                      changed = recordInfrastructure(item, details.what, details.details, now());
-                  },
-                  true,
-                );
-                if (changed && recorded) {
-                  this.emit(
-                    'run.result',
-                    details.taskchain === 'Fight' ? '作战掉落已更新' : '基建反馈已更新',
-                    { runId: run.id, index: state.index, taskId: state.taskId, what: details.what },
-                  );
-                  if (
-                    details.what === 'StageDrops' ||
-                    details.what === 'InfrastConfirmButton' ||
-                    (details.what === 'ProductOfFacility' &&
-                      !run.tasks[state.index].artifacts.length)
-                  )
-                    this.captureRunArtifact(
-                      run,
-                      state,
-                      worker,
-                      details.taskchain === 'Fight' ? '自动作战反馈画面' : '基建反馈画面',
-                    );
-                }
-              }
-            }
-            this.store.put('execution', run.id, state);
-          }
-          if (details.what === 'UnsupportedLevel')
-            this.nextChecks.resource = Math.min(this.nextChecks.resource!, Date.now() + 60_000);
-        } else if (
-          event.type === 'status' &&
-          run &&
-          !event.running &&
-          !event.pendingAsync.length &&
-          (state.queueEnded || state.failed || state.stopRequested)
-        ) {
-          state.idleAfterEnd = true;
-          this.store.put('execution', run.id, state);
-        }
-      }
-      if (!run) continue;
-      const state = this.store.get('execution', run.id, {});
-      if (state.boundaryWaiting && !state.stopRequested) {
-        if (
-          worker.connected &&
-          worker.safeIdle &&
-          !this.updates.channels().some((c) => c.status === 'waiting_idle') &&
-          !this.switching
-        )
-          await this.continueNativeTask(
-            run,
-            state.nextIndex,
-            state.nextSyncSteps,
-            state.nextSyncIndex,
-          );
-      } else if (
-        (state.stopRequested || state.copilotStopRequested) &&
-        Date.now() - (state.stopRequested || state.copilotStopRequested) > 15_000
-      ) {
-        await worker.close();
-        this.workers.delete(id);
-        this.workerConfigurations.delete(id);
-        this.finishNativeRun(
-          run,
-          state.stopRequested ? 'stopped' : 'failed',
-          '核心停止超时，已结束工作进程；请核对设备现场',
+    for (const [id, worker] of [...this.workers]) {
+      const lost =
+        !worker.connected ||
+        worker.events.some((event) =>
+          ['exit', 'protocol_error', 'connection_lost'].includes(event.type),
         );
-      } else if (state.idleAfterEnd && worker.safeIdle) {
-        await this.finishRunArtifact(run.id, state.index);
-        // Stop can arrive while the final feedback image is being read.
-        Object.assign(state, this.store.get('execution', run.id, {}));
-        if (state.mallVisitedAt) {
-          this.store.put('mall_visit', run.deviceId, {
-            visitedAt: state.mallVisitedAt,
-            clientType: state.clientType,
-          });
-          this.emit('device.friends_visited', '好友访问已获专用成功回调确认', {
-            deviceId: run.deviceId,
-            runId: run.id,
-            visitedAt: state.mallVisitedAt,
-          });
+      worker.events.length = 0;
+      if (lost) {
+        this.preview.invalidate(id);
+        for (const run of this.executions().filter(
+          (run) => run.deviceId === id && run.status === 'running',
+        )) {
+          this.runControllers.get(run.id)?.abort(new Error('设备已离线，结果未知'));
+          this.finishFrameworkRun(run, 'failed', '设备连接中断，结果未知；不会自动重放');
         }
-        if (state.stopRequested)
-          this.finishNativeRun(run, 'stopped', '执行已停止，保存的配置及未执行项保留');
-        else if (state.failed || !state.completed)
-          this.finishNativeRun(
-            run,
-            'failed',
-            state.copilotFailureMessage || '核心任务失败或缺少成功证据；不会继续后续任务',
-          );
-        else if (run.toolKind === 'recruit' && !state.toolResult)
-          this.finishNativeRun(run, 'failed', '缺少有效公招计算结果，未报告计算成功');
-        else if (state.recognitionType && !state.recognitionResultAt)
-          this.finishNativeRun(
-            run,
-            'failed',
-            '识别任务已结束但缺少有效的最终识别结果，结果未知；未记录同步成功',
-          );
-        else {
-          if (run.toolKind === 'recruit') {
-            run.result = state.toolResult;
-            this.putExecution(run.id, run);
-          }
-          const configured = this.executionSnapshot(run.id).tasks[state.index];
-          if (configured.type === 'StartUp') this.rememberClient(run, configured.params);
-          const step: SyncStep | undefined =
-            state.syncSteps?.[state.syncIndex] ??
-            (configured.type === 'OperBox'
-              ? { type: 'OperBox', key: 'operatorsAt' }
-              : configured.type === 'Depot'
-                ? { type: 'Depot', key: 'depotAt' }
-                : undefined);
-          if (step) {
-            const synced = {
-              operatorsAt: null,
-              depotAt: null,
-              ...this.syncHistory(run.deviceId, state.clientType),
-              clientType: state.clientType,
-            };
-            synced[step.key] = state.recognitionResultAt;
-            const kind = step.type === 'OperBox' ? ('operators' as const) : ('depot' as const);
-            const result = {
-              deviceId: run.deviceId,
-              kind,
-              clientType: state.clientType,
-              collectedAt: state.recognitionResultAt,
-              runId: run.id,
-              ...state.recognitionResult,
-            };
-            this.store.transaction(() => {
-              this.store.put(
-                'recognition',
-                recognitionKey(run.deviceId, state.clientType, kind),
-                result,
-              );
-              this.store.put('user_data_sync', run.deviceId, synced);
-              const device = this.store.get('device', run.deviceId, {});
-              this.accounts.capture(result, {
-                source: 'maacore-recognition',
-                coreVersion: device.coreVersion ?? null,
-                resourceVersion: device.resourceVersion ?? null,
-                taskIndex: state.index,
-              });
-            });
-            this.emit(
-              'device.data_synced',
-              step.type === 'OperBox' ? '干员识别已成功同步' : '仓库识别已成功同步',
-              {
-                deviceId: run.deviceId,
-                runId: run.id,
-                type: step.type,
-                syncedAt: synced[step.key],
-              },
-            );
-            if (state.syncSteps && state.syncIndex + 1 < state.syncSteps.length) {
-              await this.advanceNativeTask(run, state.index, state.syncSteps, state.syncIndex + 1);
-              continue;
-            }
-          }
-          this.updateRunTask(run, state.index, (task) => {
-            Object.assign(task, {
-              status: 'completed',
-              finishedAt: now(),
-              message: '任务成功且核心已空闲',
-            });
-          });
-          await this.advanceNativeTask(run, state.index + 1);
+        await this.releaseOfflineWorker(id, worker);
+        const device = this.store.get('device', id);
+        if (device) {
+          device.state = 'offline';
+          delete device.captureMethod;
+          device.connectionError = '设备连接已离线或原生进程退出；请重新连接并核对设备现场';
+          this.store.put('device', id, device);
+          this.emit('device.failed', device.connectionError, { device });
         }
       }
     }
@@ -4117,26 +3810,32 @@ export class Runtime {
       return;
     const settings = parseSettings(this.store.get('settings', 'main'));
     for (const [channel, interval] of [
-      ['core', 86400],
       ['resource', 21600],
+      ['framework', 86400],
     ] as const) {
       if (!this.running || this.appUpdating || this.appUpdatePreparing) return;
       if (
-        !(channel === 'core' ? settings.autoUpdateCore : settings.autoUpdateResource) ||
-        Date.now() < this.nextChecks[channel]!
+        !(channel === 'framework' ? settings.autoUpdateFramework : settings.autoUpdateResource) ||
+        Date.now() < (this.nextChecks[channel] ?? Infinity)
       )
         continue;
       this.nextChecks[channel] = Date.now() + interval * 1000;
       try {
-        const state = await this.updates.check(channel);
+        const state =
+          channel === 'framework'
+            ? await this.frameworkUpdates.check()
+            : await this.updates.check(channel);
         if (!this.running || this.appUpdating || this.appUpdatePreparing) return;
-        if (
-          (this.updates.channel('core').currentVersion !== '未安装' || channel === 'core') &&
-          state.status === 'available'
-        ) {
-          await this.updates.prepare(channel);
-          if (this.running && !this.appUpdating && !this.appUpdatePreparing)
-            await this.updates.activate(channel);
+        if (state.status === 'available') {
+          if (channel === 'framework') {
+            await this.frameworkUpdates.prepare();
+            if (this.running && !this.appUpdating && !this.appUpdatePreparing)
+              await this.frameworkUpdates.activate();
+          } else {
+            await this.updates.prepare(channel);
+            if (this.running && !this.appUpdating && !this.appUpdatePreparing)
+              await this.updates.activate(channel);
+          }
         }
       } catch {
         this.nextChecks[channel] = Date.now() + 300_000;
@@ -4146,12 +3845,17 @@ export class Runtime {
   close(): Promise<void> {
     return (this.closing ||= this.closeInner());
   }
-  cancelPendingClientSwitches() {
+  cancelPendingOperations() {
+    // EOF 先取消尚未进入 worker map 的启动／识别，再等待在途 RPC；避免退出相互等待。
+    this.frameworkAbort.abort();
+    for (const controller of this.runControllers.values()) controller.abort();
+    for (const state of this.automaticActive) state.controller?.abort();
     for (const controller of this.clientSwitches.values()) controller.abort();
   }
   private async closeInner() {
     this.running = false;
     this.frameworkAbort.abort();
+    for (const controller of this.runControllers.values()) controller.abort();
     for (const state of this.automaticTargets.values()) {
       state.probing?.abort();
       state.controller?.abort();
@@ -4163,7 +3867,7 @@ export class Runtime {
     this.copilot.beginClose();
     this.scheduler.close();
     this.toolbox.close();
-    this.cancelPendingClientSwitches();
+    this.cancelPendingOperations();
     this.preview.invalidate();
     await Promise.all([
       this.debug.close(),
@@ -4172,9 +3876,11 @@ export class Runtime {
     ]);
     await Promise.allSettled([...this.frameworkOperations]);
     await Promise.allSettled([...this.automaticOperations]);
+    await Promise.allSettled([...this.connectionOperations]);
     await this.knowledge.close();
     await this.calendar.close();
     await this.updates.close();
+    await this.frameworkUpdates.close();
     for (const run of this.executions()) if (run.status === 'running') await this.stopRun(run.id);
     await Promise.all([...this.workers.values()].map((worker) => worker.close()));
     this.workers.clear();

@@ -3,12 +3,13 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { RpcContract, ScreenFrame } from '@contracts/rpc-types';
-import { Runtime } from '@backend/app/runtime';
+import { Runtime, type RuntimeOptions } from '@backend/app/runtime';
 import type {
   FrameworkConfiguration,
   FrameworkPort,
 } from '@backend/infrastructure/native/framework-worker';
 import type { FrameworkView } from '@backend/modules/framework/sessions';
+import { defaultConnection } from '@backend/modules/settings/models';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
@@ -32,44 +33,12 @@ async function waitFor(predicate: () => boolean) {
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
 }
-class FakeCore {
-  events: any[] = [];
-  connected = true;
-  safeIdle = true;
-  closed = false;
-  frameResult: () => Promise<unknown> = async () => image();
-  submitted: unknown[] = [];
-  async frame() {
-    return this.frameResult();
-  }
-  async click() {
-    return { accepted: true };
-  }
-  async connect() {
-    return { asyncId: 1 };
-  }
-  async waitConnected() {
-    return this.connected && this.safeIdle;
-  }
-  async task(task: unknown) {
-    this.submitted.push(task);
-    this.safeIdle = false;
-    return { taskId: this.submitted.length };
-  }
-  async stop() {
-    this.safeIdle = true;
-    return { stopping: true };
-  }
-  async close() {
-    this.closed = true;
-    this.connected = false;
-  }
-}
 class FakeFramework implements FrameworkPort {
   connected = true;
   safeIdle = true;
   closed = false;
   calls: { operation: string; params: Record<string, unknown> }[] = [];
+  frameResult: () => Promise<unknown> = async () => image();
   result: (operation: string, params: Record<string, unknown>) => Promise<any> = async (
     operation,
   ) =>
@@ -94,7 +63,7 @@ class FakeFramework implements FrameworkPort {
   }
   async frame() {
     this.calls.push({ operation: 'frame', params: {} });
-    return image();
+    return this.frameResult();
   }
   async click(x: number, y: number) {
     return this.request('click', { x, y });
@@ -105,11 +74,19 @@ class FakeFramework implements FrameworkPort {
     this.calls.push({ operation: 'close', params: {} });
   }
 }
-async function fixture(options: { frameworkReaderIdleMs?: number } = {}) {
+async function fixture({
+  address = '127.0.0.1:5555',
+  ...options
+}: {
+  frameworkReaderIdleMs?: number;
+  detectAvdSerial?: RuntimeOptions['detectAvdSerial'];
+  address?: string;
+} = {}) {
   const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-framework-runtime-'));
   roots.push(root);
-  const cores: FakeCore[] = [];
   const frameworks: { config: FrameworkConfiguration; worker: FakeFramework }[] = [];
+  const readers: typeof frameworks = [];
+  const controllers: typeof frameworks = [];
   const controls: {
     resourceGate?: Promise<void>;
     resourceEntered?: () => void;
@@ -119,23 +96,20 @@ async function fixture(options: { frameworkReaderIdleMs?: number } = {}) {
   const view: FrameworkView = {
     path: path.join(root, 'framework-view'),
     generation: 'synthetic-resource-generation',
-    sourcePaths: [path.join(root, 'core-resource')],
+    sourcePaths: [path.join(root, 'official-resource')],
     ocrAvailable: true,
     templates: { 'home-button': 'home.png' },
   };
   const runtime = new Runtime(root, {
     ...options,
-    workerFactory: async () => {
-      const worker = new FakeCore();
-      cores.push(worker);
-      return worker;
-    },
     adbExecutable: () => 'synthetic-adb',
     frameworkWorkerFactory: async (config) => {
       if (controls.launchError) throw controls.launchError;
       const worker = new FakeFramework();
       if (controls.native) worker.result = controls.native;
-      frameworks.push({ config: structuredClone(config), worker });
+      const entry = { config: structuredClone(config), worker };
+      frameworks.push(entry);
+      (config.mode === 'recognition' ? readers : controllers).push(entry);
       return worker;
     },
     frameworkResources: async () => {
@@ -146,14 +120,17 @@ async function fixture(options: { frameworkReaderIdleMs?: number } = {}) {
   });
   runtimes.push(runtime);
   runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
     resource: { path: 'synthetic-resource', version: 'r1' },
   });
-  const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
+  const device = await runtime.connectDevice({ address });
   device.state = 'idle';
   runtime.store.put('device', device.id, device);
   await runtime.handle('plan.save', {
-    plan: { id: 'framework-plan', name: '合成控制会话', tasks: [{ type: 'Award' }] },
+    plan: {
+      id: 'framework-plan',
+      name: '合成控制会话',
+      tasks: [{ type: 'Award', params: { award: false, mail: false } }],
+    },
   });
   const start = (
     requestId = 'start-session',
@@ -175,7 +152,25 @@ async function fixture(options: { frameworkReaderIdleMs?: number } = {}) {
       deviceId: device.id,
       ...(controlToken ? { controlToken } : {}),
     });
-  return { root, runtime, device, cores, frameworks, view, controls, start, status, end, frame };
+  return {
+    root,
+    runtime,
+    device,
+    frameworks,
+    readers,
+    controllers,
+    resetResources: () => (runtime as any).frameworkViews.clear(),
+    reconnect: async () => {
+      await runtime.disconnectDevice(device.id);
+      return runtime.connectDevice({ address });
+    },
+    view,
+    controls,
+    start,
+    status,
+    end,
+    frame,
+  };
 }
 
 afterEach(async () => {
@@ -183,23 +178,27 @@ afterEach(async () => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-test('MaaFW handoff requires idle MaaCore and keeps the original controller on rejection', async () => {
-  const { start, cores, frameworks, status } = await fixture();
-  cores[0]!.safeIdle = false;
+test('control sessions require an idle persistent Framework controller', async () => {
+  const { start, frameworks, status } = await fixture();
+  frameworks[0]!.worker.safeIdle = false;
   await expect(start()).rejects.toMatchObject({ code: -32011 });
-  expect(cores[0]!.closed).toBe(false);
-  expect(frameworks).toHaveLength(0);
-  expect(await status()).toMatchObject({ owner: 'maacore', busy: true });
+  expect(frameworks[0]!.worker.closed).toBe(false);
+  expect(frameworks).toHaveLength(1);
+  expect(await status()).toMatchObject({ owner: 'none', busy: true });
 });
 
 test('workflow sessions hold device ownership while idle and exclude tasks, connections and updates', async () => {
-  const { runtime, device, cores, frameworks, start, status, end } = await fixture();
+  const { runtime, device, frameworks, start, status, end } = await fixture();
   expect(runtime.busy()).toBe(false);
-  expect(await status()).toMatchObject({ owner: 'maacore', busy: false });
+  expect(await status()).toMatchObject({ owner: 'none', busy: false });
   const session = await start();
-  expect(cores[0]!.closed).toBe(true);
+  expect(frameworks[0]!.worker.closed).toBe(false);
   expect(frameworks).toHaveLength(1);
   expect(frameworks[0]!.config).toMatchObject({ mode: 'control', adb: 'synthetic-adb' });
+  expect(frameworks[0]!.config).toMatchObject({
+    touchMode: 'maatouch',
+    capture: { method: 'auto', emulatorPath: '', instanceIndex: 0 },
+  });
   expect(frameworks[0]!.worker.safeIdle).toBe(true);
   expect(await status()).toMatchObject({
     owner: 'maafw',
@@ -215,19 +214,18 @@ test('workflow sessions hold device ownership while idle and exclude tasks, conn
       { deviceId: device.id, kind: 'depot', clientType: 'Official', requestId: 'blocked-tool' },
     ],
     ['device.disconnect', { id: device.id }],
-    ['device.connect', { address: device.address }],
   ] as const) {
     const [result] = await Promise.allSettled([runtime.handle(method, params)]);
     expect({ method, ...result }).toMatchObject({
       method,
       status: 'rejected',
-      reason: { code: -32011 },
+      reason: { code: method === 'tool.start' ? -32010 : -32011 },
     });
   }
   await expect(runtime.beforeSwitch()).rejects.toThrow();
-  expect(cores).toHaveLength(1);
+  expect(frameworks.filter((entry) => entry.config.mode === 'control')).toHaveLength(1);
   expect(await end(session)).toEqual({ ended: true });
-  expect(frameworks[0]!.worker.closed).toBe(true);
+  expect(frameworks[0]!.worker.closed).toBe(false);
   expect(await status()).toMatchObject({ owner: 'none', busy: false });
   expect(runtime.busy()).toBe(false);
 });
@@ -244,10 +242,159 @@ test('session start and end request IDs remain idempotent without resurrecting r
   expect(frameworks).toHaveLength(1);
 });
 
-test('handoff invalidates old frames and UI previews cannot write to a host-owned MaaFW session', async () => {
+test('framework session launch forwards independent saved capture and input preferences', async () => {
+  const { runtime, frameworks, reconnect, start, end } = await fixture();
+  for (const touchMode of ['maatouch', 'minitouch', 'adb'] as const)
+    for (const method of ['auto', 'adb', 'avd'] as const) {
+      const settings = runtime.snapshot().settings;
+      await runtime.handle('settings.save', {
+        settings: {
+          ...settings,
+          connection: {
+            ...defaultConnection(),
+            framework: { touchMode, capture: { method, emulatorPath: '', instanceIndex: 0 } },
+          },
+        },
+      });
+      await reconnect();
+      const session = await start(`start-${touchMode}-${method}`);
+      expect(frameworks.at(-1)!.config).toMatchObject({
+        touchMode,
+        capture: { method, emulatorPath: '', instanceIndex: 0 },
+      });
+      expect(frameworks.at(-1)!.config).not.toHaveProperty('avd');
+      await end(session, `end-${touchMode}-${method}`);
+    }
+});
+
+test('device framework settings remain isolated from the global profile and default independently when omitted', async () => {
+  const { runtime, device, frameworks, reconnect, start, end } = await fixture();
+  const settings = runtime.snapshot().settings;
+  const profile = {
+    id: 'framework-device',
+    name: '独立设备',
+    address: device.address,
+    connection: {
+      ...defaultConnection(),
+      framework: {
+        touchMode: 'adb' as const,
+        capture: { method: 'avd' as const, emulatorPath: '', instanceIndex: 0 },
+      },
+    },
+    capture: { method: 'adb' as const, emulatorPath: '', instanceIndex: 0, autoDetect: true },
+  };
+  await runtime.handle('settings.save', {
+    settings: {
+      ...settings,
+      connection: {
+        ...defaultConnection(),
+        framework: {
+          touchMode: 'minitouch',
+          capture: { method: 'adb', emulatorPath: '', instanceIndex: 0 },
+        },
+      },
+      deviceProfiles: [profile],
+    },
+  });
+  await reconnect();
+  let session = await start('profile-start');
+  expect(frameworks.at(-1)!.config).toMatchObject({
+    touchMode: 'adb',
+    capture: { method: 'avd', emulatorPath: '', instanceIndex: 0 },
+  });
+  await end(session, 'profile-end');
+  await runtime.handle('settings.save', {
+    settings: {
+      ...runtime.snapshot().settings,
+      deviceProfiles: [{ ...profile, connection: defaultConnection() }],
+    },
+  });
+  await reconnect();
+  session = await start('profile-default-start');
+  expect(frameworks.at(-1)!.config).toMatchObject({
+    touchMode: 'maatouch',
+    capture: { method: 'auto', emulatorPath: '', instanceIndex: 0 },
+  });
+  await end(session, 'profile-default-end');
+});
+
+test('automatic AVD discovery uses its verified console serial without changing controller transport or lease', async () => {
+  const probes: { adb: string; address: string; signal?: AbortSignal }[] = [];
+  const { device, frameworks, start, end } = await fixture({
+    address: '127.0.0.1:20001',
+    detectAvdSerial: async (adb, address, signal) => {
+      probes.push({ adb, address, signal });
+      return 'emulator-20000';
+    },
+  });
+  const session = await start();
+  expect(probes).toHaveLength(1);
+  expect(probes[0]).toMatchObject({ adb: 'synthetic-adb', address: device.address });
+  expect(probes[0]!.signal).toBeInstanceOf(AbortSignal);
+  expect(frameworks[0]!.config).toMatchObject({
+    address: device.address,
+    lockPath: frameworks[0]!.config.lockPath,
+    avdSerial: 'emulator-20000',
+    touchMode: 'maatouch',
+    capture: { method: 'auto', emulatorPath: '', instanceIndex: 0 },
+  });
+  await end(session);
+});
+
+test('unproven automatic AVD aliases keep ordinary screenshot candidates while explicit AVD fails clearly', async () => {
+  const { runtime, frameworks, reconnect, start, end } = await fixture({
+    detectAvdSerial: async () => undefined,
+  });
+  const session = await start('auto-unproven');
+  expect(frameworks[0]!.config).not.toHaveProperty('avdSerial');
+  expect(frameworks[0]!.config.capture?.method).toBe('auto');
+  await end(session, 'auto-unproven-end');
+  await runtime.handle('settings.save', {
+    settings: {
+      ...runtime.snapshot().settings,
+      connection: {
+        ...defaultConnection(),
+        framework: {
+          touchMode: 'minitouch',
+          capture: { method: 'avd', emulatorPath: '', instanceIndex: 0 },
+        },
+      },
+    },
+  });
+  await expect(reconnect()).rejects.toThrow('无法确认本机 AVD 的 console 身份');
+  expect(frameworks).toHaveLength(1);
+});
+
+test('explicit ADB screenshots never probe or start an AVD enhancement stream', async () => {
+  let probes = 0;
+  const { runtime, frameworks, reconnect, start } = await fixture({
+    detectAvdSerial: async () => {
+      probes++;
+      return undefined;
+    },
+  });
+  await runtime.handle('settings.save', {
+    settings: {
+      ...runtime.snapshot().settings,
+      connection: {
+        ...defaultConnection(),
+        framework: {
+          touchMode: 'maatouch',
+          capture: { method: 'adb', emulatorPath: '', instanceIndex: 0 },
+        },
+      },
+    },
+  });
+  probes = 0;
+  await reconnect();
+  await start();
+  expect(probes).toBe(0);
+  expect(frameworks[0]!.config).not.toHaveProperty('avdSerial');
+});
+
+test('session authorization invalidates old frames and UI previews cannot write to a host-owned MaaFW session', async () => {
   const { root, runtime, device, start, frame, frameworks, view } = await fixture();
   const old = await frame();
-  expect(old.resourceGeneration).toMatch(/^maacore-resource-[a-f0-9]{32}$/u);
   const session = await start();
   expect(session.resourceGeneration).toBe(view.generation);
   const ui = await frame();
@@ -259,7 +406,7 @@ test('handoff invalidates old frames and UI previews cannot write to a host-owne
   });
   const point = { deviceId: device.id, x: 20, y: 30 };
   for (const [frameId, controlToken, requestId] of [
-    [old.frameId, session.controlToken, 'old-core-frame'],
+    [old.frameId, session.controlToken, 'old-session-frame'],
     [ui.frameId, undefined, 'ui-click'],
     [ui.frameId, 'forged', 'forged-click'],
   ] as const)
@@ -282,7 +429,7 @@ test('handoff invalidates old frames and UI previews cannot write to a host-owne
     old.resourceGeneration,
     session.resourceGeneration,
     current.resourceGeneration,
-  ]) {
+  ].filter((value): value is string => !!value)) {
     expect(path.isAbsolute(generation!)).toBe(false);
     expect(generation).not.toContain(root);
     expect(generation).not.toBe(view.path);
@@ -393,17 +540,17 @@ test('unknown native gesture outcomes stay deduplicated even after the frame has
   });
 });
 
-test('a host workflow releases its controller on completion, failure and abort', async () => {
+test('a host workflow releases its authorization on completion, failure and abort', async () => {
   const { runtime, device, frameworks, status } = await fixture();
   expect(await runtime.withFrameworkSession(device.id, async () => 'completed')).toBe('completed');
-  expect(frameworks.at(-1)!.worker.closed).toBe(true);
+  expect(frameworks.at(-1)!.worker.closed).toBe(false);
   expect(await status()).toMatchObject({ owner: 'none', busy: false });
   await expect(
     runtime.withFrameworkSession(device.id, async () => {
       throw new Error('workflow failed');
     }),
   ).rejects.toThrow('workflow failed');
-  expect(frameworks.at(-1)!.worker.closed).toBe(true);
+  expect(frameworks.at(-1)!.worker.closed).toBe(false);
   const controller = new AbortController();
   const entered = deferred<void>();
   const finish = deferred<void>();
@@ -423,7 +570,7 @@ test('a host workflow releases its controller on completion, failure and abort',
     if ((await status()).owner === 'none') break;
     await Promise.resolve();
   }
-  expect(frameworks.at(-1)!.worker.closed).toBe(true);
+  expect(frameworks.at(-1)!.worker.closed).toBe(false);
   expect(await status()).toMatchObject({ owner: 'none', busy: false });
   finish.resolve();
   await active;
@@ -445,14 +592,16 @@ test('runtime shutdown closes MaaFW controllers and controller-free recognition 
 });
 
 test('switching reserves the device before resource preparation and rejects competing work', async () => {
-  const { runtime, device, start, end, status, controls, cores, frameworks } = await fixture();
+  const { runtime, device, start, end, status, controls, resetResources, frameworks } =
+    await fixture();
   const prepared = deferred<void>();
   controls.resourceGate = prepared.promise;
+  resetResources();
   const handingOff = start();
   try {
     expect(await status()).toMatchObject({ owner: 'switching', busy: true });
-    expect(cores[0]!.closed).toBe(false);
-    expect(frameworks).toHaveLength(0);
+    expect(frameworks[0]!.worker.closed).toBe(false);
+    expect(frameworks).toHaveLength(1);
     await expect(start('competing-start')).rejects.toMatchObject({ code: -32011 });
     await expect(
       runtime.handle('run.start', {
@@ -464,9 +613,8 @@ test('switching reserves the device before resource preparation and rejects comp
     await expect(runtime.handle('device.disconnect', { id: device.id })).rejects.toMatchObject({
       code: -32011,
     });
-    await expect(runtime.connectDevice({ address: device.address })).rejects.toMatchObject({
-      code: -32011,
-    });
+    expect((await runtime.connectDevice({ address: device.address })).id).toBe(device.id);
+    expect(frameworks).toHaveLength(1);
   } finally {
     prepared.resolve();
     const session = await handingOff;
@@ -474,11 +622,12 @@ test('switching reserves the device before resource preparation and rejects comp
   }
 });
 
-test('aborting resource preparation retains the connected idle MaaCore before controller detachment', async () => {
-  const { runtime, device, controls, cores, frameworks, status } = await fixture();
+test('aborting resource preparation retains the persistent idle Framework controller', async () => {
+  const { runtime, device, controls, resetResources, frameworks, status } = await fixture();
   const prepared = deferred<void>();
   const entered = deferred<void>();
   controls.resourceGate = prepared.promise;
+  resetResources();
   controls.resourceEntered = () => entered.resolve();
   const controller = new AbortController();
   let reached = false;
@@ -493,26 +642,26 @@ test('aborting resource preparation retains the connected idle MaaCore before co
   await entered.promise;
   try {
     expect(await status()).toMatchObject({ owner: 'switching', busy: true });
-    expect(cores[0]!.closed).toBe(false);
+    expect(frameworks[0]!.worker.closed).toBe(false);
     controller.abort();
   } finally {
     prepared.resolve();
   }
   await expect(active).rejects.toMatchObject({ code: -32040 });
   expect(reached).toBe(false);
-  expect(cores).toHaveLength(1);
-  expect(cores[0]).toMatchObject({ connected: true, safeIdle: true, closed: false });
-  expect(frameworks).toHaveLength(0);
+  expect(frameworks.filter((entry) => entry.config.mode === 'control')).toHaveLength(1);
+  expect(frameworks[0]!.worker).toMatchObject({ connected: true, safeIdle: true, closed: false });
+  expect(frameworks).toHaveLength(1);
   expect(runtime.store.get('device', device.id).state).toBe('idle');
-  expect(await status()).toMatchObject({ owner: 'maacore', busy: false });
+  expect(await status()).toMatchObject({ owner: 'none', busy: false });
   expect(runtime.busy()).toBe(false);
 });
 
 test('switching rejects fresh screenshots and frame recognition before issuing native work', async () => {
-  const { runtime, device, start, end, status, controls, cores, frameworks, frame } =
+  const { runtime, device, start, end, status, controls, resetResources, frameworks, frame } =
     await fixture();
   let screenshots = 0;
-  cores[0]!.frameResult = async () => {
+  frameworks[0]!.worker.frameResult = async () => {
     screenshots++;
     return image();
   };
@@ -520,6 +669,7 @@ test('switching rejects fresh screenshots and frame recognition before issuing n
   const prepared = deferred<void>();
   const entered = deferred<void>();
   controls.resourceGate = prepared.promise;
+  resetResources();
   controls.resourceEntered = () => entered.resolve();
   const handingOff = start();
   await entered.promise;
@@ -534,26 +684,13 @@ test('switching rejects fresh screenshots and frame recognition before issuing n
       }),
     ).rejects.toMatchObject({ code: -32011 });
     expect(screenshots).toBe(1);
-    expect(cores[0]!.closed).toBe(false);
-    expect(frameworks).toHaveLength(0);
+    expect(frameworks[0]!.worker.closed).toBe(false);
+    expect(frameworks).toHaveLength(1);
   } finally {
     prepared.resolve();
     const session = await handingOff;
     await end(session);
   }
-});
-
-test('a MaaFW lease failure after MaaCore exit leaves the device offline without reconnect or replay', async () => {
-  const { runtime, device, start, status, controls, cores, frameworks } = await fixture();
-  controls.launchError = new Error('synthetic shared device lease already held');
-  for (let retry = 0; retry < 2; retry++)
-    await expect(start()).rejects.toMatchObject({ code: -32040 });
-  expect(cores[0]!.closed).toBe(true);
-  expect(cores).toHaveLength(1);
-  expect(frameworks).toHaveLength(0);
-  expect(runtime.store.get('device', device.id).state).toBe('offline');
-  expect(await status()).toMatchObject({ owner: 'none', busy: false });
-  expect(runtime.busy()).toBe(false);
 });
 
 test('aborting a rejected workflow cannot close a pre-existing host control session', async () => {
@@ -576,8 +713,16 @@ test('aborting a rejected workflow cannot close a pre-existing host control sess
   await end(original);
 });
 
-test('controller-free OCR consumes the current MaaCore frame and retains its freshness without handoff', async () => {
-  const { runtime, device, frame, status, cores, frameworks, view } = await fixture();
+test('controller-free OCR consumes the current Framework frame and retains its freshness', async () => {
+  const {
+    runtime,
+    device,
+    frame,
+    status,
+    readers: frameworks,
+    controllers,
+    view,
+  } = await fixture();
   const current = await frame();
   const result = await runtime.handle('vision.recognize', {
     deviceId: device.id,
@@ -594,8 +739,7 @@ test('controller-free OCR consumes the current MaaCore frame and retains its fre
   });
   expect(result.resourceGeneration).not.toBe(view.path);
   expect(path.isAbsolute(result.resourceGeneration!)).toBe(false);
-  expect(cores[0]!.closed).toBe(false);
-  expect(await status()).toMatchObject({ owner: 'maacore', busy: false });
+  expect(await status()).toMatchObject({ owner: 'none', busy: false });
   expect(frameworks).toHaveLength(1);
   expect(frameworks[0]!.config).toMatchObject({ mode: 'recognition' });
   expect(frameworks[0]!.config).not.toHaveProperty('lockPath');
@@ -608,11 +752,7 @@ test('controller-free OCR consumes the current MaaCore frame and retains its fre
     roi: [0, 0, 100, 100],
   });
   expect(JSON.stringify(runtime.snapshot())).not.toContain(current.data);
-  await runtime.handle('run.start', {
-    deviceId: device.id,
-    planId: 'framework-plan',
-    requestId: 'core-reading',
-  });
+  controllers[0]!.worker.safeIdle = false;
   const cached = await frame();
   expect(cached).toMatchObject({ canControl: false, fresh: false });
   expect(
@@ -623,15 +763,16 @@ test('controller-free OCR consumes the current MaaCore frame and retains its fre
     }),
   ).toMatchObject({ fresh: false });
   expect(frameworks).toHaveLength(1);
-  expect(cores[0]!.closed).toBe(false);
+  expect(frameworks[0]!.worker.closed).toBe(false);
 });
 
 test('shutdown drains pending recognition preparation and never launches readers after closing', async () => {
-  const { runtime, device, frame, controls, frameworks } = await fixture();
+  const { runtime, device, frame, controls, resetResources, readers: frameworks } = await fixture();
   const current = await frame();
   const prepared = deferred<void>();
   const entered = deferred<void>();
   controls.resourceGate = prepared.promise;
+  resetResources();
   controls.resourceEntered = () => entered.resolve();
   const recognition = runtime.handle('vision.recognize', {
     deviceId: device.id,
@@ -657,7 +798,7 @@ test('shutdown drains pending recognition preparation and never launches readers
 });
 
 test('two devices serialize OCR through their shared generation reader without mixing frame identities', async () => {
-  const { runtime, device, frame, controls, frameworks } = await fixture();
+  const { runtime, device, frame, controls, readers: frameworks } = await fixture();
   const current = await frame();
   const other = await runtime.connectDevice({ address: '127.0.0.1:5557' });
   other.state = 'idle';
@@ -707,7 +848,7 @@ test('two devices serialize OCR through their shared generation reader without m
 });
 
 test('an idle recognition reader exits before a different resource generation can launch', async () => {
-  const { root, runtime, device, frame, view, frameworks } = await fixture();
+  const { root, runtime, device, frame, view, readers: frameworks } = await fixture();
   const current = await frame();
   await runtime.handle('vision.recognize', {
     deviceId: device.id,
@@ -718,7 +859,6 @@ test('an idle recognition reader exits before a different resource generation ca
   view.generation = 'synthetic-resource-generation-2';
   view.path = path.join(root, 'framework-view-2');
   runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
     resource: { path: 'synthetic-resource-2', version: 'r2' },
   });
   const other = await runtime.connectDevice({ address: '127.0.0.1:5557' });
@@ -754,7 +894,7 @@ test('an idle recognition reader exits before a different resource generation ca
 });
 
 test('a busy recognition reader rejects another resource generation without starting a second process', async () => {
-  const { root, runtime, device, frame, view, frameworks } = await fixture();
+  const { root, runtime, device, frame, view, readers: frameworks } = await fixture();
   const current = await frame();
   await runtime.handle('vision.recognize', {
     deviceId: device.id,
@@ -765,7 +905,6 @@ test('a busy recognition reader rejects another resource generation without star
   view.generation = 'synthetic-resource-generation-2';
   view.path = path.join(root, 'framework-view-2');
   runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
     resource: { path: 'synthetic-resource-2', version: 'r2' },
   });
   const other = await runtime.connectDevice({ address: '127.0.0.1:5557' });
@@ -843,7 +982,7 @@ test('idle recognition readers are reclaimed and explicit requests rebuild them 
 });
 
 test('a failed reader is closed and evicted so a fresh explicit recognition can create a new process', async () => {
-  const { runtime, device, frame, controls, frameworks } = await fixture();
+  const { runtime, device, frame, controls, readers: frameworks } = await fixture();
   const current = await frame();
   let attempts = 0;
   controls.native = async () => {
@@ -871,37 +1010,19 @@ test('a failed reader is closed and evicted so a fresh explicit recognition can 
   expect(frameworks[1]!.worker.closed).toBe(false);
 });
 
-test('normal MaaFW release reconnects MaaCore only when an explicit mature task starts and retains run deduplication', async () => {
-  const { runtime, device, cores, start, end, status } = await fixture();
-  const session = await start();
-  await end(session);
-  expect(cores).toHaveLength(1);
-  expect(cores[0]!.closed).toBe(true);
-  expect(await status()).toMatchObject({ owner: 'none', busy: false });
-  const params = { deviceId: device.id, planId: 'framework-plan', requestId: 'lazy-core-run' };
-  const [first, duplicate] = await Promise.all([
-    runtime.handle('run.start', params),
-    runtime.handle('run.start', params),
-  ]);
-  expect(first.id).toBe(duplicate.id);
-  expect(cores).toHaveLength(2);
-  expect(cores[1]!.submitted).toHaveLength(1);
-  expect(await runtime.handle('run.start', params)).toMatchObject({ id: first.id });
-  expect(cores).toHaveLength(2);
-  expect(cores[1]!.submitted).toHaveLength(1);
-});
-
-test('an active MaaFW workflow never takes the lazy MaaCore path for a mature task', async () => {
-  const { runtime, device, cores, start } = await fixture();
+test('an active MaaFW workflow rejects competing plan execution without launching another controller', async () => {
+  const { runtime, device, frameworks, start } = await fixture();
   await start();
   await expect(
     runtime.handle('run.start', {
       deviceId: device.id,
       planId: 'framework-plan',
-      requestId: 'no-lazy-core-while-owned',
+      requestId: 'no-extra-controller-while-owned',
     }),
   ).rejects.toMatchObject({ code: -32011 });
-  expect(cores).toHaveLength(1);
-  expect(cores[0]!.closed).toBe(true);
-  expect(cores[0]!.submitted).toHaveLength(0);
+  expect(frameworks.filter((entry) => entry.config.mode === 'control')).toHaveLength(1);
+  expect(frameworks[0]!.worker.closed).toBe(false);
+  expect(
+    frameworks[0]!.worker.calls.filter((call) => call.operation === 'run_pipeline'),
+  ).toHaveLength(0);
 });

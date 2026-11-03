@@ -17,6 +17,7 @@ import {
   redactLog,
 } from '@backend/infrastructure/logging/logs';
 import { Runtime } from '@backend/app/runtime';
+import { FakeFramework, frameworkFixtureOptions } from './framework-fixture';
 import { processRequest } from '@backend/transport/json-rpc';
 import { parseSettings } from '@backend/modules/settings/models';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
@@ -321,28 +322,24 @@ describe('diagnostic log export and retention', () => {
 
   test('resolved instance configuration is exported and disconnected worker logs stay protected until restart', async () => {
     const root = temp(),
-      worker = {
-        events: [],
-        connected: true,
-        safeIdle: true,
-        task: async () => ({}),
-        stop: async () => ({}),
-        connect: async () => ({}),
-        waitConnected: async () => true,
-        close: async () => {},
-      };
+      worker = new FakeFramework();
     const runtime = new Runtime(root, {
       calendar: { fetcher: null },
+      ...frameworkFixtureOptions(),
       adbExecutable: () => 'synthetic-resolved-adb',
-      workerFactory: async () => worker,
+      frameworkWorkerFactory: async () => worker,
     });
     runtimes.push(runtime);
     runtime.store.put('active', 'combo', {
-      core: { path: 'synthetic-resolved-core', version: 'v1' },
       resource: { path: 'synthetic-resolved-resource', version: 'r1' },
     });
     const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
-    const nativeLog = put(root, `workers/${device.id}/debug/asst.log`, 'connected native log', 30);
+    const nativeLog = put(
+      root,
+      `workers/maafw-${device.id}/debug/framework.log`,
+      'connected native log',
+      30,
+    );
     const exported = await runtime.handle('logs.export'),
       content = readFileSync(exported.path, 'utf8');
     expect(content).toContain('synthetic-resolved-adb');

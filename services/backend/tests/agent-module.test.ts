@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { propose } from '@backend/modules/agent/agent';
 import { RpcError } from '@backend/shared/errors';
 import { parseSettings } from '@backend/modules/settings/models';
-import { nativeTask, validatePlan } from '@backend/modules/plans/task-policy';
+import { validatePlan } from '@backend/modules/plans/task-policy';
 import { taskConsumableLimits } from '@contracts/task-policy';
 
 test('backend prepares the domain plan before policy checks and keeps zero default consumption', () => {
@@ -25,11 +25,6 @@ test('backend prepares the domain plan before policy checks and keeps zero defau
   });
   expect(validations).toBe(1);
   expect(taskConsumableLimits(proposal.plan)).toEqual({ originium: 0, medicine: 0, expedited: 0 });
-  expect(nativeTask(proposal.plan.tasks[0]).params).toMatchObject({
-    stone: 0,
-    medicine: 0,
-    expiring_medicine: 0,
-  });
   expect(proposal.requiresConfirmation).toBe(true);
 });
 

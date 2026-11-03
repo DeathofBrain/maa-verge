@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { parsePlan, parseSettings } from '@backend/modules/settings/models';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
+import { seedFrameworkResource } from './framework-fixture';
 
 const runtimes: Runtime[] = [];
 afterEach(async () => {
@@ -24,26 +25,24 @@ function fixture(probe: () => Promise<boolean> = async () => false, address = '1
     },
   );
   runtimes.push(runtime);
+  seedFrameworkResource(runtime);
   runtime.store.put(
     'settings',
     'main',
     parseSettings({
       autoConnect: false,
-      autoUpdateCore: false,
+      autoUpdateFramework: false,
       autoUpdateResource: false,
     }),
   );
-  runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'r1' },
-  });
   const device = { id: 'other-instance', name: '多开实例 2', address, state: 'offline' };
   runtime.store.put('device', device.id, device);
   const plan = parsePlan({
     id: 'daily',
     name: '日常',
     deviceId: device.id,
-    tasks: [{ type: 'StartUp' }],
+    // 已支持的空领取流程不依赖资源，通知测试才能到达设备可用性门禁。
+    tasks: [{ type: 'Award', params: { award: false, mail: false } }],
   });
   runtime.store.put('plan', plan.id, plan);
   const request = { planId: plan.id, deviceId: device.id, requestId: 'launch-request' };

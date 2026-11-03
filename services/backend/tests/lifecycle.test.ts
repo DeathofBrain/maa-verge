@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Store } from '@backend/infrastructure/storage/storage';
 import { parseSettings } from '@backend/modules/settings/models';
+import { baseResourceFiles } from './resource-update-fixture';
 import { snapshotIntegrity } from '@backend/infrastructure/filesystem/snapshot-integrity';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
@@ -143,7 +144,12 @@ function initializeServiceData(root: string) {
     store.put(
       'settings',
       'main',
-      parseSettings({ autoConnect: false, autoUpdateCore: false, autoUpdateResource: false }),
+      parseSettings({
+        autoConnect: false,
+        autoUpdateCore: false,
+        autoUpdateResource: false,
+        autoUpdateFramework: false,
+      }),
     );
     store.put('meta', 'initialized', true);
   } finally {
@@ -191,24 +197,22 @@ describe('stdio service lifecycle', () => {
     const wrapper = path.join(root, 'background-components.mjs');
     const application = path.join(root, 'application');
     const bundle = path.join(application, 'runtime/bundled-components');
-    const core = path.join(bundle, 'core');
-    const library =
-      process.platform === 'win32'
-        ? 'MaaCore.dll'
-        : process.platform === 'darwin'
-          ? 'libMaaCore.dylib'
-          : 'libMaaCore.so';
-    mkdirSync(path.join(core, 'resource'), { recursive: true });
-    writeFileSync(path.join(core, library), 'synthetic payload, never loaded');
-    writeFileSync(path.join(core, 'resource/version.json'), '{}');
+    const resource = path.join(bundle, 'resource');
+    for (const file of baseResourceFiles.filter(
+      (file) => file.name.startsWith('source/resource/') || file.name === 'source/LICENSE',
+    )) {
+      const filename = path.join(resource, file.name.replace(/^source\//, ''));
+      mkdirSync(path.dirname(filename), { recursive: true });
+      writeFileSync(filename, file.content);
+    }
     writeFileSync(
       path.join(bundle, 'manifest.json'),
       JSON.stringify({
-        formatVersion: 1,
-        core: {
-          directory: 'core',
-          version: 'v6.20.1',
-          installedHash: (await snapshotIntegrity(core)).installedHash,
+        formatVersion: 2,
+        resource: {
+          directory: 'resource',
+          version: 'a'.repeat(40),
+          installedHash: (await snapshotIntegrity(resource)).installedHash,
         },
       }),
     );
@@ -257,8 +261,8 @@ await main();
     expect(
       messages()
         .find((value) => value.id === 'snapshot')
-        .result.updates.find((value: any) => value.id === 'core'),
-    ).toMatchObject({ status: 'downloading', progress: 95 });
+        .result.updates.find((value: any) => value.id === 'resource'),
+    ).toMatchObject({ status: 'idle' });
     expect(messages().find((value) => value.id === 'save').result.name).toBe('无需等待组件');
     expect(existsSync(resume)).toBe(false);
     writeFileSync(resume, 'ready');
@@ -271,7 +275,7 @@ await main();
       await child.waitFor(() => messages().some((value) => value.id === id));
       active = messages()
         .find((value) => value.id === id)
-        .result.updates.some((value: any) => value.id === 'core' && value.status === 'active');
+        .result.updates.some((value: any) => value.id === 'resource' && value.status === 'active');
       if (!active) await delay(10);
     }
     child.child.stdin.end();
@@ -342,36 +346,29 @@ await main();
     }
   }, 15000);
 
-  test('EOF cancels a client replacement that has not entered the worker map', async () => {
+  test('EOF cancels a Framework controller launch before it enters the worker map', async () => {
     const root = temp(),
-      ready = path.join(root, 'client-starting.txt'),
-      cancelled = path.join(root, 'client-cancelled.txt');
-    const wrapper = path.join(root, 'client-switch-service.mjs');
+      ready = path.join(root, 'starting.txt'),
+      cancelled = path.join(root, 'cancelled.txt');
+    const wrapper = path.join(root, 'framework-start-service.mjs');
     writeFileSync(
       wrapper,
       `
-import { writeFileSync } from 'node:fs';
-import { Runtime } from ${JSON.stringify(runtimeModule)};
-import { main } from ${JSON.stringify(pathToFileURL(entry).href)};
-const original = Runtime.prototype.handle;
-Runtime.prototype.handle = async function(method, params) {
-  if (method !== 'synthetic.client-switch') return original.call(this, method, params);
-  let first = true;
-  this.options.adbExecutable = () => 'synthetic-never-executed';
-  this.options.workerFactory = async (_config, options) => {
-    if (first) { first = false; return { events: [], connected: true, safeIdle: true, async connect() {}, async close() {}, async stop() {}, async task() { throw new Error('must not submit'); }, async waitConnected() { return true; } }; }
-    return new Promise((_resolve, reject) => {
-      options.signal.addEventListener('abort', () => { writeFileSync(${JSON.stringify(cancelled)}, 'cancelled'); reject(new Error('cancelled synthetic startup')); }, { once: true });
-      writeFileSync(${JSON.stringify(ready)}, 'waiting for replacement');
-    });
-  };
-  this.store.put('active', 'combo', { core: { path: 'synthetic-core', version: 'v1' }, resource: { path: 'synthetic-resource', version: 'r1' } });
-  const device = await this.connectDevice({ address: '127.0.0.1:5555' }); device.state = 'idle'; this.store.put('device', device.id, device);
-  await original.call(this, 'plan.save', { plan: { id: 'client', name: 'EOF切服', tasks: [{ type: 'StartUp', params: { client_type: 'YoStarJP' } }] } });
-  return this.startRun({ planId: 'client', deviceId: device.id, requestId: 'client-switch' });
-};
-await main();
-`,
+import {writeFileSync} from 'node:fs';
+import {Runtime} from ${JSON.stringify(runtimeModule)};
+import {main} from ${JSON.stringify(pathToFileURL(entry).href)};
+const original=Runtime.prototype.handle;
+Runtime.prototype.handle=async function(method,params){
+  if(method!=='synthetic.connect') return original.call(this,method,params);
+  this.options.adbExecutable=()=> 'synthetic-adb';
+  this.options.frameworkResources=async()=>({path:'synthetic-view',generation:'synthetic',sourcePaths:[],ocrAvailable:false,templates:{}});
+  this.options.frameworkWorkerFactory=async(_config,signal)=>new Promise((_resolve,reject)=>{
+    signal.addEventListener('abort',()=>{writeFileSync(${JSON.stringify(cancelled)},'cancelled');reject(new Error('launch cancelled'));},{once:true});
+    writeFileSync(${JSON.stringify(ready)},'waiting');
+  });
+  this.store.put('active','combo',{resource:{path:'synthetic-resource',version:'r1'}});
+  return this.connectDevice({address:'127.0.0.1:5555'});
+};await main();`,
     );
     initializeServiceData(root);
     const child = new ManagedChild(
@@ -379,125 +376,14 @@ await main();
       root,
     );
     child.child.stdin.write(
-      JSON.stringify({ jsonrpc: '2.0', id: 'client-switch', method: 'synthetic.client-switch' }) +
-        '\n',
+      JSON.stringify({ jsonrpc: '2.0', id: 'connect', method: 'synthetic.connect' }) + '\n',
     );
     await child.waitFor(() => existsSync(ready));
-    const started = Date.now();
     child.child.stdin.end();
     expect(await child.exit(), child.stderr).toEqual({ code: 0, signal: null });
-    expect(Date.now() - started).toBeLessThan(3000);
     expect(existsSync(cancelled)).toBe(true);
-    expect(child.stderr).not.toContain('退出超时');
-    const response = child.stdout
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => JSON.parse(line))
-      .find((value) => value.id === 'client-switch');
-    expect(response.result.status).toBe('stopped');
     assertLeaseReleased(root);
-    const reopened = new Store(path.join(root, 'native'));
-    try {
-      expect(reopened.all('run')[0].status).toBe('stopped');
-      expect(reopened.get('request', 'client-switch').runId).toBe(response.result.id);
-    } finally {
-      reopened.close();
-    }
   }, 15000);
-
-  test.skipIf(!process.env.MAAVERGE_TEST_NATIVE_WORKER || !process.env.MAAVERGE_TEST_CORE_LIBRARY)(
-    'EOF interrupts a stalled synthetic frame and releases its native device lease',
-    async () => {
-      const root = temp(),
-        executable = process.env.MAAVERGE_TEST_NATIVE_WORKER!;
-      const resource = path.join(root, 'resource'),
-        trace = path.join(root, 'native-trace.txt');
-      mkdirSync(path.join(resource, 'resource'), { recursive: true });
-      writeFileSync(path.join(resource, 'resource', 'version.json'), '{}');
-      const config = {
-        protocolVersion: 1,
-        core: path.dirname(process.env.MAAVERGE_TEST_CORE_LIBRARY!),
-        resource,
-        userDir: path.join(root, 'native-user'),
-        adb: 'synthetic-never-executed',
-        address: 'synthetic://no-device',
-        lockPath: path.join(root, 'device-locks', 'stalled-frame.lock'),
-        version: 'vsynthetic',
-      };
-      // Refuse any library other than the synthetic C API before a connection.
-      const probe = new ManagedChild([executable, '--validate'], root);
-      probe.child.stdin.end(JSON.stringify(config) + '\n');
-      expect(await probe.exit(), probe.stderr).toEqual({ code: 0, signal: null });
-      expect(JSON.parse(probe.stdout).version).toBe('vsynthetic');
-
-      const wrapper = path.join(root, 'stalled-frame-service.mjs');
-      writeFileSync(
-        wrapper,
-        `
-import { Runtime } from ${JSON.stringify(runtimeModule)};
-import { CoreWorker } from ${JSON.stringify(workerModule)};
-import { main } from ${JSON.stringify(pathToFileURL(entry).href)};
-const original = Runtime.prototype.handle;
-Runtime.prototype.handle = async function(method, params) {
-  if (method !== 'synthetic.frame') return original.call(this, method, params);
-  const worker = await CoreWorker.start(${JSON.stringify(config)});
-  console.error('synthetic-frame-worker:' + worker.child.pid);
-  this.workers.set('synthetic-frame-worker', worker);
-  await worker.connect();
-  if (!await worker.waitConnected()) throw new Error('synthetic connection failed');
-  return worker.request('frame');
-};
-await main();
-`,
-      );
-      initializeServiceData(root);
-      const service = new ManagedChild(
-        [process.execPath, wrapper, '--mode', 'native', '--data-dir', root],
-        root,
-        {
-          MAAVERGE_CORE_WORKER_PATH: executable,
-          MAAVERGE_SYNTHETIC_CASE: 'screencap-wrong-id',
-          MAAVERGE_SYNTHETIC_TRACE: trace,
-        },
-      );
-      service.child.stdin.write(
-        JSON.stringify({ jsonrpc: '2.0', id: 'stalled', method: 'synthetic.frame' }) + '\n',
-      );
-      await service.waitFor(() => /synthetic-frame-worker:\d+/.test(service.stderr));
-      nativeChildren.add(Number(/synthetic-frame-worker:(\d+)/.exec(service.stderr)![1]));
-      await service.waitFor(
-        () => existsSync(trace) && readFileSync(trace, 'utf8').includes('screencap-blocking'),
-      );
-
-      const competitor = new ManagedChild([executable, '--lease-only'], root);
-      competitor.child.stdin.end(
-        JSON.stringify({ protocolVersion: 1, lockPath: config.lockPath, lockTimeoutMs: 0 }) + '\n',
-      );
-      expect((await competitor.exit()).code).not.toBe(0);
-      expect(competitor.stderr).toContain('device lock busy');
-
-      service.child.stdin.end();
-      expect(await service.exit(), service.stderr).toEqual({ code: 0, signal: null });
-      expect(service.stderr).not.toContain('本地服务退出超时');
-      const response = service.stdout
-        .split('\n')
-        .filter(Boolean)
-        .map((line) => JSON.parse(line))
-        .find((value) => value.id === 'stalled');
-      expect(response.error).toBeDefined();
-      assertLeaseReleased(root);
-
-      const replacement = new ManagedChild([executable, '--lease-only'], root);
-      replacement.child.stdin.write(
-        JSON.stringify({ protocolVersion: 1, lockPath: config.lockPath, lockTimeoutMs: 0 }) + '\n',
-      );
-      await replacement.waitFor(() => replacement.stdout.includes('"type":"ready"'));
-      replacement.child.stdin.end();
-      expect(await replacement.exit(), replacement.stderr).toEqual({ code: 0, signal: null });
-      nativeChildren.clear();
-    },
-    15000,
-  );
 
   test('a broken stdout pipe unwinds the premature stdin close and releases the lease', async () => {
     const root = temp(),

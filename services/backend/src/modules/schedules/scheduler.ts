@@ -19,11 +19,13 @@ export const defaultScheduler = () => ({
 });
 const day = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-const active = (status: string) => ['countdown', 'stopping', 'starting'].includes(status);
+const active = (status: string) =>
+  ['preflighting', 'countdown', 'stopping', 'starting'].includes(status);
 interface Host {
   store: Store;
   emit(type: string, message: string, data?: any): unknown;
   availability(id: string, occurrence?: string): RpcContract['results']['device.availability'];
+  preflight?(plan: any, deviceId: string, force: boolean): Promise<void>;
   stopDevice(id: string): Promise<void>;
   prepareDevice(id: string): Promise<void>;
   start(plan: any, deviceId: string, requestId: string, occurrence: any): Promise<any>;
@@ -260,6 +262,8 @@ export class Scheduler {
         });
         if (this.host.availability(schedule.deviceId).owner === 'none')
           this.launch(key + ':prepare', async () => {
+            const plan = this.host.store.get('plan', schedule.planId);
+            await this.host.preflight?.(plan, schedule.deviceId, settings.forceScheduledStart);
             await this.host.prepareDevice(schedule.deviceId);
           });
       }
@@ -279,7 +283,7 @@ export class Scheduler {
         scheduledFor: target.toISOString(),
         createdAt: current.toISOString(),
         force: settings.forceScheduledStart,
-        status: settings.forceScheduledStart ? 'countdown' : 'starting',
+        status: 'preflighting',
         deadline: current.getTime() + 60_000,
         countdownUntil: current.getTime() + 10_000,
         planSnapshot: structuredClone(plan),
@@ -296,11 +300,6 @@ export class Scheduler {
         this.finish(item, 'skipped', '同一设备同刻存在更靠前的定时项');
       else if (!settings.forceScheduledStart && availability.owner !== 'none')
         this.finish(item, 'skipped', availability.reason);
-      else if (settings.forceScheduledStart)
-        this.host.emit('schedule.countdown', '强制定时将在 10 秒后停止当前操作并启动', {
-          occurrence: this.publicOccurrence(item),
-          showWindow: settings.showWindowBeforeForceScheduledStart,
-        });
       claimed.add(schedule.deviceId);
       this.drive(item, current);
     }
@@ -309,6 +308,27 @@ export class Scheduler {
     if (this.stopped || !active(item.status) || this.pending.has(item.id)) return;
     if (current.getTime() > item.deadline) {
       this.finish(item, 'failed', '等待设备安全空闲或连接超时，本次未继续');
+      return;
+    }
+    if (item.status === 'preflighting') {
+      // 完整快照先通过兼容门禁，强制定时才能发倒计时或停止其他设备操作。
+      this.launch(item.id, async () => {
+        try {
+          await this.host.preflight?.(item.planSnapshot, item.deviceId, item.force);
+          if (this.stopped || !active(this.host.store.get('schedule_occurrence', item.id)?.status))
+            return;
+          item.status = item.force ? 'countdown' : 'starting';
+          item.countdownUntil = this.clock().getTime() + 10_000;
+          this.host.store.put('schedule_occurrence', item.id, item);
+          if (item.force)
+            this.host.emit('schedule.countdown', '强制定时将在 10 秒后停止当前操作并启动', {
+              occurrence: this.publicOccurrence(item),
+              showWindow: this.settings().showWindowBeforeForceScheduledStart,
+            });
+        } catch (error) {
+          if (!this.stopped) this.finish(item, 'failed', String(error).slice(0, 1000));
+        }
+      });
       return;
     }
     if (item.status === 'countdown') {
@@ -320,6 +340,9 @@ export class Scheduler {
       });
       this.launch(item.id, async () => {
         try {
+          await this.host.preflight?.(item.planSnapshot, item.deviceId, item.force);
+          if (this.stopped || !active(this.host.store.get('schedule_occurrence', item.id)?.status))
+            return;
           await this.host.stopDevice(item.deviceId);
         } catch (error) {
           if (!this.stopped && active(this.host.store.get('schedule_occurrence', item.id)?.status))
@@ -344,6 +367,9 @@ export class Scheduler {
     if (item.status === 'starting')
       this.launch(item.id, async () => {
         try {
+          await this.host.preflight?.(item.planSnapshot, item.deviceId, item.force);
+          if (this.stopped || !active(this.host.store.get('schedule_occurrence', item.id)?.status))
+            return;
           await this.host.prepareDevice(item.deviceId);
           if (this.stopped || !active(this.host.store.get('schedule_occurrence', item.id)?.status))
             return;

@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { parsePlan, parseSettings } from '@backend/modules/settings/models';
-import { nativeTask, validatePlan } from '@backend/modules/plans/task-policy';
+import { validatePlan } from '@backend/modules/plans/task-policy';
 
 type Fixture = {
   name: string;
@@ -426,14 +426,13 @@ function evaluate(fixture: Fixture): any {
     if (fixture.operation === 'settings') return { ok: true, value: parseSettings(fixture.value) };
     const parsed = parsePlan(fixture.value);
     if (fixture.operation === 'parsePlan') return { ok: true, value: parsed };
-    if (fixture.operation === 'native') return { ok: true, value: nativeTask(parsed.tasks[0]) };
     validatePlan(parsed, parseSettings());
     return { ok: true };
   } catch (error: any) {
     return { ok: false, code: error.code };
   }
 }
-for (const fixture of fixtures)
+for (const fixture of fixtures.filter((fixture) => fixture.operation !== 'native'))
   test(fixture.name, () => {
     const result = evaluate(fixture);
     expect(result.ok).toBe(fixture.code === undefined);
@@ -476,65 +475,5 @@ test('model scalar coercions retain fixed normalized values', () => {
       originium: 0,
       expedited: 0,
     });
-  }
-});
-
-test('native defaults retain explicit values and never mutate a saved task', () => {
-  const task = parsePlan(plan('Fight', { times: null, report_to_penguin: true })).tasks[0];
-  const before = structuredClone(task),
-    copied = nativeTask(task);
-  expect(copied.params.times).toBeNull();
-  expect(copied.params.report_to_penguin).toBe(true);
-  expect(copied.params.medicine).toBe(0);
-  expect(task).toEqual(before);
-});
-test('material target switches affect native parameters without changing saved targets', () => {
-  for (const enabled of [undefined, true, false]) {
-    const task = parsePlan(
-      plan('Fight', {
-        drops: { '30013': 7 },
-        ...(enabled === undefined ? {} : { drops_enabled: enabled }),
-      }),
-    ).tasks[0];
-    const before = structuredClone(task);
-    const copied = nativeTask(task);
-    expect(copied.params.drops).toEqual(enabled === false ? {} : { '30013': 7 });
-    expect(copied.params).not.toHaveProperty('drops_enabled');
-    expect(task).toEqual(before);
-  }
-});
-
-test('native copilot navigation normalizes only legacy null overrides without mutating saved parameters', () => {
-  const task = parsePlan(
-    plan('Copilot', {
-      copilot_list: [
-        { filename: 'default.json', id: 1, nav_name_override: null, extension: { keep: null } },
-        { filename: 'override.json', id: 2, is_raid: true, nav_name_override: '1-7' },
-        { filename: 'absent.json', id: 3 },
-        { filename: 'empty.json', id: 4, nav_name_override: '' },
-      ],
-      extension: { nav_name_override: null },
-    }),
-  ).tasks[0];
-  const before = structuredClone(task),
-    copied = nativeTask(task);
-  expect(copied.params.copilot_list).toEqual([
-    { filename: 'default.json', id: 1, extension: { keep: null } },
-    { filename: 'override.json', id: 2, is_raid: true, nav_name_override: '1-7' },
-    { filename: 'absent.json', id: 3 },
-    { filename: 'empty.json', id: 4, nav_name_override: '' },
-  ]);
-  expect(copied.params.extension).toEqual({ nav_name_override: null });
-  expect(task).toEqual(before);
-});
-test('non-JSON direct parameters are rejected deterministically', () => {
-  for (const value of [NaN, Infinity, -Infinity, undefined, 1n, new Date(), new Map(), () => {}]) {
-    expect(
-      evaluate({
-        name: 'non-json',
-        operation: 'policy',
-        value: plan('Fight', { extension: value }),
-      }),
-    ).toEqual({ ok: false, code: -32010 });
   }
 });

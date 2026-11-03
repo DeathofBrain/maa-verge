@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { DebugService, type DebugRegistry } from '@backend/modules/atomic/debug-service';
+import { DebugService, type DebugRegistry } from '@backend/modules/debug/debug-service';
 import type { RpcContract, PrimitiveDescriptor } from '@contracts/rpc-types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 const descriptor: PrimitiveDescriptor = {
@@ -160,6 +160,129 @@ test('frame result uses ScreenFrame and partial workflow evidence is preserved',
   expect(second.status).toBe('failed');
   expect(second.data.rooms).toHaveLength(2);
   expect(second.data.message).toBe('第二房间未确认');
+  await service.close();
+});
+
+test('a direct frame with an envelope message still becomes one preview and lightweight data', async () => {
+  const frame = {
+    ...mockPreviewImage,
+    frameId: 'message-frame',
+    deviceId: 'device',
+    capturedAt: '2026-01-01T00:00:00.000Z',
+    latencyMs: 1,
+    canControl: true,
+  };
+  const { service } = setup(async () => ({
+    status: 'unknown',
+    data: frame,
+    message: 'synthetic elapsed deadline',
+    verified: false,
+  }));
+  const session = await service.start({ deviceId: 'device', requestId: 'message-start' });
+  const result = await service.invoke({
+    debugSessionId: session.debugSessionId,
+    primitiveId: descriptor.id,
+    input: {},
+    requestId: 'message-result',
+  });
+  expect(result.status).toBe('unknown');
+  expect(result.frame).toEqual(frame);
+  expect(result.data.frameId).toBe(frame.frameId);
+  expect(result.data.message).toBe('synthetic elapsed deadline');
+  expect(result.data).not.toHaveProperty('data');
+  expect(JSON.stringify(result).split(mockPreviewImage.data)).toHaveLength(2);
+  expect(frame.data).toBe(mockPreviewImage.data);
+  await service.close();
+});
+
+test('nested L2 frames and partial Pipeline evidence keep lightweight references and one preview PNG', async () => {
+  const before = {
+    ...mockPreviewImage,
+    frameId: 'before-frame',
+    deviceId: 'device',
+    capturedAt: '2026-01-01T00:00:00.000Z',
+    latencyMs: 1,
+    canControl: true,
+  };
+  const after = { ...before, frameId: 'after-frame', capturedAt: '2026-01-01T00:00:01.000Z' };
+  const output = {
+    status: 'partial',
+    data: {
+      observation: { frame: after, hit: true },
+      pipelineSteps: {
+        before: { data: { frame: before, matches: [] } },
+        after: { data: { frame: after, matches: [{ box: [1, 2, 3, 4], score: 0.9 }] } },
+      },
+    },
+    verified: false,
+    message: '保留已执行步骤',
+  };
+  const { service } = setup(async (_id, _input, context) => {
+    context.onProgress?.({ capabilityId: descriptor.id, message: '观察', data: { frame: after } });
+    return output;
+  });
+  const session = await service.start({ deviceId: 'device', requestId: 'nested-start' });
+  const result = await service.invoke({
+    debugSessionId: session.debugSessionId,
+    primitiveId: descriptor.id,
+    input: {},
+    requestId: 'nested-result',
+  });
+  expect(result.status).toBe('failed');
+  expect(result.frame).toEqual(after);
+  expect(result.data.message).toBe('保留已执行步骤');
+  expect(result.data.observation).toEqual({
+    frame: expect.objectContaining({
+      frameId: after.frameId,
+      width: after.width,
+      height: after.height,
+    }),
+    hit: true,
+  });
+  expect(result.data).not.toHaveProperty('observation.frame.data');
+  expect(result.data).not.toHaveProperty('pipelineSteps.before.data.frame.data');
+  expect(result.data).toHaveProperty('pipelineSteps.after.data.matches', [
+    { box: [1, 2, 3, 4], score: 0.9 },
+  ]);
+  expect(result.steps[0]!.data).toEqual({
+    frame: expect.objectContaining({ frameId: after.frameId }),
+  });
+  expect(JSON.stringify(result).split(mockPreviewImage.data)).toHaveLength(2);
+  // 调试序列化生成副本，不删除能力返回值里供同根调用使用的 PNG 或后置证据。
+  expect(output.data.observation.frame.data).toBe(mockPreviewImage.data);
+  expect(output.data.pipelineSteps.before.data.frame.data).toBe(mockPreviewImage.data);
+  await service.close();
+});
+
+test('an exception preserves prior progress as lightweight evidence with one preview PNG', async () => {
+  const frame = {
+    ...mockPreviewImage,
+    frameId: 'exception-frame',
+    deviceId: 'device',
+    capturedAt: '2026-01-01T00:00:00.000Z',
+    latencyMs: 1,
+    canControl: true,
+  };
+  const event = { capabilityId: descriptor.id, message: '已观察', data: { frame, hit: true } };
+  const { service } = setup(async (_id, _input, context) => {
+    context.onProgress?.(event);
+    throw new Error('后续原生步骤失败');
+  });
+  const session = await service.start({ deviceId: 'device', requestId: 'exception-start' });
+  const result = await service.invoke({
+    debugSessionId: session.debugSessionId,
+    primitiveId: descriptor.id,
+    input: {},
+    requestId: 'exception-result',
+  });
+  expect(result.status).toBe('unknown');
+  expect(result.data.message).toBe('后续原生步骤失败');
+  expect(result.frame).toEqual(frame);
+  expect(result.steps[0]).toHaveProperty('data.frame.frameId', frame.frameId);
+  expect(result.steps[0]).not.toHaveProperty('data.frame.data');
+  expect(result.steps[0]).toHaveProperty('data.hit', true);
+  expect(JSON.stringify(result).split(mockPreviewImage.data)).toHaveLength(2);
+  expect(event.data.frame.data).toBe(mockPreviewImage.data);
   await service.close();
 });
 

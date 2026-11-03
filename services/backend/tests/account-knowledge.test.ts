@@ -5,6 +5,7 @@ import path from 'node:path';
 import { AccountKnowledge } from '@backend/modules/knowledge/account-knowledge';
 import { Store } from '@backend/infrastructure/storage/storage';
 import { Runtime } from '@backend/app/runtime';
+import { FakeFramework, frameworkFixtureOptions, seedFrameworkResource } from './framework-fixture';
 import { recognitionKey } from '@backend/modules/recognition/recognition';
 import {
   validateAccountKnowledgeSnapshot,
@@ -194,140 +195,61 @@ test('valid snapshots stored under a different key or account scope cannot escap
   }
 });
 
-class Worker {
-  connected = true;
-  safeIdle = true;
-  events: any[] = [];
-  count = 0;
-  async connect() {
-    return { asyncId: 1 };
-  }
-  async waitConnected() {
-    return this.connected && this.safeIdle;
-  }
-  async task() {
-    this.safeIdle = false;
-    return { taskId: ++this.count };
-  }
-  async stop() {
-    return { stopping: true };
-  }
-  async close() {}
-  result(quantity = 12) {
-    this.events.push({
-      type: 'callback',
-      message: 20003,
-      details: {
-        taskid: this.count,
-        taskchain: 'Depot',
-        what: 'DepotInfo',
-        details: { done: true, data: JSON.stringify({ '30012': quantity }) },
-      },
-    });
-  }
-  complete(success = true, pending = false) {
-    this.events.push(
-      { type: 'callback', message: success ? 10002 : 10000, details: { taskid: this.count } },
-      { type: 'callback', message: 3, details: { taskid: this.count } },
-    );
-    this.idle(pending);
-  }
-  idle(pending = false) {
-    this.safeIdle = !pending;
-    this.events.push({ type: 'status', running: false, pendingAsync: pending ? [8] : [] });
-  }
-}
+/** Historical account records remain readable while unsupported native scans stay blocked. */
 async function native() {
-  const worker = new Worker(),
-    runtime = new Runtime(root(), {
-      workerFactory: async () => worker,
-      validator: async () => {},
-      adbExecutable: () => 'synthetic-adb',
-      calendar: { fetcher: null },
-    });
+  const worker = new FakeFramework();
+  const runtime = new Runtime(
+    root(),
+    frameworkFixtureOptions({ frameworkWorkerFactory: async () => worker }),
+  );
   runtimes.push(runtime);
-  runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'resource-1' },
-  });
+  seedFrameworkResource(runtime);
   const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
-  device.state = 'idle';
-  runtime.store.put('device', device.id, device);
-  let serial = 0;
-  const start = async (type = 'Depot', params = {}) => {
-    const id = 'account-test-' + ++serial;
-    await runtime.handle('plan.save', {
-      plan: { id, name: '合成任务', tasks: [{ type, params }] },
-    });
-    return runtime.startRun({ planId: id, deviceId: device.id, requestId: id });
-  };
   const get = () => runtime.handle('account.snapshot.get', { deviceId: device.id, kind: 'depot' });
   const list = () => runtime.handle('account.snapshot.list', { deviceId: device.id });
-  return { worker, runtime, device, start, get, list };
+  return { worker, runtime, device, get, list };
 }
 
-test('runtime commits account snapshots only at successful idle boundaries and preserves them on failure or stop', async () => {
-  const { worker, runtime, start, get, list } = await native();
-  await start();
-  worker.result();
-  worker.complete(true, true);
-  await runtime.tick(true);
-  expect(await get()).toBeNull();
-  expect((await list()).total).toBe(0);
-  worker.idle();
-  await runtime.tick(true);
-  const first = await get();
-  expect(first).toMatchObject({
-    source: 'maacore-recognition',
-    coreVersion: 'v1',
-    resourceVersion: 'resource-1',
-    taskIndex: 0,
-  });
-  expect((await list()).total).toBe(1);
-  await start();
-  worker.result(99);
-  worker.complete(false);
-  await runtime.tick(true);
+test('unsupported scans and account switching preserve historical account observations without native effects', async () => {
+  const { worker, runtime, device, get, list } = await native();
+  const first = runtime.accounts.capture(scan(12, device.id), provenance)!;
+  for (const task of [
+    { type: 'Depot' },
+    { type: 'OperBox' },
+    { type: 'StartUp', params: { account_name: 'B' } },
+  ]) {
+    const plan = await runtime.handle('plan.save', {
+      plan: { name: '保留待迁移配置', tasks: [task] },
+    });
+    await expect(
+      runtime.startRun({ planId: plan.id, deviceId: device.id, requestId: plan.id }),
+    ).rejects.toThrow('尚未迁移');
+  }
   expect((await get()).id).toBe(first.id);
   expect((await list()).total).toBe(1);
-  const stopped = await start();
-  await runtime.stopRun(stopped.id);
-  worker.result(999);
-  worker.complete();
-  await runtime.tick(true);
-  expect((await get()).id).toBe(first.id);
-  expect((await list()).total).toBe(1);
-  runtime.store.put('active', 'combo', {
-    core: { version: 'v2' },
-    resource: { version: 'resource-2' },
-  });
-  expect((await get()).resourceVersion).toBe('resource-1');
+  expect(runtime.store.all('run')).toEqual([]);
+  expect(worker.submitted).toEqual([]);
+  expect(worker.clicks).toEqual([]);
 });
 
-test('confirmed A to B to A switches preserve history without reviving an old current snapshot', async () => {
-  const { worker, runtime, device, start, get, list } = await native();
+test('confirmed historical A to B to A scopes preserve history without reviving an old current snapshot', async () => {
+  const { runtime, device, get, list } = await native();
   runtime.store.put('device_account', device.id, 'A');
-  await start();
-  worker.result();
-  worker.complete();
-  await runtime.tick(true);
-  const first = await get();
+  const first = runtime.accounts.capture(scan(12, device.id), provenance)!;
   expect(first.identity).toBe('configured-label');
-  await start('StartUp', { account_name: 'B' });
-  worker.complete();
-  await runtime.tick(true);
+  runtime.accounts.invalidate(device.id);
+  runtime.store.put('device_account', device.id, 'B');
   expect(await get()).toBeNull();
   expect((await list()).total).toBe(0);
-  await expect(
-    runtime.handle('account.snapshot.get', {
+  expect(
+    await runtime.handle('account.snapshot.get', {
       deviceId: device.id,
       kind: 'depot',
       snapshotId: first.id,
     }),
-  ).resolves.toBeNull();
-  await start('StartUp', { account_name: 'A' });
-  worker.complete();
-  await runtime.tick(true);
+  ).toBeNull();
+  runtime.accounts.invalidate(device.id);
+  runtime.store.put('device_account', device.id, 'A');
   expect(await get()).toBeNull();
   const history = await list();
   expect(history.total).toBe(1);
@@ -344,11 +266,10 @@ test('confirmed A to B to A switches preserve history without reviving an old cu
   for (const params of [
     { deviceId: device.id, kind: 'depot', path: 'private' },
     { deviceId: device.id, kind: 'depot', snapshotId: '../private' },
-  ]) {
+  ])
     await expect(runtime.handle('account.snapshot.get', params)).rejects.toMatchObject({
       code: -32602,
     });
-  }
   await expect(
     runtime.handle('account.snapshot.list', { deviceId: 'missing' }),
   ).rejects.toMatchObject({ code: -32004 });

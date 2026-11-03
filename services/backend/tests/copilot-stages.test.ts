@@ -119,7 +119,7 @@ test('runtime exposes the read-only catalog with empty params validation and no 
   roots.push(root);
   const runtime = new Runtime(root, {
     calendar: { fetcher: null },
-    workerFactory: async () => {
+    frameworkWorkerFactory: async () => {
       throw new Error('目录读取不得连接设备');
     },
   });
