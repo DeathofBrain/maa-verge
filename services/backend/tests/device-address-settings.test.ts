@@ -35,7 +35,7 @@ test('saved settings and uppercase historical emulator addresses reconnect to on
   const configs: any[] = [];
   const createRuntime = () =>
     new Runtime(root, {
-      workerFactory: async (config) => {
+      frameworkWorkerFactory: async (config) => {
         configs.push(config);
         return {
           events: [],
@@ -43,13 +43,24 @@ test('saved settings and uppercase historical emulator addresses reconnect to on
           safeIdle: true,
           async connect() {},
           async close() {},
-          async task() {},
-          async stop() {},
-          async waitConnected() {
-            return true;
+          async frame() {
+            return {};
+          },
+          async click() {
+            return { accepted: true };
+          },
+          async request() {
+            return {};
           },
         };
       },
+      frameworkResources: async () => ({
+        path: 'synthetic-view',
+        generation: 'view-1',
+        sourcePaths: [],
+        ocrAvailable: false,
+        templates: {},
+      }),
       adbExecutable: () => 'synthetic-adb',
       emulatorInventory: async () => emptyEmulatorInventory(),
       calendar: { fetcher: null },
@@ -60,7 +71,6 @@ test('saved settings and uppercase historical emulator addresses reconnect to on
     const saved = await runtime.handle('settings.save', {
       settings: {
         autoConnect: false,
-        autoUpdateCore: false,
         autoUpdateResource: false,
         connection: { address: 'EMULATOR-5554' },
         deviceProfiles: [
@@ -68,7 +78,13 @@ test('saved settings and uppercase historical emulator addresses reconnect to on
             id: 'avd',
             name: '合成 AVD',
             address: 'EMULATOR-5554',
-            connection: { ...defaultConnection(), config: 'AVD', touchMode: 'MaaFwAdb' },
+            connection: {
+              ...defaultConnection(),
+              framework: {
+                touchMode: 'adb',
+                capture: { method: 'adb', emulatorPath: '', instanceIndex: 0 },
+              },
+            },
             capture: { method: 'adb' },
           },
         ],
@@ -81,13 +97,12 @@ test('saved settings and uppercase historical emulator addresses reconnect to on
       name: '历史 AVD',
       address: 'EMULATOR-5554',
       state: 'offline',
-      coreVersion: null,
+      frameworkVersion: null,
       resourceVersion: null,
     });
     await runtime.close();
     runtime = createRuntime();
     runtime.store.put('active', 'combo', {
-      core: { path: 'synthetic-core', version: 'v1' },
       resource: { path: 'synthetic-resource', version: 'r1' },
     });
     expect(runtime.snapshot().settings.deviceProfiles?.[0]?.connection.address).toBe(
@@ -101,7 +116,9 @@ test('saved settings and uppercase historical emulator addresses reconnect to on
     expect(connected.connectionProfileId).toBe('avd');
     expect(configs[0]).toMatchObject({
       address: 'emulator-5554',
-      connection: { config: 'AVD', touchMode: 'MaaFwAdb' },
+      mode: 'control',
+      touchMode: 'adb',
+      capture: { method: 'adb' },
     });
     expect((await runtime.connectDevice({ address: 'Emulator-5554' })).id).toBe(historical.id);
     expect(configs).toHaveLength(1);

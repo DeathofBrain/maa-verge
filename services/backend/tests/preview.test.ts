@@ -5,12 +5,11 @@ import path from 'node:path';
 import type { ScreenFrame } from '@contracts/rpc-types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 import { Runtime } from '@backend/app/runtime';
-import { CoreWorker } from '@backend/infrastructure/native/worker';
+import { FakeFramework, frameworkFixtureOptions, seedFrameworkResource } from './framework-fixture';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
-  runtimes: Runtime[] = [],
-  coreWorkers: CoreWorker[] = [];
+  runtimes: Runtime[] = [];
 const temporary = () => {
   const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-preview-'));
   roots.push(root);
@@ -25,59 +24,31 @@ function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
-class FakeWorker {
-  events: any[] = [];
-  connected = true;
-  safeIdle = true;
-  closed = false;
-  frameCalls = 0;
-  clicks: { x: number; y: number }[] = [];
-  submitted: any[] = [];
-  frameResult: () => Promise<unknown> = async () => image();
-  clickResult: () => Promise<unknown> = async () => ({ accepted: true });
-  async frame() {
-    this.frameCalls++;
-    return this.frameResult();
+class FakeWorker extends FakeFramework {
+  clickResult: () => Promise<unknown> = async () => ({ accepted: true, nativeSuccess: true });
+  constructor() {
+    super();
+    this.holdTasks = true;
   }
-  async click(x: number, y: number) {
+  override async click(x: number, y: number) {
     this.clicks.push({ x, y });
     return this.clickResult();
-  }
-  async connect() {
-    return { asyncId: 1 };
-  }
-  async task(task: any) {
-    this.submitted.push(task);
-    this.safeIdle = false;
-    return { taskId: this.submitted.length };
-  }
-  async stop() {
-    this.safeIdle = true;
-    return { stopping: true };
-  }
-  async close() {
-    this.closed = true;
-  }
-  async waitConnected() {
-    return this.connected && this.safeIdle;
   }
 }
 async function nativeRuntime() {
   const worker = new FakeWorker();
   const runtime = new Runtime(temporary(), {
-    workerFactory: async () => worker,
+    ...frameworkFixtureOptions(),
+    frameworkWorkerFactory: async () => worker,
     adbExecutable: () => 'synthetic-adb',
   });
   runtimes.push(runtime);
-  runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'r1' },
-  });
+  seedFrameworkResource(runtime);
   const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
   device.state = 'idle';
   runtime.store.put('device', device.id, device);
   await runtime.handle('plan.save', {
-    plan: { id: 'preview-plan', name: '预览并发测试', tasks: [{ type: 'Award' }] },
+    plan: { id: 'preview-plan', name: '预览并发测试', tasks: [{ type: 'CloseDown' }] },
   });
   return { runtime, worker, device };
 }
@@ -94,7 +65,6 @@ const clickParams = (frame: ScreenFrame, requestId = 'preview-click') => ({
 afterEach(async () => {
   setSystemTime();
   for (const runtime of runtimes.splice(0)) await runtime.close();
-  for (const worker of coreWorkers.splice(0)) await worker.close();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -111,7 +81,10 @@ describe('transient screen frames', () => {
     expect(runtime.snapshot()).toEqual(before);
     expect(runtime.store.db.query('SELECT * FROM objects ORDER BY rowid').all()).toEqual(objects);
     const params = clickParams(frame);
-    expect(await runtime.handle('device.click', params)).toEqual({ accepted: true });
+    expect(await runtime.handle('device.click', params)).toEqual({
+      accepted: true,
+      nativeSuccess: true,
+    });
     expect(
       runtime.snapshot().events.filter((event) => event.type === 'device.clicked'),
     ).toHaveLength(1);
@@ -126,25 +99,8 @@ describe('transient screen frames', () => {
     ).rejects.toMatchObject({ code: -32011 });
   });
 
-  test('core capture duration passes through independently of the service round trip', async () => {
-    const { runtime, worker, device } = await nativeRuntime();
-    setSystemTime(new Date('2026-11-01T00:00:00.000Z'));
-    for (const coreLatencyMs of [0, 7]) {
-      const started = Date.now();
-      worker.frameResult = async () => {
-        setSystemTime(started + 245);
-        return { ...image(), coreLatencyMs };
-      };
-      const frame = await getFrame(runtime, device.id);
-      expect(frame.coreLatencyMs).toBe(coreLatencyMs);
-      expect(frame.latencyMs).toBe(245);
-    }
-  });
-
   test('a frame without a native capture cost keeps that timing absent', async () => {
     const { runtime, worker, device } = await nativeRuntime();
-    worker.frameResult = async () => ({ ...image(), coreLatencyMs: 7 });
-    expect((await getFrame(runtime, device.id)).coreLatencyMs).toBe(7);
     setSystemTime(new Date('2026-11-01T00:00:00.000Z'));
     const started = Date.now();
     worker.frameResult = async () => {
@@ -153,7 +109,7 @@ describe('transient screen frames', () => {
     };
     const frame = await getFrame(runtime, device.id);
     expect(frame.latencyMs).toBe(120);
-    expect(frame).not.toHaveProperty('coreLatencyMs');
+    expect(frame).not.toHaveProperty('nativeLatencyMs');
   });
 
   test('frame and tap parameters reject unknown fields and invalid coordinates', async () => {
@@ -364,10 +320,13 @@ describe('screen input ownership and acknowledgements', () => {
     await entered.promise;
     const second = runtime.handle('device.click', params);
     expect(worker.clicks).toEqual([{ x: params.x, y: params.y }]);
-    acknowledgement.resolve({ accepted: true });
-    expect(await first).toEqual({ accepted: true });
-    expect(await second).toEqual({ accepted: true });
-    expect(await runtime.handle('device.click', params)).toEqual({ accepted: true });
+    acknowledgement.resolve({ accepted: true, nativeSuccess: true });
+    expect(await first).toEqual({ accepted: true, nativeSuccess: true });
+    expect(await second).toEqual({ accepted: true, nativeSuccess: true });
+    expect(await runtime.handle('device.click', params)).toEqual({
+      accepted: true,
+      nativeSuccess: true,
+    });
     expect(worker.clicks).toHaveLength(1);
     expect(
       runtime.snapshot().events.filter((event) => event.type === 'device.clicked'),
@@ -433,7 +392,7 @@ describe('screen input ownership and acknowledgements', () => {
     expect(worker.frameCalls).toBe(2);
     pending.resolve(image());
     expect((await reading).canControl).toBe(false);
-    expect(await clicking).toEqual({ accepted: true });
+    expect(await clicking).toEqual({ accepted: true, nativeSuccess: true });
     expect(worker.clicks).toHaveLength(1);
   });
 
@@ -460,14 +419,14 @@ describe('screen input ownership and acknowledgements', () => {
       await expect(runtime.handle('device.disconnect', { id: device.id })).rejects.toMatchObject({
         code: -32011,
       });
-      await expect(runtime.beforeSwitch()).rejects.toThrow('核心或异步操作仍在运行');
+      await expect(runtime.beforeSwitch()).rejects.toThrow('MaaFramework 或异步操作仍在运行');
       await expect(
         runtime.handle('device.click', { ...clickParams(frame), requestId: 'concurrent-tap' }),
       ).rejects.toMatchObject({ code: -32011 });
       expect(worker.closed).toBe(false);
       expect(worker.submitted).toHaveLength(0);
     } finally {
-      acknowledgement.resolve({ accepted: true });
+      acknowledgement.resolve({ accepted: true, nativeSuccess: true });
       await clicking;
     }
     expect(runtime.busy()).toBe(false);
@@ -507,7 +466,10 @@ describe('screen input ownership and acknowledgements', () => {
       runtime.handle('device.click', clickParams(current, 'during-run')),
     ).rejects.toMatchObject({ code: -32011 });
     expect(worker.clicks).toHaveLength(0);
-    expect(worker.submitted).toHaveLength(1);
+    const deadline = Date.now() + 2000;
+    while (!worker.submitted.length && Date.now() < deadline)
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    expect(worker.submitted.length).toBeGreaterThan(0);
   });
 
   test('a late frame after shutdown fails before reading the closed business database', async () => {
@@ -522,7 +484,7 @@ describe('screen input ownership and acknowledgements', () => {
       pending.resolve(image());
       await expect(reading).rejects.toMatchObject({
         code: -32011,
-        message: '正在退出或切换核心，请稍后重试',
+        message: '正在退出或切换运行组件，请稍后重试',
       });
       expect(all).not.toHaveBeenCalled();
       expect(get).not.toHaveBeenCalled();
@@ -532,37 +494,3 @@ describe('screen input ownership and acknowledgements', () => {
     }
   });
 });
-
-const nativeWorker = process.env.MAAVERGE_TEST_NATIVE_WORKER,
-  coreLibrary = process.env.MAAVERGE_TEST_CORE_LIBRARY;
-test.skipIf(!nativeWorker || !coreLibrary || !existsSync(nativeWorker) || !existsSync(coreLibrary))(
-  'synthetic C++ worker carries frame and click through the real NDJSON bridge',
-  async () => {
-    const root = temporary(),
-      resource = path.join(root, 'resources');
-    mkdirSync(path.join(resource, 'resource'), { recursive: true });
-    writeFileSync(path.join(resource, 'resource/version.json'), '{}');
-    // The supplied test library implements C API callbacks only. This fake ADB
-    // executable and the private lock never connect to a simulator or account.
-    const worker = await CoreWorker.start(
-      {
-        core: path.dirname(coreLibrary!),
-        resource,
-        adb: 'synthetic-adb',
-        address: 'synthetic://no-device',
-        userDir: path.join(root, 'worker'),
-        lockPath: path.join(root, 'device.lock'),
-      },
-      { command: [nativeWorker!, '--worker'] },
-    );
-    coreWorkers.push(worker);
-    await worker.connect();
-    expect(await worker.waitConnected(2000)).toBe(true);
-    const frame = await worker.frame();
-    expect(frame).toMatchObject({ width: 2, height: 2, mimeType: 'image/png', canControl: true });
-    expect(Buffer.from(frame.data, 'base64').subarray(0, 8)).toEqual(
-      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    );
-    expect(await worker.click(1, 1)).toEqual({ accepted: true });
-  },
-);

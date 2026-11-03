@@ -6,8 +6,8 @@
 #include <memory>
 
 namespace maaverge {
-// The implementation includes only the pinned upstream C headers. No MaaFW
-// symbol is linked into this executable or resolved in a MaaCore process.
+// 独立 MaaFramework worker：只动态加载固定上游 C API，负责原生执行及有界回调上下文。
+// JSON 与 Context 子任务均交给官方运行时，工作进程不解释游戏业务数据库。
 class Framework final {
  public:
   explicit Framework(const Json& config);
@@ -15,6 +15,8 @@ class Framework final {
   Framework(const Framework&) = delete;
   Framework& operator=(const Framework&) = delete;
   Json command(const Json& command);
+  void set_sender(std::function<void(Json)> sender);
+  void dispatch_custom(const Json& command);
   void prepare();
   Json stop();
   Json validation();

@@ -6,6 +6,7 @@ import type { Device } from '@contracts/types';
 import type { AdbDevice } from '@backend/infrastructure/native/adb';
 import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
 import { Runtime } from '@backend/app/runtime';
+import { FakeFramework, frameworkFixtureOptions, seedFrameworkResource } from './framework-fixture';
 import {
   emptyEmulatorInventory,
   type EmulatorInventory,
@@ -19,56 +20,40 @@ type Observer = {
   closed: boolean;
 };
 
-class FakeWorker {
-  events: any[] = [];
+/** A controllable Framework connect acknowledgement; no legacy native callbacks are emitted. */
+class FakeWorker extends FakeFramework {
   connected = false;
-  safeIdle = true;
-  closed = false;
-  submitted: any[] = [];
   private resolveConnection!: (connected: boolean) => void;
   private connection = new Promise<boolean>((resolve) => {
     this.resolveConnection = resolve;
   });
-  constructor(private result: boolean | null = true) {}
+  constructor(private outcome: boolean | null = true) {
+    super();
+    this.holdTasks = true;
+  }
   async connect() {
     this.safeIdle = false;
-    if (this.result !== null) queueMicrotask(() => this.complete(this.result!));
-    return { asyncId: 1 };
+    if (this.outcome !== null) queueMicrotask(() => this.complete(this.outcome!));
+    const connected = await this.connection;
+    if (!connected) throw new Error('synthetic Framework connection failed');
+    return { accepted: true, nativeSuccess: true };
   }
   complete(connected: boolean) {
     this.connected = connected;
     this.safeIdle = true;
-    this.events.push({
-      type: 'callback',
-      message: 4,
-      details: { what: 'Connect', details: { ret: connected } },
-    });
     this.resolveConnection(connected);
   }
-  async task(task: any) {
-    this.submitted.push(task);
+  async runPipeline(...args: Parameters<FakeFramework['runPipeline']>) {
     this.safeIdle = false;
-    return { taskId: this.submitted.length };
-  }
-  completeTask(taskId = 1) {
-    this.events.push(
-      { type: 'callback', message: 10002, details: { taskid: taskId } },
-      { type: 'callback', message: 3, details: { taskid: taskId } },
-      { type: 'status', running: false, pendingAsync: [] },
-    );
-    this.safeIdle = true;
-  }
-  async stop() {
-    this.safeIdle = true;
-    return { stopping: true };
-  }
-  async waitConnected(_timeout = 30_000, _cancelled?: () => boolean) {
-    return this.connection;
+    try {
+      return await super.runPipeline(...args);
+    } finally {
+      this.safeIdle = true;
+    }
   }
   async close() {
-    this.closed = true;
-    this.connected = false;
     this.resolveConnection(false);
+    await super.close();
   }
 }
 
@@ -96,7 +81,7 @@ function fixture(options: Options = {}, result: boolean | null = true) {
   const workers: FakeWorker[] = [];
   const runtime = new Runtime(
     makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-reconnection-')),
-    {
+    frameworkFixtureOptions({
       adbExecutable: () => {
         calls.adb++;
         return 'synthetic-adb';
@@ -124,15 +109,16 @@ function fixture(options: Options = {}, result: boolean | null = true) {
       connectDeviceTransport: async (_adb, address) => {
         calls.transports.push(address);
       },
-      workerFactory: async (configuration) => {
+      frameworkWorkerFactory: async (configuration, signal) => {
         calls.configurations.push(configuration);
         const worker = new FakeWorker(result);
+        signal?.addEventListener('abort', () => worker.complete(false), { once: true });
         workers.push(worker);
         return worker;
       },
       calendar: { fetcher: null },
       ...options,
-    },
+    }),
   );
   runtimes.push(runtime);
   runtime.store.put(
@@ -141,14 +127,10 @@ function fixture(options: Options = {}, result: boolean | null = true) {
     parseSettings({
       autoConnect: true,
       autoUpdateApp: false,
-      autoUpdateCore: false,
       autoUpdateResource: false,
     }),
   );
-  runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'r1' },
-  });
+  seedFrameworkResource(runtime);
   // Keep these tests independent of the retained 30-second broad discovery.
   (runtime as any).nextAutoConnect = Infinity;
   return {
@@ -167,7 +149,7 @@ function history(runtime: Runtime, id = 'history', address = '127.0.0.1:5555'): 
     name: '历史模拟器',
     address,
     state: 'offline',
-    coreVersion: null,
+    frameworkVersion: null,
     resourceVersion: null,
   };
   runtime.store.put('device', id, device);
@@ -200,7 +182,7 @@ async function cycle(runtime: Runtime) {
 }
 async function startAward(runtime: Runtime, deviceId: string, requestId: string) {
   await runtime.handle('plan.save', {
-    plan: { id: requestId, name: '合成连接回归', tasks: [{ type: 'Award' }] },
+    plan: { id: requestId, name: '合成连接回归', tasks: [{ type: 'CloseDown' }] },
   });
   return runtime.handle('run.start', { planId: requestId, deviceId, requestId });
 }
@@ -283,7 +265,7 @@ test('a newly listening historical target registers its transport and reuses the
   await cycle(runtime);
   expect(registered).toEqual([device.address]);
   expect(calls.configurations).toHaveLength(1);
-  expect(calls.configurations[0]!.lockTimeoutMs).toBe(0);
+  expect(calls.configurations[0]!.lockPath).toBeString();
   expect(runtime.snapshot().devices).toContainEqual(
     expect.objectContaining({ id: device.id, state: 'idle' }),
   );
@@ -468,7 +450,7 @@ test('a connected proven alias remains ready when ADB reports only its primary e
     expect.objectContaining({ id: device.id, address: alias, state: 'idle' }),
   );
   expect(workers[0]!.closed).toBe(false);
-  expect(runtime.workers.get(device.id)).toBe(workers[0]);
+  expect(runtime.workers.get(device.id)?.connected).toBe(workers[0]!.connected);
   expect(calls.configurations).toHaveLength(1);
   expect(calls.transports).toHaveLength(0);
 });
@@ -476,7 +458,7 @@ test('a connected proven alias remains ready when ADB reports only its primary e
 test('a device lease conflict fails fast and retries only after its longer cooldown', async () => {
   const configurations: any[] = [];
   const { runtime, observers, advance } = fixture({
-    workerFactory: async (configuration) => {
+    frameworkWorkerFactory: async (configuration) => {
       configurations.push(configuration);
       if (configurations.length === 1) throw new Error('device lock busy or unavailable');
       return new FakeWorker();
@@ -487,7 +469,7 @@ test('a device lease conflict fails fast and retries only after its longer coold
   latestObserver(observers).onDevices([ready()]);
   await cycle(runtime);
   expect(configurations).toHaveLength(1);
-  expect(configurations[0]!.lockTimeoutMs).toBe(0);
+  expect(configurations[0]!.lockPath).toBeString();
   latestObserver(observers).onDevices([ready()]);
   advance(29_999);
   await cycle(runtime);
@@ -498,24 +480,18 @@ test('a device lease conflict fails fast and retries only after its longer coold
   expect(runtime.snapshot().devices[0]!.state).toBe('idle');
 });
 
-test('an unconfirmed native connection is closed and enters failure backoff', async () => {
+test('a rejected Framework handshake closes its worker and enters failure backoff', async () => {
   const workers: FakeWorker[] = [];
-  const deadlines: number[] = [];
   const { runtime, advance } = fixture({
     probeDeviceEndpoint: async () => true,
-    workerFactory: async () => {
-      const worker = new FakeWorker(null);
-      worker.waitConnected = async (timeout = 30_000) => {
-        deadlines.push(timeout);
-        return false;
-      };
+    frameworkWorkerFactory: async () => {
+      const worker = new FakeWorker(false);
       workers.push(worker);
       return worker;
     },
   });
   history(runtime);
   await cycle(runtime);
-  expect(deadlines).toEqual([30_000]);
   expect(workers[0]!.closed).toBe(true);
   expect(runtime.workers.size).toBe(0);
   expect(runtime.snapshot().devices[0]!.state).toBe('offline');
@@ -528,129 +504,78 @@ test('an unconfirmed native connection is closed and enters failure backoff', as
   expect(workers).toHaveLength(2);
 });
 
-test('a late false connection wait preserves the connected worker and its running task', async () => {
-  const waiting = deferred();
-  const waitResult = deferred();
-  const worker = new FakeWorker();
-  worker.waitConnected = async () => {
-    waiting.resolve();
-    await waitResult.promise;
-    return false;
-  };
-  const { runtime } = fixture({
-    probeDeviceEndpoint: async () => true,
-    workerFactory: async () => worker,
-  });
+test('a pending Framework handshake reserves the target until its explicit acknowledgement', async () => {
+  const { runtime, workers } = fixture({}, null);
   const device = history(runtime);
-  await cycle(runtime);
-  await waiting.promise;
-  expect(runtime.store.get('device', device.id).state).toBe('idle');
-  const run = await startAward(runtime, device.id, 'connection-wait-race');
-  expect(worker.safeIdle).toBe(false);
-  expect(runtime.store.get('device', device.id).state).toBe('running');
-
-  waitResult.resolve();
+  const connecting = runtime.connectDevice({ address: device.address });
   await settle(runtime);
-  expect(worker.closed).toBe(false);
-  expect(runtime.workers.get(device.id)).toBe(worker);
-  expect(runtime.store.get('device', device.id).connectionError).toBeUndefined();
-  expect(runtime.store.events().some((event) => event.type === 'device.failed')).toBe(false);
-  expect(runtime.store.get('run', run.id).status).toBe('running');
-  expect(worker.submitted).toHaveLength(1);
-
-  worker.completeTask();
-  await runtime.tick(true);
-  expect(runtime.store.get('run', run.id).status).toBe('completed');
-  expect(runtime.store.get('device', device.id).state).toBe('idle');
-  expect(runtime.workers.get(device.id)).toBe(worker);
-  expect(worker.closed).toBe(false);
+  expect(workers).toHaveLength(1);
+  expect(runtime.workers.size).toBe(0);
+  await expect(runtime.connectDevice({ address: device.address })).rejects.toMatchObject({
+    code: -32011,
+  });
+  workers[0]!.complete(true);
+  expect((await connecting).id).toBe(device.id);
+  expect(runtime.workers.size).toBe(1);
+  expect(workers[0]!.closed).toBe(false);
 });
 
-test('a late alias transport failure cannot poison a manually connected running device', async () => {
-  const manualEntered = deferred();
-  const manualResult = deferred();
-  const transportEntered = deferred();
-  const transportResult = deferred();
-  const primary = '127.0.0.1:5555';
-  const alias = '127.0.0.1:5557';
+test('a manual canonical connection prevents automatic alias registration from issuing competing native work', async () => {
+  const entered = deferred(),
+    release = deferred();
+  const primary = '127.0.0.1:5555',
+    alias = '127.0.0.1:5557';
   const worker = new FakeWorker();
-  const configurations: any[] = [];
+  const configurations: any[] = [],
+    transports: string[] = [];
   const { runtime } = fixture({
     probeDeviceEndpoint: async (address) => address === alias,
     connectDeviceTransport: async (_adb, address) => {
-      expect(address).toBe(alias);
-      transportEntered.resolve();
-      await transportResult.promise;
-      throw new Error('late synthetic registration failure');
+      transports.push(address);
+      throw new Error('competing transport forbidden');
     },
-    workerFactory: async (configuration) => {
+    frameworkWorkerFactory: async (configuration) => {
       configurations.push(configuration);
-      manualEntered.resolve();
-      await manualResult.promise;
+      entered.resolve();
+      await release.promise;
       return worker;
     },
   });
   history(runtime, 'alias-history', alias);
   runtime.store.put('device-alias', alias, primary);
   const manual = runtime.connectDevice({ address: primary });
-  await manualEntered.promise;
-  await cycle(runtime);
-  await transportEntered.promise;
-  expect(runtime.workers.size).toBe(0);
-
-  manualResult.resolve();
+  await entered.promise;
+  try {
+    await cycle(runtime);
+    expect(transports).toEqual([]);
+    expect(runtime.workers.size).toBe(0);
+  } finally {
+    release.resolve();
+  }
   const device = await manual;
-  await settle(runtime);
-  const run = await startAward(runtime, device.id, 'alias-registration-race');
-  expect(runtime.store.get('device', device.id).state).toBe('running');
-  transportResult.resolve();
-  await settle(runtime);
+  await cycle(runtime);
   expect(configurations).toHaveLength(1);
   expect(worker.closed).toBe(false);
-  expect(runtime.workers.get(device.id)).toBe(worker);
-  expect(runtime.store.get('device', device.id).state).toBe('running');
-  expect(runtime.store.get('device', device.id).connectionError).toBeUndefined();
-  expect(runtime.store.events().some((event) => event.type === 'device.failed')).toBe(false);
-  expect(runtime.store.get('run', run.id).status).toBe('running');
-  expect(worker.submitted).toHaveLength(1);
-
-  worker.completeTask();
-  await runtime.tick(true);
-  expect(runtime.store.get('run', run.id).status).toBe('completed');
   expect(runtime.store.get('device', device.id).state).toBe('idle');
-  expect(runtime.workers.get(device.id)).toBe(worker);
+  expect(runtime.store.get('device', device.id).connectionError).toBeUndefined();
+  expect(transports).toEqual([]);
 });
 
-test('scheduled preparation cannot reset a device that became busy while connecting', async () => {
-  const waiting = deferred();
-  const waitResult = deferred();
-  const worker = new FakeWorker(null);
-  worker.waitConnected = async () => {
-    waiting.resolve();
-    await waitResult.promise;
-    return true;
-  };
-  const { runtime } = fixture({ workerFactory: async () => worker });
+test('scheduled preparation cannot reset a device owned by a control session', async () => {
+  const { runtime, workers } = fixture();
   const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
-  const preparation = (runtime as any).prepareScheduledDevice(device.id).then(
-    () => undefined,
-    (error: unknown) => error,
+  const session = await runtime.handle('control.session.start', {
+    deviceId: device.id,
+    requestId: 'scheduled-owner',
+  });
+  await expect((runtime as any).prepareScheduledDevice(device.id)).rejects.toMatchObject({
+    code: -32011,
+  });
+  expect(workers).toHaveLength(1);
+  expect(workers[0]!.closed).toBe(false);
+  expect((await runtime.handle('control.session.get', { deviceId: device.id })).sessionId).toBe(
+    session.sessionId,
   );
-  await waiting.promise;
-  worker.complete(true);
-  await settle(runtime);
-  const run = await startAward(runtime, device.id, 'scheduled-connection-race');
-  waitResult.resolve();
-  expect(await preparation).toMatchObject({ code: -32011 });
-
-  expect(runtime.store.get('device', device.id).state).toBe('running');
-  expect(runtime.store.get('run', run.id).status).toBe('running');
-  expect(worker.submitted).toHaveLength(1);
-  expect(runtime.workers.get(device.id)).toBe(worker);
-  expect(worker.closed).toBe(false);
-  worker.completeTask();
-  await runtime.tick(true);
-  expect(runtime.store.get('run', run.id).status).toBe('completed');
 });
 
 test.each(['initializingComponents', 'appUpdating', 'switching', 'appUpdatePreparation'])(

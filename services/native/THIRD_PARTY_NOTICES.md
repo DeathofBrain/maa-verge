@@ -1,8 +1,7 @@
 # Native worker dependencies
 
-Maa Verge's native worker is AGPL-3.0-only under the repository license. Its C ABI
-declarations match MaaCore's documented public interface; MaaCore is downloaded
-and loaded independently and is not linked into this executable.
+Maa Verge's native worker is AGPL-3.0-only under the repository license. Its worker dynamically loads the independently installed MaaFramework SDK through
+the documented public C ABI; no MaaCore runtime is loaded or shipped.
 
 ## MaaCore v6.20.0 pure-color RGBCount adaptation
 
@@ -70,6 +69,6 @@ notice as `maaframework-LICENSE.md`, together with GNU GPL version 3 as
 `maaframework/`. `runtime-assets.json` pins the additional GNU GPL text, its
 official source and SHA-256; SDK preparation includes the same license and
 provenance under `licenses/maaverge/`. MaaFramework is dynamically loaded only in
-an explicitly selected framework worker process; MaaCore processes do not load it. Official SDK runtime
+the isolated framework worker process. Official SDK runtime
 binaries, their dependencies and their notices are distributed separately from
 the vendored header source. See https://github.com/MaaXYZ/MaaFramework.

@@ -69,7 +69,7 @@ test('auto-connect without an installed core rejects before resolving ADB', asyn
   }, false);
   const response = await request(instance, 'device.auto_connect');
   expect(response.error.code).toBe(-32040);
-  expect(response.error.message).toContain('请先在更新中心安装并启用核心');
+  expect(response.error.message).toContain('请先在更新中心安装并启用游戏资源和 MaaFramework');
   expect(calls).toBe(0);
   expect(instance.workers.size).toBe(0);
 });

@@ -3,6 +3,7 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime, type RuntimeOptions } from '@backend/app/runtime';
+import { frameworkFixtureOptions, seedFrameworkResource } from './framework-fixture';
 import { emptyEmulatorInventory } from '@backend/infrastructure/native/windows-emulators';
 import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
 import type { Settings } from '@contracts/types';
@@ -29,7 +30,7 @@ function fixture(
   connection: NonNullable<Settings['connection']> = {
     ...defaultConnection(),
     config: 'AVD',
-    touchMode: 'MaaFwAdb',
+    touchMode: 'maatouch',
   },
 ) {
   const root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-avd-connection-'));
@@ -42,7 +43,8 @@ function fixture(
       calls.push(`ensure:${args[0]}`);
       await ensure(...args);
     },
-    workerFactory: async (config) => {
+    ...frameworkFixtureOptions(),
+    frameworkWorkerFactory: async (config) => {
       calls.push('startWorker');
       configs.push(config);
       const worker = {
@@ -59,7 +61,9 @@ function fixture(
           calls.push('close');
           this.closed = true;
         },
-        async task() {},
+        async frame() {},
+        async click() {},
+        async request() {},
         async stop() {},
         async waitConnected() {
           return true;
@@ -83,14 +87,11 @@ function fixture(
       connection,
     }),
   );
-  runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'r1' },
-  });
+  seedFrameworkResource(runtime);
   return { runtime, calls, configs, workers };
 }
 
-test('AVD registration runs after the worker lease and finishes before MaaCore connects', async () => {
+test('AVD registration runs after the worker lease and finishes before Framework connects', async () => {
   const started = deferred();
   const registered = deferred();
   const { runtime, calls, configs } = fixture(async () => {
@@ -113,7 +114,7 @@ test('AVD registration runs after the worker lease and finishes before MaaCore c
   expect(calls).toEqual(['startWorker', 'ensure:emulator-20050', 'connect']);
 });
 
-test('a rejected AVD registration closes its leased worker without connecting or saving a device', async () => {
+test('a rejected AVD registration closes its leased worker without connecting; offline history records its diagnostic', async () => {
   let fail = true;
   const { runtime, calls, workers } = fixture(async () => {
     if (fail) throw new Error('合成 AVD 登记失败');
@@ -124,7 +125,7 @@ test('a rejected AVD registration closes its leased worker without connecting or
   expect(calls).toEqual(['startWorker', 'ensure:emulator-20050', 'close']);
   expect(workers[0]).toMatchObject({ closed: true, connects: 0 });
   expect(runtime.workers.size).toBe(0);
-  expect(runtime.snapshot().devices).toEqual([]);
+  expect(runtime.snapshot().devices[0].state).toBe('offline');
   fail = false;
   await runtime.connectDevice({ address: 'emulator-20050' });
   expect(workers).toHaveLength(2);
@@ -132,20 +133,12 @@ test('a rejected AVD registration closes its leased worker without connecting or
   expect(runtime.snapshot().devices).toHaveLength(1);
 });
 
-test.each([
-  ['127.0.0.1:20051', 'AVD', 'MaaFwAdb'],
-  ['emulator-20050', 'General', 'MaaFwAdb'],
-  ['emulator-20050', 'AVD', 'maatouch'],
-  ['UsbSerialABC', 'AVD', 'MaaFwAdb'],
-] as const)(
-  '%s with %s / %s keeps its existing connection path without AVD registration',
-  async (address, config, touchMode) => {
-    const { runtime, calls, configs } = fixture(
-      async () => {
-        throw new Error('this connection must not register an AVD serial');
-      },
-      { ...defaultConnection(), config, touchMode },
-    );
+test.each(['127.0.0.1:20051', 'UsbSerialABC'])(
+  '%s keeps the official non-AVD transport without registering a console',
+  async (address) => {
+    const { runtime, calls, configs } = fixture(async () => {
+      throw new Error('must not register non-AVD');
+    });
     const device = await runtime.connectDevice({ address });
     expect(calls).toEqual(['startWorker', 'connect']);
     expect(device.address).toBe(address);

@@ -1,6 +1,7 @@
 #include "framework.hpp"
 
 #include <MaaFramework/MaaAPI.h>
+#include <MaaFramework/MaaMsg.h>
 
 #include <algorithm>
 #include <array>
@@ -8,6 +9,7 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <regex>
 #include <set>
 #include <stdexcept>
 #include <system_error>
@@ -43,12 +45,20 @@ constexpr NavigationProfile navigation_profile{200, 150, 100, 720, 200};
   X(MaaResourceLoaded)                                                                             \
   X(MaaResourceSetOption)                                                                          \
   X(MaaResourceOverrideImage)                                                                      \
+  X(MaaResourceRegisterCustomAction)                                                               \
   X(MaaTaskerCreate)                                                                               \
   X(MaaTaskerDestroy)                                                                              \
   X(MaaTaskerBindResource)                                                                         \
   X(MaaTaskerBindController)                                                                       \
   X(MaaTaskerPostRecognition)                                                                      \
   X(MaaTaskerPostAction)                                                                           \
+  X(MaaTaskerAddContextSink)                                                                       \
+  X(MaaTaskerRemoveContextSink)                                                                    \
+  X(MaaContextRunTask)                                                                             \
+  X(MaaContextGetNodeData)                                                                         \
+  X(MaaTaskerPostTask)                                                                             \
+  X(MaaContextRunActionDirect)                                                                     \
+  X(MaaContextRunRecognitionDirect)                                                                \
   X(MaaTaskerPostStop)                                                                             \
   X(MaaTaskerStatus)                                                                               \
   X(MaaTaskerRunning)                                                                              \
@@ -62,6 +72,8 @@ constexpr NavigationProfile navigation_profile{200, 150, 100, 720, 200};
   X(MaaControllerPostConnection)                                                                   \
   X(MaaControllerPostScreencap)                                                                    \
   X(MaaControllerPostClick)                                                                        \
+  X(MaaControllerPostStartApp)                                                                     \
+  X(MaaControllerPostStopApp)                                                                      \
   X(MaaControllerPostClickKey)                                                                     \
   X(MaaControllerPostTouchUp)                                                                      \
   X(MaaControllerStatus)                                                                           \
@@ -243,6 +255,110 @@ bool contained(const fs::path& parent, const fs::path& child) {
 }
 
 Json accepted() { return {{"accepted", true}, {"nativeSuccess", true}}; }
+
+struct AdbConfiguration {
+  MaaAdbInputMethod input = MaaAdbInputMethod_Maatouch;
+  MaaAdbScreencapMethod capture =
+      MaaAdbScreencapMethod_Default & ~MaaAdbScreencapMethod_EmulatorExtras;
+  Json extras = Json::object();
+};
+
+Json emulator_extras(const Json& value) {
+  const auto text = required_string(value, "emulatorPath");
+  if (!from_utf8(text).is_absolute())
+    throw std::runtime_error("emulatorPath must be an absolute directory");
+  const auto directory = absolute_path(text);
+  if (!fs::is_directory(directory))
+    throw std::runtime_error("emulatorPath must be an existing directory");
+  auto sdk_path = to_utf8(fs::canonical(directory));
+#ifdef _WIN32
+  // The emulator SDK parses the path itself and does not accept Win32's
+  // extended-path prefix, even though our native filesystem checks do.
+  if (sdk_path.starts_with("\\\\?\\UNC\\"))
+    sdk_path = "\\\\" + sdk_path.substr(8);
+  else if (sdk_path.starts_with("\\\\?\\"))
+    sdk_path.erase(0, 4);
+#endif
+  return {
+      {"enable", true}, {"path", sdk_path}, {"index", integer(value, "instanceIndex", 0, 65535)}};
+}
+
+AdbConfiguration adb_configuration(const Json& config) {
+  AdbConfiguration result;
+  const auto mode =
+      config.contains("touchMode") ? required_string(config, "touchMode") : std::string("maatouch");
+  if (mode == "maatouch")
+    result.input = MaaAdbInputMethod_Maatouch;
+  else if (mode == "minitouch")
+    result.input = MaaAdbInputMethod_MinitouchAndAdbKey;
+  else if (mode == "adb")
+    result.input = MaaAdbInputMethod_AdbShell;
+  else if (mode == "emulator-extras")
+    result.input = MaaAdbInputMethod_EmulatorExtras;
+  else
+    throw std::runtime_error("unsupported MaaFramework touchMode");
+  if (config.contains("capture") && !config["capture"].is_object())
+    throw std::runtime_error("capture must be an object");
+  const auto method = config.contains("capture")   ? required_string(config["capture"], "method")
+                      : config.value("avd", false) ? "avd"
+                                                   : "auto";
+  if (method == "auto") {
+    result.capture |= MaaAdbScreencapMethod_EmulatorExtras;
+    result.extras["extras"]["avd"]["enable"] = true;
+  } else if (method == "avd") {
+    result.capture = MaaAdbScreencapMethod_EmulatorExtras;
+    result.extras["extras"]["avd"]["enable"] = true;
+  } else if (method == "mumu" || method == "ldplayer") {
+    result.capture = MaaAdbScreencapMethod_EmulatorExtras;
+    auto extras = emulator_extras(config["capture"]);
+    if (method == "ldplayer") {
+      if (!config["capture"].contains("pid") || !config["capture"]["pid"].is_number_integer() ||
+          config["capture"]["pid"].get<std::int64_t>() <= 0 ||
+          config["capture"]["pid"].get<std::int64_t>() > 2147483647)
+        throw std::runtime_error("LDPlayer capture requires a positive signed 32-bit pid");
+      extras["pid"] = config["capture"]["pid"];
+    }
+    result.extras["extras"][method == "mumu" ? "mumu" : "ld"] = std::move(extras);
+  } else if (method != "adb") {
+    throw std::runtime_error("unsupported MaaFramework capture method");
+  }
+  if (config.contains("avdSerial")) {
+    const auto serial = required_string(config, "avdSerial");
+    constexpr auto prefix = "emulator-";
+    const auto port = serial.substr(std::min(serial.size(), std::strlen(prefix)));
+    if (!serial.starts_with(prefix) || port.empty() || port.size() > 5 || port.front() == '0' ||
+        !std::all_of(port.begin(), port.end(),
+                     [](char digit) { return digit >= '0' && digit <= '9'; }) ||
+        std::stoi(port) > 65534)
+      throw std::runtime_error("avdSerial must be emulator-1 through emulator-65534");
+    if (method != "auto" && method != "avd")
+      throw std::runtime_error("avdSerial requires auto or avd capture");
+    // A TCP ADB transport cannot address the emulator console. The backend
+    // verifies this alternate console identity; keep the controller and device
+    // lease on the original address and override only these two fixed commands.
+    result.extras["command"]["EmuWebrtcStart"] = {"{ADB}", "-s", serial, "emu",
+                                                  "screenrecord webrtc start"};
+    result.extras["command"]["EmuWebrtcStop"] = {"{ADB}", "-s", serial, "emu",
+                                                 "screenrecord webrtc stop"};
+  }
+  if (config.contains("touchExtras") && !config["touchExtras"].is_object())
+    throw std::runtime_error("touchExtras must be an object");
+  if (mode == "emulator-extras") {
+    // v5.14.3 shares one extras configuration between its capture/input agents.
+    // Enabling MuMu input while selecting another emulator's capture would
+    // silently add MuMu to that capture agent's candidates. Reject that
+    // contradictory device configuration instead of changing screenshot mode.
+    if (method != "adb" && method != "mumu")
+      throw std::runtime_error("MuMu input extras require adb or mumu capture on the same device");
+    if (!config.contains("touchExtras"))
+      throw std::runtime_error("MuMu input extras require touchExtras configuration");
+    auto extras = emulator_extras(config["touchExtras"]);
+    if (method == "mumu" && result.extras["extras"]["mumu"] != extras)
+      throw std::runtime_error("MuMu capture and input extras must identify the same instance");
+    result.extras["extras"]["mumu"] = std::move(extras);
+  }
+  return result;
+}
 }  // namespace
 
 struct Framework::Impl {
@@ -254,8 +370,10 @@ struct Framework::Impl {
     if (selected_mode != "recognition" && selected_mode != "control")
       throw std::runtime_error("invalid framework mode");
     control = selected_mode == "control";
-    if (!control && (config.contains("adb") || config.contains("address") ||
-                     config.contains("lockPath") || config.contains("avd")))
+    if (!control &&
+        (config.contains("adb") || config.contains("address") || config.contains("lockPath") ||
+         config.contains("avd") || config.contains("avdSerial") || config.contains("touchMode") ||
+         config.contains("capture") || config.contains("touchExtras")))
       throw std::runtime_error("recognition mode forbids controller configuration");
     if (timeout == 0) throw std::runtime_error("asyncTimeoutMs must be positive");
     shutdown_timeout = duration_ms(config, "shutdownTimeoutMs", 5000);
@@ -286,6 +404,10 @@ struct Framework::Impl {
       tasker = api.MaaTaskerCreate();
       if (!resource || !tasker)
         throw std::runtime_error("cannot create MaaFramework resource/tasker");
+      context_sink = api.MaaTaskerAddContextSink(tasker, context_event, this);
+      if (context_sink == MaaInvalidId) throw std::runtime_error("cannot register context sink");
+      if (!api.MaaResourceRegisterCustomAction(resource, "MaaVerge.Custom", custom_action, this))
+        throw std::runtime_error("cannot register Maa Verge custom action");
       MaaInferenceExecutionProvider provider = MaaInferenceExecutionProvider_CPU;
       if (!api.MaaResourceSetOption(resource, MaaResOption_InferenceExecutionProvider, &provider,
                                     sizeof(provider)))
@@ -299,15 +421,13 @@ struct Framework::Impl {
       if (control) {
         const auto adb = required_string(config, "adb");
         const auto address = required_string(config, "address");
-        Json extras = Json::object();
-        if (config.value("avd", false)) extras["extras"]["avd"]["enable"] = true;
-        const auto extras_text = extras.dump();
+        const auto options = adb_configuration(config);
+        const auto extras_text = options.extras.dump();
         const auto agent = to_utf8(sdk / "share" / "MaaAgentBinary");
-        controller = api.MaaAdbControllerCreate(
-            adb.c_str(), address.c_str(), MaaAdbScreencapMethod_Default, MaaAdbInputMethod_Maatouch,
-            extras_text.c_str(), agent.c_str());
+        controller = api.MaaAdbControllerCreate(adb.c_str(), address.c_str(), options.capture,
+                                                options.input, extras_text.c_str(), agent.c_str());
         if (!controller || !api.MaaTaskerBindController(tasker, controller))
-          throw std::runtime_error("cannot create MaaTouch controller (no backend fallback)");
+          throw std::runtime_error("cannot create MaaFramework controller (no backend fallback)");
       }
     } catch (...) {
       close();
@@ -317,9 +437,194 @@ struct Framework::Impl {
 
   ~Impl() { close(); }
 
+  /** 标准 Pipeline 输入可能绕过宿主动作端口；动作开始即废弃其前的帧证据。 */
+  static void MAA_CALL context_event(void* handle, const char* message, const char* details,
+                                     void* argument) noexcept {
+    auto& self = *static_cast<Impl*>(argument);
+    if (!message || std::strcmp(message, MaaMsg_Node_Action_Starting) != 0) return;
+    try {
+      const auto event = Json::parse(details ? details : "{}");
+      const auto name = event.value("name", std::string());
+      // Direct 动作的匿名节点由宿主原始动作门禁失效；这里处理有名的标准节点。
+      if (name.empty()) return;
+      std::unique_ptr<MaaStringBuffer, decltype(self.api.MaaStringBufferDestroy)> buffer(
+          self.api.MaaStringBufferCreate(), self.api.MaaStringBufferDestroy);
+      if (!buffer || !self.api.MaaContextGetNodeData(static_cast<MaaContext*>(handle), name.c_str(),
+                                                     buffer.get()))
+        throw std::runtime_error("cannot inspect active action node");
+      const auto node = Json::parse(self.api.MaaStringBufferGet(buffer.get()));
+      auto action = node.value("action", Json("DoNothing"));
+      if (action.is_object()) action = action.value("type", Json("DoNothing"));
+      if (!action.is_string()) throw std::runtime_error("invalid active action type");
+      if (action != "DoNothing" && action != "Custom") ++self.input_epoch;
+    } catch (...) {
+      // 无法确定是否输入时保守前进；回调不得向官方 ABI 抛出异常。
+      ++self.input_epoch;
+    }
+  }
+
+  struct PipelineCall {
+    std::string id;
+    std::string parent_callback;
+    Json nodes;
+    Json native_nodes;
+    Json original_names;
+    std::size_t depth;
+  };
+  struct CustomCall {
+    std::string id;
+    std::shared_ptr<PipelineCall> pipeline;
+    std::queue<Json> commands;
+    bool child_pending = false;
+    bool failed = false;
+  };
+
+  /** 只允许当前栈顶回调收命令；挂起父层和已退出的异步链均无操作权。 */
+  void dispatch_custom(const Json& command) {
+    std::lock_guard guard(custom_mutex);
+    const auto id = required_string(command, "callbackId");
+    if (id.size() > 128 || custom_calls.empty() || cancelled || id != custom_calls.back()->id ||
+        custom_calls.back()->child_pending)
+      throw std::runtime_error("custom callback is no longer active");
+    auto& call = *custom_calls.back();
+    const auto operation = required_string(command, "operation");
+    // 父上下文恢复后仍可观察和回执；已知子失败不授权继续写入设备。
+    if (call.failed && operation != "frame" && operation != "recognize" &&
+        operation != "custom_result")
+      throw std::runtime_error("context task failed; further input forbidden");
+    if (call.commands.size() >= 16)
+      throw std::runtime_error("custom callback command queue is full");
+    if (command.value("operation", std::string()) == "context_pipeline") call.child_pending = true;
+    call.commands.push(command);
+    custom_condition.notify_all();
+  }
+
+  /** Custom 与 TypeScript 通过同一 NDJSON 通道协作；子任务仍在原生回调线程同步执行。 */
+  static MaaBool MAA_CALL custom_action(MaaContext* context, MaaTaskId, const char* node,
+                                        const char*, const char* params, MaaRecoId, const MaaRect*,
+                                        void* argument) noexcept {
+    auto& self = *static_cast<Impl*>(argument);
+    try {
+      return self.run_custom(context, node, params);
+    } catch (const std::exception& error) {
+      std::fprintf(stderr, "Maa Verge custom action failed: %s\n", error.what());
+      return false;
+    } catch (...) {
+      return false;
+    }
+  }
+
+  void emit_epoch() {
+    if (sender) sender({{"type", "framework_input_epoch"}, {"inputEpoch", input_epoch.load()}});
+  }
+
+  bool run_custom(MaaContext* context, const char* node, const char* parameters) {
+    const auto params = Json::parse(parameters ? parameters : "{}", nullptr, false);
+    if (!sender || !execute || !params.is_object() || params.size() > 64 ||
+        params.dump().size() > 64 * 1024)
+      throw std::runtime_error("invalid custom action parameters");
+    auto call = std::make_shared<CustomCall>();
+    call->id = "custom-" + std::to_string(++custom_sequence);
+    {
+      std::lock_guard guard(custom_mutex);
+      if (pipeline_calls.empty() || cancelled ||
+          (!custom_calls.empty() && !custom_calls.back()->child_pending))
+        return false;
+      call->pipeline = pipeline_calls.back();
+      const auto original = call->pipeline->original_names.find(node ? node : "");
+      if (original == call->pipeline->original_names.end() || !original->is_string())
+        throw std::runtime_error("custom callback names an unsubmitted native node");
+      const auto found = call->pipeline->nodes.find(original->get<std::string>());
+      if (found == call->pipeline->nodes.end() || found->value("action", Json()) != "Custom" ||
+          found->value("custom_action", Json()) != "MaaVerge.Custom" ||
+          found->value("custom_action_param", Json()) != params)
+        throw std::runtime_error("custom callback differs from submitted graph");
+      custom_calls.push_back(call);
+    }
+    const auto previous_context = current_context;
+    const auto clear = [&] {
+      current_context = previous_context;
+      std::lock_guard guard(custom_mutex);
+      if (!custom_calls.empty() && custom_calls.back() == call) custom_calls.pop_back();
+      while (!call->commands.empty()) {
+        const auto command = std::move(call->commands.front());
+        call->commands.pop();
+        sender({{"type", "response"},
+                {"id", command["id"]},
+                {"error", "custom callback ended; result unknown"}});
+      }
+    };
+    try {
+      sender({{"type", "framework_custom"},
+              {"callbackId", call->id},
+              {"contextId", call->pipeline->id},
+              {"depth", call->pipeline->depth},
+              {"parentCallbackId", call->pipeline->parent_callback.empty()
+                                       ? Json(nullptr)
+                                       : Json(call->pipeline->parent_callback)},
+              {"inputEpoch", input_epoch.load()},
+              {"node", call->pipeline->original_names.at(node ? node : "")},
+              {"params", params}});
+      current_context = context;
+      bool success = false;
+      while (!cancelled && std::chrono::steady_clock::now() < root_expires) {
+        Json command;
+        {
+          std::unique_lock guard(custom_mutex);
+          custom_condition.wait_for(guard, std::chrono::milliseconds(20),
+                                    [&] { return cancelled || !call->commands.empty(); });
+          if (cancelled) break;
+          if (call->commands.empty()) continue;
+          command = std::move(call->commands.front());
+          call->commands.pop();
+        }
+        const auto operation = required_string(command, "operation");
+        try {
+          if (operation == "custom_result") {
+            if (!command.contains("success") || !command["success"].is_boolean())
+              throw std::runtime_error("custom result requires boolean success");
+            success = command["success"].get<bool>() && !call->failed;
+            sender({{"type", "response"}, {"id", command["id"]}, {"result", accepted()}});
+            break;
+          }
+          static const std::set<std::string> allowed{
+              "frame", "recognize",        "click",     "swipe",   "press_key", "long_press",
+              "drag",  "context_pipeline", "start_app", "stop_app"};
+          if (!allowed.contains(operation))
+            throw std::runtime_error("unsupported operation in custom context");
+          const auto result = execute(command);
+          if (operation == "context_pipeline") {
+            {
+              std::lock_guard guard(custom_mutex);
+              call->child_pending = false;
+            }
+            emit_epoch();
+          }
+          sender({{"type", "response"}, {"id", command["id"]}, {"result", result}});
+        } catch (const std::exception& error) {
+          if (operation == "context_pipeline") {
+            {
+              std::lock_guard guard(custom_mutex);
+              call->child_pending = false;
+              call->failed = true;
+            }
+            emit_epoch();
+          }
+          sender({{"type", "response"}, {"id", command["id"]}, {"error", error.what()}});
+        }
+      }
+      clear();
+      return success && !cancelled;
+    } catch (...) {
+      clear();
+      throw;
+    }
+  }
+
   MaaTaskId request_stop() {
     std::lock_guard guard(lifecycle);
     cancelled = true;
+    custom_condition.notify_all();
     // Native PostStop clears all earlier action and stop statuses. Cancellation,
     // failure cleanup and shutdown must share this id until the next command.
     if (!stop_posted) {
@@ -374,10 +679,11 @@ struct Framework::Impl {
   }
 
   MaaStatus await(MaaId id, const std::function<MaaStatus(MaaId)>& status, const char* operation,
-                  bool allow_failure = false) {
+                  bool allow_failure = false, int timeout_override = 0) {
     if (id == MaaInvalidId)
       throw std::runtime_error(std::string("MaaFramework rejected ") + operation);
-    Deadline deadline(operation, timeout, [this] { cleanup_touch(); });
+    Deadline deadline(operation, timeout_override ? timeout_override : timeout,
+                      [this] { cleanup_touch(); });
     while (true) {
       const auto state = status(id);
       if (state == MaaStatus_Succeeded) return state;
@@ -409,6 +715,17 @@ struct Framework::Impl {
     std::unique_ptr<MaaRect, decltype(api.MaaRectDestroy)> box(api.MaaRectCreate(),
                                                                api.MaaRectDestroy);
     if (!box) throw std::runtime_error("cannot create MaaFramework action box");
+    if (current_context) {
+      if (cancelled) throw std::runtime_error("cancelled before custom context action");
+      const auto id =
+          api.MaaContextRunActionDirect(current_context, kind, text.c_str(), box.get(), "{}");
+      MaaBool success = false;
+      if (id == MaaInvalidId || cancelled ||
+          !api.MaaTaskerGetActionDetail(tasker, id, nullptr, nullptr, nullptr, &success, nullptr) ||
+          !success)
+        throw std::runtime_error("custom context action acknowledgment failed");
+      return accepted();
+    }
     MaaTaskId id;
     {
       std::lock_guard guard(lifecycle);
@@ -732,24 +1049,31 @@ struct Framework::Impl {
 
   Json recognition(MaaImageBuffer* image, const char* kind, const Json& params) {
     const auto text = params.dump();
-    MaaTaskId id;
-    {
-      std::lock_guard guard(lifecycle);
-      if (cancelled) throw std::runtime_error("cancelled before MaaFramework recognition");
-      id = api.MaaTaskerPostRecognition(tasker, kind, text.c_str(), image);
-    }
-    await(id, [&](auto item) { return api.MaaTaskerStatus(tasker, item); }, "recognition", true);
-    if (cancelled) throw std::runtime_error("cancelled recognition");
-    MaaSize count = 0;
-    if (!api.MaaTaskerGetTaskDetail(tasker, id, nullptr, nullptr, &count, nullptr) || count == 0 ||
-        count > 1024)
-      throw std::runtime_error("MaaFramework recognition returned no node detail");
-    std::vector<MaaNodeId> nodes(count);
-    if (!api.MaaTaskerGetTaskDetail(tasker, id, nullptr, nodes.data(), &count, nullptr))
-      throw std::runtime_error("cannot read MaaFramework task detail");
     MaaRecoId reco = MaaInvalidId;
-    if (!api.MaaTaskerGetNodeDetail(tasker, nodes.back(), nullptr, &reco, nullptr, nullptr))
-      throw std::runtime_error("cannot read MaaFramework node detail");
+    if (current_context) {
+      if (cancelled) throw std::runtime_error("cancelled before custom context recognition");
+      reco = api.MaaContextRunRecognitionDirect(current_context, kind, text.c_str(), image);
+      if (reco == MaaInvalidId) throw std::runtime_error("custom context recognition rejected");
+    } else {
+      MaaTaskId id;
+      {
+        std::lock_guard guard(lifecycle);
+        if (cancelled) throw std::runtime_error("cancelled before MaaFramework recognition");
+        id = api.MaaTaskerPostRecognition(tasker, kind, text.c_str(), image);
+      }
+      await(id, [&](auto item) { return api.MaaTaskerStatus(tasker, item); }, "recognition", true);
+      if (cancelled) throw std::runtime_error("cancelled recognition");
+      MaaSize count = 0;
+      if (!api.MaaTaskerGetTaskDetail(tasker, id, nullptr, nullptr, &count, nullptr) ||
+          count == 0 || count > 1024)
+        throw std::runtime_error("MaaFramework recognition returned no node detail");
+      std::vector<MaaNodeId> nodes(count);
+      if (!api.MaaTaskerGetTaskDetail(tasker, id, nullptr, nodes.data(), &count, nullptr))
+        throw std::runtime_error("cannot read MaaFramework task detail");
+      if (!api.MaaTaskerGetNodeDetail(tasker, nodes.back(), nullptr, &reco, nullptr, nullptr))
+        throw std::runtime_error("cannot read MaaFramework node detail");
+    }
+    if (cancelled) throw std::runtime_error("cancelled recognition");
     std::unique_ptr<MaaStringBuffer, decltype(api.MaaStringBufferDestroy)> detail(
         api.MaaStringBufferCreate(), api.MaaStringBufferDestroy);
     MaaBool hit = false;
@@ -801,9 +1125,221 @@ struct Framework::Impl {
     }
     {
       std::lock_guard guard(lifecycle);
-      if (!cancelled) api.MaaTaskerClearCache(tasker);
+      if (!cancelled && !current_context) api.MaaTaskerClearCache(tasker);
     }
     return {{"hit", bool(hit)}, {"matches", std::move(matches)}, {"engine", "maafw"}};
+  }
+
+  /** 只遍历已支持 v1 字段中的节点引用；图片路径、OCR 文本与 Custom 参数保持字面值。 */
+  static void node_references(Json& node, const std::function<void(Json&)>& visit) {
+    for (const auto* field : {"next", "on_error"})
+      if (node.contains(field))
+        for (auto& target : node[field]) visit(target);
+    for (const auto* field : {"roi", "target", "begin", "color_filter"})
+      if (node.contains(field) && node[field].is_string() &&
+          (std::strcmp(field, "color_filter") != 0 || !node[field].get_ref<std::string&>().empty()))
+        visit(node[field]);
+    if (node.contains("end")) {
+      auto& end = node["end"];
+      if (end.is_string())
+        visit(end);
+      else if (end.is_array())
+        for (auto& target : end)
+          if (target.is_string()) visit(target);
+    }
+    for (const auto* field : {"pre_wait_freezes", "post_wait_freezes", "repeat_wait_freezes"})
+      if (node.contains(field) && node[field].is_object() && node[field].contains("target") &&
+          node[field]["target"].is_string())
+        visit(node[field]["target"]);
+  }
+
+  void validate_pipeline(const Json& command) {
+    const auto entry = required_string(command, "entry");
+    const auto valid_name = [](const std::string& name) {
+      // Schema limits Unicode characters; UTF-8 resource node names commonly
+      // contain Chinese text, so do not confuse byte length with that limit.
+      const auto characters = std::count_if(name.begin(), name.end(),
+                                            [](unsigned char ch) { return (ch & 0xc0) != 0x80; });
+      return !name.empty() && characters <= 128 &&
+             std::none_of(name.begin(), name.end(),
+                          [](unsigned char ch) { return ch < 32 || ch == '[' || ch == ']'; });
+    };
+    if (!valid_name(entry) || !command.contains("pipeline") || !command["pipeline"].is_object())
+      throw std::runtime_error("invalid pipeline entry or nodes");
+    const auto& nodes = command["pipeline"];
+    if (nodes.empty() || nodes.size() > 256 || !nodes.contains(entry))
+      throw std::runtime_error("pipeline must contain its entry and 1 to 256 nodes");
+    const auto text = nodes.dump();
+    if (text.size() > 512 * 1024) throw std::runtime_error("pipeline exceeds 512 KiB");
+    static const std::set<std::string> actions{"DoNothing", "Click", "Swipe", "ClickKey", "Custom"};
+    static const std::set<std::string> recognitions{"DirectHit", "OCR", "TemplateMatch",
+                                                    "ColorMatch"};
+    for (const auto& [name, node] : nodes.items()) {
+      if (!valid_name(name) || !node.is_object() || node.size() > 64)
+        throw std::runtime_error("invalid pipeline node");
+      if (!node.value("action", Json("DoNothing")).is_string() ||
+          !actions.contains(node.value("action", Json("DoNothing")).get<std::string>()) ||
+          !node.value("recognition", Json("DirectHit")).is_string() ||
+          !recognitions.contains(node.value("recognition", Json("DirectHit")).get<std::string>()))
+        throw std::runtime_error("unsupported pipeline action or recognition");
+      if (node.value("action", Json("DoNothing")) == "Custom" &&
+          (node.value("custom_action", Json()) != "MaaVerge.Custom" ||
+           !node.contains("custom_action_param") || !node["custom_action_param"].is_object() ||
+           node["custom_action_param"].size() > 64))
+        throw std::runtime_error("pipeline custom action must use MaaVerge.Custom");
+      for (const auto* field : {"timeout", "pre_delay", "post_delay"})
+        if (node.contains(field)) integer(node, field, 0, 120000);
+      if (node.contains("key") && node["key"] != 4 && node["key"] != 111)
+        throw std::runtime_error("pipeline key must be back or escape");
+      if (node.contains("template")) {
+        auto templates = node["template"];
+        if (templates.is_string()) templates = Json::array({templates});
+        if (!templates.is_array() || templates.empty() || templates.size() > 32)
+          throw std::runtime_error("invalid pipeline templates");
+        for (const auto& image : templates) {
+          if (!image.is_string()) throw std::runtime_error("invalid pipeline template path");
+          template_path({{"template", image}});
+        }
+      }
+      for (const auto* field : {"next", "on_error"}) {
+        if (!node.contains(field)) continue;
+        const auto& targets = node[field];
+        if (!targets.is_array() || targets.size() > 256)
+          throw std::runtime_error("pipeline edges must be bounded node lists");
+        for (const auto& target : targets)
+          if (!target.is_string() || !nodes.contains(target.get<std::string>()))
+            throw std::runtime_error("pipeline edge must name an explicit node");
+      }
+      // 锚点属于官方共享 TaskState，当前有限协议不开放跨调用锚点或节点属性语法。
+      if (node.contains("anchor")) throw std::runtime_error("pipeline anchors are not supported");
+      auto references = node;
+      node_references(references, [&](Json& target) {
+        if (!target.is_string() || !nodes.contains(target.get<std::string>()))
+          throw std::runtime_error("pipeline reference must name an explicit node");
+      });
+    }
+  }
+
+  /** 官方 Context 克隆共享 hit_count；为每次子调用隔离节点名，保留父层和单图内计数。 */
+  void namespace_pipeline(PipelineCall& call, bool nested) {
+    Json names = Json::object();
+    if (nested) {
+      // 内部名只依赖进程内序号，并检查祖先图，不能与已加载父节点发生名称碰撞。
+      bool collision;
+      do {
+        names = Json::object();
+        collision = false;
+        const auto prefix = "MaaVerge.Context." + std::to_string(++pipeline_sequence) + ".";
+        std::size_t index = 0;
+        for (const auto& [name, node] : call.nodes.items()) {
+          const auto native = prefix + std::to_string(index++);
+          names[name] = native;
+          for (const auto& parent : pipeline_calls)
+            if (parent->native_nodes.contains(native)) collision = true;
+        }
+      } while (collision);
+    } else {
+      for (const auto& [name, node] : call.nodes.items()) names[name] = name;
+    }
+    call.native_nodes = Json::object();
+    call.original_names = Json::object();
+    for (const auto& [name, source] : call.nodes.items()) {
+      auto node = source;
+      node_references(node, [&](Json& target) { target = names.at(target.get<std::string>()); });
+      const auto native = names.at(name).get<std::string>();
+      call.original_names[native] = name;
+      call.native_nodes[native] = std::move(node);
+    }
+  }
+
+  /** 检查实际任务状态及末节点证据；ContextRunTask 即使失败也可能返回有效 id。 */
+  void validate_task(MaaTaskId id) {
+    MaaSize count = 0;
+    MaaStatus status = MaaStatus_Invalid;
+    if (id == MaaInvalidId || cancelled ||
+        !api.MaaTaskerGetTaskDetail(tasker, id, nullptr, nullptr, &count, &status) ||
+        status != MaaStatus_Succeeded || count == 0 || count > 4096)
+      throw std::runtime_error("pipeline task failed or returned no bounded node evidence");
+    std::vector<MaaNodeId> executed(count);
+    if (!api.MaaTaskerGetTaskDetail(tasker, id, nullptr, executed.data(), &count, &status))
+      throw std::runtime_error("cannot read pipeline task detail");
+    MaaBool completed = false;
+    if (!api.MaaTaskerGetNodeDetail(tasker, executed.back(), nullptr, nullptr, nullptr,
+                                    &completed) ||
+        !completed)
+      throw std::runtime_error("pipeline final node was not completed");
+  }
+
+  Json pipeline(const Json& command) {
+    validate_pipeline(command);
+    const auto entry = required_string(command, "entry");
+    const bool nested = command.value("operation", std::string()) == "context_pipeline";
+    std::shared_ptr<PipelineCall> call;
+    {
+      std::lock_guard guard(custom_mutex);
+      if (cancelled) throw std::runtime_error("cancelled before pipeline");
+      if (nested &&
+          (!current_context || custom_calls.empty() || !custom_calls.back()->child_pending))
+        throw std::runtime_error("context pipeline requires active parent callback");
+      const auto depth = pipeline_calls.size() + 1;
+      if (depth > 8) throw std::runtime_error("context pipeline depth exceeds 8");
+      const auto id = command.value("contextId", std::string("root"));
+      if (id.empty() || id.size() > 128 ||
+          std::any_of(pipeline_calls.begin(), pipeline_calls.end(),
+                      [&](const auto& parent) { return parent->id == id; }))
+        throw std::runtime_error("invalid or duplicate pipeline context identity");
+      call = std::make_shared<PipelineCall>(
+          PipelineCall{id,
+                       nested ? custom_calls.back()->id : std::string(),
+                       command["pipeline"],
+                       {},
+                       {},
+                       depth});
+      namespace_pipeline(*call, nested);
+      if (!nested)
+        root_expires = std::chrono::steady_clock::now() + std::chrono::milliseconds(120000);
+      pipeline_calls.push_back(call);
+    }
+    const auto clear = [&] {
+      std::lock_guard guard(custom_mutex);
+      if (!pipeline_calls.empty() && pipeline_calls.back() == call) pipeline_calls.pop_back();
+    };
+    try {
+      const auto text = call->native_nodes.dump();
+      auto native_entry = entry;
+      for (const auto& [native, original] : call->original_names.items())
+        if (original == entry) native_entry = native;
+      MaaTaskId id;
+      if (nested) {
+        // 同步使用当前 Context；禁止向已被父流程占用的 Tasker 再排队。
+        id = api.MaaContextRunTask(current_context, native_entry.c_str(), text.c_str());
+      } else {
+        {
+          std::lock_guard guard(lifecycle);
+          if (cancelled) throw std::runtime_error("cancelled before pipeline");
+          id = api.MaaTaskerPostTask(tasker, entry.c_str(), text.c_str());
+        }
+        await(
+            id, [&](auto item) { return api.MaaTaskerStatus(tasker, item); }, "pipeline", false,
+            120000);
+      }
+      validate_task(id);
+      clear();
+      if (!nested) {
+        std::lock_guard guard(lifecycle);
+        if (cancelled) throw std::runtime_error("cancelled pipeline");
+        api.MaaTaskerClearCache(tasker);
+      }
+      if (!nested) emit_epoch();
+      return accepted();
+    } catch (...) {
+      clear();
+      if (!nested) {
+        cleanup_touch();
+        emit_epoch();
+      }
+      throw;
+    }
   }
 
   Json recognize(const Json& command) {
@@ -824,13 +1360,17 @@ struct Framework::Impl {
     if (command.contains("referenceSize")) {
       const auto& reference = command["referenceSize"];
       if (!reference.is_array() || reference.size() != 2 || !reference[0].is_number_integer() ||
-          !reference[1].is_number_integer() || reference[0] != 1280 || reference[1] != 720)
-        throw std::runtime_error("unsupported recognition referenceSize; expected [1280,720]");
-      if (static_cast<std::int64_t>(w) * 720 != static_cast<std::int64_t>(h) * 1280)
+          !reference[1].is_number_integer() || reference[0] < 1 || reference[0] > 8192 ||
+          reference[1] < 1 || reference[1] > 8192)
+        throw std::runtime_error("recognition referenceSize requires two integers in [1,8192]");
+      coordinate_width = reference[0].get<int>();
+      coordinate_height = reference[1].get<int>();
+      // 通用画布只允许等比例缩放；像素总量继续受统一内存门禁约束，不依赖游戏分辨率。
+      dimensions(coordinate_width, coordinate_height);
+      if (static_cast<std::int64_t>(w) * coordinate_height !=
+          static_cast<std::int64_t>(h) * coordinate_width)
         throw std::runtime_error(
-            "referenceSize requires a 16:9 source frame; cropping is unsupported");
-      coordinate_width = 1280;
-      coordinate_height = 720;
+            "referenceSize must preserve the source frame aspect ratio; cropping is unsupported");
       if (!api.MaaImageBufferResize(image.get(), coordinate_width, coordinate_height))
         throw std::runtime_error("cannot resize recognition image to referenceSize");
     }
@@ -1014,12 +1554,29 @@ struct Framework::Impl {
   int width = 0;
   int height = 0;
   std::string version;
+  inline static thread_local MaaContext* current_context = nullptr;
+  std::mutex custom_mutex;
+  std::condition_variable custom_condition;
+  // 根期限不会被每层子调用续期；栈与输入代际属于同一控制进程。
+  std::vector<std::shared_ptr<CustomCall>> custom_calls;
+  std::vector<std::shared_ptr<PipelineCall>> pipeline_calls;
+  std::chrono::steady_clock::time_point root_expires;
+  std::atomic<std::uint64_t> input_epoch = 0;
+  MaaSinkId context_sink = MaaInvalidId;
+  std::uint64_t custom_sequence = 0;
+  std::uint64_t pipeline_sequence = 0;
+  std::function<void(Json)> sender;
+  std::function<Json(const Json&)> execute;
 };
 
-Framework::Framework(const Json& config) : impl_(std::make_unique<Impl>(config)) {}
+Framework::Framework(const Json& config) : impl_(std::make_unique<Impl>(config)) {
+  impl_->execute = [this](const Json& command) { return this->command(command); };
+}
 Framework::~Framework() = default;
 const std::string& Framework::version() const { return impl_->version; }
 Json Framework::validation() { return impl_->validation(); }
+void Framework::set_sender(std::function<void(Json)> sender) { impl_->sender = std::move(sender); }
+void Framework::dispatch_custom(const Json& command) { impl_->dispatch_custom(command); }
 void Framework::prepare() {
   // Failure cleanup can have requested a stop after the action finished. Drain
   // that stop before starting another command or forgetting its shared id.
@@ -1049,7 +1606,8 @@ Json Framework::stop() {
   const auto id = impl_->request_stop();
   impl_->await(
       id, [&](auto item) { return impl_->api.MaaTaskerStatus(impl_->tasker, item); }, "stop");
-  if (impl_->controller && impl_->api.MaaControllerConnected(impl_->controller)) {
+  if (impl_->controller && impl_->touch_available &&
+      impl_->api.MaaControllerConnected(impl_->controller)) {
     impl_->await(
         impl_->api.MaaControllerPostTouchUp(impl_->controller, 0),
         [&](auto item) { return impl_->api.MaaControllerStatus(impl_->controller, item); },
@@ -1060,9 +1618,19 @@ Json Framework::stop() {
 
 Json Framework::command(const Json& command) {
   check_protocol(command);
-  Deadline deadline("MaaFramework command", impl_->call_timeout,
-                    [this] { impl_->cleanup_touch(); });
   const auto operation = required_string(command, "operation");
+  const auto remaining = operation == "context_pipeline"
+                             ? std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   impl_->root_expires - std::chrono::steady_clock::now())
+                                   .count()
+                             : 120000;
+  if (operation == "context_pipeline" && remaining <= 0)
+    throw std::runtime_error("root pipeline deadline expired");
+  Deadline deadline("MaaFramework command",
+                    operation == "pipeline"           ? 120000
+                    : operation == "context_pipeline" ? static_cast<int>(remaining)
+                                                      : impl_->call_timeout,
+                    [this] { impl_->cleanup_touch(); });
   if (operation == "recognize") return impl_->recognize(command);
   if (operation == "stop") return stop();
   impl_->require_control(operation != "connect");
@@ -1071,9 +1639,9 @@ Json Framework::command(const Json& command) {
     impl_->await(
         impl_->api.MaaControllerPostConnection(impl_->controller),
         [&](auto id) { return impl_->api.MaaControllerStatus(impl_->controller, id); },
-        "connect MaaTouch controller");
+        "connect MaaFramework controller");
     if (!impl_->api.MaaControllerConnected(impl_->controller))
-      throw std::runtime_error("MaaTouch connection failed (no fallback)");
+      throw std::runtime_error("MaaFramework connection failed (no fallback)");
     // v5.14.3 exposes feature flags only through internal C++ interfaces. A
     // successful public TouchUp confirms the required touch path without
     // pressing a contact or substituting a different input backend.
@@ -1081,10 +1649,47 @@ Json Framework::command(const Json& command) {
         impl_->await(
             impl_->api.MaaControllerPostTouchUp(impl_->controller, 0),
             [&](auto id) { return impl_->api.MaaControllerStatus(impl_->controller, id); },
-            "confirm MaaTouch touch capability", true) == MaaStatus_Succeeded;
+            "confirm selected input touch capability", true) == MaaStatus_Succeeded;
+    return accepted();
+  }
+  if (operation == "start_app" || operation == "stop_app") {
+    // 只允许明确 Android 包／组件标识，不能将命令、参数或 shell 片段传给 SDK。
+    const auto app = required_string(command, "appId");
+    static const std::regex package_pattern(R"(^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$)");
+    static const std::regex activity_pattern(
+        R"(^(\.[A-Za-z_$][A-Za-z0-9_.$]*|[A-Za-z_$][A-Za-z0-9_$]*(\.[A-Za-z_$][A-Za-z0-9_$]*)+)$)");
+    if (app.size() > 200 || !std::regex_match(app, package_pattern))
+      throw std::runtime_error("appId must be an Android package identifier");
+    std::string target = app;
+    if (command.contains("intent")) {
+      if (operation != "start_app") throw std::runtime_error("stop_app forbids intent");
+      target = required_string(command, "intent");
+      const auto prefix = app + "/";
+      if (target.size() > 400 || !target.starts_with(prefix) ||
+          !std::regex_match(target.substr(prefix.size()), activity_pattern))
+        throw std::runtime_error("intent must be an explicit component of appId");
+    }
+
+    // 生命周期操作没有坐标前提；提交前废弃旧帧并推进代际，回执只证明 SDK 操作完成。
+    MaaCtrlId id;
+    {
+      std::lock_guard guard(impl_->lifecycle);
+      if (impl_->cancelled) throw std::runtime_error("cancelled before app lifecycle operation");
+      impl_->width = impl_->height = 0;
+      ++impl_->input_epoch;
+      impl_->emit_epoch();
+      id = operation == "start_app"
+               ? impl_->api.MaaControllerPostStartApp(impl_->controller, target.c_str())
+               : impl_->api.MaaControllerPostStopApp(impl_->controller, target.c_str());
+    }
+    impl_->await(
+        id, [&](auto item) { return impl_->api.MaaControllerStatus(impl_->controller, item); },
+        operation.c_str());
+    if (impl_->cancelled) throw std::runtime_error("cancelled app lifecycle operation");
     return accepted();
   }
   if (operation == "frame") return impl_->frame();
+  if (operation == "pipeline" || operation == "context_pipeline") return impl_->pipeline(command);
   if (operation == "click") {
     const auto x = integer(command, "x", 0, max_dimension);
     const auto y = integer(command, "y", 0, max_dimension);
@@ -1097,7 +1702,7 @@ Json Framework::command(const Json& command) {
     const auto duration = integer(command, "durationMs", 1, 10000);
     impl_->point(x, y);
     if (!impl_->touch_available)
-      throw std::runtime_error("long press unavailable: MaaTouch touch capability failed");
+      throw std::runtime_error("long press unavailable: selected input touch capability failed");
     // The pinned official LongPress action owns the complete down/hold/up cycle.
     return impl_->action("LongPress", {{"target", {x, y}}, {"duration", duration}});
   }
@@ -1110,7 +1715,7 @@ Json Framework::command(const Json& command) {
     impl_->point(x1, y1);
     impl_->point(x2, y2);
     if (!impl_->touch_available)
-      throw std::runtime_error("drag unavailable: MaaTouch touch capability failed");
+      throw std::runtime_error("drag unavailable: selected input touch capability failed");
     // One held segment completes before release, without navigation compensation.
     return impl_->action(
         "Swipe",
@@ -1142,7 +1747,7 @@ Json Framework::command(const Json& command) {
     if (profile == "navigation") {
       if (!impl_->touch_available)
         throw std::runtime_error(
-            "navigation unavailable: MaaTouch touch capability failed (no backend fallback)");
+            "navigation unavailable: selected input touch capability failed (no backend fallback)");
       params["end_hold"][0] = navigation_profile.end_hold_ms;
       if (direction != "none") {
         const int distance = std::max(
@@ -1183,6 +1788,7 @@ int framework_main(const Json& config, Protocol& protocol, bool validation) {
     protocol.send(framework->validation());
     return 0;
   }
+  framework->set_sender([&protocol](Json message) { protocol.send(std::move(message)); });
   protocol.send(
       {{"type", "ready"}, {"engine", "maafw"}, {"mode", mode}, {"version", framework->version()}});
   std::atomic<bool> busy = false;
@@ -1207,6 +1813,10 @@ int framework_main(const Json& config, Protocol& protocol, bool validation) {
           throw std::runtime_error("command id must be a string or integer");
         check_protocol(command);
         const auto operation = required_string(command, "operation");
+        if (command.contains("callbackId") || operation == "custom_result") {
+          framework->dispatch_custom(command);
+          continue;
+        }
         if (operation == "stop") {
           respond(command, [&] { return framework->stop(); });
           continue;

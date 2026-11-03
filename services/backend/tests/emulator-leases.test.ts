@@ -3,24 +3,14 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
-import { CoreWorker } from '@backend/infrastructure/native/worker';
+import { FakeFramework, frameworkFixtureOptions, seedFrameworkResource } from './framework-fixture';
+import { NativeWorkerTransport } from '@backend/infrastructure/native/worker';
 import type { EmulatorInventory } from '@backend/infrastructure/native/windows-emulators';
 import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const runtimes: Runtime[] = [];
-const worker = () => ({
-  events: [],
-  connected: true,
-  safeIdle: true,
-  async connect() {},
-  async close() {},
-  async task() {},
-  async stop() {},
-  async waitConnected() {
-    return true;
-  },
-});
+const worker = () => new FakeFramework();
 const inventory: EmulatorInventory = {
   instances: [
     {
@@ -47,23 +37,21 @@ const inventory: EmulatorInventory = {
   diagnostics: [],
 };
 function runtime(
-  factory: NonNullable<ConstructorParameters<typeof Runtime>[1]>['workerFactory'],
+  factory: NonNullable<ConstructorParameters<typeof Runtime>[1]>['frameworkWorkerFactory'],
   metadata = async () => inventory,
 ) {
   const instance = new Runtime(
     makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-emulator-leases-')),
     {
-      workerFactory: factory,
+      ...frameworkFixtureOptions(),
+      frameworkWorkerFactory: factory,
       adbExecutable: () => 'synthetic-adb',
       connectDeviceTransport: async () => {},
       emulatorInventory: metadata,
     },
   );
   runtimes.push(instance);
-  instance.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'r1' },
-  });
+  seedFrameworkResource(instance);
   return instance;
 }
 afterEach(async () => {
@@ -116,7 +104,7 @@ test('shutdown during asynchronous emulator inspection prevents a late native co
   const outcome = connecting.catch((error) => error);
   instance.running = false;
   finish(inventory);
-  expect((await outcome).message).toContain('连接已取消');
+  expect((await outcome).message).toContain('正在退出');
   expect(started).toBe(0);
 });
 
@@ -166,11 +154,13 @@ test.skipIf(!nativeWorker)(
         ),
       };
     const factory = async (config: any) => {
-      const lease = await CoreWorker.start(
+      const lease = await NativeWorkerTransport.start(
         { lockPath: config.lockPath, userDir: config.userDir, lockTimeoutMs: 0 },
-        { leaseOnly: true, command: [nativeWorker!, '--lease-only'] },
+        { command: [nativeWorker!, '--lease-only'] },
       );
-      return { ...worker(), close: () => lease.close() };
+      const port = worker();
+      port.close = () => lease.close();
+      return port;
     };
     const first = runtime(factory, async () => synthetic),
       second = runtime(factory, async () => synthetic);

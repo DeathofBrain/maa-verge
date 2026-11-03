@@ -3,9 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export function nativeWorkerPath(): string {
-  if (process.env.MAAVERGE_CORE_WORKER_PATH)
-    return path.resolve(process.env.MAAVERGE_CORE_WORKER_PATH);
-  const name = 'maaverge-core-worker' + (process.platform === 'win32' ? '.exe' : '');
+  if (process.env.MAAVERGE_NATIVE_WORKER_PATH)
+    return path.resolve(process.env.MAAVERGE_NATIVE_WORKER_PATH);
+  const name = 'maaverge-native-worker' + (process.platform === 'win32' ? '.exe' : '');
   const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
   const candidates = [
     path.join(path.dirname(process.execPath), name),
@@ -15,5 +15,5 @@ export function nativeWorkerPath(): string {
     path.join(process.cwd(), 'build/native', name),
   ];
   for (const candidate of candidates) if (existsSync(candidate)) return candidate;
-  throw new Error('未找到 C++ MaaCore 工作进程，请先构建原生组件');
+  throw new Error('未找到 C++ MaaFramework 工作进程，请先构建原生组件');
 }

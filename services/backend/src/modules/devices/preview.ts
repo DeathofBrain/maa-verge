@@ -22,10 +22,11 @@ interface Owner {
   hasRun: (id: string) => boolean;
   clicked: (data: ClickParams) => void;
   context?: (id: string) => {
-    engine: 'maacore' | 'maafw';
+    engine: 'maafw';
     sessionId?: string;
     resourceGeneration?: string;
   };
+  canOperate?: (id: string) => boolean;
   authorize?: (id: string, controlToken?: string) => boolean;
 }
 type FrameRecord = {
@@ -91,7 +92,7 @@ export class Preview {
       if (!deviceId || frame.deviceId === deviceId) this.frames.delete(id);
   }
   private device(deviceId: string) {
-    if (!this.owner.available()) throw new RpcError(-32011, '正在退出或切换核心，请稍后重试');
+    if (!this.owner.available()) throw new RpcError(-32011, '正在退出或切换运行组件，请稍后重试');
     const device = this.owner.device(deviceId);
     if (!device) throw new RpcError(-32004, '设备不存在');
     const worker = this.owner.worker(deviceId);
@@ -145,7 +146,7 @@ export class Preview {
   private async read(deviceId: string): Promise<ScreenFrame> {
     const { worker } = this.device(deviceId),
       started = Date.now();
-    if (!worker?.frame) throw new RpcError(-32040, '当前核心不支持画面预览');
+    if (!worker?.frame) throw new RpcError(-32040, '当前 MaaFramework 不支持画面预览');
     let image: unknown;
     try {
       image = await worker.frame();
@@ -156,15 +157,15 @@ export class Preview {
       );
     }
     if (!validateWorkerFrame(image) || image.width * image.height > 16_777_216)
-      throw new RpcError(-32040, '核心返回了无效的画面');
+      throw new RpcError(-32040, 'MaaFramework 返回了无效的画面');
     if (!validPngHeader(image.data, image.width, image.height)) {
-      throw new RpcError(-32040, '核心返回了无效的 PNG 画面');
+      throw new RpcError(-32040, 'MaaFramework 返回了无效的 PNG 画面');
     }
     const current = this.device(deviceId);
     if (current.worker !== worker) throw new RpcError(-32040, '设备连接已更换，请刷新画面');
     const canControl =
       image.canControl &&
-      current.device.state === 'idle' &&
+      (current.device.state === 'idle' || !!this.owner.canOperate?.(deviceId)) &&
       !this.owner.hasRun(deviceId) &&
       !this.clicking.has(deviceId) &&
       worker.safeIdle;
@@ -241,10 +242,14 @@ export class Preview {
         throw new RpcError(-32011, '画面已失效，请刷新后再点击');
       }
       if (x >= frame.width || y >= frame.height) throw new RpcError(-32602, '点击位置超出画面范围');
-      if (device.state !== 'idle' || this.owner.hasRun(deviceId) || !worker?.safeIdle) {
+      if (
+        (device.state !== 'idle' && !this.owner.canOperate?.(deviceId)) ||
+        this.owner.hasRun(deviceId) ||
+        !worker?.safeIdle
+      ) {
         throw new RpcError(-32011, '设备正在执行任务，暂不能手动点击');
       }
-      if (!worker.click) throw new RpcError(-32040, '当前核心不支持画面点击');
+      if (!worker.click) throw new RpcError(-32040, '当前 MaaFramework 不支持画面点击');
       let result: unknown;
       try {
         result = await worker.click(x, y);
@@ -261,7 +266,7 @@ export class Preview {
         !('accepted' in result) ||
         result.accepted !== true
       )
-        throw new RpcError(-32040, '核心未确认点击，结果未知，请查看画面');
+        throw new RpcError(-32040, 'MaaFramework 未确认点击，结果未知，请查看画面');
       if (
         this.owner.context?.(deviceId).engine === 'maafw' &&
         (!('nativeSuccess' in result) || result.nativeSuccess !== true)
@@ -308,7 +313,7 @@ export class Preview {
           { worker, device } = this.device(id);
         if (
           !image.canControl ||
-          device.state !== 'idle' ||
+          (device.state !== 'idle' && !this.owner.canOperate?.(id)) ||
           this.owner.hasRun(id) ||
           !worker.safeIdle
         )

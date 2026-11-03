@@ -29,9 +29,10 @@ export async function buildCoreWorker({
         : path.join(path.dirname(cmake), process.platform === 'win32' ? 'ctest.exe' : 'ctest');
     await run(ctest, ['--test-dir', build, '-C', 'Release', '--output-on-failure']);
   }
-  const name = process.platform === 'win32' ? 'maaverge-core-worker.exe' : 'maaverge-core-worker';
+  const name =
+    process.platform === 'win32' ? 'maaverge-native-worker.exe' : 'maaverge-native-worker';
   const executable = [path.join(build, 'Release', name), path.join(build, name)].find(existsSync);
-  if (!executable) throw new Error('Native build did not produce maaverge-core-worker');
+  if (!executable) throw new Error('Native build did not produce maaverge-native-worker');
   return executable;
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))

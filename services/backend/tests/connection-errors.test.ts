@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
 import {
   connectionError,
-  nativeConnectionError,
   nativeStartupError,
 } from '@backend/infrastructure/native/connection-errors';
 
@@ -43,31 +42,8 @@ test('known ADB diagnostics explain the cause and next step without guessing the
     expect(connectionError(raw)).toBe(raw);
 });
 
-test('native connection diagnostics use verified reasons and retain unknown details', () => {
-  expect(
-    nativeConnectionError({
-      what: 'ConnectFailed',
-      why: 'Uuid command failed to exec',
-      details: { raw_output: 'error: device unauthorized.' },
-    }),
-  ).toContain('尚未授权');
-  expect(nativeConnectionError({ what: 'ConnectFailed', why: 'ConfigNotFound' })).toContain(
-    '连接配置',
-  );
-  expect(nativeConnectionError({ what: 'UnsupportedResolution' })).toContain('分辨率不受支持');
-  expect(nativeConnectionError({ what: 'ScreencapFailed' })).toContain('无法获取设备画面');
-  expect(
-    nativeConnectionError({
-      what: 'ConnectFailed',
-      why: 'FutureReason',
-      details: { raw_output: 'specific future diagnostic' },
-    }),
-  ).toContain('specific future diagnostic');
-  const generic = nativeConnectionError({ what: 'ConnectFailed' })!;
-  expect(generic).toContain('未返回具体原因');
-  expect(generic).not.toContain('ADB 服务未启动');
-  expect(nativeConnectionError({ what: 'Connected' })).toBeUndefined();
-  expect(nativeStartupError('cannot load resource snapshot')).toContain('核心资源缺失或加载失败');
+test('Framework startup diagnostics retain unknown details and identify missing resources', () => {
+  expect(nativeStartupError('cannot load resource snapshot')).toContain('资源缺失或加载失败');
   expect(nativeStartupError('device lock busy or unavailable')).toContain('权限');
   expect(nativeStartupError('unknown native failure')).toBe('unknown native failure');
 });

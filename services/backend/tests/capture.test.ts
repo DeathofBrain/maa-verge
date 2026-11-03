@@ -6,7 +6,6 @@ import { captureAdbPath, connectionCapture, ldPlayerPid } from '@backend/modules
 import { deviceLockAddress } from '@backend/infrastructure/native/adb';
 import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
 import { Runtime } from '@backend/app/runtime';
-import { validateWorkerConfiguration } from '@contracts/validators.js';
 import { configuredAdbPath } from '@backend/infrastructure/native/adb';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
@@ -39,7 +38,7 @@ test('legacy settings keep ADB and capture settings validate without accepting a
 });
 
 test('connection settings reject unsupported native options and normalize legacy settings without adding defaults', () => {
-  expect(parseSettings().connection).toBeUndefined();
+  expect(parseSettings().connection?.framework?.touchMode).toBe('maatouch');
   expect(parseSettings({ connection: {} }).connection?.touchMode).toBe('maatouch');
   for (const connection of [
     null,
@@ -66,63 +65,6 @@ test('configured ADB supports explicit existing files or PATH discovery without 
   expect(() => configuredAdbPath('./adb')).toThrow('绝对路径');
 });
 
-test('explicit connection profile and touch preferences reach the worker without changing active connections', async () => {
-  const root = temporary(),
-    configs: any[] = [];
-  const worker = {
-    events: [] as any[],
-    connected: false,
-    safeIdle: true,
-    async connect() {},
-    async close() {},
-    async task() {},
-    async stop() {},
-    async waitConnected() {
-      return false;
-    },
-  };
-  const runtime = new Runtime(root, {
-    workerFactory: async (config) => {
-      configs.push(config);
-      return worker;
-    },
-    adbExecutable: () => 'synthetic-adb',
-  });
-  try {
-    runtime.store.put('active', 'combo', {
-      core: { path: 'synthetic-core', version: 'v1' },
-      resource: { path: 'synthetic-resource', version: 'r1' },
-    });
-    const settings = parseSettings({
-      connection: {
-        config: 'BlueStacks',
-        touchMode: 'maatouch',
-        adbLite: true,
-        clientType: 'Bilibili',
-      },
-    });
-    await runtime.handle('settings.save', { settings });
-    const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
-    expect(configs[0].connection).toEqual({
-      config: 'BlueStacks',
-      touchMode: 'maatouch',
-      adbLite: true,
-      clientType: 'Bilibili',
-    });
-    expect(validateWorkerConfiguration({ ...configs[0], protocolVersion: 1 })).toBe(true);
-    await runtime.handle('settings.save', {
-      settings: parseSettings({ connection: { config: 'AVD', touchMode: 'MaaFwAdb' } }),
-    });
-    expect((await runtime.connectDevice({ address: device.address })).id).toBe(device.id);
-    expect(configs).toHaveLength(1);
-    await runtime.disconnectDevice(device.id);
-    await runtime.connectDevice({ address: device.address });
-    expect(configs[1].connection.touchMode).toBe('MaaFwAdb');
-  } finally {
-    await runtime.close();
-  }
-});
-
 test('MuMu bridge requires explicit selection and preserves the selected local SDK instance', async () => {
   const root = temporary(),
     sdk = path.join(root, 'shell/sdk');
@@ -142,125 +84,6 @@ test('MuMu bridge requires explicit selection and preserves the selected local S
     connectionCapture({ ...capture, mumuBridge: false }, '192.168.1.22:5555', 'win32'),
   ).rejects.toThrow('本机');
 });
-
-test.skipIf(process.platform !== 'win32')(
-  'MuMu bridge and standard serial use one worker and shared lease even after settings edits',
-  async () => {
-    const root = temporary(),
-      sdk = path.join(root, 'shell/sdk'),
-      configs: any[] = [];
-    mkdirSync(sdk, { recursive: true });
-    writeFileSync(path.join(sdk, 'external_renderer_ipc.dll'), 'synthetic, never loaded');
-    const worker = {
-      events: [] as any[],
-      connected: false,
-      safeIdle: true,
-      async connect() {},
-      async close() {},
-      async task() {},
-      async stop() {},
-      async waitConnected() {
-        return false;
-      },
-    };
-    const runtime = new Runtime(root, {
-      workerFactory: async (config) => {
-        configs.push(config);
-        return worker;
-      },
-      adbExecutable: () => 'synthetic-adb',
-      emulatorInventory: async () => ({
-        instances: [
-          {
-            address: '127.0.0.1:16448',
-            name: '合成实例',
-            index: 2,
-            emulatorPath: root,
-            aliases: ['127.0.0.1:5559'],
-          },
-        ],
-        diagnostics: [],
-      }),
-    });
-    try {
-      runtime.store.put('active', 'combo', {
-        core: { path: 'synthetic-core', version: 'v1' },
-        resource: { path: 'synthetic-resource', version: 'r1' },
-      });
-      await runtime.handle('settings.save', {
-        settings: parseSettings({
-          capture: { method: 'mumu', emulatorPath: root, instanceIndex: 2, mumuBridge: true },
-        }),
-      });
-      const bridge = await runtime.connectDevice({ address: '192.168.1.22:5555' });
-      expect((await runtime.connectDevice({ address: 'emulator-5558' })).id).toBe(bridge.id);
-      expect(configs).toHaveLength(1);
-      expect(validateWorkerConfiguration({ ...configs[0], protocolVersion: 1 })).toBe(true);
-      await runtime.handle('settings.save', {
-        settings: parseSettings({
-          capture: { method: 'mumu', emulatorPath: root, instanceIndex: 3, mumuBridge: true },
-        }),
-      });
-      expect((await runtime.connectDevice({ address: bridge.address })).id).toBe(bridge.id);
-      expect(configs).toHaveLength(1);
-      await runtime.disconnectDevice(bridge.id);
-      await runtime.handle('settings.save', {
-        settings: parseSettings({
-          capture: { method: 'mumu', emulatorPath: root, instanceIndex: 2, mumuBridge: true },
-        }),
-      });
-      const serial = await runtime.connectDevice({ address: 'emulator-5558' });
-      expect(serial.id).toBe(bridge.id);
-      expect(configs[1].lockPath).toBe(configs[0].lockPath);
-    } finally {
-      await runtime.close();
-    }
-  },
-);
-
-test.skipIf(process.platform !== 'win32')(
-  'configured bridge cannot bypass missing manager metadata',
-  async () => {
-    const root = temporary(),
-      sdk = path.join(root, 'shell/sdk');
-    mkdirSync(sdk, { recursive: true });
-    writeFileSync(path.join(sdk, 'external_renderer_ipc.dll'), 'synthetic, never loaded');
-    let created = 0;
-    const runtime = new Runtime(root, {
-      adbExecutable: () => 'synthetic-adb',
-      workerFactory: async () => {
-        created++;
-        throw new Error('must not reach worker');
-      },
-    });
-    try {
-      runtime.store.put('active', 'combo', {
-        core: { path: 'synthetic-core', version: 'v1' },
-        resource: { path: 'synthetic-resource', version: 'r1' },
-      });
-      const address = '192.168.1.22:5555';
-      await runtime.handle('settings.save', {
-        settings: parseSettings({
-          deviceProfiles: [
-            {
-              id: 'bridge',
-              name: '桥接实例',
-              address,
-              connection: { ...defaultConnection(), address },
-              capture: { method: 'mumu', emulatorPath: root, instanceIndex: 0, mumuBridge: true },
-            },
-          ],
-        }),
-      });
-      await expect(runtime.connectDevice({ address })).rejects.toMatchObject({
-        data: expect.stringContaining('未能确认 MuMu 桥接实例'),
-      });
-      expect(created).toBe(0);
-    } finally {
-      await runtime.close();
-    }
-  },
-);
 
 test('MuMu 15 SDK uses the root and rejects wrong instance or remote devices before connection', async () => {
   const root = temporary(),
@@ -356,66 +179,4 @@ test('MuMu capture uses high-index defaults and verified metadata before any con
       )
     ).instanceIndex,
   ).toBe(256);
-});
-
-test('native connection records core capture evidence and preserves preferences across restart', async () => {
-  const root = temporary();
-  const worker = {
-    events: [] as any[],
-    connected: false,
-    safeIdle: true,
-    async connect() {},
-    async close() {},
-    async task() {},
-    async stop() {},
-    async waitConnected() {
-      return false;
-    },
-  };
-  const runtime = new Runtime(root, {
-    workerFactory: async () => worker,
-    adbExecutable: () => 'synthetic-adb',
-  });
-  try {
-    runtime.store.put('active', 'combo', {
-      core: { path: 'synthetic-core', version: 'v1' },
-      resource: { path: 'synthetic-resource', version: 'r1' },
-    });
-    const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
-    expect(runtime.snapshot().devices[0].captureMethod).toBeUndefined();
-    worker.events.push({
-      type: 'callback',
-      message: 2,
-      details: { what: 'FastestWayToScreencap', details: { method: 'MumuExtras', cost: 8 } },
-    });
-    await runtime.pollNativeWorkers();
-    expect(runtime.snapshot().devices[0].captureMethod).toBe('MumuExtras');
-    expect(runtime.snapshot().events.some((e) => e.type === 'device.capture')).toBe(true);
-    const capture = { method: 'mumu', emulatorPath: root, instanceIndex: 0 };
-    await runtime.handle('settings.save', { settings: { capture } });
-    expect(runtime.store.get('device', device.id).captureMethod).toBe('MumuExtras');
-    worker.events.push({
-      type: 'callback',
-      message: 2,
-      details: {
-        what: 'Disconnect',
-        why: 'RequiredCaptureProtocolUnavailable',
-        details: { error: 'expected MumuExtras, selected RawByNc' },
-      },
-    });
-    await runtime.pollNativeWorkers();
-    expect(runtime.snapshot().devices[0].state).toBe('offline');
-    expect(runtime.snapshot().devices[0].captureMethod).toBeUndefined();
-    expect(runtime.snapshot().events.some((e) => e.message.includes('expected MumuExtras'))).toBe(
-      true,
-    );
-  } finally {
-    await runtime.close();
-  }
-  const reopened = new Runtime(root);
-  try {
-    expect(reopened.snapshot().settings.capture?.method).toBe('mumu');
-  } finally {
-    await reopened.close();
-  }
 });

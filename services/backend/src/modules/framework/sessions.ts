@@ -22,14 +22,11 @@ type Entry = {
   ending?: Promise<{ ended: true }>;
 };
 interface Owner {
-  assertStart(id: string): void;
-  core(id: string): { safeIdle: boolean } | undefined;
+  assertStart(id: string, requestId: string, internal: boolean): void;
+  worker(id: string): FrameworkPort | undefined;
   prepare(id: string, signal: AbortSignal): Promise<FrameworkView>;
-  detachCore(id: string): Promise<void>;
-  launch(id: string, view: FrameworkView, signal: AbortSignal): Promise<FrameworkPort>;
   invalidate(id: string): void;
-  changed(id: string, connected: boolean): void;
-  failed?(id: string): void;
+  changed(id: string): void;
 }
 const equal = (left: string, right?: string) => {
   if (!right) return false;
@@ -64,11 +61,11 @@ export class ControlSessions {
   }
   get(id: string): RpcContract['results']['control.session.get'] {
     const session = this.entries.get(id),
-      core = this.owner.core(id);
+      worker = this.owner.worker(id);
     return {
       deviceId: id,
-      owner: session?.state ?? (core ? 'maacore' : 'none'),
-      busy: session ? true : !!core && !core.safeIdle,
+      owner: session?.state ?? 'none',
+      busy: session ? true : !!worker && !worker.safeIdle,
       ...(session ? { sessionId: session.sessionId } : {}),
       ...(session?.view ? { resourceGeneration: session.view.generation } : {}),
     };
@@ -85,11 +82,14 @@ export class ControlSessions {
     this.requests.set(requestId, { signature, promise });
     return promise;
   }
-  start(params: RpcContract['params']['control.session.start']): Promise<SessionResult> {
+  start(
+    params: RpcContract['params']['control.session.start'],
+    internal = false,
+  ): Promise<SessionResult> {
     return this.once(params.requestId, JSON.stringify(['start', params.deviceId]), async () => {
       const id = params.deviceId;
       if (this.closed) throw new RpcError(-32011, '控制会话管理器已关闭');
-      this.owner.assertStart(id);
+      this.owner.assertStart(id, params.requestId, internal);
       if (this.entries.has(id)) throw new RpcError(-32011, '该设备已有控制会话');
       const entry: Entry = {
         sessionId: randomUUID(),
@@ -103,14 +103,13 @@ export class ControlSessions {
         try {
           entry.view = await this.owner.prepare(id, entry.abort.signal);
           entry.abort.signal.throwIfAborted();
-          await this.owner.detachCore(id);
-          entry.abort.signal.throwIfAborted();
-          entry.worker = await this.owner.launch(id, entry.view, entry.abort.signal);
-          entry.abort.signal.throwIfAborted();
-          await entry.worker.connect();
+          // 已连接 worker 保持不变；仅签发当前排他会话的授权，不重建 Controller。
+          entry.worker = this.owner.worker(id);
+          if (!entry.worker?.connected || !entry.worker.safeIdle)
+            throw new Error('设备尚未连接或原生操作未结束');
           entry.abort.signal.throwIfAborted();
           entry.state = 'maafw';
-          this.owner.changed(id, true);
+          this.owner.changed(id);
           return {
             deviceId: id,
             sessionId: entry.sessionId,
@@ -126,10 +125,9 @@ export class ControlSessions {
             },
           };
         } catch (error) {
-          await entry.worker?.close().catch(() => {});
           if (this.entries.get(id) === entry) this.entries.delete(id);
           this.owner.invalidate(id);
-          this.owner.failed?.(id);
+          this.owner.changed(id);
           throw new RpcError(
             -32040,
             'MaaFramework 控制权交接失败；不会自动重试或重连：' + String(error),
@@ -165,11 +163,17 @@ export class ControlSessions {
     this.owner.invalidate(id);
     const ending = (async () => {
       await entry.starting?.catch(() => {});
-      // EOF makes native stop and release contacts before giving up its lease.
-      await entry.worker?.close();
+      // 取消先收敛当前 Tasker，保留空闲连接与 OS 设备租约供下一会话复用。
+      if (entry.worker && !entry.worker.safeIdle) {
+        try {
+          await entry.worker.request('stop');
+        } catch {
+          await entry.worker.close();
+        }
+      }
       if (this.entries.get(id) === entry) {
         this.entries.delete(id);
-        this.owner.changed(id, false);
+        this.owner.changed(id);
       }
       return { ended: true as const };
     })();

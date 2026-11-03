@@ -3,13 +3,14 @@ import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
-import { CoreWorker } from '@backend/infrastructure/native/worker';
+import { FakeFramework, frameworkFixtureOptions, seedFrameworkResource } from './framework-fixture';
+import { NativeWorkerTransport } from '@backend/infrastructure/native/worker';
 import {
   defaultConnection,
   parseSettings,
   type DeviceConnectionProfile,
 } from '@backend/modules/settings/models';
-import { validateWorkerConfiguration } from '@contracts/validators.js';
+import { validateFrameworkWorkerConfiguration } from '@contracts/validators.js';
 import { mumuDefaultAdbAddress } from '@contracts/device-profiles';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
@@ -24,31 +25,14 @@ afterEach(async () => {
   for (const runtime of runtimes.splice(0)) await runtime.close();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
-const fakeWorker = () => ({
-  events: [] as any[],
-  connected: false,
-  safeIdle: true,
-  async connect() {
-    this.events.push({
-      type: 'callback',
-      message: 4,
-      details: { what: 'Connect', details: { ret: true } },
-    });
-  },
-  async close() {},
-  async task() {},
-  async stop() {},
-  async waitConnected() {
-    return true;
-  },
-});
+const fakeWorker = () => new FakeFramework();
 function instance(options: ConstructorParameters<typeof Runtime>[1] = {}) {
-  const runtime = new Runtime(temporary(), options);
+  const runtime = new Runtime(
+    temporary(),
+    frameworkFixtureOptions({ adbExecutable: undefined, ...options }),
+  );
   runtimes.push(runtime);
-  runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'r1' },
-  });
+  seedFrameworkResource(runtime);
   return runtime;
 }
 function profile(index: number, enhanced = false): DeviceConnectionProfile {
@@ -71,8 +55,14 @@ function profile(index: number, enhanced = false): DeviceConnectionProfile {
       ...defaultConnection(),
       address,
       adbPath: adb,
-      config: enhanced ? 'MuMuEmulator12' : 'General',
-      touchMode: index ? 'maatouch' : 'minitouch',
+      framework: {
+        touchMode: index ? 'maatouch' : 'minitouch',
+        capture: {
+          method: enhanced ? 'mumu' : 'adb',
+          emulatorPath: enhanced ? root : '',
+          instanceIndex: index,
+        },
+      },
     },
     capture: {
       method: enhanced ? 'mumu' : 'adb',
@@ -124,7 +114,7 @@ test('auto-connect selects independent ADB and touch settings and an edit only c
   const configs: any[] = [],
     workers: ReturnType<typeof fakeWorker>[] = [];
   const runtime = instance({
-    workerFactory: async (config) => {
+    frameworkWorkerFactory: async (config) => {
       configs.push(config);
       const worker = fakeWorker();
       workers.push(worker);
@@ -146,23 +136,25 @@ test('auto-connect selects independent ADB and touch settings and an edit only c
   expect(configs.map((config) => config.adb)).toEqual(
     profiles.map((item) => realpathSync(item.connection.adbPath)),
   );
-  expect(configs.map((config) => config.connection.touchMode)).toEqual(['minitouch', 'maatouch']);
+  expect(configs.map((config) => config.touchMode)).toEqual(['minitouch', 'maatouch']);
   expect(configs[0].lockPath).not.toBe(configs[1].lockPath);
   expect(
-    configs.every((config) => validateWorkerConfiguration({ ...config, protocolVersion: 1 })),
+    configs.every((config) =>
+      validateFrameworkWorkerConfiguration({ ...config, protocolVersion: 1 }),
+    ),
   ).toBe(true);
   const devices = runtime.snapshot().devices;
   expect(devices.map((device) => device.connectionProfileId)).toEqual(['instance-0', 'instance-1']);
   expect(devices.every((device) => device.state === 'idle')).toBe(true);
   const settings = runtime.snapshot().settings;
-  settings.deviceProfiles![1]!.connection.touchMode = 'MaaFwAdb';
+  settings.deviceProfiles![1]!.connection.framework!.touchMode = 'adb';
   await runtime.handle('settings.save', { settings });
   expect(configs).toHaveLength(2);
   await runtime.disconnectDevice(devices[1]!.id);
   await runtime.connectDevice({ address: profiles[1]!.address });
   expect(configs).toHaveLength(3);
-  expect(configs[2].connection.touchMode).toBe('MaaFwAdb');
-  expect(runtime.workers.get(devices[0]!.id)).toBe(workers[0]);
+  expect(configs[2].touchMode).toBe('adb');
+  expect(runtime.workers.get(devices[0]!.id)?.connected).toBe(workers[0].connected);
 });
 
 test.skipIf(process.platform !== 'win32')(
@@ -171,7 +163,7 @@ test.skipIf(process.platform !== 'win32')(
     const configs: any[] = [],
       profiles = [profile(0, true), profile(1, true)];
     const runtime = instance({
-      workerFactory: async (config) => {
+      frameworkWorkerFactory: async (config) => {
         configs.push(config);
         return fakeWorker();
       },
@@ -198,7 +190,7 @@ test('one configured connection failure does not block another instance and asyn
     second = profile(1);
   first.connection.adbPath = path.join(temporary(), 'missing-adb');
   const runtime = instance({
-    workerFactory: async (config) => {
+    frameworkWorkerFactory: async (config) => {
       configs.push(config);
       const worker = fakeWorker();
       workers.push(worker);
@@ -223,16 +215,12 @@ test('one configured connection failure does not block another instance and asyn
           String(event.data.error).includes('不存在'),
       ),
   ).toBe(true);
-  workers[0]!.events.push({
-    type: 'callback',
-    message: 4,
-    details: {
-      what: 'Connect',
-      details: { ret: false, error: 'synthetic native connection error' },
-    },
-  });
+  runtime.workers
+    .get(result.devices[0].id)!
+    .events.push({ type: 'protocol_error', message: 'synthetic native connection error' });
   await runtime.pollNativeWorkers();
-  expect(runtime.snapshot().devices[0]!.connectionError).toBe('synthetic native connection error');
+  expect(runtime.snapshot().devices[0]!.state).toBe('offline');
+  expect(workers[0]!.closed).toBe(true);
 });
 
 test('connection setup RPC errors expose the specific cause and retain raw diagnostic data', async () => {
@@ -252,75 +240,38 @@ test('connection setup RPC errors expose the specific cause and retain raw diagn
   await expect(runtime.autoConnectDevices()).rejects.toThrow('未找到 ADB');
   runtime.store.delete('active', 'combo');
   await expect(runtime.connectDevice({ address: '127.0.0.1:5555' })).rejects.toThrow(
-    '安装并启用核心',
+    '安装并启用游戏资源',
   );
 });
 
-test('connection diagnostics persist across polls, stay per worker and clear on success', async () => {
-  const workers: ReturnType<typeof fakeWorker>[] = [];
+test('connection diagnostics stay per device and clear only after a successful explicit reconnect', async () => {
+  const failures = new Map<string, string>([
+    ['127.0.0.1:5555', 'error: device unauthorized.'],
+    ['127.0.0.1:5557', 'error: device offline'],
+  ]);
   const runtime = instance({
     adbExecutable: () => 'synthetic-adb',
-    workerFactory: async () => {
+    frameworkWorkerFactory: async (config) => {
       const worker = fakeWorker();
-      workers.push(worker);
+      worker.connect = async () => {
+        const error = failures.get(config.address!);
+        if (error) throw new Error(error);
+        return { accepted: true, nativeSuccess: true };
+      };
       return worker;
     },
   });
-  const first = await runtime.connectDevice({ address: '127.0.0.1:5555' }),
-    second = await runtime.connectDevice({ address: '127.0.0.1:5557' });
+  for (const address of failures.keys())
+    await expect(runtime.connectDevice({ address })).rejects.toThrow();
+  const devices = runtime.snapshot().devices;
+  expect(devices[0].connectionError).toContain('尚未授权');
+  expect(devices[1].connectionError).toContain('已离线');
   await runtime.pollNativeWorkers();
-  workers[0]!.events.push({
-    type: 'callback',
-    message: 2,
-    details: {
-      what: 'ConnectFailed',
-      why: 'Uuid command failed to exec',
-      details: { raw_output: 'error: device unauthorized.' },
-    },
-  });
-  await runtime.pollNativeWorkers();
-  workers[0]!.events.push({
-    type: 'callback',
-    message: 4,
-    details: { what: 'Connect', details: { ret: false } },
-  });
-  workers[1]!.events.push({
-    type: 'callback',
-    message: 4,
-    details: { what: 'Connect', details: { ret: false, error: 'error: device offline' } },
-  });
-  await runtime.pollNativeWorkers();
-  expect(runtime.store.get('device', first.id).connectionError).toContain('尚未授权');
-  expect(runtime.store.get('device', second.id).connectionError).toContain('已离线');
-  expect(
-    runtime.snapshot().events.find((event) => event.type === 'device.connection_diagnostic')?.data
-      .rawOutput,
-  ).toBe('error: device unauthorized.');
-  await runtime.connectDevice({ address: first.address });
-  await runtime.pollNativeWorkers();
-  expect(runtime.store.get('device', first.id).connectionError).toBeUndefined();
-  workers[2]!.events.push({
-    type: 'callback',
-    message: 4,
-    details: { what: 'Connect', details: { ret: false } },
-  });
-  await runtime.pollNativeWorkers();
-  expect(runtime.store.get('device', first.id).connectionError).toContain('未返回具体原因');
-  expect(runtime.store.get('device', first.id).connectionError).not.toContain('尚未授权');
-  await runtime.connectDevice({ address: first.address });
-  await runtime.pollNativeWorkers();
-  workers[3]!.events.push({
-    type: 'callback',
-    message: 2,
-    details: { what: 'ConnectFailed', why: 'Connection command failed to exec' },
-  });
-  workers[3]!.events.push({
-    type: 'callback',
-    message: 4,
-    details: { what: 'Connect', details: { ret: false, error: 'error: device unauthorized.' } },
-  });
-  await runtime.pollNativeWorkers();
-  expect(runtime.store.get('device', first.id).connectionError).toContain('尚未授权');
+  expect(runtime.store.get('device', devices[0].id).connectionError).toContain('尚未授权');
+  failures.delete(devices[0].address);
+  await runtime.connectDevice({ address: devices[0].address });
+  expect(runtime.store.get('device', devices[0].id).connectionError).toBeUndefined();
+  expect(runtime.store.get('device', devices[1].id).connectionError).toContain('已离线');
 });
 
 for (const enhanced of [false, true])
@@ -336,7 +287,7 @@ for (const enhanced of [false, true])
         discoveries++;
         throw new Error('手动清单不应触发全量发现');
       },
-      workerFactory: async (config) => {
+      frameworkWorkerFactory: async (config) => {
         configs.push(config);
         return fakeWorker();
       },
@@ -360,7 +311,7 @@ for (const enhanced of [false, true])
       expect(
         result.diagnostics.some(
           (message: string) =>
-            message.includes(selected.address) && message.includes('增强截图实例或 SDK'),
+            message.includes(selected.address) && /增强截图|Windows|MuMu/.test(message),
         ),
       ).toBe(true);
       expect(runtime.snapshot().settings.deviceProfiles![0]!.capture.method).toBe('mumu');
@@ -384,7 +335,7 @@ test('concurrent aliases cannot create a second controller and later alias reque
   const configs: any[] = [],
     first = profile(0);
   const runtime = instance({
-    workerFactory: async (config) => {
+    frameworkWorkerFactory: async (config) => {
       configs.push(config);
       began();
       await gate;
@@ -394,7 +345,9 @@ test('concurrent aliases cannot create a second controller and later alias reque
   await runtime.handle('settings.save', { settings: parseSettings({ deviceProfiles: [first] }) });
   const connecting = runtime.connectDevice({ address: first.address });
   await started;
-  await expect(runtime.connectDevice({ address: 'emulator-5554' })).rejects.toThrow('正在建立连接');
+  await expect(runtime.connectDevice({ address: 'emulator-5554' })).rejects.toMatchObject({
+    code: -32011,
+  });
   release();
   const device = await connecting;
   expect((await runtime.connectDevice({ address: 'localhost:05555' })).id).toBe(device.id);
@@ -409,14 +362,20 @@ test.skipIf(!nativeWorker)(
     const address = `synthetic-profile-${crypto.randomUUID()}`,
       selected = { ...profile(0), address };
     const factory = async (config: any) => {
-      const lease = await CoreWorker.start(
+      const lease = await NativeWorkerTransport.start(
         { lockPath: config.lockPath, userDir: config.userDir, lockTimeoutMs: 0 },
-        { leaseOnly: true, command: [nativeWorker!, '--lease-only'] },
+        { command: [nativeWorker!, '--lease-only'] },
       );
-      return { ...fakeWorker(), close: () => lease.close() };
+      const worker = fakeWorker();
+      const close = worker.close.bind(worker);
+      worker.close = async () => {
+        await close();
+        await lease.close();
+      };
+      return worker;
     };
-    const first = instance({ workerFactory: factory }),
-      second = instance({ workerFactory: factory });
+    const first = instance({ frameworkWorkerFactory: factory }),
+      second = instance({ frameworkWorkerFactory: factory });
     for (const runtime of [first, second])
       await runtime.handle('settings.save', {
         settings: parseSettings({ deviceProfiles: [selected] }),

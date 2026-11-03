@@ -56,11 +56,11 @@ export function fail(error) { console.error(error.message); process.exitCode = 1
 project(maaverge_build_fixture LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_executable(maaverge-core-worker main.cpp)
+add_executable(maaverge-native-worker main.cpp)
 include(CTest)
 if(BUILD_TESTING)
   add_test(NAME native.fixture
-    COMMAND maaverge-core-worker "\${CMAKE_BINARY_DIR}/ctest-ran")
+    COMMAND maaverge-native-worker "\${CMAKE_BINARY_DIR}/ctest-ran")
 endif()
 `,
   );
@@ -151,7 +151,7 @@ test(
     assert.doesNotMatch(cache, /^CMAKE_MAKE_PROGRAM:[^=]*=.*-NOTFOUND$/mu);
     assert.match(cache, /^BUILD_TESTING:BOOL=OFF$/mu);
     const worker =
-      process.platform === 'win32' ? 'maaverge-core-worker.exe' : 'maaverge-core-worker';
+      process.platform === 'win32' ? 'maaverge-native-worker.exe' : 'maaverge-native-worker';
     assert.ok(
       [path.join(project.build, worker), path.join(project.build, 'Release', worker)].some(
         existsSync,

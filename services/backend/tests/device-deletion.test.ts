@@ -3,65 +3,45 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
+import { FakeFramework, frameworkFixtureOptions, seedFrameworkResource } from './framework-fixture';
 import { defaultConnection, parseSettings } from '@backend/modules/settings/models';
 import { emptyEmulatorInventory } from '@backend/infrastructure/native/windows-emulators';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const runtimes: Runtime[] = [];
 const roots: string[] = [];
-class FakeWorker {
-  events: any[] = [];
-  connected = true;
-  safeIdle = true;
-  closed = false;
-  async connect() {
-    return { asyncId: 1 };
-  }
-  async task() {
-    return { taskId: 1 };
-  }
-  async stop() {
-    return { stopping: true };
-  }
-  async waitConnected() {
-    return true;
-  }
-  async close() {
-    this.closed = true;
-  }
-}
 
 function fixture(
   root = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-device-deletion-')),
 ) {
   roots.push(root);
   const notifications: any[] = [];
-  const workers: FakeWorker[] = [];
-  const runtime = new Runtime(root, {
-    workerFactory: async () => {
-      const worker = new FakeWorker();
-      workers.push(worker);
-      return worker;
-    },
-    adbExecutable: () => 'synthetic-adb',
-    discoverDevices: async () => ({
-      devices: [{ address: '127.0.0.1:5555', name: '合成设备', adbState: 'device' }],
-      diagnostics: [],
-      inventory: emptyEmulatorInventory(),
+  const workers: FakeFramework[] = [];
+  const runtime = new Runtime(
+    root,
+    frameworkFixtureOptions({
+      frameworkWorkerFactory: async () => {
+        const worker = new FakeFramework();
+        workers.push(worker);
+        return worker;
+      },
+      adbExecutable: () => 'synthetic-adb',
+      discoverDevices: async () => ({
+        devices: [{ address: '127.0.0.1:5555', name: '合成设备', adbState: 'device' }],
+        diagnostics: [],
+        inventory: emptyEmulatorInventory(),
+      }),
+      notify: (message) => notifications.push(message),
+      calendar: { fetcher: null },
     }),
-    notify: (message) => notifications.push(message),
-    calendar: { fetcher: null },
-  });
+  );
   runtimes.push(runtime);
   runtime.store.put(
     'settings',
     'main',
-    parseSettings({ autoConnect: false, autoUpdateCore: false, autoUpdateResource: false }),
+    parseSettings({ autoConnect: false, autoUpdateResource: false }),
   );
-  runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'r1' },
-  });
+  seedFrameworkResource(runtime);
   return { runtime, notifications, workers };
 }
 
@@ -71,7 +51,7 @@ function offline(runtime: Runtime, id: string, address = '127.0.0.1:5555') {
     name: id,
     address,
     state: 'offline',
-    coreVersion: null,
+    frameworkVersion: null,
     resourceVersion: null,
   };
   runtime.store.put('device', id, device);
@@ -185,10 +165,10 @@ test.each(['run', 'tool_job', 'schedule_occurrence'])(
   },
 );
 
-test('a connecting native worker cannot be deleted while its list state is offline', async () => {
+test('a connected native worker cannot be deleted while its list state is idle', async () => {
   const { runtime, workers } = fixture();
   const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
-  expect(device.state).toBe('offline');
+  expect(device.state).toBe('idle');
   await expect(runtime.handle('device.delete', { deviceIds: [device.id] })).rejects.toMatchObject({
     code: -32011,
   });
@@ -212,52 +192,45 @@ test('a connection reserved before worker creation protects canonical aliases', 
   expect((await connection).id).toBe('history');
 });
 
-test.each([
-  { message: 4, details: { what: 'Connect', details: { ret: false } } },
-  { message: 2, details: { what: 'Disconnect' } },
-  { message: 2, details: { what: 'ResolutionChanged' } },
-])('native terminal callback %j releases history only after worker shutdown', async (callback) => {
-  const { runtime, workers } = fixture();
-  const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
-  const worker = workers[0];
-  worker.safeIdle = false;
-  let finishClosing!: () => void;
-  const closing = new Promise<void>((resolve) => {
-    finishClosing = resolve;
-  });
-  const close = spyOn(worker, 'close').mockImplementation(async () => {
-    await closing;
-    worker.closed = true;
-  });
-  worker.events.push(
-    { type: 'callback', ...callback },
-    { type: 'callback', message: 4, details: { what: 'Connect', details: { ret: true } } },
-  );
-  const polling = runtime.pollNativeWorkers();
-  try {
+test.each(['exit', 'protocol_error', 'connection_lost'])(
+  'native terminal event %s releases history only after worker shutdown',
+  async (type) => {
+    const { runtime, workers } = fixture();
+    const device = await runtime.connectDevice({ address: '127.0.0.1:5555' });
+    const worker = workers[0];
+    const port = runtime.workers.get(device.id)!;
+    let finishClosing!: () => void;
+    const closing = new Promise<void>((resolve) => {
+      finishClosing = resolve;
+    });
+    const close = spyOn(worker, 'close').mockImplementation(async () => {
+      await closing;
+      worker.closed = true;
+      worker.connected = false;
+    });
+    port.events.push({ type });
+    const polling = runtime.pollNativeWorkers();
+    try {
+      expect(runtime.workers.get(device.id)).toBe(port);
+      expect(worker.closed).toBe(false);
+      await expect(
+        runtime.handle('device.delete', { deviceIds: [device.id] }),
+      ).rejects.toMatchObject({ code: -32011 });
+    } finally {
+      finishClosing();
+      await polling;
+      close.mockRestore();
+    }
+    expect(worker.closed).toBe(true);
+    expect(runtime.workers.has(device.id)).toBe(false);
     expect(runtime.store.get('device', device.id).state).toBe('offline');
-    expect(runtime.workers.get(device.id)).toBe(worker);
-    expect(worker.closed).toBe(false);
-    await expect(runtime.handle('device.delete', { deviceIds: [device.id] })).rejects.toMatchObject(
-      {
-        code: -32011,
-      },
-    );
-  } finally {
-    finishClosing();
-    await polling;
-    close.mockRestore();
-  }
-  expect(worker.closed).toBe(true);
-  expect(runtime.workers.has(device.id)).toBe(false);
-  expect(runtime.store.get('device', device.id).state).toBe('offline');
-  expect(runtime.store.get('device', device.id).connectionError).toBeString();
-  expect(await runtime.handle('device.delete', { deviceIds: [device.id] })).toEqual({
-    deletedDeviceIds: [device.id],
-  });
-  await runtime.pollNativeWorkers();
-  expect(runtime.snapshot().devices).toEqual([]);
-});
+    expect(await runtime.handle('device.delete', { deviceIds: [device.id] })).toEqual({
+      deletedDeviceIds: [device.id],
+    });
+    await runtime.pollNativeWorkers();
+    expect(runtime.snapshot().devices).toEqual([]);
+  },
+);
 
 test('native disconnection fails active work before releasing its history for deletion', async () => {
   const { runtime, workers } = fixture();
@@ -266,13 +239,23 @@ test('native disconnection fails active work before releasing its history for de
   const plan = await runtime.handle('plan.save', {
     plan: { id: 'disconnect-plan', name: '断线记录', tasks: [{ type: 'Award' }] },
   });
-  const run = await runtime.handle('run.start', {
+  // Persist an interrupted historical execution to exercise offline cleanup without game actions.
+  const run = {
+    id: 'interrupted-history',
+    source: 'plan',
     planId: plan.id,
+    planName: plan.name,
     deviceId: device.id,
-    requestId: 'native-disconnect-history',
-  });
-  workers[0].safeIdle = false;
-  workers[0].events.push({ type: 'callback', message: 2, details: { what: 'Disconnect' } });
+    status: 'running',
+    progress: 0,
+    message: '执行中',
+    startedAt: '2026-10-01T00:00:00.000Z',
+    finishedAt: null,
+    tasks: [],
+  };
+  runtime.store.put('run', run.id, run);
+  runtime.store.put('run_plan', run.id, plan);
+  runtime.workers.get(device.id)!.events.push({ type: 'connection_lost' });
   await runtime.pollNativeWorkers();
   expect(runtime.store.get('run', run.id).status).toBe('failed');
   expect(runtime.workers.has(device.id)).toBe(false);

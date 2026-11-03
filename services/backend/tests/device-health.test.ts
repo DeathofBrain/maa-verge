@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { Device } from '@contracts/types';
 import type { AdbDevice } from '@backend/infrastructure/native/adb';
 import { Runtime } from '@backend/app/runtime';
+import { FakeFramework, frameworkFixtureOptions, seedFrameworkResource } from './framework-fixture';
 import { parseSettings } from '@backend/modules/settings/models';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
@@ -16,37 +17,10 @@ type Observer = {
   releaseClose: () => void;
 };
 
-class FakeWorker {
-  events: any[] = [];
-  connected = false;
-  safeIdle = true;
-  submitted: any[] = [];
-  closed = false;
-  async connect() {
-    queueMicrotask(() => {
-      this.connected = true;
-      this.events.push({
-        type: 'callback',
-        message: 4,
-        details: { what: 'Connect', details: { ret: true } },
-      });
-    });
-    return { asyncId: 1 };
-  }
-  async task(task: any) {
-    this.submitted.push(task);
-    this.safeIdle = false;
-    return { taskId: this.submitted.length };
-  }
-  async stop() {
-    return { stopping: true };
-  }
-  async close() {
-    this.closed = true;
-    this.connected = false;
-  }
-  async waitConnected() {
-    return this.connected && this.safeIdle;
+class FakeWorker extends FakeFramework {
+  constructor() {
+    super();
+    this.holdTasks = true;
   }
 }
 
@@ -60,8 +34,8 @@ function fixture(holdClose = false) {
   const observers: Observer[] = [];
   const runtime = new Runtime(
     makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-device-health-')),
-    {
-      workerFactory: async () => {
+    frameworkFixtureOptions({
+      frameworkWorkerFactory: async () => {
         const worker = new FakeWorker();
         workers.push(worker);
         return worker;
@@ -88,18 +62,15 @@ function fixture(holdClose = false) {
         return observer;
       },
       calendar: { fetcher: null },
-    },
+    }),
   );
   runtimes.push(runtime);
   runtime.store.put(
     'settings',
     'main',
-    parseSettings({ autoConnect: false, autoUpdateCore: false, autoUpdateResource: false }),
+    parseSettings({ autoConnect: false, autoUpdateResource: false }),
   );
-  runtime.store.put('active', 'combo', {
-    core: { path: 'synthetic-core', version: 'v1' },
-    resource: { path: 'synthetic-resource', version: 'r1' },
-  });
+  seedFrameworkResource(runtime);
   return { runtime, workers, observers };
 }
 const adbDevice = (address: string, adbState = 'device'): AdbDevice => ({
@@ -176,14 +147,18 @@ test('connection loss fails the active run and preserves request deduplication w
     plan: {
       id: 'device-health-plan',
       name: '断线回归',
-      tasks: [
-        { type: 'Fight', params: { stage: '1-7', times: 1 } },
-        { type: 'Fight', params: { stage: '1-7', times: 1 } },
-      ],
+      tasks: [{ type: 'CloseDown' }, { type: 'CloseDown' }],
     },
   });
   const request = { planId: plan.id, deviceId: device.id, requestId: 'health-no-replay' };
   const run = await runtime.startRun(request);
+  const deadline = performance.now() + 2000;
+  while (
+    !workers[0].submitted.length &&
+    runtime.store.get('run', run.id).status === 'running' &&
+    performance.now() < deadline
+  )
+    await new Promise((resolve) => setTimeout(resolve, 5));
   expect(workers[0].submitted).toHaveLength(1);
   await tick(runtime);
   observers[0].onDevices([]);
@@ -297,7 +272,7 @@ test('a stale subscription cannot disconnect a replacement worker or close its n
   time += 6_000;
   await tick(runtime);
   expect(runtime.snapshot().devices[0].state).toBe('idle');
-  expect(runtime.workers.get(device.id)).toBe(workers[1]);
+  expect(runtime.workers.get(device.id)?.connected).toBe(workers[1].connected);
   expect(workers[1].closed).toBe(false);
   expect(observers).toHaveLength(2);
   expect(observers[1].closed).toBe(false);

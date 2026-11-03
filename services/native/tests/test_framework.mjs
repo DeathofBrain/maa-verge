@@ -230,6 +230,508 @@ function fixture(t, source = args.framework) {
   return f;
 }
 
+const customPipeline = () => ({
+  Start: { recognition: 'DirectHit', action: 'DoNothing', next: ['Miss', 'Extension'] },
+  Miss: { recognition: 'OCR', expected: '__miss__', action: 'Click', target: [1, 1] },
+  Extension: {
+    recognition: 'DirectHit',
+    action: 'Custom',
+    custom_action: 'MaaVerge.Custom',
+    custom_action_param: { handler: 'fixture.observe' },
+    next: ['After'],
+  },
+  After: { recognition: 'DirectHit', action: 'Click', target: [20, 30] },
+});
+
+test('pipeline follows native graph branches and runs custom operations on their MaaContext', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  const task = s.command({ operation: 'pipeline', entry: 'Start', pipeline: customPipeline() });
+  const custom = await s.wait((message) => message.type === 'framework_custom');
+  assert.equal(custom.node, 'Extension');
+  assert.deepEqual(custom.params, { handler: 'fixture.observe' });
+  const callbackId = custom.callbackId;
+  assert.match(
+    (await s.command({ operation: 'frame', callbackId: callbackId + '-stale' })).error,
+    /no longer active/,
+  );
+  assert.equal((await s.command({ operation: 'frame', callbackId })).result.width, 1280);
+  assert.deepEqual(
+    (await s.command({ operation: 'click', x: 100, y: 200, callbackId })).result,
+    accepted,
+  );
+  assert.equal(
+    (await s.command({ operation: 'recognize', kind: 'ocr', image: f.image, callbackId })).result
+      .matches[0].text,
+    'MAA',
+  );
+  assert.match((await s.command({ operation: 'frame' })).error, /busy/);
+  assert.deepEqual(
+    (await s.command({ operation: 'custom_result', callbackId, success: true })).result,
+    accepted,
+  );
+  assert.deepEqual((await task).result, accepted);
+  assert.deepEqual(
+    f.trace().filter((line) => line.startsWith('pipeline-node:')),
+    ['pipeline-node:Start', 'pipeline-node:Extension', 'pipeline-node:After'],
+  );
+  assert.equal(f.trace().filter((line) => line.startsWith('context-action:Click:')).length, 1);
+  assert.equal(f.trace().filter((line) => line.startsWith('context-recognition:OCR:')).length, 1);
+  assert.equal(f.trace().filter((line) => line.startsWith('action:Click:')).length, 0);
+  assert.match(
+    (await s.command({ operation: 'custom_result', callbackId, success: true })).error,
+    /no longer active/,
+  );
+});
+
+test('failed custom action stops the pipeline before later mutations and rejects nested tasks', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  const task = s.command({ operation: 'pipeline', entry: 'Start', pipeline: customPipeline() });
+  const { callbackId } = await s.wait((message) => message.type === 'framework_custom');
+  assert.match(
+    (
+      await s.command({
+        operation: 'pipeline',
+        entry: 'Start',
+        pipeline: customPipeline(),
+        callbackId,
+      })
+    ).error,
+    /unsupported operation in custom context/,
+  );
+  await s.command({ operation: 'custom_result', callbackId, success: false });
+  assert.match((await task).error, /failed: pipeline/);
+  assert.equal(
+    f.trace().some((line) => line === 'pipeline-node:After'),
+    false,
+  );
+  assert.equal(f.trace().filter((line) => line === 'pipeline:Start').length, 1);
+  assert.deepEqual(
+    (
+      await s.command({
+        operation: 'pipeline',
+        entry: 'Recovered',
+        pipeline: { Recovered: { recognition: 'DirectHit', action: 'DoNothing' } },
+      })
+    ).result,
+    accepted,
+  );
+});
+
+// 子任务通过官方 Context 同步执行；父回调挂起期间不能发送原语或伪造结果。
+test('Context Pipelines preserve parent identity, native input epochs and parent restoration', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  const root = s.command({
+    operation: 'pipeline',
+    contextId: 'root-context',
+    entry: 'Start',
+    pipeline: customPipeline(),
+  });
+  const parent = await s.wait((m) => m.type === 'framework_custom');
+  assert.equal(parent.contextId, 'root-context');
+  assert.equal(parent.depth, 1);
+  assert.equal(parent.parentCallbackId, null);
+  assert.equal(parent.inputEpoch, 0);
+  const child = s.command({
+    operation: 'context_pipeline',
+    callbackId: parent.callbackId,
+    contextId: 'child-context',
+    entry: 'Child',
+    pipeline: {
+      Child: { action: 'ClickKey', key: 4, next: ['Read'] },
+      Read: {
+        action: 'Custom',
+        custom_action: 'MaaVerge.Custom',
+        custom_action_param: { handler: 'child' },
+      },
+    },
+  });
+  const nested = await s.wait(
+    (m) => m.type === 'framework_custom' && m.contextId === 'child-context',
+  );
+  assert.equal(nested.depth, 2);
+  assert.equal(nested.parentCallbackId, parent.callbackId);
+  assert.equal(nested.inputEpoch, 1);
+  assert.match(
+    (await s.command({ operation: 'frame', callbackId: parent.callbackId })).error,
+    /no longer active/,
+  );
+  assert.match(
+    (await s.command({ operation: 'custom_result', callbackId: parent.callbackId, success: true }))
+      .error,
+    /no longer active/,
+  );
+  assert.equal(
+    (await s.command({ operation: 'frame', callbackId: nested.callbackId })).result.width,
+    1280,
+  );
+  await s.command({ operation: 'custom_result', callbackId: nested.callbackId, success: true });
+  assert.deepEqual((await child).result, accepted);
+  assert.equal(
+    (await s.command({ operation: 'frame', callbackId: parent.callbackId })).result.width,
+    1280,
+  );
+  // 子图末尾标准输入没有 Custom，也必须在返回父层前同步代际。
+  const terminal = await s.command({
+    operation: 'context_pipeline',
+    callbackId: parent.callbackId,
+    contextId: 'terminal-context',
+    entry: 'Tap',
+    pipeline: { Tap: { action: 'Click', target: [20, 30] } },
+  });
+  assert.deepEqual(terminal.result, accepted);
+  await s.command({ operation: 'custom_result', callbackId: parent.callbackId, success: true });
+  assert.deepEqual((await root).result, accepted);
+  assert.ok(f.trace().some((line) => line.startsWith('context-pipeline:MaaVerge.Context.')));
+  assert.equal(f.trace().filter((line) => line.startsWith('pipeline:')).length, 1);
+});
+
+test('repeated Context calls isolate max_hit counts and every supported node reference', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  const graph = customPipeline();
+  for (const node of Object.values(graph)) node.max_hit = 1;
+  const root = s.command({ operation: 'pipeline', entry: 'Start', pipeline: graph });
+  const parent = await s.wait((m) => m.type === 'framework_custom');
+  const child = {
+    // 与父图同名，并在同一根任务内重复提交；不得消耗父图或上一次子图的次数。
+    Start: { action: 'DoNothing', max_hit: 1, next: ['Extension'] },
+    Extension: {
+      action: 'Custom',
+      max_hit: 1,
+      custom_action: 'MaaVerge.Custom',
+      custom_action_param: { handler: 'Start', literal: { target: 'Extension' } },
+      next: ['Observe'],
+      on_error: ['After'],
+    },
+    Color: { recognition: 'ColorMatch', action: 'DoNothing' },
+    Observe: {
+      recognition: 'OCR',
+      action: 'DoNothing',
+      roi: 'Extension',
+      color_filter: 'Color',
+      next: ['Tap'],
+    },
+    Tap: {
+      action: 'Click',
+      max_hit: 1,
+      roi: 'Extension',
+      target: 'Extension',
+      pre_wait_freezes: { target: 'Extension' },
+      post_wait_freezes: { target: 'Extension' },
+      repeat_wait_freezes: { target: 'Extension' },
+      next: ['Move'],
+    },
+    Move: {
+      action: 'Swipe',
+      max_hit: 1,
+      begin: 'Extension',
+      end: ['Start', [10, 20], 'Tap'],
+      next: ['After'],
+    },
+    After: { action: 'DoNothing', max_hit: 1 },
+  };
+  for (let iteration = 0; iteration < 2; iteration++) {
+    const task = s.command({
+      operation: 'context_pipeline',
+      callbackId: parent.callbackId,
+      contextId: `repeated-${iteration}`,
+      entry: 'Start',
+      pipeline: child,
+    });
+    const callback = await s.wait(
+      (m) => m.type === 'framework_custom' && m.contextId === `repeated-${iteration}`,
+    );
+    assert.equal(callback.node, 'Extension');
+    assert.deepEqual(callback.params, child.Extension.custom_action_param);
+    await s.command({ operation: 'custom_result', callbackId: callback.callbackId, success: true });
+    assert.deepEqual((await task).result, accepted);
+  }
+  await s.command({ operation: 'custom_result', callbackId: parent.callbackId, success: true });
+  assert.deepEqual((await root).result, accepted);
+  const entries = f.trace().filter((line) => line.startsWith('context-pipeline:'));
+  assert.equal(new Set(entries).size, 2);
+  assert.equal(f.trace().filter((line) => line === 'pipeline-node:After').length, 1);
+  const taps = f
+    .trace()
+    .filter((line) => line.startsWith('pipeline-action:Click:'))
+    .map((line) => JSON.parse(line.slice('pipeline-action:Click:'.length)))
+    .filter((node) => typeof node.target === 'string');
+  assert.equal(taps.length, 2);
+  assert.ok(taps.every((node) => node.roi.startsWith('MaaVerge.Context.')));
+  assert.ok(taps.every((node) => node.target === node.roi));
+  for (const field of ['pre_wait_freezes', 'post_wait_freezes', 'repeat_wait_freezes'])
+    assert.ok(taps.every((node) => node[field].target === node.target));
+  assert.notEqual(taps[0].target, taps[1].target);
+  const moves = f
+    .trace()
+    .filter((line) => line.startsWith('pipeline-action:Swipe:'))
+    .map((line) => JSON.parse(line.slice('pipeline-action:Swipe:'.length)));
+  assert.ok(moves.every((node) => node.begin.startsWith('MaaVerge.Context.')));
+  assert.ok(moves.every((node) => node.end[0].startsWith('MaaVerge.Context.')));
+  assert.ok(moves.every((node) => node.end[2].startsWith('MaaVerge.Context.')));
+  assert.ok(moves.every((node) => JSON.stringify(node.end[1]) === '[10,20]'));
+  const recognitions = f
+    .trace()
+    .filter((line) => line.startsWith('pipeline-recognition:OCR:'))
+    .map((line) => JSON.parse(line.slice('pipeline-recognition:OCR:'.length)));
+  assert.equal(recognitions.length, 2);
+  assert.ok(recognitions.every((node) => node.color_filter.startsWith('MaaVerge.Context.')));
+  assert.ok(recognitions.every((node) => node.roi.startsWith('MaaVerge.Context.')));
+  assert.notEqual(recognitions[0].color_filter, recognitions[1].color_filter);
+});
+
+test('Context namespaces retain max_hit inside one graph and reject escaping node references', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  for (const field of ['roi', 'target', 'begin', 'end', 'color_filter']) {
+    const invalid = await s.command({
+      operation: 'pipeline',
+      entry: 'Start',
+      pipeline: { Start: { action: 'DoNothing', [field]: 'Unsubmitted' } },
+    });
+    assert.match(invalid.error, /reference must name an explicit node/);
+  }
+  for (const field of ['pre_wait_freezes', 'post_wait_freezes', 'repeat_wait_freezes'])
+    assert.match(
+      (
+        await s.command({
+          operation: 'pipeline',
+          entry: 'Start',
+          pipeline: { Start: { [field]: { target: 'Unsubmitted' } } },
+        })
+      ).error,
+      /reference must name an explicit node/,
+    );
+  assert.match(
+    (
+      await s.command({
+        operation: 'pipeline',
+        entry: '[Anchor]Unscoped',
+        pipeline: { '[Anchor]Unscoped': {} },
+      })
+    ).error,
+    /invalid pipeline entry/,
+  );
+  assert.match(
+    (
+      await s.command({
+        operation: 'pipeline',
+        entry: 'Start',
+        pipeline: { Start: { anchor: 'Unscoped' } },
+      })
+    ).error,
+    /anchors are not supported/,
+  );
+  const root = s.command({ operation: 'pipeline', entry: 'Start', pipeline: customPipeline() });
+  const parent = await s.wait((m) => m.type === 'framework_custom');
+  const loop = await s.command({
+    operation: 'context_pipeline',
+    callbackId: parent.callbackId,
+    contextId: 'bounded-cycle',
+    entry: 'Loop',
+    pipeline: { Loop: { max_hit: 1, next: ['Loop'] } },
+  });
+  assert.match(loop.error, /task failed/);
+  await s.command({ operation: 'custom_result', callbackId: parent.callbackId, success: true });
+  assert.match((await root).error, /failed: pipeline/);
+  assert.equal(
+    f.trace().filter((line) => line.startsWith('pipeline-node:MaaVerge.Context.')).length,
+    1,
+  );
+});
+
+test('Context task status failure cannot be hidden by a successful parent acknowledgement', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  const root = s.command({ operation: 'pipeline', entry: 'Start', pipeline: customPipeline() });
+  const parent = await s.wait((m) => m.type === 'framework_custom');
+  const child = s.command({
+    operation: 'context_pipeline',
+    callbackId: parent.callbackId,
+    contextId: 'failed-child',
+    entry: 'Child',
+    pipeline: {
+      Child: {
+        action: 'Custom',
+        custom_action: 'MaaVerge.Custom',
+        custom_action_param: { handler: 'reject' },
+      },
+    },
+  });
+  const nested = await s.wait(
+    (m) => m.type === 'framework_custom' && m.contextId === 'failed-child',
+  );
+  await s.command({ operation: 'custom_result', callbackId: nested.callbackId, success: false });
+  assert.match((await child).error, /task failed/);
+  assert.equal(
+    (await s.command({ operation: 'frame', callbackId: parent.callbackId })).result.width,
+    1280,
+  );
+  assert.match(
+    (await s.command({ operation: 'click', x: 20, y: 30, callbackId: parent.callbackId })).error,
+    /further input forbidden/,
+  );
+  await s.command({ operation: 'custom_result', callbackId: parent.callbackId, success: true });
+  assert.match((await root).error, /failed: pipeline/);
+  assert.equal(
+    f.trace().some((line) => line === 'pipeline-node:After'),
+    false,
+  );
+});
+
+test('native Context depth is bounded independently of the host and failures unwind each parent', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  const graph = {
+    Custom: {
+      action: 'Custom',
+      custom_action: 'MaaVerge.Custom',
+      custom_action_param: { handler: 'depth' },
+    },
+  };
+  const root = s.command({
+    operation: 'pipeline',
+    contextId: 'depth-1',
+    entry: 'Custom',
+    pipeline: graph,
+  });
+  const callbacks = [await s.wait((m) => m.type === 'framework_custom')];
+  const tasks = [];
+  for (let depth = 2; depth <= 8; depth++) {
+    tasks.push(
+      s.command({
+        operation: 'context_pipeline',
+        callbackId: callbacks.at(-1).callbackId,
+        contextId: `depth-${depth}`,
+        entry: 'Custom',
+        pipeline: graph,
+      }),
+    );
+    const callback = await s.wait(
+      (m) => m.type === 'framework_custom' && m.contextId === `depth-${depth}`,
+    );
+    assert.equal(callback.depth, depth);
+    callbacks.push(callback);
+  }
+  assert.match(
+    (
+      await s.command({
+        operation: 'context_pipeline',
+        callbackId: callbacks.at(-1).callbackId,
+        contextId: 'depth-9',
+        entry: 'Custom',
+        pipeline: graph,
+      })
+    ).error,
+    /depth exceeds 8/,
+  );
+  for (let index = callbacks.length - 1; index >= 0; index--) {
+    await s.command({
+      operation: 'custom_result',
+      callbackId: callbacks[index].callbackId,
+      success: true,
+    });
+    if (index) assert.match((await tasks[index - 1]).error, /task failed/);
+  }
+  assert.match((await root).error, /failed: pipeline/);
+  assert.equal(f.trace().filter((line) => line.startsWith('context-pipeline:')).length, 7);
+});
+
+test('stop and EOF unwind nested Context tasks and expire every callback', async (t) => {
+  for (const ending of ['stop', 'eof']) {
+    const f = fixture(t),
+      s = await f.connected();
+    const root = s.command({ operation: 'pipeline', entry: 'Start', pipeline: customPipeline() });
+    const parent = await s.wait((m) => m.type === 'framework_custom');
+    const child = s.command({
+      operation: 'context_pipeline',
+      callbackId: parent.callbackId,
+      contextId: 'cancel-child',
+      entry: 'Start',
+      pipeline: customPipeline(),
+    });
+    const nested = await s.wait(
+      (m) => m.type === 'framework_custom' && m.contextId === 'cancel-child',
+    );
+    if (ending === 'stop') {
+      await s.command({ operation: 'stop' });
+      assert.equal(typeof (await child).error, 'string');
+      assert.match((await root).error, /cancelled/);
+      for (const callbackId of [parent.callbackId, nested.callbackId])
+        assert.match(
+          (await s.command({ operation: 'frame', callbackId })).error,
+          /no longer active/,
+        );
+    } else {
+      const closing = s.close();
+      assert.equal(typeof (await child).error, 'string');
+      assert.match((await root).error, /cancelled/);
+      assert.equal((await closing).code, 0);
+    }
+    if (!s.exited) assert.equal((await s.close()).code, 0);
+    assert.ok(f.trace().includes('touch-up'));
+    assert.equal(
+      f.trace().some((line) => line === 'pipeline-node:After'),
+      false,
+    );
+  }
+});
+
+test('stop and EOF wake an outstanding custom callback and release the controller', async (t) => {
+  for (const end of ['stop', 'eof']) {
+    const f = fixture(t),
+      s = await f.connected();
+    const task = s.command({ operation: 'pipeline', entry: 'Start', pipeline: customPipeline() });
+    const { callbackId } = await s.wait((message) => message.type === 'framework_custom');
+    if (end === 'stop') {
+      assert.deepEqual((await s.command({ operation: 'stop' })).result, accepted);
+      assert.match((await task).error, /cancelled/);
+      assert.match(
+        (await s.command({ operation: 'custom_result', callbackId, success: true })).error,
+        /no longer active/,
+      );
+    } else {
+      // EOF also emits the pending request's failure before process exit.
+      const close = s.close();
+      assert.match((await task).error, /cancelled/);
+      assert.equal((await close).code, 0);
+    }
+    assert.equal(
+      f.trace().some((line) => line === 'pipeline-node:After'),
+      false,
+    );
+    if (!s.exited) assert.equal((await s.close()).code, 0);
+    assert.ok(f.trace().includes('controller-destroy'));
+  }
+});
+
+test('pipeline rejects unsafe, unbounded and unresolved nodes before native submission', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  for (const pipeline of [
+    { Start: { action: 'Shell', shell: 'must-never-run' } },
+    { Start: { action: { type: 'Shell' } } },
+    { Start: { timeout: -1 } },
+    { Start: { next: ['Missing'] } },
+    { Start: { action: 'Custom', custom_action: 'unregistered', custom_action_param: {} } },
+    { Start: { recognition: 'TemplateMatch', template: '../escape.png' } },
+    { Start: { action: 'ClickKey', key: 1 } },
+    {},
+  ]) {
+    assert.equal(
+      typeof (await s.command({ operation: 'pipeline', entry: 'Start', pipeline })).error,
+      'string',
+    );
+  }
+  assert.equal(
+    f.trace().some((line) => line.startsWith('pipeline:')),
+    false,
+  );
+});
+
 test('recognition mode loads only resources, parses OCR/template, and owns no device lease', async (t) => {
   const f = fixture(t),
     s = await f.ready();
@@ -324,6 +826,78 @@ test('registered OCR/template parameters and reference space reach the official 
     { template: 'template.png', threshold: 0.8, method: 5, green_mask: true },
   );
   assert.equal((await s.close()).code, 0);
+});
+
+test('recognition accepts bounded same-aspect generic canvases and rejects distortion before OCR', async (t) => {
+  const f = fixture(t),
+    s = await f.ready();
+  const input = { data: png(800, 600).toString('base64'), width: 800, height: 600 };
+  for (const referenceSize of [
+    [640, 480],
+    [320, 240],
+  ]) {
+    const result = await s.command({
+      operation: 'recognize',
+      kind: 'ocr',
+      image: input,
+      referenceSize,
+      roi: [10, 20, 200, 50],
+    });
+    assert.deepEqual(result.result.coordinateSize, referenceSize);
+    assert.equal(result.result.hit, true);
+    assert.ok(f.trace().includes(`image-resize:${referenceSize[0]}:${referenceSize[1]}`));
+  }
+  const before = f.trace().filter((line) => line.startsWith('recognition:')).length;
+  for (const referenceSize of [
+    [],
+    [640],
+    [640, 480, 1],
+    [0, 480],
+    [640, 0],
+    [8193, 1],
+    [1, 8193],
+    [640.5, 480],
+    ['640', 480],
+  ])
+    assert.match(
+      (await s.command({ operation: 'recognize', kind: 'ocr', image: input, referenceSize })).error,
+      /referenceSize requires two integers/,
+    );
+  assert.match(
+    (
+      await s.command({
+        operation: 'recognize',
+        kind: 'ocr',
+        image: input,
+        referenceSize: [8192, 8192],
+      })
+    ).error,
+    /image dimensions out of range/,
+  );
+  assert.match(
+    (
+      await s.command({
+        operation: 'recognize',
+        kind: 'ocr',
+        image: input,
+        referenceSize: [640, 360],
+      })
+    ).error,
+    /preserve the source frame aspect ratio/,
+  );
+  assert.match(
+    (
+      await s.command({
+        operation: 'recognize',
+        kind: 'ocr',
+        image: input,
+        referenceSize: [640, 480],
+        roi: [639, 479, 2, 2],
+      })
+    ).error,
+    /ROI outside recognition image/,
+  );
+  assert.equal(f.trace().filter((line) => line.startsWith('recognition:')).length, before);
 });
 
 test('OCR preserves the complete upstream replacement table and rejects excess entries', async (t) => {
@@ -594,7 +1168,7 @@ test('unsupported recognition parameters fail closed before invoking an algorith
   const template = { ...base, kind: 'template', template: 'template.png' };
   const color = { ...base, kind: 'color', method: 40, lower: [0, 0, 0], upper: [179, 255, 255] };
   for (const command of [
-    { ...base, referenceSize: [1920, 1080] },
+    { ...base, referenceSize: [640, 480] },
     { ...base, threshold: 2 },
     { ...base, onlyRec: true },
     { ...base, replace: [['invalid']] },
@@ -670,7 +1244,7 @@ test('offline validation loads synthetic OCR without a controller and reports un
   );
 });
 
-test('MaaTouch is the only input backend, AVD extras are explicit, capture is independent', async (t) => {
+test('legacy AVD extras retain default MaaTouch and the independent frame/action lifecycle', async (t) => {
   const f = fixture(t),
     s = await f.connected('', { avd: true });
   assert.equal(f.trace().filter((line) => line.startsWith('controller-create:')).length, 1);
@@ -691,6 +1265,182 @@ test('MaaTouch is the only input backend, AVD extras are explicit, capture is in
   assert.equal((await s.close()).code, 0);
   assert.ok(existsSync(f.lockPath), 'persistent OS lock file must not be removed');
 });
+
+function controllerOptions(f) {
+  const created = f.trace().findLast((line) => line.startsWith('controller-create:'));
+  assert.ok(created, 'a controller must be created');
+  const [, input, capture, config] = created.match(/^controller-create:(\d+):(\d+):(\{.*\}):/u);
+  return { input: Number(input), capture: BigInt(capture), config: JSON.parse(config) };
+}
+
+for (const [touchMode, input] of [
+  ['maatouch', 4],
+  ['minitouch', 2],
+  ['adb', 1],
+]) {
+  for (const method of ['auto', 'adb', 'mumu', 'ldplayer', 'avd']) {
+    test(`${method} capture preserves the selected ${touchMode} input`, async (t) => {
+      const f = fixture(t);
+      const s = await f.connected('', {
+        touchMode,
+        capture: { method, emulatorPath: f.root, instanceIndex: 3, pid: 8421 },
+      });
+      const options = controllerOptions(f);
+      assert.equal(options.input, input);
+      assert.equal(options.capture & 64n, method === 'adb' ? 0n : 64n);
+      if (['mumu', 'ldplayer', 'avd'].includes(method)) assert.equal(options.capture, 64n);
+      assert.deepEqual(
+        options.config,
+        method === 'mumu'
+          ? { extras: { mumu: { enable: true, path: f.root, index: 3 } } }
+          : method === 'ldplayer'
+            ? { extras: { ld: { enable: true, path: f.root, index: 3, pid: 8421 } } }
+            : method === 'adb'
+              ? {}
+              : { extras: { avd: { enable: true } } },
+      );
+      await s.command({ operation: 'frame' });
+      assert.deepEqual((await s.command({ operation: 'click', x: 40, y: 50 })).result, accepted);
+      assert.deepEqual((await s.command({ operation: 'press_key', key: 'back' })).result, accepted);
+      if (touchMode === 'adb') {
+        assert.match(
+          (await s.command({ operation: 'long_press', x: 40, y: 50, durationMs: 100 })).error,
+          /selected input touch capability failed/,
+        );
+      }
+      assert.deepEqual((await s.command({ operation: 'stop' })).result, accepted);
+      assert.equal(f.trace().filter((line) => line.startsWith('controller-create:')).length, 1);
+      assert.equal((await s.close()).code, 0);
+    });
+  }
+}
+
+test('omitted capture automatically probes AVD with ordinary capture and defaults to MaaTouch', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  const options = controllerOptions(f);
+  assert.equal(options.input, 4);
+  assert.equal(options.capture & 64n, 64n);
+  assert.notEqual(options.capture, 64n);
+  assert.deepEqual(options.config, { extras: { avd: { enable: true } } });
+  assert.equal((await s.close()).code, 0);
+});
+
+test('verified AVD console identity only overrides fixed screenshot commands for TCP transports', async (t) => {
+  for (const method of ['auto', 'avd']) {
+    const f = fixture(t),
+      s = await f.connected('', {
+        address: '127.0.0.1:20001',
+        capture: { method },
+        avdSerial: 'emulator-20000',
+      });
+    const options = controllerOptions(f);
+    assert.equal(options.input, 4);
+    assert.equal(options.capture & 64n, 64n);
+    assert.deepEqual(options.config, {
+      extras: { avd: { enable: true } },
+      command: {
+        EmuWebrtcStart: ['{ADB}', '-s', 'emulator-20000', 'emu', 'screenrecord webrtc start'],
+        EmuWebrtcStop: ['{ADB}', '-s', 'emulator-20000', 'emu', 'screenrecord webrtc stop'],
+      },
+    });
+    assert.ok(f.trace().includes('controller-address:127.0.0.1:20001'));
+    assert.ok(existsSync(f.lockPath));
+    assert.equal((await s.close()).code, 0);
+  }
+});
+
+for (const method of ['adb', 'mumu']) {
+  test(`MuMu EmulatorExtras input does not change ${method} screenshot selection`, async (t) => {
+    const f = fixture(t),
+      s = await f.connected('', {
+        touchMode: 'emulator-extras',
+        capture: { method, emulatorPath: f.root, instanceIndex: 2 },
+        touchExtras: { emulatorPath: f.root, instanceIndex: 2 },
+      });
+    const options = controllerOptions(f);
+    assert.equal(options.input, 8);
+    assert.equal(options.capture & 64n, method === 'adb' ? 0n : 64n);
+    assert.deepEqual(options.config, {
+      extras: { mumu: { enable: true, path: f.root, index: 2 } },
+    });
+    assert.equal((await s.close()).code, 0);
+  });
+}
+
+test('invalid or contradictory framework input/capture settings fail before controller creation', async (t) => {
+  const cases = [
+    { touchMode: 'unknown' },
+    { capture: [] },
+    { capture: { method: 'unknown' } },
+    { capture: { method: 'mumu', emulatorPath: 'relative', instanceIndex: 0 } },
+    { capture: { method: 'mumu', instanceIndex: 0 } },
+    { capture: { method: 'mumu', emulatorPath: '.', instanceIndex: -1 } },
+    { touchMode: 'emulator-extras', capture: { method: 'adb' } },
+    { touchMode: 'emulator-extras', capture: { method: 'auto' } },
+    { touchMode: 'emulator-extras', capture: { method: 'avd' } },
+    { avdSerial: 'emulator-0' },
+    { avdSerial: 'emulator-02000' },
+    { avdSerial: 'emulator-65535' },
+    { avdSerial: 'emulator-20000;arbitrary' },
+    { avdSerial: 'emulator-20000', capture: { method: 'adb' } },
+  ];
+  for (const selected of cases) {
+    const f = fixture(t),
+      s = f.session(f.control(selected));
+    assert.equal((await s.close()).code, 1);
+    assert.equal(
+      f.trace().some((line) => line.startsWith('controller-create:')),
+      false,
+    );
+  }
+  for (const method of ['mumu', 'ldplayer']) {
+    const f = fixture(t),
+      s = f.session(
+        f.control({
+          touchMode: 'emulator-extras',
+          capture: { method, emulatorPath: f.root, instanceIndex: 0, pid: 123 },
+          touchExtras: { emulatorPath: f.root, instanceIndex: 1 },
+        }),
+      );
+    assert.equal((await s.close()).code, 1);
+    assert.match(s.stderr, /same instance|same device/);
+    assert.equal(
+      f.trace().some((line) => line.startsWith('controller-create:')),
+      false,
+    );
+  }
+  for (const pid of [undefined, 0, -1, 1.5, 2147483648]) {
+    const f = fixture(t),
+      s = f.session(
+        f.control({ capture: { method: 'ldplayer', emulatorPath: f.root, instanceIndex: 0, pid } }),
+      );
+    assert.equal((await s.close()).code, 1);
+    assert.match(s.stderr, /positive signed 32-bit pid/);
+    assert.equal(
+      f.trace().some((line) => line.startsWith('controller-create:')),
+      false,
+    );
+  }
+});
+
+for (const configuration of [
+  { touchMode: 'maatouch' },
+  { capture: { method: 'auto' } },
+  { touchExtras: {} },
+  { avdSerial: 'emulator-20000' },
+]) {
+  test(`recognition mode refuses ${Object.keys(configuration)[0]} controller configuration`, async (t) => {
+    const f = fixture(t),
+      s = f.session({ ...f.config, ...configuration });
+    assert.equal((await s.close()).code, 1);
+    assert.match(s.stderr, /forbids controller configuration/);
+    assert.equal(
+      f.trace().some((line) => line.startsWith('controller-create:')),
+      false,
+    );
+  });
+}
 
 test('navigation uses held endpoint and inertia compensation; drag remains one segment', async (t) => {
   const f = fixture(t),
@@ -937,7 +1687,7 @@ for (const scenario of ['native-hang', 'async-hang']) {
   });
 }
 
-test('MaaCore lease excludes framework before library load and is retained through destruction', async (t) => {
+test('shared OS lease excludes framework before library load and is retained through destruction', async (t) => {
   const f = fixture(t);
   const holder = f.session({ lockPath: f.lockPath }, '', '--lease-only');
   await holder.wait((message) => message.type === 'ready');
@@ -1016,4 +1766,98 @@ test('recognition misses remain structured misses', async (t) => {
     { hit: false, matches: [], engine: 'maafw' },
   );
   assert.equal((await s.close()).code, 0);
+});
+
+test('typed app lifecycle uses official controller APIs without a frame and invalidates old coordinates', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  assert.deepEqual(
+    (await s.command({ operation: 'start_app', appId: 'com.example.game' })).result,
+    accepted,
+  );
+  assert.deepEqual(
+    (
+      await s.command({
+        operation: 'start_app',
+        appId: 'com.example.game',
+        intent: 'com.example.game/.MainActivity',
+      })
+    ).result,
+    accepted,
+  );
+  await s.command({ operation: 'frame' });
+  assert.deepEqual(
+    (await s.command({ operation: 'stop_app', appId: 'com.example.game' })).result,
+    accepted,
+  );
+  assert.match((await s.command({ operation: 'click', x: 10, y: 10 })).error, /fresh frame/);
+  assert.deepEqual(
+    f.trace().filter((line) => /^(start|stop)-app:/.test(line)),
+    [
+      'start-app:com.example.game',
+      'start-app:com.example.game/.MainActivity',
+      'stop-app:com.example.game',
+    ],
+  );
+});
+test('app lifecycle rejects shell fragments mismatched components and unsupported fields before input', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  for (const command of [
+    { operation: 'start_app', appId: 'com.example.game;id' },
+    { operation: 'start_app', appId: 'com.example.game', intent: 'com.other.app/.MainActivity' },
+    {
+      operation: 'start_app',
+      appId: 'com.example.game',
+      intent: 'com.example.game/.MainActivity --es key value',
+    },
+    { operation: 'stop_app', appId: 'com.example.game', intent: 'com.example.game/.MainActivity' },
+  ])
+    assert.ok((await s.command(command)).error);
+  assert.equal(
+    f.trace().some((line) => /^(start|stop)-app:/.test(line)),
+    false,
+  );
+});
+test('app lifecycle keeps explicit failures and timeouts distinct without replay', async (t) => {
+  for (const scenario of ['app-rejected', 'app-failed']) {
+    const f = fixture(t),
+      s = await f.connected(scenario);
+    assert.ok((await s.command({ operation: 'start_app', appId: 'com.example.game' })).error);
+    assert.equal(f.trace().filter((line) => line === 'start-app:com.example.game').length, 1);
+  }
+  const f = fixture(t),
+    s = await f.connected('app-hang', { asyncTimeoutMs: 80 });
+  s.send({
+    protocolVersion: 1,
+    id: 'unknown-app-stop',
+    operation: 'stop_app',
+    appId: 'com.example.game',
+  });
+  assert.equal((await s.exit).code, 124);
+  assert.match(s.stderr, /result unknown, do not replay/);
+  assert.equal(f.trace().filter((line) => line === 'stop-app:com.example.game').length, 1);
+});
+test('app lifecycle can run in the current Custom callback without requeueing the Tasker', async (t) => {
+  const f = fixture(t),
+    s = await f.connected();
+  const task = s.command({ operation: 'pipeline', entry: 'Start', pipeline: customPipeline() });
+  const custom = await s.wait((message) => message.type === 'framework_custom');
+  assert.deepEqual(
+    (
+      await s.command({
+        operation: 'start_app',
+        appId: 'com.example.game',
+        callbackId: custom.callbackId,
+      })
+    ).result,
+    accepted,
+  );
+  assert.deepEqual(
+    (await s.command({ operation: 'custom_result', callbackId: custom.callbackId, success: true }))
+      .result,
+    accepted,
+  );
+  assert.deepEqual((await task).result, accepted);
+  assert.equal(f.trace().filter((line) => line === 'start-app:com.example.game').length, 1);
 });
