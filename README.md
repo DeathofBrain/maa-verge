@@ -15,32 +15,32 @@
 
 Maa Verge 是一款面向 **Windows、macOS 和 Linux** 的免费开源明日方舟桌面助手，基于 [MAA](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 的自动化核心。把基建、公招、自动作战等日常安排成任务表，在一个窗口中连接多个模拟器实例，为各设备选择任务、查看进度并分别停止执行。
 
-> 当前版本为 **[v0.1.3 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.3)**，带来新的任务中心、多设备执行监控、作业库与下载更新体验。完整变化和验证边界见[版本说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/releases/v0.1.3.md)。
+> 当前版本为 **[v0.1.4 正式版](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.4)**，加入持久 Agent 会话与审批托管预览，改进作业执行和结果同步，并修复更新校验问题。完整变化和验证边界见[版本说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/releases/v0.1.4.md)。
 
-> **Agent 功能将于后续 v1.0.0 版本推出，敬请期待。** 当前版本暂不提供 AI 托管或视觉自主操作。
+> **Agent 功能正面向后续 v1.0.0 持续完善。** 本版先提供会话、记忆、审批与有限托管的预览能力，自主解新关卡与视觉控制尚未开放。
 
 > **Maa Verge 后续规划**：计划使用 MaaFramework 原语化复刻目前依赖的 MaaCore 能力，为后续插件市场、Agent 操作及更完善的回调提供基础。这项工作尚未完成，当前版本仍使用 MaaCore；这是 Maa Verge 自身的开发计划，与上游项目的开发路线无关。
 
 ## 下载与安装
 
-从 **[GitHub Releases](https://github.com/DeathofBrain/maa-verge/releases)** 选择系统与架构，或直接下载下表中的 v0.1.3 安装包。
+从 **[GitHub Releases](https://github.com/DeathofBrain/maa-verge/releases)** 选择系统与架构，或直接下载下表中的 v0.1.4 安装包。
 
 | 系统目标                                      | 安装包                                                                                                                                                                                                                        | 安装方式                                                   |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Windows 10 / 11 · x64                         | [EXE（推荐）](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.3/Maa-Verge_0.1.3_x64-setup.exe) / [完整 ZIP](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.3/Maa-Verge_0.1.3_x64-full.zip) | 运行安装程序；ZIP 完全解压到可写目录后运行 `Maa Verge.exe` |
-| macOS 15+ · Apple Silicon（M 系列）           | [DMG · aarch64](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.3/Maa-Verge_0.1.3_aarch64.dmg)                                                                                                               | 打开映像，将应用拖入「应用程序」                           |
-| macOS 15+ · Intel                             | [DMG · x64](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.3/Maa-Verge_0.1.3_x64.dmg)                                                                                                                       | 打开映像，将应用拖入「应用程序」                           |
-| Linux · x64（以 Ubuntu 22.04 / 24.04 为目标） | [AppImage](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.3/Maa-Verge_0.1.3_amd64.AppImage)                                                                                                                 | 赋予执行权限后运行                                         |
+| Windows 10 / 11 · x64                         | [EXE（推荐）](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.4/Maa-Verge_0.1.4_x64-setup.exe) / [完整 ZIP](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.4/Maa-Verge_0.1.4_x64-full.zip) | 运行安装程序；ZIP 完全解压到可写目录后运行 `Maa Verge.exe` |
+| macOS 15+ · Apple Silicon（M 系列）           | [DMG · aarch64](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.4/Maa-Verge_0.1.4_aarch64.dmg)                                                                                                               | 打开映像，将应用拖入「应用程序」                           |
+| macOS 15+ · Intel                             | [DMG · x64](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.4/Maa-Verge_0.1.4_x64.dmg)                                                                                                                       | 打开映像，将应用拖入「应用程序」                           |
+| Linux · x64（以 Ubuntu 22.04 / 24.04 为目标） | [AppImage](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.4/Maa-Verge_0.1.4_amd64.AppImage)                                                                                                                 | 赋予执行权限后运行                                         |
 
-Release 页的安装包位于 **Assets**；**Source code** 为源码归档，普通使用无需下载。下载后可用 [SHA256SUMS.txt](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.3/SHA256SUMS.txt) 核对文件。
+Release 页的安装包位于 **Assets**；**Source code** 为源码归档，普通使用无需下载。下载后可用 [SHA256SUMS.txt](https://github.com/DeathofBrain/maa-verge/releases/download/v0.1.4/SHA256SUMS.txt) 核对文件。
 
 - **游戏与模拟器**：自行安装安卓模拟器和明日方舟，开启 ADB 调试，并完成游戏登录。
 - **首次组件准备**：Windows EXE 默认勾选 MaaCore 与 MaaResource，可按需取消；完整 ZIP 已包含两者。首次启动会校验并导入随附组件。未附带组件时，以及 macOS / Linux 首次使用时，需要联网下载核心和资源，无需另装 Python、Node.js、Bun 或下载工具。
 - **系统依赖**：Windows 使用 WebView2，缺少时安装程序会引导安装，ZIP 用户需自行准备；Linux 需要系统 WebKit / GTK 等桌面库及 AppImage 所需的 FUSE，其他发行版需自行确认依赖。
 
-Windows 安装包尚无发布者签名；macOS 采用完整的本地签名（ad-hoc），尚无 Developer ID 签名与公证。macOS 首次打开可能需要在「系统设置 → 隐私与安全性」选择「仍要打开」，详见[安装与首次放行](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/app-updates.md#macos-签名与首次放行)。应用内更新另有更新签名校验，两者用途不同。
+Windows 安装包尚无发布者签名；macOS 采用完整的本地签名（ad-hoc），尚无 Developer ID 签名与公证。macOS 首次打开可能需要在「系统设置 → 隐私与安全性」选择「仍要打开」，详见[安装与首次放行](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/app-updates.md#macos-签名与首次放行)。应用内更新另有更新签名校验，两者用途不同。
 
-也可在「设置 → 更新 → Mirror酱」配置 [Mirror酱](https://mirrorchyan.com?source=maa_verge_readme)。**Mirror酱用户端的高速下载是付费服务，需要有效 CDK**；Maa Verge 本身免费开源，GitHub 官方免费下载继续保留，详见[服务说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/mirrorchyan.md)。
+也可在「设置 → 更新 → Mirror酱」配置 [Mirror酱](https://mirrorchyan.com?source=maa_verge_readme)。**Mirror酱用户端的高速下载是付费服务，需要有效 CDK**；Maa Verge 本身免费开源，GitHub 官方免费下载继续保留，详见[服务说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/mirrorchyan.md)。
 
 ## 能做什么
 
@@ -49,6 +49,7 @@ Windows 安装包尚无发布者签名；macOS 采用完整的本地签名（ad-
 - **按设备查看执行**：在「任务 → 执行监控」切换设备，查看任务进度、材料掉落、基建反馈与失败原因；底栏随时打开运行详情、日志和画面，支持单独或批量停止。
 - **管理与执行作业**：从本地 JSON 或 PRTS Plus 预览导入普通、保全、悖论作业与作业集，整理本地分类、批量入队，保留来源署名并查看干员需求。
 - **使用工具与每日定时**：识别仓库与干员、计算公招标签、按目标补货，为已保存的任务表安排每日执行；识别结果保留采集时间并可导出。
+- **预览 Agent 会话与审批托管**：配置模型后开展持久对话、管理记忆，通过审批运行已有任务表、工具和作业。
 - **分别更新软件、核心和资源**：统一下载代理、进度与安全续传，核心和资源在设备空闲时生效；本地保存任务表、设置和执行记录，支持浅色与深色主题。
 
 > **基建估算目前为草稿模块，更多、更全面的功能尚待开发。**
@@ -57,14 +58,15 @@ Windows 安装包尚无发布者签名；macOS 采用完整的本地签名（ad-
 
 三平台共用任务表、作业库和多设备管理界面，**通用连接方式为 ADB**；具体模拟器能否使用，还取决于它在对应系统上的版本与 ADB 支持。
 
-| 模拟器 / 连接方式                  | 当前接入能力                                                   | 使用边界                                                                            |
-| ---------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Windows MuMu                       | 读取已启动实例的名称、编号与实际 ADB 地址，可自动配置增强截图  | 支持不同安装目录和非默认端口；增强截图需匹配本机 SDK 与实例                         |
-| Windows 雷电                       | 根据实例信息及端口归属发现设备，可自动配置增强截图             | 需匹配运行实例与本机 SDK；真实设备验收仍待完成                                      |
-| BlueStacks、夜神等 ADB 模拟器      | 查找常见 ADB 路径及已知本机地址；BlueStacks 可读取实例端口配置 | 自动识别失败时手动填写地址与 ADB，具体系统和版本需自行确认                          |
-| 其他可通过 ADB 访问的模拟器 / 设备 | Windows、macOS、Linux 均可手动配置连接                         | 增强截图仅适用于上述 Windows MuMu / 雷电；PlayCover 与 Windows 原生游戏窗口尚未接入 |
+| 模拟器 / 连接方式                  | 当前接入能力                                                   | 使用边界                                                                  |
+| ---------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Windows MuMu                       | 读取已启动实例的名称、编号与实际 ADB 地址，可自动配置增强截图  | 支持不同安装目录和非默认端口；增强截图需匹配本机 SDK 与实例               |
+| Windows 雷电                       | 根据实例信息及端口归属发现设备，可自动配置增强截图             | 需匹配运行实例与本机 SDK；真实设备验收仍待完成                            |
+| macOS arm64 · ModAVD               | 可用 `AVD + MaaFwAdb` 与 `emulator-N` 串号接入增强截图         | 串号需对应实际实例；当前仅有单实例增强链路记录                            |
+| BlueStacks、夜神等 ADB 模拟器      | 查找常见 ADB 路径及已知本机地址；BlueStacks 可读取实例端口配置 | 自动识别失败时手动填写地址与 ADB，具体系统和版本需自行确认                |
+| 其他可通过 ADB 访问的模拟器 / 设备 | Windows、macOS、Linux 均可手动配置连接                         | 其他模拟器的增强截图需分别核验；PlayCover 与 Windows 原生游戏窗口尚未接入 |
 
-当前实机记录覆盖**一个 Windows MuMu 实例的连接与增强截图**；真实多开、雷电、不同游戏客户端及 macOS / Linux 的设备操作仍待分别验收。平台目标与合成测试通过不代表所有模拟器均已实测，详细条件见[连接说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/emulator-connection.md)与[多开说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/multi-instance.md)。Maa Verge 管理的是已启动实例，不自动创建或启停模拟器。
+当前实机记录覆盖**一个 Windows MuMu 实例的连接与增强截图，以及一个 macOS arm64 ModAVD 实例的共享内存增强截图链路**；ModAVD 记录依据用户重连会话的日志与只读检查确认，上述记录不代表完整游戏执行验收。真实多开、雷电、其他模拟器、不同游戏客户端及 Linux 设备操作仍待分别验收。平台目标与合成测试通过不代表所有模拟器均已实测，详细条件见[连接说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/emulator-connection.md)、[ModAVD 诊断](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/modavd-capture-diagnosis.md)与[多开说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/multi-instance.md)。Maa Verge 管理的是已启动实例，不自动创建或启停模拟器。
 
 ### 界面预览
 
@@ -122,13 +124,13 @@ Windows 安装包尚无发布者签名；macOS 采用完整的本地签名（ad-
 
 要在多个实例上运行同一张任务表，可在启动窗口多选设备；常用组合可保存为任务表与设备的绑定。每台设备同一时间只能执行一项任务，也请只交给一个助手控制。未配置定时计划时，任务需手动开始。
 
-更多用法：[任务设置](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/maa-task-settings.md) · [设备绑定](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/task-device-bindings.md) · [多开说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/multi-instance.md) · [工具箱与定时](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/toolbox-schedules.md)
+更多用法：[任务设置](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/maa-task-settings.md) · [设备绑定](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/task-device-bindings.md) · [多开说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/multi-instance.md) · [工具箱与定时](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/toolbox-schedules.md)
 
 ## 常见问题
 
 ### 找不到或连不上模拟器怎么办？
 
-确认模拟器已启动、ADB 调试已开启，并处理模拟器里的授权提示，再到「设备」重新发现。自动识别失败时，手动填写连接地址并选择模拟器自带的 ADB。修改配置后先停止任务、断开，再重新连接；增强截图失败时可明确改选 ADB，详见[连接设置](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/connection-settings.md)。
+确认模拟器已启动、ADB 调试已开启，并处理模拟器里的授权提示，再到「设备」重新发现。自动识别失败时，手动填写连接地址并选择模拟器自带的 ADB。修改配置后先停止任务、断开，再重新连接；增强截图失败时可明确改选 ADB，详见[连接设置](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/connection-settings.md)。
 
 ### 下载失败或速度较慢怎么办？
 
@@ -138,29 +140,33 @@ Windows 安装包尚无发布者签名；macOS 采用完整的本地签名（ad-
 
 在「设置 → 更新」分别检查。应用更新下载并校验后，可选择「立即更新并重启」或「下次启动时更新」；后者须真正退出再打开，最小化到托盘不会安装。Windows EXE、macOS DMG、Linux AppImage 使用对应完整安装包更新，ZIP 版须备份后手动更新。
 
-**旧 MSI、Linux DEB / RPM 及仅支持旧更新归档的 macOS 版本需手动迁移一次**，具体步骤见[本版升级说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/releases/v0.1.3.md#升级说明)。安装前完全退出并备份，macOS 需确认系统为 15 或更新版本。
+**旧 MSI、Linux DEB / RPM 及仅支持旧更新归档的 macOS 版本需手动迁移一次**，具体步骤见[本版升级说明](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/releases/v0.1.4.md#升级说明)。安装前完全退出并备份，macOS 需确认系统为 15 或更新版本。
 
 应用、MaaCore 和游戏资源独立管理，核心已是最新版时仍可能有资源更新。核心与资源等待所有设备安全空闲后切换，失败时保留原组合；应用内版本回滚暂不支持。
 
 ### 支持定时执行和 AI 托管吗？
 
-支持每日定时，AI 托管尚未开放。在已保存任务表的「定时计划」中选择设备和时间，应用运行期间按电脑本地时间触发；普通定时遇到设备忙时跳过，退出或休眠期间错过的触发不补跑。
+支持每日定时。在已保存任务表的「定时计划」中选择设备和时间，应用运行期间按电脑本地时间触发；普通定时遇到设备忙时跳过，退出或休眠期间错过的触发不补跑。
 
-Windows 提供默认关闭的提前唤醒选项，受硬件和电源策略影响，实际休眠恢复与定时游戏流程仍待验收；macOS / Linux 不支持系统唤醒。详见[定时使用与限制](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/toolbox-schedules.md)。**Agent 功能将于后续 v1.0.0 版本推出，敬请期待。**
+Windows 提供默认关闭的提前唤醒选项，受硬件和电源策略影响，实际休眠恢复与定时游戏流程仍待验收；macOS / Linux 不支持系统唤醒。详见[定时使用与限制](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/toolbox-schedules.md)。
+
+本版提供 Agent 会话、审批和有限托管的预览能力。先在「设置 → 模型与 Agent → 模型连接」配置兼容 Responses API 的服务与凭据，再进入「Agent 助手」；计划模式用于查询与草稿，目标模式中的实际操作和有限托管需明确审批。自主解新关卡与视觉控制尚未开放，真实供应商、系统凭据和设备执行仍需分别验收，详见[Agent 使用与边界](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/agent-integration.md)。
 
 ### 配置、作业和执行记录如何备份？
 
 **完全退出应用**后，备份整个 `config` 文件夹，以及自行选择的作业 JSON 目录。默认 `config` 与程序并列：macOS 位于 `.app` 同级，Linux 位于 AppImage 同级；数据库、执行记录和结果截图在其中的 `native` 子目录。使用自定义数据根时以实际位置为准，可在「设置 → 数据与诊断 → 配置文件」查看和选择下次启动的位置，选择目录不会自动搬移旧数据。
 
-从 v0.1.0 升级或迁移电脑时，请一并保留旧数据和仍被引用的自定义组件目录，详见[数据目录与迁移](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/runtime-migration.md#数据交接与回退)。
+从 v0.1.0 升级或迁移电脑时，请一并保留旧数据和仍被引用的自定义组件目录，详见[数据目录与迁移](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/runtime-migration.md#数据交接与回退)。
 
 ### macOS 卸载后为什么还有核心和资源？
 
-macOS 默认将核心和资源保存在用户的 `Library/Application Support/Maa Verge/`，与应用包分开。可通过「设置 → 关于 → 卸载 Maa Verge」将当前应用及默认组件移到废纸篓，保留配置和自定义目录；直接在 Finder 删除应用不会清理组件。详见[组件目录](https://github.com/DeathofBrain/maa-verge/blob/v0.1.3/docs/maacore-runtime.md#下载与安装目录)。
+macOS 默认将核心和资源保存在用户的 `Library/Application Support/Maa Verge/`，与应用包分开。可通过「设置 → 关于 → 卸载 Maa Verge」将当前应用及默认组件移到废纸篓，保留配置和自定义目录；直接在 Finder 删除应用不会清理组件。详见[组件目录](https://github.com/DeathofBrain/maa-verge/blob/v0.1.4/docs/maacore-runtime.md#下载与安装目录)。
 
 ### 会向外部服务发送数据吗？
 
 设置与执行记录保存在本机。活动日历、下载和更新会访问相应网络服务；社区作业搜索、预览和导入会访问 PRTS Plus，手动评价或启用默认关闭的通关后自动点赞会向该服务提交评价。新建自动作战任务的掉落汇报与原版 MAA 默认一致，可在任务设置中关闭向企鹅物流和一图流汇报。
+
+使用 Agent 时，对话上下文及本次使用的相关记忆、工具结果会发送给所配置的模型服务，模型调用费用由服务商收取；外部 MCP 调用会连接对应服务。
 
 ## 遇到问题
 
