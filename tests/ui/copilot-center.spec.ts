@@ -133,7 +133,7 @@ test('disabled entries do not change a single annihilation work into a navigatio
   await expect(queue(page).getByLabel('导航关卡 3', { exact: true })).toHaveCount(0);
 });
 
-test('new ordinary queue entries follow declared difficulties and repeated adds preserve their order', async ({
+test('new ordinary queue entries follow declared difficulties, default to normal and preserve repeated adds', async ({
   page,
 }) => {
   await openCenter(page);
@@ -152,7 +152,14 @@ test('new ordinary queue entries follow declared difficulties and repeated adds 
   await expect(entries.nth(1)).toContainText('突袭');
   await expect(entries.nth(2)).toContainText('普通');
   await expect(entries.nth(3)).toContainText('突袭');
-  for (const index of [4, 5, 6]) await expect(entries.nth(index)).toContainText('难度未声明');
+  for (const index of [4, 5, 6]) await expect(entries.nth(index)).toContainText('普通');
+  for (const title of ['未声明作业', '缺省难度作业', '无效难度作业'])
+    await expect(
+      library(page)
+        .getByRole('button', { name: `加入队列 ${title}`, exact: true })
+        .locator('..')
+        .getByLabel('作业支持难度', { exact: true }),
+    ).toContainText('普通');
   await expect(queue(page).getByRole('textbox')).toHaveCount(0);
   await expect(queue(page).getByRole('checkbox', { name: '突袭', exact: true })).toHaveCount(0);
   await library(page).getByRole('button', { name: '加入队列 双难度作业', exact: true }).click();

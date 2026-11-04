@@ -262,7 +262,7 @@ test('legacy StartUp and CloseDown defaults load the same client they submit', a
   expect(f.workers[2].submitted[1].params.client_type).toBe('Official');
 });
 
-test('an update arriving during reconnection holds the task at a safe boundary', async () => {
+test('an update arriving during client reconnection waits for the run to finish', async () => {
   const f = fixture(),
     r = f.runtime,
     device = await f.connect(),
@@ -281,14 +281,16 @@ test('an update arriving during reconnection holds the task at a safe boundary',
   await waiting.promise;
   const channel = r.updates.channel('resource');
   r.store.put('update', 'resource', { ...channel, status: 'waiting_idle' });
+  expect(r.busy()).toBe(true);
   gate.resolve(true);
   const run = await pending;
-  expect(f.workers[1].submitted).toHaveLength(0);
-  expect(r.store.get('execution', run.id).boundaryWaiting).toBe(true);
-  expect(r.busy()).toBe(false);
-  r.store.put('update', 'resource', { ...channel, status: 'active' });
-  await r.tick(true);
   expect(f.workers[1].submitted).toHaveLength(1);
+  expect(r.busy()).toBe(true);
+  expect(r.updates.channel('resource').status).toBe('waiting_idle');
+  f.workers[1].complete();
+  await r.tick(true);
+  expect(r.store.get('run', run.id).status).toBe('completed');
+  expect(r.busy()).toBe(false);
 });
 
 test('one pending client reconnect does not block another device completing, advancing or stopping', async () => {

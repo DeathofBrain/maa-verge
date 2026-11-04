@@ -475,7 +475,7 @@ describe('combined user data update', () => {
       expect(r.store.get('run', run.id).status).toBe(evidence === 'stopped' ? 'stopped' : 'failed');
     }
   });
-  test('hot update boundary holds and resumes the remaining recognition step', async () => {
+  test('pending updates wait for the entire recognition operation', async () => {
     const { runtime: r, worker, device } = await native();
     await r.handle('plan.save', {
       plan: { id: 'sync', name: '数据', tasks: [{ type: 'UserDataUpdate', params }] },
@@ -486,15 +486,14 @@ describe('combined user data update', () => {
     worker.recognize(1, 'OperBox');
     worker.complete(1);
     await r.tick(true);
-    expect(worker.submitted).toHaveLength(1);
-    expect(r.busy()).toBe(false);
-    r.store.put('update', 'resource', { ...channel, status: 'idle' });
-    await r.tick(true);
     expect(worker.submitted.map((task) => task.type)).toEqual(['OperBox', 'Depot']);
+    expect(r.busy()).toBe(true);
+    expect(r.updates.channel('resource').status).toBe('waiting_idle');
     worker.recognize(2, 'Depot');
     worker.complete(2);
     await r.tick(true);
     expect(r.store.get('run', run.id).status).toBe('completed');
+    expect(r.busy()).toBe(false);
   });
   test('nothing selected and an entirely synced period finish without native calls', async () => {
     const { runtime: r, worker, device } = await native();
@@ -1282,7 +1281,7 @@ describe('parallel device execution', () => {
       synced.filter((event) => event.data.deviceId === deviceB.id).map((event) => event.data.runId),
     ).toEqual([retry.id, retry.id]);
   });
-  test('global updates wait for both idle boundaries and preserve only the device still running its plan', async () => {
+  test('global updates wait for every entire plan while a stopped plan stays stopped', async () => {
     const { r, first, second, deviceA, deviceB } = await dual();
     await r.handle('plan.save', {
       plan: { id: 'shared', name: '热切换多开', tasks: [{ type: 'Award' }, { type: 'Mall' }] },
@@ -1295,7 +1294,7 @@ describe('parallel device execution', () => {
     r.store.put('update', 'resource', { ...channel, status: 'waiting_idle' });
     first.complete(1);
     await r.tick(true);
-    expect(r.store.get('execution', runA.id).boundaryWaiting).toBe(true);
+    expect(first.submitted.map((task) => task.type)).toEqual(['Award', 'Mall']);
     expect(r.busy()).toBe(true);
     await expect(r.beforeSwitch()).rejects.toThrow('核心或异步操作仍在运行');
     second.complete(1, [9]);
@@ -1304,21 +1303,19 @@ describe('parallel device execution', () => {
     second.safeIdle = true;
     second.events.push({ type: 'status', running: false, pendingAsync: [] });
     await r.tick(true);
-    expect(r.store.get('execution', runB.id).boundaryWaiting).toBe(true);
-    expect(r.busy()).toBe(false);
-    expect(first.submitted).toHaveLength(1);
-    expect(second.submitted).toHaveLength(1);
+    expect(second.submitted.map((task) => task.type)).toEqual(['Award', 'Mall']);
+    expect(r.busy()).toBe(true);
     await stopAtIdle(r, first, runA.id);
     expect(r.store.get('run', runA.id).status).toBe('stopped');
     expect(r.store.get('run', runB.id).status).toBe('running');
-    r.store.put('update', 'resource', { ...channel, status: 'active' });
-    await r.tick(true);
-    expect(first.submitted).toHaveLength(1);
-    expect(second.submitted.map((task) => task.type)).toEqual(['Award', 'Mall']);
+    expect(r.busy()).toBe(true);
+    expect(r.updates.channel('resource').status).toBe('waiting_idle');
+    expect(first.submitted).toHaveLength(2);
     second.complete(2);
     await r.tick(true);
     expect(r.store.get('run', runB.id).status).toBe('completed');
     expect(r.store.get('run', runA.id).status).toBe('stopped');
+    expect(r.busy()).toBe(false);
   });
 });
 

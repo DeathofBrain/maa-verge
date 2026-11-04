@@ -139,7 +139,7 @@ test('visible sets load difficulty once, preserve member requirements and share 
   await expect(difficulty).toContainText('突袭');
   await expect(difficulty).toHaveAttribute(
     'title',
-    /普通：2 项；突袭：1 项；难度未声明：1 项；无效：1 项/u,
+    /普通：3 项；突袭：1 项；难度未声明：1 项（按普通处理）；无效：1 项/u,
   );
   const requirements = setRequirements(page);
   await expect(requirements).not.toHaveAttribute('open', '');

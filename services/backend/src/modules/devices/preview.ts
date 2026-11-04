@@ -170,6 +170,8 @@ export class Preview {
   }
   private async sendClick(params: ClickParams): Promise<Accepted> {
     const { deviceId, frameId, x, y } = params;
+    // Rejected input must not reserve the core while an idle update is validating.
+    this.device(deviceId);
     if (this.clicking.has(deviceId)) throw new RpcError(-32011, '上一条点击尚未完成');
     this.clicking.add(deviceId);
     try {

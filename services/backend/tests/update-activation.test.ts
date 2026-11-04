@@ -236,6 +236,7 @@ test('activation publishes integrity, native validation and switch stages before
     events.length = 0;
     activation = updates.activate('core');
     await validating.promise;
+    expect(updates.activating).toBe(true);
     expect(updates.channel('core')).toMatchObject({
       status: 'downloading',
       progress: 85,
@@ -252,6 +253,7 @@ test('activation publishes integrity, native validation and switch stages before
     expect(store.get('active', 'combo')).toBeUndefined();
     allowSwitch.resolve();
     expect((await activation).status).toBe('active');
+    expect(updates.activating).toBe(false);
     const stages = events.filter((event) => event.id === 'core');
     expect(stages[0]).toMatchObject({
       status: 'downloading',
@@ -292,6 +294,7 @@ test('native validation failure restores a terminal state and leaves the working
     await prepare('core');
     rejectValidation = true;
     await expect(updates.activate('core')).rejects.toThrow('更新切换失败');
+    expect(updates.activating).toBe(false);
     expect(updates.channel('core').status).toBe('failed');
     expect(updates.channel('core').downloadSpeedBytesPerSecond).toBeUndefined();
     expect(store.get('active', 'combo')).toEqual(original);
@@ -329,6 +332,7 @@ test('a failed switch retains its verified candidate and a retry validates befor
     const candidate = store.get('staged', 'core');
     rejectSwitch = true;
     await expect(updates.activate('core')).rejects.toThrow('更新切换失败');
+    expect(updates.activating).toBe(false);
     expect(updates.channel('core').status).toBe('staged');
     expect(store.get('active', 'combo')).toEqual(original);
     expect(store.get('staged', 'core')).toEqual(candidate);

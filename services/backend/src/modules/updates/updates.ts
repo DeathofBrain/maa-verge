@@ -769,8 +769,12 @@ export class UpdateService {
   private readonly integrityCache = new SnapshotIntegrityCache();
   private closing = false;
   private bundledBootstrapped = false;
+  private activationInProgress = false;
   private pending = 0;
   private mirrorSettingsRevision = 0;
+  get activating(): boolean {
+    return this.activationInProgress;
+  }
   get pendingOperations(): number {
     return this.pending;
   }
@@ -1881,7 +1885,20 @@ export class UpdateService {
     // Structural checks still reject a candidate that has already disappeared.
     this.reconcileInstalled(false);
     if (this.store.get('staged', channel) && this.busy())
-      return this.change(channel, { status: 'waiting_idle', message: '等待当前任务结束后热切换' });
+      return this.change(channel, {
+        status: 'waiting_idle',
+        message: '等待所有任务表、作业和工具执行结束后校验并应用更新',
+      });
+    // Keep admission closed while the visible status moves from waiting_idle
+    // through integrity checks and native validation to the actual worker switch.
+    this.activationInProgress = true;
+    try {
+      return await this.activateIdleCurrent(channel, candidate);
+    } finally {
+      this.activationInProgress = false;
+    }
+  }
+  private async activateIdleCurrent(channel: string, candidate: any): Promise<any> {
     const state = this.channel(channel);
     // Offline bootstrap applies a candidate within its preparation operation.
     // Keep that operation's progress instead of restarting its bar at zero.
@@ -2028,7 +2045,10 @@ export class UpdateService {
       throw new RpcError(-32020, '候选版本低于当前核心，拒绝自动降级，请重新检查');
     }
     if (this.busy())
-      return this.change(channel, { status: 'waiting_idle', message: '等待当前任务结束后热切换' });
+      return this.change(channel, {
+        status: 'waiting_idle',
+        message: '等待所有任务表、作业和工具执行结束后校验并应用更新',
+      });
     const combo = this.store.get('active', 'combo', {}),
       next = { ...combo };
     if (channel === 'core') {

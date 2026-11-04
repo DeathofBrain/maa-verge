@@ -6,6 +6,7 @@ import type { ScreenFrame } from '@contracts/rpc-types';
 import { mockPreviewImage } from '../../../tests/fixtures/preview-image';
 import { Runtime } from '@backend/app/runtime';
 import { CoreWorker } from '@backend/infrastructure/native/worker';
+import { Preview } from '@backend/modules/devices/preview';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
 
 const roots: string[] = [],
@@ -350,6 +351,42 @@ describe('transient screen frames', () => {
 });
 
 describe('screen input ownership and acknowledgements', () => {
+  test('a closed admission gate rejects a tap before waiting for an in-flight frame', async () => {
+    const worker = new FakeWorker(),
+      deviceId = 'synthetic-preview-device';
+    let available = true;
+    const preview = new Preview({
+      available: () => available,
+      device: () => ({ state: 'idle' }),
+      worker: () => worker,
+      hasRun: () => false,
+      clicked: () => {},
+    });
+    const frame = await preview.frame({ deviceId }),
+      pending = deferred<unknown>();
+    worker.frameResult = () => pending.promise;
+    const reading = preview.frame({ deviceId });
+    available = false;
+    const params = clickParams(frame),
+      clicking = preview.click(params);
+    try {
+      expect(preview.busy).toBe(false);
+      await expect(clicking).rejects.toMatchObject({
+        code: -32011,
+        message: '正在退出或切换核心，请稍后重试',
+      });
+      expect(worker.clicks).toHaveLength(0);
+    } finally {
+      available = true;
+      pending.resolve(image());
+      await Promise.allSettled([reading, clicking]);
+    }
+    expect((await reading).canControl).toBe(true);
+    await expect(preview.click(params)).rejects.toMatchObject({ code: -32011 });
+    expect(preview.busy).toBe(false);
+    expect(worker.clicks).toHaveLength(0);
+  });
+
   test('concurrent and completed duplicates send only one native tap', async () => {
     const { runtime, worker, device } = await nativeRuntime(),
       frame = await getFrame(runtime, device.id);

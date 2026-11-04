@@ -28,7 +28,7 @@
     },
     {
       "file": "docs/maacore-runtime.md",
-      "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+      "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
     },
     {
       "file": "docs/multi-instance.md",
@@ -855,7 +855,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L103-L112",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -882,7 +882,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L59-L74",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -909,7 +909,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L75-L78",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -936,7 +936,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L7-L24",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -963,7 +963,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L25-L30",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -990,7 +990,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L31-L40",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -1017,7 +1017,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L97-L102",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -1046,7 +1046,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L79-L96",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -1072,8 +1072,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L121-L126",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "pointer": "L123-L128",
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -1100,7 +1100,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L41-L58",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -1113,21 +1113,21 @@
         "解压与切换边界",
         "maacore-runtime"
       ],
-      "text": "MaaCore 运行文件的选择性安装 > 解压与切换边界\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 解压与切换边界\n\n选择性解压仍检查归档的全部成员，拒绝路径越界、重复路径、特殊文件、目录链接、无效或循环别名。macOS/Linux 的合法文件别名物化为普通文件；选中的别名不得引用被过滤的目标。不会通过创建系统链接或扁平化子目录绕过筛选。\n\n文件只写入新候选 generation。验证失败不切换；验证成功后仍等待任务空闲边界。切换只重建切换前实际连接成功的设备；离线设备不参与重连，重连失败只把该设备标记离线，不回滚已验证的组件更新。已有活动 generation 与回滚文件不做原位精简。此前安装的完整包会保留，到下一次核心版本更新时才使用精简的新目录。\n\n解压由包内服务的 `--update-job` 模式完成，该进程不打开业务数据库；随后调用 `maaverge-core-worker --validate`，检查必需符号、实际版本和资源加载。资源更新固定 MaaResource commit，候选以对应核心的完整基础资源重新构建，再应用该提交覆盖包，清除前次覆盖残留。核心版本相同不跳过资源检查。",
+      "text": "MaaCore 运行文件的选择性安装 > 解压与切换边界\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 解压与切换边界\n\n选择性解压仍检查归档的全部成员，拒绝路径越界、重复路径、特殊文件、目录链接、无效或循环别名。macOS/Linux 的合法文件别名物化为普通文件；选中的别名不得引用被过滤的目标。不会通过创建系统链接或扁平化子目录绕过筛选。\n\n文件只写入新候选 generation。验证失败不切换；验证成功后仍等待任务空闲边界。切换只重建切换前实际连接成功的设备；离线设备不参与重连，重连失败只把该设备标记离线，不回滚已验证的组件更新。已有活动 generation 与回滚文件不做原位精简。此前安装的完整包会保留，到下一次核心版本更新时才使用精简的新目录。\n\n激活的空闲边界是所有设备上的整张任务表、整次自动作战队列及工具操作全部结束，且核心和异步调用均空闲。等待期间当前执行继续后续任务，不在单项任务或组合识别步骤之间反复校验。全部结束后进行一次激活校验并应用，校验至切换完成期间暂停新执行、外部连接及人工控制；失败保留原有恢复和显式重试流程。\n\n解压由包内服务的 `--update-job` 模式完成，该进程不打开业务数据库；随后调用 `maaverge-core-worker --validate`，检查必需符号、实际版本和资源加载。资源更新固定 MaaResource commit，候选以对应核心的完整基础资源重新构建，再应用该提交覆盖包，清除前次覆盖残留。核心版本相同不跳过资源检查。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "MaaCore 运行文件的选择性安装",
           "解压与切换边界"
         ],
-        "content": "## 解压与切换边界\n\n选择性解压仍检查归档的全部成员，拒绝路径越界、重复路径、特殊文件、目录链接、无效或循环别名。macOS/Linux 的合法文件别名物化为普通文件；选中的别名不得引用被过滤的目标。不会通过创建系统链接或扁平化子目录绕过筛选。\n\n文件只写入新候选 generation。验证失败不切换；验证成功后仍等待任务空闲边界。切换只重建切换前实际连接成功的设备；离线设备不参与重连，重连失败只把该设备标记离线，不回滚已验证的组件更新。已有活动 generation 与回滚文件不做原位精简。此前安装的完整包会保留，到下一次核心版本更新时才使用精简的新目录。\n\n解压由包内服务的 `--update-job` 模式完成，该进程不打开业务数据库；随后调用 `maaverge-core-worker --validate`，检查必需符号、实际版本和资源加载。资源更新固定 MaaResource commit，候选以对应核心的完整基础资源重新构建，再应用该提交覆盖包，清除前次覆盖残留。核心版本相同不跳过资源检查。",
+        "content": "## 解压与切换边界\n\n选择性解压仍检查归档的全部成员，拒绝路径越界、重复路径、特殊文件、目录链接、无效或循环别名。macOS/Linux 的合法文件别名物化为普通文件；选中的别名不得引用被过滤的目标。不会通过创建系统链接或扁平化子目录绕过筛选。\n\n文件只写入新候选 generation。验证失败不切换；验证成功后仍等待任务空闲边界。切换只重建切换前实际连接成功的设备；离线设备不参与重连，重连失败只把该设备标记离线，不回滚已验证的组件更新。已有活动 generation 与回滚文件不做原位精简。此前安装的完整包会保留，到下一次核心版本更新时才使用精简的新目录。\n\n激活的空闲边界是所有设备上的整张任务表、整次自动作战队列及工具操作全部结束，且核心和异步调用均空闲。等待期间当前执行继续后续任务，不在单项任务或组合识别步骤之间反复校验。全部结束后进行一次激活校验并应用，校验至切换完成期间暂停新执行、外部连接及人工控制；失败保留原有恢复和显式重试流程。\n\n解压由包内服务的 `--update-job` 模式完成，该进程不打开业务数据库；随后调用 `maaverge-core-worker --validate`，检查必需符号、实际版本和资源加载。资源更新固定 MaaResource commit，候选以对应核心的完整基础资源重新构建，再应用该提交覆盖包，清除前次覆盖残留。核心版本相同不跳过资源检查。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L113-L120",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "pointer": "L113-L122",
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -1152,7 +1152,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L1-L6",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -1178,8 +1178,8 @@
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
-        "pointer": "L127-L136",
-        "sha256": "76e3dacdb2c975f4bbefe3acc50701d4b055ca0acd306a74c6966a9c9e4ce47d"
+        "pointer": "L129-L138",
+        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
       }
     },
     {
@@ -31883,5 +31883,5 @@
       }
     }
   ],
-  "digest": "7c7f9f6cd8cddaccf73d2487eb83bf8e10e73de37e91692cb8518cf5ed930d38"
+  "digest": "6fbccf9c586a4f196e07aab401b640ee1087e0338a6de146ac12b53b25ff9ef5"
 }

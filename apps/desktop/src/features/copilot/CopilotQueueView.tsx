@@ -235,15 +235,7 @@ export default function CopilotQueueView({
                       {kind === 'Copilot' && (
                         <StatusPill
                           className="cp-queue-difficulty"
-                          label={
-                            entry.isRaid
-                              ? '突袭'
-                              : record?.difficulty === 1 ||
-                                  record?.difficulty === 2 ||
-                                  record?.difficulty === 3
-                                ? '普通'
-                                : '难度未声明'
-                          }
+                          label={entry.isRaid ? '突袭' : '普通'}
                           tone={entry.isRaid ? 'danger' : 'neutral'}
                         />
                       )}
@@ -343,7 +335,7 @@ export default function CopilotQueueView({
             <summary>游戏内准备与说明</summary>
             <p className="sp-help">
               单份作业请在游戏内选好关卡、难度或演习模式，并从编队界面开始。多份作业仅支持同一区域的主线、SideStory
-              或故事集关卡。普通与突袭按作业声明加入队列；支持两种难度时依次加入普通、突袭。未声明难度的作业请先核对说明。助战限制以核心反馈为准，不使用理智药或源石。
+              或故事集关卡。普通与突袭按作业声明加入队列；支持两种难度时依次加入普通、突袭。未声明难度的作业按普通处理。助战限制以核心反馈为准，不使用理智药或源石。
             </p>
           </details>
         )}

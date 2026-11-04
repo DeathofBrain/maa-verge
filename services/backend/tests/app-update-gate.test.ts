@@ -57,12 +57,12 @@ test('application installation gate blocks new work and automatic activity until
   expect((await runtime.handle('agent.message', { message: '刷1-7三次' })).mode).toBe('mock');
 });
 
-test('application installation rejects runs at a component boundary as well as busy native workers', async () => {
+test('application installation rejects running plans as well as busy native workers', async () => {
   const runtime = fixture();
   await runtime.updates.check('app');
   runtime.store.put('run', 'held', { id: 'held', status: 'running' });
   runtime.store.put('execution', 'held', { boundaryWaiting: true });
-  expect(runtime.busy()).toBe(false);
+  expect(runtime.busy()).toBe(true);
   await expect(runtime.handle('updates.activate', { channel: 'app' })).rejects.toThrow(
     '空闲后安装',
   );
@@ -76,19 +76,24 @@ test('application installation rejects runs at a component boundary as well as b
 });
 
 test('installation waits for a queued component check while preventing new work', async () => {
-  let complete!: (metadata: any) => void;
+  let complete!: (metadata: any) => void, entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
   const runtime = fixture({
-    check: () =>
-      new Promise((resolve) => {
+    check: () => {
+      entered();
+      return new Promise((resolve) => {
         complete = resolve;
-      }),
+      });
+    },
   });
   const checking = runtime.updates.check('core');
   // The operation is queued before its visible state changes to checking.
   expect(runtime.updates.channel('core').status).toBe('idle');
   const installing = runtime.handle('updates.activate', { channel: 'app' });
   const outcome = installing.catch((error) => error);
-  await Bun.sleep(10);
+  await started;
   expect(runtime.updates.pendingOperations).toBe(1);
   expect(runtime.appUpdating).toBe(false);
   await expect(runtime.handle('run.start', {})).rejects.toThrow('准备安装更新');
@@ -319,7 +324,7 @@ test('device inventory discovery reserves the installation gate before a worker 
   const connecting = runtime.connectDevice({ address: '127.0.0.1:5555' });
   const rejected = connecting.catch(() => {});
   await started;
-  expect(runtime.busy()).toBe(false);
+  expect(runtime.busy()).toBe(true);
   await expect(runtime.handle('updates.activate', { channel: 'app' })).rejects.toThrow(
     '空闲后安装',
   );

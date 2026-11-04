@@ -188,6 +188,9 @@ export class Runtime {
   private endpointProbes?: Promise<void>;
   private reconnect: any[] = [];
   private switching = false;
+  private get activatingComponents() {
+    return this.switching || !!this.updates?.activating;
+  }
   private autoConnecting = false;
   private lastDiagnostics: string[] = [];
   private nextAutoConnect = Date.now() + 2000;
@@ -360,7 +363,7 @@ export class Runtime {
         },
     });
     this.preview = new Preview({
-      available: () => this.running && !this.switching,
+      available: () => this.running && !this.activatingComponents,
       device: (id) => this.store.get('device', id),
       worker: (id) => this.workers.get(id),
       hasRun: (id) =>
@@ -533,7 +536,10 @@ export class Runtime {
     if (!this.running || this.appUpdating || this.appUpdatePreparing)
       return result('runtime', '应用正在退出或安装更新');
     if (this.initializingComponents) return result('updates', '正在后台准备随附组件，请稍后再执行');
-    if (this.switching || this.updates?.channels().some((item) => item.status === 'waiting_idle'))
+    if (
+      this.activatingComponents ||
+      this.updates?.channels().some((item) => item.status === 'waiting_idle')
+    )
       return result('updates', '正在准备切换核心与资源');
     const owner = this.executions().find(
       (item) => item.deviceId === deviceId && item.status === 'running',
@@ -695,10 +701,10 @@ export class Runtime {
       this.automaticActive.size > 0 ||
       !!this.preview?.busy ||
       this.connecting.size > 0 ||
-      this.executions().some(
-        (run) =>
-          run.status === 'running' && !this.store.get('execution', run.id, {}).boundaryWaiting,
-      ) ||
+      this.connectingAddresses.size > 0 ||
+      this.starts.size > 0 ||
+      this.clientSwitches.size > 0 ||
+      this.executions().some((run) => run.status === 'running') ||
       [...this.workers.values()].some((worker) => !worker.safeIdle)
     );
   }
@@ -1358,7 +1364,7 @@ export class Runtime {
       !this.initializingComponents &&
       !this.appUpdating &&
       !this.appUpdatePreparing &&
-      !this.switching &&
+      !this.activatingComponents &&
       parseSettings(this.store.get('settings', 'main')).autoConnect &&
       !!this.store.get('active', 'combo', {}).core
     );
@@ -1704,7 +1710,7 @@ export class Runtime {
       reserved = false,
       worker: Worker | undefined;
     try {
-      if (this.switching && !internal)
+      if (this.activatingComponents && !internal)
         throw new RpcError(-32011, '正在切换核心与资源，暂不能连接设备');
       if (this.initializingComponents && !internal)
         throw new RpcError(-32021, '正在后台准备随附组件，请稍后再连接设备');
@@ -1728,7 +1734,7 @@ export class Runtime {
       if (
         !this.running ||
         this.appUpdating ||
-        ((this.appUpdatePreparing || this.switching) && !internal)
+        ((this.appUpdatePreparing || this.activatingComponents) && !internal)
       )
         throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
       const settings = parseSettings(this.store.get('settings', 'main'));
@@ -1768,7 +1774,7 @@ export class Runtime {
       if (
         !this.running ||
         this.appUpdating ||
-        ((this.appUpdatePreparing || this.switching) && !internal)
+        ((this.appUpdatePreparing || this.activatingComponents) && !internal)
       )
         throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
       if (detected?.instance && detected.capture.method !== 'adb') {
@@ -1856,7 +1862,7 @@ export class Runtime {
       this.connecting.add(id!);
       reserved = true;
       const adb = await this.adbExecutable(selected);
-      if (!this.running || (this.switching && !internal))
+      if (!this.running || (this.activatingComponents && !internal))
         throw new RpcError(-32011, '正在退出或切换核心，连接已取消');
       if (automatic) this.validateAutomatic(address, attempt);
       const connection = (({ config, touchMode, adbLite, clientType }) => ({
@@ -1905,7 +1911,7 @@ export class Runtime {
         if (
           !this.running ||
           this.appUpdating ||
-          ((this.appUpdatePreparing || this.switching) && !internal)
+          ((this.appUpdatePreparing || this.activatingComponents) && !internal)
         )
           throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，连接已取消');
       }
@@ -1953,7 +1959,7 @@ export class Runtime {
     if (this.autoConnecting) throw new RpcError(-32011, '模拟器自动连接正在进行');
     this.autoConnecting = true;
     try {
-      if (!this.running || this.appUpdating || this.appUpdatePreparing || this.switching)
+      if (!this.running || this.appUpdating || this.appUpdatePreparing || this.activatingComponents)
         throw new RpcError(-32011, '正在退出、安装应用更新或切换核心，请稍后重试');
       if (!automatic) {
         this.suppressed.clear();
@@ -2638,20 +2644,6 @@ export class Runtime {
           this.finishNativeRun(run, 'stopped', '执行已停止，保存的配置及未执行项保留');
         return;
       }
-      if (this.updates.channels().some((channel) => channel.status === 'waiting_idle')) {
-        Object.assign(state, {
-          submitting: false,
-          boundaryWaiting: true,
-          nextIndex: index,
-          nextSyncSteps: syncSteps,
-          nextSyncIndex: syncIndex,
-        });
-        this.store.put('execution', run.id, state);
-        run.message = '已到达安全边界，等待核心与资源更新后继续执行';
-        this.putExecution(run.id, run);
-        this.emit('run.progress', run.message, { run });
-        return;
-      }
       const result = await worker.task(task);
       if (run.toolKind === 'inventory' && run.inventoryTargets?.[index]) {
         run.executedInventory = index;
@@ -2692,22 +2684,7 @@ export class Runtime {
     const plan = this.executionSnapshot(run.id);
     if (index >= plan.tasks.length)
       this.finishNativeRun(run, 'completed', '所有任务链均报告成功且核心已空闲');
-    else if (this.updates.channels().some((c) => c.status === 'waiting_idle')) {
-      const state = this.store.get('execution', run.id, {});
-      Object.assign(state, {
-        boundaryWaiting: true,
-        nextIndex: index,
-        nextSyncSteps: syncSteps,
-        nextSyncIndex: syncIndex,
-      });
-      this.store.put('execution', run.id, state);
-      Object.assign(run, {
-        progress: Math.floor((index * 100) / plan.tasks.length),
-        message: '当前任务完成，等待核心与资源热切换后继续剩余计划',
-      });
-      this.putExecution(run.id, run);
-      this.emit('run.progress', run.message, { run });
-    } else await this.continueNativeTask(run, index, syncSteps, syncIndex);
+    else await this.continueNativeTask(run, index, syncSteps, syncIndex);
   }
   private async continueNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
     const changesClient =
@@ -3323,20 +3300,7 @@ export class Runtime {
       }
       if (!run) continue;
       const state = this.store.get('execution', run.id, {});
-      if (state.boundaryWaiting && !state.stopRequested) {
-        if (
-          worker.connected &&
-          worker.safeIdle &&
-          !this.updates.channels().some((c) => c.status === 'waiting_idle') &&
-          !this.switching
-        )
-          await this.continueNativeTask(
-            run,
-            state.nextIndex,
-            state.nextSyncSteps,
-            state.nextSyncIndex,
-          );
-      } else if (
+      if (
         (state.stopRequested || state.copilotStopRequested) &&
         Date.now() - (state.stopRequested || state.copilotStopRequested) > 15_000
       ) {
