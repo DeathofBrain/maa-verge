@@ -7,7 +7,8 @@
 - [签名发行 41877183394](https://github.com/DeathofBrain/maa-verge/actions/runs/41877183394) 的版本／完整检查门禁、四宿主构建与草稿任务全部成功。两种 macOS DMG 均通过完整映像与版本更新签名、安装、窗口及包内服务启动和退出清理；Linux 通过 Ubuntu 22.04 干净容器后端 smoke；Windows 通过完整离线组件初始化及重启 smoke。
 - 公开前后均从 REST 数值 ID 核对唯一发行及 **11 项附件**，实际下载五个完整安装包，SHA-256 与 GitHub 资产摘要及 `SHA256SUMS.txt` 的对应记录一致；四个更新安装包通过版本绑定的密码学签名验证。`latest.json` 的四平台目标、地址、内嵌签名和发行说明与附件／标签源码一致，校验清单覆盖其余十项资产。临时安装包已清理，核对记录保存在本机忽略目录 `.tools/release-v0.1.4/`。
 - 五个安装包与 `latest.json` 的公开下载入口均在无认证 HEAD 请求中返回 HTTP 200，大小与已验证的资产一致。README 下载与使用文档链接已更新至本版，保留 v0.1.3 合成截图、品牌文案及后续规划，并对齐本版 Agent 预览、模型服务请求及既有设备验证边界；更新文档同步当前正式版与生效前重新读取内容的校验行为。产品知识按官方入口重新生成，覆盖 610 条记录／14 个来源，生成同步、文档／图片／标签目标链接及源文件格式检查通过。
-- [Mirror酱说明同步 41884351371](https://github.com/DeathofBrain/maa-verge/actions/runs/41884351371) 已成功；[四平台安装包同步 41884350948](https://github.com/DeathofBrain/maa-verge/actions/runs/41884350948) 当前仍排队，由既有监控继续跟进。GitHub 正式版与全部下载附件已公开可用，不以 Mirror酱排队重复发布或上传。
+- [Mirror酱说明同步 41884351371](https://github.com/DeathofBrain/maa-verge/actions/runs/41884351371) 已成功；[四平台安装包同步 41884350948](https://github.com/DeathofBrain/maa-verge/actions/runs/41884350948) 中，Intel macOS 于第 1 次 attempt 成功，Windows、macOS arm64 与 Linux 于第 3 次 attempt 成功，日志均确认 `v0.1.4`／`stable`。最新 attempt 的整体状态仍为失败：Intel macOS 重复上传返回 HTTP 409／`code=8006`（该平台架构下版本已存在），未覆盖此前已成功的镜像；不为消除这一状态继续重跑、重新公开 Release 或覆盖旧资产。前两次 attempt 的其他缺口均有托管 runner 未分配、没有执行步骤的证据，累计两次重跑后已完成四平台同步。
+- 北京时间 **2026-11-05 03:26**，不带 CDK 请求 Mirror酱四平台 `stable` 元数据，全部返回 HTTP 200、`code=0`、`version_name=v0.1.4` 及发行说明，确认线上版本已齐备；核对记录保存在 `.tools/release-v0.1.4/mirror-review.json`。本次没有使用 CDK 下载镜像文件，镜像端验证范围为成功上传日志与公开元数据；安装包内容与更新签名验证使用前述 GitHub 正式资产。发行与同步收尾已完成。
 - 以上为发行构建、安装 smoke 和下载内容验证，不代表真实游戏、真实模型供应商或所有系统版本实机验收；本次未连接真实设备或调用付费模型。Windows 仍无发布者签名，macOS 为 ad-hoc 签名，未完成 Apple Developer ID 签名与公证；macOS 15 CI 不能替代其他最低系统目标的验收。
 
 ## v0.1.4 Actions 重试与完整性修复（Windows x64，2026-11-05）
