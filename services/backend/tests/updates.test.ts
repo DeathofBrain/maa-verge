@@ -388,18 +388,32 @@ test('a core update cancelling a resource candidate does not acknowledge bundled
   await updates.close();
 });
 
-test('repeat activation still rejects an active generation whose files were changed', async () => {
-  const root = await temp(),
-    store = new MemoryStore();
-  const updates = fixtureUpdates(root, store, () => false);
-  await updates.check('core');
-  await updates.prepare('core');
-  await updates.activate('core');
-  await writeFile(path.join(store.get('active', 'combo').core.path, 'MaaUtils.dll'), 'broken');
-  await expect(updates.activate('core')).rejects.toThrow('更新候选已失效');
-  expect(store.get('active', 'combo')).toBeUndefined();
-  await updates.close();
-});
+test.each(['core', 'resource'])(
+  'repeat %s activation still rejects an active generation whose same-size files were changed',
+  async (channel) => {
+    const root = await temp(),
+      store = new MemoryStore();
+    const updates = fixtureUpdates(root, store, () => false);
+    await updates.check('core');
+    await updates.prepare('core');
+    await updates.activate('core');
+    if (channel === 'resource') {
+      await updates.check('resource');
+      await updates.prepare('resource');
+      await updates.activate('resource');
+    }
+    const active = store.get('active', 'combo');
+    await writeFile(
+      path.join(active[channel].path, channel === 'core' ? 'MaaUtils.dll' : 'resource/tasks/old'),
+      channel === 'core' ? 'broken' : 'evil',
+    );
+    await expect(updates.activate(channel)).rejects.toThrow('更新候选已失效');
+    expect(store.get('active', 'combo')).toEqual(
+      channel === 'core' ? undefined : { core: active.core, resource: active.core },
+    );
+    await updates.close();
+  },
+);
 
 test('a damaged same-version repair candidate is rejected even with a working active generation', async () => {
   const root = await temp(),

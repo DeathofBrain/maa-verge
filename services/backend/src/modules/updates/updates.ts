@@ -910,6 +910,7 @@ export class UpdateService {
   private async reconcileCurrent(
     scope: ReconcileScope = 'all',
     progress?: (completed: number, total: number) => void,
+    verifyFresh = false,
   ): Promise<void> {
     // Inventory checks yield to execution polling. Only initial startup scans
     // synchronously, before any workers or RPC requests can run.
@@ -942,7 +943,7 @@ export class UpdateService {
                 snapshot.path,
                 snapshot.installedFiles,
                 (done) => progress?.(completed + done, total),
-                scope === 'all' ? undefined : this.integrityCache,
+                scope === 'all' || verifyFresh ? undefined : this.integrityCache,
               )
             ).installedHash !== snapshot.installedHash
           )
@@ -1914,6 +1915,8 @@ export class UpdateService {
     let previousProgress = startProgress,
       previousTime = Date.now();
     try {
+      // Same-size writes can preserve filesystem timestamps. Read payload bytes
+      // again at activation instead of trusting digests from an earlier operation.
       await this.reconcileCurrent(
         channel === 'app' ? 'active' : (channel as 'core' | 'resource'),
         candidate
@@ -1936,6 +1939,7 @@ export class UpdateService {
               });
             }
           : undefined,
+        true,
       );
       return await this.activateVerifiedCurrent(channel, candidate);
     } catch (error) {
