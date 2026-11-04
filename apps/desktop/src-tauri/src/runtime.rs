@@ -1208,6 +1208,7 @@ mod tests {
                     pending: Arc::new(Mutex::new(HashMap::new())),
                     next_id: AtomicU64::new(1),
                     close_preferences: Mutex::new(ClosePreferences::default()),
+                    credentials: Arc::new(crate::credentials::Credentials::default()),
                     update_gate: RwLock::new(()),
                     updating: AtomicBool::new(false),
                     transport_failed: AtomicBool::new(false),
