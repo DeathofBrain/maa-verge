@@ -13,6 +13,7 @@ const common = backendTests(
   'generation-retention',
   'updates',
   'update-activation',
+  'update-run-completion',
   'bundled-components',
   'copilot-storage',
   'native-environment',

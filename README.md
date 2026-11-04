@@ -19,6 +19,8 @@ Maa Verge 是一款面向 **Windows、macOS 和 Linux** 的免费开源明日方
 
 > **Agent 功能将于后续 v1.0.0 版本推出，敬请期待。** 当前版本暂不提供 AI 托管或视觉自主操作。
 
+> **Maa Verge 后续规划**：计划使用 MaaFramework 原语化复刻目前依赖的 MaaCore 能力，为后续插件市场、Agent 操作及更完善的回调提供基础。这项工作尚未完成，当前版本仍使用 MaaCore；这是 Maa Verge 自身的开发计划，与上游项目的开发路线无关。
+
 ## 下载与安装
 
 从 **[GitHub Releases](https://github.com/DeathofBrain/maa-verge/releases)** 选择系统与架构，或直接下载下表中的 v0.1.3 安装包。
