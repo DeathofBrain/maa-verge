@@ -11,6 +11,7 @@ type CredentialCall = {
 };
 type CredentialHarness = {
   calls: CredentialCall[];
+  saveOrder: string[];
   failSave: boolean;
   holdStatuses: boolean;
   heldStatuses: number;
@@ -46,6 +47,7 @@ async function modelPage(
       const pendingStatuses: (() => void)[] = [];
       const harness: CredentialHarness = {
         calls: [],
+        saveOrder: [],
         failSave: false,
         holdStatuses: !!holdStatuses,
         heldStatuses: 0,
@@ -57,7 +59,9 @@ async function modelPage(
       };
       target.modelCredentials = harness;
       api.call = async (method, params) => {
+        if (method === 'settings.save') harness.saveOrder.push(method);
         if (!method.startsWith('model.credential.')) return original(method, params);
+        // Like the desktop bridge, credential commands scope themselves to saved settings.
         const current = (await original('app.snapshot', {})) as Snapshot;
         const model = current.settings.model;
         const scope = JSON.stringify([
@@ -72,6 +76,7 @@ async function modelPage(
             : {}),
         });
         if (method === 'model.credential.set') {
+          harness.saveOrder.push(method);
           if (harness.failSave) throw new Error('合成凭据保存失败');
           credentials.set(scope, {
             secret: String(params.secret),
@@ -118,10 +123,11 @@ async function credentialCalls(page: Page, method: string) {
   );
 }
 
-test('model credential drafts survive connection autosaves and continued typing until explicit save', async ({
+test('model connection and credential drafts save together only after explicit configuration save', async ({
   page,
 }) => {
   const panel = await modelPage(page);
+  await page.clock.install();
   const secret = panel.getByLabel('模型 API 密钥', { exact: true });
   const sentinel = 'synthetic-unsaved-credential-sentinel';
   await secret.fill(sentinel);
@@ -129,16 +135,13 @@ test('model credential drafts survive connection autosaves and continued typing 
 
   const address = 'https://second.synthetic.example/v1';
   await panel.getByLabel('模型 API 地址', { exact: true }).fill(address);
-  await expect.poll(async () => (await savedModel(page)).baseUrl).toBe(address);
   await expect(secret).toHaveValue(sentinel);
 
   await panel.getByLabel('模型提供商', { exact: true }).fill('synthetic-provider');
-  await expect.poll(async () => (await savedModel(page)).provider).toBe('synthetic-provider');
   await expect(secret).toHaveValue(sentinel);
 
   const model = panel.getByLabel('模型名称', { exact: true });
   await model.fill('synthetic-model-two');
-  await expect.poll(async () => (await savedModel(page)).model).toBe('synthetic-model-two');
   await expect(secret).toHaveValue(sentinel);
   await expect(model).toBeEnabled();
   await model.focus();
@@ -147,9 +150,12 @@ test('model credential drafts survive connection autosaves and continued typing 
     input.setSelectionRange(input.value.length, input.value.length);
   });
   await model.pressSequentially('-extended');
-  await expect
-    .poll(async () => (await savedModel(page)).model)
-    .toBe('synthetic-model-two-extended');
+  await secret.focus();
+  await page.clock.fastForward(1000);
+  expect(await savedModel(page)).toEqual(initialModel);
+  expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.settingsWrites)).toBe(
+    0,
+  );
   await expect(secret).toHaveValue(sentinel);
   expect(await credentialCalls(page, 'model.credential.set')).toEqual([]);
 
@@ -159,9 +165,17 @@ test('model credential drafts survive connection autosaves and continued typing 
     session: JSON.stringify(sessionStorage),
   }));
   expect(JSON.stringify(persisted)).not.toContain(sentinel);
-  await panel.getByRole('button', { name: '保存密钥', exact: true }).click();
+  await panel.getByRole('button', { name: '保存配置', exact: true }).click();
   await expect(secret).toHaveValue('');
   await expect(panel.getByText('已配置凭据', { exact: true })).toBeVisible();
+  expect(await savedModel(page)).toEqual({
+    provider: 'synthetic-provider',
+    baseUrl: address,
+    model: 'synthetic-model-two-extended',
+  });
+  expect(
+    await page.evaluate(() => (window as CredentialWindow).modelCredentials.saveOrder),
+  ).toEqual(['settings.save', 'model.credential.set']);
   expect(await credentialCalls(page, 'model.credential.set')).toEqual([
     {
       method: 'model.credential.set',
@@ -172,68 +186,86 @@ test('model credential drafts survive connection autosaves and continued typing 
   ]);
 });
 
-test('unsaved and invalid model connections cannot manage the previous connection credentials', async ({
+test('invalid or failed model configuration saves retain drafts without touching previous credentials', async ({
   page,
 }) => {
   const panel = await modelPage(page, { initiallyConfigured: true });
   const secret = panel.getByLabel('模型 API 密钥', { exact: true });
-  const save = panel.getByRole('button', { name: '保存密钥', exact: true });
+  const save = panel.getByRole('button', { name: '保存配置', exact: true });
   const remove = panel.getByRole('button', { name: '删除密钥', exact: true });
   await expect(panel.getByText('已配置凭据', { exact: true })).toBeVisible();
   await secret.fill('synthetic-retained-draft');
-  await page.evaluate(() => {
-    (window as HarnessWindow).runtimeHarness.failSettings = true;
-  });
-  await panel
-    .getByLabel('模型 API 地址', { exact: true })
-    .fill('https://unsaved.synthetic.example/v1');
-  await expect(page.locator('.toast.error')).toContainText('合成设置保存失败');
-  await expect(save).toBeDisabled();
-  await expect(remove).toBeDisabled();
-  await expect(panel.getByText('已配置凭据', { exact: true })).toHaveCount(0);
-  await expect(secret).toHaveValue('synthetic-retained-draft');
-  expect((await savedModel(page)).baseUrl).toBe(initialModel.baseUrl);
-
-  await page.evaluate(() => {
-    (window as HarnessWindow).runtimeHarness.failSettings = false;
-  });
   await panel.getByLabel('模型 API 地址', { exact: true }).fill('https://');
   await secret.focus();
   await expect(save).toBeDisabled();
   await expect(remove).toBeDisabled();
+  expect(await savedModel(page)).toEqual(initialModel);
+  await page.evaluate(() => {
+    (window as HarnessWindow).runtimeHarness.failSettings = true;
+  });
+  const nextAddress = 'https://unsaved.synthetic.example/v1';
+  await panel.getByLabel('模型 API 地址', { exact: true }).fill(nextAddress);
+  await save.click();
+  await expect(page.locator('.toast.error')).toContainText('合成设置保存失败');
+  await expect(remove).toBeDisabled();
   await expect(panel.getByText('已配置凭据', { exact: true })).toHaveCount(0);
   await expect(secret).toHaveValue('synthetic-retained-draft');
+  await expect(panel.getByLabel('模型 API 地址', { exact: true })).toHaveValue(nextAddress);
   expect((await savedModel(page)).baseUrl).toBe(initialModel.baseUrl);
   expect(await credentialCalls(page, 'model.credential.set')).toEqual([]);
   expect(await credentialCalls(page, 'model.credential.delete')).toEqual([]);
+
+  await page.evaluate(() => {
+    (window as HarnessWindow).runtimeHarness.failSettings = false;
+  });
+  await save.click();
+  await expect(secret).toHaveValue('');
+  expect((await savedModel(page)).baseUrl).toBe(nextAddress);
+  expect(await credentialCalls(page, 'model.credential.set')).toEqual([
+    {
+      method: 'model.credential.set',
+      target: JSON.stringify([initialModel.provider, nextAddress]),
+      secret: 'synthetic-retained-draft',
+      storage: 'keychain',
+    },
+  ]);
 });
 
-test('failed explicit model credential saves keep the draft available for a successful retry', async ({
+test('failed combined credential saves keep model and secret drafts available for retry', async ({
   page,
 }) => {
   const panel = await modelPage(page);
   const secret = panel.getByLabel('模型 API 密钥', { exact: true });
+  const nextAddress = 'https://retry.synthetic.example/v1';
+  await panel.getByLabel('模型 API 地址', { exact: true }).fill(nextAddress);
+  await panel.getByLabel('模型名称', { exact: true }).fill('synthetic-retry-model');
   await secret.fill('synthetic-retry-credential-sentinel');
   await panel.getByLabel('密钥保存方式', { exact: true }).selectOption('session');
   await page.evaluate(() => {
     (window as CredentialWindow).modelCredentials.failSave = true;
   });
-  await panel.getByRole('button', { name: '保存密钥', exact: true }).click();
-  await expect(panel.getByRole('alert')).toContainText('合成凭据保存失败');
+  await panel.getByRole('button', { name: '保存配置', exact: true }).click();
+  await expect(page.locator('.toast.error')).toContainText('合成凭据保存失败');
   await expect(secret).toHaveValue('synthetic-retry-credential-sentinel');
+  await expect(panel.getByLabel('模型 API 地址', { exact: true })).toHaveValue(nextAddress);
+  await expect(panel.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-retry-model');
   await expect(panel.getByText('待配置凭据', { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(() => (window as CredentialWindow).modelCredentials.saveOrder),
+  ).toEqual(['settings.save', 'model.credential.set']);
   await page.evaluate(() => {
     (window as CredentialWindow).modelCredentials.failSave = false;
   });
-  await panel.getByRole('button', { name: '保存密钥', exact: true }).click();
+  await panel.getByRole('button', { name: '保存配置', exact: true }).click();
   await expect(secret).toHaveValue('');
   await expect(panel.getByText('已配置凭据', { exact: true })).toBeVisible();
   const calls = await credentialCalls(page, 'model.credential.set');
   expect(calls).toHaveLength(2);
   expect(calls[1]).toEqual(calls[0]);
+  expect(calls[0].target).toBe(JSON.stringify([initialModel.provider, nextAddress]));
 });
 
-test('saved model credentials remain isolated by provider and URL while model names reuse their scope', async ({
+test('manual model saves do not migrate stored credentials between providers or API addresses', async ({
   page,
 }) => {
   const panel = await modelPage(page, { initiallyConfigured: true });
@@ -241,35 +273,40 @@ test('saved model credentials remain isolated by provider and URL while model na
   const unconfigured = panel.getByText('待配置凭据', { exact: true });
   const address = panel.getByLabel('模型 API 地址', { exact: true });
   const provider = panel.getByLabel('模型提供商', { exact: true });
+  const save = panel.getByRole('button', { name: '保存配置', exact: true });
   const nextAddress = 'https://isolated.synthetic.example/v1';
   await expect(configured).toBeVisible();
   await address.fill(nextAddress);
-  await expect.poll(async () => (await savedModel(page)).baseUrl).toBe(nextAddress);
+  await expect(panel.getByRole('button', { name: '删除密钥', exact: true })).toBeDisabled();
+  expect((await savedModel(page)).baseUrl).toBe(initialModel.baseUrl);
+  await save.click();
   await expect(unconfigured).toBeVisible();
+  expect((await savedModel(page)).baseUrl).toBe(nextAddress);
+  expect(await credentialCalls(page, 'model.credential.set')).toEqual([]);
   await expect(panel.getByRole('button', { name: '删除密钥', exact: true })).toBeDisabled();
   await panel.getByLabel('模型 API 密钥', { exact: true }).fill('synthetic-second-credential');
   await panel.getByLabel('密钥保存方式', { exact: true }).selectOption('session');
-  await panel.getByRole('button', { name: '保存密钥', exact: true }).click();
+  await save.click();
   await expect(configured).toBeVisible();
 
   await panel.getByLabel('模型名称', { exact: true }).fill('another-synthetic-model');
-  await expect.poll(async () => (await savedModel(page)).model).toBe('another-synthetic-model');
+  await save.click();
   await expect(configured).toBeVisible();
   await provider.fill('other-provider');
-  await expect.poll(async () => (await savedModel(page)).provider).toBe('other-provider');
+  await save.click();
   await expect(unconfigured).toBeVisible();
   await expect(panel.getByRole('button', { name: '删除密钥', exact: true })).toBeDisabled();
   await provider.fill(initialModel.provider);
-  await expect.poll(async () => (await savedModel(page)).provider).toBe(initialModel.provider);
+  await save.click();
   await expect(configured).toBeVisible();
 
   await address.fill(initialModel.baseUrl);
-  await expect.poll(async () => (await savedModel(page)).baseUrl).toBe(initialModel.baseUrl);
+  await save.click();
   await expect(configured).toBeVisible();
   await panel.getByRole('button', { name: '删除密钥', exact: true }).click();
   await expect(unconfigured).toBeVisible();
   await address.fill(nextAddress);
-  await expect.poll(async () => (await savedModel(page)).baseUrl).toBe(nextAddress);
+  await save.click();
   await expect(configured).toBeVisible();
   expect(await credentialCalls(page, 'model.credential.set')).toHaveLength(1);
   expect(await credentialCalls(page, 'model.credential.delete')).toEqual([
@@ -280,7 +317,7 @@ test('saved model credentials remain isolated by provider and URL while model na
   ]);
 });
 
-test('a delayed credential status for an old URL cannot replace the active connection status', async ({
+test('a delayed credential status cannot replace the status after saving a new model address', async ({
   page,
 }) => {
   const panel = await modelPage(page, { initiallyConfigured: true, holdStatuses: true });
@@ -292,6 +329,7 @@ test('a delayed credential status for an old URL cannot replace the active conne
   });
   const nextAddress = 'https://late-status.synthetic.example/v1';
   await panel.getByLabel('模型 API 地址', { exact: true }).fill(nextAddress);
+  await panel.getByRole('button', { name: '保存配置', exact: true }).click();
   await expect.poll(async () => (await savedModel(page)).baseUrl).toBe(nextAddress);
   await expect
     .poll(async () =>
@@ -307,4 +345,38 @@ test('a delayed credential status for an old URL cannot replace the active conne
   await expect(panel.getByText('待配置凭据', { exact: true })).toBeVisible();
   await expect(panel.getByText('已配置凭据', { exact: true })).toHaveCount(0);
   await expect(panel.getByRole('button', { name: '删除密钥', exact: true })).toBeDisabled();
+});
+
+test('model reminders and token prices require manual save without rewriting credentials', async ({
+  page,
+}) => {
+  const panel = await modelPage(page, { initiallyConfigured: true });
+  await page.clock.install();
+  await panel.getByLabel('模型调用提醒（次）', { exact: true }).fill('42');
+  await panel.getByLabel('Token 用量提醒', { exact: true }).fill('2048');
+  await panel.getByLabel('每百万输入 Token 单价', { exact: true }).fill('1.25');
+  await panel.getByLabel('每百万输出 Token 单价', { exact: true }).fill('2.5');
+  await panel.getByLabel('费用估算提醒', { exact: true }).fill('10');
+  await panel.getByLabel('模型名称', { exact: true }).focus();
+  await page.clock.fastForward(1000);
+  expect(await savedModel(page)).toEqual(initialModel);
+  expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.settingsWrites)).toBe(
+    0,
+  );
+  await panel.getByRole('button', { name: '保存配置', exact: true }).click();
+  await expect
+    .poll(() => savedModel(page))
+    .toEqual({
+      ...initialModel,
+      softCallReminder: 42,
+      softTokenReminder: 2048,
+      inputPricePerMillion: 1.25,
+      outputPricePerMillion: 2.5,
+      softCostReminder: 10,
+    });
+  expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.settingsWrites)).toBe(
+    1,
+  );
+  expect(await credentialCalls(page, 'model.credential.set')).toEqual([]);
+  expect(await credentialCalls(page, 'model.credential.delete')).toEqual([]);
 });

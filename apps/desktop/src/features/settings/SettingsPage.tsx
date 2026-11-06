@@ -169,7 +169,11 @@ export function SettingsPage({
     )
     .sort((left, right) => categoryOrder.indexOf(left.id) - categoryOrder.indexOf(right.id));
   const selected = matches.find((item) => item.id === category) || matches[0];
-  const saveSettings = (patch: Partial<Settings>, _message?: string): Promise<boolean> => {
+  const saveSettings = (
+    patch: Partial<Settings>,
+    _message?: string,
+    afterSave?: () => Promise<void>,
+  ): Promise<boolean> => {
     const changedPaths =
       patch.componentPaths &&
       Object.fromEntries(
@@ -181,7 +185,7 @@ export function SettingsPage({
     const result = settingsSaveQueue.then(() =>
       onAction('settings', async () => {
         const current = await rpc('app.snapshot', {});
-        return rpc('settings.save', {
+        const saved = await rpc('settings.save', {
           settings: {
             ...current.settings,
             ...patch,
@@ -197,6 +201,8 @@ export function SettingsPage({
               : {}),
           },
         });
+        await afterSave?.();
+        return saved;
       }),
     );
     settingsSaveQueue = result.then(
@@ -365,7 +371,17 @@ export function SettingsPage({
                 <ModelSettings
                   settings={snapshot.settings}
                   busy={busy}
-                  onSave={(model) => saveSettings({ model }, '模型配置已保存')}
+                  onSave={(model, credential) =>
+                    saveSettings(
+                      { model },
+                      '模型配置已保存',
+                      credential
+                        ? async () => {
+                            await rpc('model.credential.set', credential);
+                          }
+                        : undefined,
+                    )
+                  }
                 />
               )}
               {selected.id === 'notifications' && (
