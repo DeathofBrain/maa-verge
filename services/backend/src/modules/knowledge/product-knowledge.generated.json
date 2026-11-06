@@ -44,7 +44,7 @@
     },
     {
       "file": "packages/contracts/schemas/agent.schema.json",
-      "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+      "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
     },
     {
       "file": "packages/contracts/schemas/rpc.schema.json",
@@ -3717,6 +3717,10 @@
           },
           {
             "file": "packages/contracts/schemas/agent.schema.json",
+            "pointer": "#/$defs/AgentTurnProgress"
+          },
+          {
+            "file": "packages/contracts/schemas/agent.schema.json",
             "pointer": "#/$defs/AgentUsage"
           },
           {
@@ -3803,6 +3807,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurn"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnProgress"
         },
         {
           "predicate": "defined-by",
@@ -4601,6 +4610,10 @@
           },
           {
             "file": "packages/contracts/schemas/agent.schema.json",
+            "pointer": "#/$defs/AgentTurnProgress"
+          },
+          {
+            "file": "packages/contracts/schemas/agent.schema.json",
             "pointer": "#/$defs/AgentUsage"
           },
           {
@@ -4632,6 +4645,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnIdentity"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnProgress"
         },
         {
           "predicate": "defined-by",
@@ -4699,6 +4717,10 @@
           },
           {
             "file": "packages/contracts/schemas/agent.schema.json",
+            "pointer": "#/$defs/AgentTurnProgress"
+          },
+          {
+            "file": "packages/contracts/schemas/agent.schema.json",
             "pointer": "#/$defs/AgentUsage"
           },
           {
@@ -4730,6 +4752,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnIdentity"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnProgress"
         },
         {
           "predicate": "defined-by",
@@ -4797,6 +4824,10 @@
           },
           {
             "file": "packages/contracts/schemas/agent.schema.json",
+            "pointer": "#/$defs/AgentTurnProgress"
+          },
+          {
+            "file": "packages/contracts/schemas/agent.schema.json",
             "pointer": "#/$defs/AgentUsage"
           },
           {
@@ -4828,6 +4859,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnIdentity"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnProgress"
         },
         {
           "predicate": "defined-by",
@@ -4891,6 +4927,10 @@
           },
           {
             "file": "packages/contracts/schemas/agent.schema.json",
+            "pointer": "#/$defs/AgentTurnProgress"
+          },
+          {
+            "file": "packages/contracts/schemas/agent.schema.json",
             "pointer": "#/$defs/AgentTurnStartParams"
           },
           {
@@ -4921,6 +4961,11 @@
           "predicate": "defined-by",
           "targetKind": "document",
           "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurn"
+        },
+        {
+          "predicate": "defined-by",
+          "targetKind": "document",
+          "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnProgress"
         },
         {
           "predicate": "defined-by",
@@ -10790,7 +10835,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentAnswer",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -10838,7 +10883,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentChoice",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -10918,7 +10963,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentContextReference",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -10971,7 +11016,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentContextReferenceParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11017,7 +11062,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentCredentialSetParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11066,7 +11111,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentCredentialStatus",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11102,7 +11147,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentDeleteResult",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11131,7 +11176,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentEmptyParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11282,7 +11327,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentInteraction",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11331,7 +11376,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentInteractionListParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11379,7 +11424,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentInteractionRespondParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11415,7 +11460,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentJsonObject",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11473,7 +11518,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentJsonValue",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11517,7 +11562,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMcpCheckResult",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11619,7 +11664,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMcpConfig",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11657,7 +11702,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMcpIdentity",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11703,7 +11748,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMcpListResult",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11745,7 +11790,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMcpSaveParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11784,7 +11829,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMcpServerParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11832,7 +11877,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMcpServerResult",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11888,7 +11933,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMcpTool",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -11934,7 +11979,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMcpToolsResult",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12048,7 +12093,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMemory",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12090,7 +12135,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMemoryDeleteParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12145,7 +12190,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMemoryListParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12206,7 +12251,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMemoryListResult",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12277,7 +12322,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMemorySaveParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12368,7 +12413,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMessage",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12532,7 +12577,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMission",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12616,7 +12661,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMissionCreateParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12654,7 +12699,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMissionIdentity",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12689,7 +12734,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMissionListParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12720,7 +12765,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentMode",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12783,7 +12828,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentScope",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12919,7 +12964,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSession",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -12996,7 +13041,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSessionCreateParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13038,7 +13083,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSessionDeleteParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13147,7 +13192,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSessionDetail",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13194,7 +13239,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSessionGetParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13248,7 +13293,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSessionListParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13309,7 +13354,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSessionListResult",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13393,7 +13438,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSessionUpdateParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13494,7 +13539,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSkill",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13532,7 +13577,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSkillDeleteParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13574,7 +13619,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSkillEnableParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13615,7 +13660,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSkillImportParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13661,7 +13706,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSkillListResult",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13704,7 +13749,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSkillReference",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13763,7 +13808,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentSkillSaveParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13776,7 +13821,7 @@
         "JSON Schema",
         "参数约束"
       ],
-      "text": "AgentTurn\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"title\":\"AgentTurn\",\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"sessionId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"requestId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"status\":{\"type\":\"string\",\"enum\":[\"queued\",\"running\",\"waiting\",\"completed\",\"cancelled\",\"failed\",\"interrupted\"]},\"createdAt\":{\"type\":\"string\",\"maxLength\":40,\"minLength\":1},\"updatedAt\":{\"type\":\"string\",\"maxLength\":40,\"minLength\":1},\"usage\":{\"$ref\":\"#/$defs/AgentUsage\"},\"error\":{\"type\":\"string\",\"maxLength\":4000},\"pendingInteractionId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"reply\":{\"type\":\"string\",\"maxLength\":200000},\"messageId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"missionId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"summaryUsage\":{\"$ref\":\"#/$defs/AgentUsage\"}},\"required\":[\"id\",\"sessionId\",\"status\",\"createdAt\",\"updatedAt\",\"usage\"]}",
+      "text": "AgentTurn\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"title\":\"AgentTurn\",\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"sessionId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"requestId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"status\":{\"type\":\"string\",\"enum\":[\"queued\",\"running\",\"waiting\",\"completed\",\"cancelled\",\"failed\",\"interrupted\"]},\"createdAt\":{\"type\":\"string\",\"maxLength\":40,\"minLength\":1},\"updatedAt\":{\"type\":\"string\",\"maxLength\":40,\"minLength\":1},\"usage\":{\"$ref\":\"#/$defs/AgentUsage\"},\"error\":{\"type\":\"string\",\"maxLength\":4000},\"pendingInteractionId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"reply\":{\"type\":\"string\",\"maxLength\":200000},\"messageId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"missionId\":{\"type\":\"string\",\"maxLength\":128,\"minLength\":1},\"summaryUsage\":{\"$ref\":\"#/$defs/AgentUsage\"},\"progress\":{\"$ref\":\"#/$defs/AgentTurnProgress\"}},\"required\":[\"id\",\"sessionId\",\"status\",\"createdAt\",\"updatedAt\",\"usage\"]}",
       "data": {
         "category": "schema",
         "schema": {
@@ -13849,6 +13894,9 @@
             },
             "summaryUsage": {
               "$ref": "#/$defs/AgentUsage"
+            },
+            "progress": {
+              "$ref": "#/$defs/AgentTurnProgress"
             }
           },
           "required": [
@@ -13867,13 +13915,18 @@
         {
           "predicate": "references",
           "targetKind": "document",
+          "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnProgress"
+        },
+        {
+          "predicate": "references",
+          "targetKind": "document",
           "targetId": "packages/contracts/schemas/agent.schema.json#/$defs/AgentUsage"
         }
       ],
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentTurn",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13911,7 +13964,53 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentTurnIdentity",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
+      }
+    },
+    {
+      "key": "product:schema:packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnProgress",
+      "kind": "document",
+      "id": "packages/contracts/schemas/agent.schema.json#/$defs/AgentTurnProgress",
+      "name": "接口定义 AgentTurnProgress",
+      "aliases": [
+        "AgentTurnProgress",
+        "JSON Schema",
+        "参数约束"
+      ],
+      "text": "AgentTurnProgress\nJSON Schema 定义接口与参数，不代表该能力已通过真实设备或各平台验收；执行仍须业务权限和参数校验。\n{\"title\":\"AgentTurnProgress\",\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"text\":{\"type\":\"string\",\"maxLength\":64000},\"status\":{\"type\":\"string\",\"enum\":[\"waiting\",\"generating\",\"tool_call\"]}},\"required\":[\"text\",\"status\"]}",
+      "data": {
+        "category": "schema",
+        "schema": {
+          "title": "AgentTurnProgress",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 64000
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "waiting",
+                "generating",
+                "tool_call"
+              ]
+            }
+          },
+          "required": [
+            "text",
+            "status"
+          ]
+        },
+        "definitionsStoredSeparately": false,
+        "verification": "schema-only"
+      },
+      "relations": [],
+      "source": {
+        "file": "packages/contracts/schemas/agent.schema.json",
+        "pointer": "#/$defs/AgentTurnProgress",
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -13961,7 +14060,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentTurnStartParams",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14029,7 +14128,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/$defs/AgentUsage",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14061,7 +14160,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.context.reference",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14093,7 +14192,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.interaction.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14125,7 +14224,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.interaction.respond",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14157,7 +14256,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mcp.check",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14189,7 +14288,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mcp.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14221,7 +14320,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mcp.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14253,7 +14352,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mcp.save",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14285,7 +14384,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mcp.server",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14317,7 +14416,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mcp.tools",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14349,7 +14448,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.memory.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14381,7 +14480,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.memory.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14413,7 +14512,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.memory.save",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14445,7 +14544,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mission.create",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14477,7 +14576,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mission.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14509,7 +14608,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mission.resume",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14541,7 +14640,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.mission.revoke",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14573,7 +14672,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.session.create",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14605,7 +14704,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.session.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14637,7 +14736,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.session.get",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14669,7 +14768,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.session.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14701,7 +14800,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.session.update",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14733,7 +14832,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.skill.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14765,7 +14864,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.skill.enable",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14797,7 +14896,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.skill.import",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14829,7 +14928,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.skill.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14861,7 +14960,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.skill.save",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14893,7 +14992,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.turn.cancel",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14925,7 +15024,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.turn.get",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14957,7 +15056,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.turn.resume",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -14989,7 +15088,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/agent.turn.start",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15021,7 +15120,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/model.credential.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15053,7 +15152,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/model.credential.set",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15085,7 +15184,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/params/properties/model.credential.status",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15117,7 +15216,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.context.reference",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15153,7 +15252,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.interaction.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15185,7 +15284,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.interaction.respond",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15217,7 +15316,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mcp.check",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15249,7 +15348,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mcp.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15281,7 +15380,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mcp.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15313,7 +15412,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mcp.save",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15345,7 +15444,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mcp.server",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15377,7 +15476,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mcp.tools",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15409,7 +15508,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.memory.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15441,7 +15540,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.memory.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15473,7 +15572,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.memory.save",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15505,7 +15604,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mission.create",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15541,7 +15640,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mission.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15573,7 +15672,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mission.resume",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15605,7 +15704,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.mission.revoke",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15637,7 +15736,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.session.create",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15669,7 +15768,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.session.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15701,7 +15800,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.session.get",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15733,7 +15832,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.session.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15765,7 +15864,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.session.update",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15797,7 +15896,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.skill.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15829,7 +15928,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.skill.enable",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15861,7 +15960,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.skill.import",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15893,7 +15992,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.skill.list",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15925,7 +16024,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.skill.save",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15957,7 +16056,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.turn.cancel",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -15989,7 +16088,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.turn.get",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -16021,7 +16120,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.turn.resume",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -16053,7 +16152,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/agent.turn.start",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -16085,7 +16184,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/model.credential.delete",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -16117,7 +16216,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/model.credential.set",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -16149,7 +16248,7 @@
       "source": {
         "file": "packages/contracts/schemas/agent.schema.json",
         "pointer": "#/properties/results/properties/model.credential.status",
-        "sha256": "77f024ad0e49990ecc4b740fcbc5e490f6bf9951dc36a129a3d458485966e8de"
+        "sha256": "3ea1c32d139c43d4a5994fd3c5ed48e1613b86bbac212bab17c468af6f1709c0"
       }
     },
     {
@@ -31883,5 +31982,5 @@
       }
     }
   ],
-  "digest": "06024e4471e0c58981d73bbf0108888871483cc371b755c65680601791fce555"
+  "digest": "3be5eaefc27ff1a73acd4f6938a9948633640a49547cb1ca4eab59cf239e6129"
 }

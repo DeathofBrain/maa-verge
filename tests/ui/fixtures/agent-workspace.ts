@@ -4,12 +4,18 @@ import type { Snapshot } from '../../../packages/contracts/src/types';
 
 export async function installAgentScenario(
   page: Page,
-  { interrupted = false, mcpQuestion = false, reviewablePlan = false, missionTargets = false } = {},
+  {
+    interrupted = false,
+    mcpQuestion = false,
+    reviewablePlan = false,
+    missionTargets = false,
+    streaming = false,
+  } = {},
 ) {
   await page.goto('/');
   await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
   await page.evaluate(
-    async ({ interrupted, mcpQuestion, reviewablePlan, missionTargets }) => {
+    async ({ interrupted, mcpQuestion, reviewablePlan, missionTargets, streaming }) => {
       const harness = (window as HarnessWindow).runtimeHarness;
       const original = harness.call;
       const snapshot = (await original('app.snapshot', {})) as Snapshot;
@@ -58,7 +64,30 @@ export async function installAgentScenario(
       const memories: Record<string, unknown>[] = [];
       const missions: Record<string, unknown>[] = [];
       const calls: { method: string; params: Record<string, unknown> }[] = [];
-      Object.assign(window, { agentScenarioCalls: calls });
+      Object.assign(window, {
+        agentScenarioCalls: calls,
+        advanceAgentScenario: (phase: string) => {
+          const turn = turns.at(-1);
+          if (!streaming || !turn) throw new Error('Expected an active synthetic stream');
+          if (phase === 'generating' || phase === 'tool_call') {
+            turn.progress = { text: '合成的未完成内容', status: phase };
+          } else if (phase === 'completed') {
+            turn.status = 'completed';
+            session.status = 'idle';
+            messages.push({
+              id: 'assistant-one',
+              sessionId: session.id,
+              role: 'assistant',
+              content: '合成的最终完整回复',
+              createdAt: now,
+            });
+          } else if (['failed', 'interrupted', 'waiting'].includes(phase)) {
+            turn.status = phase;
+            session.status = phase === 'waiting' ? 'waiting' : 'idle';
+            if (phase !== 'waiting') turn.error = '合成流未完整结束';
+          } else throw new Error(`Unknown synthetic stream phase: ${phase}`);
+        },
+      });
       harness.call = async (method, params) => {
         if (missionTargets && method === 'copilot.workspace.get') {
           const workspace = (await original(method, params)) as { queue: unknown[] };
@@ -120,6 +149,14 @@ export async function installAgentScenario(
             };
             turns.push(turn);
             session.status = 'waiting';
+            if (streaming) {
+              Object.assign(turn, {
+                status: 'running',
+                progress: { text: '', status: 'waiting' },
+              });
+              session.status = 'running';
+              return structuredClone(turn);
+            }
             if (reviewablePlan) {
               const plan = {
                 ...snapshot.plans[0],
@@ -278,6 +315,19 @@ export async function installAgentScenario(
         }
       };
     },
-    { interrupted, mcpQuestion, reviewablePlan, missionTargets },
+    { interrupted, mcpQuestion, reviewablePlan, missionTargets, streaming },
+  );
+}
+
+export async function advanceAgentScenario(
+  page: Page,
+  phase: 'generating' | 'tool_call' | 'completed' | 'failed' | 'interrupted' | 'waiting',
+) {
+  await page.evaluate(
+    (next) =>
+      (window as unknown as { advanceAgentScenario: (phase: string) => void }).advanceAgentScenario(
+        next,
+      ),
+    phase,
   );
 }

@@ -554,6 +554,15 @@ export interface AgentTurn {
   messageId?: string;
   missionId?: string;
   summaryUsage?: AgentUsage;
+  progress?: AgentTurnProgress;
+}
+/**
+ * This interface was referenced by `AgentContract`'s JSON-Schema
+ * via the `definition` "AgentTurnProgress".
+ */
+export interface AgentTurnProgress {
+  text: string;
+  status: 'waiting' | 'generating' | 'tool_call';
 }
 /**
  * This interface was referenced by `AgentContract`'s JSON-Schema

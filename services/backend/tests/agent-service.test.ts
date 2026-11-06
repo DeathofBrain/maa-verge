@@ -12,6 +12,7 @@ import { AgentExecutionPolicy } from '@backend/modules/agent/execution-policy';
 import { AgentLedger } from '@backend/modules/agent/ledger';
 import { AgentService, type AgentServiceHost } from '@backend/modules/agent/service';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
+import { completedEvent, controlledResponsesSse, responsesSse } from './responses-sse';
 
 const model = {
   provider: 'openai-compatible',
@@ -131,7 +132,7 @@ function fixture(replies: Reply[] = [], directory?: string) {
       posted.push(JSON.parse(String(init?.body)));
       const next = replies.shift();
       if (!next) throw new Error('Synthetic model response queue exhausted');
-      return typeof next === 'function' ? next(init) : Response.json(next);
+      return typeof next === 'function' ? next(init) : responsesSse(next);
     }) as typeof fetch,
   };
   const service = new AgentService(store, host);
@@ -203,6 +204,7 @@ test('ordinary Responses answer persists opaque reasoning and usage while plan m
     incomplete: false,
   });
   expect(f.posted[0].store).toBe(false);
+  expect(f.posted[0].stream).toBe(true);
   expect(f.posted[0].previous_response_id).toBeUndefined();
   expect(f.posted[0].tools.some((tool: any) => tool.name === 'maa_start_plan')).toBe(false);
   expect(f.starts).toHaveLength(0);
@@ -216,6 +218,262 @@ test('ordinary Responses answer persists opaque reasoning and usage while plan m
   expect(JSON.stringify(f.events)).not.toContain(credential);
   expect(Buffer.from(f.store.db.serialize()).includes(Buffer.from(credential))).toBe(false);
 });
+
+test('streamed text is visible through typed reads before completion and enters history only after response.completed', async () => {
+  const stream = controlledResponsesSse();
+  const text = '正在分段生成的合成回答';
+  const output = {
+    ...message(text),
+    id: 'streamed-message',
+    role: 'assistant',
+    phase: 'final_answer',
+  };
+  const f = fixture([async () => stream.response]);
+  const session = await f.create();
+  const turn = await f.start(session.id);
+  await until(() => f.posted.length === 1);
+  expect((await f.service.handle('agent.turn.get', { turnId: turn.id })).progress).toEqual({
+    text: '',
+    status: 'waiting',
+  });
+  stream.event({
+    type: 'response.output_item.added',
+    output_index: 0,
+    item: { ...output, content: [], status: 'in_progress' },
+  });
+  stream.event({
+    type: 'response.output_text.delta',
+    item_id: output.id,
+    output_index: 0,
+    content_index: 0,
+    delta: text,
+  });
+  await until(async () => {
+    const detail = await f.service.handle('agent.session.get', { sessionId: session.id });
+    return detail.turns.find((item: AgentTurn) => item.id === turn.id)?.progress?.text === text;
+  });
+  expect((await f.service.handle('agent.turn.get', { turnId: turn.id })).progress).toEqual({
+    text,
+    status: 'generating',
+  });
+  expect(
+    f.service.context.messages(session.id).messages.filter((row) => row.role === 'assistant'),
+  ).toHaveLength(0);
+  expect(f.service.ledger.turn(turn.id).progress).toBeUndefined();
+  expect(Buffer.from(f.store.db.serialize()).includes(Buffer.from(text))).toBe(false);
+  expect(JSON.stringify(f.events)).not.toContain(text);
+  stream.event(completedEvent(result([output])));
+  stream.close();
+  const completed = await turnStatus(f.service, turn.id, 'completed');
+  expect(completed.reply).toBe(text);
+  expect(completed.progress).toBeUndefined();
+  expect(
+    f.service.context.messages(session.id).messages.find((row) => row.role === 'assistant'),
+  ).toMatchObject({ content: text, items: [output] });
+  expect(f.posted).toHaveLength(1);
+});
+
+test('streamed tool arguments execute only after final completion and preserve opaque output and usage on continuation', async () => {
+  const stream = controlledResponsesSse();
+  const reasoning = {
+    type: 'reasoning',
+    id: 'streamed-reasoning',
+    encrypted_content: 'opaque-streamed-reasoning',
+    summary: [{ type: 'summary_text', text: '仅供合成测试' }],
+  };
+  const commentary = {
+    ...message('准备执行已保存任务'),
+    id: 'tool-commentary',
+    role: 'assistant',
+    phase: 'commentary',
+    vendor_extension: { keep: true },
+  };
+  const tool = {
+    ...call('maa_start_plan', { planId: 'saved-plan' }, 'streamed-stable-call'),
+    id: 'streamed-tool-item',
+    status: 'completed',
+  };
+  const f = fixture([async () => stream.response, result([message('已提交，请查看实际结果')])]);
+  const session = await f.create('goal');
+  const turn = await f.start(session.id);
+  await until(() => f.posted.length === 1);
+  stream.event({
+    type: 'response.output_item.added',
+    output_index: 2,
+    item: { ...tool, status: 'in_progress', arguments: '' },
+  });
+  stream.event({
+    type: 'response.function_call_arguments.delta',
+    item_id: tool.id,
+    output_index: 2,
+    delta: '{"planId":',
+  });
+  await until(
+    async () =>
+      (await f.service.handle('agent.turn.get', { turnId: turn.id })).progress?.status ===
+      'tool_call',
+  );
+  expect(f.starts).toHaveLength(0);
+  expect(f.service.ledger.actions(session.id)).toHaveLength(0);
+  expect(f.service.ledger.interactions(session.id)).toHaveLength(0);
+  stream.event({
+    type: 'response.function_call_arguments.delta',
+    item_id: tool.id,
+    output_index: 2,
+    delta: '"saved-plan"}',
+  });
+  stream.event({
+    type: 'response.function_call_arguments.done',
+    item_id: tool.id,
+    output_index: 2,
+    arguments: tool.arguments,
+  });
+  stream.event({ type: 'response.output_item.done', output_index: 2, item: tool });
+  stream.event({
+    type: 'response.output_text.delta',
+    item_id: commentary.id,
+    output_index: 1,
+    content_index: 0,
+    delta: '准备执行已保存任务',
+  });
+  // Even a complete output item cannot cross the final-response execution boundary.
+  await until(
+    async () =>
+      (await f.service.handle('agent.turn.get', { turnId: turn.id })).progress?.text ===
+      '准备执行已保存任务',
+  );
+  expect(f.service.ledger.interactions(session.id)).toHaveLength(0);
+  expect(f.service.ledger.actions(session.id)).toHaveLength(0);
+  expect(
+    f.service.context.messages(session.id).messages.filter((row) => row.role === 'assistant'),
+  ).toHaveLength(0);
+  const output = [reasoning, commentary, tool];
+  stream.event(
+    completedEvent({
+      output,
+      usage: {
+        input_tokens: 10,
+        output_tokens: 4,
+        total_tokens: 14,
+        input_tokens_details: { cached_tokens: 3 },
+        output_tokens_details: { reasoning_tokens: 2 },
+      },
+    }),
+  );
+  stream.close();
+  const waiting = await turnStatus(f.service, turn.id, 'waiting');
+  expect(waiting.progress).toBeUndefined();
+  const approval = f.service.ledger.interactions(session.id, turn.id, 'pending')[0];
+  expect(approval.kind).toBe('approval');
+  expect(f.starts).toHaveLength(0);
+  await f.internal('agent.interaction.respond', {
+    interactionId: approval.id,
+    answer: { decision: 'approve' },
+  });
+  const completed = await turnStatus(f.service, turn.id, 'completed');
+  expect(completed.reply).toBe('已提交，请查看实际结果');
+  expect(completed.usage).toMatchObject({
+    modelCalls: 2,
+    inputTokens: 20,
+    outputTokens: 6,
+    totalTokens: 26,
+    cachedInputTokens: 3,
+    reasoningTokens: 2,
+    incomplete: false,
+  });
+  expect(f.starts).toHaveLength(1);
+  expect(f.posted).toHaveLength(2);
+  expect(f.posted[1].input).toEqual(expect.arrayContaining(output));
+  expect(f.posted[1].input.filter((item: any) => item.type === 'function_call_output')).toEqual([
+    expect.objectContaining({ call_id: tool.call_id }),
+  ]);
+  expect(f.service.ledger.actions(session.id)).toHaveLength(1);
+});
+
+for (const end of ['disconnect', 'stream_error', 'provider_error', 'incomplete', 'cancel'] as const)
+  test(`${end} streams cannot persist or replay partial output or execute an unfinished tool`, async () => {
+    const stream = controlledResponsesSse();
+    const partial = '未完成正文不应成为历史';
+    const callId = 'unfinished-call-' + end;
+    const f = fixture([async () => stream.response, result([message('新一轮安全完成')])]);
+    const session = await f.create('goal');
+    const turn = await f.start(session.id);
+    await until(() => f.posted.length === 1);
+    stream.event({
+      type: 'response.output_text.delta',
+      item_id: 'unfinished-message',
+      output_index: 0,
+      content_index: 0,
+      delta: partial,
+    });
+    stream.event({
+      type: 'response.output_item.added',
+      output_index: 1,
+      item: {
+        id: 'unfinished-tool',
+        type: 'function_call',
+        status: 'in_progress',
+        name: 'maa_start_plan',
+        call_id: callId,
+        arguments: '',
+      },
+    });
+    stream.event({
+      type: 'response.function_call_arguments.delta',
+      item_id: 'unfinished-tool',
+      output_index: 1,
+      delta: '{"planId":',
+    });
+    await until(
+      async () =>
+        (await f.service.handle('agent.turn.get', { turnId: turn.id })).progress?.text === partial,
+    );
+    if (end === 'cancel') await f.service.handle('agent.turn.cancel', { turnId: turn.id });
+    else if (end === 'stream_error') stream.fail();
+    else {
+      if (end === 'provider_error')
+        stream.event({
+          type: 'response.failed',
+          response: { status: 'failed', error: { message: credential } },
+        });
+      if (end === 'incomplete')
+        stream.event({
+          type: 'response.incomplete',
+          response: {
+            status: 'incomplete',
+            output: [message(partial)],
+            incomplete_details: { reason: 'max_output_tokens' },
+          },
+        });
+      stream.close();
+    }
+    const failed = await turnStatus(f.service, turn.id, end === 'cancel' ? 'cancelled' : 'failed');
+    expect(failed.reply).toBeUndefined();
+    expect(failed.progress).toBeUndefined();
+    expect(failed.usage).toMatchObject({ modelCalls: 1, incomplete: true });
+    expect(f.starts).toHaveLength(0);
+    expect(f.service.ledger.actions(session.id)).toHaveLength(0);
+    expect(f.service.ledger.interactions(session.id)).toHaveLength(0);
+    expect(Buffer.from(f.store.db.serialize()).includes(Buffer.from(partial))).toBe(false);
+    expect(JSON.stringify(f.store.all('agent_turn'))).not.toContain(credential);
+    expect(f.posted).toHaveLength(1);
+    let next: AgentTurn | undefined;
+    await until(async () => {
+      try {
+        next = await f.start(session.id, '继续新一轮', 'safe-after-' + end);
+        return true;
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('仍在结束')) return false;
+        throw error;
+      }
+    });
+    await turnStatus(f.service, next!.id, 'completed');
+    expect(f.posted).toHaveLength(2);
+    expect(JSON.stringify(f.posted[1].input)).not.toContain(partial);
+    expect(JSON.stringify(f.posted[1].input)).not.toContain(callId);
+    expect(f.starts).toHaveLength(0);
+    if (end === 'cancel') expect(stream.cancelled).toBe(true);
+  });
 
 test('ask_user persists across restart; its ordinary answer cannot approve an execution; duplicate approval does not execute twice', async () => {
   const f = fixture([

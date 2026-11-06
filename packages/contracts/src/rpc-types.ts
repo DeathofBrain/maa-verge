@@ -2308,6 +2308,11 @@ export interface AgentTurn {
   messageId?: string;
   missionId?: string;
   summaryUsage?: AgentUsage;
+  progress?: AgentTurnProgress;
+}
+export interface AgentTurnProgress {
+  text: string;
+  status: 'waiting' | 'generating' | 'tool_call';
 }
 export interface AgentInteraction {
   id: string;

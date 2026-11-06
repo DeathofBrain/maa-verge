@@ -6,6 +6,12 @@ Maa Verge 使用既有 LangChain／LangGraph TypeScript 与应用服务的 SQLit
 
 在「设置 → 模型与 Agent → 模型连接」填写提供商、API 基础地址、模型名和可选 API 密钥，明确选择系统凭据存储或仅本次桌面会话，再点击「保存配置」一起提交。连接、用量提醒和单价均不自动保存；密钥留空时不修改已有凭据，失败时保留输入供重试。只请求 `POST /responses`，默认 `store:false`，不自动切换 Chat Completions，不自动重试付费请求。服务必须兼容 Responses 输出项、函数调用与本机历史回传；不兼容时明确停止。
 
+模型请求固定使用 `stream:true`，供应商须返回 `text/event-stream`。应用增量解析 SSE 与 UTF-8 分片，通过 `agent.turn.get`／`agent.session.get` 的可选 `turn.progress` 返回临时正文及等待、生成、工具调用状态；界面按现有轮询逐步刷新，正文预览最多 64000 字符。预览只在内存中保留，不写入消息、checkpoint 或事件日志，也不作为下一轮上下文。摘要请求不展示正文预览。
+
+只有收到 `response.completed` 且最终输出通过校验，才保存完整输出项、记录用量并继续工具调用。工具参数的 delta、参数 done 或输出项 done 均不单独授权执行；`phase`、调用 ID、最终不透明推理内容和供应商扩展字段原样保留。失败、取消、断流、`response.incomplete` 或缺少完成事件都会结束本次接收并清除预览，不把部分输出当作成功，不自动重试或切换 API。此前已提交的工具操作仍按业务账本核对。
+
+每次模型请求的本机超时独立计时：从请求开始到首个非空响应体字节最多 120 秒（仅收到 HTTP 头不算首响应）；之后连续 120 秒没有非空响应体字节则判定流空闲超时，SSE 心跳也会重置空闲计时；从发起请求至完成事件总计最多 10 分钟。超时终止连接，并分别提示首响应、流空闲或总时长超时；用户取消与远端 HTTP 状态（包括 504）单独反馈。SSE 能让中间结果提早到达，但不保证消除供应商或中转链路的 504。不支持 SSE 的服务会明确报兼容性错误，不静默接收完整 JSON。
+
 Rust 独占系统钥匙串访问，凭据绑定数据根、提供商及规范化地址。同一地址的模型名变化可以复用密钥；地址变化不会发送旧地址的密钥。公开接口只提供设置、状态和删除，没有读取密钥方法。桌面宿主通过已有子进程 stdio，在开始／恢复时注入密钥及模型连接快照；后台复核配置，仅在当前运行闭包持有密钥。等待问题、取消、结束及退出后释放引用，不声称 JavaScript 字符串能安全擦除。
 
 密钥不进入 Settings、SQLite 业务记录、原文、checkpoint、模型输入、事件或 worker 配置。提供商错误只返回固定错误码／HTTP 状态，不保存原始响应错误、请求头或 SDK cause。没有钥匙串能力时，用户可明确选择桌面会话内存，不降级明文落盘。独立服务 CLI 没有钥匙串读取能力，`host.*` 前缀本身不是 OS 身份认证。
@@ -49,6 +55,6 @@ Rust 独占系统钥匙串访问，凭据绑定数据根、提供商及规范化
 
 `packages/contracts/schemas/agent.schema.json` 定义会话、turn、交互、memory、上下文引用、托管、Skill、MCP 和凭据的参数／结果；`rpc.schema.json` 引用公开映射，另定义内部 `HostAgentRequest`。修改后运行 `pnpm contracts:generate`，生成 TypeScript 与独立校验器。启动立即返回 turn／operation ID，不将长模型调用或审批挂在桌面 RPC 上。
 
-合成验证覆盖 Responses 原样往返、错误脱敏、取消、用量缺失，原文与摘要分离、类型化 checkpoint 重启恢复、账号隔离、答案与审批去重、快照变化、并发预留、未知结果核对、Skill 缩权和本机 MCP 协议。所有夹具使用隔离数据根或本机合成服务，无需游戏、MaaCore、付费请求或真实钥匙串。桌面验证只做行为断言；截图人工检查，不添加外观断言。平台实际钥匙串、真实供应商和真机执行需单独验收。
+合成验证覆盖 Responses SSE 字节分片、UTF-8、事件边界、心跳、长生成、三种超时、失败／断流／取消、完整工具续轮、原样往返、错误脱敏及用量缺失，另有原文与摘要分离、类型化 checkpoint 重启恢复、账号隔离、答案与审批去重、快照变化、并发预留、未知结果核对、Skill 缩权和本机 MCP 协议。所有夹具使用隔离数据根或本机合成服务，无需游戏、MaaCore、付费请求或真实钥匙串。桌面验证只做行为断言；截图人工检查，不添加外观断言。平台实际钥匙串、真实供应商和真机执行需单独验收。
 
-参考：[Responses 会话状态](https://developers.openai.com/api/docs/guides/conversation-state)、[LangGraph JS stores](https://docs.langchain.com/oss/javascript/langgraph/stores)、[Agent Skills 格式](https://agentskills.io/specification)。上下文设计参考 OpenCode 与 Pi 的原文保留和输入投影，不引入其完整应用依赖。
+参考：[Responses 流事件](https://developers.openai.com/api/reference/resources/responses/streaming-events)、[Responses 会话状态](https://developers.openai.com/api/docs/guides/conversation-state)、[LangGraph JS stores](https://docs.langchain.com/oss/javascript/langgraph/stores)、[Agent Skills 格式](https://agentskills.io/specification)。上下文设计参考 OpenCode 与 Pi 的原文保留和输入投影，不引入其完整应用依赖。

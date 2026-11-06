@@ -1,5 +1,5 @@
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
-import { installAgentScenario } from './fixtures/agent-workspace';
+import { advanceAgentScenario, installAgentScenario } from './fixtures/agent-workspace';
 import type { Snapshot } from '../../packages/contracts/src/types';
 
 test('Agent stores ordinary answers separately from execution approval and reloads service sessions across navigation', async ({
@@ -86,6 +86,74 @@ test('interrupted Agent turns require explicit resume and can be cancelled', asy
   expect(methods.filter((method) => method === 'agent.turn.resume')).toHaveLength(1);
   expect(methods.filter((method) => method === 'agent.turn.cancel')).toHaveLength(1);
 });
+
+test('Agent polls provisional model text and replaces it with the final transcript', async ({
+  page,
+}) => {
+  await installAgentScenario(page, { streaming: true });
+  await page.locator('.sidebar').getByRole('button', { name: 'Agent 助手', exact: true }).click();
+  await page.getByLabel('给 Agent 的消息').fill('合成流式请求');
+  await page.getByRole('button', { name: '发送消息', exact: true }).click();
+  const preview = page.getByRole('article', { name: '生成中的回复', exact: true });
+  await expect(preview.getByRole('status')).toHaveText('等待模型响应 · 未完成');
+  await advanceAgentScenario(page, 'generating');
+  await expect(preview.getByRole('status')).toHaveText('正在生成回复 · 未完成');
+  await expect(preview.getByText('合成的未完成内容', { exact: true })).toBeVisible();
+  for (const [width, height, colorScheme] of [
+    [1440, 900, 'light'],
+    [1280, 800, 'dark'],
+    [390, 844, 'light'],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+    await preview.getByRole('status').scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: test.info().outputPath(`agent-streaming-${width}-${colorScheme}.png`),
+      fullPage: true,
+    });
+  }
+  await advanceAgentScenario(page, 'tool_call');
+  await expect(preview.getByRole('status')).toHaveText('正在准备工具调用 · 未完成');
+  await expect(page.getByRole('button', { name: '确认执行', exact: true })).toHaveCount(0);
+  await advanceAgentScenario(page, 'completed');
+  await expect(page.getByText('合成的最终完整回复', { exact: true })).toHaveCount(1);
+  await expect(preview).toHaveCount(0);
+  await expect(page.getByText('合成的未完成内容', { exact: true })).toHaveCount(0);
+});
+
+test('cancelling a streamed Agent turn removes its provisional text', async ({ page }) => {
+  await installAgentScenario(page, { streaming: true });
+  await page.locator('.sidebar').getByRole('button', { name: 'Agent 助手', exact: true }).click();
+  await page.getByLabel('给 Agent 的消息').fill('合成取消请求');
+  await page.getByRole('button', { name: '发送消息', exact: true }).click();
+  await expect(page.getByRole('article', { name: '生成中的回复', exact: true })).toBeVisible();
+  await advanceAgentScenario(page, 'generating');
+  await expect(page.getByText('合成的未完成内容', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '取消当前轮次', exact: true }).click();
+  await expect(page.getByText('已取消', { exact: true })).toBeVisible();
+  await expect(page.getByRole('article', { name: '生成中的回复', exact: true })).toHaveCount(0);
+  await expect(page.getByText('合成的未完成内容', { exact: true })).toHaveCount(0);
+});
+
+for (const [phase, label] of [
+  ['failed', '处理失败：合成流未完整结束'],
+  ['interrupted', '已中断，可恢复：合成流未完整结束'],
+  ['waiting', '等待你的回应'],
+] as const)
+  test(`Agent hides provisional text when the turn becomes ${phase}`, async ({ page }) => {
+    await installAgentScenario(page, { streaming: true });
+    await page.locator('.sidebar').getByRole('button', { name: 'Agent 助手', exact: true }).click();
+    await page.getByLabel('给 Agent 的消息').fill('合成中断请求');
+    await page.getByRole('button', { name: '发送消息', exact: true }).click();
+    await expect(page.getByRole('article', { name: '生成中的回复', exact: true })).toBeVisible();
+    await advanceAgentScenario(page, 'generating');
+    await expect(page.getByText('合成的未完成内容', { exact: true })).toBeVisible();
+    await advanceAgentScenario(page, phase);
+    await expect(page.getByText(label, { exact: true })).toBeVisible();
+    await expect(page.getByRole('article', { name: '生成中的回复', exact: true })).toHaveCount(0);
+    await expect(page.getByText('合成的未完成内容', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('合成的最终完整回复', { exact: true })).toHaveCount(0);
+  });
 
 test('account memory can be created, revised and deleted from the current service session', async ({
   page,
