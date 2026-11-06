@@ -1,3 +1,5 @@
+// 依据已确认的运行中模拟器实例选择增强截图；明确选定的协议不可用时不静默降级。
+
 /** Configure only verified running instances whose bundled screenshot SDK exists. */
 import { statSync } from 'node:fs';
 import path from 'node:path';

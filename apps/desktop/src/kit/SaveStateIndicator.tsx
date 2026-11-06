@@ -1,3 +1,4 @@
+// 呈现自动保存阶段，只有错误状态且提供重试动作时才显示重试入口。
 import { autoSaveLabel, type SaveStatus } from '@/shared/lib/save-status';
 import { cx } from './cx';
 

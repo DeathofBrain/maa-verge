@@ -5,6 +5,7 @@ import { deviceForProfile } from './device-association';
 import SideDrawer from '@/shared/ui/SideDrawer';
 import { TaskConnectionSettings } from '@/features/plans/TaskConnectionSettings';
 
+// 从设备定位其连接 profile；切到默认配置时不误用原实例作为测试目标。
 export default function DeviceConnectionDrawer({
   snapshot,
   deviceId,

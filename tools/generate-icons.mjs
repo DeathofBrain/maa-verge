@@ -1,3 +1,4 @@
+// 从统一图源生成桌面图标，在隔离目录完成转换后复制选定产物。
 import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
 import {
   copyFileSync,
@@ -46,6 +47,7 @@ async function main() {
     );
     await run('pnpm', ['exec', 'tauri', 'icon', macosSource, '--output', macosDirectory]);
     normalizeIcns(path.join(macosDirectory, 'icon.icns'));
+    // 只复制发行所需图标，不把转换工具的辅助文件和中间图源带回仓库。
     mkdirSync(directory, { recursive: true });
     for (const [generated, target] of [
       ['32x32.png', '32x32.png'],

@@ -1,3 +1,4 @@
+// 受控页签统一键盘移动和焦点；面板由调用方按相同 ID 前缀关联。
 import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { cx } from './cx';
 
@@ -31,6 +32,7 @@ export default function Tabs({
   ...rest
 }: Props) {
   const list = useRef<HTMLDivElement>(null);
+  // 键盘导航只遍历可用页签，循环移动后同时更新业务选中值与 DOM 焦点。
   const enabled = items.filter((item) => !item.disabled);
 
   const move = (event: KeyboardEvent<HTMLButtonElement>, id: string) => {

@@ -33,6 +33,7 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
     : [];
   const expanded = open && !!prefix;
   const activeIndex = matches.findIndex((stage) => stage.value === active);
+  // 显示输入与已提交筛选分开，确认时使用资源目录中的规范关卡值。
   const canonical = (input: string) =>
     stages.find((stage) => stage.value.toLowerCase() === input.trim().toLowerCase())?.value;
 
@@ -52,6 +53,7 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
     };
   }, [resourceKey, revision]);
 
+  // 弹出候选使用视口坐标避开滚动容器裁切；输入框移出页面可视区域后关闭候选。
   useLayoutEffect(() => {
     if (!expanded) return;
     const place = (event?: Event) => {

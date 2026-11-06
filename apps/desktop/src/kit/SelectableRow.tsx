@@ -1,3 +1,4 @@
+// 将批量勾选与当前行选择分开，避免把打开详情等同于加入批量操作。
 import type { HTMLAttributes, ReactNode } from 'react';
 import Checkbox from './Checkbox';
 import { cx } from './cx';

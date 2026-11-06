@@ -1,3 +1,4 @@
+// 错误提示使用 alert，普通反馈使用 status；显示时长由外层状态管理。
 import { AlertCircle, Check, X } from 'lucide-react';
 import IconButton from './IconButton';
 import { cx } from './cx';

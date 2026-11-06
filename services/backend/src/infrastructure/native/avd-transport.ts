@@ -1,3 +1,5 @@
+// 在既有本地 ADB server 上注册 AVD transport；等待精确 serial 就绪，不替换或重启 server。
+
 import net from 'node:net';
 import { normalizeDeviceAddress } from '@contracts/device-profiles';
 import { parseAdbDevices } from './adb';
@@ -163,6 +165,7 @@ function waitForRegistration(deadline: number, signal?: AbortSignal): Promise<vo
 }
 
 /** Register an explicit AVD serial in the current server without replacing that server. */
+// 注册和轮询共享同一总期限，不能因每次重试重置超时而无限阻塞连接流程。
 export async function ensureAvdTransport(
   address: string,
   signal?: AbortSignal,

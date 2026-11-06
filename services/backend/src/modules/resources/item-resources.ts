@@ -1,3 +1,5 @@
+// 从已选资源代际读取当前区服物品信息与图标；文件路径、大小和 PNG 内容均需校验。
+
 import { constants } from 'node:fs';
 import { lstat, open, realpath } from 'node:fs/promises';
 import path from 'node:path';
@@ -59,6 +61,7 @@ export class ResourceReader {
       return;
     }
   }
+  // 逐层拒绝链接并核对打开后的文件身份，路径位于资源根内只是必要条件，不足以保证安全读取。
   async read(relative: string, limit: number): Promise<Buffer | undefined> {
     let file;
     try {
@@ -162,6 +165,7 @@ export async function itemResourceNames(
 }
 
 // PNG decoding stays bounded even if an installed pack contains a compressed bomb.
+// 同时限制尺寸与解压体积并检查 PNG 结构，避免小压缩文件造成无界图像解码开销。
 export function validPng(buffer: Buffer): boolean {
   if (
     buffer.length < 57 ||

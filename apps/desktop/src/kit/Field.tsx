@@ -1,3 +1,4 @@
+// 统一字段标签、帮助和错误布局；函数子节点可接收生成的关联 ID。
 import { useId, type ReactNode } from 'react';
 import { cx } from './cx';
 

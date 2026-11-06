@@ -14,7 +14,7 @@ const integer = (value: unknown, label: string, min = 0, max = 2_147_483_647): n
 const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
-/** Per-run limits come from enabled Fight tasks. Legacy budget fields are data compatibility only. */
+/** 本次消耗上限只累计启用的 Fight 任务；旧版 budgets 字段仅兼容存档，不作为执行额度。 */
 export function taskConsumableLimits(plan: {
   tasks: ReadonlyArray<Plan['tasks'][number]>;
 }): Settings['budgets'] {
@@ -80,7 +80,7 @@ function jsonTree(value: unknown, depth = 0) {
     reject('任务参数不得包含非有限数值');
 }
 
-/** Validates editable plans before they reach the application service. */
+/** 校验可编辑任务表的结构和业务约束；是否允许 Agent 执行还需经过独立的更严格策略。 */
 export function validatePlan(plan: Plan, _settings: Settings) {
   if (
     !plan ||
@@ -148,6 +148,7 @@ export function validatePlan(plan: Plan, _settings: Settings) {
     )
       reject('客户端必须是官方支持的渠道');
     if (typeof task.enabled !== 'boolean') reject('任务启用状态必须是布尔值');
+    // 停用任务仍经过通用参数检查；以下消耗与任务专属约束只约束本次会执行的项。
     if (!taskEnabled(task)) continue;
     if (task.type === 'UserDataUpdate') {
       for (const key of ['operators', 'depot'])

@@ -19,6 +19,7 @@ type Props = {
   onSave: (patch: Partial<Settings>, message?: string) => Promise<boolean>;
 };
 
+// 管理后续导入使用的目录及删除偏好，保存后重读服务端规范值和当前存储信息。
 export default function CopilotStorageSettings({ settings, busy, onSave }: Props) {
   const saved = settings.copilotStorage ?? { directory: '', deleteJsonFiles: false };
   const [info, setInfo] = useState<RpcResult<'copilot.storage.info'>>();

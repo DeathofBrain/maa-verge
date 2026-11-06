@@ -1,3 +1,5 @@
+// JSON-RPC 信封边界：校验请求结构与 ID 类型、调用有限处理端口并规范化错误，不直接依赖业务存储。
+
 import { RpcError, systemErrorMessage } from '@backend/shared/errors';
 import { isWireFloat } from '@backend/shared/wire-json';
 

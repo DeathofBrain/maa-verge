@@ -1,3 +1,5 @@
+// 离线导出资源与产品知识包；不访问业务数据库、设备或模型，输出不得写入不可变资源树。
+
 import { lstat, mkdir, open, readFile, realpath, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -40,6 +42,7 @@ async function json(file: string): Promise<any> {
     return;
   }
 }
+// 在同目录写临时文件并刷盘后原子替换，读者不会看到写了一半的知识文件。
 async function publish(file: string, value: unknown) {
   const bytes = JSON.stringify(value, null, 2) + '\n';
   try {
@@ -64,6 +67,7 @@ async function publish(file: string, value: unknown) {
 }
 
 /** Offline public-data export. It opens no business database, model, device or network connection. */
+// 先发布内容寻址的数据包，最后发布清单；清单只引用已完整落盘的文件。
 export async function buildKnowledgeFiles(combo: Combo, clientType: ClientType, output: string) {
   if (!combo.resource?.path) throw new Error('请指定包含 resource 子目录的资源 generation');
   const source = await realpath(combo.resource.path),

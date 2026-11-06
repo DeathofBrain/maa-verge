@@ -68,6 +68,7 @@ function ConnectionSettingsBody({
   const settings = profile
     ? { ...globalSettings, connection: profile.connection, capture: profile.capture }
     : globalSettings;
+  // 实例编辑只写回对应 profile 的连接与截图配置，不把实例值覆盖成全局默认值。
   const onSaveSettings = saveGlobalSettings
     ? async (next: Settings) => {
         if (!profile) return saveGlobalSettings(next);

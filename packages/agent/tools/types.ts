@@ -6,7 +6,7 @@ export type MaaToolJob = RpcContract['results']['tool.get'];
 export type MaaFrame = RpcContract['results']['device.frame'];
 export type MaaToolEffect = 'read' | 'propose' | 'capture' | 'execute' | 'stop' | 'control';
 
-/** Named application-service ports; never pass a Runtime, worker or generic RPC. */
+/** 仅暴露具名业务端口，不把 Runtime、worker 或任意 RPC 调用能力交给模型工具。 */
 export interface MaaToolHost {
   listDevices(): Promise<Device[]>;
   listPlans(): Promise<Plan[]>;

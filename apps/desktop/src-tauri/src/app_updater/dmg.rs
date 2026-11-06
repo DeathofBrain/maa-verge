@@ -1,5 +1,6 @@
 //! Install the signed, unchanged DMG also distributed for first installations.
 //! Only the staged app bundle is exchanged; adjacent configuration stays in place.
+// macOS 更新只交换已验证的应用包，保留相邻配置和旧包，等新版本启动后再清理旧包。
 use semver::Version;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -31,6 +32,7 @@ pub(super) fn cleanup_previous(executable: &Path, current: &Version) -> Result<(
     let installed = bundle_path(executable)?;
     let parent = installed.parent().ok_or("无法定位应用安装目录")?;
     let entries = fs::read_dir(parent).map_err(|error| error.to_string())?;
+    // 清理必须同时匹配本安装位置、目标版本和写入回执的进程，不能只靠目录名前缀。
     for entry in entries.flatten() {
         let directory = entry.path();
         if !entry.file_name().to_str().is_some_and(staging_name)
@@ -312,6 +314,7 @@ mod native {
         {
             return Err("应用安装位置不是普通应用包目录".into());
         }
+        // 原始签名 DMG 先写入独立临时目录并只读挂载，尚不触碰当前安装。
         let workspace = Temporary::new(&std::env::temp_dir())?;
         let image = workspace.path.join("verified.dmg");
         let mut file = fs::OpenOptions::new()
@@ -350,6 +353,7 @@ mod native {
         {
             return Err("DMG 中缺少普通 Maa Verge.app 应用目录".into());
         }
+        // 候选副本放在安装目录旁以支持同文件系统原子交换，复制后再验签和核对身份。
         let mut staging = Temporary::new(installed.parent().ok_or("无法定位应用安装目录")?)?;
         let updated = staging.path.join("Maa Verge.app");
         command(

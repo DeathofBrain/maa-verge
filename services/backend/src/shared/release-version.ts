@@ -1,3 +1,5 @@
+// 按 SemVer 优先级比较发布版本；数值段使用 BigInt，构建元数据不参与排序。
+
 /** SemVer precedence; build metadata does not affect release ordering. */
 export function releaseVersion(
   value: unknown,

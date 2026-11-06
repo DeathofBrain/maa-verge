@@ -1,3 +1,5 @@
+// 提供本地 ADB 端点探测与 transport 连接；TCP 可达性本身不代表 MaaCore 已取得设备控制权。
+
 import { execFile } from 'node:child_process';
 import net from 'node:net';
 import { adbServerIdentity, deviceLockAddress, parseAdbDevices, validateAddress } from './adb';

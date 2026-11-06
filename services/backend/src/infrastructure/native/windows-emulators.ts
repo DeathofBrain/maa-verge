@@ -1,3 +1,5 @@
+// 结合 Windows 进程、监听端口与模拟器管理器输出建立实例清单，避免仅凭常见端口猜测归属。
+
 /** Read-only process discovery, following MAA v6.20.0 WinAdapter's relative ADB paths. */
 import { execFile } from 'node:child_process';
 import { statSync } from 'node:fs';
@@ -266,6 +268,7 @@ export function ldPlayerConsoleInstances(
 }
 
 /** Query running emulator installations; no create/start/stop commands or port-range scan. */
+// 只有管理器与进程、端口证据能相互对应时才归并地址；冲突实例保持分离以免共享错误设备锁。
 export async function queryWindowsEmulatorInventory(
   options: {
     env?: Record<string, string | undefined>;

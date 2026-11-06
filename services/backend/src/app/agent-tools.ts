@@ -1,3 +1,5 @@
+// 将 Agent 的有限业务工具接到运行时；执行前核对已确认的计划或作业快照，不开放任意 RPC。
+
 import type { MaaToolHost } from '@maaverge/agent/tools';
 import { RpcError } from '@backend/shared/errors';
 import { parsePlan } from '@backend/modules/settings/models';
@@ -11,6 +13,7 @@ type MaaToolRuntime = Pick<
 };
 
 /** Compare JSON semantics while retaining queue/task order. */
+// 对象键顺序不影响授权快照比较，但数组顺序决定任务和作业的执行次序，必须保留。
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
   if (value !== null && typeof value === 'object') {
@@ -44,6 +47,7 @@ export function createMaaToolHost(runtime: MaaToolRuntime): MaaToolHost {
     getFrame: (params) => runtime.handle('device.frame', params),
     click: (params) => runtime.handle('device.click', params),
     getRun: (id) => runtime.handle('run.detail', { id }),
+    // 最后一次实时核对与运行时同步准入之间不等待，防止已授权内容被并发编辑替换。
     async startPlan(params, expectedPlan, expectedClientType) {
       const plan = runtime.snapshot().plans.find((item) => item.id === params.planId);
       if (!plan || canonical(plan) !== canonical(expectedPlan)) {

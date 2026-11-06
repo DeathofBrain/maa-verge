@@ -1,3 +1,5 @@
+// 把有明确证据的原生连接故障转换成中文提示；未知故障保留受限原文，不猜测根因。
+
 /** Translate only errors whose cause is supported by ADB/native diagnostics. */
 export function errorDetail(error: unknown): string {
   if (error instanceof Error) return error.message;

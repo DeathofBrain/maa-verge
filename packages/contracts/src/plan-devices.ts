@@ -1,6 +1,6 @@
 import type { Plan } from './types';
 
-/** Explicit bindings take precedence; old saved plans retain their single binding. */
+/** 多设备字段优先；显式空数组表示不绑定设备，只有缺省时才兼容旧单设备字段。 */
 export function planDeviceIds(plan: Pick<Plan, 'deviceId' | 'deviceIds'>): readonly string[] {
   return plan.deviceIds ?? (plan.deviceId ? [plan.deviceId] : []);
 }

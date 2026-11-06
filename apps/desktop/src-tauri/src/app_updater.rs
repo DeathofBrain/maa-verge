@@ -1,6 +1,7 @@
 //! Application updates belong to the desktop host; component updates stay in Bun.
 //! Verified packages survive restart. Installation always stops owned sidecars
 //! first; a failed attempt must never prevent the old application from starting.
+// 应用更新分为发现、下载验签、持久化待安装、退出安装四阶段；下载完成不等于已生效。
 mod cache;
 #[cfg(any(target_os = "macos", test))]
 mod dmg;
@@ -75,6 +76,7 @@ struct Release {
 }
 
 fn select_release(releases: &[Value], channel: &str) -> Option<Release> {
+    // 按 SemVer 优先级挑选，不能依赖发布列表顺序；稳定通道同时排除两类预发布标记。
     releases.iter().filter_map(|release| {
         if release.get("draft")?.as_bool()? {
             return None;
@@ -241,6 +243,7 @@ fn install_candidate(app: &AppHandle, candidate: &Candidate, bytes: &[u8]) -> Re
 }
 
 fn package_metadata(manifest: &Value, release: &Release, target: &str) -> Result<u64, String> {
+    // 把清单、发行版本、安装器类型与已登记资产绑定，避免跨仓库或跨平台替换更新包。
     let version = manifest
         .get("version")
         .and_then(Value::as_str)
@@ -310,6 +313,7 @@ struct Candidate {
 struct State {
     channel: String,
     automatic: bool,
+    // 切换频道递增代号；异步检查/下载提交前必须复核，旧结果不能污染新频道。
     generation: u64,
     value: Value,
     candidate: Option<Candidate>,
@@ -493,6 +497,7 @@ impl AppUpdater {
         let Some((record, bytes)) = self.cache()?.load()? else {
             return Ok(false);
         };
+        // 缓存仅是恢复线索，启动时仍需复核安装位置、目标、版本、大小和签名。
         let target = host_target(&self.app)?;
         let Some(release) = cached_release(&record, &self.current, &target, &installation_id()?)?
         else {
@@ -519,6 +524,7 @@ impl AppUpdater {
             .verify(&bytes)
             .map_err(|error| format!("更新缓存签名校验失败：{error}"))?;
         let attempted = record["attempted"] == true;
+        // 已尝试但未完成的安装保留为可重试状态，避免每次启动都再次进入失败安装。
         let mut state = self.state.lock().expect("app updater state");
         state.channel = record["channel"].as_str().unwrap().into();
         state.value["latestVersion"] = json!(release.version.to_string());
@@ -784,6 +790,7 @@ impl AppUpdater {
     }
 
     pub async fn prepare(&self) -> Result<Value, String> {
+        // 单次操作锁覆盖下载到缓存提交；状态锁只在短暂读写内存和提交时使用。
         let _operation = self
             .operation
             .try_lock()
@@ -864,6 +871,7 @@ impl AppUpdater {
     }
 
     async fn download(&self, generation: u64, candidate: &Candidate) -> Result<Vec<u8>, String> {
+        // Bun 负责传输，Rust 独立验签；只有通过这里的字节才能进入待安装缓存。
         let bytes = self.download_package(generation, candidate).await?;
         self.transport_current(generation)?;
         self.change(generation, |state| {
@@ -878,6 +886,7 @@ impl AppUpdater {
     }
 
     pub async fn activate(&self, runtime: &Runtime) -> Result<Value, String> {
+        // 激活先复核签名并记录尝试，再取得退出所有权，确认侧进程退出后才调用安装器。
         let _operation = self
             .operation
             .try_lock()

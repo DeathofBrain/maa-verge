@@ -1,3 +1,5 @@
+// 协调核心与资源的独立检查、不可变代际准备、空闲切换和回滚；桌面应用更新使用另一通道。
+
 /** Independent immutable MaaCore / MaaResource generations. Jobs never open the business DB. */
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
@@ -504,6 +506,7 @@ export class OfficialSource implements UpdateSource {
   }
 }
 
+// 隔离进程只接受单行 JSON 结果；超时或输出越界后终止进程，不能把截断输出当成有效快照。
 function executeJson(
   command: string[],
   input: unknown,
@@ -662,6 +665,7 @@ async function treeFiles(root: string): Promise<string[]> {
   });
 }
 
+// 资源更新从核心自带资源重新建立基底再覆盖，避免上一轮热更中已被删除的文件残留。
 export async function runUpdateJob(
   config: UpdateJobConfig,
   validator: Validator = (core, resource, version) =>
@@ -896,6 +900,7 @@ export class UpdateService {
       path.basename(path.resolve(directory)) === this.generationNamespace
     );
   }
+  // 回收集合必须包含活动、回滚、待切换及 worker 正在使用的路径，不能只看数据库当前版本。
   private async pruneVersions(): Promise<void> {
     if (this.closing || this.busy()) return;
     // Legacy shared generations and other data roots have independent saved
@@ -1071,6 +1076,7 @@ export class UpdateService {
       : snapshots;
   }
   /** Background adoption keeps its Store lease and serializes with other component mutations. */
+  // 随附组件只补足可用快照，不覆盖已经选择的活动版本或用户准备中的候选。
   bootstrapBundled(directory: string): Promise<void> {
     return this.serial(async () => {
       if (this.bundledBootstrapped || this.busy()) return;
@@ -1239,6 +1245,7 @@ export class UpdateService {
       throw error;
     }
   }
+  // 先取消来源请求并终止隔离子进程，再等待串行队列收敛，保证上层可安全关闭 Store。
   async close(): Promise<void> {
     this.closing = true;
     this.source.close?.();
@@ -1463,6 +1470,7 @@ export class UpdateService {
   check(channel: string): Promise<any> {
     return this.serial(() => this.checkCurrent(channel));
   }
+  // 版本比较与本地完整性是两个条件；同版本缺件仍需修复，资源新旧独立于核心版本判断。
   private async checkCurrent(channel: string): Promise<any> {
     await this.reconcileCurrent('active');
     const current = this.channel(channel);
@@ -1548,6 +1556,7 @@ export class UpdateService {
   prepare(channel: string): Promise<any> {
     return this.serial(() => this.prepareCurrent(channel));
   }
+  // 磁盘上找到同版本并不足以复用，仍需校验内容与原生加载能力，再登记为普通候选。
   private async reuseLocalSnapshot(
     channel: 'core' | 'resource',
     metadata: UpdateMetadata,
@@ -1617,6 +1626,7 @@ export class UpdateService {
       });
     }
   }
+  // 准备阶段只构建并校验独立代际，活动组合保持不变；失败清理本次候选，不破坏旧版本。
   private async prepareCurrent(channel: string, requestedMetadata?: UpdateMetadata): Promise<any> {
     this.channel(channel);
     if (channel === 'app') throw new RpcError(-32020, '应用更新需使用桌面发行通道');
@@ -1899,6 +1909,7 @@ export class UpdateService {
       this.activationInProgress = false;
     }
   }
+  // 切换门闩先关闭新任务准入，再重查空闲与候选完整性；运行中任务间的短暂空闲不算安全边界。
   private async activateIdleCurrent(channel: string, candidate: any): Promise<any> {
     const state = this.channel(channel);
     // Offline bootstrap applies a candidate within its preparation operation.
@@ -1956,6 +1967,7 @@ export class UpdateService {
       throw error;
     }
   }
+  // 核心切换与其匹配资源作为组合处理，不能继续挂载基于旧核心构建的热更快照。
   private async activateVerifiedCurrent(channel: string, candidate: any): Promise<any> {
     const state = this.channel(channel);
     const staged = this.store.get('staged', channel);
@@ -2124,6 +2136,7 @@ export class UpdateService {
       throw new RpcError(-32020, '更新切换失败，已保留原版本', message(error));
     }
   }
+  // 活动指针切换后若恢复步骤失败，恢复原组合并重新连接；调用方只在成功后保存旧组合为回滚点。
   private async switchCombo(candidate: any, original: any): Promise<void> {
     try {
       await this.beforeActivate();
@@ -2162,6 +2175,7 @@ export class UpdateService {
   rollback(channel: string): Promise<any> {
     return this.serial(() => this.rollbackCurrent(channel));
   }
+  // 回滚恢复完整的核心与资源配对，而非只改一个通道的显示版本。
   private async rollbackCurrent(channel: string): Promise<any> {
     await this.reconcileCurrent();
     this.channel(channel);

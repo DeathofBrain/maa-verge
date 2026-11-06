@@ -24,6 +24,7 @@ type Props = {
   kindLabel: (kind: CopilotKind) => string;
 };
 
+// 核心流程状态与战斗 verdict 分开展示；流程结束但没有成功证据时仍显示通关未确认。
 export default function CopilotRunMonitor({
   panelRef,
   monitorDevice,

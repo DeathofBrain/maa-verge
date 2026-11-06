@@ -14,15 +14,14 @@ export class AgentProposalPolicyError extends Error {
   }
 }
 
-/** No consumable authorization port exists yet, so a model cannot request spend. */
+/** 该提案入口没有消耗授权端口，因此草稿只能声明零药石、零加急消耗。 */
 export function assertZeroConsumableProposal(tasks: unknown): void {
   if (!Array.isArray(tasks)) throw new AgentProposalPolicyError();
   for (const task of tasks) {
     const params = task?.params;
     if (!params || typeof params !== 'object' || Array.isArray(params))
       throw new AgentProposalPolicyError();
-    // Check disabled tasks too, so enabling an edited draft cannot reveal a
-    // hidden request for consumables. The host still validates every parameter.
+    // 停用任务同样检查，避免用户启用草稿时暴露隐藏消耗；其余参数仍由宿主完整校验。
     if (
       countFields.some((field) => Object.hasOwn(params, field) && params[field] !== 0) ||
       toggleFields.some((field) => Object.hasOwn(params, field) && params[field] !== false)

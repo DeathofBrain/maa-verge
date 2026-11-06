@@ -7,6 +7,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import Select from '@/kit/Select';
 import type { CopilotKind, CopilotOptions } from '@maaverge/contracts';
 
+// 执行选项有联动约束：悖论和多作业不循环，循环禁助战，关闭自动编队时清理附属选项。
 export default function CopilotSettings({
   kind,
   count,

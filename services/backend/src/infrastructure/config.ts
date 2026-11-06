@@ -1,3 +1,5 @@
+// 集中解析业务数据、组件与原生子进程路径；业务根可配置，设备锁仍跨实例共享。
+
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -79,6 +81,7 @@ export function legacyDataRoot(root: string, applicationDirectory?: string): str
         createHash('sha256').update(directory).digest('hex').slice(0, 8),
       );
 }
+// 设备锁放在标准用户数据根，而非可配置业务根，防止不同配置目录同时控制同一设备。
 export function deviceLockPath(key: string): string {
   // Shared across checkouts and data roots, preserving existing device leases.
   return path.join(
@@ -86,6 +89,7 @@ export function deviceLockPath(key: string): string {
     createHash('sha256').update(key).digest('hex') + '.lock',
   );
 }
+// 清除父进程的运行时注入选项，避免打包服务的加载参数意外作用于隔离子进程。
 export function childEnvironment(source = process.env): NodeJS.ProcessEnv {
   const env = { ...source };
   for (const key of Object.keys(env))

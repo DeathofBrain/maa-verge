@@ -1,3 +1,5 @@
+// 将工具请求编排为共享设备准入和原生执行链上的作业，并保存配置、去重标识与结果证据。
+
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { RpcContract } from '@contracts/rpc-types';
@@ -195,6 +197,7 @@ export class Toolbox {
     );
     return config;
   }
+  // 先同步登记作业和 requestId 再读取资源，重复请求返回原作业而不再次占用设备。
   async start(input: Start) {
     if (!validateToolStartParams(input))
       throw new RpcError(-32602, '工具请求无效', validateToolStartParams.errors);
@@ -420,6 +423,7 @@ export class Toolbox {
       ),
     );
   }
+  // 每个任务提交前重新检查最新库存和目标，避免仅凭启动时快照继续执行已无需进行的补货。
   beforeTask(job: any, index: number): boolean {
     if (job.toolKind !== 'inventory' || !job.inventoryTargets?.[index]) return true;
     // The refresh task has committed its verified snapshot before reaching this
@@ -513,6 +517,7 @@ export class Toolbox {
           ? '所有目标库存均已达标'
           : '流程结束，部分目标尚未达标，请查看逐项结果';
   }
+  // 公开招募结果必须来自结构完整的回调；标签计算和已确认执行结果分开保存。
   recruitResult(job: any, value: any): { combinations: any[]; collectedAt: string } | undefined {
     if (!Array.isArray(value?.result) || !value.result.length || value.result.length > 100) return;
     const own = new Map(

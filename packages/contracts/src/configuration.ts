@@ -1,3 +1,4 @@
+// 桌面配置目录桥接：返回当前与下次启动目录，由 Rust 宿主负责路径选择和持久化。
 export interface ConfigurationLocations {
   directory: string;
   database: string;

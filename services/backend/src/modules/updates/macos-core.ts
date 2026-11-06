@@ -1,3 +1,5 @@
+// 从 macOS 核心发行包只提取运行库、资源和许可文件；磁盘镜像以只读隔离挂载处理。
+
 /** Extract the official MAA macOS Mirror ZIP/DMG into an immutable runtime. */
 import { spawn } from 'node:child_process';
 import { constants } from 'node:fs';
@@ -213,6 +215,7 @@ async function diskImage(
   return path.join(extracted, entries[0].name);
 }
 
+// 卸载挂载点失败时先核实是否仍被占用；结果不明便保留现场，不能递归删除仍挂载的内容。
 export async function extractMacosMirrorCore(
   archive: string,
   target: string,

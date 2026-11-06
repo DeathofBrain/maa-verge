@@ -1,3 +1,4 @@
+// 保留原生多行输入属性，字段式与嵌入式外观通过 variant 区分。
 import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
 

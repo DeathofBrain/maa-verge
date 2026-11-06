@@ -49,6 +49,7 @@ export default function DevicePicker({
     onChange(id);
     close();
   };
+  // 焦点始终留在 combobox 按钮，通过活动项 ID 表示键盘游标，确认后才修改设备选择。
   const keydown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === 'Tab') {
       setOpen(false);

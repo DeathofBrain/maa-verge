@@ -24,6 +24,7 @@ export function summarizeSetDifficulty(entries: CopilotPreview['entries']): SetD
   return summary;
 }
 
+// 未声明难度按普通显示；作业集徽章表示存在对应成员，不代表每个成员都兼容该难度。
 export default function CopilotDifficulty({
   difficulty,
   summary,

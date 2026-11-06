@@ -1,3 +1,4 @@
+// 准备 Windows 安装器钩子与完整便携包，并限制暂存、复制和归档的路径边界。
 /** Windows offline component installer hooks and an allowlisted full ZIP. */
 import {
   cp,
@@ -81,6 +82,7 @@ async function copyTree(source, destination) {
 export async function stageWindowsPortable({ directory = root, executable, staging }) {
   if (!staging || !executable)
     throw new Error('Portable staging and executable paths are required');
+  // 必须使用新建暂存目录，从明确来源复制组件，不混入上一次打包遗留文件。
   await mkdir(staging, { recursive: false });
   await copyTree(executable, path.join(staging, 'Maa Verge.exe'));
   await copyTree(
@@ -119,6 +121,7 @@ export async function createWindowsPortableArchive({ sourceDirectory, archive })
   const source = path.resolve(sourceDirectory);
   const destination = path.resolve(archive);
   const parent = path.dirname(destination);
+  // 归档必须位于源目录之外，防止压缩过程中把正在生成的文件再次收入。
   const relative = path.relative(source, destination);
   if (
     !relative ||

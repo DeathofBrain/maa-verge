@@ -14,6 +14,7 @@ const waitingReads: { run: () => void }[] = [];
 function drainReads() {
   while (activeReads < 2 && waitingReads.length) waitingReads.shift()!.run();
 }
+// 尚未开始的卡片读取可以从队列移除；已发出的请求继续占用名额直到结束。
 function scheduleRead(setId: string, resourceKey: string) {
   let started = false;
   let cancel = () => {};

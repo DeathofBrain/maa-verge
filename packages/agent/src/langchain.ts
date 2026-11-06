@@ -42,7 +42,7 @@ function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Optional foundation only; the production RPC still selects the local proposer. */
+/** 独立的 LangChain 草稿适配器，默认模型调用额度为零；草稿仍由宿主校验后交用户审阅。 */
 export function createLangChainProposer<TPlan>(options: LangChainProposerOptions<TPlan>) {
   const { model, preparePlan, maxModelCalls = 0, timeoutMs = 30000 } = options;
   if (!Number.isSafeInteger(maxModelCalls) || maxModelCalls < 0 || maxModelCalls > 8)

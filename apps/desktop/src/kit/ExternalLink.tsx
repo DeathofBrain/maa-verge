@@ -1,3 +1,4 @@
+// 将外部链接交给受控桌面传输层打开，避免默认导航替换当前应用页面。
 import { useState, type ComponentPropsWithRef, type ReactNode } from 'react';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import { errorMessage, openExternalUrl } from '@maaverge/contracts';

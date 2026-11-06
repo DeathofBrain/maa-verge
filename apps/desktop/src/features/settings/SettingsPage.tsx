@@ -140,6 +140,7 @@ const categories = [
 ] as const;
 export type SettingsCategory = (typeof categories)[number]['id'];
 export type SettingsNavigation = { category: SettingsCategory };
+// 跨设置分类共用保存队列，每次合并最新设置后再提交，避免多个面板互相覆盖。
 let settingsSaveQueue = Promise.resolve();
 
 export function SettingsPage({
@@ -176,6 +177,7 @@ export function SettingsPage({
     _message?: string,
     afterSave?: () => Promise<void>,
   ): Promise<boolean> => {
+    // 组件目录只合并相对当前快照真正改过的路径，保留排队期间其他保存已更新的另一通道。
     const changedPaths =
       patch.componentPaths &&
       Object.fromEntries(
@@ -230,6 +232,7 @@ export function SettingsPage({
       'check-all',
       async () => {
         const failures: string[] = [];
+        // 三个更新通道独立检查；某个通道失败仍继续检查其余通道，最后统一报告。
         for (const channel of ['app', 'core', 'resource'] as const) {
           try {
             await rpc('updates.check', { channel });

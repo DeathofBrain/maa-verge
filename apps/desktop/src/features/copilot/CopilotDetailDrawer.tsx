@@ -29,6 +29,7 @@ import Compatibility from './CopilotCompatibility';
 import { invalidateCopilotPreview } from './copilot-community';
 import './copilot-drawer.css';
 
+// 作业来源来自导入数据，只允许不含用户凭据的 HTTP(S) 链接交给外部打开。
 const safeLink = (input: string) => {
   try {
     const url = new URL(input);

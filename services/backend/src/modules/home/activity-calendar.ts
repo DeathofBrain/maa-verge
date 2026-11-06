@@ -1,3 +1,5 @@
+// 缓存远端活动日历并异步刷新；拉取失败保留最近有效文档，避免短暂故障抹去已知活动。
+
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, rename, rm } from 'node:fs/promises';
@@ -214,6 +216,7 @@ export class ActivityCalendar {
       },
     };
   }
+  // 已有缓存时普通读取可立即返回并后台更新；显式刷新或首次无缓存时等待本轮请求完成。
   async get(refresh = false): Promise<CalendarSnapshot> {
     await (this.loaded ??= this.load());
     if (this.closed) return this.snapshot();
@@ -248,6 +251,7 @@ export class ActivityCalendar {
       await rm(temporary, { force: true });
     }
   }
+  // ETag 与源 URL 绑定，切换备用源不能沿用另一站点的验证器；新文档不可丢失已有区服。
   private async request(url: string): Promise<Cache> {
     const timeout = new AbortController(),
       timer = setTimeout(() => timeout.abort(new Error('官方活动日历请求超时')), this.timeout);
@@ -315,6 +319,7 @@ export class ActivityCalendar {
       clearTimeout(timer);
     }
   }
+  // 有效文档先持久化再替换内存缓存；失败按退避重试，不抹去最近一次成功数据。
   private async update() {
     let failure: unknown;
     for (const url of officialCalendarUrls) {

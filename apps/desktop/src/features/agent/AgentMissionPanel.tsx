@@ -50,6 +50,7 @@ const copilotKinds: { kind: CopilotKind; label: string }[] = [
   { kind: 'ParadoxCopilot', label: '悖论模拟' },
 ];
 
+// 托管表单收集明确目标、次数、到期时间和消耗预算，创建后仍需在对话中审批固定快照。
 export default function AgentMissionPanel({
   session,
   plans,

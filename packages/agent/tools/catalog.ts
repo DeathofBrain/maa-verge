@@ -33,7 +33,7 @@ const descriptions: Record<Task['type'], string> = {
   OperProgress: '当前 Agent 不开放消耗材料的干员养成；尚无对应授权预算端口。',
 };
 
-/** A capability catalogue, never the UI's unbounded task defaults. */
+/** 目录只描述 Agent 支持的入口，不继承界面的无界执行默认值，也不表示操作已获授权。 */
 export function maaTaskCatalog(): MaaTaskCatalogEntry[] {
   return runtimeSchema.$defs.Task.properties.type.enum.map((value): MaaTaskCatalogEntry => {
     const type = value as Task['type'];

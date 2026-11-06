@@ -42,6 +42,7 @@ type Props = {
   rosterHint: string;
 };
 
+// 社区检索和本地库分离；筛选变化回到第一页，点选远端结果先进入预览而非直接导入。
 export default function CopilotCommunityBrowser({
   target,
   keyword,

@@ -35,6 +35,7 @@ function readable(text: string): string {
 }
 
 /** Shared by bridge rejections, stored device failures and update notifications. */
+// 桥接错误可能是多层 JSON 字符串或嵌套 cause；限制深度并检测环，避免解析错误再次失控。
 export function errorMessage(cause: unknown): string {
   const seen = new Set<object>();
   const describe = (value: unknown, depth: number): string => {

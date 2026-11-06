@@ -43,7 +43,7 @@ export class AgentContextError extends Error {
   }
 }
 
-/** Local original history and model projections are deliberately separate records. */
+/** 原始消息独立于模型上下文投影保存；摘要、截断和跨会话引用不会改写原始历史。 */
 export class ContextRepository {
   constructor(private readonly store: Store) {}
 
@@ -51,6 +51,7 @@ export class ContextRepository {
     return { deviceId, clientType, ...accountKnowledgeScope(this.store, deviceId, clientType) };
   }
 
+  /** 每次访问都核对当前设备、客户端和账号标识，不沿用会话创建时的旧绑定。 */
   assertScope(scope: AgentScope): void {
     const configuredClient = scope.deviceId
       ? this.store.get('device_client', scope.deviceId)
@@ -178,6 +179,7 @@ export class ContextRepository {
     });
   }
 
+  /** 固定消息 ID 可重复提交相同内容，但不能覆盖成其他会话或不同内容。 */
   appendMessage(sessionId: string, input: MessageInput): AgentMessage {
     return this.store.transaction(() => {
       this.get(sessionId);
@@ -265,7 +267,7 @@ export class ContextRepository {
     });
   }
 
-  /** Failed/empty summaries never replace the projection or original transcript. */
+  /** 只有有效摘要及匹配的投影版本才能提交；失败时保留旧投影和完整原文。 */
   saveSummary(
     sessionId: string,
     input: {
@@ -425,6 +427,7 @@ export class ContextRepository {
     });
   }
 
+  /** 引用保存选定消息的摘要快照；只接受同一账号范围，不随来源会话后续改动自动刷新。 */
   reference(params: Params<'agent.context.reference'>): AgentContextReference {
     if (!agentParamValidators['agent.context.reference'](params))
       throw new AgentContextError('引用参数无效');

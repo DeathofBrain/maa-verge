@@ -1,3 +1,5 @@
+// 为桌面更新器提供受限 HTTP 下载桥接；应用安装不在此执行，下载操作按标识隔离取消。
+
 /** Host-only application transport. Rust alone verifies and installs signed bytes. */
 import { createHash } from 'node:crypto';
 import { rm } from 'node:fs/promises';
@@ -79,6 +81,7 @@ export class AppUpdateHttp {
     this.active?.abort.abort(new Error('应用服务正在关闭，下载分片已保留'));
   }
 
+  // 操作标识限定取消与清理范围，旧请求的取消不能中断后来的应用下载。
   async handle(input: unknown): Promise<unknown> {
     if (!validateHostUpdateParams(input)) throw new RpcError(-32602, '应用更新传输参数无效');
     const params: HostUpdateParams = input;

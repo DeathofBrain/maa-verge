@@ -33,6 +33,7 @@ export default function useSidebarResize() {
     }
   };
 
+  // 拖动中只更新界面，结束后才持久化宽度，避免每次指针移动都写存储。
   useEffect(() => {
     if (resizing) return;
     try {
@@ -46,6 +47,7 @@ export default function useSidebarResize() {
     if (!resizing) return;
     const mobile = window.matchMedia('(max-width: 760px)');
     const onKeyDown = (event: KeyboardEvent) => {
+      // Escape 恢复本次拖动前的宽度，失焦和捕获丢失则仅结束拖动。
       if (event.key !== 'Escape' || !drag.current) return;
       event.preventDefault();
       setWidth(drag.current.startWidth);

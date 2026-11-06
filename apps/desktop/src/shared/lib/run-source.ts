@@ -1,3 +1,4 @@
+// 运行名称优先使用执行时的快照，避免任务表改名或删除后丢失历史来源。
 import type { Plan, Run } from '@maaverge/contracts';
 
 export const isCopilotRun = (run: Run) => run.source === 'copilot';

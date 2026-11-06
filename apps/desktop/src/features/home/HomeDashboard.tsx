@@ -51,6 +51,7 @@ export default function HomeDashboard({
   onUpdates,
 }: Props) {
   const now = new Date();
+  // 这里的“今日执行”按电脑本地日期统计，与游戏提醒按服务器 04:00 换日的口径不同。
   const today = snapshot.runs.filter(
     (run) => new Date(run.startedAt).toDateString() === now.toDateString(),
   );

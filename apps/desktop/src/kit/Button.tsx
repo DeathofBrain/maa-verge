@@ -1,3 +1,4 @@
+// 统一按钮变体与忙碌指示；busy 只改变展示，是否禁用由调用方决定。
 import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { cx } from './cx';
 import Spinner from './Spinner';

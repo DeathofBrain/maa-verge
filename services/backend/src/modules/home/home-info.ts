@@ -1,3 +1,5 @@
+// 根据识别记录、区服日界和用户填写的产能生成首页摘要；基建数值是估算，不是实时游戏读数。
+
 import type { Settings } from '@contracts/types';
 import type { RpcContract } from '@contracts/rpc-types';
 import { RpcError } from '@backend/shared/errors';

@@ -29,6 +29,7 @@ export default function RunTasksDialog({
   onStart,
   onClose,
 }: Props) {
+  // 每个任务表与设备组合复用请求 ID，部分启动失败后的重试不会重复创建已接受的执行。
   const requestIds = useRef(new Map<string, string>());
   const multi = plans.length > 1;
   const single = plans[0];
@@ -75,6 +76,7 @@ export default function RunTasksDialog({
   const requests = selectedPlans.flatMap((plan) =>
     (selectedTargets[plan.id] ?? []).map((deviceId) => ({ plan, deviceId })),
   );
+  // 设备在本次批量提交中也必须唯一，不能只检查已有执行的占用状态。
   const targetCounts = new Map<string, number>();
   for (const { deviceId } of requests)
     targetCounts.set(deviceId, (targetCounts.get(deviceId) ?? 0) + 1);

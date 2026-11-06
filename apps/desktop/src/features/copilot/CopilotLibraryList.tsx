@@ -50,6 +50,7 @@ type Props = {
   setLocalPage: Dispatch<SetStateAction<number>>;
 };
 
+// 只渲染当前分页的本地记录和选择状态，分类、删除与入队操作通过上层统一执行。
 export default function CopilotLibraryList({
   libraryReady,
   finishedLibrary,

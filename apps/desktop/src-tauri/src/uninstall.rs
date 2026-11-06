@@ -1,4 +1,5 @@
 //! macOS only: the bundled service owns component policy and the cleanup lease.
+// 宿主收集必须保留的目录并关闭服务，再委托包内工具在独占组件租约下执行卸载。
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use tauri::Manager;
@@ -103,6 +104,7 @@ pub async fn uninstall_desktop_application(app: tauri::AppHandle) -> Result<(), 
             return Err("安装包缺少卸载所需的本地服务，请重新安装应用后重试".into());
         }
         let locations = crate::configuration::get_configuration_locations()?;
+        // 同时保护当前和下次启动的数据根，以及用户自定义的组件/作业目录。
         let mut roots = ["directory", "nextDirectory"]
             .map(|key| {
                 locations[key]
@@ -137,6 +139,7 @@ pub async fn uninstall_desktop_application(app: tauri::AppHandle) -> Result<(), 
         runtime.mark_updating();
         crate::desktop_notifications::stop(&app);
         let result = async {
+            // 仅正常退出才允许清理；被强制结束的服务不足以证明组件已安全释放。
             runtime.shutdown_for_uninstall().await?;
             let mut command = Command::new(executable);
             command.args(["--uninstall-macos", "--bundle"]).arg(&bundle);

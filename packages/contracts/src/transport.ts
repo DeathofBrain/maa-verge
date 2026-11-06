@@ -1,3 +1,4 @@
+// 类型化桌面传输入口：UI 只调用 Tauri 的 runtime_request，不直接连接后端或原生核心。
 import type { Event } from './types';
 import type { RpcContract } from './rpc-types';
 import { RuntimeRequestError } from './error-display';

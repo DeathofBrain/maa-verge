@@ -2,7 +2,7 @@ import { AgentInputError, proposeDeterministic } from '@maaverge/agent';
 import { parsePlan, type Plan } from '@backend/modules/settings/models';
 import { RpcError } from '@backend/shared/errors';
 
-/** Deterministic proposal harness. Tools execute only through the reviewed RPC plan. */
+/** 将本地规则草稿交给任务表解析与策略校验；这里只返回提案，不保存或启动执行。 */
 export function propose(message: unknown, validate: (plan: Plan) => void) {
   try {
     return proposeDeterministic(message, (draft) => {

@@ -10,6 +10,7 @@ import Button from '@/kit/Button';
 import ConfirmDialog from '@/kit/ConfirmDialog';
 import Section from '@/kit/Section';
 
+// 仅在 macOS 展示宿主支持的卸载入口，先列出实际清理范围，再由确认操作启动原生流程。
 export default function UninstallSettings({ busy }: { busy: boolean }) {
   const macos = desktopPlatform() === 'macos';
   const [info, setInfo] = useState<DesktopUninstallInfo>();

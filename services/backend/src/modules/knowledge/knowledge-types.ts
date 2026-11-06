@@ -1,3 +1,5 @@
+// 定义知识记录的内容、来源与关系结构；关系描述只提供检索线索，不授予执行权限。
+
 import type { ClientType } from '@backend/modules/resources/item-resources';
 
 export type KnowledgeKind =

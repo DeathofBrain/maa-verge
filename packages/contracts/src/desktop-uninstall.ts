@@ -1,3 +1,4 @@
+// 桌面卸载入口先校验宿主返回的信息结构，实际卸载动作仍由宿主执行。
 import type { DesktopUninstallInfo } from './types';
 import { validateDesktopUninstallInfo } from './validators.js';
 

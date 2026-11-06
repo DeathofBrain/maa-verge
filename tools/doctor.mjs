@@ -1,3 +1,4 @@
+// 诊断固定工具链、依赖与目录权限；不连接设备或发起模型请求。
 import { existsSync, accessSync, constants, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { root, pinnedNode, probe, devEnvironment } from './project.mjs';
@@ -90,6 +91,7 @@ if (native) {
   }
 }
 const environment = devEnvironment();
+// 数据目录尚未创建时检查最近的既有祖先，不为诊断写入用户数据。
 let ancestor = environment.MAAVERGE_DATA_DIR;
 while (!existsSync(ancestor) && path.dirname(ancestor) !== ancestor)
   ancestor = path.dirname(ancestor);

@@ -1,3 +1,5 @@
+// 持有数据根独占租约的 SQLite 存储边界，负责迁移快照、对象顺序与持久化执行去重记录。
+
 import { Database } from 'bun:sqlite';
 import {
   closeSync,
@@ -16,6 +18,7 @@ import { parseWireJson, stringifyWireJson } from '@backend/shared/wire-json';
 
 export const now = () => new Date().toISOString();
 
+// 专用锁库的事务贯穿 Store 生命周期；锁文件必须保持稳定，删除后重建会破坏实例间互斥。
 function acquireLease(root: string): Database {
   const lease = new Database(path.join(root, '.runtime-lock.sqlite3'), { create: true });
   try {
@@ -31,6 +34,7 @@ function acquireLease(root: string): Database {
 }
 
 /** Preserve rowids and committed WAL data; publish only a validated, durable image. */
+// 序列化快照保留隐式 rowid 与已提交数据；校验、刷盘后再重命名发布，避免半成品接管。
 function snapshotDatabase(db: Database, destination: string) {
   const root = path.dirname(destination),
     temporary = path.join(root, `.backup-${randomUUID()}.sqlite3`);
@@ -139,6 +143,7 @@ export class Store {
     // VACUUM INTO can renumber implicit rowids used by objects' display order.
     snapshotDatabase(this.db, path.join(this.root, 'pre-typescript.sqlite3'));
   }
+  // 每次业务访问都确认租约事务仍存活，不能在失去数据根所有权后继续读写。
   private check() {
     if (this.closed || !this.lease.inTransaction) throw new Error('数据目录锁已失效，停止业务读写');
     this.lease.query('SELECT 1').get();
@@ -147,6 +152,7 @@ export class Store {
     this.check();
     return this.db.transaction(fn)();
   }
+  // 冲突时更新原行而非替换，保留依赖 rowid 的插入顺序与历史读取行为。
   put(kind: string, id: string, value: unknown): void {
     this.check();
     this.db

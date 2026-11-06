@@ -1,7 +1,6 @@
 import runtimeSchema from '../../contracts/schemas/runtime.schema.json';
 
-// Derive plan/task fields from the authoritative contract, without giving the
-// model control over saved IDs, device bindings, schedules or budget settings.
+// 从权威契约提取名称和任务结构；不向模型开放已保存 ID、设备绑定、定时或预算字段。
 export const proposalSchema = {
   title: 'AgentPlanProposal',
   description: '待用户审阅的 Maa Verge 任务表草稿；生成提案不会保存或执行任务。',

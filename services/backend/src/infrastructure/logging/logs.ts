@@ -1,3 +1,5 @@
+// 管理诊断日志轮转、有限范围导出和过期清理；导出脱敏不能替代用户分享前的检查。
+
 import {
   closeSync,
   constants,
@@ -242,6 +244,7 @@ export class Logs {
     if (exhausted) warnings.push('日志目录条目超过 4096 项，部分文件未处理');
     return files.sort((a, b) => b.modified - a.modified || a.label.localeCompare(b.label));
   }
+  // 只枚举已知日志目录并限制数量、单文件尾部和总字节；打开后再核对身份，防止文件替换越界。
   export() {
     const warnings: string[] = [],
       sections: string[] = [];
@@ -362,6 +365,7 @@ export class Logs {
       warnings,
     };
   }
+  // 清理避开本进程当前日志及活动 worker 目录，删除前复核文件身份和修改时间。
   clean(retentionDays = 0, at = Date.now()): CleanupResult {
     const result: CleanupResult = {
       removedFiles: 0,

@@ -29,6 +29,7 @@ export default function CopilotDeleteDialog({
   onClose,
   onConfirm,
 }: Props) {
+  // 删除分类默认保留其中作业；是否同时删除 JSON 则沿用应用已保存的独立偏好。
   const [deleteCopilots, setDeleteCopilots] = useState(false);
   const title = target.type === 'category' ? '删除分类' : '删除作业';
 

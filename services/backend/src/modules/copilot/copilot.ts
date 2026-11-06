@@ -1,3 +1,5 @@
+// 管理作业的预览导入、内容寻址版本、可编辑队列与社区反馈；执行始终引用已验证的不可变内容。
+
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import {
@@ -382,6 +384,7 @@ export class CopilotLibrary {
     if (existsSync(target) && !statSync(target).isDirectory())
       throw new RpcError(-32602, '作业 JSON 保存位置必须是目录');
   }
+  // 导出缓存以内容摘要命名；预先存在的同内容文件不自动归本服务所有，防止后续清理误删用户原件。
   private cacheRecord(record: CopilotRecord, created: string[]): void {
     const target = this.storageInfo().directory;
     this.validateStorageDirectory(target);
@@ -427,6 +430,7 @@ export class CopilotLibrary {
     if (!reference.fileIds.includes(id)) reference.fileIds.push(id);
     this.store.put('copilot_cache', record.id, reference);
   }
+  // 先把自有缓存文件暂存改名，再提交元数据删除；失败尝试恢复文件，执行用的不可变版本不在此删除。
   private removeRecords(records: CopilotRecord[], update?: () => void): number {
     const selected = new Set(records.map((record) => record.id));
     const references = this.store.all<CachedRecord>('copilot_cache');
@@ -546,6 +550,7 @@ export class CopilotLibrary {
     }
     return records.length;
   }
+  // 只有索引所指地图文件真实存在才建立别名；冲突的搜索名和显示代号不作为确定匹配。
   private aliases(): Map<string, string> {
     const generation = this.context.resourceDirectory();
     if (!generation) {
@@ -699,6 +704,7 @@ export class CopilotLibrary {
     this.navigationCache.set(cacheKey, tasks);
     return tasks;
   }
+  // 无法验证与明确不支持分开返回，缺少核心版本或资源索引时不宣称作业可执行。
   private compatibility(
     record: Pick<CopilotRecord, 'minimumCoreVersion'>,
     stages: string[],
@@ -943,6 +949,7 @@ export class CopilotLibrary {
       },
     };
   }
+  // 每次执行或导出前重新核对内容摘要，不能只相信数据库曾经记录过的路径。
   private readVersion(version: Version): string {
     let content: string;
     try {
@@ -1206,6 +1213,7 @@ export class CopilotLibrary {
       return { id: identifier('entry'), record: null, error: message(cause) };
     }
   }
+  // 预览只暂存候选内容与来源，真正入库由后续 import 消费预览凭证完成。
   async preview(input: RpcContract['params']['copilot.preview']): Promise<CopilotPreview> {
     const params = validate(validators.validateCopilotPreviewParams, input);
     if (
@@ -1297,6 +1305,7 @@ export class CopilotLibrary {
     this.previews.set(preview.id, { public: clone(preview), createdAt: Date.now() });
     return preview;
   }
+  // 导入依据已预览的内容，不重新解释用户输入；批量持久化失败时清理本次新建的版本文件。
   import(input: RpcContract['params']['copilot.import']): RpcContract['results']['copilot.import'] {
     const params = validate(validators.validateCopilotImportParams, input),
       preview = this.previews.get(params.previewId);
@@ -1428,6 +1437,7 @@ export class CopilotLibrary {
     this.context.changed?.('作业队列与选项已保存');
     return workspace;
   }
+  // 只取消与执行快照完全对应的队列项，保留运行期间用户对其他条目或配置的编辑。
   acknowledgeVictory(
     snapshot: { workspace?: CopilotWorkspace },
     entryId: string,
@@ -1457,6 +1467,7 @@ export class CopilotLibrary {
     if (acknowledged) this.context.changed?.('已取消通关作业的选择');
     return acknowledged;
   }
+  // 把可编辑工作区冻结为本次执行输入，同时核实核心、地图及多作业导航能力。
   prepare(
     kind: CopilotKind,
     clientType: NonNullable<RpcContract['params']['stages.list']['clientType']> = 'Official',
@@ -1696,6 +1707,7 @@ export class CopilotLibrary {
     return current.rating === rating ? current : this.readRating(id);
   }
   /** Called only after the runtime has finalized confirmed per-entry evidence. */
+  // 自动反馈仅考虑已确认通关且来源唯一的社区作业；本地导入的同内容版本不推定社区归属。
   autoLikeConfirmed(
     runId: string,
     snapshot: { workspace?: CopilotWorkspace; feedbackSources?: FeedbackSource[] },
@@ -1790,6 +1802,7 @@ export class CopilotLibrary {
       clearTimeout(timer!);
     }
   }
+  // 社区网络请求受关闭信号、响应大小和期限限制；错误不能让反馈阻塞应用退出。
   private async request(relative: string, body?: unknown, deadline = Infinity): Promise<any> {
     if (this.closing) throw new RpcError(-32011, '应用正在退出，社区请求已取消');
     const remaining = Math.min(12_000, deadline - Date.now());
