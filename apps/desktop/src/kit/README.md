@@ -106,6 +106,8 @@ import { formatDuration } from '@/kit/format';
 
 Field 的函数式 children 接收生成的 id，用它关联标签。错误状态按需同时设置 `invalid` 和 `aria-invalid`。Select 不接受 `options` 数组，也不支持 `multiple`；菜单定位、原生表单语义与键盘操作由组件维护。
 
+`TextField`、`SearchField` 与 `TextArea` 共用 `text-input-behavior.ts` 的输入行为配置，统一关闭系统自动大写与自动纠正，保留输入原有大小写；页面不重复设置或在输入回调中转换。搜索比较与候选选择仍由业务组件负责。
+
 Select 使用 `size="md"`（默认）、`"compact"` 或 `"sm"` 控制尺寸，`variant="subtle"` 弱化边框与文字并缩小字号；`textSize="sm"` / `"md"` / `"base"` 对应 11 / 12 / 13px 字号。页面只设置自己的宽度与布局，不修改内部样式。
 
 ### 设置行与状态

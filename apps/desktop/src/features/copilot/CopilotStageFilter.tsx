@@ -33,8 +33,8 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
     : [];
   const expanded = open && !!prefix;
   const activeIndex = matches.findIndex((stage) => stage.value === active);
-  const canonical = (input: string) =>
-    stages.find((stage) => stage.value.toLowerCase() === input.trim().toLowerCase())?.value;
+  const exactMatch = (input: string) =>
+    stages.some((stage) => stage.value.toLowerCase() === input.trim().toLowerCase());
 
   useEffect(() => {
     let cancelled = false;
@@ -110,8 +110,7 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
     onChange(input);
     setActive('');
     setOpen(true);
-    const exact = canonical(input);
-    if (!composing.current && (!input.trim() || exact)) onCommit(exact ?? '');
+    if (!composing.current && (!input.trim() || exactMatch(input))) onCommit(input.trim());
   };
 
   return (
@@ -130,7 +129,6 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
           expanded && activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined
         }
         autoComplete="off"
-        autoCapitalize="none"
         spellCheck={false}
         maxLength={200}
         value={value}
@@ -152,9 +150,8 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
           setActive('');
           if (!edited.current) return;
           edited.current = false;
-          const exact = canonical(value);
-          if (exact || ((current?.result || current?.failed) && !matches.length))
-            onCommit(exact ?? value.trim());
+          if (exactMatch(value) || ((current?.result || current?.failed) && !matches.length))
+            onCommit(value.trim());
         }}
         onKeyDown={(event) => {
           if (event.nativeEvent.isComposing) return;
@@ -176,10 +173,11 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
             setActive(matches[next]!.value);
           } else if (event.key === 'Enter') {
             event.preventDefault();
-            if (expanded && matches.length) select(matches[Math.max(0, activeIndex)]!.value);
+            if (expanded && matches.length && (activeIndex >= 0 || !exactMatch(value)))
+              select(matches[Math.max(0, activeIndex)]!.value);
             else {
               edited.current = false;
-              onCommit(canonical(value) ?? value.trim());
+              onCommit(value.trim());
               setOpen(false);
             }
           }

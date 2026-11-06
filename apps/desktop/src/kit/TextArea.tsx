@@ -1,5 +1,6 @@
 import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
+import { textInputBehavior } from './text-input-behavior';
 
 type Props = ComponentPropsWithRef<'textarea'> & {
   invalid?: boolean;
@@ -15,6 +16,7 @@ export default function TextArea({
   return (
     <textarea
       {...rest}
+      {...textInputBehavior}
       data-invalid={invalid || undefined}
       className={cx('mv-textarea', variant === 'embedded' && 'mv-textarea--embedded', className)}
     />

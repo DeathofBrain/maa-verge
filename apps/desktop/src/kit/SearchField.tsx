@@ -2,6 +2,7 @@ import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { Search, X } from 'lucide-react';
 import { cx } from './cx';
 import IconButton from './IconButton';
+import { textInputBehavior } from './text-input-behavior';
 
 type Props = Omit<
   ComponentPropsWithRef<'input'>,
@@ -49,6 +50,7 @@ export default function SearchField({
       </span>
       <input
         {...rest}
+        {...textInputBehavior}
         id={id}
         type={type}
         className="mv-search-input"

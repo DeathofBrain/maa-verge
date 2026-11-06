@@ -134,6 +134,46 @@ test('keyboard selection, dismissal and unmatched input preserve the typed stage
     .toMatchObject({ stage: 'future-99' });
 });
 
+test('complete stage codes preserve typed casing on search, blur and Enter', async ({ page }) => {
+  await openCommunity(page);
+  await page.clock.install();
+  const keyword = library(page).getByLabel('社区搜索关键词', { exact: true });
+  for (const { typed, option } of [
+    { typed: 'r8-11', option: 'R8-11 · 渴求' },
+    { typed: 'pR-a-1', option: 'PR-A-1 · 固若金汤' },
+  ]) {
+    await input(page).fill(typed);
+    await expect(input(page)).toHaveValue(typed);
+    await expect(candidates(page).getByRole('option')).toHaveText([option]);
+    await page.clock.runFor(500);
+    await expect
+      .poll(async () => (await requests(page)).at(-1))
+      .toMatchObject({ stage: typed, page: 1 });
+
+    await keyword.click();
+    await page.clock.runFor(500);
+    await expect(input(page)).toHaveValue(typed);
+    expect((await requests(page)).at(-1)).toMatchObject({ stage: typed, page: 1 });
+    await input(page).click();
+    await input(page).press('Enter');
+    await page.clock.runFor(500);
+    await expect(input(page)).toHaveValue(typed);
+    await expect(candidates(page)).toHaveCount(0);
+    await expect
+      .poll(async () => (await requests(page)).at(-1))
+      .toMatchObject({ stage: typed, page: 1 });
+  }
+
+  await input(page).click();
+  await input(page).press('ArrowDown');
+  await input(page).press('Enter');
+  await page.clock.runFor(500);
+  await expect(input(page)).toHaveValue('PR-A-1');
+  await expect
+    .poll(async () => (await requests(page)).at(-1))
+    .toMatchObject({ stage: 'PR-A-1', page: 1 });
+});
+
 test('choosing or clearing a stage resets pagination and set browsing retains the filter', async ({
   page,
 }) => {
@@ -142,7 +182,7 @@ test('choosing or clearing a stage resets pagination and set browsing retains th
   await expect(input(page)).toHaveValue('r8-11');
   await expect
     .poll(async () => (await requests(page)).at(-1))
-    .toMatchObject({ stage: 'R8-11', page: 1 });
+    .toMatchObject({ stage: 'r8-11', page: 1 });
   await library(page).getByRole('button', { name: '下一页', exact: true }).click();
   await expect(
     library(page).getByRole('button', { name: '查看详情 合成社区作业 2', exact: true }),
