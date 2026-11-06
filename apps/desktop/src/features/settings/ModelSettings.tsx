@@ -165,6 +165,9 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
           模型提供商
           <TextField
             aria-label="模型提供商"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="例如：openai-compatible"
             value={draft.provider}
             disabled={formBusy}
@@ -178,6 +181,9 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
           <TextField
             type="url"
             aria-label="模型 API 地址"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="https://example.com/v1"
             value={draft.baseUrl}
             disabled={formBusy}
@@ -190,6 +196,9 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
           模型名称
           <TextField
             aria-label="模型名称"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="填写提供商支持的模型名称"
             value={draft.model}
             disabled={formBusy}
@@ -235,6 +244,8 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
             type="password"
             aria-label="模型 API 密钥"
             autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
             spellCheck={false}
             value={secret}
             maxLength={8192}

@@ -61,6 +61,8 @@ export default function MirrorChyanSettings({
             aria-label="Mirror酱 CDK"
             type="password"
             autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
             spellCheck={false}
             maxLength={256}
             value={draft.cdk}

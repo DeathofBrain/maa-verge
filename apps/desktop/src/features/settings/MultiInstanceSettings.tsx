@@ -384,6 +384,9 @@ function InstanceProfileEditor({
         实例名称
         <TextField
           aria-label="实例名称"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={draft.name}
           maxLength={80}
           required

@@ -255,6 +255,9 @@ export function SettingsPage({
         <SearchField
           className="sp-settings-input"
           aria-label="搜索设置"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="搜索主题、通知、更新或存储目录…"
           value={query}
           onValueChange={setQuery}
@@ -676,6 +679,8 @@ function DownloadProxyForm({
               value={draft.url}
               placeholder="例如 127.0.0.1:7890"
               autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
               spellCheck={false}
               disabled={busy || readbackFailed}
               onBlur={() => void flush()}
