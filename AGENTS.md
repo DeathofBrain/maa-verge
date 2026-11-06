@@ -2,7 +2,7 @@
 
 ## Context
 
-Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript, a TypeScript application service on pinned Bun, and a C++20 MaaCore worker. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese. See docs/runtime-migration.md for runtime and data migration boundaries.
+Read PLAN.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript, a TypeScript application service on pinned Bun, and a C++20 MaaCore worker. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese. See docs/runtime-migration.md for runtime and data migration boundaries.
 
 ## Boundaries
 
@@ -25,7 +25,7 @@ Read PLAN.md and docs/STATUS.md before changes. Maa Verge is an AGPL-3.0-only, l
 - Do not commit credentials, local databases, screenshots of real accounts, native downloads, virtual environments or build output.
 - Commit dependency lockfiles. Update contracts and documentation with interface changes. Generated files must be regenerated from their source.
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, etc.); write the description after the colon in Simplified Chinese, for example `feat: 添加主页仪表盘` or `fix(ui): 修复窗口缩放闪烁`.
-- Keep docs/STATUS.md accurate: implemented behavior, verification, limitations and next actions. Never report an untested platform as verified.
+- Do not create, restore or update docs/STATUS.md (including case variants such as docs/status.md) in future development. Record implemented behavior, verification, limitations and next actions in the task or PR description instead. Requirements in project skills or older documents to read or update this status file no longer apply. Never report an untested platform as verified.
 
 ## Project skills
 

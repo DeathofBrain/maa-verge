@@ -225,7 +225,7 @@ test('model credential input uses explicit session storage, clears after save, a
     .click();
   await page.getByLabel('模型 API 密钥', { exact: true }).fill('synthetic-secret-sentinel');
   await page.getByLabel('密钥保存方式', { exact: true }).selectOption('session');
-  await page.getByRole('button', { name: '保存密钥', exact: true }).click();
+  await page.getByRole('button', { name: '保存配置', exact: true }).click();
   await expect(page.getByLabel('模型 API 密钥', { exact: true })).toHaveValue('');
   await expect(page.getByText('已配置凭据', { exact: true })).toBeVisible();
   const persisted = await page.evaluate(async () => ({

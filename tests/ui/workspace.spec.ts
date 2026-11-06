@@ -614,9 +614,17 @@ test('recruitment calculation is independent and never creates a task table', as
   await expect(dock(page)).not.toContainText('执行中');
 });
 
-test('model preferences automatically save when changing settings categories', async ({ page }) => {
+test('model drafts survive category changes and reload without saving until explicitly requested', async ({
+  page,
+}) => {
   await openWorkspace(page);
   await settingsCategory(page, '模型与 Agent');
+  await page.clock.install();
+  const savedModelName = await page.evaluate(
+    async () =>
+      ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
+        .settings.model.model,
+  );
   await page.getByLabel('模型名称', { exact: true }).fill('synthetic-model');
   await page
     .getByRole('navigation', { name: '设置分类' })
@@ -627,6 +635,34 @@ test('model preferences automatically save when changing settings categories', a
     .getByRole('button', { name: '模型与 Agent', exact: true })
     .click();
   await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-model');
+  await page.clock.fastForward(1000);
+  expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.settingsWrites)).toBe(
+    0,
+  );
+  expect(
+    await page.evaluate(
+      async () =>
+        ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
+          .settings.model.model,
+    ),
+  ).toBe(savedModelName);
+  await page.reload();
+  await settingsCategory(page, '模型与 Agent');
+  await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('synthetic-model');
+  expect(await page.evaluate(() => (window as HarnessWindow).runtimeHarness.settingsWrites)).toBe(
+    0,
+  );
+  expect(
+    await page.evaluate(
+      async () =>
+        ((await (window as HarnessWindow).runtimeHarness.call('app.snapshot', {})) as Snapshot)
+          .settings.model.model,
+    ),
+  ).toBe(savedModelName);
+  await page
+    .getByRole('region', { name: '模型配置', exact: true })
+    .getByRole('button', { name: '保存配置', exact: true })
+    .click();
   await expect
     .poll(() =>
       page.evaluate(
