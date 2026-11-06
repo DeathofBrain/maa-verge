@@ -68,7 +68,7 @@ type SettingsPageProps = {
   onAction: ActionRunner;
   onPrepareUpdate: (channel: UpdateChannel) => Promise<void>;
   preparingUpdates: ReadonlySet<UpdateChannel['id']>;
-  searchQuery?: string;
+  navigation: SettingsNavigation;
 };
 
 function Toggle({
@@ -138,7 +138,8 @@ const categories = [
   },
   { id: 'about', label: '关于', icon: Info, keywords: '版本 AGPL 许可证 开源 系统 模式' },
 ] as const;
-type Category = (typeof categories)[number]['id'];
+export type SettingsCategory = (typeof categories)[number]['id'];
+export type SettingsNavigation = { category: SettingsCategory };
 let settingsSaveQueue = Promise.resolve();
 
 export function SettingsPage({
@@ -147,13 +148,14 @@ export function SettingsPage({
   onAction,
   onPrepareUpdate,
   preparingUpdates,
-  searchQuery,
+  navigation,
 }: SettingsPageProps) {
-  const [category, setCategory] = useState<Category>('general');
-  const [query, setQuery] = useState(searchQuery || '');
+  const [category, setCategory] = useState<SettingsCategory>(navigation.category);
+  const [query, setQuery] = useState('');
   useEffect(() => {
-    if (searchQuery !== undefined) setQuery(searchQuery);
-  }, [searchQuery]);
+    setCategory(navigation.category);
+    setQuery('');
+  }, [navigation]);
   const categoryOrder = [
     'general',
     'notifications',

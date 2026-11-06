@@ -75,6 +75,7 @@ apps/desktop/src/
 
 - `app/model/useAppSnapshot` 持有应用快照的刷新与订阅顺序。feature 收到快照与业务回调后呈现自己的视图，不自行复制整个全局快照状态。
 - 输入草稿、筛选、展开、列表选择优先保留在所属 feature。跨页面持续存在的执行、下载和写入协调器在应用生命周期内挂载，其代码可以属于相应业务域，不能仅因换页就重置。
+- 设置入口由 App 传入独立的 `SettingsNavigation` 分类请求：Agent 定位模型，主页定位更新，全局搜索定位所选分类，侧栏恢复通用分类。每次导航创建新请求（包括同页重复进入），设置页清空局部筛选；搜索文本只用于检索，不作为分类导航参数。普通模型草稿继续按现有会话缓存恢复，导航不触发保存。
 - `features/plans/usePlanWrites` 负责逐计划串行写入和已删除标记，由 App 挂载。计划详情关闭、删除与在途自动保存的顺序仍须保持；不能将它移入会随页面卸载的编辑器。
 - 业务操作通过 `@maaverge/contracts` 的 typed transport。React 不导入 Tauri 插件、shell、ADB 或 MaaCore，也不维护自己的数据库与设备租约。
 - Schema 与协议仍由 `packages/contracts/schemas` 定义。后端 TypeScript、C++ worker 和 Rust 宿主的职责不因前端目录改变。
