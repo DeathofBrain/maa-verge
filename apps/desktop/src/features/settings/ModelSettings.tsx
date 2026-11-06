@@ -31,7 +31,7 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
     const generation = ++credentialRequest.current;
     setCredential(undefined);
     setCredentialBusy(false);
-    setSecret('');
+    // Credential status follows the saved connection; the secret is an independent in-memory draft.
     setCredentialError('');
     if (canStoreCredential)
       void rpc('model.credential.status', {})
@@ -46,6 +46,14 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
     };
   }, [settings.model.provider, settings.model.baseUrl, settings.model.model]);
   const changeCredential = async (remove = false) => {
+    if (
+      busy ||
+      credentialBusy ||
+      !canStoreCredential ||
+      !modelSaved ||
+      (remove ? !currentCredential?.configured : !secret.trim())
+    )
+      return;
     const generation = ++credentialRequest.current;
     setCredentialBusy(true);
     setCredentialError('');
@@ -87,14 +95,19 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
       },
     },
   );
+  const modelSaved = JSON.stringify(draft) === JSON.stringify(settings.model);
+  const connectionSaved = (['provider', 'baseUrl', 'model'] as const).every(
+    (field) => draft[field] === settings.model[field],
+  );
+  const currentCredential = connectionSaved && canStoreCredential ? credential : undefined;
 
   return (
     <section className="settings-card" aria-label="模型配置">
       <div className="settings-card-heading">
         <h2>模型连接</h2>
         <StatusPill
-          tone={credential?.configured ? 'success' : 'neutral'}
-          label={credential?.configured ? '已配置凭据' : '待配置凭据'}
+          tone={currentCredential?.configured ? 'success' : 'neutral'}
+          label={currentCredential?.configured ? '已配置凭据' : '待配置凭据'}
         />
       </div>
       <p className="sp-help">Agent 使用已保存的模型连接。保存配置和密钥不会发起模型请求。</p>
@@ -204,7 +217,9 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
             maxLength={8192}
             disabled={busy || credentialBusy}
             onChange={(event) => setSecret(event.target.value)}
-            placeholder={credential?.configured ? '已保存；输入新密钥以替换' : '输入模型 API 密钥'}
+            placeholder={
+              currentCredential?.configured ? '已保存；输入新密钥以替换' : '输入模型 API 密钥'
+            }
           />
         </label>
         <label className="sp-field">
@@ -220,13 +235,21 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
           </Select>
         </label>
         <p className="sp-help">
-          {credential?.configured
-            ? credential.storage === 'session'
+          {currentCredential?.configured
+            ? currentCredential.storage === 'session'
               ? '本次使用临时密钥；退出后恢复系统已存密钥（如有）。'
               : '密钥保存在系统凭据存储中。'
             : '密钥按当前提供商和 API 地址隔离。'}{' '}
           系统凭据存储不可用时，可明确选择仅本次桌面会话。
         </p>
+        {!connectionSaved && (
+          <p className="sp-help">连接配置尚未保存，保存后再管理该连接的凭据。</p>
+        )}
+        {secret && (
+          <p className="sp-help">
+            密钥尚未保存；编辑连接配置会保留输入，点击「保存密钥」后才会应用。
+          </p>
+        )}
         {credentialError && <ErrorBanner>{credentialError}</ErrorBanner>}
         <div className="sp-form-actions">
           <Button
@@ -234,23 +257,19 @@ export default function ModelSettings({ settings, busy, onSave }: Props) {
             type="submit"
             busy={credentialBusy}
             disabled={
-              busy ||
-              credentialBusy ||
-              !canStoreCredential ||
-              !secret.trim() ||
-              JSON.stringify(draft) !== JSON.stringify(settings.model)
+              busy || credentialBusy || !canStoreCredential || !secret.trim() || !modelSaved
             }
           >
             保存密钥
           </Button>
           <Button
             variant="danger"
-            disabled={busy || credentialBusy || !credential?.configured}
+            disabled={busy || credentialBusy || !modelSaved || !currentCredential?.configured}
             onClick={() => void changeCredential(true)}
           >
             删除密钥
           </Button>
-          {credential && !credential.available && <span>系统凭据存储暂不可用</span>}
+          {currentCredential && !currentCredential.available && <span>系统凭据存储暂不可用</span>}
         </div>
       </form>
     </section>
