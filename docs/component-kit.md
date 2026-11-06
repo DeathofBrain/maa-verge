@@ -327,7 +327,7 @@ node tools/check-frontend-architecture.mjs
 bash tools/pnpm.sh run check:app
 ```
 
-界面行为与截图矩阵（1440×900 浅色、1280×800 深色、390×844 窄窗；`emulateMedia({ reducedMotion: 'reduce' })`；检查 `scrollWidth <= clientWidth`）按 [.skill/maa-verge-ui-verification](../.skill/maa-verge-ui-verification/SKILL.md) 执行。**切勿**用 `pnpm test:e2e -- <spec>`——pnpm 会把 `--` 传给 Playwright，命令实际展开为全量运行：
+界面行为验证及界面或样式变化时的桌面截图核对（1440×900 浅色、1280×800 深色；`emulateMedia({ reducedMotion: 'reduce' })`）按 [.skill/maa-verge-ui-verification](../.skill/maa-verge-ui-verification/SKILL.md) 执行；不新增或运行窄窗测试及手机尺寸截图检查，不添加外观断言测试。**切勿**用 `pnpm test:e2e -- <spec>`——pnpm 会把 `--` 传给 Playwright，命令实际展开为全量运行：
 
 ```bash
 MAAVERGE_TEST_PORT=15541 ./node_modules/.bin/playwright test tests/ui/<spec>.ts --reporter=line

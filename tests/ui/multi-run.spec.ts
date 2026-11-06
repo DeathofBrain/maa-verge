@@ -99,7 +99,6 @@ test('one task table runs on two instances and each instance stops independently
       .map((run) => run.status)
       .sort(),
   ).toEqual(['running', 'stopped']);
-  await page.setViewportSize({ width: 390, height: 844 });
   await panel.getByRole('button', { name: '停止实例 第二个模拟器', exact: true }).click();
 });
 

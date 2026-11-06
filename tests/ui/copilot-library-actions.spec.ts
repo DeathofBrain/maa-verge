@@ -158,7 +158,6 @@ test('category context menus can remove only the category or explicitly delete i
   await removeDialog(page, true)
     .getByRole('checkbox', { name: '同时删除分类中的作业', exact: true })
     .check();
-  await page.setViewportSize({ width: 390, height: 844 });
   await removeDialog(page, true).getByRole('button', { name: '确认删除', exact: true }).click();
   await expect(removeDialog(page, true)).toHaveCount(0);
   expect(
@@ -299,16 +298,12 @@ test('keyboard context menu deletion returns focus to the original category or w
   await category.focus();
   await page.keyboard.press('Shift+F10');
   await page.getByRole('menuitem', { name: '删除分类', exact: true }).click();
-  await page.setViewportSize({ width: 390, height: 500 });
   const cancel = removeDialog(page, true).getByRole('button', { name: '取消', exact: true });
-  await cancel.scrollIntoViewIfNeeded();
   await cancel.click();
   await expect(category).toBeFocused();
 });
 
-test('a failed deletion retains the dialog and selection, and can be retried in a short narrow window', async ({
-  page,
-}) => {
+test('a failed deletion retains the dialog and selection, and can be retried', async ({ page }) => {
   await page.goto('/');
   await seed(page, '删除失败重试甲');
   await seed(page, '删除失败重试乙');
@@ -328,7 +323,6 @@ test('a failed deletion retains the dialog and selection, and can be retried in 
   await enter(page);
   await all(page).check();
   await library(page).getByRole('button', { name: '删除所选', exact: true }).click();
-  await page.setViewportSize({ width: 390, height: 500 });
   const confirm = removeDialog(page).getByRole('button', { name: '确认删除', exact: true });
   await confirm.click();
   await expect(removeDialog(page).getByRole('alert')).toContainText('合成磁盘删除失败');
@@ -341,7 +335,6 @@ test('a failed deletion retains the dialog and selection, and can be retried in 
   await expect(
     library(page).getByRole('checkbox', { name: '选择作业 删除失败重试乙', exact: true }),
   ).toBeChecked();
-  await confirm.scrollIntoViewIfNeeded();
   await confirm.click();
   await expect(removeDialog(page)).toHaveCount(0);
   await expect(library(page).locator('.cp-record')).toHaveCount(0);

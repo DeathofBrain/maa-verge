@@ -91,22 +91,3 @@ test('every navigation entry remains usable at the minimum width', async ({ page
   await expect(handle).toHaveAttribute('aria-valuenow', '72');
   await expect.poll(() => savedWidth(page)).toBe('72');
 });
-
-test('narrow-window navigation preserves the preferred desktop width', async ({ page }) => {
-  await separator(page).focus();
-  await page.keyboard.press('ArrowLeft');
-  await expect.poll(() => savedWidth(page)).toBe('216');
-  await page.setViewportSize({ width: 390, height: 844 });
-  for (const name of ['设备', '设置']) {
-    await page.getByRole('button', { name: '打开导航', exact: true }).click();
-    const entry = page.locator('.sidebar').getByRole('button', { name, exact: true });
-    await entry.click();
-    await expect(entry).toHaveAttribute('aria-current', 'page');
-    await expect(page.getByRole('main')).toHaveAttribute('aria-label', name);
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(separator(page)).toHaveAttribute('aria-valuenow', '216');
-  await expect.poll(() => savedWidth(page)).toBe('216');
-  await page.locator('.sidebar').getByRole('button', { name: '主页', exact: true }).click();
-  await expect(page.getByRole('main')).toHaveAttribute('aria-label', '主页');
-});

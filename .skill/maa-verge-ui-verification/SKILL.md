@@ -1,6 +1,6 @@
 ---
 name: maa-verge-ui-verification
-description: 为 Maa Verge 的桌面界面改动执行 Playwright 验证与状态记录：选择受影响 spec、规避 pnpm test:e2e 的参数陷阱、处理任务详情抽屉的模态/inert 与确定性夹具时序、同步知识产物，并核对定向/全量回归及浅色、深色和窄窗截图。用于修改 apps/desktop、tests/ui 或 UI 相关文档之后；不用于真实设备、原生 WebView 或发布文案。
+description: 为 Maa Verge 的桌面界面改动执行 Playwright 验证并记录结果：选择受影响 spec、规避 pnpm test:e2e 的参数陷阱、处理任务详情抽屉的模态/inert 与确定性夹具时序、同步知识产物，并核对桌面视口下的定向/全量回归及浅色、深色截图。用于修改 apps/desktop、tests/ui 或 UI 相关文档之后；不用于窄窗测试、真实设备、原生 WebView 或发布文案。
 ---
 
 # Maa Verge 界面验证
@@ -10,13 +10,14 @@ description: 为 Maa Verge 的桌面界面改动执行 Playwright 验证与状�
 ## 适用边界
 
 - 适用于修改 `apps/desktop`、`tests/ui`、桌面界面相关文档或交互后的验证。
+- 界面自动化使用桌面视口；不新增或运行窄窗、手机尺寸视口的测试或截图检查。独立功能回归保留在桌面尺寸下，不添加外观断言测试。
 - 不把浏览器夹具结果当成真实设备、原生 WebView 或各平台安装验收。不要连接真实游戏、调用付费模型、下载组件或发布版本。
 - README 与 Release 文案分别使用 [maa-verge-readme](../maa-verge-readme/SKILL.md) 和 [maa-verge-release-notes](../maa-verge-release-notes/SKILL.md)，不要在本 skill 里改用户文案。
 - 三平台提交前按“三平台差异”一节记录实际宿主；没有实际执行就写“未验证”。
 
 ## 开始前
 
-- 读 [AGENTS.md](../../AGENTS.md)、[PLAN.md](../../PLAN.md) 和 [docs/STATUS.md](../../docs/STATUS.md)，检查 `git status` / `git diff`，保留未提交改动。
+- 读 [AGENTS.md](../../AGENTS.md) 和 [PLAN.md](../../PLAN.md)，检查 `git status` / `git diff`，保留未提交改动。
 - 识别受影响范围。任务入口/布局改动通常波及 `task-center`、`workspace`、`execution-monitor`、`execution`、`device-management`、`multi-run`、`plan-deletion`、`autosave-context-menu`、`default-plan`、`stages`、`recognition`、`component-readiness`、`toolbox-scheduler`、`copilot-center` 等 spec；用 `git diff --name-only` 和页面引用确认，不要只跑新 spec。
 - 使用隔离端口，避免和本地开发实例冲突：`MAAVERGE_TEST_PORT=15541`（示例，换成本机未占用端口）。
 - 目标 spec 先跑；失败时加 `--workers=1 --reporter=line` 串行复现，不要先改断言或加大超时。
@@ -81,23 +82,20 @@ corepack pnpm test:e2e
    - 改了 [generate-agent-knowledge.mjs](../../tools/generate-agent-knowledge.mjs) 的 `documentFiles` 列出的文档：`corepack pnpm knowledge:generate`
 4. `corepack pnpm check`。它会执行 `generate-agent-knowledge.mjs --check`、契约检查、TypeScript、Node 驱动的 CTest、Bun 和 Rust；耗时较长，但这是提交前的完整检查。
 5. 全量 E2E：`corepack pnpm test:e2e`（隔离端口）。当前基线约 244 项，以实际输出为准；不要用上一次的数字代替本次结果。
-6. 截图核对（见下节）。
-7. 更新 [docs/STATUS.md](../../docs/STATUS.md)，记录实际命令、通过数、宿主平台、截图范围和未验证项。
-
-> `docs/STATUS.md` 本身不在知识生成器的 `documentFiles` 列表中，更新状态不需要 `knowledge:generate`；只有列出的产品文档变更才需要。
+6. 界面或样式发生变化时核对桌面截图（见下节）；仅调整测试或文档时无需新增截图。
+7. 在任务或 PR 说明中记录实际命令、通过数、宿主平台、截图范围和未验证项；不创建、恢复或更新 `docs/STATUS.md`。
 
 ## 截图矩阵
 
-用 `page.setViewportSize`、`page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })` 和 `page.screenshot({ path: testInfo.outputPath(...), fullPage: true })`；截图放在测试输出目录，不提交 `test-results/`。至少检查：
+界面或样式发生变化时，用 `page.setViewportSize`、`page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })` 和 `page.screenshot({ path: testInfo.outputPath(...), fullPage: true })` 核对以下桌面场景；截图放在测试输出目录，不提交 `test-results/`：
 
-| 场景                     | 视口     | 主题  | 重点                                        |
-| ------------------------ | -------- | ----- | ------------------------------------------- |
-| 桌面列表 + 抽屉 + 运行条 | 1440×900 | 浅色  | 抽屉不遮挡底部运行栏；列表/运行条无横向溢出 |
-| 深色抽屉                 | 1280×800 | 深色  | 文字、边框、焦点可见；无横向溢出            |
-| 窄窗列表 + 抽屉          | 390×844  | 浅/深 | 侧栏收起；抽屉内容可滚动；无页面横向溢出    |
+| 场景                     | 视口     | 主题 | 重点                                        |
+| ------------------------ | -------- | ---- | ------------------------------------------- |
+| 桌面列表 + 抽屉 + 运行条 | 1440×900 | 浅色 | 抽屉不遮挡底部运行栏；列表/运行条无横向溢出 |
+| 深色抽屉                 | 1280×800 | 深色 | 文字、边框、焦点可见；无横向溢出            |
 
 - 截图前等目标区域可见并让动画稳定（`reducedMotion: 'reduce'`）；不要在抽屉/页面过渡中途截图。
-- 用 `document.documentElement.scrollWidth <= document.documentElement.clientWidth` 或现有断言检查页面横向溢出；对抽屉内部单独检查滚动容器。
+- 人工核对页面横向溢出与抽屉内部滚动，不为截图核对添加外观断言测试。
 - 截图来自确定性夹具，不含真实账号；不要把它描述成真实设备或原生窗口截图。
 
 ## 三平台差异
@@ -130,7 +128,7 @@ Chromium 夹具在三平台共用，但“浏览器通过”不等于“原生 W
 ## 交付
 
 - 明确区分：Chromium 定向通过、受影响 spec 通过、`pnpm check` 通过、全量 E2E 通过、截图已检查、真实设备/原生 WebView 未验证。
-- 文档和 `docs/STATUS.md` 写实际执行的命令与结果；没有执行的项目写“未验证”，不补造平台、安装包或真实游戏结论。
+- 任务或 PR 说明写实际执行的命令与结果；没有执行的项目写“未验证”，不补造平台、安装包或真实游戏结论。
 - 不提交 `test-results/`、本地数据库、真实账号截图或构建产物。
 
 ## 资源

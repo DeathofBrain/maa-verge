@@ -61,7 +61,7 @@ test('global log search opens the diagnostic settings category', async ({ page }
   await expect(page.getByRole('button', { name: '导出日志', exact: true })).toBeVisible();
 });
 
-test('log export reports the returned directory and complete path in a persistent narrow dialog', async ({
+test('log export reports the returned directory and complete path in a persistent dialog', async ({
   page,
 }) => {
   await openLogSettings(page);
@@ -85,7 +85,6 @@ test('log export reports the returned directory and complete path in a persisten
   );
   let downloads = 0;
   page.on('download', () => downloads++);
-  await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: '导出日志', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '日志已导出（含提示）', exact: true });
   await expect(dialog).toBeVisible();
