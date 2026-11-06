@@ -1,3 +1,4 @@
+// 探测或修复固定 Rust 工具链，将项目本地安装与用户全局配置隔离。
 import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -56,6 +57,7 @@ export async function ensureRust({
   const bin = path.join(cargoHome, 'bin');
   const suffix = platform === 'win32' ? '.exe' : '';
   const localExecutable = (name) => path.join(bin, `${name}${suffix}`);
+  // 构造项目专用工具链环境，后续探测和安装复用相同的隔离配置。
   const localEnvironment = { ...environment };
   // Windows treats environment variable names without regard to case.
   for (const key of Object.keys(localEnvironment)) {
@@ -166,6 +168,7 @@ export async function ensureRust({
       rmSync(staging, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
     }
   }
+  // 安装退出成功仍不足以证明工具链完整，需要重新核对版本与必需组件。
   installed = inspect(true);
   if (
     !installed &&

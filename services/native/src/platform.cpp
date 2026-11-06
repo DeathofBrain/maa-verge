@@ -1,3 +1,4 @@
+// 封装平台差异：路径编码、独占文件锁、动态库加载和不受原生日志污染的 NDJSON 输出。
 #include "native.hpp"
 
 #include <cerrno>
@@ -71,6 +72,7 @@ int duration_ms(const Json& value, const char* key, int fallback, int maximum) {
 bool read_message(std::string& line) {
   line.clear();
   char character = 0;
+  // 读取过程中限制帧大小，避免在遇到换行前无限积累来自父进程的数据。
   while (std::cin.get(character)) {
     if (character == '\n') break;
     if (line.size() == max_message_bytes) throw std::runtime_error("protocol message exceeds 4 MiB");
@@ -81,6 +83,8 @@ bool read_message(std::string& line) {
 }
 
 Protocol::Protocol() {
+  // 先保留父进程的协议管道，再把普通 stdout 重定向至 stderr。
+  // 复制出的描述符不传给原生子进程，防止它们占住管道而阻止父进程观察 EOF。
   std::fflush(stdout);
 #ifdef _WIN32
   const int descriptor = _dup(_fileno(stdout));
@@ -119,6 +123,7 @@ void Protocol::send(Json value) {
   value["protocolVersion"] = protocol_version;
   const auto text = value.dump(-1, ' ', true, Json::error_handler_t::replace) + "\n";
   if (text.size() > max_message_bytes) throw std::runtime_error("protocol output exceeds 4 MiB");
+  // 主线程响应与事件线程通知共用此锁，一次写入和刷新组成完整协议帧。
   std::lock_guard guard(mutex_);
   if (std::fwrite(text.data(), 1, text.size(), stream_) != text.size() || std::fflush(stream_) != 0) {
     std::fprintf(stderr, "protocol output closed; isolated worker exiting\n");
@@ -126,6 +131,7 @@ void Protocol::send(Json value) {
   }
 }
 
+// 超时后直接终止隔离进程，不尝试展开可能卡在原生调用中的析构链。
 Deadline::Deadline(std::string operation, int timeout_ms)
     : thread_([this, operation = std::move(operation), timeout_ms] {
         std::unique_lock guard(mutex_);
@@ -145,6 +151,7 @@ Deadline::~Deadline() {
 DeviceLease::DeviceLease(const fs::path& path, int timeout_ms) {
   fs::create_directories(path.parent_path());
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+  // 对可重试的占用/打开失败等待至截止时间；锁机制失效时不退化为进程内软锁。
   while (true) {
 #ifdef _WIN32
     HANDLE handle = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE,
@@ -219,6 +226,7 @@ Api::Api(const fs::path& core) {
   const auto path = core / "libMaaCore.so";
 #endif
   if (!fs::is_regular_file(path)) throw std::runtime_error("missing MaaCore library: " + to_utf8(path));
+  // 必需 API 缺失会撤销本次加载；可选 API 留给具体能力入口判断兼容性。
   try {
 #ifdef _WIN32
     directory_cookie_ = AddDllDirectory(core.c_str());

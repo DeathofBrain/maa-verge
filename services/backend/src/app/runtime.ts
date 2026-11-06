@@ -1,3 +1,6 @@
+// 应用服务的组合根：统一持久化、设备控制权、执行状态机和组件切换。
+// 原生调用由独立 worker 完成，此处负责把回调证据转换成可恢复的业务记录。
+
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
@@ -513,6 +516,7 @@ export class Runtime {
       (item) => item.status === 'running' && (!deviceId || item.deviceId === deviceId),
     );
   }
+  // 设备是否可用必须同时考虑持久化执行、启动中的请求、调度预约和原生异步操作，不能只看 UI 状态。
   availability(
     deviceId: string,
     ignoreOccurrence?: string,
@@ -729,6 +733,7 @@ export class Runtime {
     if (reasons.length)
       throw new RpcError(-32021, '请空闲后安装应用更新：' + reasons.join('；'), { reasons });
   }
+  // 准备标记先阻止新的设备操作，再等待组件更新队列排空；等待后需复查空闲，防止准入竞态。
   private async prepareAppUpdate() {
     // Pause new work synchronously, but allow an existing component operation
     // to finish its internal reconnect before taking the final installation gate.
@@ -1020,6 +1025,7 @@ export class Runtime {
       calendar,
     );
   }
+  // 内存中的进行中请求与数据库中的已登记请求共同去重；同一 requestId 不得改绑来源或设备。
   async startRun(params: any, scheduledPlan?: any, occurrence?: any) {
     const token = params.requestId;
     if (typeof token !== 'string' || !token || [...token].length > 200)
@@ -1047,6 +1053,7 @@ export class Runtime {
       this.starts.delete(token);
     }
   }
+  // 先返回已登记执行，再做当前设备准入检查，使断线或重启后的重试仍能找回原结果。
   private async startRunInner(params: any, scheduledPlan?: any, occurrence?: any) {
     const existing = this.store.get('request', params.requestId);
     if (existing) {
@@ -1138,6 +1145,7 @@ export class Runtime {
     }
   }
   /** No await before occupancy validation and durable registration: every source shares this gate. */
+  // 所有执行来源共用这一准入点；设备占用检查与去重记录落库之间不能插入异步间隙。
   private async beginExecution(params: any, snapshot: any, occurrence?: any) {
     const device = this.devices().find((d) => d.id === params.deviceId);
     if (!device) throw new RpcError(-32004, '设备不存在');
@@ -1258,6 +1266,7 @@ export class Runtime {
       // Probe errors provide no evidence about the emulator; keep this path silent.
     }
   }
+  // 停止会清空原生队列，而非暂停；停止响应不足以证明已空闲，后续轮询仍需确认 worker 状态。
   async stopRun(id: string) {
     const run = this.execution(id);
     if (!run) throw new RpcError(-32004, '执行记录不存在');
@@ -1295,6 +1304,7 @@ export class Runtime {
       !!(profile && this.suppressedAddresses.has('profile:' + profile.id))
     );
   }
+  // 手动断开同时抑制地址及已知别名的自动重连，避免同一实例换一种地址后立即接回。
   private suppressAddress(address: string, suppress: boolean) {
     const canonical = this.lockAddress(address);
     const identities = [deviceLockAddress(address)];
@@ -1395,6 +1405,7 @@ export class Runtime {
         });
     return [...this.automaticTargets.values()];
   }
+  // 异步探测返回时重新核对配置版本、取消信号和抑制状态，过期尝试不能继续占用设备。
   private validateAutomatic(address: string, attempt?: AutomaticConnection) {
     if (!parseSettings(this.store.get('settings', 'main')).autoConnect)
       throw new RpcError(-32011, '自动连接已关闭');
@@ -1580,6 +1591,7 @@ export class Runtime {
       if (state.online || (state.ready && Date.now() - state.readyAt < 2000))
         this.beginAutomaticConnection(state);
   }
+  // 端口探测只辅助安排重连；探测失败不能单独当作设备离线或原生控制失败的证据。
   private async checkAutomaticEndpoints() {
     const states = this.syncAutomaticTargets();
     const online = new Set(
@@ -1696,6 +1708,7 @@ export class Runtime {
     if (process.env.MAAVERGE_ADB_PATH) return resolveAdbPath();
     return captureAdbPath(capture) || resolveAdbPath();
   }
+  // 先预留请求地址，再核实实例的规范身份；每次异步等待后都可能遇到退出、切换或取消。
   async connectDevice(
     params: any,
     internal = false,
@@ -2105,6 +2118,7 @@ export class Runtime {
       this.lastDiagnostics = diagnostics;
     }
   }
+  // 整批同步预检后才删除设备记录，避免一批请求只删一半；历史执行与其他绑定不在此级联删除。
   private deleteDevices(params: unknown): RpcContract['results']['device.delete'] {
     if (!validateDeviceDeleteParams(params)) throw new RpcError(-32602, '历史设备删除请求无效');
     if (this.switching) throw new RpcError(-32011, '正在切换核心与资源，暂不能删除历史设备');
@@ -2175,6 +2189,7 @@ export class Runtime {
     this.emit('device.disconnected', '设备控制权已释放', { deviceId: id });
     return { disconnected: true };
   }
+  // 切换先关闭准入并释放旧 worker；新组件不得覆盖仍被原生进程引用的路径。
   async beforeSwitch() {
     if (!this.switching && this.busy()) throw new Error('核心或异步操作仍在运行');
     this.switching = true;
@@ -2197,6 +2212,7 @@ export class Runtime {
     const results = await Promise.allSettled(workers.map(([, w]) => w.close()));
     if (results.some((r) => r.status === 'rejected')) throw new Error('旧核心工作进程退出失败');
   }
+  // 重新连接失败只把对应设备留在线下，不把已验证且已生效的空闲更新视为损坏。
   async afterSwitch() {
     for (const device of this.reconnect) {
       try {
@@ -2288,6 +2304,7 @@ export class Runtime {
       ? synced
       : {};
   }
+  // 本地账号标签或区服改变会使旧识别与估算失效；标签变化不代表已验证游戏中的登录身份。
   private rememberClient(run: any, params: any) {
     const clientType = params.client_type || 'Official',
       accountName = typeof params.account_name === 'string' ? params.account_name : '';
@@ -2377,6 +2394,7 @@ export class Runtime {
     Object.assign(run, current);
     return true;
   }
+  // 截图异步返回后再次绑定当前 worker、任务序号和执行状态，拒绝把上一任务的迟到画面写入新任务。
   private captureRunArtifact(run: any, state: any, worker: Worker, label: string) {
     const key = run.id + ':' + state.index;
     const current = this.execution(run.id),
@@ -2437,6 +2455,7 @@ export class Runtime {
       if (this.artifactCaptures.get(key) === capture) this.artifactCaptures.delete(key);
     });
   }
+  // 只给结束截图有限等待时间；撤销登记后，迟到截图不能再补写已经结束的任务。
   private async finishRunArtifact(runId: string, index: number) {
     const key = runId + ':' + index,
       capture = this.artifactCaptures.get(key);
@@ -2455,6 +2474,7 @@ export class Runtime {
       if (this.artifactCaptures.get(key) === capture) this.artifactCaptures.delete(key);
     }
   }
+  // 切服通过关闭旧 worker 后重建实现，期间持续保留设备执行占用，并支持取消而不重放任务。
   private async workerForClient(run: any, clientType: string): Promise<Worker | undefined> {
     const id = run.deviceId,
       previous = this.workers.get(id),
@@ -2533,6 +2553,7 @@ export class Runtime {
       this.submissions.delete(pending);
     });
   }
+  // 提交阶段先屏蔽轮询消费回调，直到请求返回的 taskId 与执行状态完成绑定。
   private async submitNativeTaskInner(
     run: any,
     index: number,
@@ -2686,6 +2707,7 @@ export class Runtime {
       this.finishNativeRun(run, 'completed', '所有任务链均报告成功且核心已空闲');
     else await this.continueNativeTask(run, index, syncSteps, syncIndex);
   }
+  // 切服重连可能较慢，不阻塞整个设备轮询；该设备的执行记录继续保留独占权。
   private async continueNativeTask(run: any, index: number, syncSteps?: SyncStep[], syncIndex = 0) {
     const changesClient =
       (this.workerConfigurations.get(run.deviceId)?.connection?.clientType ?? 'Official') !==
@@ -2701,6 +2723,7 @@ export class Runtime {
     else await pending;
   }
   /** List IDs are local queue occurrence IDs, never community document IDs. */
+  // 原生任务推进与游戏通关分开记账；只有匹配本次作业的战斗及结算证据才能确认胜利。
   private recordCopilotCallback(
     run: any,
     state: any,
@@ -2911,6 +2934,7 @@ export class Runtime {
       .finally(() => this.closingDeviceObservations.delete(closing));
     this.closingDeviceObservations.add(closing);
   }
+  // 观察快照绑定创建时的 worker 集合；旧订阅或订阅断开不能误伤后来重连的控制器。
   private watchDeviceConnections() {
     if (!this.running || this.switching || this.appUpdating || this.appUpdatePreparing) {
       this.closeDeviceObservation();
@@ -2991,6 +3015,7 @@ export class Runtime {
       disconnected();
     }
   }
+  // 等待进程退出后才移除控制器引用，使应用占用记录覆盖原生设备租约的释放过程。
   private async releaseOfflineWorker(id: string, worker: Worker) {
     this.preview.invalidate(id);
     // Keep the worker registered until shutdown releases its native device lease.
@@ -3001,6 +3026,7 @@ export class Runtime {
       this.workerConfigurations.delete(id);
     }
   }
+  // 回调结束标志与后续空闲状态共同构成推进条件；失败、停止或连接丢失不能被完成消息洗成成功。
   async pollNativeWorkers() {
     for (const [id, worker] of [...this.workers.entries()]) {
       if (this.workers.get(id) !== worker) continue;
@@ -3455,6 +3481,7 @@ export class Runtime {
       }
     })());
   }
+  // 核心和资源各有检查时钟；核心版本未变不能阻止资源热更新检查。
   async automaticUpdates() {
     if (!this.running || this.initializingComponents || this.appUpdating || this.appUpdatePreparing)
       return;
@@ -3492,6 +3519,7 @@ export class Runtime {
   cancelPendingClientSwitches() {
     for (const controller of this.clientSwitches.values()) controller.abort();
   }
+  // 先阻止新工作，再收敛子进程、异步提交和证据写入，最后释放数据库及数据根租约。
   private async closeInner() {
     this.running = false;
     await this.agent.close();

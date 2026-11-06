@@ -1,3 +1,5 @@
+// 管理短期预览凭证与幂等点击；截图和令牌仅存于内存，设备控制权变更后必须失效。
+
 import { randomUUID } from 'node:crypto';
 import type { RpcContract, ScreenFrame } from '@contracts/rpc-types';
 import {
@@ -102,6 +104,7 @@ export class Preview {
     this.reading.set(deviceId, promise);
     return promise;
   }
+  // 截图读取可以合并，但返回时必须仍是同一控制器；令牌时效从读取开始计算，不从返回时重新续期。
   private async read(deviceId: string): Promise<ScreenFrame> {
     const { worker } = this.device(deviceId),
       started = Date.now();
@@ -151,6 +154,7 @@ export class Preview {
       latencyMs: Date.now() - started,
     };
   }
+  // 去重缓存保留成功和失败的 Promise；确认丢失时重用 requestId 不能再次触发设备点击。
   click(params: unknown): Promise<Accepted> {
     if (!validateDeviceClickParams(params)) throw new RpcError(-32602, '点击参数无效');
     const signature = JSON.stringify([params.deviceId, params.frameId, params.x, params.y]);
@@ -168,6 +172,7 @@ export class Preview {
     this.clicks.set(params.requestId, { signature, started: Date.now(), promise });
     return promise;
   }
+  // 先预留手动控制占用，再校验帧与坐标；无论成功失败都作废旧帧，防止继续点击过期画面。
   private async sendClick(params: ClickParams): Promise<Accepted> {
     const { deviceId, frameId, x, y } = params;
     // Rejected input must not reserve the core while an idle update is validating.

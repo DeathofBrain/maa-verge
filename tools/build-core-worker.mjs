@@ -1,3 +1,4 @@
+// 统一 C++ worker 的配置、构建和合成验证，向打包流程返回实际可执行文件。
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -10,6 +11,7 @@ export async function buildCoreWorker({
 } = {}) {
   const cmake = resolveCmake().executable,
     build = path.join(root, 'build/native');
+  // 配置阶段显式区分生产与合成测试，避免把测试夹具带入发行构建。
   await run(cmake, [
     ...(fresh ? ['--fresh'] : []),
     '-S',
@@ -29,6 +31,7 @@ export async function buildCoreWorker({
         : path.join(path.dirname(cmake), process.platform === 'win32' ? 'ctest.exe' : 'ctest');
     await run(ctest, ['--test-dir', build, '-C', 'Release', '--output-on-failure']);
   }
+  // 兼容单配置与多配置生成器的输出目录，但必须找到真实构建产物。
   const name = process.platform === 'win32' ? 'maaverge-core-worker.exe' : 'maaverge-core-worker';
   const executable = [path.join(build, 'Release', name), path.join(build, name)].find(existsSync);
   if (!executable) throw new Error('Native build did not produce maaverge-core-worker');

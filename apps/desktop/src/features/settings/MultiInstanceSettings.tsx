@@ -39,6 +39,7 @@ const newInstanceProfile = (
   capture: { method: 'adb', autoDetect: true, emulatorPath: '', instanceIndex: 0 },
 });
 
+// 每个多开实例持有独立连接和截图配置，运行设备记录通过 profile 与规范地址关联。
 export function MultiInstanceSettings({
   settings,
   devices,

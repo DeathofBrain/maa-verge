@@ -1,3 +1,5 @@
+// 把每次定时触发持久化为独立 occurrence，协调提醒、设备准备、抢占倒计时与启动去重。
+
 import { createHash, randomUUID } from 'node:crypto';
 import type { RpcContract } from '@contracts/rpc-types';
 import { planAllowsDevice } from '@contracts/plan-devices';
@@ -33,6 +35,7 @@ export class Scheduler {
   private overrides = new Map<string, 'enable' | 'skip'>();
   private pending = new Set<string>();
   private stopped = false;
+  // 重启时不重放尚未确认完成的调度动作；已启动的 occurrence 则与持久化 run 对账。
   constructor(
     private host: Host,
     private clock: () => Date = () => new Date(),
@@ -127,6 +130,7 @@ export class Scheduler {
     this.changed();
     return { deleted: true };
   }
+  // 覆盖只作用于下一次触发，不改写周期计划；触发阶段会把采用的选择保存进 occurrence。
   override(params: RpcContract['params']['schedule.override']) {
     if (!validateScheduleOverrideParams(params)) throw new RpcError(-32602, '临时定时设置无效');
     const schedule = this.host.store.get<Schedule>('schedule', params.id);
@@ -189,6 +193,7 @@ export class Scheduler {
     if (item && ['started', 'starting'].includes(item.status))
       this.finish(item, run.status, run.message, { runId: run.id });
   }
+  // 以本地日期和分钟生成唯一触发键，只处理当前窗口；同一时刻多个计划不能同时抢占同一设备。
   tick() {
     if (this.stopped) return;
     this.invalidate();
@@ -305,6 +310,7 @@ export class Scheduler {
       this.drive(item, current);
     }
   }
+  // 将等待、倒计时和启动拆成可持久化阶段；提交启动前先留下标记，避免取消或重启引发重复执行。
   private drive(item: any, current: Date) {
     if (this.stopped || !active(item.status) || this.pending.has(item.id)) return;
     if (current.getTime() > item.deadline) {
@@ -360,6 +366,7 @@ export class Scheduler {
         }
       });
   }
+  // 每个 occurrence 同时只允许一个异步驱动，防止后续 tick 重复提交准备或启动操作。
   private launch(key: string, action: () => Promise<void>) {
     if (this.pending.has(key)) return;
     this.pending.add(key);

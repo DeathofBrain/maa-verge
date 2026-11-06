@@ -1,3 +1,4 @@
+// 统一空状态的说明与可选操作插槽，不自行判断业务列表是否为空。
 import type { ReactNode } from 'react';
 import { cx } from './cx';
 

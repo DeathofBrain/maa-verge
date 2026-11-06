@@ -1,3 +1,4 @@
+// 组合确认动作与共享模态容器；业务提交和各按钮的禁用条件由调用方掌握。
 import type { ReactNode } from 'react';
 import Button from './Button';
 import Overlay from './Overlay';

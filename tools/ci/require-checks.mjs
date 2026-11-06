@@ -1,3 +1,4 @@
+// 发布前确认标签对应的精确提交通过完整 Checks，不把精简检查视为发行凭据。
 /** Require a successful full Checks run for the exact commit referenced by a release tag. */
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -44,6 +45,7 @@ export function evaluateChecksRuns(runs, sha) {
     url: run.html_url,
     validationConclusion: validationJob(run)?.conclusion,
   });
+  // 工作流整体与本次完整验证标记都成功才放行，防止 quick 任务冒充 full。
   const success = ordered.find((run) => {
     const job = validationJob(run);
     return (
@@ -133,6 +135,7 @@ export async function waitForChecks(
       throw new Error(
         `提交 ${sha} 的完整 Checks 未通过（${result.run.conclusion}/${result.run.validationConclusion}）：${result.run.url}`,
       );
+    // 尚未出现与已经运行分别使用宽限期，明确区分排队等待和缺失完整检查。
     const elapsedMinutes = (now() - started) / 60_000;
     if (result.state === 'pending') {
       if (elapsedMinutes >= waitMinutes)

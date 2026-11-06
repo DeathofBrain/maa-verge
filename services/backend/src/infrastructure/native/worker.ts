@@ -1,3 +1,5 @@
+// 封装独立 MaaCore worker 的进程和 NDJSON 请求生命周期，区分已确认空闲与结果未知。
+
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { closeSync, mkdirSync, openSync, writeSync } from 'node:fs';
 import { createInterface } from 'node:readline';
@@ -174,6 +176,7 @@ export class CoreWorker {
       options.signal?.removeEventListener('abort', abort);
     }
   }
+  // 请求超时或进程退出只说明确认丢失；这里不重试可能已经在设备上执行的命令。
   request(operation: string, params: any = {}): Promise<any> {
     if (this.closed || this.exited) return Promise.reject(new Error('核心工作进程已关闭'));
     const id = randomUUID();
@@ -214,6 +217,7 @@ export class CoreWorker {
   click(x: number, y: number) {
     return this.request('click', { x, y });
   }
+  // 等待连接异步操作结束即可；不能要求 running 为假，因为连接成功后任务可能已经开始。
   async waitConnected(timeout = 30_000, cancelled?: () => boolean) {
     const deadline = Date.now() + timeout;
     // A task may start immediately after the connect callback and final status.
@@ -231,6 +235,7 @@ export class CoreWorker {
     }
     return false;
   }
+  // 关闭保持幂等：先结束 stdin 给正常退出机会，再用有限时限强制回收仍存活的子进程。
   async close() {
     if (this.closed) return this.finished;
     this.closed = true;

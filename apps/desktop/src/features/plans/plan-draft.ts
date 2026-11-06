@@ -10,6 +10,7 @@ import { clients } from './task-fields';
 
 type Task = Plan['tasks'][number];
 
+// 稳定 key 标识编辑中的队列条目；JSON 文本单独保留，以容纳尚未写完的高级参数。
 export type Step = { key: string; task: Task; json: string };
 export const createStep = (type: string, initialParams?: Task['params']): Step => {
   const params = {
@@ -47,6 +48,7 @@ export function stable(value: unknown): string {
       .join(',')}}`;
   return JSON.stringify(value) ?? 'null';
 }
+// 只比较会保存的业务字段，忽略对象键顺序与选中项等界面状态。
 export function fingerprint(plan: WorkbenchPlan): string {
   return stable({
     name: plan.name,
@@ -162,6 +164,7 @@ export function draftPlan(
     budgets: draft.budgets,
   };
 }
+// 保存前以高级 JSON 文本为准构建参数，不能用最后一次成功解析的旧对象覆盖未完成输入。
 export function parseDraft(draft: Draft, source: Plan | 'new'): WorkbenchPlan {
   if (!draft.name.trim()) throw new Error('请给任务表起一个名字');
   if (!draft.steps.length) throw new Error('请至少添加一个任务');
@@ -179,6 +182,7 @@ export function parseDraft(draft: Draft, source: Plan | 'new'): WorkbenchPlan {
 export function draftVersion(draft: Draft): string {
   return stable({ ...draftPlan(draft, 'new'), json: draft.steps.map((entry) => entry.json) });
 }
+// 仅回写与本次保存一致的缓存版本；保存期间的新编辑必须继续保持未保存状态。
 export function cacheSavedDraft(cacheKey: string, captured: Draft, value: Plan) {
   try {
     const cached = JSON.parse(sessionStorage.getItem(cacheKey) || 'null') as Draft | null;

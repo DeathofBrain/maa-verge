@@ -1,3 +1,5 @@
+// 读取随程序打包的产品知识；返回副本以避免调用方改写共享的生成数据。
+
 import generated from './product-knowledge.generated.json';
 import type { KnowledgeRecord } from './knowledge-types';
 

@@ -53,6 +53,7 @@ const tabs = [
 const describeUsage = (usage: AgentUsage) =>
   `${usage.modelCalls} 次模型调用 · 输入 ${usage.inputTokens} / 输出 ${usage.outputTokens} / 合计 ${usage.totalTokens} Token${usage.estimatedCost !== undefined ? ` · 费用估算 ${usage.estimatedCost.toFixed(4)}` : ''}${usage.incomplete ? '（部分用量未知）' : ''}`;
 
+// 会话页只展示持久消息、提案和交互，执行授权必须通过对应审批卡提交给服务端。
 export default function AgentPage({ onReviewPlan, onOpenSettings, device, plans }: Props) {
   const [sessions, setSessions] = useState<AgentSession[]>([]);
   const [sessionTotal, setSessionTotal] = useState(0);
@@ -84,6 +85,7 @@ export default function AgentPage({ onReviewPlan, onOpenSettings, device, plans 
     followMessages.current = true;
   };
   const refresh = useCallback(async () => {
+    // 切换会话或卸载会推进版本，分页读取完成后先核对版本，防止旧会话覆盖当前选择。
     const generation = revision.current;
     const listed = await rpc('agent.session.list', { limit: 100 });
     const loadedSessions = [...listed.sessions];
@@ -199,6 +201,7 @@ export default function AgentPage({ onReviewPlan, onOpenSettings, device, plans 
     if (!text || busy) return;
     await run(async () => {
       const session = detail?.session ?? (await create());
+      // 同一会话同一文本的未确认发送复用请求 ID；成功返回后才清空，防止网络重试重复开轮。
       if (
         !request.current ||
         request.current.sessionId !== session.id ||
@@ -227,6 +230,7 @@ export default function AgentPage({ onReviewPlan, onOpenSettings, device, plans 
   const pendingId = pending.at(-1)?.id;
   const lastMessageId = detail?.messages.at(-1)?.id;
   useEffect(() => {
+    // 用户仍跟随最新消息时优先滚到新审批；手动离开底部后不强行拉回。
     if (tab !== 'chat' || !chatLog.current) return;
     if (followMessages.current) {
       if (pendingId && pendingId !== previousInteraction.current)

@@ -2,6 +2,7 @@ import type { RpcResult } from '@maaverge/contracts';
 type Result = RpcResult<'recognition.get'>;
 export type ExportFormat = 'json' | 'arkplanner' | 'lolicon' | 'markdown' | 'csv';
 const csv = (value: unknown) => '"' + String(value ?? '').replaceAll('"', '""') + '"';
+// 导出只转换已读取的识别快照，不触发新的识别或向外部规划器上传。
 export function recognitionExport(
   result: Result,
   format: ExportFormat,
@@ -53,6 +54,7 @@ export function recognitionExport(
             item.potential,
           ]),
         ];
+  // CSV 加 UTF-8 BOM 便于桌面表格程序识别中文，字段中的双引号由 csv 统一转义。
   if (format === 'csv')
     return {
       text: '\ufeff' + rows.map((row) => row.map(csv).join(',')).join('\r\n'),

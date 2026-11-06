@@ -1,3 +1,4 @@
+// 图标按钮必须显式提供可访问名称，默认不触发表单提交。
 import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
 

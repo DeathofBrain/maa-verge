@@ -1,3 +1,4 @@
+// 统一仓库路径、工具定位、子进程环境及进程树清理，供开发与构建脚本复用。
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -23,6 +24,7 @@ export function executable(name) {
 }
 
 export function devEnvironment() {
+  // 只在子进程环境中优先使用项目工具，保留调用者显式指定的数据根。
   const localPaths = [
     path.dirname(executable('node')),
     path.join(root, '.tools', 'cmake', 'bin'),

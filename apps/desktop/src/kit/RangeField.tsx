@@ -1,3 +1,4 @@
+// 保留原生滑块的值、范围与事件契约，仅统一控件样式。
 import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
 

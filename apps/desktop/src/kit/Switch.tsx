@@ -1,3 +1,4 @@
+// 受控开关先交给调用方处理点击，未阻止默认行为时再提出取反后的值。
 import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
 

@@ -1,3 +1,5 @@
+// 定义可跨 RPC 传输的业务错误，并为已知系统错误提供可操作的中文说明。
+
 export class RpcError extends Error {
   constructor(
     public code: number,

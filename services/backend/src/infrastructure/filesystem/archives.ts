@@ -1,3 +1,5 @@
+// 先审计完整归档清单，再提取允许的运行时内容；路径、链接与展开体积都属于信任边界。
+
 /** Safe two-pass extraction. Every member is validated before selecting runtime files. */
 import { createReadStream, createWriteStream } from 'node:fs';
 import {
@@ -150,6 +152,7 @@ class Inventory {
     }
     this.links.set(member.target, safeDestination(this.root, parts.join('/')));
   }
+  // 筛选运行时文件之前先验证所有归档成员，即使不会安装的条目也不能藏有越界路径或链接。
   select(coreOnly: boolean): Set<string> {
     const canonical = new Map(
       Array.from(this.members, ([target, member]) => [casefold(target), member.kind]),
@@ -183,6 +186,7 @@ class Inventory {
     }
     return selected;
   }
+  // 归档链接转成普通文件副本并计入展开体积，不在已安装快照中留下可跳出根目录的链接。
   async aliases(selected: Set<string>): Promise<void> {
     const materialized = new Set<string>();
     for (const alias of this.links.keys()) {
@@ -243,6 +247,7 @@ function zipEntries(file: ZipFile, visit: (entry: Entry) => Promise<void>): Prom
     file.readEntry();
   });
 }
+// 独占创建目标文件并限制实际流入字节，不能只相信归档头声明的体积。
 async function writeMember(source: Readable, member: Member): Promise<void> {
   await mkdir(path.dirname(member.target), { recursive: true });
   let written = 0;

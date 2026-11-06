@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# 构建 Linux CI 镜像所需的固定工具链，并预热与锁文件匹配的浏览器依赖。
 set -euo pipefail
 
 node_version=$(tr -d '\r\n' < .node-version)
@@ -7,6 +8,7 @@ curl --fail --show-error --silent --location --retry 3 \
   "https://nodejs.org/dist/v${node_version}/${node_archive}" -o "/tmp/${node_archive}"
 curl --fail --show-error --silent --location --retry 3 \
   "https://nodejs.org/dist/v${node_version}/SHASUMS256.txt" -o /tmp/node-shasums.txt
+# 官方归档校验通过后才安装到镜像，避免把不完整下载留作 CI 基础工具。
 (cd /tmp && sha256sum --check <(awk -v archive="$node_archive" '$2 == archive' node-shasums.txt))
 tar -xJf "/tmp/${node_archive}" --strip-components=1 -C /usr/local
 rm "/tmp/${node_archive}" /tmp/node-shasums.txt

@@ -1,3 +1,4 @@
+// 结合资源目录和活动可用性选择关卡，并保留已保存值与手动输入入口。
 import IconButton from '@/kit/IconButton';
 import Checkbox from '@/kit/Checkbox';
 import TextField from '@/kit/TextField';
@@ -49,6 +50,7 @@ export default function StageSelector({
   const [failure, setFailure] = useState<{ client: ClientType; message: string } | null>(null);
   const [refresh, setRefresh] = useState(0);
   const forceRefresh = useRef(false);
+  // 目录、加载状态和错误均绑定客户端，切服期间不借用上一服的数据。
   const currentCatalog = catalog?.clientType === clientType ? catalog : null;
   const stages = currentCatalog?.stages ?? defaults;
   const selected = stages.find((stage) => stage.value === value);
@@ -71,6 +73,7 @@ export default function StageSelector({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    // 用户刷新只强制请求一次，后续事件和定时刷新继续沿用常规缓存策略。
     const force = forceRefresh.current;
     forceRefresh.current = false;
     void rpc('stages.list', { clientType, ...(force ? { refresh: true } : {}) })
@@ -94,6 +97,7 @@ export default function StageSelector({
     };
   }, [clientType, refresh]);
   useEffect(() => {
+    // 资源目录暂不包含已保存关卡时保留原值，转为手动模式而非静默清空。
     if (loaded && !selected && value) setManual(true);
   }, [loaded, selected, value]);
 

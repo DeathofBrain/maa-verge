@@ -1,3 +1,4 @@
+// 模态框与确认框共用的容器，统一管理背景隔离、焦点和关闭入口。
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
@@ -49,6 +50,7 @@ export default function Overlay({
   footer,
 }: Props) {
   const panel = useRef<HTMLElement>(null);
+  // 租约只在挂载时建立，回调与忙碌状态用 ref 保持最新，避免重渲染重置焦点。
   const close = useRef(onClose);
   close.current = onClose;
   const blocked = useRef(false);

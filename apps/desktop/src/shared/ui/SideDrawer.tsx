@@ -1,3 +1,4 @@
+// 提供跨页面的大号侧栏容器，焦点、遮罩和滚动锁仍由统一 Drawer 管理。
 import type { ReactNode } from 'react';
 import Drawer from '@/kit/Drawer';
 import './side-drawer.css';

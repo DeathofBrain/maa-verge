@@ -44,6 +44,7 @@ export function useComponentDownloads(
         )
           continue;
         if (existing && JSON.stringify(existing.channel) === JSON.stringify(channel)) continue;
+        // 关闭只隐藏当前状态的通知；下载进入新的状态时重新提示，避免错过最终结果。
         const changedStatus = existing?.channel.status !== channel.status;
         next = {
           ...next,

@@ -49,6 +49,7 @@ export default function RecognitionPanel({
   onClientChange: (value: Client) => void;
 }) {
   const label = kind === 'depot' ? '仓库' : '干员';
+  // 识别结果按设备、种类和客户端隔离，切换筛选时不暂时展示另一个账号上下文的数据。
   const identity = JSON.stringify([selectedDevice, kind, clientType]);
   const [loaded, setLoaded] = useState<{ identity: string; result?: Result; error?: string }>();
   const [loading, setLoading] = useState(false);

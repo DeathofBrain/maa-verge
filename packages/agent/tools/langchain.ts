@@ -5,7 +5,7 @@ import type { JSONSchema } from '@langchain/core/utils/json_schema';
 import { assertAgentCallbacksLocal } from '../src/tracing';
 import type { MaaToolSet } from './types';
 
-/** Optional SDK bridge; the neutral tool set remains the policy authority. */
+/** 仅适配 LangChain 工具格式；实际范围、参数和授权仍由中立工具集检查。 */
 export function createLangChainMaaTools(set: MaaToolSet) {
   return set.definitions.map((definition) => {
     const sdkTool = tool(

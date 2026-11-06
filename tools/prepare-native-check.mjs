@@ -1,3 +1,4 @@
+// 为 Rust 静态检查准备资源目录占位，不伪造发行可执行文件。
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { root, windows } from './project.mjs';

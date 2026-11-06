@@ -4,6 +4,7 @@ import { errorMessage, rpc, type Run } from '@maaverge/contracts';
 type ToastMessage = { text: string; error?: boolean };
 
 export default function useAppActions(refresh: () => Promise<void>) {
+  // ref 同步拦截同键重复操作，state 的副本仅用于驱动按钮状态。
   const pendingRef = useRef(new Set<string>());
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -45,6 +46,7 @@ export default function useAppActions(refresh: () => Promise<void>) {
       return action(
         'stop-many',
         async () => {
+          // 各设备独立停止，单项失败不应阻断其他设备，并向用户汇总部分成功。
           const settled = await Promise.allSettled(
             unique.map((run) => rpc('run.stop', { id: run.id })),
           );

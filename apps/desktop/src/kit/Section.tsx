@@ -1,3 +1,4 @@
+// 提供内容分组与可选标题说明，普通分组和卡片共享插槽结构。
 import type { ElementType, ReactNode } from 'react';
 import { cx } from './cx';
 

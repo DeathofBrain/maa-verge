@@ -1,3 +1,4 @@
+// 为通用 Overlay 补充模态框尺寸，复用同一套焦点与关闭机制。
 import type { ReactNode } from 'react';
 import Overlay from './Overlay';
 import { cx } from './cx';

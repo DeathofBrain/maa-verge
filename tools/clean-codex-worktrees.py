@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# 清理 codex/* 工作区与本地分支；默认保护主工作区、当前目录和未合并分支。
 """Remove codex/* linked Git worktrees and local branches."""
 
 import argparse
@@ -80,6 +81,7 @@ def clean_branches(repo: Path, *, dry_run: bool, force: bool, planned: set[str])
                 suffix = "（先移除对应 worktree）" if occupied else ""
                 print(f"将删除本地分支：{name}{suffix}")
                 continue
+            # 删除前再次核对分支提交，避免枚举之后的新提交被当作旧目标删除。
             if branches(repo).get(ref) != oid:
                 print(f"分支提交已变化，跳过：{name}", file=sys.stderr)
                 failed += 1
@@ -134,6 +136,7 @@ def main() -> int:
             failed += 1
             continue
         resolved = target.resolve()
+        # 主工作区以及当前目录所在工作区始终保留，即使调用者选择强制清理。
         if record is records[0] or cwd == resolved or resolved in cwd.parents:
             print(f"保留主工作区或当前工作区：{target}")
             continue

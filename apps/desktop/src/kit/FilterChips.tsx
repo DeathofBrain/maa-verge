@@ -1,3 +1,4 @@
+// 提供受控的单选筛选按钮组，筛选值与数据过滤逻辑留在业务层。
 import type { ReactNode } from 'react';
 import { cx } from './cx';
 

@@ -88,6 +88,7 @@ type Props = {
   initialTab?: Tab;
   searchQuery?: string;
 };
+// 工作台维护可恢复草稿、自动保存与先保存后启动流程；执行使用保存后的任务表。
 export default function PlanEditor({
   plan,
   devices = [],
@@ -187,6 +188,7 @@ export default function PlanEditor({
     ? selectedDeviceId
     : draft.deviceIds[0] || selectedDeviceId;
   const syncDevice = devices.find((device) => device.id === contextDeviceId);
+  // 当前任务未显式指定客户端时，优先沿用前序已启用 StartUp，再回退到设备连接配置。
   const precedingClient = [...draft.steps.slice(0, selected)]
     .reverse()
     .find((entry) => entry.task.type === 'StartUp' && taskEnabled(entry.task))?.task
@@ -219,6 +221,7 @@ export default function PlanEditor({
       /* A full/unavailable session store must not block editing. */
     }
   }, [cacheKey, draft]);
+  // 服务端快照只刷新未修改的草稿；本地尚未保存的内容优先保留。
   useEffect(() => {
     if (plan === 'new' || unsaved || saving) return;
     setDraft((previous) => {
@@ -346,6 +349,7 @@ export default function PlanEditor({
   };
   const save = async (andStart = false): Promise<void> => {
     if (suspended || starting || (andStart && draftTargetBusy)) return;
+    // 等待前一次保存结束后重新读取最新草稿，避免把旧捕获版本当作本次启动配置。
     if (inFlight.current) {
       await inFlight.current;
       return saveRef.current(andStart);
@@ -414,6 +418,7 @@ export default function PlanEditor({
     mounted.current = true;
     return () => {
       mounted.current = false;
+      // StrictMode 会模拟卸载再挂载，延后一拍仅在真正离开时提交剩余有效草稿。
       queueMicrotask(() => {
         if (!mounted.current) leaveRef.current();
       });

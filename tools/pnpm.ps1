@@ -1,3 +1,4 @@
+# 通过 checkout 的固定 Node 与 pnpm 转发命令，只调整当前进程的工具搜索路径。
 # Use the checkout's pinned tools without changing the system PATH.
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot

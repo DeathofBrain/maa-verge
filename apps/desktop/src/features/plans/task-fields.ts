@@ -36,6 +36,7 @@ export const clients: [string, string][] = [
   ['YoStarKR', '韩服'],
   ['txwy', '繁中服'],
 ];
+// 这里只维护常用参数的表单说明与分组；未列出的核心参数仍可经高级 JSON 编辑。
 export const fields: Record<string, Field[]> = {
   StartUp: [
     { key: 'client_type', label: '游戏客户端', kind: 'select', options: clients },

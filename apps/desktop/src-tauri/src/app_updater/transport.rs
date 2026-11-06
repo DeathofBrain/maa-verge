@@ -1,5 +1,6 @@
 //! Bun owns all update HTTP requests. Only validated bytes cross back into the
 //! desktop's signature and durable-installation boundary.
+// 更新网络传输委托服务复用代理与续传策略，宿主保留来源、文件边界和签名的最终校验。
 use super::{
     cache_directory, select_release, AppUpdater, Candidate, Release, State, MAX_PACKAGE, MAX_PAGES,
 };
@@ -33,6 +34,7 @@ fn apply_progress(state: &mut State, value: &Value) -> bool {
     // A server can ignore Range after reconnecting. Keep displayed progress
     // monotonic while still accepting the new transfer's measured speed.
     let next = current.max(progress);
+    // 只接收当前下载代号的有限进度字段，过期事件不能覆盖新频道或验签阶段的状态。
     if fields.keys().any(|key| {
         !matches!(
             key.as_str(),
@@ -81,6 +83,7 @@ where
     R: Future<Output = ()>,
 {
     tokio::pin!(request);
+    // 周期性检查频道与退出状态，但始终轮询同一个 future，不重复发出网络请求。
     let result = loop {
         if let Err(error) = current() {
             break Err(error);
@@ -116,6 +119,7 @@ fn read_package(result: &Value, expected_size: u64, directory: &Path) -> Result<
         .as_str()
         .map(Path::new)
         .ok_or("应用更新下载路径无效")?;
+    // 服务返回路径不是任意文件读取权限：只接受专用目录下摘要命名的普通包文件。
     if !path.is_absolute()
         || !path
             .file_name()
@@ -214,6 +218,7 @@ impl AppUpdater {
         generation: u64,
         channel: &str,
     ) -> Result<Option<Release>, String> {
+        // 查完整个受限分页范围后才选最新版本；到达上限时不能假称已查全。
         let mut releases = Vec::new();
         for page in 1..=MAX_PAGES {
             let json = self

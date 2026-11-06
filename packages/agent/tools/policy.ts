@@ -34,7 +34,7 @@ function count(value: unknown, label: string, max: number, min = 1): void {
     denied(`${label}必须是 ${min} 到 ${max} 之间的整数`);
 }
 
-/** Validate the same bounded JSON tree that will be forwarded to the host. */
+/** 递归校验实际交给宿主的参数树，拒绝命令/路径字段、账号切换及非 JSON 值。 */
 function assertNoAmbientCapabilities(value: unknown, depth = 0): void {
   if (depth > 32) denied('任务参数嵌套过深');
   if (Array.isArray(value)) {
@@ -147,6 +147,7 @@ function assertFiniteConsumables(tasks: Task[]): void {
   }
 }
 
+/** 草稿仅允许零消耗，并补上有限次数、宿主客户端和禁止上报的安全默认值。 */
 export function prepareAgentTaskDraft(
   input: { name: string; tasks: Task[] },
   clientType: MaaClientType,
@@ -168,6 +169,7 @@ export function prepareAgentTaskDraft(
   return { id: '', name: input.name, tasks };
 }
 
+/** 已保存计划也重新校验；有限药石只允许宿主显式启用，不能由模型自行放宽。 */
 export function assertAgentExecutablePlan(
   plan: Plan,
   clientType: MaaClientType,

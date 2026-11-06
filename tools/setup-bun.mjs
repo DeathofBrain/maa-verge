@@ -1,3 +1,4 @@
+// 安装并验证项目固定 Bun；归档摘要和可执行文件版本都通过后才启用。
 import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -18,6 +19,7 @@ const digests = {
 };
 
 export function cleanRuntimeEnvironment(environment = process.env) {
+  // 剥离可改变加载行为的 Node/Bun 环境选项，保留其余调用环境。
   const result = { ...environment };
   for (const key of Object.keys(result)) {
     if (['NODE_OPTIONS', 'NODE_PATH', 'BUN_OPTIONS', 'BUN_BE_BUN', 'BUN_INSTALL', 'BUN_RUNTIME_TRANSPILER_CACHE_PATH'].includes(key.toUpperCase())) delete result[key];
@@ -90,8 +92,10 @@ export async function ensureBun({ download = true } = {}) {
   }
   const zip = Buffer.concat(chunks);
   if (createHash('sha256').update(zip).digest('hex') !== digests[asset]) throw new Error('Official Bun release SHA-256 mismatch');
+  // 先验证整个官方归档，再只提取预期可执行项，避免任意 ZIP 路径写出。
   const bytes = executableFromZip(zip, `${asset}/${process.platform === 'win32' ? 'bun.exe' : 'bun'}`);
   mkdirSync(path.dirname(bunExecutable), { recursive: true });
+  // 临时文件通过版本探测后再重命名启用；失败只清理本次暂存文件。
   const temporary = `${bunExecutable}.${process.pid}.tmp`;
   try {
     writeFileSync(temporary, bytes, { flag: 'wx', mode: 0o755 });

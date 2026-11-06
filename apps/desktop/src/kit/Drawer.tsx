@@ -1,3 +1,4 @@
+// 抽屉通过统一模态租约隔离背景，并在关闭后恢复可用的焦点目标。
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
@@ -59,6 +60,7 @@ export default function Drawer({
   children,
 }: Props) {
   const panel = useRef<HTMLElement>(null);
+  // 保留同一次打开期间的租约，同时让 Escape 和遮罩读取最新关闭回调。
   const close = useRef(onClose);
   close.current = onClose;
   const blocked = useRef(false);

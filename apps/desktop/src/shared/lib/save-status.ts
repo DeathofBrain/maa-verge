@@ -1,3 +1,4 @@
+// 自动保存仅提示等待、进行中和错误；成功时留空，避免持续打扰。
 export type SaveStatus = 'saved' | 'pending' | 'saving' | 'error';
 
 export const autoSaveLabel = (status: SaveStatus) =>

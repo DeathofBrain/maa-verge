@@ -9,6 +9,7 @@ import { ContextMenuProvider } from './kit/ContextMenu';
 import '@fontsource-variable/noto-sans-sc/wght.css';
 import './app/styles/styles.css';
 
+// 关窗对话框与 App 并列挂载，使业务页卸载或退出过渡不影响原生生命周期提示。
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ContextMenuProvider>

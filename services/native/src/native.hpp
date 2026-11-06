@@ -1,5 +1,6 @@
 #pragma once
 
+// 原生边界集中声明：协议、超时、动态库和设备租约均由不可复制的 RAII 对象持有。
 #include <nlohmann/json.hpp>
 #include <chrono>
 #include <condition_variable>
@@ -58,6 +59,7 @@ class Deadline final {
   std::thread thread_;
 };
 
+// 使用跨进程文件锁独占设备；文件本身保留，控制权随句柄关闭而释放。
 class DeviceLease final {
  public:
   DeviceLease(const fs::path& path, int timeout_ms);
@@ -74,6 +76,7 @@ class DeviceLease final {
 };
 
 using Callback = void (*)(int, const char*, void*);
+// 函数指针仅在本对象持有的动态库加载期间有效，Core 必须先销毁原生实例。
 struct Api final {
   explicit Api(const fs::path& core);
   ~Api();
@@ -128,10 +131,12 @@ class Core final {
   Protocol& protocol_;
   Api api_;
   void* handle_ = nullptr;
+  // 主锁串行化命令、状态轮询和原生调用；回调只获取事件锁，避免同步回调重入死锁。
   std::mutex mutex_;
   std::mutex event_mutex_;
   std::condition_variable event_condition_;
   std::queue<Json> events_;
+  // 同步等待由命令线程消费回调；已返回给父进程的异步调用另用 pending_ 跟踪期限。
   int awaiting_async_id_ = 0;
   std::optional<Json> awaited_async_result_;
   std::map<int, std::chrono::steady_clock::time_point> pending_;

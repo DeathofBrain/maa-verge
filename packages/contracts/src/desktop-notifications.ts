@@ -1,3 +1,4 @@
+// 系统通知只通过桌面宿主查询或显式申请权限；测试通知内容由宿主固定。
 export type NotificationPermission = 'granted' | 'denied' | 'prompt';
 export type DesktopNotificationStatus = { permission: NotificationPermission };
 

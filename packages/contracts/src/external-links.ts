@@ -1,4 +1,4 @@
-/** Open an explicitly selected webpage in the system browser through the desktop host. */
+/** 仅把无内嵌凭据的 HTTP(S) 链接交给桌面宿主，拒绝控制字符及其他协议。 */
 export async function openExternalUrl(value: string): Promise<void> {
   let url: URL;
   try {

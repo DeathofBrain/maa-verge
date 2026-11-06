@@ -1,3 +1,4 @@
+// 受控搜索输入统一清空入口；自定义清空动作可同步处理业务筛选状态。
 import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { Search, X } from 'lucide-react';
 import { cx } from './cx';

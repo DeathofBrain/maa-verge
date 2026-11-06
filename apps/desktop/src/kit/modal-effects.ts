@@ -1,3 +1,4 @@
+// 以可重入租约管理模态栈，支持嵌套弹层及乱序卸载后的背景和焦点恢复。
 export type ScrollLock = { element: HTMLElement; property?: 'overflow' | 'overflow-y' };
 export type ModalOptions = {
   panel: HTMLElement;
@@ -29,6 +30,7 @@ function lease(element: HTMLElement, property: string, apply: () => () => void) 
     properties.set(property, lock);
   }
   lock.count++;
+  // 每个租约最多释放一次，直到最后一个持有者退出才恢复首次保存的属性值。
   let released = false;
   return () => {
     if (released) return;
@@ -53,6 +55,7 @@ function targets(panel: HTMLElement) {
   );
 }
 
+// 只有栈顶自定义弹层可交互，底层弹层也用租约暂时设为 inert。
 function updateLayers() {
   for (const overlay of overlays) {
     if (overlay === overlays.at(-1)) {
@@ -79,6 +82,7 @@ function keydown(event: KeyboardEvent) {
   if (!overlay || overlay.native) return;
   // Browser-managed dialogs (including the window-close prompt) own their keyboard handling.
   if (document.querySelector('dialog:modal')) return;
+  // 菜单先消费 Escape，再交给所属弹层，避免一次按键关闭两层界面。
   if (event.key === 'Escape') {
     if (document.querySelector('[data-context-menu], [data-select-menu]')) return;
     if (!overlay.onEscape) return;
@@ -159,6 +163,7 @@ export function acquireModalEffects(options: ModalOptions): () => void {
   return () => {
     if (released) return;
     released = true;
+    // 乱序卸载也须释放自身锁；只有原栈顶退出时才主动重新分配焦点。
     const wasTop = overlays.at(-1) === overlay;
     overlays.splice(overlays.indexOf(overlay), 1);
     inactiveLayers.get(overlay)?.();

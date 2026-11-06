@@ -1,3 +1,4 @@
+// 静态核对后端目录与模块依赖边界，不加载或执行产品模块。
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -147,6 +148,7 @@ export function inspectBackendArchitecture(directory = defaultSourceRoot) {
       violations.push(`${name}:1 src 根目录只允许 entry.ts，请将文件归入对应层级`);
   }
 
+  // 按项目编译配置解析别名，再把真实目标路径交给分层规则检查。
   const options = compilerOptions(sourceRoot);
   const cache = ts.createModuleResolutionCache(sourceRoot, identity, options);
   for (const file of files.filter((file) => /\.[cm]?[jt]sx?$/u.test(file))) {

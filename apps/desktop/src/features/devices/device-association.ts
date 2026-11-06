@@ -5,6 +5,7 @@ import {
   type Event,
 } from '@maaverge/contracts';
 
+// 离线记录也可能正等待异步连接；仅在最新事件是 connecting 且未超时的窗口内显示连接中。
 export function deviceIsConnecting(device: Device, events: Event[], now: number): boolean {
   if (device.state !== 'offline' || device.connectionError) return false;
   const latest = events

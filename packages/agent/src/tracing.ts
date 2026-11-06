@@ -11,7 +11,7 @@ export class AgentConfigurationError extends Error {
   }
 }
 
-/** Reject ambient tracing before invoking the graph; never modify process.env. */
+/** 调用图之前拒绝环境或继承上下文开启的外部追踪，不修改进程级环境设置。 */
 export function assertAgentTracingDisabled(): void {
   // These are the exact boolean switches read by the pinned LangChain SDK.
   // A false outer scope does not override inherited environment flags here:

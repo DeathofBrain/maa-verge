@@ -23,6 +23,7 @@ type Props = {
   onConnect: () => void;
 };
 
+// 把所选设备的任务、工具、日志和画面汇入同一底部面板，历史展示与实时控制分开判断。
 export default function AppRunPanel({
   snapshot,
   selectedDevice,

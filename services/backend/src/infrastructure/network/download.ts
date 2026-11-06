@@ -1,3 +1,6 @@
+// 带来源约束与断点校验的归档下载器；完成后计算摘要，并在来源提供摘要时核对。
+// 临时文件通过适用校验后才发布。
+
 /** Resumable component archives. A partial belongs to one immutable release identity. */
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
@@ -15,6 +18,7 @@ type ComponentFetch = typeof fetch & { [retryRoute]?: () => boolean };
 export class DownloadSourceError extends Error {}
 
 /** Resolve again for each connection so system proxy changes apply on retry. */
+// 自动代理失败可回退直连，手动代理配置则保留用户指定的路由约束。
 export function createComponentFetch(
   resolveProxy = resolveDownloadProxy,
   preferences?: DownloadProxySettings,
@@ -215,6 +219,7 @@ function checkedUrl(value: string, previous?: string): string {
   return url.href;
 }
 /** Refreshes on every received chunk; waiting for headers also counts as idle. */
+// 空闲超时度量的是网络等待，不把本地写盘耗时或整个下载时长误判为断流。
 function idleController(signal: AbortSignal | undefined, timeout: number) {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
@@ -279,6 +284,7 @@ async function saveState(partial: string, state: PartialState): Promise<void> {
   await writeFile(partial + '.json.tmp', JSON.stringify(state), { mode: 0o600 });
   await rename(partial + '.json.tmp', partial + '.json');
 }
+// 侧车必须匹配本次下载身份及现有文件边界；HTTP 续传阶段还会核对服务器验证器。
 async function loadState(
   partial: string,
   expected: PartialState,
@@ -534,6 +540,7 @@ async function reconnectDelay(milliseconds: number, signal?: AbortSignal): Promi
 }
 
 /** Returns the SHA-256 only after validating and atomically publishing the file. */
+// 可恢复的传输中断保留断点；来源、长度或摘要失配属于完整性失败，不能继续拼接旧数据。
 export async function downloadArchive(
   metadata: DownloadMetadata,
   destination: string,

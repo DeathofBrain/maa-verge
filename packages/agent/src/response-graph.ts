@@ -17,7 +17,7 @@ const State = Annotation.Root({
   reply: Annotation<string>(),
 });
 
-/** Host effects are replay-safe before this node can use LangGraph interrupt. */
+/** 串行推进模型与工具节点；interrupt 恢复会重入节点，宿主必须用持久账本保护副作用。 */
 export function createResponseGraph(options: {
   checkpointer: BaseCheckpointSaver;
   store?: BaseStore;
@@ -44,8 +44,7 @@ export function createResponseGraph(options: {
       const items = [...state.items];
       for (const call of responseCalls(state.output)) {
         let result: unknown;
-        // Only a persistent interaction ID crosses the checkpoint boundary.
-        // Credentials and authority live in the host closure and are reloaded.
+        // 中断载荷只携带持久交互 ID；凭据与权限留在宿主闭包中，恢复时重新校验。
         while (true) {
           try {
             result = await options.tool(call.name, call.input, call.id);

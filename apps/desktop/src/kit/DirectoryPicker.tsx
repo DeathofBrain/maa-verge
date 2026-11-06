@@ -1,3 +1,4 @@
+// 展示只读目录值并委托宿主选择目录，组件自身不访问文件系统。
 import { cx } from './cx';
 import Button from './Button';
 import TextField from './TextField';

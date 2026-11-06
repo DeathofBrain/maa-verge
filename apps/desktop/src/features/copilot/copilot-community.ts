@@ -35,6 +35,7 @@ class ReadCache<T> {
     if (previous) return previous;
     const operation = request()
       .then((value) => {
+        // 以序列化 UTF-16 长度估算缓存预算，按写入顺序淘汰，避免大作业集长期占满窗口内存。
         const bytes = JSON.stringify(value).length * 2;
         if (cacheable(value) && bytes <= this.byteLimit) {
           this.values.delete(key);
@@ -91,6 +92,7 @@ export function useCommunitySearch(params: SearchParams, enabled: boolean, scope
     const fresh = searches.fresh(previous);
     setState({ key, result: previous?.value, pending: !fresh, error: '' });
     if (fresh) return;
+    // 无缓存时延迟搜索以合并连续输入；有旧缓存时保留结果并立即后台更新。
     const timer = setTimeout(
       () => {
         void searches

@@ -217,6 +217,7 @@ export function validateMcpInputResponses(
   }
   return structuredClone(responses);
 }
+/** 仅把有界文本与结构化结果交给模型，并显式标为不可信，舍弃图像等其他内容块。 */
 function projectResult(result: unknown): unknown {
   if (!result || typeof result !== 'object') return { untrusted: true, value: result };
   const value = result as {
@@ -274,7 +275,7 @@ function configCheck(config: AgentMcpConfig): AgentMcpConfig {
   return structuredClone(config);
 }
 
-/** Client lifecycle is owned by the TypeScript service; saving never starts a process or connects. */
+/** 管理外部 MCP 连接与工具发现；保存配置不会启动进程，调用前仍须宿主审批和账本去重。 */
 export class AgentMcpClient {
   private closing = false;
   private readonly connections = new Map<
@@ -344,6 +345,7 @@ export class AgentMcpClient {
     if (!config.enabled || !config.enabledTools.includes(input.toolName))
       throw new RpcError(-32011, 'MCP 服务或工具未启用');
     const connection = await this.connect(input.serverId, signal);
+    // 每次调用刷新工具声明，审批指纹同时覆盖配置和声明，避免沿用旧目录中的权限判断。
     const catalog = await connection.client.listTools(undefined, {
       signal,
       timeout: config.timeoutMs,
@@ -379,7 +381,7 @@ export class AgentMcpClient {
     )
       invalid('MCP continuation 无效，不能重放原操作');
     const result = await this.host.execute(request, async () => {
-      // Use the one-shot protocol API: callTool() may replay HEADER_MISMATCH automatically.
+      // 使用单次协议请求，绕过 callTool() 对 HEADER_MISMATCH 的自动重放，防止副作用重复。
       const params = { name: input.toolName, arguments: input.args, ...input.continuation };
       const result = await connection.client.request(
         { method: 'tools/call', params },
@@ -458,7 +460,7 @@ export class AgentMcpClient {
         listMaxPages: 4,
       },
     );
-    // Legacy servers cannot suspend a request durably; they get a cancellation, never an auto retry.
+    // 旧式交互没有持久恢复状态，直接返回取消；不得自动重试原工具来补交答案。
     client.setRequestHandler('elicitation/create', async () => ({ action: 'cancel' }));
     const transport =
       config.transport === 'stdio'

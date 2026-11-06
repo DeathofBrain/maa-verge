@@ -1,3 +1,4 @@
+// 以固定插槽组织列表信息与操作，不预设整行点击或选择行为。
 import type { ElementType, HTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx';
 

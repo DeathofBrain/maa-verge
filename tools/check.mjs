@@ -1,3 +1,4 @@
+// 按本地参数或 CI 计划编排应用、原生与打包检查，复用各平台的验证入口。
 import { run, fail } from './project.mjs';
 import { assertWorkspaceDependencies } from './environment.mjs';
 import { readCiPlan } from './ci/plan.mjs';
@@ -92,6 +93,7 @@ async function main() {
   const flags = process.argv.slice(2);
   if (flags.some((flag) => !['--app', '--native', '--ci'].includes(flag)))
     throw new Error('Usage: node tools/check.mjs [--app] [--native] [--ci]');
+  // 只有 CI 使用经过校验的裁剪计划，本地默认同时检查应用与原生边界。
   const plan = flags.includes('--ci') ? readCiPlan() : undefined;
   const selected = flags.filter((flag) => flag !== '--ci');
   if (!selected.length) selected.push(...(plan ? ['--app'] : ['--app', '--native']));
