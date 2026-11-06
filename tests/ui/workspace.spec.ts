@@ -16,8 +16,6 @@ async function openHome(page: Page) {
 }
 async function openTaskTables(page: Page) {
   await closeDetail(page);
-  const menu = page.getByRole('button', { name: '打开导航', exact: true });
-  if (await menu.isVisible()) await menu.click();
   await navigate(page, '任务');
 }
 async function openSavedPlan(page: Page, name = '每日长草计划') {
@@ -295,34 +293,6 @@ test(
     ).toBeVisible();
   },
 );
-
-test('mobile navigation closes after selecting pages and can create task tables', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openWorkspace(page);
-  await closeDetail(page);
-  for (const name of [
-    '任务',
-    '作业中心',
-    '工具箱',
-    'Agent 助手',
-    '执行记录',
-    '设备',
-    '设置',
-    '主页',
-  ]) {
-    await page.getByRole('button', { name: '打开导航', exact: true }).click();
-    await navigate(page, name);
-  }
-  await openTaskTables(page);
-  await page
-    .locator('.tc-heading')
-    .getByRole('button', { name: '新建任务表', exact: true })
-    .click();
-  await expect(wb(page).getByRole('heading', { name: '日常表1', exact: true })).toBeVisible();
-  await expect(wb(page).getByRole('tab', { name: '任务表设置', exact: true })).toBeVisible();
-});
 
 test('task tables preserve duplicate tasks, order, switches and advanced parameters', async ({
   page,

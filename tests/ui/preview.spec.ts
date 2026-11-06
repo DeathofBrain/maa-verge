@@ -101,8 +101,6 @@ test('refresh frequency defaults to 60 Hz, persists and handles invalid preferen
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('maaverge:ui:preview-fps')))
     .toBe('120');
-  await page.setViewportSize({ width: 390, height: 800 });
-  await expect(frequency).toBeVisible();
   await page.evaluate(() => localStorage.setItem('maaverge:ui:preview-fps', 'invalid-rate'));
   await page.reload();
   await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();

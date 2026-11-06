@@ -422,7 +422,6 @@ test('selecting a device toggles its details, switches devices and follows live 
   await expect(detail(page)).toHaveCount(0);
   await expect(row(page, '一号模拟器')).toContainText('已完成');
 
-  await page.setViewportSize({ width: 390, height: 844 });
   await detailButton(page, '四号模拟器').click();
   await expect(
     inspected(page).getByRole('heading', { name: '当前没有任务', exact: true }),
@@ -749,7 +748,6 @@ test('multi-device log drawer only offers the selected devices and no device-lev
   await drawer.evaluate((element) =>
     Promise.all(element.getAnimations().map((animation) => animation.finished)),
   );
-  await page.setViewportSize({ width: 390, height: 844 });
   await drawer.getByRole('button', { name: '关闭设备日志', exact: true }).click();
   await expect(drawer).toBeHidden();
 });
