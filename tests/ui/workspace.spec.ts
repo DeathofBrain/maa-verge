@@ -570,7 +570,7 @@ test('global search locates updates, saved tables and individual task settings',
   await expect(channel(page, 'Maa Verge 应用')).toBeVisible();
   await expect(channel(page, 'MaaCore 核心')).toBeVisible();
   await expect(channel(page, '游戏资源')).toBeVisible();
-  await expect(page.getByLabel('搜索设置', { exact: true })).toHaveValue('资源更新');
+  await expect(page.getByLabel('搜索设置', { exact: true })).toHaveValue('');
   await expect(results).toBeHidden();
   await search.fill('固源岩');
   await page

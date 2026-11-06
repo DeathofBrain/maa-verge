@@ -21,7 +21,11 @@ import { discardPlanDraft } from '@/features/plans/plan-draft';
 import { taskFieldSearch } from '@/features/plans/task-fields';
 import { useContextMenu } from '@/kit/ContextMenu';
 import ScheduleNotifications from '@/features/schedules/ScheduleNotifications';
-import { SettingsPage } from '@/features/settings/SettingsPage';
+import {
+  SettingsPage,
+  type SettingsCategory,
+  type SettingsNavigation,
+} from '@/features/settings/SettingsPage';
 import CopilotPage from '@/features/copilot/CopilotPage';
 import { CopilotWorkspaceSync } from '@/features/copilot/useCopilotWorkspace';
 import ToolsPage from '@/features/tools/ToolsPage';
@@ -78,6 +82,9 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [pageSearch, setPageSearch] = useState('');
+  const [settingsNavigation, setSettingsNavigation] = useState<SettingsNavigation>({
+    category: 'general',
+  });
   const [deviceSettingsEntry, setDeviceSettingsEntry] = useState<string>();
   const searchInput = useRef<HTMLInputElement>(null);
   const detailRevision = useRef(0);
@@ -166,9 +173,14 @@ export default function App() {
     setExecutionSelection(undefined);
     setExecutionPlanId(undefined);
     setPage(next);
+    if (next === 'settings') setSettingsNavigation({ category: 'general' });
     setSidebarOpen(false);
     setPageSearch('');
     setSearchOpen(false);
+  };
+  const openSettings = (category: SettingsCategory) => {
+    navigate('settings');
+    setSettingsNavigation({ category });
   };
   const choosePlan = (plan: Plan, type?: Task['type'], taskIndex?: number) => {
     setSelectedPlanId(plan.id);
@@ -439,24 +451,27 @@ export default function App() {
       });
     }
     const categories = [
-      ['更新 资源更新 核心 应用 回滚', '更新', 'settings'],
-      ['主题 外观 浅色 深色 托盘', '通用与外观', 'settings'],
-      ['模型 Agent API', '模型与 Agent', 'settings'],
-      ['通知 远控', '通知与远控', 'settings'],
-      ['ADB 连接 截图 触控 模拟器 设备', '设备与连接', 'devices'],
-      ['日志 log 诊断 导出 清理 保留', '数据与诊断', 'settings'],
-      ['仓库 干员 库存 材料 导出 公招', '工具箱', 'tools'],
-      ['作业 社区 视频', '作业中心', 'copilot'],
+      ['更新 资源更新 核心 应用 回滚', '更新', 'settings', 'updates'],
+      ['主题 外观 浅色 深色 托盘', '通用与外观', 'settings', 'general'],
+      ['模型 Agent API', '模型与 Agent', 'settings', 'model'],
+      ['通知 远控', '通知与远控', 'settings', 'notifications'],
+      ['ADB 连接 截图 触控 模拟器 设备', '设备与连接', 'devices', undefined],
+      ['日志 log 诊断 导出 清理 保留', '数据与诊断', 'settings', 'data'],
+      ['仓库 干员 库存 材料 导出 公招', '工具箱', 'tools', undefined],
+      ['作业 社区 视频', '作业中心', 'copilot', undefined],
     ] as const;
-    for (const [keywords, title, target] of categories)
-      if (keywords.toLowerCase().includes(term) || term.includes(title))
+    for (const [keywords, title, target, category] of categories)
+      if (keywords.toLowerCase().includes(term) || term.includes(title.toLowerCase()))
         results.push({
           key: `setting-${title}`,
           title,
           location: target === 'settings' ? '应用设置' : pageNames[target],
           open: () => {
-            navigate(target);
-            setPageSearch(search.trim());
+            if (category) openSettings(category);
+            else {
+              navigate(target);
+              setPageSearch(search.trim());
+            }
           },
         });
     return results.slice(0, 9);
@@ -557,10 +572,7 @@ export default function App() {
                 }}
                 onShowRun={showExecution}
                 onNavigate={navigate}
-                onUpdates={() => {
-                  navigate('settings');
-                  setPageSearch('更新');
-                }}
+                onUpdates={() => openSettings('updates')}
               />
             )}
             {page === 'tasks' && (
@@ -688,7 +700,9 @@ export default function App() {
               />
             )}
             {page === 'devices' && <DevicesPage {...supportProps} />}
-            {page === 'settings' && <SettingsPage {...supportProps} />}
+            {page === 'settings' && (
+              <SettingsPage {...supportProps} navigation={settingsNavigation} />
+            )}
             {page === 'copilot' && (
               <CopilotPage
                 {...supportProps}
@@ -716,10 +730,7 @@ export default function App() {
                   setTaskView('plans');
                   navigate('tasks', true);
                 }}
-                onOpenSettings={() => {
-                  navigate('settings');
-                  setPageSearch('??');
-                }}
+                onOpenSettings={() => openSettings('model')}
                 device={device}
               />
             )}
