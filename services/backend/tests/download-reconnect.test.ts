@@ -167,6 +167,19 @@ async function proxy(origin: string) {
   return { url, connections: () => connections };
 }
 
+// These routes are selected by the fixture, so host NO_PROXY must not bypass
+// its loopback proxies. Production bypass rules have separate routing tests.
+const fixtureTransport = ((input, options?: BunFetchRequestInit) => {
+  const proxy = options?.proxy;
+  return fetch(input, {
+    ...options,
+    proxy:
+      proxy && typeof proxy === 'object' && 'url' in proxy
+        ? { ...proxy, respectNoProxy: false }
+        : proxy,
+  });
+}) as typeof fetch;
+
 for (const change of ['direct-to-proxy', 'proxy-to-direct', 'proxy-to-new-proxy'] as const) {
   test(`a broken connection automatically resumes after ${change}`, async () => {
     const file = await destination();
@@ -199,10 +212,14 @@ for (const change of ['direct-to-proxy', 'proxy-to-direct', 'proxy-to-new-proxy'
     selected = change === 'direct-to-proxy' ? '' : first.url;
     next =
       change === 'proxy-to-direct' ? '' : change === 'direct-to-proxy' ? first.url : second.url;
-    const fetcher = createComponentFetch(async () => {
-      resolutions++;
-      return selected;
-    });
+    const fetcher = createComponentFetch(
+      async () => {
+        resolutions++;
+        return selected;
+      },
+      undefined,
+      fixtureTransport,
+    );
     expect(
       await downloadArchive(metadata(origin + '/archive'), file, () => {}, {
         fetcher,
@@ -249,11 +266,15 @@ test('reconnect starts from the original URL and resolves the current proxy at e
   );
   const gateway = await proxy(origin);
   const decisions: string[] = [];
-  const fetcher = createComponentFetch(async (url) => {
-    decisions.push(url);
-    selected = new URL(url).pathname === '/archive' ? '' : gateway.url;
-    return selected;
-  });
+  const fetcher = createComponentFetch(
+    async (url) => {
+      decisions.push(url);
+      selected = new URL(url).pathname === '/archive' ? '' : gateway.url;
+      return selected;
+    },
+    undefined,
+    fixtureTransport,
+  );
   await downloadArchive(metadata(origin + '/archive'), file, () => {}, {
     fetcher,
     retryDelaysMs: [0],

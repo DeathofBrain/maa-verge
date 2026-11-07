@@ -1,5 +1,5 @@
 import { ensureBun } from './setup-bun.mjs';
-import { offlineAgentEnvironment } from './test-support/agent-environment.mjs';
+import { withRuntimeTestEnvironment } from './test-support/runtime-environment.mjs';
 import { run, fail } from './project.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -40,26 +40,29 @@ async function main() {
   if (!tests.length) throw new Error('No runtime test files were selected.');
   const suite = options.platformOnly && process.platform !== 'linux' ? 'platform' : 'full';
   console.log(`Runtime suite ${suite}: ${tests.length}/${discovered.length} test files.`);
-  await run(
-    await ensureBun(),
-    [
-      'test',
-      '--timeout',
-      String(timeout),
-      ...(suite === 'full' ? runtimeTestDirectories : tests.map((file) => `./${file}`)),
-    ],
-    {
-      env: {
-        ...offlineAgentEnvironment(),
-        ...(worker && core
-          ? {
-              MAAVERGE_TEST_NATIVE_WORKER: worker,
-              MAAVERGE_TEST_CORE_LIBRARY: core,
-              MAAVERGE_TEST_COMPILE_UPDATE: '1',
-            }
-          : {}),
+  const bun = await ensureBun();
+  await withRuntimeTestEnvironment((environment) =>
+    run(
+      bun,
+      [
+        'test',
+        '--timeout',
+        String(timeout),
+        ...(suite === 'full' ? runtimeTestDirectories : tests.map((file) => `./${file}`)),
+      ],
+      {
+        env: {
+          ...environment,
+          ...(worker && core
+            ? {
+                MAAVERGE_TEST_NATIVE_WORKER: worker,
+                MAAVERGE_TEST_CORE_LIBRARY: core,
+                MAAVERGE_TEST_COMPILE_UPDATE: '1',
+              }
+            : {}),
+        },
       },
-    },
+    ),
   );
 }
 main().catch(fail);
