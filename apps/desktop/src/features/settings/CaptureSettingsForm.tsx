@@ -138,6 +138,9 @@ export function CaptureFields({
               模拟器安装目录
               <TextField
                 aria-label="模拟器安装目录"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder="填写模拟器安装根目录"
                 value={draft.emulatorPath}
                 disabled={busy}

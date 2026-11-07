@@ -540,6 +540,22 @@
       },
       "required": ["id", "sessionId", "role", "content", "createdAt"]
     },
+    "AgentTurnProgress": {
+      "title": "AgentTurnProgress",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 64000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["waiting", "generating", "tool_call"]
+        }
+      },
+      "required": ["text", "status"]
+    },
     "AgentTurn": {
       "title": "AgentTurn",
       "type": "object",
@@ -610,6 +626,9 @@
         },
         "summaryUsage": {
           "$ref": "#/$defs/AgentUsage"
+        },
+        "progress": {
+          "$ref": "#/$defs/AgentTurnProgress"
         }
       },
       "required": ["id", "sessionId", "status", "createdAt", "updatedAt", "usage"]

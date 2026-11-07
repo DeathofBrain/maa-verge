@@ -149,6 +149,8 @@ export class AgentService {
   readonly mcp: AgentMcpClient;
   readonly server: AgentMcpServer;
   private controllers = new Map<string, AbortController>();
+  // Provisional model text never enters the transcript, checkpoints or event log.
+  private modelProgress = new Map<string, NonNullable<AgentTurn['progress']>>();
   private work = new Set<Promise<unknown>>();
   private missionTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private missionBusy = new Set<string>();
@@ -216,6 +218,10 @@ export class AgentService {
     if (!this.closed)
       this.host.emit('agent.changed', 'Agent 状态已更新', sessionId ? { sessionId } : {});
   }
+  private liveTurn(turn: AgentTurn): AgentTurn {
+    const progress = turn.status === 'running' ? this.modelProgress.get(turn.id) : undefined;
+    return progress ? { ...turn, progress: { ...progress } } : turn;
+  }
   private extensionVersion(session: AgentSession) {
     return digest({
       skills: session.skillIds.map((id) => {
@@ -278,7 +284,10 @@ export class AgentService {
           result = {
             session,
             ...this.context.messages(session.id, params.offset, params.limit),
-            turns: this.ledger.turns(session.id).slice(-100),
+            turns: this.ledger
+              .turns(session.id)
+              .slice(-100)
+              .map((turn) => this.liveTurn(turn)),
             interactions: this.ledger.interactions(session.id),
             references: this.context.references(session.id),
           };
@@ -304,7 +313,7 @@ export class AgentService {
           result = this.start(params, credential, injectedModel);
           break;
         case 'agent.turn.get':
-          result = this.ledger.turn(params.turnId);
+          result = this.liveTurn(this.ledger.turn(params.turnId));
           break;
         case 'agent.turn.cancel':
           result = this.cancel(params.turnId);
@@ -549,6 +558,7 @@ export class AgentService {
   private cancel(id: string): AgentTurn {
     const turn = this.ledger.turn(id);
     this.controllers.get(id)?.abort();
+    this.modelProgress.delete(id);
     if (['completed', 'failed', 'cancelled'].includes(turn.status)) return turn;
     const result: AgentTurn = {
       ...turn,
@@ -599,6 +609,7 @@ export class AgentService {
     const controller = new AbortController();
     this.controllers.set(id, controller);
     const operation = this.run(id, credential, model, resume, controller.signal).finally(() => {
+      this.modelProgress.delete(id);
       this.controllers.delete(id);
       this.work.delete(operation);
       this.changed();
@@ -829,10 +840,16 @@ export class AgentService {
         input,
         instructions,
         tools,
-        signal: AbortSignal.any([signal, AbortSignal.timeout(120000)]),
+        signal,
         fetcher: this.host.fetcher,
         onAttempt: () => {
           attempted = true;
+          if (kind === 'turn' && !signal.aborted)
+            this.modelProgress.set(turnId, { text: '', status: 'waiting' });
+        },
+        onProgress: (progress) => {
+          if (kind === 'turn' && !signal.aborted && !this.closed)
+            this.modelProgress.set(turnId, progress);
         },
       });
       const pricing = this.host.model();
@@ -876,6 +893,8 @@ export class AgentService {
         this.ledger.usage(turnId, usage, kind);
       }
       throw error;
+    } finally {
+      this.modelProgress.delete(turnId);
     }
   }
   private saveLocalSummary(sessionId: string, turnId: string) {
@@ -1592,6 +1611,7 @@ export class AgentService {
   }
   async close() {
     this.closed = true;
+    this.modelProgress.clear();
     for (const controller of this.controllers.values()) controller.abort();
     for (const id of this.missionTimers.keys()) this.clearMissionTimer(id);
     await Promise.allSettled([...this.work]);

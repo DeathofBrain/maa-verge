@@ -274,6 +274,9 @@ export function ConnectionFields({
         <TextField
           className="wb-parameter-control"
           aria-label="ADB 路径"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={draft.adbPath}
           maxLength={4096}
           disabled={disabled}

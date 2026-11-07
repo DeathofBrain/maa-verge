@@ -9,6 +9,7 @@ import type { MaaToolHost } from '@maaverge/agent/tools';
 import { Store } from '@backend/infrastructure/storage/storage';
 import { AgentService, type AgentServiceHost } from '@backend/modules/agent/service';
 import { makeTemporaryDirectorySync } from '../../../tools/test-support/temporary-directory.mjs';
+import { responsesSse } from './responses-sse';
 
 const cleanup: Array<() => void | Promise<void>> = [];
 afterEach(async () => {
@@ -134,7 +135,7 @@ function serviceFixture(directory?: string) {
               },
             ];
       beforeModelReturn();
-      return Response.json({
+      return responsesSse({
         output,
         usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 },
       });

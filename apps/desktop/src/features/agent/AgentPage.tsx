@@ -7,6 +7,7 @@ import {
   type AgentMode,
   type AgentSession,
   type AgentSessionDetail,
+  type AgentTurnProgress,
   type AgentUsage,
   type Device,
   type Plan,
@@ -43,6 +44,11 @@ const turnLabels = {
   interrupted: '已中断，可恢复',
 };
 const sessionLabels = { idle: '就绪', running: '处理中', waiting: '待回应', archived: '已归档' };
+const progressLabels: Record<AgentTurnProgress['status'], string> = {
+  waiting: '等待模型响应',
+  generating: '正在生成回复',
+  tool_call: '正在准备工具调用',
+};
 const tabs = [
   { id: 'chat', label: '对话' },
   { id: 'memory', label: '长期记忆' },
@@ -53,7 +59,7 @@ const tabs = [
 const describeUsage = (usage: AgentUsage) =>
   `${usage.modelCalls} 次模型调用 · 输入 ${usage.inputTokens} / 输出 ${usage.outputTokens} / 合计 ${usage.totalTokens} Token${usage.estimatedCost !== undefined ? ` · 费用估算 ${usage.estimatedCost.toFixed(4)}` : ''}${usage.incomplete ? '（部分用量未知）' : ''}`;
 
-// 会话页只展示持久消息、提案和交互，执行授权必须通过对应审批卡提交给服务端。
+// 会话页展示持久消息、提案、交互与临时流式预览，执行授权必须通过对应审批卡提交给服务端。
 export default function AgentPage({ onReviewPlan, onOpenSettings, device, plans }: Props) {
   const [sessions, setSessions] = useState<AgentSession[]>([]);
   const [sessionTotal, setSessionTotal] = useState(0);
@@ -222,6 +228,7 @@ export default function AgentPage({ onReviewPlan, onOpenSettings, device, plans 
   };
   const session = detail?.session;
   const lastTurn = detail?.turns.at(-1);
+  const progress = lastTurn?.status === 'running' ? lastTurn.progress : undefined;
   const active = lastTurn && ['queued', 'running', 'waiting'].includes(lastTurn.status);
   const pending =
     detail?.interactions.filter((interaction) => interaction.status === 'pending') ?? [];
@@ -238,7 +245,15 @@ export default function AgentPage({ onReviewPlan, onOpenSettings, device, plans 
       else chatLog.current.scrollTop = chatLog.current.scrollHeight;
     }
     previousInteraction.current = pendingId;
-  }, [tab, sessionId, pendingId, lastMessageId, lastTurn?.status]);
+  }, [
+    tab,
+    sessionId,
+    pendingId,
+    lastMessageId,
+    lastTurn?.status,
+    progress?.text,
+    progress?.status,
+  ]);
   return (
     <section className="agent-page aw-page">
       <PageHeading
@@ -431,6 +446,17 @@ export default function AgentPage({ onReviewPlan, onOpenSettings, device, plans 
                     </div>
                   </article>
                 ))}
+                {progress && (
+                  <article className="aw-message" data-role="assistant" aria-label="生成中的回复">
+                    <span className="aw-role">Agent</span>
+                    <div>
+                      {progress.text && <p className="aw-prewrap">{progress.text}</p>}
+                      <p className="aw-muted" role="status">
+                        {progressLabels[progress.status]} · 未完成
+                      </p>
+                    </div>
+                  </article>
+                )}
                 <div ref={pendingStart} />
                 {pending.map((interaction) => (
                   <AgentInteractionCard

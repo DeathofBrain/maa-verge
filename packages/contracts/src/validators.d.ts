@@ -88,6 +88,7 @@ export const validateAgentScope: Validator<AgentTypes.AgentScope>;
 export const validateAgentUsage: Validator<AgentTypes.AgentUsage>;
 export const validateAgentSession: Validator<AgentTypes.AgentSession>;
 export const validateAgentMessage: Validator<AgentTypes.AgentMessage>;
+export const validateAgentTurnProgress: Validator<AgentTypes.AgentTurnProgress>;
 export const validateAgentTurn: Validator<AgentTypes.AgentTurn>;
 export const validateAgentChoice: Validator<AgentTypes.AgentChoice>;
 export const validateAgentAnswer: Validator<AgentTypes.AgentAnswer>;

@@ -1,12 +1,49 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { validateAgentMcpOperationRequest } from '../src/validators.js';
+import {
+  validateAgentMcpOperationRequest,
+  validateAgentTurn,
+  validateAgentTurnProgress,
+} from '../src/validators.js';
 
 const request = { requestId: 'stable-external-request', deviceId: 'configured-device' };
 const rpc = JSON.parse(
   readFileSync(new URL('../schemas/rpc.schema.json', import.meta.url), 'utf8'),
 );
+
+test('Agent turns accept optional bounded provisional progress with finite statuses', () => {
+  const turn = {
+    id: 'streaming-turn',
+    sessionId: 'streaming-session',
+    status: 'running',
+    createdAt: '2026-11-07T00:00:00.000Z',
+    updatedAt: '2026-11-07T00:00:00.000Z',
+    usage: {
+      modelCalls: 1,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      incomplete: true,
+    },
+  };
+  assert.equal(validateAgentTurn(turn), true);
+  for (const status of ['waiting', 'generating', 'tool_call'])
+    assert.equal(
+      validateAgentTurn({ ...turn, progress: { text: '未完成的模型内容', status } }),
+      true,
+    );
+  assert.equal(validateAgentTurnProgress({ text: '', status: 'waiting' }), true);
+  assert.equal(validateAgentTurnProgress({ text: 'x'.repeat(64000), status: 'generating' }), true);
+  for (const progress of [
+    { text: 'x'.repeat(64001), status: 'generating' },
+    { text: 'partial', status: 'completed' },
+    { text: 'partial' },
+    { status: 'waiting' },
+    { text: 'partial', status: 'generating', reply: 'untrusted final reply' },
+  ])
+    assert.equal(validateAgentTurn({ ...turn, progress }), false);
+});
 
 test('external Agent MCP operations accept the standard finite target kinds', () => {
   const valid = [
