@@ -1,6 +1,6 @@
 # 开发环境与多机协作
 
-代码目录、职责与扩展边界见[桌面前端 README](../apps/desktop/README.md)和[本地应用服务 README](../services/backend/README.md)。设计依据分别记录在[前端架构](frontend-architecture.md)与[后端架构](backend-architecture.md)。
+本文维护环境恢复、配置隔离、统一检查与测试命令，以及构建和 CI 运行说明；命令定义以根 `package.json` 和对应脚本为准。仓库约束见 [AGENTS.md](../AGENTS.md)，贡献与文档归属见 [CONTRIBUTING.md](../CONTRIBUTING.md)。子项目入口见[桌面 README](../apps/desktop/README.md)和[应用服务 README](../services/backend/README.md)，模块边界见[前端架构](frontend-architecture.md)与[后端架构](backend-architecture.md)。
 
 ## 统一版本与恢复
 
@@ -133,11 +133,64 @@ python tools/clean-codex-worktrees.py                  # 清理干净的 worktre
 
 `--worktrees-only` 仅清理 worktree、保留全部分支；`--repo <仓库路径>` 可指定其他仓库。脚本不删除 detached worktree 或已经脱离 Git 登记的目录。非强制模式要求仓库存在 `main`，缺失时保留所有分支。
 
-## 模拟器连接与任务覆盖
+## 检查与测试
 
-原生模式默认自动连接已启动的本机模拟器，设置中可以关闭或手动触发；已保存实例清单时只逐项连接清单，没有清单时进行自动发现。SDK/模拟器内置 ADB、默认端口和非标准路径见 [emulator-connection.md](emulator-connection.md)，共享/逐实例连接设置见 [connection-settings.md](connection-settings.md)，并行执行与隔离边界见 [multi-instance.md](multi-instance.md)。此流程不会自动启动游戏或运行任务。
+新增测试前，说明保护的行为与独立失败模式，用 `rg` 查找现有覆盖。优先扩展已有测试；同一规则的边界矩阵放到能观察其结果的最低合适层，UI 保留交互与接线代表路径。准备步骤重复时复用稳定夹具，不新建大框架，也不为统一目录搬迁测试。
 
-侧边栏的「任务」统一管理任务表：列表展示绑定设备与最近执行，点击行在右侧详情抽屉内通过「任务编排」「任务表设置」「定时计划」组织配置，同一页的「执行监控」页签上方选择在线/历史设备，下方显示该设备当前的任务表、作业或工具；离线显示已离线，历史执行从显式入口查看。任务表卡片执行中以「查看执行」为主操作，聚合本表当前全部运行设备，追加设备从更多菜单进入；底部运行详情仍定位所选设备，支持设备多选停止；日志、连接设置和画面使用右侧抽屉，连接设置关闭后恢复任务编辑草稿；页头勾选任务表后「运行」，单表可多选空闲设备，多表各用绑定设备或逐行选择。新建表采用原版九项默认队列与参数，名称自动选择未占用的“日常表1”等；各步骤可重复添加、排序、复制、启停并单独配置，高级 JSON 保留常用字段之外的参数。逐项默认及执行映射见 [maa-task-settings.md](maa-task-settings.md)。官方活动日历、关卡目录和主页游戏提醒共用缓存，基建估算按设备手工校准，见 [game-reminders.md](game-reminders.md)。上游边界、受限消耗选项以及完整替代原版的验收门槛见 [maa-compatibility.md](maa-compatibility.md)。
+| 层次       | 保护的行为与新增入口                                                                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 契约       | `packages/contracts/test/` 验证 schema、生成类型/校验器与 transport 的一致性；接口约束先维护权威 schema。                                                           |
+| 纯逻辑     | 在所属模块现有测试附近验证解析、归一化、校验与状态转换；服务与 Agent 逻辑分别沿用 `services/backend/tests/`、`packages/agent/tests/`，工程脚本沿用 `tools/tests/`。 |
+| 服务集成   | `services/backend/tests/` 通过公开服务接口验证持久化、请求去重、权限、设备互斥、更新边界及进程交互，使用隔离数据和合成适配器。                                      |
+| UI 行为    | `tests/ui/` 验证用户交互、可访问性和前后端接线；公共导航/就绪复用 `fixtures/navigation.ts`，领域准备复用现有专用夹具，场景和业务断言留在 spec 附近。                |
+| 原生与打包 | `services/native/` 的合成 CTest、Rust 测试和现有 `tools/` smoke 验证原生 ABI、租约、transport、包内独立运行与平台差异；按目标宿主运行。                             |
+
+失败重试、过期响应、重启持久化、权限拒绝、设备独占、幂等及平台差异属于独立失败模式，不能因共享准备步骤而删除。焦点、键盘、拖动与坐标的功能验证继续保留。禁止新增外观断言测试；UI 自动化与人工截图使用桌面视口，不新增或运行窄窗、手机尺寸检查。组件截图和键盘走查步骤见[界面验证 skill](../.skill/maa-verge-ui-verification/SKILL.md)。
+
+### 定向检查
+
+从仓库根执行，先验证受影响行为，再扩大到相关场景：
+
+```bash
+# 契约或工程脚本：选择已有文件
+node --test packages/contracts/test/copilot.test.mjs
+node --test tools/tests/check-frontend-architecture.test.mjs tools/tests/check-kit-css.test.mjs
+
+# 服务/Agent：可指定多个明确文件，并按测试名进一步过滤
+pnpm test:runtime services/backend/tests/copilot-library.test.ts
+pnpm test:runtime services/backend/tests/copilot-library.test.ts --test-name-pattern 'preview|reimport'
+
+# 前端类型与结构
+pnpm --filter @maaverge/desktop check
+node tools/check-frontend-architecture.mjs
+node tools/check-kit-css.mjs
+
+# UI：文件参数直接跟在脚本名后，不要加分隔用的 --
+MAAVERGE_TEST_PORT=15541 pnpm test:e2e tests/ui/copilot-center.spec.ts --workers=1 --reporter=line --output=test-results/copilot-targeted
+```
+
+运行时定向入口使用项目固定 Bun，保留离线 Agent 环境与隔离租约；文件筛选只接受既有测试文件，名称筛选使用 `--test-name-pattern`，不直接调用全局 Bun。需要原生合成链路时，先 `pnpm build:native-worker`，再为运行时命令添加 `--require-native`；CI 的 `--platform` 宿主清单不能与文件或名称筛选混用。UI 失败先以单 worker 复现并核对当前业务流程，不放宽断言或无理由加超时。
+
+Playwright 自带 Chromium，`MAAVERGE_TEST_BROWSER=msedge` 可选择已安装的 Edge。端口由 `MAAVERGE_TEST_PORT` 传给受管理的测试服务；同机并行任务同时隔离端口和 `--output=test-results/<专项名称>`，避免复用其他服务或清理彼此 trace。PowerShell 使用 `$env:MAAVERGE_TEST_PORT = '15541'` 设置环境变量，再执行相同命令。不要使用 `pnpm test:e2e -- <spec>`，多余的 `--` 会让文件过滤失效而运行全量。
+
+### 项目与全量检查
+
+| 命令                                                | 范围                                                                                  |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `pnpm check:app`                                    | 工程脚本、契约与知识同步、工作区类型、前端分层和 kit CSS 等应用检查                   |
+| `pnpm check:native`                                 | 原生诊断、C++ worker/合成 CTest、运行时与本平台打包夹具；可用工具链下的 Rust 检查     |
+| `pnpm check`                                        | 上述应用与原生检查之和                                                                |
+| `pnpm test:runtime`                                 | 服务与 Agent 的完整运行时测试；完整原生覆盖先构建合成 worker，再加 `--require-native` |
+| `pnpm test:e2e`                                     | 全量桌面 UI 行为回归                                                                  |
+| `pnpm test:packaging` / `pnpm test:desktop-runtime` | 当前宿主的 Bun 独立运行探针 / Rust transport 与包内服务 smoke                         |
+
+本地选择与改动相关的项目检查，不必为纯文档变动启动设备或运行无关 E2E。文档先检查链接和修改文件的格式；命中 `tools/generate-agent-knowledge.mjs` 的 `documentFiles` 时运行 `pnpm knowledge:generate` / `pnpm knowledge:check`。生成契约只改来源再运行 `pnpm contracts:generate`。
+
+`pnpm check` 的 Rust 检查在 Cargo 缺失时明确跳过；已有工具链的失败必须修复，CI 必需的工具缺失直接失败，CMake/C++ 不因缺少 Cargo 跳过。浏览器夹具、合成 native 与真实 WebView、安装包和设备验收分别记录，不能互相替代。将实际命令、宿主、通过/跳过/未运行、限制和测试精简前后同环境耗时写入任务或 PR，不在指南维护固定测试数。
+
+## 功能专项入口
+
+模拟器自动发现与 ADB 路径见[连接指南](emulator-connection.md)，共享/逐实例设置见[连接设置](connection-settings.md)，并行执行与设备隔离见[多开](multi-instance.md)。任务表的绑定与运行行为见[任务表与设备绑定](task-device-bindings.md)，默认队列及参数见[任务设置](maa-task-settings.md)，主页日历与提醒见[游戏提醒](game-reminders.md)。完整覆盖门槛以[兼容矩阵](maa-compatibility.md)为准。
 
 ## 构建与持续集成
 
@@ -173,13 +226,13 @@ smoke 在空 PATH、独立临时工作目录、无效 `.env`/`bunfig.toml` 下�
 
 Checks 在同一 `ci.yml` 中使用 quick / full 两档。`changes` 按真实 Git 差异生成版本 2 的 `full`、`code`、`native` 计划：`dev` 推送和 PR 使用 quick，`main` 合并后的推送与手动 `workflow_dispatch` 使用 full。公共 CI 输入、依赖、未分类路径、空差异或无法确定比较基线时保守执行 full；PR 比较 merge base，改名检查两端路径。
 
-Linux `application` 合并应用检查与原 Linux native 任务，一次准备镜像和依赖。它始终执行工程脚本、知识与契约同步、四工作区类型和契约回归。代码变更接着直接运行 Vite 生产构建、构建 C++ worker 并执行四组合成 CTest、运行一份全量 TypeScript 运行时测试，以及 15 条带 Playwright 原生 `@smoke` 标签的行为回归；纯 UI 变更也使用这份固定基线。full 将浏览器检查切换为全量。纯文档变更仅执行静态同步检查，不构建或运行浏览器、worker 和服务测试。不再维护 UI 领域到 spec 的映射或按标题解析 AST 选择测试。
+Linux `application` 合并应用检查与原 Linux native 任务，一次准备镜像和依赖。它始终执行工程脚本、知识与契约同步、工作区类型和契约回归。代码变更接着直接运行 Vite 生产构建、构建 C++ worker 并执行合成 CTest、运行一份全量 TypeScript 运行时测试，以及带 Playwright 原生 `@smoke` 标签的行为回归；纯 UI 变更也使用这份固定基线。full 将浏览器检查切换为全量。纯文档变更仅执行静态同步检查，不构建或运行浏览器、worker 和服务测试。不再维护 UI 领域到 spec 的映射或按标题解析 AST 选择测试。
 
-Rust/C++、契约、SQLite 与文件系统、子进程与环境、网络代理、更新、打包及公共工具链等原生边界改动，在 quick 中启用 Windows x64 和 macOS arm64 的 `native` 专项；普通后端领域逻辑不启用宿主矩阵。Linux 专项直接接在 `application` 基线后，full 再增加 macOS Intel。`changes` 加 `application` 的普通检查共两个任务，原生边界 quick 共四个，full 加 `full-validation` 共六个。各宿主保留 Bun 编译/执行探针、C++ worker / CTest、Rust Clippy / 测试和本平台打包夹具；Rust fmt 仅由 `application` 执行一次，CI 不重复执行 doctor 的 C++ 编译探针。Windows 专项显式准备 NSIS，缺少工具直接失败。
+Rust/C++、契约、SQLite 与文件系统、子进程与环境、网络代理、更新、打包及公共工具链等原生边界改动，在 quick 中启用 Windows x64 和 macOS arm64 的 `native` 专项；普通后端领域逻辑不启用宿主矩阵。Linux 专项直接接在 `application` 基线后，full 再增加 macOS Intel。任务编排以 `.github/workflows/ci.yml` 为准。各宿主保留 Bun 编译/执行探针、C++ worker / CTest、Rust Clippy / 测试和本平台打包夹具；Rust fmt 仅由 `application` 执行一次，CI 不重复执行 doctor 的 C++ 编译探针。Windows 专项显式准备 NSIS，缺少工具直接失败。
 
-服务全量测试只在 Linux 基线执行一次。Windows/macOS 专项按 `tools/ci/runtime-suite.mjs` 的正向清单运行共同的 19 个文件，再分别加入两个 Windows 或五个 macOS 文件；清单覆盖 SQLite 租约与恢复、请求去重、文件替换与链接、子进程、更新及原生传输等边界，并因已有 Windows/macOS 路径失败证据保留 Mirror酱关键更新回归。不再用纯领域排除表将其余全部测试重复到各宿主。新增业务测试自动进入 Linux 全量；涉及平台边界时应同步审核专项清单。full 也沿用这套分工，不在四宿主重跑所有领域测试。macOS 最低支持 15，Checks 和发行使用 `macos-15` arm64 与 `macos-15-intel` x64；Tauri 与 C++ worker 部署目标均为 15.0。任一宿主失败不会取消其他平台，Checks 不生成安装包。
+服务全量测试只在 Linux 基线执行一次。Windows/macOS 专项按 `tools/ci/runtime-suite.mjs` 的正向清单选择共同与各宿主专用的测试文件；清单覆盖 SQLite 租约与恢复、请求去重、文件替换与链接、子进程、更新及原生传输等边界，并因已有 Windows/macOS 路径失败证据保留 Mirror酱关键更新回归。不再用纯领域排除表将其余全部测试重复到各宿主。新增业务测试自动进入 Linux 全量；涉及平台边界时应同步审核专项清单。full 也沿用这套分工，不在每个宿主重跑所有领域测试。macOS 最低支持 15，Checks 和发行使用 `macos-15` arm64 与 `macos-15-intel` x64；Tauri 与 C++ worker 部署目标均为 15.0。任一宿主失败不会取消其他平台，Checks 不生成安装包。
 
-完整计划的 `full-validation` 要求 Linux `application` 和三个附加宿主专项全部成功。发行门禁保持同 SHA、最新 attempt 中唯一且成功的 `full-validation`，quick 成功不能用于发行。发布前标签提交若没有可复用的 full，先执行 `gh workflow run ci.yml --ref <tag>`，成功后补跑 Release。各平台实际结果见 `docs/STATUS.md`；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。依赖下载缓存与 Cargo 构建缓存分离；Cargo 以工具链和锁文件作恢复前缀、提交 SHA 作保存键，避免一直恢复不可更新的同一旧快照。
+完整计划的 `full-validation` 要求 Linux `application` 和各附加宿主专项全部成功。发行门禁保持同 SHA、最新 attempt 中唯一且成功的 `full-validation`，quick 成功不能用于发行。发布前标签提交若没有可复用的 full，先执行 `gh workflow run ci.yml --ref <tag>`，成功后补跑 Release。各平台实际结果记在对应任务、PR 或发行记录；CI 配置和跨编译成功不能替代宿主执行、最低系统及安装验收。依赖下载缓存与 Cargo 构建缓存分离；Cargo 以工具链和锁文件作恢复前缀、提交 SHA 作保存键，避免一直恢复不可更新的同一旧快照。
 
 Node/Bun 测试夹具与验证工具通过 `tools/test-support/temporary-directory.mjs` 的 `makeTemporaryDirectory` / `makeTemporaryDirectorySync` 创建临时目录，参数沿用 `mkdtemp` 的完整路径前缀。入口创建后立即以原生 `realpath` 解析真实路径，同步使用 `realpathSync.native()`，统一处理 macOS 的 `/var` 别名和 Windows 短路径；后续数据根、子进程参数和清理边界都使用返回的路径。比较系统临时根时使用同样的原生解析方式。原生夹具保持同样的路径规范化约定，产品继续拒绝快照内的符号链接。
 
@@ -193,7 +246,7 @@ Linux 打包后可运行 `pnpm test:clean-linux`，需要 Docker 和 `dist/runti
 
 Windows 完整构建后可运行 `pnpm test:desktop-webview`，需要本机已有 WebView2。工具通过独立环回 CDP 端口操作真实 release 窗口，使用专属 native 空设备数据和 WebView profile，预先禁用自动连接和下载，检查初始化异常、Agent 提案、设置持久化及正常关窗；测试前须先退出其他 Maa Verge 实例。日志与截图保留在忽略目录 `build/webview-smoke`，临时数据和 profile 退出后清理。该项由宿主 Node/Playwright 驱动，不代表卸载开发工具后的干净系统安装验收。
 
-macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和下载 MaaCore 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；推送 `v*` 标签或手动补跑的 `release.yml` 会复用该提交 `full-validation` 成功的完整 Checks，在四宿主构建签名产物并只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、11 项附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
+macOS 打包分别为 Bun 服务设置 JIT entitlement，为 C++ worker 设置加载后续下载库所需的 entitlement；脚本使用 `APPLE_SIGNING_IDENTITY`，未设置时为 ad-hoc 签名。正式发行仍须验证全部嵌套 Mach-O 的开发者签名、公证和下载 MaaCore 后的加载，Windows Authenticode 也尚待配置。Tauri 应用更新已配置独立公钥与 Actions 签名 secrets；推送 `v*` 标签或手动补跑的 `release.yml` 会复用该提交 `full-validation` 成功的完整 Checks，在各目标宿主构建签名产物并只创建草稿，不自动公开发布，普通无密钥构建继续产生未签名测试包。版本同步、附件及迁移边界见 [应用更新与签名发行](app-updates.md)。
 
 ## 格式化规范与 VS Code
 

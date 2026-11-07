@@ -24,27 +24,9 @@ description: 为 Maa Verge 的桌面界面改动执行 Playwright 验证并记�
 
 ## 命令
 
-以下用 `task-center.spec.ts` 作为示例；实际运行当前受影响 spec。
+统一定向、全量命令和并行隔离以[开发指南的检查与测试](../../docs/development.md#检查与测试)为准；先选当前受影响的 spec，按行为需要用名称筛选。不要在脚本名与 spec 之间加分隔用的 `--`，它可能使 Playwright 意外展开为全量。
 
-```bash
-# 定向 spec（正确）
-corepack pnpm exec playwright test tests/ui/task-center.spec.ts --reporter=line
-
-# 单个用例
-corepack pnpm exec playwright test tests/ui/task-center.spec.ts \
-  -g "multi-device launch blocks binding" --reporter=line
-
-# 隔离端口 + 串行
-MAAVERGE_TEST_PORT=15541 corepack pnpm exec playwright test \
-  tests/ui/execution-monitor.spec.ts --workers=1 --reporter=line
-
-# 全量
-corepack pnpm test:e2e
-```
-
-- **不要**用 `pnpm test:e2e -- <spec>`。pnpm 会把 `--` 传给 Playwright，命令实际展开为 `playwright test -- <spec>`；实测会启动全量（当前 244 项），不是定向运行。
-- `corepack pnpm test:e2e` 不带 `--` 时才是全量入口。全量使用隔离端口，避免与其他实例或构建并行造成 `EADDRINUSE` / 等待超时。
-- 需要指定本机浏览器时设置 `MAAVERGE_TEST_BROWSER`；Windows 若自带 Chromium 出现 side-by-side 启动失败，可用 `MAAVERGE_TEST_BROWSER=msedge`（见 [apps/desktop/README.md](../../apps/desktop/README.md)）。
+需要指定本机浏览器时设置 `MAAVERGE_TEST_BROWSER`；Windows 若自带 Chromium 出现 side-by-side 启动失败，可用 `MAAVERGE_TEST_BROWSER=msedge`。
 
 ## 任务详情抽屉
 
@@ -55,7 +37,7 @@ corepack pnpm test:e2e
 - `Escape` 关闭抽屉，但上下文菜单打开时只关闭菜单；
 - 关闭后恢复之前的焦点。
 
-因此打开抽屉后不要直接点 `.sidebar`、顶栏或页面导航，否则 Playwright 会在 inert 区域等待并超时。复用 [task-center.spec.ts](../../tests/ui/task-center.spec.ts) 的 `nav()` 模式：先检查「关闭任务表详情」是否可见并关闭，再点侧栏。常用定位：
+因此打开抽屉后不要直接点 `.sidebar`、顶栏或页面导航，否则 Playwright 会在 inert 区域等待并超时。复用 [fixtures/navigation.ts](../../tests/ui/fixtures/navigation.ts) 的 `navigate()`：先关闭任务表详情及设备设置，再点侧栏。常用定位：
 
 - `getByRole('region', { name: '任务中心', exact: true })`
 - `getByRole('tablist', { name: '任务视图', exact: true })`
@@ -81,7 +63,7 @@ corepack pnpm test:e2e
    - 改了契约/JSON Schema：`corepack pnpm contracts:generate`
    - 改了 [generate-agent-knowledge.mjs](../../tools/generate-agent-knowledge.mjs) 的 `documentFiles` 列出的文档：`corepack pnpm knowledge:generate`
 4. `corepack pnpm check`。它会执行 `generate-agent-knowledge.mjs --check`、契约检查、TypeScript、Node 驱动的 CTest、Bun 和 Rust；耗时较长，但这是提交前的完整检查。
-5. 全量 E2E：`corepack pnpm test:e2e`（隔离端口）。当前基线约 244 项，以实际输出为准；不要用上一次的数字代替本次结果。
+5. 全量 E2E：`corepack pnpm test:e2e`（隔离端口）。以实际输出为准，不用历史计数代替本次结果。
 6. 界面或样式发生变化时核对桌面截图（见下节）；仅调整测试或文档时无需新增截图。
 7. 在任务或 PR 说明中记录实际命令、通过数、宿主平台、截图范围和未验证项；不创建、恢复或更新 `docs/STATUS.md`。
 

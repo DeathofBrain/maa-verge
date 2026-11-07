@@ -4,6 +4,8 @@
 
 Read PLAN.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/macOS/Linux desktop assistant built with Tauri 2, React/TypeScript, a TypeScript application service on pinned Bun, and a C++20 MaaCore worker. Native MaaCore runs outside the UI process. Product UI is Simplified Chinese. See docs/runtime-migration.md for runtime and data migration boundaries.
 
+This file owns repository-wide development constraints. CONTRIBUTING.md owns the contribution workflow and document responsibilities; docs/development.md owns environment setup, test selection and verification commands. Subproject READMEs provide entry points; architecture and component documents own their respective design contracts. Update an existing authoritative section before adding a document; keep task-specific implementation and verification reports in the task or PR.
+
 ## Boundaries
 
 - React uses the typed transport in packages/contracts; it never executes shell, ADB or native calls.
@@ -41,6 +43,7 @@ Read PLAN.md before changes. Maa Verge is an AGPL-3.0-only, local-first Windows/
 The root package.json is the command source of truth: pnpm dev, pnpm dev:ui, pnpm setup:bun, pnpm run doctor, pnpm check, pnpm test:runtime, pnpm test:packaging, pnpm test:desktop-runtime, pnpm test:e2e, pnpm build.
 Use .bun-version and tools/setup-bun.mjs for the pinned runtime; do not depend on a global Bun. C++: node tools/build-core-worker.mjs (Node-driven synthetic CTest), or --production to skip test fixtures. Rust: cargo fmt --check and cargo clippy --locked when the native toolchain is available.
 Use targeted checks while developing, then the relevant project checks. Do not modify formatting or dependencies unrelated to the task.
+Before adding a test, identify the behavior and independent failure mode it protects, search existing coverage, and extend the lowest suitable layer. See docs/development.md for layer responsibilities and targeted/full commands; explain coverage changes and verification limits in the PR. Do not remove independent failure paths, weaken assertions, skip failures or add unjustified timeouts to simplify tests.
 绝对禁止添加关于外观断言的测试（test）。
 不新增或运行窄窗、手机尺寸视口的测试或截图检查；界面自动化使用桌面视口，独立功能回归保留在桌面尺寸下。
 Format touched files with the repository configuration: Prettier for TypeScript/JavaScript, JSON, styles and Markdown; clang-format for C++; rustfmt for Rust. VS Code setup and CLI commands are documented in docs/development.md. Do not format generated files or vendored code; regenerate outputs from their source.

@@ -1,22 +1,18 @@
 import type { CopilotQueueEntry, CopilotWorkspace, Event, Snapshot } from '@maaverge/contracts';
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
-import { expectHome, navigate } from './fixtures/navigation';
+import { importJson, openCenter, queue } from './fixtures/copilot-page';
+import { navigate } from './fixtures/navigation';
 
 type SelectionWindow = HarnessWindow & {
   publishSelection: (verdict: string, override?: Partial<CopilotQueueEntry>) => Promise<void>;
   heldSelectionSave: boolean;
   releaseSelectionSave: () => void;
 };
-const queue = (page: Page) => page.getByRole('region', { name: '作业执行队列', exact: true });
 async function prepare(page: Page) {
-  await page.goto('/');
-  await expectHome(page);
-  await navigate(page, '作业中心');
-  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
-  await page.getByRole('button', { name: '导入作业', exact: true }).click();
-  await page.getByText('粘贴 JSON', { exact: true }).click();
-  await page.getByLabel('作业 JSON', { exact: true }).fill(
+  await openCenter(page);
+  await importJson(
+    page,
     JSON.stringify({
       stage_name: 'main_01-07',
       minimum_required: 'v6.0.0',
@@ -26,8 +22,6 @@ async function prepare(page: Page) {
       actions: [{ type: 'SpeedUp' }],
     }),
   );
-  await page.getByRole('button', { name: '预览 JSON', exact: true }).click();
-  await page.getByRole('button', { name: '所选导入并加入队列', exact: true }).click();
   await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(2);
   await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
   await page.evaluate(async () => {

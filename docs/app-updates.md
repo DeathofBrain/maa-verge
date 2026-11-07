@@ -119,4 +119,4 @@ CI 和普通 `pnpm build` 只构建 Windows EXE / 完整 ZIP、macOS Apple Silic
 
 发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。macOS 构建使用既有更新签名密钥，通过官方 Tauri signer 为完整 DMG 追加版本绑定签名，不改变 DMG 内容或 Mirror酱上传流程。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，校验当前十一附件集合，同时兼容既有八附件、含 MSI 的十八附件、EXE / 完整 ZIP 的十七附件及带完整 DMG 签名的十九附件集合，拒绝不完整的混合版本；安装包通过 GitHub Releases 与既有 Mirror酱分发。
 
-当前验证范围见 [开发状态](STATUS.md) 和 [Mirror酱真实下载验证](mirrorchyan-verification-2026-10-31.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。
+Mirror酱历史下载证据见 [真实下载验证](mirrorchyan-verification-2026-10-31.md)；后续验证的命令、宿主和未验证项记录在对应任务或 PR 中。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。

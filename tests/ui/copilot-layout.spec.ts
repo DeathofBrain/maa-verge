@@ -1,15 +1,6 @@
-import type { Page } from '@playwright/test';
 import type { CopilotPreview } from '../../packages/contracts/src/index';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
-
-const queue = (page: Page) => page.getByRole('region', { name: '作业执行队列', exact: true });
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
-const detail = (page: Page) => page.getByRole('complementary', { name: '作业详情', exact: true });
-async function openCenter(page: Page) {
-  await page.goto('/');
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
-  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
-}
+import { detail, enter, library, openCenter, queue } from './fixtures/copilot-page';
 
 test('source and queue tabs support keyboard navigation with independent panels', async ({
   page,
@@ -234,7 +225,7 @@ test('the top result monitor switches devices and records independently from the
     })) as { id: string };
     return { second, empty, firstRun, secondRun };
   });
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
+  await enter(page);
   const monitor = page.getByRole('region', { name: '作业运行状态', exact: true });
   await expect(monitor).toBeVisible();
   const target = await queue(page).getByLabel('作业目标设备', { exact: true }).inputValue();

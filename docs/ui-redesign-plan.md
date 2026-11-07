@@ -265,7 +265,7 @@ Agent 产物进入同一任务表草稿，先显示参数/消耗差异，再按�
 
 ## 8. 实施顺序与验收
 
-以下为分阶段实施路线。A 的六张示意图已确认，B 工作台已落地并通过 23 项浏览器 mock 端到端测试；配套页面提供现有能力与明确的未接入状态，C–F 按功能矩阵继续推进。
+以下为分阶段实施路线。A 的六张示意图已确认，B 工作台已落地并有浏览器合成行为回归；配套页面提供现有能力与明确的未接入状态，C–F 按功能矩阵继续推进。
 
 | 阶段                  | 交付                                                                                     | 完成标准                                                                               |
 | --------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -305,7 +305,7 @@ Agent 产物进入同一任务表草稿，先显示参数/消耗差异，再按�
 
 ## 9. 参考
 
-- [项目完整开发计划](../PLAN.md)、[当前实现状态](STATUS.md)、[功能覆盖与验收矩阵](maa-compatibility.md)。
+- [项目完整开发计划](../PLAN.md)、[功能覆盖与验收矩阵](maa-compatibility.md)。
 - [MAA v6.20.0 其他设置](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/others.md)：定时、多配置、仅本次设置、前后动作等。
 - [MAA v6.20.0 工具箱](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/tools.md)：识别、计算、结果与导出。
 - [MAA v6.20.0 库存保持](https://github.com/MaaAssistantArknights/MaaAssistantArknights/blob/v6.20.0/docs/zh-cn/manual/introduction/depot-maintain.md)：目标库存、缓存、关卡与刷新语义。

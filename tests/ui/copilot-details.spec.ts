@@ -1,16 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { detail, enter, library, openCenter, queue } from './fixtures/copilot-page';
 
-const detail = (page: Page) => page.getByRole('complementary', { name: '作业详情', exact: true });
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
-const queue = (page: Page) => page.getByRole('region', { name: '作业执行队列', exact: true });
-async function openCenter(page: Page) {
-  await page.goto('/');
-  const menu = page.getByRole('button', { name: '打开导航', exact: true });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
-  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
-}
 async function communityDetail(page: Page) {
   await page.getByRole('tab', { name: '社区搜索', exact: true }).click();
   await library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true }).click();
@@ -74,9 +65,7 @@ test('automatic liking defaults off and persists separately for each kind withou
   await page.getByRole('tab', { name: '普通作业', exact: true }).click();
   await expect(checkbox).toBeChecked();
   await page.reload();
-  const menu = page.getByRole('button', { name: '打开导航', exact: true });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
+  await enter(page);
   await queue(page).locator('.cp-settings > summary').click();
   await expect(checkbox).toBeChecked();
 });

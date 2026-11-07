@@ -1,33 +1,10 @@
-import type { Page } from '@playwright/test';
 import type {
   CopilotCategory,
-  CopilotPreview,
   CopilotRecord,
   CopilotWorkspace,
 } from '../../packages/contracts/src/index';
-import { expect, test, type HarnessWindow } from './fixtures/desktop';
-
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
-const queue = (page: Page) => page.getByRole('region', { name: '作业执行队列', exact: true });
-const detail = (page: Page) => page.getByRole('complementary', { name: '作业详情', exact: true });
-const preview = (page: Page) => page.getByRole('region', { name: '导入预览', exact: true });
-const call = <T>(page: Page, method: string, params: Record<string, unknown> = {}) =>
-  page.evaluate(
-    ({ method, params }) =>
-      (window as unknown as HarnessWindow).runtimeHarness.call(method, params),
-    { method, params },
-  ) as Promise<T>;
-async function enter(page: Page) {
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
-  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
-}
-async function seed(page: Page, title: string, extra: Record<string, unknown> = {}) {
-  const value = await call<CopilotPreview>(page, 'copilot.preview', {
-    content: JSON.stringify({ stage_name: 'main_01-07', doc: { title }, actions: [], ...extra }),
-  });
-  return (await call<{ items: CopilotRecord[] }>(page, 'copilot.import', { previewId: value.id }))
-    .items[0];
-}
+import { expect, test } from './fixtures/desktop';
+import { call, detail, enter, library, preview, queue, seed } from './fixtures/copilot-page';
 
 test('categories can be created, assigned in the drawer, renamed and deleted without deleting work', async ({
   page,

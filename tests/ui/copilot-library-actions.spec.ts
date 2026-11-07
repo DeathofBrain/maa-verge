@@ -1,53 +1,35 @@
 import type { Page } from '@playwright/test';
 import type {
   CopilotCategory,
-  CopilotPreview,
   CopilotRecord,
   CopilotWorkspace,
   Snapshot,
 } from '../../packages/contracts/src/index';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { call, enter, library, queue, seed } from './fixtures/copilot-page';
 
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
-const queue = (page: Page) => page.getByRole('region', { name: '作业执行队列', exact: true });
 const all = (page: Page) =>
   library(page).getByRole('checkbox', { name: '全选本页作业', exact: true });
 const removeDialog = (page: Page, category = false) =>
   page.getByRole('dialog', { name: category ? '删除分类' : '删除作业', exact: true });
-const call = <T>(page: Page, method: string, params: Record<string, unknown> = {}) =>
-  page.evaluate(
-    ({ method, params }) =>
-      (window as unknown as HarnessWindow).runtimeHarness.call(method, params),
-    { method, params },
-  ) as Promise<T>;
-
-async function seed(page: Page, title: string) {
-  const preview = await call<CopilotPreview>(page, 'copilot.preview', {
-    content: JSON.stringify({ stage_name: 'main_01-07', doc: { title }, actions: [] }),
-  });
-  return (await call<{ items: CopilotRecord[] }>(page, 'copilot.import', { previewId: preview.id }))
-    .items[0];
-}
-
-async function enter(page: Page) {
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
-  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
-}
 
 async function openCategoryMenu(page: Page, name: string) {
   await library(page).getByRole('button', { name, exact: true }).click({ button: 'right' });
 }
 
-test('the local station selects visible work and resets selection after paging, searching and changing category', async ({
+test('local pagination preserves the queue and resets selection after page, search and category changes', async ({
   page,
 }) => {
   await page.goto('/');
   const records: CopilotRecord[] = [];
-  for (let index = 1; index <= 22; index++) records.push(await seed(page, `本地选择 ${index}`));
+  for (let index = 1; index <= 21; index++) records.push(await seed(page, `本地选择 ${index}`));
   const category = await call<CopilotCategory>(page, 'copilot.category.save', { name: '选择分类' });
   await call(page, 'copilot.category.assign', { ids: [records[0].id], categoryId: category.id });
   await enter(page);
+  await seed(page, '本地选择 22');
+  await library(page).getByRole('button', { name: '刷新作业库', exact: true }).click();
   await expect(library(page).locator('.cp-record')).toHaveCount(20);
+  await expect(library(page)).toContainText('共 22 份');
   await expect(all(page)).not.toBeChecked();
   await library(page).getByRole('checkbox', { name: '选择作业 本地选择 1', exact: true }).check();
   await expect(all(page)).toHaveJSProperty('indeterminate', true);
@@ -61,10 +43,15 @@ test('the local station selects visible work and resets selection after paging, 
   }
   await library(page).getByRole('button', { name: '本地作业下一页', exact: true }).click();
   await expect(library(page).locator('.cp-record')).toHaveCount(2);
+  await expect(library(page)).toContainText('第 2 页');
+  await expect(
+    library(page).getByRole('button', { name: '本地作业下一页', exact: true }),
+  ).toBeDisabled();
   await expect(all(page)).not.toBeChecked();
   await expect(all(page)).toHaveJSProperty('indeterminate', false);
   await all(page).check();
   await library(page).getByRole('button', { name: '本地作业上一页', exact: true }).click();
+  await expect(library(page).locator('.cp-record')).toHaveCount(20);
   await expect(all(page)).not.toBeChecked();
   await all(page).check();
   await library(page).getByRole('searchbox').fill('本地选择 22');
@@ -77,6 +64,7 @@ test('the local station selects visible work and resets selection after paging, 
   await expect(library(page).locator('.cp-record')).toHaveCount(1);
   await expect(all(page)).not.toBeChecked();
   await expect(all(page)).toHaveJSProperty('indeterminate', false);
+  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(0);
 });
 
 test('batch deletion requires confirmation and preserves unselected work and queued versions', async ({

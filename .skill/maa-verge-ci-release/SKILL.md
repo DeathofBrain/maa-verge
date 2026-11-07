@@ -9,11 +9,11 @@ description: 维护 Maa Verge 的 GitHub Actions Checks 与签名发行流程：
 
 ## 适用边界与开始前
 
-- 读 [AGENTS.md](../../AGENTS.md)、[PLAN.md](../../PLAN.md)、[docs/STATUS.md](../../docs/STATUS.md)，并检查 `git status` / `git diff`。工作树可能包含未提交的 CI 改动，不要假设文件已合并或可覆盖。
+- 读 [AGENTS.md](../../AGENTS.md)、[PLAN.md](../../PLAN.md)，并检查 `git status` / `git diff`。工作树可能包含未提交的 CI 改动，不要假设文件已合并或可覆盖。
 - 共享 checkout 中只改本次任务涉及的文件，保留其他贡献者的并发改动；不要用整体格式化制造冲突。
 - 未经用户明确授权，不 commit、不 push、不打标签、不创建或发布 Release，也不触发远端工作流。常规测试使用隔离数据和合成设备，不连接真实游戏、不调用付费模型、不下载真实组件。
 - 先读当前工作流与脚本再编辑；本 skill 不复制行号。工作流、`tools/ci/run.sh`、`tools/check.mjs` 与 `tools/ci/` 选择器属于同一变更集，必须一起核对和验证。
-- 不把未实际执行的平台、安装器或远端结果写成已验证；真实结果只写入 `docs/STATUS.md`。
+- 不把未实际执行的平台、安装器或远端结果写成已验证；实际命令、宿主、结果和未验证项记录在任务或 PR 说明中。
 
 ## 两套流程
 
@@ -22,7 +22,7 @@ description: 维护 Maa Verge 的 GitHub Actions Checks 与签名发行流程：
 - 触发：推送到 `main` / `dev`、Pull Request、手动 `workflow_dispatch`。
 - 权限 `contents: read`；按 ref 并发并在新提交到达时取消旧运行。
 - 同一个 `ci.yml` 使用 quick / full 两档，`changes` 通过 `tools/ci/plan.mjs` 生成版本 2 计划，只保留 `full`、`code`、`native` 三个布尔字段。`main` 合并后的推送或手动 `workflow_dispatch` 使用 full，`dev` 推送和 PR 使用 quick。公共 CI 输入、依赖、未知路径、空改动或无法确定比较基线时回到 full，改名同时考虑两端路径。
-- Linux `application` 合并应用检查与原 Linux native 任务，始终执行静态、知识、类型和契约检查；代码变更再执行 Vite 构建、C++ worker / 四组合成 CTest、一份全量 TypeScript 运行时和 15 条 `@smoke` 行为回归。full 切换全量 UI，纯文档仅执行静态同步。不再维护 UI 领域映射或按标题解析 AST。
+- Linux `application` 合并应用检查与原 Linux native 任务，始终执行静态、知识、类型和契约检查；代码变更再执行 Vite 构建、C++ worker / 四组合成 CTest、一份全量 TypeScript 运行时和 `@smoke` 行为回归。full 切换全量 UI，纯文档仅执行静态同步。不再维护 UI 领域映射或按标题解析 AST。
 - Rust/C++、契约、SQLite/文件系统、子进程/环境、代理、更新、打包及公共工具链等原生边界改动，在 quick 增加 Windows x64 与 macOS arm64 的 `native` 专项，Linux 专项追加在 `application` 内。full 再启用 macOS Intel。宿主使用 `fail-fast: false`，保留 Bun 探针、C++ worker / CTest、正向运行时平台清单、Rust 和本平台打包夹具；Windows 专项准备 NSIS。普通后端领域逻辑不启用附加宿主。
 - 普通 quick 两个任务、原生边界 quick 四个任务，full 六个任务。full 的 `full-validation` 要求 Linux `application` 和三个附加宿主专项全部成功；quick 不产生成功的完整验证标记。发行门禁只接受同 SHA、最新 attempt 中唯一且成功的 `full-validation`。
 - Checks 不生成安装包、不上传发行资产；失败时只上传 Playwright 或原生诊断。不要把签名、打包或 Release 逻辑加回 Checks。
@@ -45,7 +45,7 @@ description: 维护 Maa Verge 的 GitHub Actions Checks 与签名发行流程：
 - [tools/check.mjs](../../tools/check.mjs) 维护 `--app`、`--native` 入口。`pnpm check` / `pnpm check:app` / `pnpm check:native` 和 `pnpm test:runtime` 默认完整本地行为保持兼容；只有显式 `--ci` 才读取并校验版本 2 `MAAVERGE_CI_PLAN`，非法或不一致的计划直接失败。
 - `--app --ci` 是 Linux 固定基线：始终执行产品知识同步、工程脚本测试、`contracts:check`、四工作区类型及契约测试；`code` 为真再构建 worker / CTest、跑完整服务测试、直接 Vite 构建并通过 `tools/ci/test-ui.mjs` 运行 `@smoke` 或 full UI。即使纯 UI 改动也跑同一代码基线，worker / 合成核心缺失必须失败。
 - `native` 为真时，Linux 基线在同一任务追加固定 Bun 探针、单次 `cargo fmt --check`、locked Clippy / Rust 测试及 Linux 打包夹具，复用已构建的 worker，不再重跑服务全量。CI 不重复执行 doctor 的 C++ 编译探针。
-- `--native --ci` 是附加宿主专项：Bun 探针、C++ worker / CTest、`tools/test-runtime.mjs --platform --require-native`、Rust Clippy / 测试（`--skip-fmt`）和本平台打包夹具。Windows/macOS 只跑 [tools/ci/runtime-suite.mjs](../../tools/ci/runtime-suite.mjs) 的正向清单：共同 19 个文件，加两个 Windows 或五个 macOS 文件；其中保留已有 Windows/macOS 路径失败证据的 Mirror酱关键更新回归。Linux 的 `--platform` 仍是全量。CI 缺少 worker 或合成核心时直接失败，不能以跳过集成测试取得成功。
+- `--native --ci` 是附加宿主专项：Bun 探针、C++ worker / CTest、`tools/test-runtime.mjs --platform --require-native`、Rust Clippy / 测试（`--skip-fmt`）和本平台打包夹具。Windows/macOS 只跑 [tools/ci/runtime-suite.mjs](../../tools/ci/runtime-suite.mjs) 的正向清单：共同清单及 Windows/macOS 专项清单；其中保留已有 Windows/macOS 路径失败证据的 Mirror酱关键更新回归。Linux 的 `--platform` 仍是全量。CI 缺少 worker 或合成核心时直接失败，不能以跳过集成测试取得成功。
 - Linux 全量只跑一份，full 也不在四宿主重复全部领域测试。新增业务测试自动进入 Linux 全量；SQLite 租约与恢复、持久去重、文件替换与链接、子进程、代理、更新和原生传输等宿主行为变化时，审核并更新平台正向清单。不要恢复纯领域排除表。
 - 本地无 `--ci` 的原生入口仍执行 doctor、worker 工具回归、完整运行时、Rust（含 fmt）及本平台夹具；CI 要求 Rust 的宿主缺少工具必须失败。本地完整入口与 CI 固定基线各自维护清晰边界，不将 CI 的专项选择隐式带入本地默认命令。
 - 平台夹具按 `process.platform` 选择：Linux 发行包、macOS bundle、Windows 安装器/组件。不要在一个宿主执行另一个平台的夹具。
@@ -66,7 +66,7 @@ description: 维护 Maa Verge 的 GitHub Actions Checks 与签名发行流程：
 7. **Linux 干净容器 smoke 必须在签名构建之后。** [tools/smoke-clean-linux.mjs](../../tools/smoke-clean-linux.mjs) 需要 `dist/runtime/maaverge-runtime`；先执行 `run.sh release`，再在宿主运行该脚本。容器内构建使用 `APPIMAGE_EXTRACT_AND_RUN=1` 以避免依赖 FUSE。不要把它前移或并入 `run.sh`。
 8. **版本与发行说明必须对齐。** 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、`Cargo.toml` 与标签；运行 `node tools/app-updater-release.mjs check --tag <tag>`，并确认 `docs/releases/<tag>.md` 非空。当前发行集合为 11 项：五个完整安装包（EXE / 完整 ZIP、两个 DMG、AppImage）、EXE / 两个 DMG / AppImage 的四份 `.sig`、`latest.json` 与 `SHA256SUMS.txt`。`validateAssetSet` 仍接受旧的 8/17/18/19 项集合，不要用历史集合生成新发行版。新清单只包含 `windows-x86_64-nsis`、`darwin-aarch64-dmg`、`darwin-x86_64-dmg`、`linux-x86_64`；仅支持归档的旧 macOS 客户端须手动安装新版 DMG 一次。
 9. **发行权限与并发。** `verify` 需要 `actions: read` + `contents: write`，`draft` 需要 `contents: write`，`build` 只读；Release 并发按标签分组且 `cancel-in-progress: false`；`build` 矩阵 `fail-fast: false`。签名密钥只从 Actions secrets 读取，不打印、不提交私钥。
-10. **文档改动会触发知识生成。** `docs/app-updates.md` 是产品知识输入；修改后运行 `corepack pnpm knowledge:generate` 并提交生成结果。`docs/STATUS.md` 不是知识输入，但必须记录实际命令、平台、结果和未验证项。
+10. **文档改动会触发知识生成。** `docs/app-updates.md` 是产品知识输入；修改后运行 `corepack pnpm knowledge:generate` 并提交生成结果。其他知识输入以生成脚本的 `documentFiles` 为准；实际命令、平台、结果和未验证项记录在任务或 PR 说明中。
 
 ## 本地验证
 
@@ -106,7 +106,7 @@ shellcheck tools/ci/run.sh
 - 用安全负向 dispatch 验证 Release 的拒绝路径：不存在的标签必须在 `getRef` 失败；已存在的 `v0.1.2` 必须因重复 Release 失败。不要在负向验证中构建或上传资产。
 - 不推送发行标签、不创建/发布 Release、不恢复 v0.1.3-alpha1，除非用户另行明确授权。
 - 确认签名 secrets 已配置，但不要读取、回显或记录密钥内容。
-- 未实际运行的 Windows/Linux 任务、NSIS 安装、四宿主签名矩阵、标签解析和草稿创建，继续在 `docs/STATUS.md` 标为未验证。
+- 未实际运行的 Windows/Linux 任务、NSIS 安装、四宿主签名矩阵、标签解析和草稿创建，在任务或 PR 说明中明确标为未验证。
 
 ## 排错
 
@@ -121,7 +121,6 @@ shellcheck tools/ci/run.sh
 - [docs/development.md](../../docs/development.md)：quick / full 计划、合并后的 Linux 基线与按需宿主、UI 标签/运行时正向清单、Windows NSIS、平台夹具、本地完整入口及 Release 完整检查门禁。
 - [docs/ci-image.md](../../docs/ci-image.md)：`app|native|release` 语义、`MAAVERGE_CI_PLAN` 传递、Vite 单次类型检查、固定 CMake 归档与摘要校验、release 不跑检查、clean smoke 在签名构建后。
 - [docs/app-updates.md](../../docs/app-updates.md)：标签推送/手动补跑、版本与说明、拒绝重复、30 分钟门禁、只创建草稿。
-- [docs/STATUS.md](../../docs/STATUS.md)：实际命令、平台、结果与未验证项；不得把未测试平台写成通过。
 - `CONTRIBUTING.md`、`PLAN.md`、`README.md` 只在检查入口、CI 架构或发布声明实际变化时同步；不要保留已失效的发布链接或“已发布”结论。
 
 ## 资源

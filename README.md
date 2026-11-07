@@ -180,7 +180,7 @@ macOS 默认将核心和资源保存在用户的 `Library/Application Support/Ma
 
 ## 参与与致谢
 
-参与开发或从源码构建，请阅读[贡献指南](CONTRIBUTING.md)和[开发文档](docs/development.md)。开发进展见[开发状态](docs/STATUS.md)，后续路线见[项目计划](PLAN.md)。
+参与开发或从源码构建，请阅读[贡献指南](CONTRIBUTING.md)和[开发文档](docs/development.md)。开发改动与验证范围见[相关 PR](https://github.com/maa-verge/maa-verge/pulls)，后续路线见[项目计划](PLAN.md)。
 
 感谢 [MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights) 提供自动化核心，以及 [MaaResource](https://github.com/MaaAssistantArknights/MaaResource) 提供游戏资源。
 

@@ -17,7 +17,7 @@ description: 为 Maa Verge 桌面界面新增或迁移组件套装原语：核�
 
 - **如无必要，不得修改 kit 组件代码与样式**。先查 [Kit README](../../apps/desktop/src/kit/README.md) 的用法与预览，用现有 props、插槽和页面布局容器实现需求。只有修复真实缺陷、可访问性问题或补充缺失的通用能力，才修改 kit，并记录原因、消费方影响与验证；单页视觉偏好、临时对齐和顺手重构不构成修改理由。
 
-- 读 [AGENTS.md](../../AGENTS.md)、[PLAN.md](../../PLAN.md)、[docs/STATUS.md](../../docs/STATUS.md) 与 [docs/component-kit.md](../../docs/component-kit.md)，检查 `git status` / `git diff`，保留未提交改动。
+- 读 [AGENTS.md](../../AGENTS.md)、[PLAN.md](../../PLAN.md) 与 [docs/component-kit.md](../../docs/component-kit.md)，检查 `git status` / `git diff`，保留未提交改动。
 - 在 `docs/component-kit.md` 的组件清单表里确认目标组件状态（已实现 / 已建 / 计划）与它替代的旧实现，不要凭记忆重写一份。
 - 迁移页面前先做**耦合审计**，这是本 skill 最重要的一步：
 
@@ -93,9 +93,9 @@ grep -n "组件套装样式\|^\.mv-select {\|^\.sp-setting-row {\|--font-sans:" 
 3. `./node_modules/.bin/prettier --check <改动文件>`
 4. 定向 spec：新增或修改的用例先稳定复现，失败时加 `--workers=1 --reporter=line` 串行复现，不要先改断言或加大超时。
 5. 受影响 spec：按改动页面选择，任务入口与布局改动通常波及 `task-center`、`workspace`、`execution-monitor`、`execution`、`device-management`、`multi-run`、`plan-deletion`、`autosave-context-menu`、`default-plan`、`stages`、`recognition`、`component-readiness`、`toolbox-scheduler`、`copilot-center`；弹层改动必跑 `modal-effects` 与 `drawer-navigation`。用 `git diff --name-only` 和页面引用确认，不要只跑新 spec。
-6. `bash tools/pnpm.sh run check:app`（改了契约再跑 `contracts:generate`；改了 `tools/generate-agent-knowledge.mjs` 的 `documentFiles` 所列文档再跑 `knowledge:generate`——`docs/component-kit.md` 与 `docs/STATUS.md` 都不在该列表内）。
+6. `bash tools/pnpm.sh run check:app`（改了契约再跑 `contracts:generate`；改了 `tools/generate-agent-knowledge.mjs` 的 `documentFiles` 所列文档再跑 `knowledge:generate`——`docs/component-kit.md` 不在该列表内）。
 7. 全量 E2E 与截图矩阵，按 [maa-verge-ui-verification](../maa-verge-ui-verification/SKILL.md)。
-8. 更新 [docs/STATUS.md](../../docs/STATUS.md)：实际命令、通过数、宿主平台、截图范围、未验证项、下一步。
+8. 在任务或 PR 说明中记录实际命令、结果、宿主平台、截图范围、未验证项和下一步。
 
 **删除祖先前缀覆盖链之后，必须人工核对渲染后的 padding 与对齐**，不能只看控件存在或测试通过。设置页历史上出现过 `.sp-setting-row` 的 padding 被 `settings-page.css` 的三选择器跨文件静默压过、标签明显偏左而测试全绿的情况。
 

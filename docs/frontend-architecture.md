@@ -1,6 +1,6 @@
-# 前端架构与 Tauri 2 项目调研
+# 前端架构
 
-本次调研及目录整理日期：2026-10-31。入口说明见 [desktop README](../apps/desktop/README.md)，组件 API 和选择器规则见 [组件套装](component-kit.md)。本文件记录设计依据、当前边界和后续迁移，不代表所有业务状态已完成解耦。
+本文维护前端目录、依赖方向、状态与生命周期边界，以及设计依据。开发入口见 [desktop README](../apps/desktop/README.md)，组件 API、设计令牌和选择器规则以[组件套装](component-kit.md)为准，检查命令统一维护在[开发指南](development.md#检查与测试)。目录归档不代表所有业务状态已完成解耦。
 
 ## 开源项目中的实际做法
 
@@ -14,18 +14,7 @@
 
 Maa Verge 已有 Vite、React 与类型化 contracts，无需为目录整理引入 Next、Svelte、路由库或新的全局状态库。外部项目直接使用 Tauri 插件的方式也不适用于本项目：本项目的宿主能力仍必须经 `@maaverge/contracts`。
 
-## 原结构的问题与本轮调整
-
-整理前，`src` 根有 55 个 TS/TSX 和 38 个 CSS。部分视图迁入 `features`，同一业务的容器、组件和样式仍留在根目录；应用外壳放在 `features/app`，`app` 却仅提供所有页面共用的肥大 `SupportPageProps`。继续按文件长度拆分会保留这些反向依赖。
-
-本轮按归属迁移了 103 个既有文件，并更新所有相对导入，没有保留新旧路径的兼容 re-export：
-
-- `src` 根仅保留 `main.tsx`，应用入口、外壳和应用级状态归 `app`。
-- 首页、计划、作业、设备、执行、工具、设置、更新、定时、Agent、历史各有自己的 feature；相关组件、模型和页面 CSS 一起迁入。
-- 无页面归属的游戏展示、通用 UI 和公共能力归 `shared`；原语与弹层机制归 `kit`。
-- 删除 `SupportPageProps`，页面自行声明实际使用的 props。共享的 `ActionRunner` 仅描述注入的操作执行器，不暴露 App 的 pending/toast 实现。
-- `SaveStatus` 和提示文案独立为无副作用的 `shared/lib/save-status.ts`，kit 的显示组件不再为了一个标签加载完整的草稿缓存 hook。
-- 新增目录、层级、宿主入口和运行时循环依赖检查，接入 `check:app`。
+组件、状态和 CSS 按归属组织，避免按文件长度拆分后仍由页面反向依赖应用状态。页面各自声明最小 props；共享 `ActionRunner` 只描述注入的操作执行器，不暴露 App 的 pending/toast 实现。目录、层级、宿主入口及运行时循环由结构门禁维护。目录整理的历史记录见[固定提交中的架构文档](https://github.com/maa-verge/maa-verge/blob/3a8ad44ba3e31e7f2d4354ff9c89b5d9a9927a43/docs/frontend-architecture.md)。
 
 ## 目录与依赖
 
@@ -83,13 +72,9 @@ apps/desktop/src/
 
 ## 样式归属
 
-组件原语由 `kit/kit.css` 控制；尺寸和变体通过 props 表达。业务页面 CSS 与业务组件共置，负责布局和自己投放的内容。令牌和基础规则保留在 `app/styles`。
+业务页面 CSS 与消费组件共置，负责容器布局及自己投放的插槽内容；令牌与基础规则归 `app/styles`，无业务知识的原语样式归 `kit/kit.css`。导入顺序、props 与宿主样式的边界由[组件套装规范](component-kit.md#导入顺序不变量)统一定义。
 
-`main.tsx` 仍首先导入 `kit.css`，再导入 App，最后导入全局样式；物理迁移保持原模块图的导入顺序。页面不得引用 `.mv-*` 内部类。移动文件没有自动解决 CSS 的全局作用域：`shared/styles/support-pages.css` 和 `app/styles/styles.css` 仍包含旧规则，后续按实际消费方拆分，避免一次性重写全部选择器。
-
-`Select`、`ContextMenu` 已使用 `mv-*` 选择器，样式统一位于 `kit.css`，原 `kit/legacy` 已移除；尺寸与配色差异通过 props 表达，业务 CSS 仅保留布局。用法、样式预览与非必要不修改约定见 [Kit README](../apps/desktop/src/kit/README.md)。`SelectAll` 保留被现有行为测试定位的 `.cp-select-all` 类；它已归公共组合组件，不再由任务表依赖作业模块。
-
-本轮清理了旧设备/作业库/工具布局、旧任务表启动菜单等无引用 CSS；Toast 的内部布局、语义色和层级归 kit，App 仅决定提示位置。
+`shared/styles/support-pages.css` 与部分全局旧规则仍需按组件逐步迁移，移动文件不等于清理 CSS。`SelectAll` 归公共组合组件并保留行为定位类 `.cp-select-all`；Toast 的内部样式归 kit，应用只决定提示位置。
 
 ## 新增或修改功能
 
@@ -97,7 +82,7 @@ apps/desktop/src/
 2. 先声明页面的最小 props 或业务意图回调；不要传入一组 App 的状态 setter，也不要扩展所有页面共用的 props 大接口。
 3. 需要后端能力时，先改 authoritative schema 并生成契约；前端通过类型化入口调用。不会因为需要一个宿主功能而直接导入插件。
 4. 仅在多个功能确实复用且职责稳定时提入 `shared`。按钮、输入、弹层等无业务知识的原语放入 kit；干员、设备或任务语义不应进入 kit。
-5. 运行 TypeScript、两种结构门禁、相关行为 spec；CSS 改动通过合成截图检查，禁止添加外观断言测试。
+5. 按[开发指南](development.md#检查与测试)选择相关结构、类型与行为检查；组件和样式变动遵循[组件套装验证要求](component-kit.md#验证)。
 
 ## 尚待完成的数据解耦
 
@@ -108,15 +93,6 @@ apps/desktop/src/
 - Settings 页的更新视图与更新领域仍有耦合；跨功能全量 `settings.save` 的协调需要独立设计，产线编辑仍基于收到的 settings 保存。
 - 全局旧 CSS、旧类名与组件样式之间还存在覆盖。继续逐组件迁移和清理，不将目录移动视为 CSS 隔离已完成。
 
-## 检查
+## 结构检查
 
-```powershell
-powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 run check:app
-node tools/check-frontend-architecture.mjs
-node tools/check-kit-css.mjs
-node --test tools/tests/check-frontend-architecture.test.mjs
-```
-
-`check:app` 检查根目录白名单、依赖方向、Tauri 入口、运行时循环、CSS 规则、契约与类型；行为和原生验收仍单独执行。并行 Playwright 必须同时隔离端口和 `--output`，避免不同任务清理彼此的 trace。实际结果记录在 [STATUS](STATUS.md)，浏览器合成夹具不能替代原生 WebView 或真实设备验收。
-
-行为测试优先复用 `tests/ui/fixtures/navigation.ts` 的导航和就绪检查，避免每份 spec 复制同样的跳转函数。场景准备和业务断言留在用例附近；本轮仅合并四份重复导航辅助，没有减少用例或放宽断言。
+`tools/check-frontend-architecture.mjs` 维护根目录白名单、依赖方向、Tauri 入口与运行时循环；`tools/check-kit-css.mjs` 维护组件选择器规则，两者接入 `check:app`。统一命令、UI 夹具复用与并行隔离见[开发指南](development.md#检查与测试)。实际验证范围与结果记录在任务或 PR。

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
-import { expectHome, navigate } from './fixtures/navigation';
+import { call, importJson, library, openCenter, preview, queue } from './fixtures/copilot-page';
+import { navigate } from './fixtures/navigation';
 
 type CopilotActionWindow = HarnessWindow & {
   copilotStopRequests: string[];
@@ -16,43 +17,8 @@ const json = (title: string, extra: Record<string, unknown> = {}) =>
     actions: [{ type: 'SpeedUp' }],
     ...extra,
   });
-const queue = (page: Page) => page.getByRole('region', { name: '作业执行队列', exact: true });
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
-const preview = (page: Page) => page.getByRole('region', { name: '导入预览', exact: true });
 const monitoredExecution = (page: Page) =>
   page.getByRole('region', { name: '所选设备执行情况', exact: true });
-async function openCenter(page: Page) {
-  await page.goto('/');
-  await expectHome(page);
-  await navigate(page, '作业中心');
-  await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
-  await expect(queue(page).locator('.cp-save-state')).toContainText('已保存');
-}
-async function importJson(page: Page, content: string, add = true, waitForClose = true) {
-  const panel = page.locator('details.cp-import');
-  if (!(await panel.getAttribute('open').then((value) => value !== null)))
-    await page.getByRole('button', { name: '导入作业', exact: true }).click();
-  const input = page.getByLabel('作业 JSON', { exact: true });
-  if (!(await input.isVisible())) await page.getByText('粘贴 JSON', { exact: true }).click();
-  await input.fill(content);
-  await page.getByRole('button', { name: '预览 JSON', exact: true }).click();
-  await expect(preview(page)).toBeVisible();
-  await preview(page)
-    .getByRole('button', { name: add ? '所选导入并加入队列' : '导入到作业库', exact: true })
-    .click();
-  if (waitForClose) await expect(preview(page)).toHaveCount(0);
-}
-async function call<T>(
-  page: Page,
-  method: string,
-  params: Record<string, unknown> = {},
-): Promise<T> {
-  return page.evaluate(
-    async ({ method, params }) =>
-      (window as unknown as HarnessWindow).runtimeHarness.call(method, params),
-    { method, params },
-  ) as Promise<T>;
-}
 
 test(
   'local preview, duplicate queue entries and ordered edits persist without creating task tables',
@@ -693,37 +659,6 @@ test('starting a newer run updates the selection retained after explicit history
   ).toBeVisible();
   await expect(panel.locator('.cp-run-summary')).not.toContainText('历史导航的旧作业');
   await expect(panel.locator('.cp-run-entries')).not.toContainText('历史导航的旧作业');
-});
-
-test('the local library pages beyond twenty records without changing the execution queue', async ({
-  page,
-}) => {
-  await openCenter(page);
-  await page.evaluate(
-    async (contents) => {
-      const harness = (window as unknown as HarnessWindow).runtimeHarness;
-      for (const content of contents) {
-        const result = (await harness.call('copilot.preview', {
-          content,
-          name: '分页合成作业.json',
-        })) as { id: string };
-        await harness.call('copilot.import', { previewId: result.id });
-      }
-    },
-    Array.from({ length: 21 }, (_, index) => json(`分页作业 ${index + 1}`)),
-  );
-  await library(page).getByRole('button', { name: '刷新作业库', exact: true }).click();
-  await expect(library(page).locator('.cp-record')).toHaveCount(20);
-  await expect(library(page)).toContainText('共 21 份');
-  await library(page).getByRole('button', { name: '本地作业下一页', exact: true }).click();
-  await expect(library(page).locator('.cp-record')).toHaveCount(1);
-  await expect(library(page)).toContainText('第 2 页');
-  await expect(
-    library(page).getByRole('button', { name: '本地作业下一页', exact: true }),
-  ).toBeDisabled();
-  await library(page).getByRole('button', { name: '本地作业上一页', exact: true }).click();
-  await expect(library(page).locator('.cp-record')).toHaveCount(20);
-  await expect(queue(page).locator('.cp-queue-list > li')).toHaveCount(0);
 });
 
 test('a failed draft for another kind does not block the selected saved workspace', async ({

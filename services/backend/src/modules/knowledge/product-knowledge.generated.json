@@ -4,7 +4,7 @@
   "sources": [
     {
       "file": "docs/app-updates.md",
-      "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+      "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
     },
     {
       "file": "docs/connection-settings.md",
@@ -28,7 +28,7 @@
     },
     {
       "file": "docs/maacore-runtime.md",
-      "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+      "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
     },
     {
       "file": "docs/multi-instance.md",
@@ -84,7 +84,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L37-L50",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -111,7 +111,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L61-L91",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -138,7 +138,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L92-L93",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -165,7 +165,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L5-L32",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -192,7 +192,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L33-L36",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -219,7 +219,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L102-L105",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -244,7 +244,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L1-L4",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -273,7 +273,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L51-L60",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -300,7 +300,7 @@
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L94-L101",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -313,21 +313,21 @@
         "准备新发行版",
         "app-updates"
       ],
-      "text": "应用与核心更新 > 准备新发行版\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 准备新发行版\n\n`.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.4](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.4)；后续发行仍需先提交新的版本号，并保留既有标签与资产。\n\n1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。\n2. 合并版本与发行说明提交，先确认该提交的完整 Checks 已通过，且 `full-validation` 成功。`main` 推送和手动 Checks 运行执行完整检查；`dev` / PR 的精简检查不能用于发行。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的完整 Checks 构建。\n3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。\n4. 推送标签（例如 `git push origin v0.1.3-alpha.1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。\n5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **11 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。\n\n完整 Checks 运行中的等待上限为 30 分钟；没有完整运行时最多等待 5 分钟。若该提交只有精简检查、没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待 `full-validation` 成功，再补跑 Release。\n\nCI 和普通 `pnpm build` 只构建 Windows EXE / 完整 ZIP、macOS Apple Silicon / Intel DMG、Linux AppImage 五个完整安装包；不再生成 DEB、RPM 或 macOS `.app.tar.gz` 等专用更新归档。完整发行附件集合为这五个安装包、EXE / 两个 DMG / AppImage 的四个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`，共十一项。签名和清单是更新及校验元数据。`latest.json` 只包含 `windows-x86_64-nsis`、`darwin-aarch64-dmg`、`darwin-x86_64-dmg`、`linux-x86_64` 四个目标，直接引用完整安装包；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。\n\n发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。macOS 构建使用既有更新签名密钥，通过官方 Tauri signer 为完整 DMG 追加版本绑定签名，不改变 DMG 内容或 Mirror酱上传流程。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，校验当前十一附件集合，同时兼容既有八附件、含 MSI 的十八附件、EXE / 完整 ZIP 的十七附件及带完整 DMG 签名的十九附件集合，拒绝不完整的混合版本；安装包通过 GitHub Releases 与既有 Mirror酱分发。\n\n当前验证范围见 [开发状态](STATUS.md) 和 [Mirror酱真实下载验证](mirrorchyan-verification-2026-10-31.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。",
+      "text": "应用与核心更新 > 准备新发行版\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## 准备新发行版\n\n`.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.4](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.4)；后续发行仍需先提交新的版本号，并保留既有标签与资产。\n\n1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。\n2. 合并版本与发行说明提交，先确认该提交的完整 Checks 已通过，且 `full-validation` 成功。`main` 推送和手动 Checks 运行执行完整检查；`dev` / PR 的精简检查不能用于发行。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的完整 Checks 构建。\n3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。\n4. 推送标签（例如 `git push origin v0.1.3-alpha.1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。\n5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **11 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。\n\n完整 Checks 运行中的等待上限为 30 分钟；没有完整运行时最多等待 5 分钟。若该提交只有精简检查、没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待 `full-validation` 成功，再补跑 Release。\n\nCI 和普通 `pnpm build` 只构建 Windows EXE / 完整 ZIP、macOS Apple Silicon / Intel DMG、Linux AppImage 五个完整安装包；不再生成 DEB、RPM 或 macOS `.app.tar.gz` 等专用更新归档。完整发行附件集合为这五个安装包、EXE / 两个 DMG / AppImage 的四个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`，共十一项。签名和清单是更新及校验元数据。`latest.json` 只包含 `windows-x86_64-nsis`、`darwin-aarch64-dmg`、`darwin-x86_64-dmg`、`linux-x86_64` 四个目标，直接引用完整安装包；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。\n\n发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。macOS 构建使用既有更新签名密钥，通过官方 Tauri signer 为完整 DMG 追加版本绑定签名，不改变 DMG 内容或 Mirror酱上传流程。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，校验当前十一附件集合，同时兼容既有八附件、含 MSI 的十八附件、EXE / 完整 ZIP 的十七附件及带完整 DMG 签名的十九附件集合，拒绝不完整的混合版本；安装包通过 GitHub Releases 与既有 Mirror酱分发。\n\nMirror酱历史下载证据见 [真实下载验证](mirrorchyan-verification-2026-10-31.md)；后续验证的命令、宿主和未验证项记录在对应任务或 PR 中。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "应用与核心更新",
           "准备新发行版"
         ],
-        "content": "## 准备新发行版\n\n`.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.4](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.4)；后续发行仍需先提交新的版本号，并保留既有标签与资产。\n\n1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。\n2. 合并版本与发行说明提交，先确认该提交的完整 Checks 已通过，且 `full-validation` 成功。`main` 推送和手动 Checks 运行执行完整检查；`dev` / PR 的精简检查不能用于发行。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的完整 Checks 构建。\n3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。\n4. 推送标签（例如 `git push origin v0.1.3-alpha.1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。\n5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **11 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。\n\n完整 Checks 运行中的等待上限为 30 分钟；没有完整运行时最多等待 5 分钟。若该提交只有精简检查、没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待 `full-validation` 成功，再补跑 Release。\n\nCI 和普通 `pnpm build` 只构建 Windows EXE / 完整 ZIP、macOS Apple Silicon / Intel DMG、Linux AppImage 五个完整安装包；不再生成 DEB、RPM 或 macOS `.app.tar.gz` 等专用更新归档。完整发行附件集合为这五个安装包、EXE / 两个 DMG / AppImage 的四个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`，共十一项。签名和清单是更新及校验元数据。`latest.json` 只包含 `windows-x86_64-nsis`、`darwin-aarch64-dmg`、`darwin-x86_64-dmg`、`linux-x86_64` 四个目标，直接引用完整安装包；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。\n\n发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。macOS 构建使用既有更新签名密钥，通过官方 Tauri signer 为完整 DMG 追加版本绑定签名，不改变 DMG 内容或 Mirror酱上传流程。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，校验当前十一附件集合，同时兼容既有八附件、含 MSI 的十八附件、EXE / 完整 ZIP 的十七附件及带完整 DMG 签名的十九附件集合，拒绝不完整的混合版本；安装包通过 GitHub Releases 与既有 Mirror酱分发。\n\n当前验证范围见 [开发状态](STATUS.md) 和 [Mirror酱真实下载验证](mirrorchyan-verification-2026-10-31.md)。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。",
+        "content": "## 准备新发行版\n\n`.github/workflows/release.yml` 有两个入口：推送版本标签 `v*`，或在 Actions 中选择 **Prepare signed application release** 并填写一个已存在的标签（用于补跑）。工作流先解析标签指向的提交，拒绝不存在的标签、版本不一致、缺失的发行说明和任何已有 Release（含草稿），再等待该提交的 Checks 成功；随后在四宿主构建、签名并校验资产，最后创建 GitHub **草稿**，不会自动公开发布。当前已发布的正式版为 [v0.1.4](https://github.com/DeathofBrain/maa-verge/releases/tag/v0.1.4)；后续发行仍需先提交新的版本号，并保留既有标签与资产。\n\n1. 同步根 `package.json`、桌面/服务 `package.json`、`tauri.conf.json`、Cargo 包版本及相应锁文件，并编写 `docs/releases/v版本号.md`。标签必须为 `vMAJOR.MINOR.PATCH`，可带有效预览后缀；发行版本不接受 build metadata。\n2. 合并版本与发行说明提交，先确认该提交的完整 Checks 已通过，且 `full-validation` 成功。`main` 推送和手动 Checks 运行执行完整检查；`dev` / PR 的精简检查不能用于发行。标签必须指向这个提交；发布流程不会为失败、被取消或缺失的完整 Checks 构建。\n3. 确保 Actions secrets 已配置 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`。本轮已在项目仓库配置，公钥保存在 Tauri 配置中；私钥和密码须独立加密备份，不得提交。后续版本沿用此密钥，直接换公钥会使旧客户端无法验证新包。\n4. 推送标签（例如 `git push origin v0.1.3-alpha.1`），或对已有标签手动补跑并填写该标签。含预览后缀的标签自动生成预发布草稿，不再单独选择 `prerelease`。构建从 secrets 读取签名材料；普通不带密钥的 `pnpm build` 仍可生成未签名测试安装包，不可直接作为自动更新发行版。\n5. 构建期间标签被移动或出现并发 Release 时流程失败；草稿资产生成或校验失败会删除本次草稿并保留标签，修正后可重跑。检查草稿中的全部 **11 项附件**及发行说明，核对构建与安装验证记录后再手动发布。发布前客户端看不到草稿。\n\n完整 Checks 运行中的等待上限为 30 分钟；没有完整运行时最多等待 5 分钟。若该提交只有精简检查、没有运行、运行被取消或失败，先执行 `gh workflow run ci.yml --ref <标签>` 并等待 `full-validation` 成功，再补跑 Release。\n\nCI 和普通 `pnpm build` 只构建 Windows EXE / 完整 ZIP、macOS Apple Silicon / Intel DMG、Linux AppImage 五个完整安装包；不再生成 DEB、RPM 或 macOS `.app.tar.gz` 等专用更新归档。完整发行附件集合为这五个安装包、EXE / 两个 DMG / AppImage 的四个 `.sig`、`latest.json` 与 `SHA256SUMS.txt`，共十一项。签名和清单是更新及校验元数据。`latest.json` 只包含 `windows-x86_64-nsis`、`darwin-aarch64-dmg`、`darwin-x86_64-dmg`、`linux-x86_64` 四个目标，直接引用完整安装包；完整 ZIP 仅列入 SHA-256 清单，不作为应用更新包。\n\n发布工具 `tools/app-updater-release.mjs` 在收集及生成清单时验证真实签名、签名版本和完整产物集合。macOS 构建使用既有更新签名密钥，通过官方 Tauri signer 为完整 DMG 追加版本绑定签名，不改变 DMG 内容或 Mirror酱上传流程。各平台带空格的原始产品名严格匹配后统一为 `Maa-Verge` 文件名；复制重命名保留包内容与签名，重复或无法识别的安装包拒绝收集。发行资产解析与校验集中在 `tools/release-assets.mjs`，校验当前十一附件集合，同时兼容既有八附件、含 MSI 的十八附件、EXE / 完整 ZIP 的十七附件及带完整 DMG 签名的十九附件集合，拒绝不完整的混合版本；安装包通过 GitHub Releases 与既有 Mirror酱分发。\n\nMirror酱历史下载证据见 [真实下载验证](mirrorchyan-verification-2026-10-31.md)；后续验证的命令、宿主和未验证项记录在对应任务或 PR 中。合成检查与 Windows 构建不能代替真实升级安装、macOS/Linux 宿主和最低系统验收。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/app-updates.md",
         "pointer": "L106-L123",
-        "sha256": "21ed12862d54099f13244e54eacf742f1b48ca5f75bcee89229f3c078d4b8ce1"
+        "sha256": "3fdce5492e7c21ad52fa835689e52cf6785a71262ffe5b25e34c07097dc1d93a"
       }
     },
     {
@@ -855,7 +855,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L103-L112",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -882,7 +882,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L59-L74",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -909,7 +909,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L75-L78",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -936,7 +936,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L7-L24",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -963,7 +963,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L25-L30",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -990,7 +990,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L31-L40",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -1017,7 +1017,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L97-L102",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -1031,7 +1031,7 @@
         "Windows 回环验证（2026-10-27）",
         "maacore-runtime"
       ],
-      "text": "MaaCore 运行文件的选择性安装 > Clash、系统代理与 VPN/TUN > Windows 回环验证（2026-10-27）\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n### Windows 回环验证（2026-10-27）\n\n固定 Bun 1.4.3 的组件下载、代理与重连六文件专项共 **89 项通过、0 失败**，该数字不包含新增应用宿主 RPC 的验证。测试使用隔离数据、回环 HTTP/HTTPS 源和实际转发请求的合成代理，系统设置由解析夹具注入；未向公网下载资源。\n\n| 场景           | 已验证行为                                                                                                                  |\n| -------------- | --------------------------------------------------------------------------------------------------------------------------- |\n| 环境代理与绕过 | 大小写 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`、协议优先级、`NO_PROXY=*`、地址及目标端口绕过                             |\n| 系统设置解析   | Windows 手动代理、协议分流、例外、停用与自动检测；macOS 顶层代理、例外及嵌套接口隔离；Linux 环境代理分支                    |\n| 传输与认证     | HTTP 正向代理、HTTP CONNECT 与 HTTPS 代理；手动认证成功，407、不可达及不受信证书报错且不直连；凭据不传给源站、不留在错误链  |\n| 模式与降级     | 自动代理不可达、407 与协议不支持时转直连，已有分片继续 Range / If-Range；直连模式绕过继承的代理环境                         |\n| 元数据检查     | 自动模式代理正文断流后直连重取；手动 407 不直连；关闭服务、无效 JSON 和大小超限不触发直连                                   |\n| 连接恢复与切换 | 直连→代理、代理→直连、代理→另一代理在断流后重新选路，并按 Range / If-Range 续传                                             |\n| 连续中断       | 三次中断后累计保留 48,000 字节，自动重试耗尽后用户再次重试从该位置完成；手动模式四次请求均经过同一代理                      |\n| 来源与完整性   | 重试从原始 URL 刷新过期签名地址；远端版本变化拒绝复用旧字节；没有安全版本标记时从零下载；大小、SHA-256 与重定向边界继续校验 |\n| 取消与错误分类 | 重连等待期间立即取消；手动代理配置、证书、完整性及本地磁盘准备错误不按临时网络故障反复重试                                  |\n\n另在本机 Windows 只读解析当前已配置的 HTTP 系统代理成功，没有通过该用户代理发送公网请求、启动或修改 Clash/VPN。macOS/Linux 目标系统、真实 Clash 节点转发、VPN/TUN 路由和公网提速尚未实测；回环结果只覆盖路由选择、故障恢复与数据校验，完整验证记录见 [开发状态](STATUS.md)。",
+      "text": "MaaCore 运行文件的选择性安装 > Clash、系统代理与 VPN/TUN > Windows 回环验证（2026-10-27）\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n### Windows 回环验证（2026-10-27）\n\n固定 Bun 1.4.3 的组件下载、代理与重连六文件专项共 **89 项通过、0 失败**，该数字不包含新增应用宿主 RPC 的验证。测试使用隔离数据、回环 HTTP/HTTPS 源和实际转发请求的合成代理，系统设置由解析夹具注入；未向公网下载资源。\n\n| 场景           | 已验证行为                                                                                                                  |\n| -------------- | --------------------------------------------------------------------------------------------------------------------------- |\n| 环境代理与绕过 | 大小写 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`、协议优先级、`NO_PROXY=*`、地址及目标端口绕过                             |\n| 系统设置解析   | Windows 手动代理、协议分流、例外、停用与自动检测；macOS 顶层代理、例外及嵌套接口隔离；Linux 环境代理分支                    |\n| 传输与认证     | HTTP 正向代理、HTTP CONNECT 与 HTTPS 代理；手动认证成功，407、不可达及不受信证书报错且不直连；凭据不传给源站、不留在错误链  |\n| 模式与降级     | 自动代理不可达、407 与协议不支持时转直连，已有分片继续 Range / If-Range；直连模式绕过继承的代理环境                         |\n| 元数据检查     | 自动模式代理正文断流后直连重取；手动 407 不直连；关闭服务、无效 JSON 和大小超限不触发直连                                   |\n| 连接恢复与切换 | 直连→代理、代理→直连、代理→另一代理在断流后重新选路，并按 Range / If-Range 续传                                             |\n| 连续中断       | 三次中断后累计保留 48,000 字节，自动重试耗尽后用户再次重试从该位置完成；手动模式四次请求均经过同一代理                      |\n| 来源与完整性   | 重试从原始 URL 刷新过期签名地址；远端版本变化拒绝复用旧字节；没有安全版本标记时从零下载；大小、SHA-256 与重定向边界继续校验 |\n| 取消与错误分类 | 重连等待期间立即取消；手动代理配置、证书、完整性及本地磁盘准备错误不按临时网络故障反复重试                                  |\n\n另在本机 Windows 只读解析当前已配置的 HTTP 系统代理成功，没有通过该用户代理发送公网请求、启动或修改 Clash/VPN。macOS/Linux 目标系统、真实 Clash 节点转发、VPN/TUN 路由和公网提速尚未实测；回环结果只覆盖路由选择、故障恢复与数据校验，后续验证应在对应任务或 PR 中记录命令、宿主与未验证项。",
       "data": {
         "category": "documentation",
         "headingPath": [
@@ -1039,14 +1039,14 @@
           "Clash、系统代理与 VPN/TUN",
           "Windows 回环验证（2026-10-27）"
         ],
-        "content": "### Windows 回环验证（2026-10-27）\n\n固定 Bun 1.4.3 的组件下载、代理与重连六文件专项共 **89 项通过、0 失败**，该数字不包含新增应用宿主 RPC 的验证。测试使用隔离数据、回环 HTTP/HTTPS 源和实际转发请求的合成代理，系统设置由解析夹具注入；未向公网下载资源。\n\n| 场景           | 已验证行为                                                                                                                  |\n| -------------- | --------------------------------------------------------------------------------------------------------------------------- |\n| 环境代理与绕过 | 大小写 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`、协议优先级、`NO_PROXY=*`、地址及目标端口绕过                             |\n| 系统设置解析   | Windows 手动代理、协议分流、例外、停用与自动检测；macOS 顶层代理、例外及嵌套接口隔离；Linux 环境代理分支                    |\n| 传输与认证     | HTTP 正向代理、HTTP CONNECT 与 HTTPS 代理；手动认证成功，407、不可达及不受信证书报错且不直连；凭据不传给源站、不留在错误链  |\n| 模式与降级     | 自动代理不可达、407 与协议不支持时转直连，已有分片继续 Range / If-Range；直连模式绕过继承的代理环境                         |\n| 元数据检查     | 自动模式代理正文断流后直连重取；手动 407 不直连；关闭服务、无效 JSON 和大小超限不触发直连                                   |\n| 连接恢复与切换 | 直连→代理、代理→直连、代理→另一代理在断流后重新选路，并按 Range / If-Range 续传                                             |\n| 连续中断       | 三次中断后累计保留 48,000 字节，自动重试耗尽后用户再次重试从该位置完成；手动模式四次请求均经过同一代理                      |\n| 来源与完整性   | 重试从原始 URL 刷新过期签名地址；远端版本变化拒绝复用旧字节；没有安全版本标记时从零下载；大小、SHA-256 与重定向边界继续校验 |\n| 取消与错误分类 | 重连等待期间立即取消；手动代理配置、证书、完整性及本地磁盘准备错误不按临时网络故障反复重试                                  |\n\n另在本机 Windows 只读解析当前已配置的 HTTP 系统代理成功，没有通过该用户代理发送公网请求、启动或修改 Clash/VPN。macOS/Linux 目标系统、真实 Clash 节点转发、VPN/TUN 路由和公网提速尚未实测；回环结果只覆盖路由选择、故障恢复与数据校验，完整验证记录见 [开发状态](STATUS.md)。",
+        "content": "### Windows 回环验证（2026-10-27）\n\n固定 Bun 1.4.3 的组件下载、代理与重连六文件专项共 **89 项通过、0 失败**，该数字不包含新增应用宿主 RPC 的验证。测试使用隔离数据、回环 HTTP/HTTPS 源和实际转发请求的合成代理，系统设置由解析夹具注入；未向公网下载资源。\n\n| 场景           | 已验证行为                                                                                                                  |\n| -------------- | --------------------------------------------------------------------------------------------------------------------------- |\n| 环境代理与绕过 | 大小写 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`、协议优先级、`NO_PROXY=*`、地址及目标端口绕过                             |\n| 系统设置解析   | Windows 手动代理、协议分流、例外、停用与自动检测；macOS 顶层代理、例外及嵌套接口隔离；Linux 环境代理分支                    |\n| 传输与认证     | HTTP 正向代理、HTTP CONNECT 与 HTTPS 代理；手动认证成功，407、不可达及不受信证书报错且不直连；凭据不传给源站、不留在错误链  |\n| 模式与降级     | 自动代理不可达、407 与协议不支持时转直连，已有分片继续 Range / If-Range；直连模式绕过继承的代理环境                         |\n| 元数据检查     | 自动模式代理正文断流后直连重取；手动 407 不直连；关闭服务、无效 JSON 和大小超限不触发直连                                   |\n| 连接恢复与切换 | 直连→代理、代理→直连、代理→另一代理在断流后重新选路，并按 Range / If-Range 续传                                             |\n| 连续中断       | 三次中断后累计保留 48,000 字节，自动重试耗尽后用户再次重试从该位置完成；手动模式四次请求均经过同一代理                      |\n| 来源与完整性   | 重试从原始 URL 刷新过期签名地址；远端版本变化拒绝复用旧字节；没有安全版本标记时从零下载；大小、SHA-256 与重定向边界继续校验 |\n| 取消与错误分类 | 重连等待期间立即取消；手动代理配置、证书、完整性及本地磁盘准备错误不按临时网络故障反复重试                                  |\n\n另在本机 Windows 只读解析当前已配置的 HTTP 系统代理成功，没有通过该用户代理发送公网请求、启动或修改 Clash/VPN。macOS/Linux 目标系统、真实 Clash 节点转发、VPN/TUN 路由和公网提速尚未实测；回环结果只覆盖路由选择、故障恢复与数据校验，后续验证应在对应任务或 PR 中记录命令、宿主与未验证项。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L79-L96",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -1073,7 +1073,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L123-L128",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -1100,7 +1100,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L41-L58",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -1127,7 +1127,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L113-L122",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -1152,7 +1152,7 @@
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L1-L6",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -1165,21 +1165,21 @@
         "Windows x64 验证（2026-10-21）",
         "maacore-runtime"
       ],
-      "text": "MaaCore 运行文件的选择性安装 > Windows x64 验证（2026-10-21）\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## Windows x64 验证（2026-10-21）\n\n以下为迁移前 Python 路径的历史验收记录，保留用于对照包体和提取规则；当前 TypeScript/C++ 路径的实际测试见 [STATUS.md](STATUS.md)，不据此推定新路径或其他平台已完成实测。\n\n下载官方 `MAA-v6.20.1-win-x64.zip`，大小 297,879,254 字节，SHA-256 为 `28a6c812c184f4bd6e8a7e7448b2ffa6312d711de7d39595deac771e3e784ea8`，与 Release 元数据一致。全部归档文件展开共 571,424,588 字节（约 545.0 MiB）；选择性首装后的目录含本项目 manifest 共 340,850,391 字节（约 325.1 MiB），减少 **40.35%**。\n\n保留的原生库为 `MaaCore.dll`、`MaaUtils.dll`、`DirectML.dll`、`MaaAdbControlUnit.dll`、`MaaWin32ControlUnit.dll`、`fastdeploy_ppocr_maa.dll`、`onnxruntime_maa.dll`、`opencv_world4_maa.dll`，以及完整 `resource/`。原 GUI、.NET/WPF、示例与素材目录未落盘。\n\n在隔离数据目录中验证首装、通过官方 Python Updater 从 v6.20.0 更新到 v6.20.1、等待空闲激活及回滚。新旧核心均通过独立进程的版本/API/资源加载检查，原 v6.20.0 核心文件哈希保持一致。没有连接设备或运行游戏任务；macOS/Linux 的选择规则、归档布局和别名仅经合成归档测试，不代表目标平台原生实测。",
+      "text": "MaaCore 运行文件的选择性安装 > Windows x64 验证（2026-10-21）\n文档片段保留原始描述和缺口；可能与更新的专项文档存在差异，不能据此推断真实设备已验收。\n## Windows x64 验证（2026-10-21）\n\n以下为迁移前 Python 路径的历史验收记录，保留用于对照包体和提取规则；当前 TypeScript/C++ 路径的实际测试应核对对应实现 PR，不据此推定新路径或其他平台已完成实测。\n\n下载官方 `MAA-v6.20.1-win-x64.zip`，大小 297,879,254 字节，SHA-256 为 `28a6c812c184f4bd6e8a7e7448b2ffa6312d711de7d39595deac771e3e784ea8`，与 Release 元数据一致。全部归档文件展开共 571,424,588 字节（约 545.0 MiB）；选择性首装后的目录含本项目 manifest 共 340,850,391 字节（约 325.1 MiB），减少 **40.35%**。\n\n保留的原生库为 `MaaCore.dll`、`MaaUtils.dll`、`DirectML.dll`、`MaaAdbControlUnit.dll`、`MaaWin32ControlUnit.dll`、`fastdeploy_ppocr_maa.dll`、`onnxruntime_maa.dll`、`opencv_world4_maa.dll`，以及完整 `resource/`。原 GUI、.NET/WPF、示例与素材目录未落盘。\n\n在隔离数据目录中验证首装、通过官方 Python Updater 从 v6.20.0 更新到 v6.20.1、等待空闲激活及回滚。新旧核心均通过独立进程的版本/API/资源加载检查，原 v6.20.0 核心文件哈希保持一致。没有连接设备或运行游戏任务；macOS/Linux 的选择规则、归档布局和别名仅经合成归档测试，不代表目标平台原生实测。",
       "data": {
         "category": "documentation",
         "headingPath": [
           "MaaCore 运行文件的选择性安装",
           "Windows x64 验证（2026-10-21）"
         ],
-        "content": "## Windows x64 验证（2026-10-21）\n\n以下为迁移前 Python 路径的历史验收记录，保留用于对照包体和提取规则；当前 TypeScript/C++ 路径的实际测试见 [STATUS.md](STATUS.md)，不据此推定新路径或其他平台已完成实测。\n\n下载官方 `MAA-v6.20.1-win-x64.zip`，大小 297,879,254 字节，SHA-256 为 `28a6c812c184f4bd6e8a7e7448b2ffa6312d711de7d39595deac771e3e784ea8`，与 Release 元数据一致。全部归档文件展开共 571,424,588 字节（约 545.0 MiB）；选择性首装后的目录含本项目 manifest 共 340,850,391 字节（约 325.1 MiB），减少 **40.35%**。\n\n保留的原生库为 `MaaCore.dll`、`MaaUtils.dll`、`DirectML.dll`、`MaaAdbControlUnit.dll`、`MaaWin32ControlUnit.dll`、`fastdeploy_ppocr_maa.dll`、`onnxruntime_maa.dll`、`opencv_world4_maa.dll`，以及完整 `resource/`。原 GUI、.NET/WPF、示例与素材目录未落盘。\n\n在隔离数据目录中验证首装、通过官方 Python Updater 从 v6.20.0 更新到 v6.20.1、等待空闲激活及回滚。新旧核心均通过独立进程的版本/API/资源加载检查，原 v6.20.0 核心文件哈希保持一致。没有连接设备或运行游戏任务；macOS/Linux 的选择规则、归档布局和别名仅经合成归档测试，不代表目标平台原生实测。",
+        "content": "## Windows x64 验证（2026-10-21）\n\n以下为迁移前 Python 路径的历史验收记录，保留用于对照包体和提取规则；当前 TypeScript/C++ 路径的实际测试应核对对应实现 PR，不据此推定新路径或其他平台已完成实测。\n\n下载官方 `MAA-v6.20.1-win-x64.zip`，大小 297,879,254 字节，SHA-256 为 `28a6c812c184f4bd6e8a7e7448b2ffa6312d711de7d39595deac771e3e784ea8`，与 Release 元数据一致。全部归档文件展开共 571,424,588 字节（约 545.0 MiB）；选择性首装后的目录含本项目 manifest 共 340,850,391 字节（约 325.1 MiB），减少 **40.35%**。\n\n保留的原生库为 `MaaCore.dll`、`MaaUtils.dll`、`DirectML.dll`、`MaaAdbControlUnit.dll`、`MaaWin32ControlUnit.dll`、`fastdeploy_ppocr_maa.dll`、`onnxruntime_maa.dll`、`opencv_world4_maa.dll`，以及完整 `resource/`。原 GUI、.NET/WPF、示例与素材目录未落盘。\n\n在隔离数据目录中验证首装、通过官方 Python Updater 从 v6.20.0 更新到 v6.20.1、等待空闲激活及回滚。新旧核心均通过独立进程的版本/API/资源加载检查，原 v6.20.0 核心文件哈希保持一致。没有连接设备或运行游戏任务；macOS/Linux 的选择规则、归档布局和别名仅经合成归档测试，不代表目标平台原生实测。",
         "verification": "documented-only"
       },
       "relations": [],
       "source": {
         "file": "docs/maacore-runtime.md",
         "pointer": "L129-L138",
-        "sha256": "82e80037023f6e7c2e97020a5b3ae5588c80fff9526c82569e7ab4d5727c2ced"
+        "sha256": "fcc43e1e40af6152aa974521ccb5faeb583edec47709bace5a858d6daf2b42f8"
       }
     },
     {
@@ -31982,5 +31982,5 @@
       }
     }
   ],
-  "digest": "3be5eaefc27ff1a73acd4f6938a9948633640a49547cb1ca4eab59cf239e6129"
+  "digest": "3b752dc8f1b9cd53d67c89bb9e1997345e46424be3ff60c450b43e1ab98611a4"
 }

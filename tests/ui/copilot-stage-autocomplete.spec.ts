@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { enter, library } from './fixtures/copilot-page';
 
 type SearchRequest = { target?: string; stage?: string; page?: number };
 type StageHarnessWindow = HarnessWindow & {
@@ -9,7 +10,6 @@ type StageHarnessWindow = HarnessWindow & {
   releaseStageCatalog: () => void;
 };
 
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
 const input = (page: Page) => page.getByRole('combobox', { name: '社区关卡筛选', exact: true });
 const candidates = (page: Page) => page.getByRole('listbox', { name: '关卡候选', exact: true });
 const requests = (page: Page) =>
@@ -41,9 +41,7 @@ async function openCommunity(page: Page, catalogMode?: 'failure' | 'pending') {
       return original(method, params);
     };
   }, catalogMode);
-  const menu = page.getByRole('button', { name: '打开导航', exact: true });
-  if (await menu.isVisible()) await menu.click();
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
+  await enter(page);
   await library(page).getByRole('tab', { name: '社区搜索', exact: true }).click();
   await expect(
     library(page).getByRole('button', { name: '查看详情 合成社区作业 1', exact: true }),

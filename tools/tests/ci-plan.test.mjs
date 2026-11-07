@@ -5,7 +5,7 @@ import { changedFiles, createCiPlan, nativeHosts, planForEvent, readCiPlan } fro
 test('documentation stays static and ordinary frontend or domain changes use the Linux baseline', () => {
   assert.deepEqual(
     createCiPlan([
-      'docs/STATUS.md',
+      'docs/development.md',
       'AGENTS.md',
       '.skill/example/SKILL.md',
       'services/native/README.md',
@@ -50,10 +50,10 @@ test('OS boundaries select three systems while complete plans add Intel macOS an
     ]);
   }
   for (const [files, full, count] of [
-    [['docs/STATUS.md'], false, 2],
+    [['docs/development.md'], false, 2],
     [['apps/desktop/src/kit/Button.tsx'], false, 2],
     [['services/native/src/main.cpp'], false, 4],
-    [['docs/STATUS.md'], true, 6],
+    [['docs/development.md'], true, 6],
   ]) {
     const plan = createCiPlan(files, { full });
     assert.equal(2 + (plan.native ? nativeHosts(plan).length : 0) + Number(plan.full), count);
@@ -84,7 +84,7 @@ test('main and manual runs remain complete while dev and PR use the reviewed dif
     after: 'b'.repeat(40),
     pull_request: { base: { sha: 'a'.repeat(40) }, head: { sha: 'b'.repeat(40) } },
   };
-  const git = () => 'docs/STATUS.md\0';
+  const git = () => 'docs/development.md\0';
   for (const [name, ref] of [
     ['push', 'refs/heads/main'],
     ['workflow_dispatch', 'refs/tags/v0.1.3'],
@@ -104,7 +104,7 @@ test('main and manual runs remain complete while dev and PR use the reviewed dif
 });
 
 test('CI plan parsing rejects old, missing, malformed and inconsistent skip instructions', () => {
-  const plan = createCiPlan(['docs/STATUS.md']);
+  const plan = createCiPlan(['docs/development.md']);
   assert.deepEqual(readCiPlan(JSON.stringify(plan)), plan);
   for (const value of [
     '',
