@@ -1,3 +1,4 @@
+// 封装窗口动作与生命周期事件；异步订阅需同时处理卸载清理和状态查询竞态。
 export type DesktopPlatform = 'windows' | 'macos' | 'linux';
 
 export function desktopPlatform(): DesktopPlatform | null {
@@ -51,6 +52,7 @@ export function subscribeDesktopLifecycle(onChange: (state: DesktopLifecycle) =>
       if (disposed) { unlisten(); return; }
       listeners.push(unlisten);
     }
+    // 订阅之后再取初始状态；期间若收到新事件，不让较旧的查询结果覆盖它。
     const request = revision;
     const { invoke } = await import('@tauri-apps/api/core');
     const state = await invoke<DesktopLifecycle>('get_desktop_lifecycle');
@@ -72,6 +74,7 @@ export function subscribeWindowMaximized(onChange: (maximized: boolean) => void,
   let revision = 0;
   void currentWindow().then(async (host) => {
     const refresh = async () => {
+      // 连续 resize 可产生交叠查询，只采用最后一次发起的最大化状态结果。
       const request = ++revision;
       try {
         const maximized = await host.isMaximized();

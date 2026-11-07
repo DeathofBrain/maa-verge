@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# 通过 checkout 的固定 Node 与 pnpm 转发命令，避免误用不匹配的全局版本。
 set -euo pipefail
 project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 node_executable="$project_root/.tools/node/bin/node"

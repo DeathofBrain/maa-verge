@@ -1,3 +1,4 @@
+// 以 JSON Schema 为唯一输入生成类型与独立校验器，支持只读同步检查。
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -270,6 +271,7 @@ const files = new Map([
   ['packages/contracts/src/validators.js', bundled.outputFiles[0].text],
   ['packages/contracts/src/validators.d.ts', declaration],
 ]);
+// 检查模式只比较生成内容；仅显式生成模式写入产物，便于 CI 发现漂移。
 for (const [relative, content] of files) {
   const filename = path.join(root, relative);
   if (process.argv.includes('--check')) {

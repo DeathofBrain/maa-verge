@@ -1,3 +1,5 @@
+// 发现 ADB 与模拟器设备，并统一服务器、地址和别名身份，供连接和设备锁使用。
+
 /** Bounded emulator discovery. Only fixed ADB argv; never starts an emulator or game. */
 import { execFile } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
@@ -95,6 +97,7 @@ export function distinctEmulatorDevices(
   }
   return [...selected.values()];
 }
+// 锁与观察器使用规范化的服务器身份；同一 loopback server 的不同写法不能造成双重控制。
 export function adbServerIdentity(env: Environment = process.env): string {
   const selected =
     env.ADB_SERVER_SOCKET ||
@@ -340,6 +343,7 @@ interface DiscoveryOptions {
   now?: () => number;
   inventory?: () => Promise<EmulatorInventory>;
 }
+// 只对有限候选端口做有界探测与 ADB 连接，不启动模拟器或游戏；结束前重新读取真实设备列表。
 export async function autoDiscover(
   executable: string | undefined = undefined,
   options: DiscoveryOptions = {},

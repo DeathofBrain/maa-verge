@@ -51,6 +51,7 @@ export function requirementLabels(requirements: OperatorRequirement['requirement
   });
 }
 
+// 识别缺项或同名歧义归为未核验，不推断成未拥有；未知练度也不能自动判为满足要求。
 export function assessOperator(
   operator: OperatorRequirement,
   roster?: OperatorRoster,

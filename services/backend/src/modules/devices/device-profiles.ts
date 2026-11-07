@@ -1,3 +1,5 @@
+// 复用契约层的连接配置校验，并将错误统一转换为后端 RPC 参数错误。
+
 import type { DeviceConnectionProfile } from '@contracts/types';
 import { deviceProfileListError } from '@contracts/device-profiles';
 export {

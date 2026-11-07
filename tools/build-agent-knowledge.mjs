@@ -1,3 +1,4 @@
+// 用项目固定的 Bun 调用知识构建入口，并隔离宿主注入的运行时选项。
 import { ensureBun, cleanRuntimeEnvironment } from './setup-bun.mjs';
 import { root, run, fail } from './project.mjs';
 import path from 'node:path';

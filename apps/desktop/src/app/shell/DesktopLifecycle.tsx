@@ -16,6 +16,7 @@ import Checkbox from '@/kit/Checkbox';
 import Toast from '@/kit/Toast';
 import useNativeDialog from '@/kit/useNativeDialog';
 
+// 关窗确认独立于业务页面挂载，退出进入终态后不再接受迟到的关窗选择。
 export default function DesktopLifecycleDialog() {
   const [phase, setPhase] = useState<DesktopLifecycle>('running');
   const [remember, setRemember] = useState(false);

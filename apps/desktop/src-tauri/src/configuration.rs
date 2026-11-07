@@ -1,5 +1,6 @@
 //! The launcher selector is separate from business data, so it remains findable
 //! after choosing a different data root. A process keeps its startup root.
+// 配置选择文件留在程序目录；切换目录只影响下次启动，不在当前进程中迁移业务数据。
 use serde_json::{json, Value};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -165,6 +166,7 @@ fn resolve_configuration(
 }
 
 fn startup() -> Result<&'static StartupConfiguration, String> {
+    // 服务、更新器和定时宿主共用这次启动解析的根目录，避免运行中各自读取新选择。
     STARTUP
         .get_or_init(|| {
             let application_directory = if cfg!(debug_assertions) {
@@ -267,6 +269,7 @@ fn unique_suffix() -> String {
 }
 
 fn verify_directory(directory: &Path) -> Result<(), String> {
+    // 实际创建并同步临时文件，而非仅看权限位，确认目标目录可供后续持久化使用。
     fs::create_dir_all(directory)
         .map_err(|error| format!("无法创建配置目录 {}：{error}", directory.display()))?;
     let probe = directory.join(format!(".maaverge-write-{}.tmp", unique_suffix()));
@@ -304,6 +307,7 @@ fn write_selector_with_cleanup(
     }
     let temporary = application_directory.join(format!(".{SELECTOR_FILE}-{}.tmp", unique_suffix()));
     let mut created = false;
+    // 新选择与待清理的旧唤醒目录一起落盘，再原子替换选择文件，保留崩溃后的重试依据。
     let result = (|| {
         let mut file = OpenOptions::new()
             .write(true)
@@ -345,6 +349,7 @@ fn save_directory(
         .map(PathBuf::from)
         .unwrap_or_else(|| configuration.application_directory.join("config"));
     verify_directory(&target)?;
+    // 只登记旧根的系统唤醒清理任务；当前服务仍使用启动时固定的数据根。
     let mut pending = read_selector(&configuration.application_directory)?.pending_wake_cleanup;
     if track_wake
         && !same_directory(&configuration.directory, &target)

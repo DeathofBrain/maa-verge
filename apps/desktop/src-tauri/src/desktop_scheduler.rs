@@ -1,4 +1,5 @@
 //! Desktop-only scheduling effects. Bun owns the canonical rules and dispatch.
+// 本层只同步系统唤醒和防休眠效果，定时规则解释及任务派发仍以业务服务为准。
 use crate::runtime::Runtime;
 use serde_json::{json, Value};
 use std::path::Path;
@@ -47,6 +48,7 @@ pub fn synchronize(app: AppHandle) {
     };
     let revision = state.revision.fetch_add(1, Ordering::AcqRel) + 1;
     tauri::async_runtime::spawn(async move {
+        // 合并短时间内的设置变更，串行写系统任务，并丢弃已被更新版本取代的等待项。
         tokio::time::sleep(Duration::from_millis(400)).await;
         let state = app.state::<DesktopScheduler>();
         let _guard = state.synchronization.lock().await;
@@ -186,6 +188,7 @@ extern "system" {
 
 #[cfg(any(windows, test))]
 fn task_name(executable: &Path, root: &Path) -> String {
+    // 程序路径与数据根共同决定任务身份，不覆盖另一工作树或另一份配置的唤醒任务。
     let identity = format!(
         "{}\0{}",
         executable.to_string_lossy().to_lowercase(),
@@ -223,6 +226,7 @@ fn wake_xml(rules: &Value, executable: &Path, root: &Path) -> Result<Option<Stri
             .as_u64()
             .filter(|minute| *minute < 60)
             .ok_or("定时分钟无效")?;
+        // 提前五分钟准备，按一天取模处理午夜前后，并用集合合并同一分钟的触发器。
         minutes.insert((hour * 60 + minute + 1440 - 5) % 1440);
     }
     if minutes.is_empty() {

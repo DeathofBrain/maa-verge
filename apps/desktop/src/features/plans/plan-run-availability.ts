@@ -6,6 +6,7 @@ import {
   type Snapshot,
 } from '@maaverge/contracts';
 
+// 界面统一给出绑定、任务启用和设备占用的首个阻断原因，最终启动仍由服务端校验。
 export function planDeviceIssue(snapshot: Snapshot, plan: Plan, device: Device | undefined) {
   if (!plan.tasks.some((task) => task.enabled !== false && task.params.enable !== false))
     return '没有已启用的任务';

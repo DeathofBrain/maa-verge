@@ -1,4 +1,5 @@
 //! Model credentials belong to the desktop host, never to business settings or events.
+// 对外只返回配置状态；实际密钥按数据根和提供商端点隔离，由宿主临时交给当前调用。
 use reqwest::Url;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -53,6 +54,7 @@ pub(crate) fn normalize_model(value: &Value) -> Result<Value, String> {
         return Err("请先保存模型提供商、API 地址和模型名称".into());
     }
     let address = Url::parse(field("baseUrl")).map_err(|_| "模型 API 地址无效")?;
+    // 仅回环地址允许明文 HTTP，且 API 地址本身不得携带认证信息或查询参数。
     let loopback = address.host_str().is_some_and(|host| {
         host == "localhost"
             || host == "[::1]"
@@ -81,6 +83,7 @@ fn scope(root: &Path, model: &Value) -> String {
 
 pub(crate) struct Credentials {
     store: Arc<dyn CredentialStore>,
+    // 会话密钥不落盘，覆盖或移除时由 Zeroizing 清理该字符串持有的内存。
     sessions: Mutex<HashMap<String, Zeroizing<String>>>,
 }
 
@@ -100,6 +103,7 @@ impl Credentials {
 
     pub(crate) fn status(&self, root: &Path, model: &Value) -> Value {
         let account = scope(root, model);
+        // 显式设置的会话值优先于钥匙串，但状态接口始终不返回密钥内容。
         if self
             .sessions
             .lock()
@@ -139,6 +143,7 @@ impl Credentials {
                 }
                 match params["storage"].as_str() {
                     Some("keychain") => {
+                        // 先确认系统存储成功，再撤掉会话覆盖；失败不静默改变存储策略。
                         self.store.set(&account, secret).map_err(|_| UNAVAILABLE)?;
                         self.sessions
                             .lock()

@@ -1,3 +1,5 @@
+// 仅回收可识别且无人引用的组件代际目录；保留数量不能覆盖运行中 worker 的保护引用。
+
 /** Best-effort retention of immutable component generations, never worker references. */
 import { lstat, open, readdir, realpath, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -129,6 +131,7 @@ async function plainTree(directory: string): Promise<boolean> {
  * including references inside a generation. Call within the update mutation
  * queue after persisting those references; this function never edits the store.
  */
+// 仅清理本服务确认拥有的代际目录，删除前再次核对目录身份；超出保留数的受保护版本仍保留。
 export async function pruneGenerations(
   roots: string[],
   references: string[],

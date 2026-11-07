@@ -33,6 +33,7 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
     : [];
   const expanded = open && !!prefix;
   const activeIndex = matches.findIndex((stage) => stage.value === active);
+  // 完整关卡号忽略大小写匹配，但手输与提交始终保留原文；仅选择候选时使用目录值。
   const exactMatch = (input: string) =>
     stages.some((stage) => stage.value.toLowerCase() === input.trim().toLowerCase());
 
@@ -52,6 +53,7 @@ export default function CopilotStageFilter({ value, onChange, onCommit, resource
     };
   }, [resourceKey, revision]);
 
+  // 弹出候选使用视口坐标避开滚动容器裁切；输入框移出页面可视区域后关闭候选。
   useLayoutEffect(() => {
     if (!expanded) return;
     const place = (event?: Event) => {

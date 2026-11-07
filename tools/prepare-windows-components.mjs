@@ -1,3 +1,4 @@
+// 在 Windows 构建阶段准备离线组件，交给安装器和便携包复用。
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { fail, root, run } from './project.mjs';

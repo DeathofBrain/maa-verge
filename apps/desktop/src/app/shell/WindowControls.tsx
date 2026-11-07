@@ -9,6 +9,7 @@ import {
   toggleMaximizeWindow,
 } from '@maaverge/contracts';
 
+// 仅为 Windows/Linux 提供自绘控制按钮，macOS 沿用原生窗口控件。
 export default function WindowControls() {
   const platform = desktopPlatform();
   const [maximized, setMaximized] = useState(false);

@@ -19,6 +19,7 @@ type Props = {
 type LogRow = { event: Snapshot['events'][number]; deviceId: string; deviceName: string };
 const line = (row: LogRow) =>
   `[${formatDateTimeFull(row.event.createdAt)}] ${row.deviceName} ${row.event.type} ${localizeExecutionMessage(row.event.message) || row.event.type}`;
+// 在快照尚未移除已删日志时保留窗口级删除标记，关闭再打开抽屉也不会闪回这些记录。
 const removedEventIds = new Set<number>();
 
 export default function MonitorLogDrawer({
@@ -85,6 +86,7 @@ export default function MonitorLogDrawer({
     () => allRows.filter((row) => deviceIds.has(row.deviceId)),
     [allRows, deviceIds],
   );
+  // 只展示最新 200 条匹配事件，选择、复制、导出和删除均限定在这一可见集合。
   const rows = useMemo(() => matchedRows.slice(0, 200), [matchedRows]);
   const selectedRows = rows.filter((row) => selectedLogs.has(row.event.id));
   const single = devices.length === 1;

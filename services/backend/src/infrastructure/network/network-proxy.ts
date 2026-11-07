@@ -1,3 +1,5 @@
+// 解析下载专用代理设置；系统查询使用固定命令，代理值只作为数据，不拼接进脚本。
+
 /** Bridge desktop HTTP proxy settings to Bun without guessing local proxy ports. */
 import { execFile } from 'node:child_process';
 import { isIP } from 'node:net';
@@ -273,6 +275,7 @@ function macProxy(output: string, url: URL): string | undefined {
 }
 
 /** Return the selected proxy explicitly; '' means fetch proxy:false. */
+// 空字符串表示明确直连，undefined 表示未找到配置；自动模式不会猜测或执行 PAC 脚本。
 export function createDownloadProxyResolver(options: DownloadProxyResolverOptions = {}) {
   return async (address: string, signal?: AbortSignal): Promise<string | undefined> => {
     signal?.throwIfAborted();

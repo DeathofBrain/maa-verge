@@ -1,3 +1,5 @@
+// 在不污染业务对象字段的前提下保留 JSON 数字词元，维持整数与浮点输入的历史兼容边界。
+
 type NumericToken = { source: string; value: number; float: boolean };
 const numericTokens = new WeakMap<object, Map<string, NumericToken>>();
 

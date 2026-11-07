@@ -1,3 +1,5 @@
+// 按区服固定时差与凌晨四点日界计算同步周期，将复合同步任务展开为有序原生识别步骤。
+
 export type SyncInterval = 'always' | 'daily' | 'weekly';
 export type SyncStep = { type: 'OperBox' | 'Depot'; key: 'operatorsAt' | 'depotAt' };
 

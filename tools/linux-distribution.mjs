@@ -1,3 +1,4 @@
+// 适配 RPM 预发布版本元数据，同时保留应用版本与对外发行文件命名。
 /** Keep application SemVer intact while giving RPM prereleases valid metadata. */
 import { lstat, rename, rm } from 'node:fs/promises';
 import path from 'node:path';

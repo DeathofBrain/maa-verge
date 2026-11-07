@@ -1,3 +1,5 @@
+// 提供本地词项检索与按区服合并的知识视图；并发构建共享同一资源快照的读取任务。
+
 import type { RpcContract } from '@contracts/rpc-types';
 import type { ClientType, Combo } from '@backend/modules/resources/item-resources';
 import type { KnowledgeKind, KnowledgeRecord, ResourceKnowledgePack } from './knowledge-types';
@@ -26,6 +28,7 @@ function terms(query: string): string[] {
 }
 
 /** Offline lexical retrieval: exact IDs/aliases first, then Chinese substrings and keywords. */
+// 采用可解释的字面匹配权重与稳定排序，不调用向量服务，也不把相关性当作事实置信度。
 export function searchKnowledge(
   records: KnowledgeRecord[],
   input: RpcContract['params']['knowledge.search'],
@@ -62,6 +65,7 @@ export class Knowledge {
     private combo: () => Combo,
   ) {}
 
+  // 同一区服的并发请求共享构建 Promise；缓存仍由当前组件快照的来源指纹验证。
   private pack(client: ClientType) {
     if (this.closed) throw new Error('知识索引已关闭');
     const pending = this.pending.get(client);

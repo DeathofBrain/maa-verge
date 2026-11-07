@@ -48,6 +48,7 @@ type Props = {
   deleteTask: (index: number) => void;
 };
 
+// 单项检查器共享同一草稿的表单与高级 JSON 视图，参数解析和保存由工作台统一处理。
 export default function TaskInspectorView({
   step,
   draft,

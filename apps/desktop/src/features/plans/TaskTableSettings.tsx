@@ -17,6 +17,7 @@ type Props = {
   onRevert: () => void;
 };
 
+// 编辑任务表的持久绑定而非底栏临时设备选择；已缺失的绑定仍显示以便用户解除。
 export default function TaskTableSettings({
   draft,
   devices,

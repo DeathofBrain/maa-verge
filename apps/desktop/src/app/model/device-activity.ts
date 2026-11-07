@@ -16,6 +16,7 @@ function latest<T extends { deviceId: string; startedAt: string; id: string }>(
   }, undefined);
 }
 
+// 底栏只显示在线设备的活动操作；详情面板在没有活动操作时回退到较新的任务或工具记录。
 export function deviceActivity(snapshot: Snapshot | null, deviceId: string) {
   const device = snapshot?.devices.find((item) => item.id === deviceId);
   const activeRuns = snapshot?.runs.filter((item) => item.status === 'running') || [];

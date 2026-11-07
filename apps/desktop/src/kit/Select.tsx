@@ -1,3 +1,4 @@
+// 以原生 select 保存表单语义，自绘菜单负责统一桌面交互与键盘选择。
 import {
   useEffect,
   useId,
@@ -39,6 +40,7 @@ export default function Select({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
 
+  // 以真实 option/optgroup 为来源，保留原生索引，隐藏项不占自绘菜单位置。
   const sync = () => {
     const select = control.current;
     if (!select) return;
@@ -77,6 +79,7 @@ export default function Select({
     if (!select || select.matches(':disabled') || option.disabled) return;
     if (select.value !== option.value) {
       select.value = option.value;
+      // 复用原生 change 通道，让表单与 React 调用方收到相同的值变更。
       select.dispatchEvent(new Event('change', { bubbles: true }));
     }
     close();
@@ -88,6 +91,7 @@ export default function Select({
     const popup = menu.current;
     const select = control.current;
     if ('showPopover' in popup) popup.showPopover();
+    // 根据可视视口与上下空间定位菜单，并随页面滚动、控件缩放同步位置。
     const position = () => {
       const rect = select.getBoundingClientRect();
       const viewport = window.visualViewport;
@@ -217,6 +221,7 @@ export default function Select({
       return;
     event.preventDefault();
     if (!open) show();
+    // 短间隔输入累积为前缀；重复同一字符时循环匹配该首字母选项。
     const now = Date.now();
     search.current = {
       text: now - search.current.time < 700 ? search.current.text + event.key : event.key,
@@ -231,6 +236,7 @@ export default function Select({
     );
     if (match) setActive(match.index);
   };
+  // 从原生关联标签提取菜单名称，去掉控件本体及装饰节点，避免重复播报。
   const labelElement =
     open && !props['aria-label']
       ? (control.current?.labels?.[0]?.cloneNode(true) as HTMLElement | undefined)

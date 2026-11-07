@@ -1,3 +1,5 @@
+// 将干员名称或 ID 解析到当前区服资源；名称有歧义时不猜测 ID 或头像。
+
 import path from 'node:path';
 import type { RpcContract } from '@contracts/rpc-types';
 import { ResourceReader, validPng, type ClientType, type Combo } from './item-resources';
@@ -98,6 +100,7 @@ async function catalog(combo: Combo, clientType: ClientType): Promise<Catalog | 
 }
 
 /** Resolve exact, unambiguous names only; missing artwork always leaves a text result. */
+// 显式 ID 优先于名称；名称冲突不选任意候选，跨服别名也必须有当前区服资源支持。
 export async function operatorResource(
   combo: Combo,
   name: string,

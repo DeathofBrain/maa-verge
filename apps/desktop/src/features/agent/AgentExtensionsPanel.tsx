@@ -61,6 +61,7 @@ export default function AgentExtensionsPanel({ tab, session, busy, run, refresh 
     void run(load);
     return () => setConnection(undefined);
   }, []);
+  // 安装或启用扩展与当前会话选用分离；会话更新携带 revision，由服务端拒绝过期写入。
   const selectExtension = async (
     field: 'skillIds' | 'mcpServerIds',
     id: string,

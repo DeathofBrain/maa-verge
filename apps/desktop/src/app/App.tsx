@@ -60,6 +60,7 @@ const readSelection = () => {
   }
 };
 
+// 应用外壳统一协调页面、任务编辑器与设备执行入口，具体业务通过类型化 RPC 交给本地服务。
 export default function App() {
   const sidebar = useSidebarResize();
   const contextMenu = useContextMenu();
@@ -87,6 +88,7 @@ export default function App() {
   });
   const [deviceSettingsEntry, setDeviceSettingsEntry] = useState<string>();
   const searchInput = useRef<HTMLInputElement>(null);
+  // 导航版本用于识别异步操作发起时的页面，完成后不抢回用户已切换的上下文。
   const detailRevision = useRef(0);
   const [deleting, setDeleting] = useState<{ plans: Plan[]; batch: boolean } | null>(null);
   const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
@@ -94,6 +96,7 @@ export default function App() {
   const [historyQuery, setHistoryQuery] = useState('');
   const [executionSelection, setExecutionSelection] = useState<Run>();
   const [executionPlanId, setExecutionPlanId] = useState<string>();
+  // 查看历史执行时保留其设备标识，即使该设备已不在当前快照中。
   historicalDeviceRef.current =
     executionSelection?.status !== 'running' ? executionSelection?.deviceId : undefined;
   const [copilotRunId, setCopilotRunId] = useState<string>();
@@ -105,6 +108,7 @@ export default function App() {
   const [runPanel, setRunPanel] = useState<RunPanelTab | null>(null);
 
   const downloads = useComponentDownloads(snapshot?.updates, refresh);
+  // 事件提供及时刷新，桌面端轮询补齐漏掉的通知；二者共享快照的新旧响应保护。
   useEffect(() => {
     void refresh();
     if (!desktopPlatform()) return;
@@ -272,6 +276,7 @@ export default function App() {
           try {
             const connection = await rpc('device.auto_connect', {});
             const candidates = new Set(connection.devices.map((item) => item.id));
+            // 自动连接返回候选设备后仍需等待 idle；收到连接请求响应不等于可立即执行。
             const deadline = Date.now() + 15_000;
             while (true) {
               devices = (await rpc('app.snapshot', {})).devices;
@@ -348,6 +353,7 @@ export default function App() {
     await action(
       'delete-plan',
       async () => {
+        // 先标记删除意图，再排入同一任务表的写队列，避免未完成的自动保存把已删除任务表写回。
         for (const plan of plans) deletedPlans.current.add(plan.id);
         const settled = await Promise.allSettled(
           plans.map((plan) => mutatePlan(plan.id, () => rpc('plan.delete', { id: plan.id }))),

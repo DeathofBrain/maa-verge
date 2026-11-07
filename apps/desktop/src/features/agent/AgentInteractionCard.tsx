@@ -17,6 +17,7 @@ type Props = {
 export default function AgentInteractionCard({ interaction, busy, respond }: Props) {
   const [text, setText] = useState('');
   const [choices, setChoices] = useState<string[]>([]);
+  // 审批与补充问题使用不同答案结构，普通回答不被当作执行许可。
   const approval =
     interaction.kind === 'approval' || (interaction.kind === 'mcp' && !interaction.inputType);
   const pending = interaction.status === 'pending';

@@ -1,3 +1,5 @@
+// 只将通过任务类型和负载校验的最终识别回调写入快照；局部进度不能充当完整识别结果。
+
 import type { RpcContract } from '@contracts/rpc-types';
 import { validateRecognitionResult } from '@contracts/validators.js';
 import type { Store } from '@backend/infrastructure/storage/storage';
@@ -20,6 +22,7 @@ const bounded = (payload: RecognitionPayload) =>
   Buffer.byteLength(JSON.stringify(payload)) <= 2 * 1024 * 1024 ? payload : undefined;
 
 /** v6.20.0 DepotRecognitionTask / OperBoxRecognitionTask final callback shapes. */
+// 只接受对应识别链的 done 负载；数量和字段边界在进入持久化模型前收紧。
 export function parseRecognition(
   type: 'OperBox' | 'Depot',
   callback: any,
@@ -124,6 +127,7 @@ export function recognitionSnapshot(
   return { deviceId, kind, clientType, collectedAt: null, runId: null, items: [], operators: [] };
 }
 
+// 清除设备识别时也使关联工具结果失效，避免切号后继续展示上一账号的识别结论。
 export function clearDeviceRecognition(store: Store, deviceId: string) {
   for (const saved of store.all<RecognitionSnapshot>('recognition'))
     if (saved.deviceId === deviceId)

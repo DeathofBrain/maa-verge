@@ -1,3 +1,5 @@
+// 被动订阅既有 ADB server 的设备清单；观察链路中断与真实设备离线分开处理。
+
 import net from 'node:net';
 import { adbServerIdentity, parseAdbDevices, type AdbDevice } from './adb';
 
@@ -38,6 +40,7 @@ export function adbDeviceServerIdentity(
 }
 
 /** Subscribe to the existing ADB server; never start a server or connect a device. */
+// 仅在完整帧解析并验证后发布快照；半包、坏包或观察连接丢失不发布空列表冒充全部离线。
 export function observeAdbDevices(
   onDevices: (devices: AdbDevice[]) => void,
   onClose: () => void,

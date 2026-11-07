@@ -1,3 +1,4 @@
+// 将选中数量投影为全选、未选和部分选中状态，空列表不允许触发选择。
 import Checkbox from '@/kit/Checkbox';
 import './select-all.css';
 

@@ -23,7 +23,7 @@ export interface AgentMcpServerHost {
 const noArguments = { type: 'object' as const, properties: {}, additionalProperties: false };
 const operationSchema = agentSchema.$defs.AgentMcpOperationRequest as unknown as JsonSchemaType;
 
-/** Optional loopback MCP interface with a separate ephemeral authentication token. */
+/** 可选的本机回环 MCP 入口；从关闭状态启用时生成临时令牌，外部操作仍交由应用内审批。 */
 export class AgentMcpServer {
   private http?: ReturnType<typeof Bun.serve>;
   private handler?: ReturnType<typeof createMcpHandler>;
@@ -141,6 +141,7 @@ export class AgentMcpServer {
             url.search
           )
             return new Response('Not found', { status: 404 });
+          // 回环监听之外还核对 Host、路径和 Origin；令牌认证不能替代这些请求来源限制。
           const origin = request.headers.get('origin');
           if (origin && origin !== expected.origin)
             return new Response('Forbidden origin', { status: 403 });

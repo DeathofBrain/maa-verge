@@ -8,6 +8,7 @@ import {
   type Event,
 } from '@maaverge/contracts';
 
+// 只有明确成功的战斗结果才消费队列选择，普通任务完成通知不足以证明通关。
 function victorySelection(
   event: Event,
 ): { kind: CopilotKind; entry: CopilotQueueEntry } | undefined {
@@ -54,6 +55,7 @@ function createWorkspaceStore() {
       .then(async () => {
         const changes = [...pending.values()].filter((value) => !target || value.kind === target);
         for (const value of changes) pending.delete(value.kind);
+        // 先摘取本轮待保存快照；保存中新增的修改留在 pending，失败时也不覆盖较新的草稿。
         let failure: unknown;
         for (const value of changes) {
           status(value.kind, '保存中…');
@@ -77,6 +79,7 @@ function createWorkspaceStore() {
       unreadSelections.set(target, [...(unreadSelections.get(target) ?? []), completed]);
       return;
     }
+    // 匹配条目 ID、不可变版本和难度/导航上下文，避免同一作业的另一条队列项被取消勾选。
     let matched = false;
     const queue = value.queue.map((entry) => {
       if (

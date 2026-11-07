@@ -17,6 +17,7 @@ type Rules = {
   activeRunId?: string;
   nextTarget: number;
 };
+/** 审批绑定实际操作而非投递 ID；停止只锁定目标身份，不把持续变化的进度纳入快照。 */
 export function actionSnapshot(request: MaaToolAuthorization) {
   const { requestId: _, ...action } = request.action;
   if (request.effect === 'stop') {
@@ -36,6 +37,7 @@ export function actionSnapshot(request: MaaToolAuthorization) {
   };
 }
 
+/** 计划模式禁止设备副作用；目标模式也必须经过单次审批或有限托管的快照与额度校验。 */
 export class AgentExecutionPolicy {
   constructor(
     private store: Store,
@@ -94,8 +96,7 @@ export class AgentExecutionPolicy {
     }
     if (interaction.status !== 'answered' || interaction.answer?.decision !== 'approve')
       return false;
-    // The exact snapshot, mode, scope and extension versions are revalidated on
-    // every resume, immediately before the application service's own live check.
+    // 恢复后重新绑定操作快照与扩展版本；用户批准旧快照不代表批准后来修改的计划。
     const live = this.store.get<ActionRecord>('agent_action', record.id);
     if (live.authorizationHash !== authorizationHash)
       throw new RpcError(-32011, '已批准的快照或 Skill 内容已变化，请重新审批');
@@ -321,12 +322,14 @@ export class AgentExecutionPolicy {
     this.store.put('agent_mission', id, result);
     return result;
   }
+  /** 撤销只禁止托管的后续动作；已提交的原生执行需通过独立停止操作处理。 */
   revoke(id: string) {
     const mission = this.get(id);
     const result: AgentMission = { ...mission, status: 'revoked', updatedAt: timestamp() };
     this.store.put('agent_mission', id, result);
     return result;
   }
+  /** 提交标记、执行次数和药石上限一起预留；重复调用不再扣减，未知实际消耗不释放预留。 */
   private reserve(id: string, record: ActionRecord, request: MaaToolAuthorization, hash: string) {
     this.store.transaction(() => {
       const current = this.store.get<ActionRecord>('agent_action', record.id);

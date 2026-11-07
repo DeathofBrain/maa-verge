@@ -1,3 +1,5 @@
+// 解析现有原生 worker 可执行文件的位置；缺失时由调用方报错，不隐式下载或切换运行时。
+
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

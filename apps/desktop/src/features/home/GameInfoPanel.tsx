@@ -23,6 +23,7 @@ const remaining = (end: string, at: string) => {
   return hours >= 24 ? `${Math.floor(hours / 24)} 天 ${hours % 24} 小时` : `${hours} 小时`;
 };
 
+// 将服务器日历提醒与用户配置的基建产线估算并列显示；估算并非设备实时采集值。
 export default function GameInfoPanel({
   device,
   settings,

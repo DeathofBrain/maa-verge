@@ -33,6 +33,7 @@ type Props = {
   onAdd: () => void;
 };
 
+// 条目用稳定 key 区分同类型重复任务，拖拽完成时再换算最新索引交给工作台重排。
 export default function TaskQueueView({
   steps,
   selected,

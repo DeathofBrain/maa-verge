@@ -1,3 +1,4 @@
+// 根据变更路径生成 CI 检查矩阵；无法可靠分类时保守执行完整检查。
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -50,6 +51,7 @@ export function createCiPlan(files, { full = false } = {}) {
 
 export function readCiPlan(value = process.env.MAAVERGE_CI_PLAN) {
   if (!value) throw new Error('MAAVERGE_CI_PLAN is required for CI checks');
+  // 计划字段与布尔关系一并验证，损坏的输入不能成为跳过检查的依据。
   const plan = JSON.parse(value);
   if (
     plan?.version !== 2 ||

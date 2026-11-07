@@ -65,6 +65,7 @@ const dateTime = (value: string) =>
     minute: '2-digit',
   });
 
+// 任务表列表按表汇总多设备执行；作业中心的独立运行不计入本表状态。
 export default function TasksPage({
   snapshot,
   selectedDeviceId,

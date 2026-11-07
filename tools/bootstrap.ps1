@@ -1,3 +1,4 @@
+# 为 Windows checkout 引导固定工具链，并在依赖同步失败时立即中止。
 param([switch]$Native)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -21,6 +22,7 @@ if ($localNodeVersion -ne "v$nodeVersion") {
             Write-Host "Downloading Node $nodeVersion to .tools (no machine configuration changes)"
             Invoke-WebRequest "$downloadUrl/$archiveName" -UseBasicParsing -OutFile $archivePath
             $checksums = (Invoke-WebRequest "$downloadUrl/SHASUMS256.txt" -UseBasicParsing).Content
+            # 先校验归档摘要和解压后的 Node 版本，再替换 checkout 内的工具目录。
             $expected = (($checksums -split "`n" | Where-Object { $_.Trim().EndsWith("  $archiveName") }) -split '\s+')[0]
             if (!$expected -or (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Node download checksum mismatch' }
             Expand-Archive -LiteralPath $archivePath -DestinationPath $nodeStaging -Force
@@ -42,6 +44,7 @@ if ($installedPnpm -ne $pnpmVersion) {
     if ($LASTEXITCODE -ne 0) { throw 'pnpm installation failed' }
 }
 if ((& $nodeExecutable $pnpmEntry --version) -ne $pnpmVersion -or $LASTEXITCODE -ne 0) { throw 'pnpm version validation failed' }
+# 在仓库根目录同步锁定依赖，并在成功或失败后恢复调用者的工作目录。
 Push-Location $projectRoot
 try {
     & $nodeExecutable $pnpmEntry install --frozen-lockfile

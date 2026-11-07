@@ -1,3 +1,4 @@
+// 组装自包含 Bun 服务、原生 worker 和许可证，校验运行时目录的交付边界。
 import {
   existsSync,
   mkdirSync,
@@ -22,6 +23,7 @@ async function main() {
   const directory = path.join(root, 'dist/runtime/maaverge-runtime');
   if (!path.resolve(directory).startsWith(path.join(root, 'dist') + path.sep))
     throw new Error('Unexpected runtime build path');
+  // 删除仅限受控 dist 子目录，重新组装以排除旧依赖和环境文件。
   rmSync(directory, { recursive: true, force: true });
   mkdirSync(directory, { recursive: true });
   const executable = path.join(directory, windows ? 'maaverge-runtime.exe' : 'maaverge-runtime');
@@ -38,6 +40,7 @@ async function main() {
     ],
     { env: cleanRuntimeEnvironment() },
   );
+  // 服务编译成功后加入独立 worker 与许可，再按宿主平台处理签名。
   const worker = path.join(directory, path.basename(native));
   copyFileSync(native, worker);
   writeRuntimeNotices(directory);
@@ -75,6 +78,7 @@ async function main() {
       2,
     ),
   );
+  // 用允许列表收口最终目录，防止开发环境或额外依赖意外进入发行包。
   for (const item of readdirSync(directory))
     if (
       ![

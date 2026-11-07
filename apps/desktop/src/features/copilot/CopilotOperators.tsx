@@ -30,6 +30,7 @@ export function useCopilotRoster(snapshot: Snapshot, deviceId?: string) {
     ?.filter((job) => job.deviceId === deviceId)
     .map((job) => `${job.id}:${job.status}`)
     .join(',');
+  // 账号切换使旧名单立即失效；同步事件及执行终态则触发同一账号范围的重新读取。
   const key = JSON.stringify([
     deviceId,
     profile?.connection?.clientType,
@@ -90,6 +91,7 @@ function useAssessments(
     );
     if (!aliases.length) return;
     let cancelled = false;
+    // 只有干员要求进入可视区域附近才解析歧义名称，避免整页卡片同时请求资源索引。
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;

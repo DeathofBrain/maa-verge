@@ -1,3 +1,5 @@
+// RPC 方法白名单与参数校验边界；跨模块状态、设备准入及实际副作用仍由各业务用例负责。
+
 import type { RpcContract } from '@contracts/rpc-types';
 import {
   validateKnowledgeClientParams,

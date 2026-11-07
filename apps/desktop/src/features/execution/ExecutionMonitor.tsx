@@ -98,6 +98,7 @@ function categoryOf(device: Device, active?: Run | ToolJobSummary): Exclude<Devi
   return 'idle';
 }
 
+// 监控按设备合并任务表与工具；限定某张任务表时，只展示它仍在运行的设备。
 export default function ExecutionMonitor({
   snapshot,
   selectedRun,
@@ -144,6 +145,7 @@ export default function ExecutionMonitor({
   const [deleting, setDeleting] = useState(false);
   const deletingRef = useRef(false);
   const [toolPending, setToolPending] = useState<Set<string>>(() => new Set());
+  // 工具停止返回的终态覆盖滞后摘要，避免下一次快照刷新前短暂重新显示为运行中。
   const [toolResults, setToolResults] = useState<Map<string, ToolJobSummary>>(() => new Map());
   const [operationError, setOperationError] = useState('');
   const toolPendingRef = useRef(new Set<string>());

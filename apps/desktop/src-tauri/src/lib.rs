@@ -1,3 +1,4 @@
+// Tauri 外壳组装系统能力，窗口关闭、托盘退出和更新共用同一退出状态机。
 mod app_updater;
 mod configuration;
 mod credentials;
@@ -26,6 +27,7 @@ const EXIT_UI_TIMEOUT: Duration = Duration::from_millis(1500);
 
 #[derive(Default)]
 struct DesktopLifecycle {
+    // 原子阶段决定退出清理的唯一执行者；UI 确认只负责呈现，不拥有进程退出权。
     phase: AtomicU8,
     ui_ready: Notify,
 }
@@ -149,6 +151,7 @@ fn request_exit(app: &tauri::AppHandle) {
     if !app.state::<DesktopLifecycle>().begin_exit() {
         return;
     }
+    // 先停止新通知，再通知界面，最后异步关闭服务；隐藏窗口不能替代进程清理。
     desktop_notifications::stop(app);
     show_main(app);
     let _ = app.emit("app-exit-started", ());
@@ -240,6 +243,7 @@ pub fn run() {
             exit_ui_ready
         ])
         .setup(|app| {
+            // 事件监听先就位；启动服务后才根据快照启用通知策略和自动更新检查。
             let notification_app = app.handle().clone();
             app.listen("runtime-event", move |event| {
                 if let Ok(payload) = serde_json::from_str::<serde_json::Value>(event.payload()) {

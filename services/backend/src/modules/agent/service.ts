@@ -140,7 +140,7 @@ function normalizedModel(model: AgentModelConfig) {
   };
 }
 
-/** Persistent product coordinator. Models receive only named, scoped ports. */
+/** 编排持久会话、Responses 图、工具审批和有限托管；模型只接触经过范围限制的工具端口。 */
 export class AgentService {
   readonly context: ContextRepository;
   readonly ledger: AgentLedger;
@@ -188,7 +188,7 @@ export class AgentService {
       },
       requestOperation: async (request: any) => this.externalOperation(request),
     });
-    // Reconnection never resumes model calls or deterministic missions by itself.
+    // 重启后把在途轮次标为中断、托管标为暂停，避免仅因重新连接就重放模型或设备动作。
     for (const turn of store.all<AgentTurn>('agent_turn'))
       if (['running', 'queued'].includes(turn.status))
         store.put('agent_turn', turn.id, {
@@ -450,6 +450,7 @@ export class AgentService {
     if (!current.model) throw new RpcError(-32602, '请先配置模型名称');
     return current;
   }
+  /** 先原子保存用户消息、轮次和请求去重键，再启动异步工作；重复投递返回原轮次。 */
   private start(
     params: AgentContract['params']['agent.turn.start'],
     credential?: string | null,
@@ -544,6 +545,7 @@ export class AgentService {
     this.launch(id, credential ?? '', config, true);
     return queued;
   }
+  /** 取消的是 Agent 轮次及待答交互，不等于停止已提交到业务服务的设备任务。 */
   private cancel(id: string): AgentTurn {
     const turn = this.ledger.turn(id);
     this.controllers.get(id)?.abort();
@@ -567,7 +569,7 @@ export class AgentService {
     });
     return result;
   }
-  /** Close the wire protocol round without claiming that a native task stopped. */
+  /** 为未答复的函数调用补终止结果，闭合 Responses 协议配对，但不宣称原生任务已停止。 */
   private closeToolRound(turn: AgentTurn, status: 'cancelled' | 'failed') {
     const items = this.context
       .transcript(turn.sessionId)
@@ -660,6 +662,7 @@ export class AgentService {
       const tools = this.tools(session, id, signal);
       const external = meta.direct ? [] : await this.externalTools(session, signal);
       const definitions = this.definitions(session, tools, external);
+      // 托管与外部 MCP 申请使用固定动作轮次，跳过模型，但仍走相同工具账本与授权路径。
       if (meta.direct) {
         const result = await this.invokeTool(
           sessionId,
@@ -848,6 +851,7 @@ export class AgentService {
       this.ledger.usage(turnId, usage, kind);
       const session = this.context.get(this.ledger.turn(turnId).sessionId),
         total = session.usage;
+      // 价格和用量阈值只触发软提醒，不代替图的调用上限或设备操作的授权额度。
       const exceeded =
         (pricing.softCallReminder !== undefined && total.modelCalls >= pricing.softCallReminder) ||
         (pricing.softTokenReminder !== undefined &&
@@ -980,7 +984,7 @@ export class AgentService {
           : [{ role: message.role === 'tool' ? 'user' : message.role, content: message.content }],
       );
     let items = [...prefix, ...flatten(messages)];
-    // Crop only old tool payload projections. Originals stay in agent_message.
+    // 只裁剪发给模型的旧工具结果投影；原文仍留在 agent_message 中。
     const recentStart = Math.max(0, items.length - 12);
     items = items.map((item, index) =>
       index < recentStart &&
@@ -1006,7 +1010,7 @@ export class AgentService {
     const cut = userIndices[userIndices.length - 4],
       old = messages.slice(0, cut),
       tail = messages.slice(cut);
-    // Cut only at a complete user round; do not summarize an unresolved call.
+    // 摘要边界按完整用户轮次切分；存在未配对的工具调用时，保留原上下文。
     const oldItems = flatten(old),
       calls = oldItems.filter((item) => item.type === 'function_call');
     if (
@@ -1105,6 +1109,7 @@ export class AgentService {
         },
       },
     ];
+    // Skill 取允许工具的交集；模式限制和视觉禁用继续生效，Skill 文本不能扩权。
     const names = new Set(
       this.skills.restrictTools(
         [...tools.definitions, ...external, ...own].map((tool) => tool.name),
@@ -1143,6 +1148,7 @@ export class AgentService {
       throw new RpcError(-32010, '工具不在当前模式或 Skill 允许范围');
     const record = this.ledger.action(sessionId, turnId, callId, name, input);
     if (record.status === 'completed') return structuredClone(record.result);
+    // 检查点恢复可能再次进入工具节点；先核对业务去重账本，绝不重新提交不明副作用。
     if (record.status === 'submitted' || record.status === 'unknown') {
       const recovered = record.requestId ? await this.host.reconcile(record.requestId) : undefined;
       if (recovered) {
@@ -1269,6 +1275,7 @@ export class AgentService {
       'mcp_' + digest([request.serverId, request.toolName]).slice(0, 40),
       request.args,
     );
+    // continuation 只补充原请求输入，批准的服务、工具、参数及版本快照仍须完全一致。
     const { continuation: _, ...snapshot } = request;
     const interaction = this.ledger.question({
       id: 'mcp-approval-' + record.id,
@@ -1318,6 +1325,7 @@ export class AgentService {
       'mcp_' + digest([invocation.serverId, invocation.toolName]).slice(0, 40),
       invocation.args,
     );
+    // 缺少服务端恢复令牌时不能把补充回答变成一次新调用，只能保留结果不明状态。
     if (!request.resumable || !request.requestState) {
       this.ledger.putAction({ ...record, status: 'unknown' });
       throw new RpcError(-32011, '外部服务未提供可靠恢复状态，操作结果不明，请人工核对');
@@ -1562,7 +1570,7 @@ export class AgentService {
       this.missionBusy.delete(id);
     }
   }
-  /** Called by Runtime after durable business events, never a model polling loop. */
+  /** 只由已持久化的业务终态事件推进托管；失败或中断暂停，不靠模型轮询猜测结束。 */
   onBusinessEvent(type: string, data: Record<string, any>) {
     if (this.closed || !/^(run|tool)\.(completed|failed|interrupted|stopped)$/.test(type)) return;
     const runId = data.run?.id ?? data.runId ?? data.job?.id ?? data.toolId;

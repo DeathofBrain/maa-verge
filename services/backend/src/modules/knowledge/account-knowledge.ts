@@ -1,3 +1,5 @@
+// 保存带来源的账号识别快照；作用域由设备、区服和本地账号标签构成，不宣称已验证游戏 UID。
+
 import { createHash } from 'node:crypto';
 import type { RpcContract, AccountSnapshotSummary } from '@contracts/rpc-types';
 import {
@@ -41,6 +43,7 @@ export class AccountKnowledge {
   }
 
   /** Called inside the same success-and-idle transaction as the existing recognition cache. */
+  // 保留识别时的资源及运行来源；未知字段保持未知，不用当前配置补造历史事实。
   capture(result: Recognition, provenance: Provenance): Snapshot | null {
     if (
       !validateRecognitionResult(result) ||
@@ -136,6 +139,7 @@ export class AccountKnowledge {
     return snapshot;
   }
 
+  // 切号只清除当前头指针，历史快照仍保留供追溯，不把旧账号数据冒充新账号的最新状态。
   invalidate(deviceId: string) {
     for (const head of this.store.all('account_head'))
       if (head?.deviceId === deviceId) {

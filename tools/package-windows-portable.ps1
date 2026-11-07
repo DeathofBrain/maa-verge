@@ -1,3 +1,4 @@
+# 用 .NET 创建支持大文件的便携 ZIP；目标路径与发布时机由调用方控制。
 param(
     [Parameter(Mandatory = $true)][string]$SourceDirectory,
     [Parameter(Mandatory = $true)][string]$ArchivePath

@@ -1,3 +1,4 @@
+// 将传入文件按语言分配到仓库格式化器，避免顺带修改未选中的模块。
 import path from 'node:path';
 import { getFileInfo } from 'prettier';
 import { root, run, fail } from './project.mjs';

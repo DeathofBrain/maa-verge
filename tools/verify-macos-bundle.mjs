@@ -1,3 +1,4 @@
+// 校验完成后的 macOS 应用与运行时签名，兼容仅保留 DMG 的构建结果。
 // Verify the completed app, before release artifacts can be collected/uploaded.
 // A linker signature on Contents/MacOS/maaverge does not seal the .app bundle.
 import { access, mkdir, readFile, rmdir } from 'node:fs/promises';
@@ -50,6 +51,7 @@ export async function verifyMacosDmg(
   };
   const disk = (args) => command('/usr/bin/hdiutil', args);
   try {
+    // 先验证镜像，再以只读方式挂载并检查内部应用；清理由 finally 统一负责。
     disk(['verify', image]);
     mountAttempted = true;
     disk(['attach', '-readonly', '-nobrowse', '-noautoopen', '-mountpoint', mount, image]);

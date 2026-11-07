@@ -1,3 +1,4 @@
+// 公共契约入口：汇总生成类型与手写桥接/策略辅助函数；协议结构仍以 schemas 为准。
 export * from './types';
 export * from './agent-types';
 export {

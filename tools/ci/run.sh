@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# 在 CI 容器中恢复依赖并分派应用、原生或发行任务，缺省采用完整检查计划。
 set -euo pipefail
 
 mode=${1:-app}
@@ -18,6 +19,7 @@ fi
 node tools/setup-bun.mjs --check
 pnpm install --frozen-lockfile --store-dir /workspace/.cache/ci/pnpm
 
+# 手工调用没有变更计划时生成全量计划，不能因缺少事件上下文而漏检。
 if [ "$mode" != release ] && [ -z "${MAAVERGE_CI_PLAN:-}" ]; then
   MAAVERGE_CI_PLAN=$(node --input-type=module -e 'import { createCiPlan } from "./tools/ci/plan.mjs"; console.log(JSON.stringify(createCiPlan([])))')
   export MAAVERGE_CI_PLAN

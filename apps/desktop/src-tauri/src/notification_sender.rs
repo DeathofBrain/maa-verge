@@ -1,4 +1,5 @@
 //! Explicit application attribution avoids the dependency's PowerShell/Terminal defaults.
+// 将通知明确归属 Maa Verge；跨平台准备稳定的发送者身份和可被系统延迟读取的图标。
 use std::sync::OnceLock;
 use tauri::{AppHandle, Manager};
 
@@ -40,6 +41,7 @@ fn cache_icon(directory: &std::path::Path, bytes: &[u8]) -> std::io::Result<std:
         .unwrap_or_default()
         .as_nanos();
     let temporary = directory.join(format!(".icon-{}-{nonce}.tmp", std::process::id()));
+    // 先写完整临时图标再改名发布，避免系统读取尚未写完的图片。
     let result = (|| {
         let mut file = OpenOptions::new()
             .write(true)

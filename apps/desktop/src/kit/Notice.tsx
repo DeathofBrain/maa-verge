@@ -1,3 +1,4 @@
+// 用明确的语气和尺寸属性表达提示级别，提示内容由调用方提供。
 import type { ReactNode } from 'react';
 import { cx } from './cx';
 

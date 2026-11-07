@@ -1,3 +1,4 @@
+// 收集实际运行依赖与标准库的许可证，缺失或校验失败时阻止不完整交付。
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -62,6 +63,7 @@ export function writeJavaScriptNotices(output, { projectRoot = root } = {}) {
       }
       directory = realpathSync(directory);
     }
+    // 按解析后的目录消除依赖环，再按包名和版本去重许可证输出。
     if (visited.has(directory)) return;
     visited.add(directory);
     const info = readJson(path.join(directory, 'package.json'));
@@ -202,6 +204,7 @@ export function writeRustNotices(
       );
       written++;
     }
+    // 只沿运行时普通依赖继续遍历，避免把开发或构建依赖误计入交付清单。
     for (const dependency of node.deps) {
       if (dependency.dep_kinds.some((kind) => kind.kind === null)) visit(dependency.pkg);
     }

@@ -129,6 +129,7 @@ function downloadJson(filename: string, content: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// 作业中心协调本地库、社区预览、三类独立队列和执行记录；导入、入队、启动是不同步骤。
 export default function CopilotPage({
   snapshot,
   selectedDevice,
@@ -531,6 +532,7 @@ export default function CopilotPage({
       showDetail = false,
       refresh = false,
     ) => {
+      // 预览以请求序号区分，关闭面板或切换目标后，迟到的响应不能重新打开旧详情。
       const sequence = ++previewRequest.current;
       const cached = refresh ? undefined : cachedCommunityPreview(params, resourceKey);
       setImporting(!cached);
@@ -712,6 +714,7 @@ export default function CopilotPage({
       if (first.total > 100) throw new Error('所选分类超过 100 份，请按类型筛选或逐项加入队列。');
       const records = [...first.items];
       let next = first;
+      // 整分类入队需读完分页并核对总数与唯一 ID，防止列表变化时只追加不完整的一部分。
       while (next.hasNext) {
         next = await rpc('copilot.list', { ...params, page: next.page + 1 });
         if (next.total !== first.total || next.page > 6)
@@ -982,6 +985,7 @@ export default function CopilotPage({
     await onAction(
       'copilot-start-' + selectedDevice,
       async () => {
+        // 启动只读取服务端已保存的队列，因此必须先完成当前类型所有待保存修改。
         await flush(kind);
         const result = await rpc('copilot.start', {
           kind,

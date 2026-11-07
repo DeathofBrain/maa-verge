@@ -1,3 +1,4 @@
+// 组装应用更新产物并校验签名与版本绑定；这里只准备本地产物，不发布 GitHub Release。
 /** Assemble and verify Tauri 2 signed application updates. No GitHub writes. */
 import { createHash, createPublicKey, verify } from 'node:crypto';
 import { createReadStream } from 'node:fs';
@@ -118,6 +119,7 @@ export async function verifyUpdaterSignature(filename, signatureText, publicKey,
     !signed.subarray(2, 10).equals(key.subarray(2, 10))
   )
     throw new Error('更新签名与公钥不匹配');
+  // 可信注释必须绑定应用版本，并参与后续签名校验，不能只信任文件名。
   const trusted = lines[2].slice('trusted comment: '.length);
   const fields = trusted.split('\t');
   if (
@@ -135,6 +137,7 @@ export async function verifyUpdaterSignature(filename, signatureText, publicKey,
   const signature = signed.subarray(10);
   if (!verify(null, Buffer.concat([signature, Buffer.from(trusted)]), publicObject, global))
     throw new Error('更新签名的版本注释校验失败');
+  // 以流式摘要验证安装包，避免大体积产物一次性读入内存。
   const hash = createHash('blake2b512');
   for await (const chunk of createReadStream(filename)) hash.update(chunk);
   if (!verify(null, hash.digest(), publicObject, signature)) throw new Error('更新包签名校验失败');
@@ -325,6 +328,7 @@ export async function createUpdaterManifest({
     pub_date: new Date(publishedAt).toISOString(),
     platforms,
   };
+  // 清单与校验和采用排他创建，拒绝覆盖同目录已有发行元数据。
   const manifestPath = path.join(input, 'latest.json');
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' });
   const hashes = [];

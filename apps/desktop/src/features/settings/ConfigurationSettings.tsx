@@ -12,6 +12,7 @@ import DirectoryPicker from '@/kit/DirectoryPicker';
 import { autoSaveLabel, useAutoSaveDraft } from '@/shared/lib/settings-autosave';
 import './data-settings.css';
 
+// 配置目录由桌面宿主管理，保存的是下次启动位置；界面按宿主返回值提示是否需要重启。
 export default function ConfigurationSettings({ busy }: { busy: boolean }) {
   const [locations, setLocations] = useState<ConfigurationLocations>();
   const [error, setError] = useState('');

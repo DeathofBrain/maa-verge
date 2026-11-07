@@ -1,3 +1,4 @@
+// 静态检查组件库样式作用域及宿主导入规则，防止共享样式越过组件边界。
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -63,6 +64,7 @@ export function splitSelectorList(prelude) {
   const parts = [];
   let current = '';
   let depth = 0;
+  // 只在括号外拆分逗号，保留伪类参数和属性选择器内部的完整内容。
   for (const character of prelude) {
     if (character === '(' || character === '[') depth += 1;
     else if (character === ')' || character === ']') depth -= 1;

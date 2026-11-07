@@ -1,3 +1,5 @@
+// 协调 macOS 共享组件的使用租约与卸载；卸载仅处理已验证目标，并移入废纸篓。
+
 import { Database } from 'bun:sqlite';
 import {
   accessSync,
@@ -59,6 +61,7 @@ function ordinaryPath(value: string, missingAllowed: boolean): boolean {
   return true;
 }
 
+// 运行时持共享租约，卸载要求独占租约；锁文件不删除，确保所有实例仍竞争同一个锁对象。
 export function acquireMacosComponentLease(
   mode: 'shared' | 'exclusive',
   homeDirectory?: string,
@@ -213,6 +216,7 @@ type UninstallEnvironment = {
 };
 
 /** Only the packaged host may invoke this fixed cleanup; custom component roots survive. */
+// 先核实程序包身份、受保护路径和存活进程，再逐项移入废纸篓；部分失败保留已移动项供报告。
 export async function uninstallMacosApplication(
   request: MacosUninstallRequest,
   environment: UninstallEnvironment = {},

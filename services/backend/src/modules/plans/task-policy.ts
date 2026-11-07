@@ -1,3 +1,5 @@
+// 原生任务的确定性策略边界：限制 JSON 结构、参数、路径与消耗预算，再生成可提交参数。
+
 import type { Plan, Settings, Task } from '@backend/modules/settings/models';
 import { RpcError } from '@backend/shared/errors';
 import { casefold } from '@backend/shared/casefold';
@@ -115,6 +117,7 @@ function spacedJson(value: any, container?: object, key?: string | number): stri
   }
   return JSON.stringify(value);
 }
+// 深度、键名与数值限制先于具体任务类型校验，禁用任务也不能夹带不可序列化或危险参数。
 function jsonTree(value: any, depth = 0): void {
   if (depth > 32) reject('任务参数嵌套过深');
   if (object(value)) {
@@ -155,6 +158,7 @@ function filenames(p: any, listKey?: string, strings = false): void {
     } else reject('作业列表格式无效');
   }
 }
+// 消耗字段受统一预算约束；默认值不能把省略参数变成无限消耗或绕过禁用策略。
 export function validateTask(task: Task): void {
   const p: any = task.params;
   jsonTree(p);
@@ -331,6 +335,7 @@ export function validatePlan(plan: Plan, _settings: Settings): void {
     reject((error as Error).message);
   }
 }
+// 提交副本显式补齐安全默认值并移除界面字段；通过 wire JSON 克隆保留数字词元语义。
 export function nativeTask(task: Task): Task {
   if (task.type === 'UserDataUpdate') reject('更新数据必须由应用服务拆分后执行');
   const result = parseWireJson(stringifyWireJson(task)),

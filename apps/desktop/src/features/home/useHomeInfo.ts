@@ -19,6 +19,7 @@ export function useHomeInfo(
   const [revision, setRevision] = useState(0);
   const requestedRefresh = useRef(false);
   const [loading, setLoading] = useState(false);
+  // 设备、客户端或估算配置变化后立即隔离旧结果，避免新请求返回前显示上一个上下文。
   const contextKey = JSON.stringify([deviceId, client, JSON.stringify(estimates)]);
 
   useEffect(
@@ -37,6 +38,7 @@ export function useHomeInfo(
       busy = true;
       setLoading(true);
       try {
+        // 手动强制刷新标记只消费一次，后续定时读取仍可利用服务端缓存。
         const force = requestedRefresh.current;
         requestedRefresh.current = false;
         const info = await rpc('home.info', {

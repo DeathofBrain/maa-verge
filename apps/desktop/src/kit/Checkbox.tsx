@@ -1,3 +1,4 @@
+// 保留原生复选框语义与 ref，供调用方设置部分选中等 DOM 状态。
 import type { ComponentPropsWithRef } from 'react';
 import { cx } from './cx';
 

@@ -2,6 +2,7 @@ import Button from '@/kit/Button';
 import { useEffect, useState } from 'react';
 import { errorMessage, rpc, subscribe } from '@maaverge/contracts';
 import './schedule-panel.css';
+// 展示可取消的定时发生项；倒计时只在前端显示，是否已进入不可取消的启动阶段由服务端决定。
 export default function ScheduleNotifications() {
   const [items, setItems] = useState<any[]>([]);
   const [notice, setNotice] = useState('');

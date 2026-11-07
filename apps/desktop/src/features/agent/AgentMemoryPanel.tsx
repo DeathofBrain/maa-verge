@@ -12,6 +12,7 @@ type Props = {
   run: (action: () => Promise<unknown>) => Promise<void>;
 };
 
+// 记忆分通用与当前账号范围，编辑携带记录版本，已有记录的范围不能在此表单中改换。
 export default function AgentMemoryPanel({ session, busy, run }: Props) {
   const [memories, setMemories] = useState<AgentMemory[]>([]);
   const [key, setKey] = useState('');

@@ -61,6 +61,7 @@ function actualCaptureMethod(device: Device) {
   return `ADB（${device.captureMethod}）`;
 }
 
+// 把设备发现、异步连接和已保存的多开配置分开呈现，连接请求结束后仍跟踪最终就绪状态。
 export function DevicesPage({
   snapshot,
   selectedDevice,
@@ -81,6 +82,7 @@ export function DevicesPage({
   const operationActive = useRef(false);
   const mounted = useRef(false);
   const currentSelection = useRef(selectedDevice);
+  // 连接等待期间用户可能主动换设备；完成时只在选择未变化的情况下自动选中结果。
   const selectionRevision = useRef(0);
   const operationSelectionRevision = useRef(0);
   if (currentSelection.current !== selectedDevice) {

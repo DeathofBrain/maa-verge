@@ -103,6 +103,7 @@ export default function LogSettings({ settings, busy, onAction, onSave }: Props)
     };
   }, [infoRevision]);
 
+  // 导出、清理和保留天数保存共用即时锁，防止同一渲染周期内连续点击发起冲突操作。
   const begin = (next: Operation) => {
     if (busy || operationRef.current) return false;
     operationRef.current = next;
