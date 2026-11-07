@@ -589,11 +589,9 @@ export function DevicesPage({
                     placeholder="127.0.0.1:5555 或 USB 序列号"
                     value={address}
                     disabled={disabled}
-                    autoCapitalize="none"
-                    autoCorrect="off"
                     autoComplete="off"
                     spellCheck={false}
-                    onChange={(event) => setAddress(normalizeDeviceAddress(event.target.value))}
+                    onChange={(event) => setAddress(event.target.value)}
                   />
                   <Button
                     type="submit"

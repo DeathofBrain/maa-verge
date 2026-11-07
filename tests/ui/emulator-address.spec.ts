@@ -44,7 +44,9 @@ for (const [label, entered, expected] of [
     await page.goto('/');
     await navigate(page, '设备');
     await observeAddressRequests(page);
-    await page.getByLabel('手动连接 ADB 地址', { exact: true }).fill(entered);
+    const address = page.getByLabel('手动连接 ADB 地址', { exact: true });
+    await address.fill(entered);
+    await expect(address).toHaveValue(entered);
     await page.getByRole('button', { name: '连接设备', exact: true }).click();
     await expect.poll(async () => (await requests(page)).connections).toEqual([expected]);
     await expect(page.getByLabel('设备操作结果', { exact: true })).toHaveText(
@@ -60,7 +62,9 @@ test('connection settings save and connect with a lowercase emulator prefix afte
   await navigate(page, '设备');
   await observeAddressRequests(page);
   const dialog = await openConnectionSettings(page);
-  await dialog.getByLabel('连接地址', { exact: true }).fill('EMULATOR-20000');
+  const address = dialog.getByLabel('连接地址', { exact: true });
+  await address.fill('EMULATOR-20000');
+  await expect(address).toHaveValue('EMULATOR-20000');
   await dialog.getByRole('button', { name: '保存连接配置', exact: true }).click();
   await expect
     .poll(async () => (await requests(page)).settings.at(-1)?.connection?.address)
@@ -85,8 +89,14 @@ test('multi-instance settings persist both normalized addresses and use the save
   await page.getByRole('tab', { name: /^多开管理/ }).click();
   await page.getByRole('button', { name: '添加多开实例', exact: true }).click();
   const editor = page.getByRole('form', { name: '多开实例配置', exact: true });
-  await editor.getByLabel('实例名称', { exact: true }).fill('AVD 大小写回归');
-  await editor.getByLabel('连接地址', { exact: true }).fill('eMuLaToR-20010');
+  const name = editor.getByLabel('实例名称', { exact: true });
+  await expect(name).toHaveAttribute('autocapitalize', 'none');
+  await expect(name).toHaveAttribute('autocorrect', 'off');
+  await name.fill('AVD 大小写回归');
+  await expect(name).toHaveValue('AVD 大小写回归');
+  const address = editor.getByLabel('连接地址', { exact: true });
+  await address.fill('eMuLaToR-20010');
+  await expect(address).toHaveValue('eMuLaToR-20010');
   await editor.getByRole('button', { name: '保存实例配置', exact: true }).click();
   await expect(editor).toHaveCount(0);
   const expected = {

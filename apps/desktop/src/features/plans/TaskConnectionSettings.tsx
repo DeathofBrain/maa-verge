@@ -295,11 +295,9 @@ export function ConnectionFields({
           required={addressRequired}
           disabled={disabled}
           placeholder="127.0.0.1:16384 或 emulator-5554"
-          autoCapitalize="none"
-          autoCorrect="off"
           autoComplete="off"
           spellCheck={false}
-          onChange={(event) => patch({ address: normalizeDeviceAddress(event.target.value) })}
+          onChange={(event) => patch({ address: event.target.value })}
         />
         <span className="sp-help">此地址用于手动连接；已保存实例也会按该地址自动连接。</span>
       </label>
