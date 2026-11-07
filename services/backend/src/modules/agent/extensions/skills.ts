@@ -94,7 +94,7 @@ function parseSkill(content: string) {
   };
 }
 
-/** Text-only skills: storage and local import are trusted settings operations, never model tools. */
+/** 仅保存和导入文本 Skill；设置入口可导入本地资料，模型工具不获得脚本执行或目录访问权。 */
 export class AgentSkills {
   constructor(private readonly store: Store) {}
 
@@ -128,6 +128,7 @@ export class AgentSkills {
       total += bytes;
     }
     if (total > MAX_TOTAL_BYTES) invalid('技能内容与引用总计超过 512 KiB');
+    // 引用顺序先规范化，再用正文和引用内容生成版本；旧版本留作轮次与审批证据。
     references.sort((a, b) => a.name.localeCompare(b.name));
     const version = createHash('sha256')
       .update(JSON.stringify({ content: input.content, references }))
@@ -157,6 +158,7 @@ export class AgentSkills {
     const selected = path.resolve(input.path);
     if (lstatSync(selected).isSymbolicLink() || !lstatSync(selected).isDirectory())
       invalid('请选择真实的本地技能目录');
+    // 以真实目录为边界逐个检查文件和引用，拒绝符号链接、越界路径及非文本内容。
     const root = realpathSync.native(selected);
     const read = (relative: string) => {
       const filename = path.join(root, relative);
@@ -240,7 +242,7 @@ export class AgentSkills {
     let available = [...toolNames];
     for (const id of skillIds) {
       const skill = this.load(id);
-      // An omitted field leaves host permissions alone; an explicit empty field denies all tools.
+      // 未声明 allowed-tools 不收窄权限；显式空值则禁用全部工具，多个 Skill 逐次取交集。
       if (parseSkill(skill.content).restrictTools)
         available = available.filter((name) => skill.allowedTools.includes(name));
     }

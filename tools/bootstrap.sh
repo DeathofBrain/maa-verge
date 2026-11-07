@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# 在当前 checkout 引导固定 Node、pnpm、Bun 和 Rust，不要求修改系统工具版本。
 set -euo pipefail
 project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 tool_root="$project_root/.tools"
@@ -33,6 +34,7 @@ else
   source_url="https://nodejs.org/dist/v$node_version"
   curl --fail --location "$source_url/$archive" --output "$node_staging/$archive"
   curl --fail --location "$source_url/SHASUMS256.txt" --output "$node_staging/node-shasums.txt"
+  # 下载后先比对官方摘要，再运行版本探测；仅验证通过才替换本地 Node。
   expected="$(awk -v file="$archive" '$2 == file { print $1 }' "$node_staging/node-shasums.txt")"
   if command -v sha256sum >/dev/null; then
     actual="$(sha256sum "$node_staging/$archive" | awk '{ print $1 }')"
@@ -46,6 +48,7 @@ else
   mv "$node_staging/node-v$node_version-$node_os-$node_arch" "$tool_root/node"
 fi
 export PATH="$(dirname -- "$node_executable"):$PATH"
+# 从仓库声明读取包管理器版本，依赖安装沿用锁文件而非重新解析版本。
 package_manager="$("$node_executable" -p "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).packageManager" "$project_root/package.json")"
 [[ "$package_manager" =~ ^pnpm@10\.[0-9]+\.[0-9]+$ ]] || { printf 'Pin packageManager to pnpm 10\n' >&2; exit 1; }
 pnpm_version="${package_manager#pnpm@}"

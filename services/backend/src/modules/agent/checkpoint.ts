@@ -43,7 +43,7 @@ interface StoredWrite {
 const digest = (parts: unknown[]) =>
   createHash('sha256').update(JSON.stringify(parts)).digest('hex');
 
-/** Durable LangGraph state under the application's existing SQLite data-root lease. */
+/** 把 LangGraph 检查点和中间写入保存到既有 Store，并绑定创建时的会话与账号范围。 */
 export class StoreCheckpointSaver extends BaseCheckpointSaver {
   private readonly contexts: ContextRepository;
   private readonly scope: AgentScope;
@@ -127,6 +127,7 @@ export class StoreCheckpointSaver extends BaseCheckpointSaver {
           write.checkpointNs === row.checkpointNs &&
           write.checkpointId === row.checkpointId,
       );
+    // 使用 SDK 的任务路径、任务 ID 与写入序号排序，恢复并行节点时保持其重放顺序。
     writes.sort((a, b) =>
       compareWritesSortKeys(
         writesSortKey(a.taskPath, a.taskId, a.index),
@@ -200,6 +201,7 @@ export class StoreCheckpointSaver extends BaseCheckpointSaver {
     if (typeof checkpoint.id !== 'string' || !checkpoint.id || checkpoint.id.length > 200)
       throw new AgentContextError('检查点标识无效');
     const encodedCheckpoint = await this.encode(copyCheckpoint(checkpoint));
+    // 序列化会让出执行权，落库前再次确认会话范围，避免跨账号写入旧检查点。
     const encodedMetadata = await this.encode(metadata);
     this.assertSession();
     const id = digest([this.sessionId, namespace, checkpoint.id]);
@@ -250,6 +252,7 @@ export class StoreCheckpointSaver extends BaseCheckpointSaver {
     this.assertSession();
     this.store.transaction(() => {
       for (const row of pending) {
+        // 普通写入保留首次结果；SDK 为特殊通道分配的负索引允许刷新。
         if (row.index >= 0 && this.store.get('agent_checkpoint_write', row.id)) continue;
         this.store.put('agent_checkpoint_write', row.id, row);
       }

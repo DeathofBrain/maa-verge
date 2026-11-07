@@ -1,5 +1,6 @@
 //! A committed manifest is the only entry point to an immutable downloaded package.
 //! Write and sync the bytes first; an interrupted download never becomes installable.
+// 更新包与待安装清单分开写入，清单的原子替换是唯一提交点。
 use serde_json::Value;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
@@ -83,6 +84,7 @@ impl Cache {
             .and_then(|()| file.sync_all())
             .map_err(|error| error.to_string())?;
         drop(file);
+        // 包体已经同步到磁盘后才发布引用它的清单；提交失败不会影响旧的可安装包。
         let mut value = metadata.clone();
         value["package"] = Value::String(name.clone());
         value["attempted"] = Value::Bool(false);
@@ -95,6 +97,7 @@ impl Cache {
     }
 
     pub(super) fn load(&self) -> Result<Option<(Value, Vec<u8>)>, String> {
+        // 忽略没有清单引用的残留包体和临时文件，只读取有界的普通文件。
         let manifest = self.directory.join("pending.json");
         if !manifest.try_exists().map_err(|error| error.to_string())? {
             return Ok(None);
@@ -121,6 +124,7 @@ impl Cache {
     }
 
     pub(super) fn mark_attempted(&self) -> Result<(), String> {
+        // 在安装器可能退出当前进程前持久化标记，防止失败安装形成启动循环。
         self.set_attempted(true)
     }
 

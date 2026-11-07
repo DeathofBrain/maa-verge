@@ -20,7 +20,7 @@ function decimalInteger(text: string): number {
   return value;
 }
 
-/** Local proposal generation has no model, storage or execution capabilities. */
+/** 仅按本地规则生成待审阅草稿；模型、存储和执行不在此函数的能力范围内。 */
 export function proposeDeterministic<TPlan>(
   message: unknown,
   preparePlan: PreparePlan<TPlan>,

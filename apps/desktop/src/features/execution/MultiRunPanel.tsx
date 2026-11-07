@@ -16,6 +16,7 @@ import ProgressBar from '@/kit/ProgressBar';
 import StatusPill from '@/kit/StatusPill';
 import './multi-run.css';
 
+// 每台设备独立选择允许执行的任务表，不把一台设备的选择或停止操作扩散到其他实例。
 export default function MultiRunPanel({
   devices,
   plans,

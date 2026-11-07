@@ -1,3 +1,5 @@
+// 把原生掉落、基建回调与截图整理为执行证据；展示记录不等于推断未确认的游戏结果。
+
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -32,6 +34,7 @@ const quantity = (value: unknown): value is number =>
   Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 2_147_483_647;
 
 /** Uses the upstream cumulative stats, so repeated notifications cannot inflate totals. */
+// 同一掉落项按累计最大值合并，重复或乱序回调不会反复增加展示数量。
 export function recordDrops(task: RunTask, details: any, at: string): boolean {
   if (!Array.isArray(details?.stats) || details.stats.length > 200) return false;
   const stage = text(details.stage?.stageCode);
@@ -74,6 +77,7 @@ const infrastructureMessages: Record<string, string> = {
   CustomInfrastRoomGroupsMatchFailed: '排班编组不可用',
 };
 /** CustomInfrastRoomOperators is a proposal; only the confirm callback says it was applied. */
+// 推荐方案与执行确认是不同证据阶段，不能把仅规划的换班当成已经完成。
 export function recordInfrastructure(
   task: RunTask,
   what: string,

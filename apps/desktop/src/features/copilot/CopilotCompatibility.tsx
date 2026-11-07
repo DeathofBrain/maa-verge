@@ -1,6 +1,7 @@
 import { Info } from 'lucide-react';
 import type { CopilotRecord } from '@maaverge/contracts';
 
+// 展示格式与资源兼容性检查结果，不将“可执行”当成实战通关保证。
 export default function Compatibility({ record }: { record: CopilotRecord }) {
   return (
     <div

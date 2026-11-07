@@ -39,6 +39,7 @@ function frameUrl(frame: Frame): string {
   return URL.createObjectURL(new Blob([bytes], { type: frame.mimeType }));
 }
 
+// 预览串行拉取并解码设备画面；点击操作只针对当前新鲜帧和空闲设备，不能重放未知结果。
 export default function DevicePreview({
   device,
   readOnly = false,
@@ -253,6 +254,7 @@ export default function DevicePreview({
     // Recheck at dispatch time, including when a paused frame ages between renders.
     if (Date.now() - Date.parse(frame.capturedAt) > maxFrameAgeMs) return;
     const rect = event.currentTarget.getBoundingClientRect();
+    // 按等比缩放后的实际图像区域换算坐标，拒绝点击上下或左右的留白。
     const scale = Math.min(rect.width / frame.width, rect.height / frame.height);
     const left = (rect.width - frame.width * scale) / 2;
     const top = (rect.height - frame.height * scale) / 2;

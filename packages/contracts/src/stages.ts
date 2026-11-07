@@ -1,4 +1,4 @@
-/** MAA v6.20 StageManager permanent presets. Sunday is 0; game days reset at 04:00. */
+/** 常驻关卡预设及开放日提示，星期日为 0；这里不判断当前游戏日或活动开放状态。 */
 export const stagePresets: { value: string; label: string; openDays?: number[] }[] = [
   { value: '', label: '当前 / 上次关卡' },
   { value: '1-7', label: '1-7' },

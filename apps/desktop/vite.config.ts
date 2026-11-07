@@ -13,6 +13,7 @@ export default defineConfig({
   // Concurrent browser/desktop servers must not replace each other's optimized
   // modules. WebKit retains a failed dynamic import until the page is reloaded.
   cacheDir: path.join('node_modules/.vite', `port-${port}`),
+  // 预优化契约传输层按需加载的 Tauri API，避免首次桌面调用才触发依赖重建。
   optimizeDeps: {
     include: ['core', 'event', 'window', 'webviewWindow'].map(
       (module) => `@maaverge/contracts > @tauri-apps/api/${module}`,

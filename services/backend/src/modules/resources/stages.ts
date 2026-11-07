@@ -1,3 +1,5 @@
+// 合并活动时间与已安装导航资源生成关卡目录；活动开放和本地可导航是两个独立条件。
+
 import path from 'node:path';
 import { open, readdir, stat } from 'node:fs/promises';
 import { stagePresets } from '@contracts/stages';
@@ -310,6 +312,7 @@ async function fallback(
   return result;
 }
 
+// 开放时间来自所选区服日历，导航能力来自当前资源；缺少日历时保守回退，不跨区服套用活动。
 export async function stageCatalog(
   combo: Combo,
   clientType: ClientType = 'Official',

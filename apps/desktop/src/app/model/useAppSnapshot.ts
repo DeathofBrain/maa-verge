@@ -16,6 +16,7 @@ type Options = {
 export default function useAppSnapshot({ historicalDeviceRef, setSelectedDevice }: Options) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState('');
+  // 刷新可由事件和定时器同时触发，只有最后发起的请求可以更新快照或错误。
   const refreshSequence = useRef(0);
 
   const refresh = useCallback(async () => {

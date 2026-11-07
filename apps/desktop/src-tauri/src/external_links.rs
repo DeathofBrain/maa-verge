@@ -1,3 +1,4 @@
+// 外部链接只允许普通 HTTP(S) 网页，阻止 WebView 借打开器执行文件或自定义协议。
 use tauri_plugin_opener::OpenerExt;
 
 fn webpage_url(value: &str) -> Result<String, String> {

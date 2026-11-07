@@ -16,6 +16,7 @@ type LineDraft = {
   collected: string;
 };
 
+// datetime-local 不携带时区，先把绝对时间换成本地墙上时间再填表，保存时再转回 ISO。
 const localInput = (value: string) => {
   const at = new Date(value);
   return new Date(at.getTime() - at.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);

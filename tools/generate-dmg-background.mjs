@@ -1,3 +1,4 @@
+// 用固定字体渲染 DMG 背景，并写入 Retina 所需的 PNG 像素密度信息。
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -56,6 +57,7 @@ async function main() {
       viewport: { width: Number(width), height: Number(height) },
       deviceScaleFactor: 2,
     });
+    // 阻断外部请求并等待嵌入字体就绪，避免宿主网络和字体加载时序影响背景。
     await page.route('**/*', (route) => route.abort());
     await page.setContent(`<style>${css}html,body{margin:0}svg{display:block}</style>${source}`);
     await page.evaluate(async () => {

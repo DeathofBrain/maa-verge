@@ -1,3 +1,4 @@
+// 系统目录选择器仅返回用户选择；保存设置及校验目录可写性由对应业务入口负责。
 use std::path::Path;
 use tauri_plugin_dialog::DialogExt;
 
@@ -18,6 +19,7 @@ pub async fn pick_directory(
     {
         let path = Path::new(path);
         if path.is_absolute() {
+            // 默认目录可能尚未创建，向上寻找已存在的目录作为浏览起点。
             if let Some(directory) = path.ancestors().find(|candidate| candidate.is_dir()) {
                 dialog = dialog.set_directory(directory);
             }

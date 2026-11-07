@@ -22,6 +22,7 @@ type SidebarProps = {
   hasUpdate: boolean;
 };
 
+// 导航只发送页面选择意图，任务入口额外清除执行选择以回到任务表列表。
 export function AppSidebar({
   open,
   onOpenChange,

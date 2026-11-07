@@ -18,6 +18,7 @@ import {
 import ErrorBanner from '@/kit/ErrorBanner';
 import './schedule-panel.css';
 type Schedule = RpcResult<'schedule.save'>;
+// 定时规则独立于任务表旧 schedule 字段，以任务表与设备配对管理，时间由服务端按本地时区解释。
 export default function SchedulePanel({
   planId,
   devices,
@@ -90,6 +91,7 @@ export default function SchedulePanel({
     const value = { ...options, ...change };
     setOptions(value);
     void action(async () => {
+      // 设置接口替换完整对象，保存调度选项前重读其他设置，避免覆盖别处已保存的偏好。
       const latest = await rpc('app.snapshot', {});
       await rpc('settings.save', { settings: { ...latest.settings, scheduler: value } });
     });

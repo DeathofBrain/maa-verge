@@ -1,3 +1,5 @@
+// 封装 MirrorChyan 元数据与全量包下载；凭证及临时签名 URL 不进入持久化下载身份。
+
 /** Keep credential-bearing HTTP details out of persistent update metadata. */
 import type { Settings } from '@contracts/types';
 import {
@@ -138,6 +140,7 @@ export class MirrorChyanClient {
   get enabled(): boolean {
     return this.preferences()?.enabled === true;
   }
+  // 固定请求全量包并严格核对平台、通道及版本；元数据请求不跟随重定向，避免泄露凭证。
   async latest(
     rid: MirrorChyanRid,
     releaseChannel: 'stable' | 'preview' = 'stable',
@@ -226,6 +229,7 @@ export class MirrorChyanClient {
       await response?.body?.cancel().catch(() => {});
     }
   }
+  // 重新取得的临时 URL 必须仍对应已选中的包身份；仅在实际请求边界替换 URL，不持久化凭证。
   async download(
     release: MirrorChyanRelease,
     metadata: DownloadMetadata,

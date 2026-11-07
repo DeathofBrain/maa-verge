@@ -1,3 +1,4 @@
+// 维护可恢复的设置草稿，将防抖输入串行提交，并隔离旧请求与后续编辑。
 import { useEffect, useRef, useState } from 'react';
 
 import type { SaveStatus } from './save-status';
@@ -10,6 +11,7 @@ type Options<T> = {
 };
 type CachedDraft = { base: string; value: object };
 const memoryDrafts = new Map<string, CachedDraft>();
+// 同一缓存标识只允许最新挂载的实例写入，避免旧页面清理覆盖新草稿。
 const draftOwners = new Map<string, number>();
 let draftSequence = 0;
 
@@ -86,6 +88,7 @@ export function useAutoSaveDraft<T extends object>(
   const flush = async (): Promise<void> => {
     clearTimeout(timer.current);
     timer.current = undefined;
+    // 保存必须串行；等待前一次请求后重新读取当前草稿，合并期间产生的新输入。
     if (inFlight.current) {
       await inFlight.current;
       if (JSON.stringify(normalized()) !== acknowledged.current) await flush();
@@ -113,6 +116,7 @@ export function useAutoSaveDraft<T extends object>(
       }
       if (result !== false) {
         acknowledged.current = nextFingerprint;
+        // 只有输入仍与本次提交一致时才用确认结果回填，不能覆盖请求期间的新编辑。
         if (JSON.stringify(normalized()) === nextFingerprint) {
           const confirmed =
             typeof result === 'object'
@@ -156,6 +160,7 @@ export function useAutoSaveDraft<T extends object>(
   };
 
   useEffect(() => {
+    // 外部已保存值变化时更新比较基线，但保留正在提交或尚未保存的本地输入。
     if (base.current === fingerprint) return;
     const unchanged =
       !inFlight.current &&
@@ -178,6 +183,7 @@ export function useAutoSaveDraft<T extends object>(
       timer.current = setTimeout(() => void flushRef.current(), configuration.current.delay ?? 500);
     return () => {
       mounted.current = false;
+      // 离页不丢弃防抖中的最后一次修改；异步结束后不再更新已卸载组件状态。
       if (timer.current !== undefined) void flushRef.current();
     };
   }, []);

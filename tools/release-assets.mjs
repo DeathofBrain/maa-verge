@@ -1,3 +1,4 @@
+// 以纯校验函数识别发行安装包、更新签名和校验和清单的完整组合。
 /** Pure validation for published installers, signed updater assets and checksums. */
 const checksumName = 'SHA256SUMS.txt';
 const checksumLimit = 16 * 1024;
@@ -154,6 +155,7 @@ export function validateAssetSet(release, tag) {
       updaterKinds.add(updaterKind);
     } else throw new Error(`Unexpected release asset: ${asset.name}`);
   }
+  // 按完整产物组合区分当前与历史发行格式，禁止混合不同格式的更新签名。
   const current =
     release.assets.length === releaseInstallerKinds.length + releaseUpdaterAssetKinds.length + 1;
   const legacy = kinds.has('windows-msi-x64');

@@ -1,3 +1,4 @@
+// 使用原生 progress 暴露进度与名称，数值范围由任务状态提供。
 import { cx } from './cx';
 
 type Props = {

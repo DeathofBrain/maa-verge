@@ -1,3 +1,4 @@
+// 集中探测工作区依赖和原生编译工具，并提供平台对应的修复提示。
 import { makeTemporaryDirectorySync } from './test-support/temporary-directory.mjs';
 import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -133,6 +134,7 @@ export function resolveCmake({
 }
 
 export function probeCppToolchain(cmake) {
+  // 用临时最小 C++20 程序验证编译与链接能力，不加载核心或接触设备。
   const directory = makeTemporaryDirectorySync(path.join(tmpdir(), 'maaverge-toolchain-'));
   try {
     writeFileSync(

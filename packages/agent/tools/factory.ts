@@ -121,7 +121,7 @@ function jobContent(job: MaaToolJob) {
   };
 }
 
-/** Build a bounded, device-scoped tool session without native or storage access. */
+/** 构建绑定设备与客户端的有限工具会话；原生执行和持久化都通过宿主具名端口完成。 */
 export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}): MaaToolSet {
   const {
     deviceId,
@@ -171,6 +171,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
     definitions.push(freeze({ name, description, effect, schema: structuredClone(schema) }));
     implementations.set(name, execute);
   }
+  // 审批接收深拷贝并冻结的快照；等待审批后还要检查取消信号，避免继续提交已取消动作。
   async function permit(
     name: string,
     effect: MaaToolAuthorization['effect'],
@@ -193,6 +194,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
       fail('permission_denied', '此操作需要宿主对具体设备与操作内容授权');
     invocation.signal?.throwIfAborted();
   }
+  // 后续查询与停止仅接受宿主预附加或本会话创建的执行 ID，并再次核对设备范围。
   function attachRun(run: Run): MaaToolResult {
     if (run.deviceId !== requireDevice() || !id(run.id))
       fail('invalid_result', '宿主返回的执行记录不属于绑定设备');
@@ -328,6 +330,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
         fail('not_found', '任务表不存在');
       if (!planAllowsDevice(plan, deviceId!)) fail('scope_denied', '任务表未绑定当前设备');
       assertAgentExecutablePlan(plan, clientType, options.allowFiniteConsumables === true);
+      // 审批与启动共用同一计划副本；宿主收到 expected 后可核对审批期间是否被修改。
       const expected = structuredClone(plan);
       await permit('maa_start_plan', 'execute', { plan: expected }, requestId, invocation);
       return attachRun(
@@ -483,8 +486,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
       }
       if (calls.size >= maxCalls) fail('call_limit', '本次 Agent 工具调用次数已达上限');
       const submittedInput = structuredClone(input);
-      // Defer work until the promise is registered, so concurrent deliveries and
-      // failures share one execution. Never retry an unknown native outcome.
+      // 先登记 Promise 再执行，让并发投递共享同一次结果或失败；不自动重试未知原生结果。
       const promise = Promise.resolve().then(async () => {
         if (!validators.get(name)!.validate(submittedInput).valid)
           fail('invalid_parameters', '工具参数不符合契约');
@@ -492,6 +494,7 @@ export function createMaaTools(host: MaaToolHost, options: MaaToolOptions = {}):
           'SHA-256',
           new TextEncoder().encode(sessionId + '\0' + invocation.callId),
         );
+        // 请求 ID 只取决于持久会话 ID 和调用 ID，重建工具集后仍可对接业务服务的去重账本。
         const requestId =
           'maa-' +
           Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join(

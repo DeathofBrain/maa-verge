@@ -47,6 +47,7 @@ type Props = {
   onRunUpdate: (run: Run) => void;
   onPrepare: () => void;
 };
+// 同一执行的详情请求跨组件实例合并，快速切换或重新挂载不会并发读取同一记录。
 const pendingDetails = new Map<string, Promise<Run>>();
 function readRunDetail(id: string): Promise<Run> {
   const previous = pendingDetails.get(id);
@@ -63,6 +64,7 @@ function readRunDetail(id: string): Promise<Run> {
 export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onPrepare }: Props) {
   const [detail, setDetail] = useState<Run>();
   const [loadError, setLoadError] = useState('');
+  // 结束态详情优先于可能滞后的运行中摘要，避免界面把已结束执行重新显示为运行中。
   const run =
     detail?.id === summary?.id &&
     (detail?.status === summary?.status || detail?.status !== 'running')
@@ -75,6 +77,7 @@ export default function ExecutionPage({ snapshot, run: summary, onRunUpdate, onP
     const id = summary.id;
     let cancelled = false;
     let timer: number | undefined;
+    // 成功读取终态后停止轮询；读取失败采用较慢重试，离开页面只丢弃响应而不重放执行。
     const poll = async () => {
       try {
         const value = await readRunDetail(id);

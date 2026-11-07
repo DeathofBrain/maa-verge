@@ -1,3 +1,4 @@
+// 呈现状态文字与可选装饰圆点，不从颜色反推业务状态。
 import type { ReactNode } from 'react';
 import { cx } from './cx';
 

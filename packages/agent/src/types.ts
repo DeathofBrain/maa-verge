@@ -1,4 +1,4 @@
-/** Untrusted proposal; the host normalizes it and applies its plan policy. */
+/** 模型或规则产出的不可信草稿；宿主负责规范化和任务策略校验。 */
 export interface AgentPlanDraft {
   id: '';
   name: string;

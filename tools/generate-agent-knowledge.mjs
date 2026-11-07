@@ -1,3 +1,4 @@
+// 从本地契约、任务定义与文档生成可追溯的产品知识快照。
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -390,6 +391,7 @@ emitMethods();
 await emitTasks();
 emitTools();
 for (const file of documentFiles) emitDocument(file);
+// 固定记录与来源的顺序后计算摘要，使相同输入产生稳定、可核对的快照。
 const orderedRecords = [...records.values()].sort((a, b) => compare(a.key, b.key));
 const manifest = [...sources]
   .sort(([a], [b]) => compare(a, b))

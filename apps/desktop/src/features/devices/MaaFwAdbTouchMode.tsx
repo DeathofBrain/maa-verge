@@ -11,6 +11,7 @@ type Props = {
   onChange: (value: TouchMode) => void;
 };
 
+// 这是 MaaCore 的可选触控模式入口；缺少控制库时先请求确认准备运行时，再修改连接草稿。
 export default function MaaFwAdbTouchMode({ connection, disabled = false, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -50,6 +51,7 @@ export default function MaaFwAdbTouchMode({ connection, disabled = false, onChan
     setChecking(true);
     try {
       const status = await rpc('updates.maafwAdb.status', {});
+      // 检查期间若已卸载或切换连接草稿，不把旧检查结果应用到新配置。
       if (!mounted.current || currentConnection.current !== connection) return;
       if (status.available) onChange(next);
       else if (!status.coreInstalled)

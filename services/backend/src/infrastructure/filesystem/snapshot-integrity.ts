@@ -1,3 +1,5 @@
+// 为不可变组件快照生成文件清单与内容摘要，拒绝链接和读取期间发生的文件替换。
+
 /** Payload integrity for newly validated, immutable component generations. */
 import { createHash } from 'node:crypto';
 import type { Stats } from 'node:fs';
@@ -91,6 +93,7 @@ function payloadFiles(files: string[]): string[] {
  * not establish whether an old, untracked generation was originally complete.
  * All disk reads yield; no file contents are buffered or read synchronously.
  */
+// 并发读取仍按稳定路径顺序汇总摘要；任一失败也等待读取收敛后返回，避免清理与打开句柄竞争。
 export async function snapshotIntegrity(
   root: string,
   files?: string[],

@@ -17,6 +17,7 @@ type Props = {
   ) => Promise<boolean>;
 };
 
+// 普通模型配置可恢复草稿，密钥仅留在组件内存，显式保存时才交给凭据接口。
 export default function ModelSettings({ settings, busy, onSave }: Props) {
   const [credential, setCredential] = useState<AgentCredentialStatus>();
   const [secret, setSecret] = useState('');

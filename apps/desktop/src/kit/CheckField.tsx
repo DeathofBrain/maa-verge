@@ -1,3 +1,4 @@
+// 把复选框、标签和说明组成一个可点击字段，保留原生 input 属性。
 import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { cx } from './cx';
 

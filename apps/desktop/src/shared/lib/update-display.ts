@@ -1,3 +1,4 @@
+// 把更新通道与客户端资源状态转换为展示信息，区分下载进度和已生效数据。
 import type { Event, ResourceActivityVersion, UpdateChannel } from '@maaverge/contracts';
 
 export function downloadSpeedLabel(channel: UpdateChannel): string | undefined {
@@ -32,6 +33,7 @@ export function gameDataChanged(event: Event): boolean {
 
 type GameClient = ResourceActivityVersion['clientType'];
 export type ResourceClient = Exclude<GameClient, 'Bilibili'>;
+// B 服与官服共用国服资源活动记录，展示查询需映射到同一个资源客户端。
 export const resourceClientFor = (client: GameClient): ResourceClient =>
   client === 'Bilibili' ? 'Official' : client;
 export const resourceClientLabels: Record<ResourceClient, string> = {

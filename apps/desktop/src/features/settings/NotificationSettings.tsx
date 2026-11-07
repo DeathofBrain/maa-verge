@@ -34,6 +34,7 @@ const categories = [
   ['schedules', '定时系统通知'],
 ] as const;
 
+// 应用通知偏好与操作系统通道授权分开显示；关闭系统通知不关闭应用内提醒。
 export default function NotificationSettings({ settings, busy, onSave }: Props) {
   const saved = settings.notifications ?? defaults;
   const {

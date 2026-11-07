@@ -1,3 +1,4 @@
+// 协调 Vite 与 Tauri 开发进程的启动、就绪等待和退出清理。
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { root, desktop, port, run, start, terminate, devEnvironment, fail } from './project.mjs';
@@ -56,6 +57,7 @@ async function main() {
     return;
   }
   try {
+    // 等前端实际响应后才启动桌面，并同时监测提前退出，避免只按固定延迟猜测就绪。
     let ready = false;
     for (let attempt = 0; attempt < 100; attempt++) {
       if (viteError) throw viteError;
@@ -69,6 +71,7 @@ async function main() {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
     if (!ready) throw new Error('Vite startup timed out');
+    // 为当前工作区生成独立桌面标识与服务地址，减少并行开发实例互相干扰。
     const configDirectory = path.join(root, '.maaverge');
     mkdirSync(configDirectory, { recursive: true });
     const config = path.join(configDirectory, 'tauri-dev.json');

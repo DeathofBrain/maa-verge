@@ -1,3 +1,5 @@
+// Bun 服务入口：维护 NDJSON 传输、后台节拍与有界退出；stdout 只承载协议消息。
+
 import path from 'node:path';
 import { Runtime } from '@backend/app/runtime';
 import { dataRoot, defaultCopilotDirectory, legacyDataRoot } from '@backend/infrastructure/config';
@@ -28,6 +30,7 @@ export async function main() {
 }
 
 async function runService() {
+  // 隔离更新作业在构造 Runtime 前分流，避免子进程争抢同一个业务数据根租约。
   if (process.argv.includes('--update-job')) {
     await runUpdateJobStdio();
     return;
@@ -120,6 +123,7 @@ async function runService() {
       }
     }, 1000),
   ];
+  // 先按换行收齐字节再严格解码 UTF-8，避免多字节字符跨输入块时被误判或替换。
   const dispatch = (bytes: Buffer) => {
     let request: any;
     try {
@@ -149,6 +153,7 @@ async function runService() {
         }),
     );
   };
+  // 退出先停准入和节拍，再提前关闭 worker 以解除挂起 RPC；超过总时限只报告结果未知。
   const finish = async () => {
     if (stopped) return;
     stopped = true;
@@ -192,6 +197,7 @@ async function runService() {
         const newline = bytes.indexOf(10),
           part = newline < 0 ? bytes : bytes.subarray(0, newline);
         if (!dropping) {
+          // 超长请求整行丢弃直到下一个换行再恢复解析，不能把残余片段当成新请求。
           if (remaining.length + part.length > 1024 * 1024) {
             dropping = true;
             remaining = Buffer.alloc(0);

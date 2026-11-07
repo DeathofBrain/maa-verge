@@ -1,3 +1,4 @@
+// 检查前端分层、资源导入及运行时循环依赖，保持 UI 与宿主接口隔离。
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -283,6 +284,7 @@ export function inspectFrontendArchitecture(directory = defaultSourceRoot) {
       if (target && graph.has(relative(target))) graph.get(name).add(relative(target));
     }
   }
+  // CSS 引用也参与边界和循环检查，避免资源导入绕过代码层约束。
   for (const file of stylesheets) {
     const name = relative(file);
     for (const reference of stylesheetReferences(readFileSync(file, 'utf8'))) {

@@ -255,7 +255,6 @@ test('execution overview shows every result, facility staff and optional referen
           .artifactReads,
     ),
   ).toBe(0);
-  await page.setViewportSize({ width: 390, height: 844 });
   await execution(page)
     .getByRole('region', { name: '本次获得材料', exact: true })
     .scrollIntoViewIfNeeded();
@@ -271,7 +270,6 @@ test('execution overview shows every result, facility staff and optional referen
   await expect(reference.getByRole('img', { name: '自动作战反馈画面', exact: true })).toBeVisible();
   await expect(outcomes.locator('.exec-outcomes > li')).toHaveCount(4);
   await page.reload();
-  await page.getByRole('button', { name: '打开导航', exact: true }).click();
   await openLatestExecution(page);
   await expect(execution(page).locator('.exec-task.completed')).toHaveCount(4);
   await expect(reference.getByRole('button')).toHaveAttribute('aria-expanded', 'false');

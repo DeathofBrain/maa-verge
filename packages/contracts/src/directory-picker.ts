@@ -1,3 +1,4 @@
+// 仅通过桌面原生选择器返回目录；用户取消以 null 表达，不回退到浏览器文件访问。
 export interface DirectoryPickerOptions {
   defaultPath?: string;
 }

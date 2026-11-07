@@ -57,7 +57,7 @@ const filtersMatch = (value: AgentJsonObject, filter: Record<string, unknown> = 
     });
   });
 
-/** Namespace enforcement lives in batch, including SDK calls that bypass put(). */
+/** 在 SDK 的统一 batch 入口限制账号命名空间，避免绕过 put() 的操作跨范围访问。 */
 export class ScopedAgentStore extends BaseStore {
   private readonly scope: AgentScope;
   readonly namespace: string[];
@@ -130,7 +130,7 @@ export class ScopedAgentStore extends BaseStore {
     this.assertCurrent();
     if (!Array.isArray(operations) || operations.length > 100)
       throw new AgentContextError('记忆批次过大');
-    // Validate every operation before any mutation, including broad namespace listings.
+    // 整批先校验再进入事务，包括命名空间列表操作，避免前半批写入后才发现越界。
     for (const operation of operations) {
       if ('namespace' in operation) {
         this.assertNamespace(operation.namespace);
@@ -183,6 +183,7 @@ export class ScopedAgentStore extends BaseStore {
             : null;
         }
         if ('namespacePrefix' in operation) {
+          // 这是本地 JSON/KV 文本匹配，不是向量检索；结果同时限制条数和序列化大小。
           const query = operation.query?.toLocaleLowerCase().trim();
           const results: SearchItem[] = this.rows()
             .filter(

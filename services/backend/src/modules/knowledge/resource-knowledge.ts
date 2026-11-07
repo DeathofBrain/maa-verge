@@ -1,3 +1,5 @@
+// 从当前区服的固定资源文件提取有出处的知识；缺失或损坏条目保留诊断，不编造跨服补全。
+
 import { createHash } from 'node:crypto';
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
@@ -482,6 +484,7 @@ async function unavailableStatus(
 }
 
 /** Callers pass the service-owned active combo, never a model-supplied filename or resource path. */
+// 仅读取所选区服的固定文件并记录摘要与 JSON 指针；局部失败生成诊断，不沿用失效旧条目。
 export async function buildResourceKnowledge(
   combo: Combo,
   clientType: ClientType,

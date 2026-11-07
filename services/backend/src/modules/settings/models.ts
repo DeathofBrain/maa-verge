@@ -1,3 +1,5 @@
+// 兼容历史配置的外层标量表示，再执行契约及业务校验；任务参数仍遵守严格原生策略。
+
 import type { Plan, Settings, Task, Snapshot } from '@contracts/types';
 import { validatePlan, validateSettings, validateSnapshot } from '@contracts/validators.js';
 import { normalizeDeviceAddress } from '@contracts/device-profiles';
@@ -66,6 +68,7 @@ function budgets(value: any): any {
     result[key] = integer(result[key]);
   return result;
 }
+// 只兼容外层配置表示，不把任务参数中的字符串或浮点数悄悄转换成合法原生整数。
 export function parsePlan(input: any): Plan {
   if (!record(input)) throw new RpcError(-32602, '请求参数无效');
   const value = {

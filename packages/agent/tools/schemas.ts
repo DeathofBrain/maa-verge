@@ -8,7 +8,7 @@ const documents = { rpc: rpcSchema, runtime: runtimeSchema };
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
-/** Expand only selected contract fragments; no network or arbitrary schema URI. */
+/** 只展开内置 RPC/runtime 契约片段；拒绝外部 URI 和递归引用，不从网络加载模型工具结构。 */
 function expand(value: unknown, document: Document, ancestors = new Set<string>()): unknown {
   if (Array.isArray(value)) return value.map((item) => expand(item, document, ancestors));
   if (!object(value)) return value;
@@ -51,6 +51,7 @@ function expand(value: unknown, document: Document, ancestors = new Set<string>(
   );
 }
 
+/** 按指定列表移除宿主绑定字段及其 required 项，模型只能填写剩余业务参数。 */
 export function rpcToolSchema(
   method: keyof RpcContract['params'],
   omit: readonly string[] = [],

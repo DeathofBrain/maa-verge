@@ -46,6 +46,7 @@ type Props = {
   kindLabel: (kind: CopilotKind) => string;
 };
 
+// 预览保留作业集原顺序，单项选择与整集按类型入队分开，不把无效条目加入可选集合。
 export default function CopilotImportPreview({
   preview,
   hidden,

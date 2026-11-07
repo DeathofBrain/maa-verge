@@ -74,6 +74,7 @@ export default function CopilotRating({
   const rate = async (rating: 'like' | 'dislike') => {
     if (writing.current) return;
     writing.current = true;
+    // 提交评价时使旧读取失效，并把期间触发的刷新延后到写入完成，避免新结果被旧票数覆盖。
     sequence.current++;
     setSubmitting(true);
     setLoading(false);

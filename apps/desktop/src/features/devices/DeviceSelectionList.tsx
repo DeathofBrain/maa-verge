@@ -64,6 +64,7 @@ export default function DeviceSelectionList({
   const removable = new Set(
     matches.filter((item) => !item.disabled && selected.has(item.id)).map((item) => item.id),
   );
+  // 批量选择仅作用于当前筛选结果，保留筛选外已选项，并按剩余容量追加。
   const selectMatches = () => {
     if (disabled) return;
     const capacity = maxSelected === undefined ? selectable.length : maxSelected - selected.size;

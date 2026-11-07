@@ -1,3 +1,5 @@
+// 读取不可变资源代际中的区服版本与活动标签；这些标签不表示实时活动开放状态。
+
 import { openSync, readSync, closeSync, fstatSync } from 'node:fs';
 import path from 'node:path';
 import type { ResourceActivityVersion } from '@contracts/types';

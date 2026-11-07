@@ -1,3 +1,4 @@
+// 桌面宿主持有服务进程与 NDJSON 通道，负责请求配对、凭据注入和有界退出。
 use crate::app_updater::AppUpdater;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -16,6 +17,7 @@ type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Reply>>>>;
 type Emit = Arc<dyn Fn(&str, Value) + Send + Sync>;
 
 fn frontend_method(method: &str) -> Result<(), String> {
+    // host.* 是 Rust 与服务之间的内部能力，不能由 WebView 直接透传调用。
     if method.starts_with("host.") {
         return Err("此操作仅供桌面宿主调用".into());
     }
@@ -43,6 +45,7 @@ fn request_timeout(method: &str, params: &Value) -> Duration {
     }
 }
 
+// 请求 future 被取消时也移除等待项，迟到的响应不能继续占用发送端。
 struct PendingRequest<'a> {
     pending: &'a Pending,
     id: u64,
@@ -369,6 +372,7 @@ impl ClosePreferences {
 }
 
 pub struct Runtime {
+    // 子进程生命周期、管道写入分别串行化；等待响应时不持有 stdin 锁。
     child: AsyncMutex<Option<Child>>,
     stdin: AsyncMutex<Option<ChildStdin>>,
     pending: Pending,
@@ -478,6 +482,7 @@ impl Runtime {
 
     // The desktop and packaged integration smoke share the same transport and cleanup.
     async fn start_process(mut command: Command, emit: Emit) -> Result<Self, String> {
+        // 避免外部 Node/Bun 注入选项改变包内服务行为，协议与诊断分别使用独立管道。
         command
             .env_remove("BUN_OPTIONS")
             .env_remove("BUN_BE_BUN")
@@ -498,6 +503,7 @@ impl Runtime {
         let replies = pending.clone();
         tauri::async_runtime::spawn(async move {
             let mut lines = BufReader::new(stdout).lines();
+            // 单一读取任务按 ID 分发响应；无 ID 的通知转换成桌面事件。
             while let Ok(Some(line)) = lines.next_line().await {
                 if line.len() > 4 * 1024 * 1024 {
                     eprintln!("runtime protocol message exceeded size limit");
@@ -524,6 +530,7 @@ impl Runtime {
                     emit_notification(&message, &emit);
                 }
             }
+            // EOF 或读取失败后结束所有等待，不能让调用者一直等到各自超时。
             for (_, sender) in replies.lock().expect("pending lock").drain() {
                 let _ = sender.send(Err("本地服务已退出，请重启 Maa Verge".into()));
             }
@@ -599,6 +606,7 @@ impl Runtime {
             "{}\n",
             json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params })
         );
+        // 排队写入、整帧刷新与等待响应共用一个截止时间，超时不代表操作未执行。
         let deadline = tokio::time::Instant::now() + timeout;
         let mut channel = tokio::time::timeout_at(deadline, self.stdin.lock())
             .await
@@ -685,6 +693,7 @@ impl Runtime {
     }
 
     pub async fn shutdown_for_update(&self) -> Result<(), String> {
+        // 持锁执行且缓存退出结果，让并发退出请求共享同一次清理及其真实结论。
         let mut process = self.child.lock().await;
         if let Some(result) = self
             .shutdown_result
@@ -1475,6 +1484,7 @@ pub async fn runtime_request(
     if method.starts_with("updates.")
         && params.get("channel").and_then(Value::as_str) == Some("app")
     {
+        // 应用包安装留在宿主；核心和资源更新继续交给业务服务。
         if params.as_object().is_none_or(|params| params.len() != 1) {
             return Err("应用更新请求参数无效".into());
         }
@@ -1490,6 +1500,7 @@ pub async fn runtime_request(
         return Err("正在退出并安装应用更新，请等待应用重新启动".into());
     }
     let _request = runtime.update_gate.read().await;
+    // 等锁期间可能已经开始退出，取得门禁后必须再次确认，避免发送迟到请求。
     if runtime.updating.load(Ordering::Acquire) {
         return Err("正在退出并安装应用更新，请等待应用重新启动".into());
     }
@@ -1531,6 +1542,7 @@ pub async fn runtime_request(
         };
         let credentials = runtime.credentials.clone();
         let key_profile = profile.clone();
+        // 系统钥匙串可能阻塞，移出异步执行线程；密钥仅随本次内部 Agent 请求传递。
         let resolved =
             tauri::async_runtime::spawn_blocking(move || credentials.resolve(&root, &key_profile))
                 .await

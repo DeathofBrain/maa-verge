@@ -48,6 +48,7 @@ const materials: [string, string][] = [
   ['31063', '转质盐组'],
 ];
 
+// 把字段元数据转换为编辑控件，并保留核心参数的数组、对象与无限次数等约定。
 export default function TaskParameterField({
   field,
   params,
@@ -546,6 +547,7 @@ function DropTargets({
   );
 }
 
+// 文本草稿保留正在输入的分隔符；外部值语义不变时不重写输入，避免光标和尾逗号跳动。
 function ListInput({
   id,
   value,

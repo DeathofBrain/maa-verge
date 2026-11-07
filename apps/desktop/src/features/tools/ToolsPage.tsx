@@ -59,6 +59,7 @@ const tools = [
 ] as const;
 let lastDevice = '';
 
+// 独立工具按设备、客户端和工具类型隔离配置与结果，执行前另行读取统一设备占用状态。
 export default function ToolsPage({
   snapshot,
   onAction,
@@ -236,6 +237,7 @@ export default function ToolsPage({
     }
     void rpc('tool.config.save', { deviceId, clientType: client, kind, config: value }).catch(
       (error) => {
+        // 只显示当前上下文最后一次编辑的保存错误，旧请求不能覆盖新工具或新修改的提示。
         if (currentKey.current === key && editRevision.current === edit)
           setConfigError(errorMessage(error));
       },

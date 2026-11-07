@@ -1,3 +1,4 @@
+// 将设置说明与控件分区，间距通过属性选择而非页面覆盖内部样式。
 import type { ReactNode } from 'react';
 import { cx } from './cx';
 

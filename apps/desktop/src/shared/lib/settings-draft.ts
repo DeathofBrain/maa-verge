@@ -1,9 +1,11 @@
+// 保留显式保存前的会话草稿；服务端刷新只同步没有本地修改的状态。
 import { useEffect, useState } from 'react';
 export function useSettingsDraft<T extends object>(key: string, saved: T) {
   const fingerprint = JSON.stringify(saved);
   const [state, setState] = useState<{ base: string; value: T }>(() => {
     try {
       const cached = JSON.parse(sessionStorage.getItem(`maaverge:settings-draft:${key}`) || 'null');
+      // 缓存只作草稿恢复：核对现有字段类型，数值还须有限，损坏内容直接忽略。
       const valid =
         cached &&
         typeof cached.base === 'string' &&
@@ -19,6 +21,7 @@ export function useSettingsDraft<T extends object>(key: string, saved: T) {
     }
     return { base: fingerprint, value: saved };
   });
+  // 刷新服务端值时，脏草稿继续沿用原比较基线，直到保存或主动重置。
   useEffect(() => {
     setState((current) =>
       JSON.stringify(current.value) === current.base ||

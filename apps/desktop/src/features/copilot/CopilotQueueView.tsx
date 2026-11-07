@@ -73,6 +73,7 @@ type Props = {
   stop: () => void;
 };
 
+// 队列视图只提交编辑意图，保存、版本检查与设备占用门禁由工作区和上层页面负责。
 export default function CopilotQueueView({
   kinds,
   kind,

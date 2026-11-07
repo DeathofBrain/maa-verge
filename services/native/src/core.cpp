@@ -1,3 +1,4 @@
+// MaaCore 适配层：固定本进程的核心/资源快照，转换命令、回调与预览，不写业务数据库。
 #include "native.hpp"
 
 #include <algorithm>
@@ -87,6 +88,7 @@ int positive_duration(const Json& config, const char* key, int fallback) {
 }  // namespace
 
 Json validate(const Json& config) {
+  // 版本与资源加载都在独立用户目录中探测，不能仅凭文件存在就认定候选可用。
   const auto core = absolute_path(required_string(config, "core"));
   const auto resource = absolute_path(required_string(config, "resource"));
   const auto expected = required_string(config, "version");
@@ -126,6 +128,7 @@ Core::Core(const Json& config, Protocol& protocol)
   const auto resource = absolute_path(required_string(config, "resource"));
   required_string(config, "adb");
   required_string(config, "address");
+  // 先校验连接配置并加载资源，再创建带回调的实例，避免留下半配置的控制器。
   std::string touch_mode = "minitouch";
   bool adb_lite = false;
   std::string client_type = "Official";
@@ -173,6 +176,7 @@ Core::Core(const Json& config, Protocol& protocol)
     }
   }
   if (config.contains("capture")) {
+    // 增强截图是必须兑现的协议要求；记录期望值，连接回调会验证实际选中的方式。
     const auto& capture = config["capture"];
     const auto method = required_string(capture, "method");
     if (method != "adb" && method != "mumu" && method != "ldplayer") {
@@ -251,6 +255,7 @@ void Core::begin_events() {
 }
 
 void Core::callback(int message, const char* details, void* context) noexcept {
+  // 原生线程只复制、解析并入队；状态变化和协议发送由持有主锁的消费者执行。
   auto& self = *static_cast<Core*>(context);
   try {
     Json payload = Json::object();
@@ -282,6 +287,7 @@ Json Core::command(const Json& value) {
   std::lock_guard guard(mutex_);
   Deadline deadline("command", call_timeout_ms_);
   const auto operation = required_string(value, "operation");
+  // 先吸收已到达的断连和异步结果，再据此决定命令是否仍满足执行条件。
   drain_events();
   if (operation == "connect") {
     if (!pending_.empty() || api_.running(handle_))
@@ -302,6 +308,7 @@ Json Core::command(const Json& value) {
     const int id =
         api_.connect(handle_, adb.c_str(), address.c_str(), connection_config_.c_str(), false);
     if (id <= 0) throw std::runtime_error("MaaCore rejected async device connection");
+    // 返回调用 ID 只表示已提交；pending 直到对应 AsyncCallInfo 到达才移除。
     pending_[id] = std::chrono::steady_clock::now();
     return {{"asyncId", id}};
   }
@@ -418,6 +425,7 @@ Json Core::frame() {
   if (!pending_.empty()) throw std::runtime_error("core asynchronous calls are not idle");
   const bool running = api_.running(handle_);
   std::optional<double> core_latency_ms;
+  // 空闲时主动截图并等结果；任务运行时只读核心缓存，不插入额外截图动作。
   if (!running) {
     if (!api_.screencap)
       throw std::runtime_error("missing MaaCore C API symbol: AsstAsyncScreencap");
@@ -447,6 +455,7 @@ Json Core::frame() {
   constexpr unsigned char signature[] = {137, 80, 78, 71, 13, 10, 26, 10};
   const auto width = big_endian_u32(data + 16);
   const auto height = big_endian_u32(data + 20);
+  // 只有经过 PNG 头和尺寸上限检查的图像，才可提供给界面并作为点击坐标边界。
   if (std::memcmp(data, signature, sizeof(signature)) != 0 || big_endian_u32(data + 8) != 13 ||
       std::memcmp(data + 12, "IHDR", 4) != 0 || width == 0 || height == 0 || width > 8192 ||
       height > 8192 || static_cast<std::uint64_t>(width) * height > 16 * 1024 * 1024) {
@@ -490,6 +499,7 @@ void Core::capture_failed(const std::string& error) {
 void Core::drain_events() {
   std::queue<Json> events;
   {
+    // 交换队列后立即释放事件锁，处理回调及写管道时不阻塞原生回调入队。
     std::lock_guard event_guard(event_mutex_);
     events.swap(events_);
   }
@@ -524,6 +534,7 @@ void Core::drain_events() {
       frame_width_ = frame_height_ = 0;
       capture_verified_ = false;
     }
+    // AsyncCallInfo 同时推进异步账本与连接/截图门禁；任务结束事件不能替代它。
     if (event["message"] == 4) {
       if (details.contains("async_call_id") && details["async_call_id"].is_number_integer()) {
         pending_.erase(details["async_call_id"].get<int>());
@@ -573,6 +584,7 @@ void Core::drain_events() {
 void Core::pump() {
   try {
     std::unique_lock guard(mutex_);
+    // 条件等待会暂时释放主锁；轮询期间则与命令互斥，统一检查未完成调用的期限。
     while (!stop_condition_.wait_for(guard, std::chrono::milliseconds(100),
                                      [this] { return stopping_; })) {
       Deadline deadline("event status", call_timeout_ms_);
@@ -600,6 +612,7 @@ void Core::pump() {
 void Core::close() noexcept {
   if (!handle_) return;
   try {
+    // 先停止并回收事件线程，再停止任务和销毁实例，最后由 Api 析构卸载动态库。
     Deadline deadline("destroy", shutdown_timeout_ms_);
     {
       std::lock_guard guard(mutex_);

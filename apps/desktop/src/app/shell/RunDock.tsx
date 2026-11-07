@@ -33,6 +33,7 @@ type Props = {
   onStopDock: () => void;
 };
 
+// 底栏只呈现外壳选定的设备活动；停止和面板切换交由上层处理，不自行持有执行状态。
 export default function RunDock({
   devices,
   selectedDevice,

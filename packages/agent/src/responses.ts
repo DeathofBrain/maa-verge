@@ -1,7 +1,7 @@
 import { ResponseEventStream } from './responses-sse';
 
-/** Responses wire items are retained verbatim, including opaque reasoning data.
- * Never turn them into Chat Completions messages or use previous_response_id. */
+/** 原样保留 Responses 输出项及不透明推理数据，以完整输入续接。
+ * 不转成 Chat Completions 消息，也不使用 previous_response_id。 */
 export type ResponseItem = Record<string, unknown>;
 export type ResponseTool = { name: string; description: string; schema: Record<string, unknown> };
 export type ResponseUsage = {
@@ -142,6 +142,7 @@ function sensitiveOutput(): ResponsesError {
   return new ResponsesError('credential_output', '模型服务返回了敏感凭据，已阻止保存本轮输出');
 }
 function usageFrom(raw: unknown): ResponseUsage {
+  // 用量缺失时保留 incomplete 标记，数值填零只为累计，不能据此认定调用没有成本。
   const usage = emptyUsage();
   usage.modelCalls = 1;
   usage.incomplete =

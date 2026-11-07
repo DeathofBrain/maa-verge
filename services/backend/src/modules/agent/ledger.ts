@@ -11,6 +11,7 @@ import type { Store } from '@backend/infrastructure/storage/storage';
 import { RpcError } from '@backend/shared/errors';
 import { emptyUsage, type ResponseUsage } from '@maaverge/agent/responses';
 
+/** 对象键排序且忽略 undefined，使快照指纹不受属性插入顺序影响。 */
 export function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
   if (value && typeof value === 'object')
@@ -66,7 +67,7 @@ export interface ActionRecord {
   };
 }
 
-/** All records use the application's leased Store and its SQLite transaction. */
+/** 在应用 Store 中统一保存轮次、交互、调用状态与用量；审批和去重依据均来自持久记录。 */
 export class AgentLedger {
   constructor(
     private store: Store,
@@ -155,6 +156,7 @@ export class AgentLedger {
         return row;
       }
       if (row.status !== 'pending') throw new RpcError(-32011, '该交互已经结束');
+      // 执行审批只接受明确 decision，普通选项或文本回答不能被当作批准。
       if (row.kind === 'approval') {
         if (!answer.decision || Object.keys(answer).some((key) => key !== 'decision'))
           throw new RpcError(-32602, '执行审批需要明确批准或拒绝');
@@ -197,6 +199,7 @@ export class AgentLedger {
     input: unknown,
   ): ActionRecord {
     this.session(sessionId);
+    // 调用 ID 在会话内唯一；同一 ID 的工具、参数和所属轮次一旦绑定就不能更换。
     const id = digest([sessionId, callId]);
     const signature = digest([name, input]);
     const prior = this.store.get<ActionRecord | undefined>('agent_action', id);
@@ -228,6 +231,7 @@ export class AgentLedger {
       .all<ActionRecord>('agent_action')
       .filter((row) => row.sessionId === sessionId);
   }
+  /** 轮次、会话与托管目标的用量在同一事务中累计，摘要调用另外保留分类累计。 */
   usage(turnId: string, delta: AgentUsage, kind: 'turn' | 'summary' = 'turn') {
     this.store.transaction(() => {
       const turn = this.turn(turnId),

@@ -1,5 +1,6 @@
 import type { CopilotRecord, CopilotWorkspace } from '@maaverge/contracts';
 
+// 普通作业声明两种难度时拆成两条独立队列项；保全和悖论不使用突袭标记。
 function difficulties(record: CopilotRecord): boolean[] {
   if (record.kind !== 'Copilot') return [false];
   if (record.difficulty === 3) return [false, true];

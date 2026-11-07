@@ -1,3 +1,4 @@
+// 按需读取当前资源中的干员资料与头像，列表外条目延后加载。
 import { useEffect, useRef, useState } from 'react';
 import { UserRound } from 'lucide-react';
 import { rpc, type RpcParams, type RpcResult } from '@maaverge/contracts';
@@ -13,6 +14,7 @@ export function readOperator(
   clientType: Client,
   operatorId?: string,
 ): Promise<Operator> {
+  // 共享进行中的请求以减少列表重复读取，并限制缓存规模。
   const previous = portraits.get(key);
   if (previous) return previous;
   const request = rpc('resources.operator', { name, clientType, operatorId });
@@ -51,6 +53,7 @@ export default function OperatorBadge({
         },
       );
     };
+    // 接近视口时才请求头像，触发一次后断开观察；卸载仍阻止迟到结果回填。
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {

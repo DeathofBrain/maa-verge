@@ -102,7 +102,6 @@ test('Agent polls provisional model text and replaces it with the final transcri
   for (const [width, height, colorScheme] of [
     [1440, 900, 'light'],
     [1280, 800, 'dark'],
-    [390, 844, 'light'],
   ] as const) {
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });

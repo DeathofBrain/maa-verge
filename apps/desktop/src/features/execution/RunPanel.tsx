@@ -15,6 +15,7 @@ export default function RunPanel({
   onClose: () => void;
 }) {
   const panel = useRef<HTMLElement>(null);
+  // 面板是非模态区域：打开时接收焦点，关闭时仅在原触发元素仍存在的情况下恢复焦点。
   useLayoutEffect(() => {
     const previous = document.activeElement;
     panel.current?.focus({ preventScroll: true });

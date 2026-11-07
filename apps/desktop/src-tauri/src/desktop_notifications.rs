@@ -1,4 +1,5 @@
 //! System notifications consume only live host events, never snapshot/history rows.
+// 实时业务事件经过类别开关、去重和退出门禁后才提交系统通知，不重播历史快照。
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Mutex;
@@ -65,6 +66,7 @@ impl Policy {
             return false;
         }
         self.recent.push_back(key);
+        // 去重窗口有界，长期运行不会因保存全部事件标识而持续增长。
         if self.recent.len() > 1024 {
             if let Some(expired) = self.recent.pop_front() {
                 self.seen.remove(&expired);
@@ -119,6 +121,7 @@ impl Policy {
                 )
             }
             "update.changed" => {
+                // 更新进度会反复广播，同一通道仅在状态或版本变化时考虑产生通知。
                 let channel = data["channel"].as_str()?;
                 let update = &data["update"];
                 let status = update["status"].as_str()?;

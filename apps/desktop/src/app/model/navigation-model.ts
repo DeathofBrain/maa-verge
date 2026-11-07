@@ -2,6 +2,7 @@ import { BookOpen, Bot, History, House, ListChecks, Wrench } from 'lucide-react'
 
 export type Page =
   'home' | 'tasks' | 'copilot' | 'tools' | 'agent' | 'history' | 'devices' | 'settings';
+// 主导航与底部设备、设置入口分开维护，pageNames 仍覆盖所有可跳转页面。
 export const navigation = [
   { id: 'home', label: '主页', icon: House },
   { id: 'tasks', label: '任务', icon: ListChecks },

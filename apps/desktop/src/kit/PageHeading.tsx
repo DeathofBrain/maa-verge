@@ -1,3 +1,4 @@
+// 统一页面标题与动作区的结构，允许调用方省略标题或提供补充内容。
 import type { ReactNode } from 'react';
 import { cx } from './cx';
 

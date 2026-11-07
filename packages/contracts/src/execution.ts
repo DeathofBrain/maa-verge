@@ -7,7 +7,7 @@ const labels: Record<string, string> = {
   InfrastDormDoubleConfirmButton: '确认基建干员调换', StartExplore: '开始探索', StageDrops: '作战掉落',
   EnterFacility: '进入基建设施', ProductOfFacility: '基建设施产物', InfrastConfirmButton: '确认基建换班',
 };
-/** Translate protocol identifiers only; preserve unknown diagnostics for review. */
+/** 只翻译已知协议标识；未知片段保持原文，便于对照核心日志而不猜测执行结果。 */
 export function localizeExecutionMessage(message: string): string {
   return message.replace(/[A-Za-z][A-Za-z0-9]*(?:@[A-Za-z][A-Za-z0-9]*)?/g, token => token.split('@').map(part => labels[part] ?? part).join(' · '));
 }

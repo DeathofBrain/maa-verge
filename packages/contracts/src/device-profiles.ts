@@ -29,6 +29,7 @@ function mumuSdkIdentity(profile: DeviceConnectionProfile): string {
   return `mumu:${root}:instance:${profile.capture.instanceIndex}`;
 }
 
+/** MuMu 桥接实例以目录和索引识别；普通连接则沿用规范化后的 ADB 设备身份。 */
 export function deviceProfileIdentity(profile: DeviceConnectionProfile): string {
   return profile.capture.method === 'mumu' && profile.capture.mumuBridge
     ? mumuSdkIdentity(profile)

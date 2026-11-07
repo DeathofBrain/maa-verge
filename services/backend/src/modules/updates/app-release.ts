@@ -1,3 +1,6 @@
+// 发现桌面应用已发布的元数据与平台资产，按通道筛选正式版或预览版；
+// 安装和签名验证交由桌面更新流程。
+
 /** Read-only application release discovery. Installing remains a desktop concern. */
 import packageJson from '../../../../../package.json';
 
@@ -104,6 +107,7 @@ function assetType(
     return { platform: 'linux', arch: 'x64', kind: 'rpm' };
 }
 
+// 按目标发布通道筛选后比较版本优先级，不把 API 返回顺序或发布时间当作版本新旧。
 export async function checkAppRelease(
   getJson: (url: string) => Promise<any>,
   options: { channel?: 'stable' | 'preview'; platform?: string; arch?: string } = {},

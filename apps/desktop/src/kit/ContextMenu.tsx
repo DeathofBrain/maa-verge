@@ -1,3 +1,4 @@
+// 集中管理页面右键菜单及键盘导航，文本输入区域继续使用原生编辑菜单。
 import {
   createContext,
   useContext,
@@ -54,6 +55,7 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     if (!menu || !root.current) return;
     const element = root.current;
+    // 菜单挂载后按实际尺寸限制位置，再把焦点交给首个可用动作。
     const rect = element.getBoundingClientRect();
     element.style.left = `${Math.max(8, Math.min(menu.x, window.innerWidth - rect.width - 8))}px`;
     element.style.top = `${Math.max(8, Math.min(menu.y, window.innerHeight - rect.height - 8))}px`;
@@ -67,6 +69,7 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
       if (!root.current?.contains(event.target as Node)) setMenu(null);
     };
     const dismiss = () => setMenu(null);
+    // 页面滚动、缩放或失焦后关闭旧菜单，避免操作仍指向过期的屏幕位置。
     window.addEventListener('pointerdown', close, true);
     window.addEventListener('resize', dismiss);
     window.addEventListener('blur', dismiss);

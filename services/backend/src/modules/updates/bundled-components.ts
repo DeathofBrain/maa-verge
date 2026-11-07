@@ -1,3 +1,5 @@
+// 发现并复制已验证的随附组件快照；先建立独立目标目录，完整校验后才交给更新服务引用。
+
 /** Adopt ordinary local generations, with compatibility for older installer payloads. */
 import { constants } from 'node:fs';
 import { copyFile, lstat, mkdir, readFile, readdir, realpath, rm } from 'node:fs/promises';
@@ -230,6 +232,7 @@ export async function copyBundledPayload(
   );
 }
 
+// 源与目标分别验证完整性；出错时只清理由本次创建的目标，并等待并发文件操作结束。
 export async function copyComponentPayload(
   sourceDirectory: string,
   installedHash: string,

@@ -1,3 +1,5 @@
+// 校验截图 SDK 与模拟器安装、实例索引和进程的对应关系，生成原生连接参数。
+
 /** Connection extras for explicitly selected local emulator capture. No shell or device actions. */
 import { execFile } from 'node:child_process';
 import { realpathSync, statSync } from 'node:fs';

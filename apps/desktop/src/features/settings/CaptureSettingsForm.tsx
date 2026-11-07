@@ -13,6 +13,7 @@ const captureLabels = {
   mumu: 'MuMu 增强截图',
   ldplayer: '雷电增强截图',
 } as const;
+// 截图草稿可按实例独立缓存，保存只影响后续连接，不即时切换已连接设备的协议。
 export function CaptureForm({
   settings,
   busy,
@@ -78,6 +79,7 @@ export function CaptureFields({
       | ((previous: NonNullable<Settings['capture']>) => NonNullable<Settings['capture']>),
   ) => void;
 }) {
+  // 兼容尚无 autoDetect 的旧配置：默认 ADB 视为自动检测，显式增强协议视为手动配置。
   const automatic = draft.autoDetect ?? draft.method === 'adb';
   const enhanced = draft.method !== 'adb';
   return (

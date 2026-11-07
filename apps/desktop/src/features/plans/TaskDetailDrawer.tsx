@@ -4,6 +4,7 @@ import Drawer from '@/kit/Drawer';
 import IconButton from '@/kit/IconButton';
 import './task-center.css';
 
+// 任务表详情复用套装抽屉的焦点和遮罩管理，并为底部执行栏预留空间。
 export default function TaskDetailDrawer({
   children,
   onClose,

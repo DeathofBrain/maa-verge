@@ -33,6 +33,7 @@ type Props = {
   setRunPanel: (panel: 'logs') => void;
 };
 
+// 历史列表保留执行 ID 的精确选择，查看记录不会改写或重新启动当前任务表。
 export default function HistoryPage({
   snapshot,
   historyFilter,
