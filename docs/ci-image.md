@@ -25,17 +25,17 @@
 
 宿主把 `changes` 生成的版本 2 `MAAVERGE_CI_PLAN` 传入容器，计划只包含 `full`、`code`、`native` 三个布尔字段。`tools/ci/run.sh` 保留三种入口：
 
-- `app`：调用 `node tools/check.mjs --app --ci`。始终执行工程脚本、知识与契约同步、四工作区类型及契约回归；`code` 为真时构建 C++ worker、执行四组合成 CTest 和完整 Linux 运行时，再直接 Vite 生产构建并执行 15 条 `@smoke` 行为回归，full 切换为全量 UI。`native` 为真时，在同一任务追加 Bun 独立运行探针、单次 rustfmt、Rust Clippy / 测试及 Linux 打包夹具。application 与原 Linux native 共用本次依赖和 worker 构建，不再各自准备镜像和重复跑服务全量。
+- `app`：调用 `node tools/check.mjs --app --ci`。始终执行工程脚本、知识与契约同步、四工作区类型及契约回归；`code` 为真时构建 C++ worker、执行四组合成 CTest 和完整 Linux 运行时，再直接 Vite 生产构建并执行 `@smoke` 行为回归，full 切换为全量 UI。`native` 为真时，在同一任务追加 Bun 独立运行探针、单次 rustfmt、Rust Clippy / 测试及 Linux 打包夹具。application 与原 Linux native 共用本次依赖和 worker 构建，不再各自准备镜像和重复跑服务全量。
 - `native`：保留宿主专项入口，调用 `node tools/check.mjs --native --ci`，执行 Bun 探针、C++ worker / CTest、运行时平台专项、Rust Clippy / 测试和本平台打包夹具。Linux 的 `--platform` 仍运行完整服务测试，Windows/macOS 使用正向清单；实际 Checks 的 Linux 专项已并入 `app`。CI 跳过 doctor 的额外 C++ 编译探针，不生成安装包。
 - `release`：构建 Linux 签名包，不重复执行已由标签提交 full Checks 覆盖的检查。
 
 推送 `main` 或手动运行 Checks 使用 full；`dev` 推送和 PR 使用 quick。公共 CI 输入、依赖、未知路径、空差异或比较基线缺失时回到 full。文档改动只执行静态同步；普通代码在 Linux 跑一份固定基线，原生边界改动才增加 Windows x64 与 macOS arm64 专项，full 再增加 macOS Intel。对应两个、四个或六个实际任务。路径计划以 `tools/ci/plan.mjs` 为准，运行时宿主正向清单以 `tools/ci/runtime-suite.mjs` 为准；不再维护 UI 领域/AST 映射或运行时纯领域排除表。
 
-非 Linux 平台清单为共同 19 个文件，加两个 Windows 或五个 macOS 文件，集中检查数据、文件系统、子进程、更新和原生传输等宿主边界。已有 Windows/macOS 路径失败证据的 Mirror酱关键更新回归保留在共同清单。Linux 全量只执行一份，full 也不在四宿主重复全部领域测试。CI 的运行时入口使用 `--require-native`，worker 或合成核心缺失直接失败，不能静默跳过原生集成。
+非 Linux 平台使用 `tools/ci/runtime-suite.mjs` 的共同清单与 Windows/macOS 专项清单，集中检查数据、文件系统、子进程、更新和原生传输等宿主边界。已有 Windows/macOS 路径失败证据的 Mirror酱关键更新回归保留在共同清单。Linux 全量只执行一份，full 也不在四宿主重复全部领域测试。CI 的运行时入口使用 `--require-native`，worker 或合成核心缺失直接失败，不能静默跳过原生集成。
 
 full 的 `full-validation` 只在 Linux application 和三个附加宿主专项全部成功后通过。发行门禁继续校验标签提交的完整 SHA、最新 attempt 和唯一成功标记，不接受 quick；缺少完整检查时先运行 `gh workflow run ci.yml --ref <tag>`。
 
-浏览器测试固定两个 worker，避免在较多 CPU 的 Docker 宿主上同时启动过多浏览器进程。本地验证结果及环境限制记录在 [开发状态](STATUS.md)。
+浏览器测试固定两个 worker，避免在较多 CPU 的 Docker 宿主上同时启动过多浏览器进程。本地验证结果及环境限制记录在对应任务或 PR 中。
 
 发行签名密钥仅通过 `docker run --env` 在任务运行时传入，不作为 Docker build 参数或镜像内容。构建 AppImage 使用 `APPIMAGE_EXTRACT_AND_RUN=1`，不要求容器挂载 FUSE 或开启特权模式。
 

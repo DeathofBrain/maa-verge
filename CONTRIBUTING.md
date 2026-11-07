@@ -1,30 +1,47 @@
 # 参与开发
 
-修改前阅读 [AGENTS.md](AGENTS.md)、[PLAN.md](PLAN.md) 和 [docs/STATUS.md](docs/STATUS.md)。先检查 `git status`，为一项任务建立功能分支；平行任务使用独立 worktree 并明确负责的子系统。
+修改前阅读 [AGENTS.md](AGENTS.md) 和 [PLAN.md](PLAN.md)，检查 `git status` / `git diff`，保留已有改动。本文维护贡献流程、文档归属与 PR 交接要求；仓库级开发边界以 AGENTS 为准。
+
+为一项任务建立功能分支；并行任务明确文件边界，额外 worktree 只能位于主仓库的 `.worktree/<任务名>/`。共用 checkout 时不要独立切换分支。
 
 ```bash
 git switch -c codex/your-change
 pnpm install --frozen-lockfile
 pnpm setup:bun
-pnpm test:e2e
 ```
 
 同机多个 worktree 的开发端口、数据目录和应用实例 ID 由路径哈希隔离。真实设备锁保持全机共享，不能通过切换工作树绕过独占控制。环境和平台依赖见 [开发文档](docs/development.md)。
 
 ## 改动与验证
 
-- React 只使用 `packages/contracts` 的 transport；新增接口时修改 `packages/contracts/schemas` 中的权威 JSON Schema，再运行 `pnpm contracts:generate` 同步类型和独立校验器，同时更新服务实现、隔离测试夹具与文档。
-- stdout 专用于换行 JSON-RPC；服务诊断写 stderr，日志不记录 API Key 或真实账号数据。
-- 不覆盖运行中核心或资源；更新候选、验证和激活必须是不同状态。
-- `pnpm dev` 启动真实原生服务，`pnpm dev:ui` 仅启动前端；旧 `dev:mock` 与产品 mock 模式已移除。自动测试与 CI 使用测试目录中的合成设备、网络和 IPC 夹具，关闭自动连接与下载。真实设备、付费模型和发布操作由明确授权另行测试并记录。
-- 消耗预算默认 0，模型参数由确定性规则校验；不能向模型暴露任意命令执行。
+先查现有实现与测试，再决定新增内容。新增或调整测试时说明它保护的行为和独立失败模式，优先扩展已有用例并在最低合适层验证边界矩阵；UI 保留交互与接线代表路径。相似准备步骤可以提取稳定夹具，不能据此删除失败重试、过期响应、持久化、权限、设备互斥、幂等或平台差异的独立覆盖。焦点、键盘、拖动与坐标的功能验证继续保留。
 
-先运行与修改相关的检查，再执行 `pnpm check` 和相关端到端场景。只改工程、契约或前端时运行 `pnpm check:app`；只改原生、C++ 或打包时运行 `pnpm check:native`；`pnpm check` 等价于两者之和。原生修改也可直接运行 `node tools/check-native.mjs --required`。`pnpm check` 仅在 cargo 缺失时明确跳过原生检查；存在工具链但检查失败时必须修复，CI 始终要求原生检查通过。
+测试分层、统一定向/全量命令、隔离要求与 CI 边界见[开发指南的检查与测试](docs/development.md#检查与测试)。先运行受影响测试，再运行对应项目检查；不要通过跳过失败、降低断言或无理由加大超时完成精简。纯文档修改只做相关静态与生成同步检查，不启动真实设备或付费模型。
 
 提交依赖锁文件；不提交 `.tools`、`.venv`、原生下载、构建结果、数据库、密钥或真实账号截图。生成文件通过对应生成命令更新。修改不涉及依赖时，不顺带更新锁文件。
 
+## 文档归属
+
+新增文档前，先判断能否更新以下既有权威章节；其他入口使用链接，不复制同一规则或为单次修复、验证新建报告。
+
+| 位置                                                                                 | 维护职责                                                                    |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| [AGENTS.md](AGENTS.md)                                                               | 仓库级硬约束、协作边界、适用 skill 与命令来源                               |
+| 本文                                                                                 | 贡献流程、文档归属、提交及 PR 交接要求                                      |
+| [开发指南](docs/development.md)                                                      | 环境恢复、配置、统一检查与测试入口、构建和 CI 运行说明                      |
+| 子项目 README                                                                        | 所属目录用途、启动入口及指向权威文档的导航；Kit README 另保留快速示例与预览 |
+| [前端架构](docs/frontend-architecture.md) / [后端架构](docs/backend-architecture.md) | 模块职责、依赖、生命周期与设计依据                                          |
+| [组件套装](docs/component-kit.md)                                                    | kit API、可访问性契约、设计令牌与选择器规则                                 |
+| [PLAN.md](PLAN.md) 与功能专项文档                                                    | 交付路线及各自功能的行为、兼容与边界                                        |
+
+接口修改先维护 `packages/contracts/schemas` 的权威 JSON Schema，并运行 `pnpm contracts:generate`，同时更新实现、隔离夹具及相关文档。修改文档前检查 `tools/generate-agent-knowledge.mjs` 的 `documentFiles`；命中输入时运行 `pnpm knowledge:generate` 并检查同步。不要手改生成产物。
+
+历史报告逐项判断：长期有效的设计依据、发行、许可和兼容资料继续保留；一次性过程与旧验证结果通过 Git、对应提交或 PR 查阅。文档不维护固定测试通过数，实际结果属于本次 PR。
+
 ## 交接
 
-更新 `docs/STATUS.md`，记录实际实现、运行过的命令、平台、结果、限制和下一步。PR 说明问题及修改后行为、验证方式与尚未覆盖的平台，不把 mock 验证描述为真实游戏验证。任务交接提供分支/提交与剩余事项，保证下一位开发者无需读取聊天记录。
+PR 说明具体问题与修改后行为，列出测试、文档的保留/合并/删除/下沉理由及剩余覆盖位置。记录实际执行的命令、宿主、通过/跳过/未运行、限制与下一步；测试精简时比较同环境耗时，有退化则说明。未运行的平台不声称通过，合成夹具不写成真实游戏验收。
+
+实现、验证与限制直接记录在任务或 PR，不创建或恢复状态文件。任务交接提供分支/提交与剩余事项，保证下一位开发者无需读取聊天记录。合并后的 worktree 和临时分支清理见[开发指南](docs/development.md#清理-codex-worktree-与分支)。
 
 整理发行说明时，使用项目根目录下的 [maa-verge-release-notes skill](.skill/maa-verge-release-notes/SKILL.md)，按其模板维护 `docs/releases/<tag>.md`。

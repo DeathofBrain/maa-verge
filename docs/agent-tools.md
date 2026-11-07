@@ -101,4 +101,4 @@ pnpm test:agent --compile
 .tools/bun/bun.exe test services/backend/tests/agent-tools.test.ts
 ```
 
-若系统 Node/pnpm 版本不匹配，可使用 `powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 test:agent --compile`。测试使用内存模型、合成宿主与合成 worker，不需要 MaaCore、模拟器、模型密钥或付费请求。完整回归由 `pnpm test:runtime` 覆盖 Agent 与 backend；实际核验记录见 [开发状态](STATUS.md)。
+若系统 Node/pnpm 版本不匹配，可使用 `powershell -ExecutionPolicy Bypass -File tools/pnpm.ps1 test:agent --compile`。测试使用内存模型、合成宿主与合成 worker，不需要 MaaCore、模拟器、模型密钥或付费请求。完整回归由 `pnpm test:runtime` 覆盖 Agent 与 backend；实际核验命令、宿主和未验证项记录在对应任务或 PR 中。

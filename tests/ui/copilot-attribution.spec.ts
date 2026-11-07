@@ -1,15 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import type { Download, Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { detail, library, openCenter } from './fixtures/copilot-page';
 
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
-const detail = (page: Page) => page.getByRole('complementary', { name: '作业详情', exact: true });
-async function openCenter(page: Page) {
-  await page.goto('/');
-  await expect(page.getByRole('region', { name: '主页仪表盘', exact: true })).toBeVisible();
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '作业中心', exact: true })).toBeVisible();
-}
 async function contents(download: Download) {
   const path = await download.path();
   if (!path) throw new Error('下载文件不可读取');

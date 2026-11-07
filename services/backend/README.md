@@ -115,11 +115,11 @@ pnpm test:packaging
 
 `check:app` 检查契约同步、工作区类型、前后端结构以及工具测试。`test:runtime` 使用固定 Bun 运行 Agent 和后端行为测试，存在已构建的合成 C++ worker/核心时同时启用原生夹具及编译更新任务。需要补建夹具时先执行 `node tools/build-core-worker.mjs`。`test:packaging` 验证当前宿主的 Bun 编译、SQLite、归档与子进程能力。
 
-单独检查结构可执行 `node tools/check-backend-architecture.mjs`。定向运行测试时，通过 `tools/setup-bun.mjs` 的固定运行时入口或 checkout `.tools/bun` 执行 `bun test services/backend/tests/<file>.test.ts`，使用与完整测试一致的隔离环境。
+单独检查结构可执行 `node tools/check-backend-architecture.mjs`。定向运行使用 `pnpm test:runtime services/backend/tests/copilot-library.test.ts`；可列出多个 backend/Agent 测试文件，并用 `--test-name-pattern 'preview|failure'` 筛选名称。入口复用全量测试的固定 Bun 和隔离环境，拒绝目录、非测试文件及仓库外路径；`--require-native` 可与定向文件组合，`--platform` 不与定向文件或名称筛选混用。全量仍执行无参数的 `pnpm test:runtime`，测试分层和其他检查见[开发指南](../../docs/development.md#检查与测试)。
 
 产品知识生成入口为 `pnpm knowledge:generate`，输出 `src/modules/knowledge/product-knowledge.generated.json`；资源知识构建使用 `pnpm knowledge:build`。Unicode 表由本目录 `tools/generate-casefold.mjs` 生成至 `src/shared/casefold-data.json`。生成文件由源重新生成，不手改或重新格式化。
 
-`pnpm dev` 会启动真实原生服务。例行检查不连接真实游戏、不调用付费模型、不下载真实核心或发布更新；Windows 的合成验证不代表 macOS/Linux、原生 WebView 或真实设备验收。具体结果和限制见 [STATUS](../../docs/STATUS.md)。
+`pnpm dev` 会启动真实原生服务。例行检查不连接真实游戏、不调用付费模型、不下载真实核心或发布更新；Windows 的合成验证不代表 macOS/Linux、原生 WebView 或真实设备验收。实际命令、宿主、结果与未验证项记录在对应任务或 PR 说明中。
 
 ## 后续范围
 

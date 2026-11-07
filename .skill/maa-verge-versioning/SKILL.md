@@ -9,9 +9,9 @@ description: 根据 SemVer 2.0.0 管理 Maa Verge 版本号：判断兼容性与
 
 ## 确定范围与基线
 
-- 阅读 [AGENTS.md](../../AGENTS.md)、[PLAN.md](../../PLAN.md)、[开发状态](../../docs/STATUS.md)，检查已有差异，只修改本次版本任务涉及的内容。
+- 阅读 [AGENTS.md](../../AGENTS.md)、[PLAN.md](../../PLAN.md)，检查已有差异，只修改本次版本任务涉及的内容。
 - 区分“建议版本号”“检查一致性”“实际升版”：建议或检查任务只读；用户要求升版时直接完成本地文件同步和验证。版本修改本身不包含 commit、push、创建或移动标签、上传资产、创建或发布 Release；已有明确授权按其范围执行。
-- 从根 [package.json](../../package.json) 读取当前应用版本，核对工作区、Tauri 和 Cargo；通过本地标签、提交差异及实际 Release 证据区分源码版本、已发布预览版和已发布正式版。`git tag` 不能证明 Release 已公开，`docs/STATUS.md` 也不能代替发布证据。
+- 从根 [package.json](../../package.json) 读取当前应用版本，核对工作区、Tauri 和 Cargo；通过本地标签、提交差异及实际 Release 证据区分源码版本、已发布预览版和已发布正式版。`git tag` 不能证明 Release 已公开，开发记录也不能代替发布证据。
 - 用户指定基线时遵从；否则以目标发行线最近已发布版本为比较基线，结合当前未发布版本判断是否只是继续同一预发布序列。缺少远端证据时明确基线来源，不把本地最新标签直接称为最新正式版。
 - 对变更集评估兼容性，不能仅凭提交前缀、提交数量、开发日期或分支名计算版本。文档或内部重构不必自动升版；若随新构建发行，依据实际兼容性和交付目的决定级别。
 
@@ -83,7 +83,7 @@ SemVer 允许 `0.y.z` 阶段快速变化，不承诺公共 API 稳定，也未�
 - 避免全仓字符串替换：历史发行说明、旧版迁移说明、测试夹具及第三方组件可能有意使用旧版本。
 - [pnpm-lock.yaml](../../pnpm-lock.yaml) 是否变化取决于实际依赖解析；单改应用版本不一定会改变它。需要更新锁文件时使用项目固定 pnpm 和 Cargo，保留锁文件并检查无关依赖变动，不手工伪造同步。
 - 常规应用升版不连带修改 `.bun-version`、`.node-version`、MaaCore 版本、资源提交标识、NDJSON `protocolVersion`、JSON Schema 的版本字段或 SQLite 迁移序号。它们按自身兼容性与迁移任务独立演进；资源不必采用 SemVer，核心同版也不能跳过资源更新。
-- 更新 [开发状态](../../docs/STATUS.md) 中的源码版本与验证记录，但只有实际公开发布后才更新“已发布版本”。准备发行说明时使用 [maa-verge-release-notes](../maa-verge-release-notes/SKILL.md)，写入 `docs/releases/<tag>.md`；实际需要修改用户 README 时再读取 [maa-verge-readme](../maa-verge-readme/SKILL.md)。
+- 在任务或 PR 说明中记录源码版本、验证结果与未验证项；只有实际公开发布后才称为“已发布版本”。准备发行说明时使用 [maa-verge-release-notes](../maa-verge-release-notes/SKILL.md)，写入 `docs/releases/<tag>.md`；实际需要修改用户 README 时再读取 [maa-verge-readme](../maa-verge-readme/SKILL.md)。
 
 ## 验证与交付
 

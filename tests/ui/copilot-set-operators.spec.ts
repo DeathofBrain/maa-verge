@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { CopilotPreview, RpcResult } from '../../packages/contracts/src/index';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { enter, library } from './fixtures/copilot-page';
 
 type SetProbeWindow = HarnessWindow & {
   setOperatorProbe: {
@@ -15,7 +16,6 @@ type SetProbeWindow = HarnessWindow & {
     release: () => void;
   };
 };
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
 const setRequirements = (page: Page, id = '12') =>
   library(page).getByLabel(`作业集 #${id} 干员要求`, { exact: true });
 
@@ -119,10 +119,7 @@ async function installSetProbe(
     },
     { sets, hold },
   );
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
-  await expect(
-    page.getByRole('region', { name: '作业执行队列', exact: true }).locator('.cp-save-state'),
-  ).toContainText('已保存');
+  await enter(page);
   await library(page).getByRole('tab', { name: '社区作业集', exact: true }).click();
   await expect(
     library(page).getByRole('button', { name: `查看详情 合成作业集${sets[0]}`, exact: true }),

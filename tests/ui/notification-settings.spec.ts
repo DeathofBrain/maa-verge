@@ -66,6 +66,9 @@ test('failed notification saves retain drafts and allow retry', async ({ page })
   await expect(
     region.getByRole('switch', { name: '更新结果通知', exact: false }),
   ).not.toBeChecked();
+  // 恢复草稿会自动保存；先等这次失败，再解除故障并验证显式重试。
+  await expect(region.getByRole('button', { name: '重试', exact: true })).toBeEnabled();
+  expect(await savedNotifications(page)).toBeUndefined();
   await page.evaluate(() => {
     (window as HarnessWindow).runtimeHarness.failSettings = false;
   });

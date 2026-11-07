@@ -2,6 +2,7 @@ import { ensureBun } from './setup-bun.mjs';
 import { withRuntimeTestEnvironment } from './test-support/runtime-environment.mjs';
 import { run, fail } from './project.mjs';
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { root } from './project.mjs';
 import { assertWorkspaceDependencies } from './environment.mjs';
@@ -11,8 +12,8 @@ import {
   runtimeTestDirectories,
   selectRuntimeTests,
 } from './ci/runtime-suite.mjs';
-async function main() {
-  const options = parseRuntimeArguments(process.argv.slice(2));
+export async function runRuntimeTests(args, { ensureRuntime = ensureBun, execute = run } = {}) {
+  const options = parseRuntimeArguments(args);
   assertWorkspaceDependencies();
   const timeout = Number(process.env.MAAVERGE_TEST_TIMEOUT_MS ?? 30000);
   if (!Number.isSafeInteger(timeout) || timeout <= 0 || timeout > 300000)
@@ -38,16 +39,24 @@ async function main() {
   const discovered = discoverRuntimeTests(root);
   const tests = selectRuntimeTests(discovered, options);
   if (!tests.length) throw new Error('No runtime test files were selected.');
-  const suite = options.platformOnly && process.platform !== 'linux' ? 'platform' : 'full';
+  const suite =
+    options.files.length || options.testNamePattern !== undefined
+      ? 'targeted'
+      : options.platformOnly && process.platform !== 'linux'
+        ? 'platform'
+        : 'full';
   console.log(`Runtime suite ${suite}: ${tests.length}/${discovered.length} test files.`);
-  const bun = await ensureBun();
+  const bun = await ensureRuntime();
   await withRuntimeTestEnvironment((environment) =>
-    run(
+    execute(
       bun,
       [
         'test',
         '--timeout',
         String(timeout),
+        ...(options.testNamePattern !== undefined
+          ? ['--test-name-pattern', options.testNamePattern]
+          : []),
         ...(suite === 'full' ? runtimeTestDirectories : tests.map((file) => `./${file}`)),
       ],
       {
@@ -65,4 +74,5 @@ async function main() {
     ),
   );
 }
-main().catch(fail);
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+  runRuntimeTests(process.argv.slice(2)).catch(fail);

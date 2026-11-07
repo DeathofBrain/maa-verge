@@ -6,6 +6,7 @@ import type {
   Snapshot,
 } from '../../packages/contracts/src/index';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { detail, enter, library } from './fixtures/copilot-page';
 
 type Recognition = RpcResult<'recognition.get'>;
 type Operator = Recognition['operators'][number];
@@ -24,8 +25,6 @@ type ProbeWindow = HarnessWindow & {
   };
 };
 
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
-const detail = (page: Page) => page.getByRole('complementary', { name: '作业详情', exact: true });
 const card = (page: Page) => library(page).locator('article.cp-record').first();
 const tag = (page: Page, name: string) =>
   card(page).locator('li.cp-operator-tag').filter({ hasText: name });
@@ -141,10 +140,7 @@ async function installProbe(page: Page, value: Recognition, requirements?: Requi
 }
 
 async function openCommunity(page: Page) {
-  await page.locator('.sidebar').getByRole('button', { name: '作业中心', exact: true }).click();
-  await expect(
-    page.getByRole('region', { name: '作业执行队列', exact: true }).locator('.cp-save-state'),
-  ).toContainText('已保存');
+  await enter(page);
   await page.getByRole('tab', { name: '社区搜索', exact: true }).click();
   await expect(card(page)).toBeVisible();
 }

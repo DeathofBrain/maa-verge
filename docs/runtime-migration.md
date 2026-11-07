@@ -1,6 +1,6 @@
 # TypeScript / C++ 运行时迁移交接
 
-更新日期：2026-10-29。旧 Python 参考后端与开发依赖已移除；桌面与合成测试统一采用 TypeScript 应用服务与 C++20 MaaCore worker。发行服务由固定 Bun 1.4.3 编译为可执行文件；用户无需安装 Python、Node 或 Bun。迁移实现与目标平台的实际验证是两项记录，最新结果以 [STATUS.md](STATUS.md) 为准。
+更新日期：2026-10-29。旧 Python 参考后端与开发依赖已移除；桌面与合成测试统一采用 TypeScript 应用服务与 C++20 MaaCore worker。发行服务由固定 Bun 1.4.3 编译为可执行文件；用户无需安装 Python、Node 或 Bun。迁移实现与目标平台的实际验证是两项记录，实际命令、宿主和未验证项记录在对应任务或 PR 中。
 
 ## 进程与职责
 
@@ -155,6 +155,6 @@ Windows 使用 `.tools/bun/bun.exe` 和 `.exe` 输出名。记录自建 Bun/WebK
 
 `.github/workflows/ci.yml` 的 Bun gate 在四个原生宿主分别编译并执行：Windows x64、Ubuntu x64、macOS arm64、macOS x64；全部成功后原生矩阵才构建 C++ 合成测试、运行 TypeScript 测试、Rust 检查和桌面打包。`node tools/probe-bun.mjs --all-targets` 可以交叉生成四种探针，但只有当前宿主会执行，结果中的 `executed: false` 不能计作平台验收。
 
-此前运行时迁移在 Windows x64 开发主机、四平台宿主 CI 和 Ubuntu 22.04 干净容器记录过验证；历史结果不代表本次移除产品 mock 后已重新通过相同平台验收。`pnpm test:desktop-webview` 检查 Windows 实际 release 窗口；`pnpm test:clean-linux` 检查没有 Python/Node/Bun 的 Linux 容器后端。这些结果与干净系统安装、正式签名、公证和真实游戏行为分别记录。确切测试数量、包内 smoke、安装包及本次平台实况由 [STATUS.md](STATUS.md) 记录。
+此前运行时迁移在 Windows x64 开发主机、四平台宿主 CI 和 Ubuntu 22.04 干净容器记录过验证；历史结果不代表本次移除产品 mock 后已重新通过相同平台验收。`pnpm test:desktop-webview` 检查 Windows 实际 release 窗口；`pnpm test:clean-linux` 检查没有 Python/Node/Bun 的 Linux 容器后端。这些结果与干净系统安装、正式签名、公证和真实游戏行为分别记录。每次验证的命令、宿主、包内 smoke、安装包结果及未验证项记录在对应任务或 PR 中，不沿用历史通过数量。
 
 后续先完成最低系统、正式签名与安装、真实核心的加载和资源组合验证，再安排用户明确选择的设备行为测试。Python 参考的移除不替代这些验收；云模型 harness、视觉工具和持续托管仍按产品计划独立交付。

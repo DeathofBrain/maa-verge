@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test, type HarnessWindow } from './fixtures/desktop';
+import { enter, library } from './fixtures/copilot-page';
 import { expectHome, navigate } from './fixtures/navigation';
 
 type SearchRequest = {
@@ -17,7 +18,6 @@ type SortingHarnessWindow = HarnessWindow & {
   releaseSortSearch: () => void;
 };
 
-const library = (page: Page) => page.getByRole('region', { name: '作业库', exact: true });
 const sorting = (page: Page) => page.getByRole('group', { name: '社区作业排序', exact: true });
 const choice = (page: Page, name: string) =>
   sorting(page).getByRole('button', { name, exact: true });
@@ -59,7 +59,7 @@ async function openCommunity(page: Page) {
       return value;
     };
   });
-  await navigate(page, '作业中心');
+  await enter(page);
   await library(page).getByRole('tab', { name: '社区搜索', exact: true }).click();
   await expect(result(page, 'hot')).toBeVisible();
 }
